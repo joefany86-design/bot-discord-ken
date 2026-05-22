@@ -203,6 +203,13 @@ function setupGreetingSchedules() {
       message: 'Selamat malam semuanya! Semoga istirahat kalian nyenyak. Mimpi indah! 🌟😴',
       color: 0x2C3E50,
       image: '🌃'
+    },
+    {
+      cron: '0 0 * * *',
+      title: '🌌 Selamat Ganti Hari!',
+      message: 'Selamat berganti hari semuanya! Lembaran baru telah dimulai, semoga hari ini berjalan menyenangkan dan lebih baik dari kemarin! 💫🌟',
+      color: 0x1F1F2E,
+      image: '✨'
     }
   ];
 
@@ -223,9 +230,10 @@ function sendGreetingToAllGuilds(greeting) {
     try {
       let channel = null;
 
-      // 1. Cek GREETING_CHANNEL_ID dari .env
-      if (process.env.GREETING_CHANNEL_ID) {
-        channel = guild.channels.cache.get(process.env.GREETING_CHANNEL_ID);
+      // 1. Cek GREETING_CHANNEL_ID dari .env atau fallback ke ID default (1422642326798598348)
+      const targetChannelId = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
+      if (targetChannelId) {
+        channel = guild.channels.cache.get(targetChannelId);
       }
 
       // 2. Cari channel bernama 'general' atau 'umum'
@@ -840,7 +848,7 @@ client.on('messageCreate', async message => {
         },
         {
           name: '⏰ Sapaan Otomatis',
-          value: 'Bot otomatis menyapa setiap:\n🌅 06:00 WIB • ☀️ 12:00 WIB • 🌇 15:00 WIB • 🌙 21:00 WIB'
+          value: 'Bot otomatis menyapa setiap:\n🌌 00:00 WIB • 🌅 06:00 WIB • ☀️ 12:00 WIB • 🌇 15:00 WIB • 🌙 21:00 WIB'
         }
       )
       .setFooter({ text: 'Semua perintah juga tersedia sebagai slash command (/)' })
