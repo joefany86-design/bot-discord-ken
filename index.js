@@ -20,6 +20,11 @@ process.env.FFMPEG_PATH = ffmpegStatic;
 require('dotenv').config();
 
 // ═══════════════════════════════════════════════════
+// OWNER ID - Hanya user ini yang bisa memerintah bot
+// ═══════════════════════════════════════════════════
+const OWNER_ID = '436554535037698059';
+
+// ═══════════════════════════════════════════════════
 // GLOBAL ERROR HANDLERS (mencegah bot crash)
 // ═══════════════════════════════════════════════════
 process.on('unhandledRejection', (reason, promise) => {
@@ -243,6 +248,11 @@ client.on('interactionCreate', async interaction => {
 
   if (!guildId) {
     return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
+  }
+
+  // Cek apakah user adalah owner
+  if (interaction.user.id !== OWNER_ID) {
+    return interaction.reply({ content: '🔒 Maaf, hanya owner yang bisa menggunakan bot ini!', ephemeral: true });
   }
 
   // ── SPEAK (TTS) ──
@@ -484,6 +494,11 @@ client.on('interactionCreate', async interaction => {
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.content.startsWith('!')) return;
+
+  // Cek apakah user adalah owner
+  if (message.author.id !== OWNER_ID) {
+    return message.reply('🔒 Maaf, hanya owner yang bisa menggunakan bot ini!');
+  }
 
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
