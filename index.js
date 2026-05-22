@@ -9,6 +9,12 @@ const {
   entersState
 } = require('@discordjs/voice');
 const googleTTS = require('google-tts-api');
+const ffmpegStatic = require('ffmpeg-static');
+
+// Konfigurasi path FFmpeg agar terdeteksi secara otomatis di server (seperti Railway)
+process.env.FFMPEG_BIN = ffmpegStatic;
+process.env.FFMPEG_PATH = ffmpegStatic;
+
 require('dotenv').config();
 
 // Inisialisasi client Discord dengan intents yang tepat
