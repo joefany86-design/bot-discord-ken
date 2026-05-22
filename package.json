@@ -8,13 +8,16 @@
     "deploy": "node deploy-commands.js"
   },
   "dependencies": {
+    "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.17.0",
     "@snazzah/davey": "^0.1.11",
     "discord.js": "^14.15.3",
+    "distube": "^5.2.3",
     "dotenv": "^16.4.5",
     "ffmpeg-static": "^5.2.0",
     "google-tts-api": "^2.0.2",
     "libsodium-wrappers": "^0.7.13",
+    "node-cron": "^4.2.1",
     "opusscript": "^0.0.8"
   }
 }

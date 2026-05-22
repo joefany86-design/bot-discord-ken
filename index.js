@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, InteractionType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { 
   joinVoiceChannel, 
   createAudioPlayer, 
@@ -8,7 +8,9 @@ const {
   getVoiceConnection,
   entersState
 } = require('@discordjs/voice');
+const { DisTube } = require('distube');
 const googleTTS = require('google-tts-api');
+const cron = require('node-cron');
 const ffmpegStatic = require('ffmpeg-static');
 
 // Konfigurasi path FFmpeg agar terdeteksi secara otomatis di server (seperti Railway)
@@ -17,45 +19,229 @@ process.env.FFMPEG_PATH = ffmpegStatic;
 
 require('dotenv').config();
 
-// Inisialisasi client Discord dengan intents yang tepat
+// ═══════════════════════════════════════════════════
+// INISIALISASI CLIENT DISCORD
+// ═══════════════════════════════════════════════════
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // Dibutuhkan untuk membaca pesan teks seperti !join
+    GatewayIntentBits.MessageContent,
   ]
 });
 
-// Menyimpan AudioPlayer untuk setiap Guild secara dinamis
-const players = new Map();
+// Menyimpan AudioPlayer TTS untuk setiap Guild
+const ttsPlayers = new Map();
 
-client.once('ready', () => {
-  console.log(`Bot berhasil online sebagai ${client.user.tag}!`);
-  client.user.setActivity('suara Anda | !join & /speak', { type: 2 }); // Listening to
+// ═══════════════════════════════════════════════════
+// INISIALISASI DISTUBE (MUSIK YOUTUBE)
+// ═══════════════════════════════════════════════════
+const distube = new DisTube(client, {
+  emitNewSongOnly: true,
+  emitAddSongWhenCreatingQueue: false,
 });
 
-// Penanganan Slash Commands
+// ═══════════════════════════════════════════════════
+// DISTUBE EVENT HANDLERS
+// ═══════════════════════════════════════════════════
+distube.on('playSong', (queue, song) => {
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF7F)
+    .setTitle('🎵 Sedang Memutar')
+    .setDescription(`**[${song.name}](${song.url})**`)
+    .addFields(
+      { name: '⏱️ Durasi', value: song.formattedDuration, inline: true },
+      { name: '👤 Diminta oleh', value: `${song.user}`, inline: true },
+      { name: '🔊 Volume', value: `${queue.volume}%`, inline: true }
+    )
+    .setThumbnail(song.thumbnail)
+    .setFooter({ text: '🎶 Bot Musik Discord' })
+    .setTimestamp();
+
+  queue.textChannel?.send({ embeds: [embed] });
+});
+
+distube.on('addSong', (queue, song) => {
+  const embed = new EmbedBuilder()
+    .setColor(0x3498DB)
+    .setTitle('➕ Ditambahkan ke Antrian')
+    .setDescription(`**[${song.name}](${song.url})**`)
+    .addFields(
+      { name: '⏱️ Durasi', value: song.formattedDuration, inline: true },
+      { name: '👤 Diminta oleh', value: `${song.user}`, inline: true },
+      { name: '📋 Posisi', value: `#${queue.songs.length}`, inline: true }
+    )
+    .setThumbnail(song.thumbnail)
+    .setTimestamp();
+
+  queue.textChannel?.send({ embeds: [embed] });
+});
+
+distube.on('finish', (queue) => {
+  const embed = new EmbedBuilder()
+    .setColor(0x95A5A6)
+    .setTitle('✅ Antrian Selesai')
+    .setDescription('Semua lagu telah selesai diputar! Gunakan `/play` untuk menambah lagu baru.')
+    .setTimestamp();
+
+  queue.textChannel?.send({ embeds: [embed] });
+});
+
+distube.on('empty', (queue) => {
+  const embed = new EmbedBuilder()
+    .setColor(0xE74C3C)
+    .setTitle('👋 Channel Kosong')
+    .setDescription('Tidak ada orang di voice channel. Bot keluar otomatis.')
+    .setTimestamp();
+
+  queue.textChannel?.send({ embeds: [embed] });
+});
+
+distube.on('error', (channel, error) => {
+  console.error('DisTube Error:', error);
+  if (channel) {
+    const embed = new EmbedBuilder()
+      .setColor(0xE74C3C)
+      .setTitle('❌ Error')
+      .setDescription(`Terjadi kesalahan: ${error.message?.slice(0, 200) || 'Unknown error'}`)
+      .setTimestamp();
+
+    channel.send({ embeds: [embed] }).catch(() => {});
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// BOT READY EVENT
+// ═══════════════════════════════════════════════════
+client.once('ready', () => {
+  console.log(`══════════════════════════════════════`);
+  console.log(`  Bot online sebagai ${client.user.tag}`);
+  console.log(`  Servers: ${client.guilds.cache.size}`);
+  console.log(`══════════════════════════════════════`);
+  
+  client.user.setActivity('🎵 !play & /play | !speak', { type: 2 });
+
+  // ═══════════════════════════════════════════════════
+  // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
+  // ═══════════════════════════════════════════════════
+  setupGreetingSchedules();
+});
+
+// ═══════════════════════════════════════════════════
+// FUNGSI SAPAAN TERJADWAL
+// ═══════════════════════════════════════════════════
+function setupGreetingSchedules() {
+  const greetings = [
+    {
+      cron: '0 6 * * *',
+      title: '🌅 Selamat Pagi!',
+      message: 'Selamat pagi semuanya! Semoga hari ini penuh berkah dan semangat! 💪✨',
+      color: 0xFFD700,
+      image: '🌄'
+    },
+    {
+      cron: '0 12 * * *',
+      title: '☀️ Selamat Siang!',
+      message: 'Selamat siang semuanya! Jangan lupa makan siang dan istirahat ya! 🍚😊',
+      color: 0xFF8C00,
+      image: '🌞'
+    },
+    {
+      cron: '0 15 * * *',
+      title: '🌇 Selamat Sore!',
+      message: 'Selamat sore semuanya! Tetap semangat menjalani sisa hari ini! 🌆💫',
+      color: 0xE67E22,
+      image: '🌅'
+    },
+    {
+      cron: '0 21 * * *',
+      title: '🌙 Selamat Malam!',
+      message: 'Selamat malam semuanya! Semoga istirahat kalian nyenyak. Mimpi indah! 🌟😴',
+      color: 0x2C3E50,
+      image: '🌃'
+    }
+  ];
+
+  greetings.forEach(greeting => {
+    cron.schedule(greeting.cron, () => {
+      sendGreetingToAllGuilds(greeting);
+    }, {
+      scheduled: true,
+      timezone: 'Asia/Jakarta'
+    });
+
+    console.log(`  ✅ Jadwal sapaan "${greeting.title}" terdaftar (${greeting.cron} WIB)`);
+  });
+}
+
+function sendGreetingToAllGuilds(greeting) {
+  client.guilds.cache.forEach(async (guild) => {
+    try {
+      let channel = null;
+
+      // 1. Cek GREETING_CHANNEL_ID dari .env
+      if (process.env.GREETING_CHANNEL_ID) {
+        channel = guild.channels.cache.get(process.env.GREETING_CHANNEL_ID);
+      }
+
+      // 2. Cari channel bernama 'general' atau 'umum'
+      if (!channel) {
+        channel = guild.channels.cache.find(
+          ch => ch.isTextBased() && !ch.isVoiceBased() && 
+          (ch.name === 'general' || ch.name === 'umum' || ch.name === 'chat')
+        );
+      }
+
+      // 3. Fallback: channel text pertama yang bisa ditulis
+      if (!channel) {
+        channel = guild.channels.cache.find(
+          ch => ch.isTextBased() && !ch.isVoiceBased() && 
+          ch.permissionsFor(guild.members.me)?.has('SendMessages')
+        );
+      }
+
+      if (!channel) {
+        console.log(`Tidak bisa menemukan channel untuk sapaan di server ${guild.name}`);
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(greeting.color)
+        .setTitle(greeting.title)
+        .setDescription(greeting.message)
+        .setFooter({ text: `${greeting.image} Sapaan otomatis dari Bot` })
+        .setTimestamp();
+
+      await channel.send({ embeds: [embed] });
+      console.log(`Sapaan "${greeting.title}" dikirim ke #${channel.name} di ${guild.name}`);
+    } catch (error) {
+      console.error(`Gagal mengirim sapaan ke server ${guild.name}:`, error.message);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// PENANGANAN SLASH COMMANDS
+// ═══════════════════════════════════════════════════
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName, guildId, member, guild } = interaction;
 
-  // Pastikan perintah dijalankan di dalam server (guild)
   if (!guildId) {
-    return interaction.reply({ content: 'Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
+    return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
   }
 
-  // 1. COMMAND: SPEAK
+  // ── SPEAK (TTS) ──
   if (commandName === 'speak') {
     const text = interaction.options.getString('text');
     let connection = getVoiceConnection(guildId);
 
-    // Jika bot belum berada di voice channel, coba buat join otomatis ke voice channel user
     if (!connection) {
       const voiceChannel = member.voice.channel;
       if (!voiceChannel) {
-        return interaction.reply({ content: 'Saya belum berada di Voice Channel. Silakan ketik `!join` atau bergabung ke voice channel terlebih dahulu!', ephemeral: true });
+        return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
       }
 
       try {
@@ -68,14 +254,13 @@ client.on('interactionCreate', async interaction => {
         await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
       } catch (error) {
         console.error('Kesalahan auto-join saat /speak:', error);
-        return interaction.reply({ content: 'Gagal bergabung ke Voice Channel secara otomatis.', ephemeral: true });
+        return interaction.reply({ content: '❌ Gagal bergabung ke Voice Channel.', ephemeral: true });
       }
     }
 
     try {
       await interaction.deferReply();
 
-      // Dapatkan URL audio TTS (bahasa Indonesia sebagai default)
       const ttsUrl = googleTTS.getAudioUrl(text, {
         lang: 'id',
         slow: false,
@@ -83,76 +268,222 @@ client.on('interactionCreate', async interaction => {
         timeout: 10000,
       });
 
-      // Dapatkan atau buat player baru
-      let player = players.get(guildId);
+      let player = ttsPlayers.get(guildId);
       if (!player) {
         player = createAudioPlayer();
         player.on('error', error => {
-          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
+          console.error(`TTS Player Error:`, error.message);
         });
-        players.set(guildId, player);
+        ttsPlayers.set(guildId, player);
       }
       
       connection.subscribe(player);
-
-      // Buat resource audio dan putar
       const resource = createAudioResource(ttsUrl);
       player.play(resource);
 
-      await interaction.editReply(`Mengucapkan: "${text}" 🗣️`);
+      await interaction.editReply(`🗣️ Mengucapkan: "${text}"`);
     } catch (error) {
-      console.error('Kesalahan saat memproses ucapan TTS:', error);
-      await interaction.editReply('Gagal memproses teks ke ucapan suara. Silakan coba lagi beberapa saat lagi.');
+      console.error('Kesalahan TTS:', error);
+      await interaction.editReply('❌ Gagal memproses teks ke suara.');
     }
   }
 
-  // 3. COMMAND: LEAVE
+  // ── LEAVE ──
   else if (commandName === 'leave') {
     const connection = getVoiceConnection(guildId);
+    const queue = distube.getQueue(guildId);
 
-    if (!connection) {
-      return interaction.reply({ content: 'Saya tidak sedang berada di Voice Channel mana pun di server ini!', ephemeral: true });
+    if (!connection && !queue) {
+      return interaction.reply({ content: '❌ Bot tidak sedang berada di Voice Channel!', ephemeral: true });
     }
 
     try {
-      // Hentikan pemutaran audio jika ada
-      const player = players.get(guildId);
+      if (queue) {
+        await distube.stop(guildId);
+      }
+      const player = ttsPlayers.get(guildId);
       if (player) {
         player.stop();
-        players.delete(guildId);
+        ttsPlayers.delete(guildId);
       }
-
-      // Hancurkan koneksi suara
-      connection.destroy();
-      await interaction.reply('Berhasil keluar dari Voice Channel. Sampai jumpa! 👋');
+      if (connection) {
+        connection.destroy();
+      }
+      await interaction.reply('👋 Berhasil keluar dari Voice Channel!');
     } catch (error) {
-      console.error('Kesalahan saat keluar dari voice channel:', error);
-      await interaction.reply({ content: 'Terjadi kesalahan saat mencoba keluar dari voice channel.', ephemeral: true });
+      console.error('Kesalahan leave:', error);
+      await interaction.reply({ content: '❌ Terjadi kesalahan saat keluar.', ephemeral: true });
     }
+  }
+
+  // ── PLAY ──
+  else if (commandName === 'play') {
+    const query = interaction.options.getString('query');
+    const voiceChannel = member.voice.channel;
+
+    if (!voiceChannel) {
+      return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
+    }
+
+    try {
+      await interaction.deferReply();
+      await distube.play(voiceChannel, query, {
+        member: member,
+        textChannel: interaction.channel,
+        message: undefined,
+      });
+      await interaction.editReply(`🔍 Mencari dan memutar: **${query}**`);
+    } catch (error) {
+      console.error('Kesalahan play:', error);
+      await interaction.editReply(`❌ Gagal memutar: ${error.message?.slice(0, 200) || 'Unknown error'}`);
+    }
+  }
+
+  // ── SKIP ──
+  else if (commandName === 'skip') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    try {
+      if (queue.songs.length <= 1) {
+        await distube.stop(guildId);
+        await interaction.reply('⏹️ Tidak ada lagu berikutnya. Pemutaran dihentikan.');
+      } else {
+        await distube.skip(guildId);
+        await interaction.reply('⏭️ Lagu di-skip!');
+      }
+    } catch (error) {
+      console.error('Kesalahan skip:', error);
+      await interaction.reply({ content: '❌ Gagal skip lagu.', ephemeral: true });
+    }
+  }
+
+  // ── STOP ──
+  else if (commandName === 'stop') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    try {
+      await distube.stop(guildId);
+      await interaction.reply('⏹️ Musik dihentikan dan antrian dikosongkan!');
+    } catch (error) {
+      console.error('Kesalahan stop:', error);
+      await interaction.reply({ content: '❌ Gagal menghentikan musik.', ephemeral: true });
+    }
+  }
+
+  // ── QUEUE ──
+  else if (commandName === 'queue') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '📋 Antrian kosong! Gunakan `/play` untuk menambah lagu.', ephemeral: true });
+    }
+
+    const songList = queue.songs
+      .map((song, i) => {
+        const prefix = i === 0 ? '▶️' : `${i}.`;
+        return `${prefix} **${song.name}** - \`${song.formattedDuration}\` (${song.user})`;
+      })
+      .slice(0, 15)
+      .join('\n');
+
+    const embed = new EmbedBuilder()
+      .setColor(0x9B59B6)
+      .setTitle('📋 Antrian Lagu')
+      .setDescription(songList)
+      .setFooter({ text: `Total: ${queue.songs.length} lagu | Volume: ${queue.volume}%` })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  }
+
+  // ── NOWPLAYING ──
+  else if (commandName === 'nowplaying') {
+    const queue = distube.getQueue(guildId);
+    if (!queue || !queue.songs[0]) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    const song = queue.songs[0];
+    const embed = new EmbedBuilder()
+      .setColor(0x1DB954)
+      .setTitle('🎶 Sedang Diputar')
+      .setDescription(`**[${song.name}](${song.url})**`)
+      .addFields(
+        { name: '⏱️ Durasi', value: song.formattedDuration, inline: true },
+        { name: '👤 Diminta oleh', value: `${song.user}`, inline: true },
+        { name: '🔊 Volume', value: `${queue.volume}%`, inline: true }
+      )
+      .setThumbnail(song.thumbnail)
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+  }
+
+  // ── PAUSE ──
+  else if (commandName === 'pause') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    if (queue.paused) {
+      return interaction.reply({ content: '⏸️ Musik sudah dalam keadaan pause!', ephemeral: true });
+    }
+
+    distube.pause(guildId);
+    await interaction.reply('⏸️ Musik di-pause! Gunakan `/resume` untuk melanjutkan.');
+  }
+
+  // ── RESUME ──
+  else if (commandName === 'resume') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    if (!queue.paused) {
+      return interaction.reply({ content: '▶️ Musik tidak sedang di-pause!', ephemeral: true });
+    }
+
+    distube.resume(guildId);
+    await interaction.reply('▶️ Musik dilanjutkan!');
+  }
+
+  // ── VOLUME ──
+  else if (commandName === 'volume') {
+    const queue = distube.getQueue(guildId);
+    if (!queue) {
+      return interaction.reply({ content: '❌ Tidak ada lagu yang sedang diputar!', ephemeral: true });
+    }
+
+    const level = interaction.options.getInteger('level');
+    distube.setVolume(guildId, level);
+    await interaction.reply(`🔊 Volume diatur ke **${level}%**`);
   }
 });
 
-// Penanganan Perintah Pesan Teks (Prefix !)
+// ═══════════════════════════════════════════════════
+// PENANGANAN PERINTAH TEKS (PREFIX !)
+// ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
-  // Abaikan pesan dari bot atau jika tidak dimulai dengan !
   if (message.author.bot || !message.content.startsWith('!')) return;
 
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
 
-  // 1. COMMAND: JOIN
+  // ── !JOIN ──
   if (commandName === 'join') {
     const { guildId, member, guild } = message;
 
-    if (!guildId) {
-      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
-    }
+    if (!guildId) return message.reply('❌ Perintah ini hanya bisa digunakan di server!');
 
     const voiceChannel = member?.voice?.channel;
-
-    if (!voiceChannel) {
-      return message.reply('Anda harus bergabung ke Voice Channel terlebih dahulu sebelum memanggil saya!');
-    }
+    if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
 
     try {
       const connection = joinVoiceChannel({
@@ -162,57 +493,39 @@ client.on('messageCreate', async message => {
         selfDeaf: false,
       });
 
-      // Tunggu hingga koneksi siap
       await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 
-      // Inisialisasi audio player untuk guild ini jika belum ada
-      if (!players.has(guildId)) {
+      if (!ttsPlayers.has(guildId)) {
         const player = createAudioPlayer();
-        
-        player.on('error', error => {
-          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
-        });
-
-        players.set(guildId, player);
+        player.on('error', error => console.error(`TTS Player Error:`, error.message));
+        ttsPlayers.set(guildId, player);
         connection.subscribe(player);
       } else {
-        const player = players.get(guildId);
-        connection.subscribe(player);
+        connection.subscribe(ttsPlayers.get(guildId));
       }
 
-      await message.reply(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**! 👋`);
+      await message.reply(`✅ Berhasil bergabung ke **${voiceChannel.name}**! 👋`);
     } catch (error) {
-      console.error('Kesalahan saat mencoba bergabung ke voice channel:', error);
-      await message.reply('Gagal bergabung ke voice channel. Pastikan saya memiliki izin yang cukup!');
+      console.error('Kesalahan join:', error);
+      await message.reply('❌ Gagal bergabung ke voice channel.');
     }
   }
 
-  // 2. COMMAND: SPEAK
+  // ── !SPEAK ──
   else if (commandName === 'speak') {
     let text = args.join(' ');
-    if (!text) {
-      return message.reply('Harap masukkan teks yang ingin diucapkan! Contoh: `!speak Halo semuanya`');
-    }
+    if (!text) return message.reply('❗ Masukkan teks! Contoh: `!speak Halo semuanya`');
 
-    // Jika pengguna menyertakan label "text:" secara harfiah (karena terbiasa dengan slash command)
-    if (text.toLowerCase().startsWith('text:')) {
-      text = text.slice(5).trim();
-    }
+    if (text.toLowerCase().startsWith('text:')) text = text.slice(5).trim();
 
     const { guildId, member, guild } = message;
-
-    if (!guildId) {
-      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
-    }
+    if (!guildId) return message.reply('❌ Perintah ini hanya bisa digunakan di server!');
 
     let connection = getVoiceConnection(guildId);
 
-    // Jika bot belum berada di voice channel, coba buat join otomatis ke voice channel user
     if (!connection) {
       const voiceChannel = member?.voice?.channel;
-      if (!voiceChannel) {
-        return message.reply('Saya belum berada di Voice Channel. Silakan ketik `!join` atau bergabung ke voice channel terlebih dahulu!');
-      }
+      if (!voiceChannel) return message.reply('🔇 Kamu harus join Voice Channel dulu! Ketik `!join`');
 
       try {
         connection = joinVoiceChannel({
@@ -223,13 +536,12 @@ client.on('messageCreate', async message => {
         });
         await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
       } catch (error) {
-        console.error('Kesalahan auto-join saat !speak:', error);
-        return message.reply('Gagal bergabung ke Voice Channel secara otomatis.');
+        console.error('Auto-join error:', error);
+        return message.reply('❌ Gagal bergabung ke Voice Channel.');
       }
     }
 
     try {
-      // Dapatkan URL audio TTS (bahasa Indonesia sebagai default)
       const ttsUrl = googleTTS.getAudioUrl(text, {
         lang: 'id',
         slow: false,
@@ -237,82 +549,243 @@ client.on('messageCreate', async message => {
         timeout: 10000,
       });
 
-      // Dapatkan atau buat player baru
-      let player = players.get(guildId);
+      let player = ttsPlayers.get(guildId);
       if (!player) {
         player = createAudioPlayer();
-        player.on('error', error => {
-          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
-        });
-        players.set(guildId, player);
+        player.on('error', error => console.error(`TTS Player Error:`, error.message));
+        ttsPlayers.set(guildId, player);
       }
       
       connection.subscribe(player);
-
-      // Buat resource audio dan putar
       const resource = createAudioResource(ttsUrl);
       player.play(resource);
 
-      await message.reply(`Mengucapkan: "${text}" 🗣️`);
+      await message.reply(`🗣️ Mengucapkan: "${text}"`);
     } catch (error) {
-      console.error('Kesalahan saat memproses ucapan TTS:', error);
-      await message.reply('Gagal memproses teks ke ucapan suara. Silakan coba lagi beberapa saat lagi.');
+      console.error('Kesalahan TTS:', error);
+      await message.reply('❌ Gagal memproses teks ke suara.');
     }
   }
 
-  // 3. COMMAND: LEAVE
-  else if (commandName === 'leave') {
-    const { guildId } = message;
+  // ── !PLAY ──
+  else if (commandName === 'play') {
+    const query = args.join(' ');
+    if (!query) return message.reply('❗ Masukkan judul lagu atau URL! Contoh: `!play despacito`');
 
-    if (!guildId) {
-      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
-    }
-
-    const connection = getVoiceConnection(guildId);
-
-    if (!connection) {
-      return message.reply('Saya tidak sedang berada di Voice Channel mana pun di server ini!');
-    }
+    const voiceChannel = message.member?.voice?.channel;
+    if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
 
     try {
-      const player = players.get(guildId);
+      await distube.play(voiceChannel, query, {
+        member: message.member,
+        textChannel: message.channel,
+        message: message,
+      });
+    } catch (error) {
+      console.error('Kesalahan play:', error);
+      await message.reply(`❌ Gagal memutar: ${error.message?.slice(0, 200) || 'Unknown error'}`);
+    }
+  }
+
+  // ── !SKIP ──
+  else if (commandName === 'skip') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+
+    try {
+      if (queue.songs.length <= 1) {
+        await distube.stop(message.guildId);
+        await message.reply('⏹️ Tidak ada lagu berikutnya. Pemutaran dihentikan.');
+      } else {
+        await distube.skip(message.guildId);
+        await message.reply('⏭️ Lagu di-skip!');
+      }
+    } catch (error) {
+      console.error('Kesalahan skip:', error);
+      await message.reply('❌ Gagal skip lagu.');
+    }
+  }
+
+  // ── !STOP ──
+  else if (commandName === 'stop') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+
+    try {
+      await distube.stop(message.guildId);
+      await message.reply('⏹️ Musik dihentikan dan antrian dikosongkan!');
+    } catch (error) {
+      console.error('Kesalahan stop:', error);
+      await message.reply('❌ Gagal menghentikan musik.');
+    }
+  }
+
+  // ── !QUEUE / !Q ──
+  else if (commandName === 'queue' || commandName === 'q') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('📋 Antrian kosong! Gunakan `!play` untuk menambah lagu.');
+
+    const songList = queue.songs
+      .map((song, i) => {
+        const prefix = i === 0 ? '▶️' : `${i}.`;
+        return `${prefix} **${song.name}** - \`${song.formattedDuration}\` (${song.user})`;
+      })
+      .slice(0, 15)
+      .join('\n');
+
+    const embed = new EmbedBuilder()
+      .setColor(0x9B59B6)
+      .setTitle('📋 Antrian Lagu')
+      .setDescription(songList)
+      .setFooter({ text: `Total: ${queue.songs.length} lagu | Volume: ${queue.volume}%` })
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
+  }
+
+  // ── !NOWPLAYING / !NP ──
+  else if (commandName === 'nowplaying' || commandName === 'np') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue || !queue.songs[0]) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+
+    const song = queue.songs[0];
+    const embed = new EmbedBuilder()
+      .setColor(0x1DB954)
+      .setTitle('🎶 Sedang Diputar')
+      .setDescription(`**[${song.name}](${song.url})**`)
+      .addFields(
+        { name: '⏱️ Durasi', value: song.formattedDuration, inline: true },
+        { name: '👤 Diminta oleh', value: `${song.user}`, inline: true },
+        { name: '🔊 Volume', value: `${queue.volume}%`, inline: true }
+      )
+      .setThumbnail(song.thumbnail)
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
+  }
+
+  // ── !PAUSE ──
+  else if (commandName === 'pause') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+    if (queue.paused) return message.reply('⏸️ Musik sudah di-pause!');
+
+    distube.pause(message.guildId);
+    await message.reply('⏸️ Musik di-pause! Ketik `!resume` untuk lanjutkan.');
+  }
+
+  // ── !RESUME ──
+  else if (commandName === 'resume') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+    if (!queue.paused) return message.reply('▶️ Musik tidak sedang di-pause!');
+
+    distube.resume(message.guildId);
+    await message.reply('▶️ Musik dilanjutkan!');
+  }
+
+  // ── !VOLUME ──
+  else if (commandName === 'volume' || commandName === 'vol') {
+    const queue = distube.getQueue(message.guildId);
+    if (!queue) return message.reply('❌ Tidak ada lagu yang sedang diputar!');
+
+    const level = parseInt(args[0]);
+    if (isNaN(level) || level < 0 || level > 100) {
+      return message.reply('❗ Masukkan angka volume 0-100! Contoh: `!volume 50`');
+    }
+
+    distube.setVolume(message.guildId, level);
+    await message.reply(`🔊 Volume diatur ke **${level}%**`);
+  }
+
+  // ── !LEAVE ──
+  else if (commandName === 'leave') {
+    const { guildId } = message;
+    if (!guildId) return message.reply('❌ Perintah ini hanya bisa digunakan di server!');
+
+    const connection = getVoiceConnection(guildId);
+    const queue = distube.getQueue(guildId);
+
+    if (!connection && !queue) return message.reply('❌ Bot tidak sedang di Voice Channel!');
+
+    try {
+      if (queue) await distube.stop(guildId);
+      const player = ttsPlayers.get(guildId);
       if (player) {
         player.stop();
-        players.delete(guildId);
+        ttsPlayers.delete(guildId);
       }
-      connection.destroy();
-      await message.reply('Berhasil keluar dari Voice Channel. Sampai jumpa! 👋');
+      if (connection) connection.destroy();
+      await message.reply('👋 Berhasil keluar dari Voice Channel!');
     } catch (error) {
-      console.error('Kesalahan saat keluar dari voice channel:', error);
-      await message.reply('Terjadi kesalahan saat mencoba keluar dari voice channel.');
+      console.error('Kesalahan leave:', error);
+      await message.reply('❌ Terjadi kesalahan saat keluar.');
     }
+  }
+
+  // ── !HELP ──
+  else if (commandName === 'help') {
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle('📖 Daftar Perintah Bot')
+      .setDescription('Berikut semua perintah yang tersedia:')
+      .addFields(
+        { 
+          name: '🎵 Musik', 
+          value: [
+            '`!play <judul/url>` — Putar musik dari YouTube',
+            '`!skip` — Skip lagu saat ini',
+            '`!stop` — Hentikan musik & kosongkan antrian',
+            '`!queue` — Tampilkan antrian lagu',
+            '`!np` — Lagu yang sedang diputar',
+            '`!pause` — Pause musik',
+            '`!resume` — Lanjutkan musik',
+            '`!volume <0-100>` — Atur volume',
+          ].join('\n')
+        },
+        {
+          name: '🗣️ TTS (Text-to-Speech)',
+          value: [
+            '`!join` — Masuk ke voice channel',
+            '`!speak <teks>` — Ucapkan teks',
+            '`!leave` — Keluar dari voice channel',
+          ].join('\n')
+        },
+        {
+          name: '⏰ Sapaan Otomatis',
+          value: 'Bot otomatis menyapa setiap:\n🌅 06:00 WIB • ☀️ 12:00 WIB • 🌇 15:00 WIB • 🌙 21:00 WIB'
+        }
+      )
+      .setFooter({ text: 'Semua perintah juga tersedia sebagai slash command (/)' })
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
   }
 });
 
-// Penanganan pemutusan koneksi yang tidak terduga oleh pihak luar (misal ditendang dari channel)
+// ═══════════════════════════════════════════════════
+// VOICE STATE UPDATE HANDLER
+// ═══════════════════════════════════════════════════
 client.on('voiceStateUpdate', (oldState, newState) => {
-  // Jika bot sendiri yang keluar atau dipindahkan
   if (oldState.member.id === client.user?.id && !newState.channelId) {
     const guildId = oldState.guild.id;
-    const player = players.get(guildId);
+    const player = ttsPlayers.get(guildId);
     if (player) {
       player.stop();
-      players.delete(guildId);
+      ttsPlayers.delete(guildId);
     }
     const connection = getVoiceConnection(guildId);
     if (connection) {
-      try {
-        connection.destroy();
-      } catch (err) {
-        // Abaikan jika sudah hancur
-      }
+      try { connection.destroy(); } catch (err) { /* already destroyed */ }
     }
-    console.log(`Bot terputus dari voice channel di server ${oldState.guild.name}.`);
+    console.log(`Bot terputus dari voice di server ${oldState.guild.name}.`);
   }
 });
 
-// Login bot ke Discord
+// ═══════════════════════════════════════════════════
+// LOGIN BOT
+// ═══════════════════════════════════════════════════
 client.login(process.env.DISCORD_TOKEN).catch(error => {
-  console.error('Gagal login ke Discord. Pastikan DISCORD_TOKEN di berkas .env Anda valid!');
+  console.error('Gagal login! Pastikan DISCORD_TOKEN valid.');
   console.error(error);
 });
