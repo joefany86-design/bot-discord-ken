@@ -134,6 +134,7 @@ client.on('messageCreate', async message => {
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
 
+  // 1. COMMAND: JOIN
   if (commandName === 'join') {
     const { guildId, member, guild } = message;
 
@@ -177,6 +178,107 @@ client.on('messageCreate', async message => {
     } catch (error) {
       console.error('Kesalahan saat mencoba bergabung ke voice channel:', error);
       await message.reply('Gagal bergabung ke voice channel. Pastikan saya memiliki izin yang cukup!');
+    }
+  }
+
+  // 2. COMMAND: SPEAK
+  else if (commandName === 'speak') {
+    let text = args.join(' ');
+    if (!text) {
+      return message.reply('Harap masukkan teks yang ingin diucapkan! Contoh: `!speak Halo semuanya`');
+    }
+
+    // Jika pengguna menyertakan label "text:" secara harfiah (karena terbiasa dengan slash command)
+    if (text.toLowerCase().startsWith('text:')) {
+      text = text.slice(5).trim();
+    }
+
+    const { guildId, member, guild } = message;
+
+    if (!guildId) {
+      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
+    }
+
+    let connection = getVoiceConnection(guildId);
+
+    // Jika bot belum berada di voice channel, coba buat join otomatis ke voice channel user
+    if (!connection) {
+      const voiceChannel = member?.voice?.channel;
+      if (!voiceChannel) {
+        return message.reply('Saya belum berada di Voice Channel. Silakan ketik `!join` atau bergabung ke voice channel terlebih dahulu!');
+      }
+
+      try {
+        connection = joinVoiceChannel({
+          channelId: voiceChannel.id,
+          guildId: guildId,
+          adapterCreator: guild.voiceAdapterCreator,
+          selfDeaf: false,
+        });
+        await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+      } catch (error) {
+        console.error('Kesalahan auto-join saat !speak:', error);
+        return message.reply('Gagal bergabung ke Voice Channel secara otomatis.');
+      }
+    }
+
+    try {
+      // Dapatkan URL audio TTS (bahasa Indonesia sebagai default)
+      const ttsUrl = googleTTS.getAudioUrl(text, {
+        lang: 'id',
+        slow: false,
+        host: 'https://translate.google.com',
+        timeout: 10000,
+      });
+
+      // Dapatkan atau buat player baru
+      let player = players.get(guildId);
+      if (!player) {
+        player = createAudioPlayer();
+        player.on('error', error => {
+          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
+        });
+        players.set(guildId, player);
+      }
+      
+      connection.subscribe(player);
+
+      // Buat resource audio dan putar
+      const resource = createAudioResource(ttsUrl);
+      player.play(resource);
+
+      await message.reply(`Mengucapkan: "${text}" 🗣️`);
+    } catch (error) {
+      console.error('Kesalahan saat memproses ucapan TTS:', error);
+      await message.reply('Gagal memproses teks ke ucapan suara. Silakan coba lagi beberapa saat lagi.');
+    }
+  }
+
+  // 3. COMMAND: LEAVE
+  else if (commandName === 'leave') {
+    const { guildId } = message;
+
+    if (!guildId) {
+      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
+    }
+
+    const connection = getVoiceConnection(guildId);
+
+    if (!connection) {
+      return message.reply('Saya tidak sedang berada di Voice Channel mana pun di server ini!');
+    }
+
+    try {
+      const player = players.get(guildId);
+      if (player) {
+        player.stop();
+        players.delete(guildId);
+      }
+      connection.destroy();
+      await message.reply('Berhasil keluar dari Voice Channel. Sampai jumpa! 👋');
+    } catch (error) {
+      console.error('Kesalahan saat keluar dari voice channel:', error);
+      await message.reply('Terjadi kesalahan saat mencoba keluar dari voice channel.');
     }
   }
 });
