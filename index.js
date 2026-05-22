@@ -13,6 +13,8 @@ const { DisTube } = require('distube');
 const googleTTS = require('google-tts-api');
 const cron = require('node-cron');
 const ffmpegStatic = require('ffmpeg-static');
+const https = require('https');
+const http = require('http');
 
 // Konfigurasi path FFmpeg agar terdeteksi secara otomatis di server (seperti Railway)
 process.env.FFMPEG_BIN = ffmpegStatic;
@@ -51,6 +53,23 @@ const client = new Client({
 
 // Menyimpan AudioPlayer TTS untuk setiap Guild
 const ttsPlayers = new Map();
+
+// Helper: Fetch audio stream dari URL (Google TTS)
+function fetchAudioStream(url) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith('https') ? https : http;
+    protocol.get(url, (response) => {
+      // Handle redirect
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        return fetchAudioStream(response.headers.location).then(resolve).catch(reject);
+      }
+      if (response.statusCode !== 200) {
+        return reject(new Error(`HTTP ${response.statusCode}`));
+      }
+      resolve(response);
+    }).on('error', reject);
+  });
+}
 
 // ═══════════════════════════════════════════════════
 // INISIALISASI DISTUBE (MUSIK YOUTUBE)
@@ -299,7 +318,8 @@ client.on('interactionCreate', async interaction => {
       }
       
       connection.subscribe(player);
-      const resource = createAudioResource(ttsUrl);
+      const stream = await fetchAudioStream(ttsUrl);
+      const resource = createAudioResource(stream, { inputType: 0 });
       player.play(resource);
 
       await interaction.editReply(`🗣️ Mengucapkan: "${text}"`);
@@ -581,7 +601,8 @@ client.on('messageCreate', async message => {
       }
       
       connection.subscribe(player);
-      const resource = createAudioResource(ttsUrl);
+      const stream = await fetchAudioStream(ttsUrl);
+      const resource = createAudioResource(stream, { inputType: 0 });
       player.play(resource);
 
       await message.reply(`🗣️ Mengucapkan: "${text}"`);
