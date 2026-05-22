@@ -7,7 +7,8 @@ const {
   AudioPlayerStatus, 
   VoiceConnectionStatus,
   getVoiceConnection,
-  entersState
+  entersState,
+  StreamType
 } = require('@discordjs/voice');
 const { DisTube } = require('distube');
 const googleTTS = require('google-tts-api');
@@ -319,7 +320,7 @@ client.on('interactionCreate', async interaction => {
       
       connection.subscribe(player);
       const stream = await fetchAudioStream(ttsUrl);
-      const resource = createAudioResource(stream, { inputType: 0 });
+      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
       player.play(resource);
 
       await interaction.editReply(`🗣️ Mengucapkan: "${text}"`);
@@ -602,7 +603,7 @@ client.on('messageCreate', async message => {
       
       connection.subscribe(player);
       const stream = await fetchAudioStream(ttsUrl);
-      const resource = createAudioResource(stream, { inputType: 0 });
+      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
       player.play(resource);
 
       await message.reply(`🗣️ Mengucapkan: "${text}"`);
