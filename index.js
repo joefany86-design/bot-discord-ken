@@ -282,13 +282,20 @@ client.on('interactionCreate', async interaction => {
   // ── SPEAK (TTS) ──
   if (commandName === 'speak') {
     const text = interaction.options.getString('text');
+    
+    const voiceChannel = member.voice.channel;
+    if (!voiceChannel) {
+      return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
+    }
+
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel && botVoiceChannel.id !== voiceChannel.id) {
+      return interaction.reply({ content: `❌ Aku sudah berada di Voice Channel **${botVoiceChannel.name}**! Aku tidak bisa berpindah ke channel lain. Silakan gunakan \`/leave\` terlebih dahulu.`, ephemeral: true });
+    }
+
     let connection = getVoiceConnection(guildId);
 
     if (!connection) {
-      const voiceChannel = member.voice.channel;
-      if (!voiceChannel) {
-        return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
-      }
 
       try {
         connection = joinVoiceChannel({
@@ -372,6 +379,11 @@ client.on('interactionCreate', async interaction => {
 
     if (!voiceChannel) {
       return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
+    }
+
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel && botVoiceChannel.id !== voiceChannel.id) {
+      return interaction.reply({ content: `❌ Aku sudah berada di Voice Channel **${botVoiceChannel.name}**! Aku tidak bisa berpindah ke channel lain. Silakan gunakan \`/leave\` terlebih dahulu.`, ephemeral: true });
     }
 
     try {
@@ -537,6 +549,15 @@ client.on('messageCreate', async message => {
     const voiceChannel = member?.voice?.channel;
     if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
 
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel) {
+      if (botVoiceChannel.id === voiceChannel.id) {
+        return message.reply('ℹ️ Aku sudah bergabung di Voice Channel ini!');
+      } else {
+        return message.reply(`❌ Aku sudah berada di Voice Channel **${botVoiceChannel.name}**! Aku tidak bisa berpindah ke channel lain. Silakan gunakan \`.leave\` atau \`/leave\` terlebih dahulu.`);
+      }
+    }
+
     try {
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
@@ -573,11 +594,17 @@ client.on('messageCreate', async message => {
     const { guildId, member, guild } = message;
     if (!guildId) return message.reply('❌ Perintah ini hanya bisa digunakan di server!');
 
+    const voiceChannel = member?.voice?.channel;
+    if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
+
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel && botVoiceChannel.id !== voiceChannel.id) {
+      return message.reply(`❌ Aku sudah berada di Voice Channel **${botVoiceChannel.name}**! Aku tidak bisa berpindah ke channel lain. Silakan gunakan \`.leave\` atau \`/leave\` terlebih dahulu.`);
+    }
+
     let connection = getVoiceConnection(guildId);
 
     if (!connection) {
-      const voiceChannel = member?.voice?.channel;
-      if (!voiceChannel) return message.reply('🔇 Kamu harus join Voice Channel dulu! Ketik `.join`');
 
       try {
         connection = joinVoiceChannel({
@@ -629,6 +656,11 @@ client.on('messageCreate', async message => {
 
     const voiceChannel = message.member?.voice?.channel;
     if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
+
+    const botVoiceChannel = message.guild.members.me?.voice?.channel;
+    if (botVoiceChannel && botVoiceChannel.id !== voiceChannel.id) {
+      return message.reply(`❌ Aku sudah berada di Voice Channel **${botVoiceChannel.name}**! Aku tidak bisa berpindah ke channel lain. Silakan gunakan \`.leave\` atau \`/leave\` terlebih dahulu.`);
+    }
 
     try {
       await distube.play(voiceChannel, query, {
