@@ -11,10 +11,6 @@ if (!process.env.CLIENT_ID || process.env.CLIENT_ID.startsWith('MASUKKAN')) {
 
 const commands = [
   new SlashCommandBuilder()
-    .setName('join')
-    .setDescription('Menyuruh bot untuk bergabung ke voice channel Anda'),
-  
-  new SlashCommandBuilder()
     .setName('speak')
     .setDescription('Mengubah teks menjadi suara dan mengucapkannya')
     .addStringOption(option =>

@@ -17,6 +17,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent, // Dibutuhkan untuk membaca pesan teks seperti !join
   ]
 });
 
@@ -25,7 +26,7 @@ const players = new Map();
 
 client.once('ready', () => {
   console.log(`Bot berhasil online sebagai ${client.user.tag}!`);
-  client.user.setActivity('suara Anda | /join & /speak', { type: 2 }); // Listening to
+  client.user.setActivity('suara Anda | !join & /speak', { type: 2 }); // Listening to
 });
 
 // Penanganan Slash Commands
@@ -39,51 +40,8 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: 'Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
   }
 
-  // 1. COMMAND: JOIN
-  if (commandName === 'join') {
-    const voiceChannel = member.voice.channel;
-
-    if (!voiceChannel) {
-      return interaction.reply({ content: 'Anda harus bergabung ke Voice Channel terlebih dahulu sebelum memanggil saya!', ephemeral: true });
-    }
-
-    try {
-      await interaction.deferReply();
-
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: guildId,
-        adapterCreator: guild.voiceAdapterCreator,
-        selfDeaf: false, // Pastikan tidak deafen agar bot bisa interaktif jika diperlukan nanti
-      });
-
-      // Tunggu hingga koneksi siap
-      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
-
-      // Inisialisasi audio player untuk guild ini jika belum ada
-      if (!players.has(guildId)) {
-        const player = createAudioPlayer();
-        
-        player.on('error', error => {
-          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
-        });
-
-        players.set(guildId, player);
-        connection.subscribe(player);
-      } else {
-        const player = players.get(guildId);
-        connection.subscribe(player);
-      }
-
-      await interaction.editReply(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**! 👋`);
-    } catch (error) {
-      console.error('Kesalahan saat mencoba bergabung ke voice channel:', error);
-      await interaction.editReply('Gagal bergabung ke voice channel. Pastikan saya memiliki izin yang cukup!');
-    }
-  }
-
-  // 2. COMMAND: SPEAK
-  else if (commandName === 'speak') {
+  // 1. COMMAND: SPEAK
+  if (commandName === 'speak') {
     const text = interaction.options.getString('text');
     let connection = getVoiceConnection(guildId);
 
@@ -91,7 +49,7 @@ client.on('interactionCreate', async interaction => {
     if (!connection) {
       const voiceChannel = member.voice.channel;
       if (!voiceChannel) {
-        return interaction.reply({ content: 'Saya belum berada di Voice Channel. Silakan ketik `/join` atau bergabung ke voice channel terlebih dahulu!', ephemeral: true });
+        return interaction.reply({ content: 'Saya belum berada di Voice Channel. Silakan ketik `!join` atau bergabung ke voice channel terlebih dahulu!', ephemeral: true });
       }
 
       try {
@@ -164,6 +122,61 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
       console.error('Kesalahan saat keluar dari voice channel:', error);
       await interaction.reply({ content: 'Terjadi kesalahan saat mencoba keluar dari voice channel.', ephemeral: true });
+    }
+  }
+});
+
+// Penanganan Perintah Pesan Teks (Prefix !)
+client.on('messageCreate', async message => {
+  // Abaikan pesan dari bot atau jika tidak dimulai dengan !
+  if (message.author.bot || !message.content.startsWith('!')) return;
+
+  const args = message.content.slice(1).trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
+
+  if (commandName === 'join') {
+    const { guildId, member, guild } = message;
+
+    if (!guildId) {
+      return message.reply('Perintah ini hanya dapat digunakan di dalam server Discord!');
+    }
+
+    const voiceChannel = member?.voice?.channel;
+
+    if (!voiceChannel) {
+      return message.reply('Anda harus bergabung ke Voice Channel terlebih dahulu sebelum memanggil saya!');
+    }
+
+    try {
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: guildId,
+        adapterCreator: guild.voiceAdapterCreator,
+        selfDeaf: false,
+      });
+
+      // Tunggu hingga koneksi siap
+      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+
+      // Inisialisasi audio player untuk guild ini jika belum ada
+      if (!players.has(guildId)) {
+        const player = createAudioPlayer();
+        
+        player.on('error', error => {
+          console.error(`Audio Player Error pada server ${guild.name}:`, error.message);
+        });
+
+        players.set(guildId, player);
+        connection.subscribe(player);
+      } else {
+        const player = players.get(guildId);
+        connection.subscribe(player);
+      }
+
+      await message.reply(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**! 👋`);
+    } catch (error) {
+      console.error('Kesalahan saat mencoba bergabung ke voice channel:', error);
+      await message.reply('Gagal bergabung ke voice channel. Pastikan saya memiliki izin yang cukup!');
     }
   }
 });
