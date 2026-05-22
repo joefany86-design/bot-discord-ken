@@ -1,16 +1,17 @@
 {
   "name": "discord-voice-tts-bot",
-  "version": "1.0.0",
-  "description": "Discord Bot that joins voice channels and speaks using TTS",
+  "version": "2.0.0",
+  "description": "Discord Bot - Music YouTube, TTS, & Scheduled Greetings",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "node index.js",
     "deploy": "node deploy-commands.js"
   },
   "dependencies": {
-    "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.17.0",
-    "@snazzah/davey": "^0.1.11",
+    "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.15.3",
     "distube": "^5.2.3",
     "dotenv": "^16.4.5",
