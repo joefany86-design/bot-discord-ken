@@ -1,3 +1,4 @@
+const sodium = require('libsodium-wrappers');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { 
   joinVoiceChannel, 
@@ -271,7 +272,7 @@ client.on('interactionCreate', async interaction => {
           adapterCreator: guild.voiceAdapterCreator,
           selfDeaf: false,
         });
-        await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+        await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
       } catch (error) {
         console.error('Kesalahan auto-join saat /speak:', error);
         return interaction.reply({ content: '❌ Gagal bergabung ke Voice Channel.', ephemeral: true });
@@ -516,7 +517,7 @@ client.on('messageCreate', async message => {
         selfDeaf: false,
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+      await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
 
       if (!ttsPlayers.has(guildId)) {
         const player = createAudioPlayer();
@@ -557,7 +558,7 @@ client.on('messageCreate', async message => {
           adapterCreator: guild.voiceAdapterCreator,
           selfDeaf: false,
         });
-        await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+        await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
       } catch (error) {
         console.error('Auto-join error:', error);
         return message.reply('❌ Gagal bergabung ke Voice Channel.');
@@ -817,9 +818,13 @@ client.on('warn', (warning) => {
 });
 
 // ═══════════════════════════════════════════════════
-// LOGIN BOT
+// LOGIN BOT (tunggu sodium siap dulu)
 // ═══════════════════════════════════════════════════
-client.login(process.env.DISCORD_TOKEN).catch(error => {
-  console.error('Gagal login! Pastikan DISCORD_TOKEN valid.');
-  console.error(error);
-});
+(async () => {
+  await sodium.ready;
+  console.log('✅ Sodium (encryption) siap!');
+  client.login(process.env.DISCORD_TOKEN).catch(error => {
+    console.error('Gagal login! Pastikan DISCORD_TOKEN valid.');
+    console.error(error);
+  });
+})();

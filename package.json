@@ -19,6 +19,7 @@
     "google-tts-api": "^2.0.2",
     "libsodium-wrappers": "^0.7.13",
     "node-cron": "^4.2.1",
-    "opusscript": "^0.0.8"
+    "opusscript": "^0.0.8",
+    "tweetnacl": "^1.0.3"
   }
 }
