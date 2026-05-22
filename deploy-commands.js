@@ -10,65 +10,17 @@ if (!process.env.CLIENT_ID || process.env.CLIENT_ID.startsWith('MASUKKAN')) {
 }
 
 const commands = [
-  // === TTS Commands ===
   new SlashCommandBuilder()
-    .setName('speak')
-    .setDescription('Mengubah teks menjadi suara dan mengucapkannya')
-    .addStringOption(option =>
-      option.setName('text')
-        .setDescription('Teks yang ingin diucapkan oleh bot')
-        .setRequired(true)
-        .setMaxLength(200)
-    ),
+    .setName('join')
+    .setDescription('Menyuruh bot untuk bergabung ke Voice Channel dan memutar musik lokal secara otomatis'),
   
   new SlashCommandBuilder()
     .setName('leave')
-    .setDescription('Menyuruh bot untuk keluar dari voice channel'),
-
-  // === Music Commands ===
-  new SlashCommandBuilder()
-    .setName('play')
-    .setDescription('🎵 Putar musik dari YouTube (URL atau cari berdasarkan judul)')
-    .addStringOption(option =>
-      option.setName('query')
-        .setDescription('URL YouTube atau judul lagu yang ingin diputar')
-        .setRequired(true)
-    ),
+    .setDescription('Menyuruh bot untuk keluar dari Voice Channel'),
 
   new SlashCommandBuilder()
-    .setName('skip')
-    .setDescription('⏭️ Skip lagu saat ini ke lagu berikutnya'),
-
-  new SlashCommandBuilder()
-    .setName('stop')
-    .setDescription('⏹️ Hentikan musik dan kosongkan antrian lagu'),
-
-  new SlashCommandBuilder()
-    .setName('queue')
-    .setDescription('📋 Tampilkan daftar antrian lagu'),
-
-  new SlashCommandBuilder()
-    .setName('nowplaying')
-    .setDescription('🎶 Tampilkan informasi lagu yang sedang diputar'),
-
-  new SlashCommandBuilder()
-    .setName('pause')
-    .setDescription('⏸️ Pause pemutaran musik'),
-
-  new SlashCommandBuilder()
-    .setName('resume')
-    .setDescription('▶️ Lanjutkan pemutaran musik yang di-pause'),
-
-  new SlashCommandBuilder()
-    .setName('volume')
-    .setDescription('🔊 Atur volume pemutaran musik')
-    .addIntegerOption(option =>
-      option.setName('level')
-        .setDescription('Level volume (0-100)')
-        .setRequired(true)
-        .setMinValue(0)
-        .setMaxValue(100)
-    ),
+    .setName('help')
+    .setDescription('Menampilkan daftar perintah bot yang tersedia'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
