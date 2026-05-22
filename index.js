@@ -137,7 +137,7 @@ client.once('ready', () => {
   console.log(`  Servers: ${client.guilds.cache.size}`);
   console.log(`══════════════════════════════════════`);
   
-  client.user.setActivity('🎵 !play & /play | !speak', { type: 2 });
+  client.user.setActivity('🎵 .play & /play | .speak', { type: 2 });
 
   // ═══════════════════════════════════════════════════
   // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
@@ -250,10 +250,8 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
   }
 
-  // Cek apakah user adalah owner
-  if (interaction.user.id !== OWNER_ID) {
-    return interaction.reply({ content: '🔒 Maaf, hanya owner yang bisa menggunakan bot ini!', ephemeral: true });
-  }
+  // Cek apakah user adalah owner (abaikan jika bukan)
+  if (interaction.user.id !== OWNER_ID) return;
 
   // ── SPEAK (TTS) ──
   if (commandName === 'speak') {
@@ -490,15 +488,13 @@ client.on('interactionCreate', async interaction => {
 });
 
 // ═══════════════════════════════════════════════════
-// PENANGANAN PERINTAH TEKS (PREFIX !)
+// PENANGANAN PERINTAH TEKS (PREFIX .)
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
-  if (message.author.bot || !message.content.startsWith('!')) return;
+  if (message.author.bot || !message.content.startsWith('.')) return;
 
-  // Cek apakah user adalah owner
-  if (message.author.id !== OWNER_ID) {
-    return message.reply('🔒 Maaf, hanya owner yang bisa menggunakan bot ini!');
-  }
+  // Cek apakah user adalah owner (abaikan jika bukan)
+  if (message.author.id !== OWNER_ID) return;
 
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
@@ -541,7 +537,7 @@ client.on('messageCreate', async message => {
   // ── !SPEAK ──
   else if (commandName === 'speak') {
     let text = args.join(' ');
-    if (!text) return message.reply('❗ Masukkan teks! Contoh: `!speak Halo semuanya`');
+    if (!text) return message.reply('❗ Masukkan teks! Contoh: `.speak Halo semuanya`');
 
     if (text.toLowerCase().startsWith('text:')) text = text.slice(5).trim();
 
@@ -552,7 +548,7 @@ client.on('messageCreate', async message => {
 
     if (!connection) {
       const voiceChannel = member?.voice?.channel;
-      if (!voiceChannel) return message.reply('🔇 Kamu harus join Voice Channel dulu! Ketik `!join`');
+      if (!voiceChannel) return message.reply('🔇 Kamu harus join Voice Channel dulu! Ketik `.join`');
 
       try {
         connection = joinVoiceChannel({
@@ -597,7 +593,7 @@ client.on('messageCreate', async message => {
   // ── !PLAY ──
   else if (commandName === 'play') {
     const query = args.join(' ');
-    if (!query) return message.reply('❗ Masukkan judul lagu atau URL! Contoh: `!play despacito`');
+    if (!query) return message.reply('❗ Masukkan judul lagu atau URL! Contoh: `.play despacito`');
 
     const voiceChannel = message.member?.voice?.channel;
     if (!voiceChannel) return message.reply('🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!');
@@ -650,7 +646,7 @@ client.on('messageCreate', async message => {
   // ── !QUEUE / !Q ──
   else if (commandName === 'queue' || commandName === 'q') {
     const queue = distube.getQueue(message.guildId);
-    if (!queue) return message.reply('📋 Antrian kosong! Gunakan `!play` untuk menambah lagu.');
+    if (!queue) return message.reply('📋 Antrian kosong! Gunakan `.play` untuk menambah lagu.');
 
     const songList = queue.songs
       .map((song, i) => {
@@ -698,7 +694,7 @@ client.on('messageCreate', async message => {
     if (queue.paused) return message.reply('⏸️ Musik sudah di-pause!');
 
     distube.pause(message.guildId);
-    await message.reply('⏸️ Musik di-pause! Ketik `!resume` untuk lanjutkan.');
+    await message.reply('⏸️ Musik di-pause! Ketik `.resume` untuk lanjutkan.');
   }
 
   // ── !RESUME ──
@@ -718,7 +714,7 @@ client.on('messageCreate', async message => {
 
     const level = parseInt(args[0]);
     if (isNaN(level) || level < 0 || level > 100) {
-      return message.reply('❗ Masukkan angka volume 0-100! Contoh: `!volume 50`');
+      return message.reply('❗ Masukkan angka volume 0-100! Contoh: `.volume 50`');
     }
 
     distube.setVolume(message.guildId, level);
@@ -760,22 +756,22 @@ client.on('messageCreate', async message => {
         { 
           name: '🎵 Musik', 
           value: [
-            '`!play <judul/url>` — Putar musik dari YouTube',
-            '`!skip` — Skip lagu saat ini',
-            '`!stop` — Hentikan musik & kosongkan antrian',
-            '`!queue` — Tampilkan antrian lagu',
-            '`!np` — Lagu yang sedang diputar',
-            '`!pause` — Pause musik',
-            '`!resume` — Lanjutkan musik',
-            '`!volume <0-100>` — Atur volume',
+            '`.play <judul/url>` — Putar musik dari YouTube',
+            '`.skip` — Skip lagu saat ini',
+            '`.stop` — Hentikan musik & kosongkan antrian',
+            '`.queue` — Tampilkan antrian lagu',
+            '`.np` — Lagu yang sedang diputar',
+            '`.pause` — Pause musik',
+            '`.resume` — Lanjutkan musik',
+            '`.volume <0-100>` — Atur volume',
           ].join('\n')
         },
         {
           name: '🗣️ TTS (Text-to-Speech)',
           value: [
-            '`!join` — Masuk ke voice channel',
-            '`!speak <teks>` — Ucapkan teks',
-            '`!leave` — Keluar dari voice channel',
+            '`.join` — Masuk ke voice channel',
+            '`.speak <teks>` — Ucapkan teks',
+            '`.leave` — Keluar dari voice channel',
           ].join('\n')
         },
         {
