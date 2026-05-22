@@ -14,12 +14,19 @@ const { DisTube } = require('distube');
 const googleTTS = require('google-tts-api');
 const cron = require('node-cron');
 const ffmpegStatic = require('ffmpeg-static');
-const https = require('https');
-const http = require('http');
+const { Readable } = require('stream');
 
-// Konfigurasi path FFmpeg agar terdeteksi secara otomatis di server (seperti Railway)
-process.env.FFMPEG_BIN = ffmpegStatic;
-process.env.FFMPEG_PATH = ffmpegStatic;
+// Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
+const { execSync } = require('child_process');
+let ffmpegPath = ffmpegStatic;
+try {
+  ffmpegPath = execSync('which ffmpeg').toString().trim() || ffmpegStatic;
+  console.log(`✅ FFmpeg ditemukan: ${ffmpegPath}`);
+} catch {
+  console.log(`ℹ️ Menggunakan ffmpeg-static: ${ffmpegStatic}`);
+}
+process.env.FFMPEG_BIN = ffmpegPath;
+process.env.FFMPEG_PATH = ffmpegPath;
 
 require('dotenv').config();
 
@@ -56,20 +63,18 @@ const client = new Client({
 const ttsPlayers = new Map();
 
 // Helper: Fetch audio stream dari URL (Google TTS)
-function fetchAudioStream(url) {
-  return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https') ? https : http;
-    protocol.get(url, (response) => {
-      // Handle redirect
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        return fetchAudioStream(response.headers.location).then(resolve).catch(reject);
-      }
-      if (response.statusCode !== 200) {
-        return reject(new Error(`HTTP ${response.statusCode}`));
-      }
-      resolve(response);
-    }).on('error', reject);
+async function fetchAudioStream(url) {
+  console.log(`🔊 Fetching TTS audio dari: ${url.substring(0, 80)}...`);
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
   });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  console.log(`✅ TTS audio berhasil di-fetch (status: ${response.status})`);
+  return Readable.fromWeb(response.body);
 }
 
 // ═══════════════════════════════════════════════════
@@ -320,8 +325,10 @@ client.on('interactionCreate', async interaction => {
       
       connection.subscribe(player);
       const stream = await fetchAudioStream(ttsUrl);
-      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+      resource.volume?.setVolume(1);
       player.play(resource);
+      console.log(`▶️ TTS player state: ${player.state.status}`);
 
       await interaction.editReply(`🗣️ Mengucapkan: "${text}"`);
     } catch (error) {
@@ -603,8 +610,10 @@ client.on('messageCreate', async message => {
       
       connection.subscribe(player);
       const stream = await fetchAudioStream(ttsUrl);
-      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+      const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+      resource.volume?.setVolume(1);
       player.play(resource);
+      console.log(`▶️ TTS player state: ${player.state.status}`);
 
       await message.reply(`🗣️ Mengucapkan: "${text}"`);
     } catch (error) {
