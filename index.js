@@ -20,6 +20,18 @@ process.env.FFMPEG_PATH = ffmpegStatic;
 require('dotenv').config();
 
 // ═══════════════════════════════════════════════════
+// GLOBAL ERROR HANDLERS (mencegah bot crash)
+// ═══════════════════════════════════════════════════
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('⚠️ Uncaught Exception:', error.message);
+  // Jangan exit agar bot tetap jalan
+});
+
+// ═══════════════════════════════════════════════════
 // INISIALISASI CLIENT DISCORD
 // ═══════════════════════════════════════════════════
 const client = new Client({
@@ -780,6 +792,17 @@ client.on('voiceStateUpdate', (oldState, newState) => {
     }
     console.log(`Bot terputus dari voice di server ${oldState.guild.name}.`);
   }
+});
+
+// ═══════════════════════════════════════════════════
+// ERROR HANDLER CLIENT DISCORD
+// ═══════════════════════════════════════════════════
+client.on('error', (error) => {
+  console.error('⚠️ Client Error:', error.message);
+});
+
+client.on('warn', (warning) => {
+  console.warn('⚠️ Client Warning:', warning);
 });
 
 // ═══════════════════════════════════════════════════
