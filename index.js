@@ -84,11 +84,15 @@ function getMusicFiles() {
 }
 
 // Fungsi utama untuk memutar musik lokal
-function playLocalMusic(guildId, connection) {
+function playLocalMusic(guildId, connection, forcePlay = false) {
   const files = getMusicFiles();
   if (files.length === 0) {
     console.log(`⚠️ Folder music kosong. Menunggu file lagu di: ${MUSIC_DIR}`);
     return;
+  }
+
+  if (forcePlay) {
+    musicQueues.set(guildId, []);
   }
 
   let player = musicPlayers.get(guildId);
@@ -98,6 +102,7 @@ function playLocalMusic(guildId, connection) {
 
     player.on('error', error => {
       console.error(`🎵 [Music Player Error - Guild ${guildId}]:`, error.message);
+      if (error.stack) console.error(error.stack);
     });
 
     player.on(AudioPlayerStatus.Idle, () => {
@@ -108,8 +113,10 @@ function playLocalMusic(guildId, connection) {
 
   connection.subscribe(player);
   
-  // Ambil lagu pertama jika player saat ini idle/tidak memutar apa-apa
-  if (player.state.status === AudioPlayerStatus.Idle) {
+  if (forcePlay) {
+    player.stop();
+    playNextLocalTrack(guildId, connection);
+  } else if (player.state.status === AudioPlayerStatus.Idle) {
     playNextLocalTrack(guildId, connection);
   } else {
     player.unpause();
@@ -127,6 +134,16 @@ function playNextLocalTrack(guildId, connection) {
   let queue = musicQueues.get(guildId) || [];
   if (queue.length === 0) {
     queue = [...files];
+    // Prioritaskan lagu 'berjuta-kebaikan' atau 'berjuta kebaikan' agar selalu diputar pertama
+    queue.sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      const aHas = aLower.includes('berjuta-kebaikan') || aLower.includes('berjuta kebaikan');
+      const bHas = bLower.includes('berjuta-kebaikan') || bLower.includes('berjuta kebaikan');
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+      return 0;
+    });
     musicQueues.set(guildId, queue);
   }
 
@@ -137,7 +154,7 @@ function playNextLocalTrack(guildId, connection) {
   console.log(`▶️ [Guild ${guildId}] Memutar lagu lokal secara loop: ${nextTrackName}`);
 
   try {
-    const resource = createAudioResource(filePath, {
+    const resource = createAudioResource(fs.createReadStream(filePath), {
       inputType: StreamType.Arbitrary,
       inlineVolume: true
     });
@@ -210,10 +227,14 @@ client.on('interactionCreate', async interaction => {
         selfDeaf: false,
       });
 
+      connection.on('error', error => {
+        console.error(`❌ [Voice Connection Error - Guild ${guildId}]:`, error);
+      });
+
       await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
 
       // Mulai putar musik lokal otomatis
-      playLocalMusic(guildId, connection);
+      playLocalMusic(guildId, connection, true);
 
       await interaction.reply({ content: `✅ Berhasil bergabung ke **${voiceChannel.name}** dan mulai memutar musik lokal secara loop! 🎵`, ephemeral: true });
     } catch (error) {
@@ -299,7 +320,7 @@ client.on('messageCreate', async message => {
         // Jika bot sudah di voice channel yang sama, pastikan player aktif/unpaused
         const connection = getVoiceConnection(guildId);
         if (connection) {
-          playLocalMusic(guildId, connection);
+          playLocalMusic(guildId, connection, false);
         }
         return;
       } else {
@@ -315,10 +336,14 @@ client.on('messageCreate', async message => {
         selfDeaf: false,
       });
 
+      connection.on('error', error => {
+        console.error(`❌ [Voice Connection Error - Guild ${guildId}]:`, error);
+      });
+
       await entersState(connection, VoiceConnectionStatus.Ready, 60_000);
 
       // Mulai putar musik lokal otomatis
-      playLocalMusic(guildId, connection);
+      playLocalMusic(guildId, connection, true);
     } catch (error) {
       console.error('Kesalahan join:', error);
     }
