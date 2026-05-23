@@ -9,9 +9,9 @@ const config = require('./config');
 function initGreetings(client) {
   console.log('══════════════════════════════════════');
   console.log('  [Greetings] Menginisialisasi sapaan otomatis...');
-  console.log(`  [Greetings] Target Guild ID: ${config.GREETING_GUILD_ID}`);
-  console.log(`  [Greetings] Target Channel ID: ${config.GREETING_CHANNEL_ID}`);
-  console.log('  [Greetings] Status: TERKUNCI KHUSUS CHANNEL DI ATAS');
+  const targets = config.targets || [];
+  console.log(`  [Greetings] Terdaftar ${targets.length} target server/channel`);
+  console.log('  [Greetings] Status: AKTIF MULTI-CHANNEL');
   console.log('══════════════════════════════════════');
 
   config.greetings.forEach(greeting => {
@@ -39,37 +39,44 @@ async function sendGreeting(client, greeting) {
     .setFooter({ text: `${greeting.image} Sapaan otomatis dari Bot` })
     .setTimestamp();
 
-  // Validasi ID Server dan ID Channel wajib terisi
-  if (!config.GREETING_GUILD_ID || !config.GREETING_CHANNEL_ID) {
-    console.error('[Greetings] Gagal: GREETING_GUILD_ID atau GREETING_CHANNEL_ID belum dikonfigurasi.');
+  const targets = config.targets || [];
+  if (targets.length === 0) {
+    console.error('[Greetings] Gagal: Tidak ada target server/channel yang dikonfigurasi.');
     return;
   }
 
-  try {
-    // 1. Dapatkan Server (Guild) tujuan terlebih dahulu
-    const guild = client.guilds.cache.get(config.GREETING_GUILD_ID) || await client.guilds.fetch(config.GREETING_GUILD_ID).catch(() => null);
-    if (!guild) {
-      console.error(`[Greetings] Gagal: Bot tidak berada di Server ID ${config.GREETING_GUILD_ID}.`);
-      return;
+  for (const target of targets) {
+    if (!target.guildId || !target.channelId) {
+      console.error('[Greetings] Gagal: guildId atau channelId kosong untuk salah satu target.');
+      continue;
     }
 
-    // 2. Dapatkan Channel tujuan dari Server tersebut saja (mencegah salah channel di server lain)
-    const channel = guild.channels.cache.get(config.GREETING_CHANNEL_ID) || await guild.channels.fetch(config.GREETING_CHANNEL_ID).catch(() => null);
-    if (!channel) {
-      console.error(`[Greetings] Gagal: Channel ID ${config.GREETING_CHANNEL_ID} tidak ditemukan di server ${guild.name}.`);
-      return;
-    }
+    try {
+      // 1. Dapatkan Server (Guild) tujuan terlebih dahulu
+      const guild = client.guilds.cache.get(target.guildId) || await client.guilds.fetch(target.guildId).catch(() => null);
+      if (!guild) {
+        console.error(`[Greetings] Gagal: Bot tidak berada di Server ID ${target.guildId}.`);
+        continue;
+      }
 
-    if (!channel.isTextBased()) {
-      console.error(`[Greetings] Gagal: Channel #${channel.name} bukan channel teks.`);
-      return;
-    }
+      // 2. Dapatkan Channel tujuan dari Server tersebut saja
+      const channel = guild.channels.cache.get(target.channelId) || await guild.channels.fetch(target.channelId).catch(() => null);
+      if (!channel) {
+        console.error(`[Greetings] Gagal: Channel ID ${target.channelId} tidak ditemukan di server ${guild.name}.`);
+        continue;
+      }
 
-    // 3. Kirim pesan ke channel tersebut
-    await channel.send({ embeds: [embed] });
-    console.log(`[Greetings] Sapaan "${greeting.title}" berhasil dikirim ke #${channel.name} di server ${guild.name}`);
-  } catch (error) {
-    console.error(`[Greetings] Terjadi kesalahan saat mengirim sapaan:`, error.message);
+      if (!channel.isTextBased()) {
+        console.error(`[Greetings] Gagal: Channel #${channel.name} bukan channel teks.`);
+        continue;
+      }
+
+      // 3. Kirim pesan ke channel tersebut dengan mention seluruh member (@everyone)
+      await channel.send({ content: '@everyone', embeds: [embed] });
+      console.log(`[Greetings] Sapaan "${greeting.title}" berhasil dikirim ke #${channel.name} di server ${guild.name}`);
+    } catch (error) {
+      console.error(`[Greetings] Terjadi kesalahan saat mengirim sapaan ke guild ${target.guildId}:`, error.message);
+    }
   }
 }
 

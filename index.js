@@ -528,8 +528,8 @@ client.on('messageCreate', async message => {
     return message.reply({ embeds: [embed] });
   };
 
-  // ── .join ──
-  if (commandName === 'join') {
+  // ── .joinlow ──
+  if (commandName === 'joinlow') {
     const voiceChannel = member?.voice?.channel;
     if (!voiceChannel) {
       return replyEmbed(0xFF3366, '🔇 **Anda harus bergabung ke Voice Channel terlebih dahulu!**');
@@ -568,11 +568,11 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // ── .speak <teks> ──
-  else if (commandName === 'speak') {
+  // ── .speaklow <teks> ──
+  else if (commandName === 'speaklow') {
     const connection = getVoiceConnection(guildId);
     if (!connection) {
-      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `.join` terlebih dahulu.');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `.joinlow` terlebih dahulu.');
     }
 
     let lang = 'id';
@@ -585,30 +585,19 @@ client.on('messageCreate', async message => {
     }
 
     if (!text) {
-      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speak Halo semuanya` (Bahasa Indonesia)\n👉 `.speak en Hello everyone` (Bahasa Inggris)');
+      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speaklow Halo semuanya` (Bahasa Indonesia)\n👉 `.speaklow en Hello everyone` (Bahasa Inggris)');
     }
 
     try {
       await message.react('🗣️').catch(() => { });
-
-      const langName = lang === 'en' ? 'Bahasa Inggris' : 'Bahasa Indonesia';
-      const embed = new EmbedBuilder()
-        .setColor(0xBB86FC)
-        .setTitle(`🗣️ Membacakan Teks (${client.user.username})`)
-        .setDescription(`> *"${text.length > 500 ? text.substring(0, 500) + '...' : text}"*`)
-        .setFooter({ text: `${langName} • Musik dijeda sementara` })
-        .setTimestamp();
-
-      await message.reply({ embeds: [embed] });
       await speakText(connection, text, guildId, lang);
     } catch (error) {
       console.error('Kesalahan speak prefix:', error);
-      await replyEmbed(0xFF3366, '❌ **Terjadi kesalahan saat mengucapkan teks.**');
     }
   }
 
-  // ── .leave ──
-  else if (commandName === 'leave') {
+  // ── .leavelow ──
+  else if (commandName === 'leavelow') {
     const hasLock = lockedChannels.has(guildId);
     if (!hasLock && !getVoiceConnection(guildId)) {
       return replyEmbed(0xFF3366, '❌ **Bot tidak sedang berada di Voice Channel!**');
@@ -637,8 +626,8 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // ── .status ──
-  else if (commandName === 'status') {
+  // ── .statuslow ──
+  else if (commandName === 'statuslow') {
     const systemUptime = formatUptime(os.uptime());
     const botUptime = formatUptime(process.uptime());
     const memoryUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
@@ -706,30 +695,30 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .help ──
-  else if (commandName === 'help') {
+  // ── .helplow ──
+  else if (commandName === 'helplow') {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
       .setTitle('📖 Panduan Menu & Kontrol Bot')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
-        `👉 **.join** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
-        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speak en <teks>\` untuk Bahasa Inggris).`,
-        `👉 **.leave** - Membuka kunci channel dan keluar dari Voice Channel.`,
-        `👉 **.status** - Menampilkan status realtime dan statistik sistem bot.`,
-        `👉 **.help** - Menampilkan panduan menu ini.`,
+        `👉 **.joinlow** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
+        `👉 **.speaklow <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speaklow en <teks>\` untuk Bahasa Inggris).`,
+        `👉 **.leavelow** - Membuka kunci channel dan keluar dari Voice Channel.`,
+        `👉 **.statuslow** - Menampilkan status realtime dan statistik sistem bot.`,
+        `👉 **.helplow** - Menampilkan panduan menu ini.`,
         `\n🎵 **Kontrol Pemutar Musik Lokal (Folder music/)**`,
-        `👉 **.list** - Menampilkan daftar lagu lokal yang tersedia.`,
-        `👉 **.play <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
-        `👉 **.pause** - Menjeda lagu yang sedang diputar.`,
-        `👉 **.resume** - Melanjutkan lagu yang sedang dijeda.`,
-        `👉 **.skip / .next** - Melewatkan lagu ke lagu berikutnya.`,
-        `👉 **.prev / .back** - Memutar kembali lagu sebelumnya.`,
-        `👉 **.volume <0-100>** - Mengatur tingkat volume musik.`,
-        `👉 **.loop** - Mengaktifkan/menonaktifkan loop folder lagu.`,
-        `👉 **.stop** - Menghentikan musik dan mereset antrean.`,
+        `👉 **.listlow** - Menampilkan daftar lagu lokal yang tersedia.`,
+        `👉 **.playlow <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
+        `👉 **.pauselow** - Menjeda lagu yang sedang diputar.`,
+        `👉 **.resumelow** - Melanjutkan lagu yang sedang dijeda.`,
+        `👉 **.skiplow / .nextlow** - Melewatkan lagu ke lagu berikutnya.`,
+        `👉 **.prevlow / .backlow** - Memutar kembali lagu sebelumnya.`,
+        `👉 **.volumelow <0-100>** - Mengatur tingkat volume musik.`,
+        `👉 **.looplow** - Mengaktifkan/menonaktifkan loop folder lagu.`,
+        `👉 **.stoplow** - Menghentikan musik dan mereset antrean.`,
         `\n🔒 **Mekanisme Proteksi Saluran**`,
-        `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leave** yang dapat membuka kuncinya.`
+        `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leavelow** yang dapat membuka kuncinya.`
       ].join('\n'))
       .setFooter({ text: 'Gunakan awalan titik (.) sebelum mengetik perintah.' })
       .setTimestamp();
@@ -737,8 +726,8 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .list ──
-  else if (commandName === 'list') {
+  // ── .listlow ──
+  else if (commandName === 'listlow') {
     const files = getMusicFiles();
     if (files.length === 0) {
       return replyEmbed(0xFF3366, `⚠️ **Folder music kosong!** Silakan tambahkan file audio ke folder \`${MUSIC_DIR}\`.`);
@@ -748,18 +737,18 @@ client.on('messageCreate', async message => {
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
       .setTitle('🎵 Daftar Lagu Lokal (Folder music/)')
-      .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlalu banyak)' : songsList)
-      .setFooter({ text: `Total: ${files.length} lagu | Mainkan dengan perintah: .play <nomor/nama>` })
+      .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlahu banyak)' : songsList)
+      .setFooter({ text: `Total: ${files.length} lagu | Mainkan dengan perintah: .playlow <nomor/nama>` })
       .setTimestamp();
 
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .play <nomor/nama> ──
-  else if (commandName === 'play') {
+  // ── .playlow <nomor/nama> ──
+  else if (commandName === 'playlow') {
     const connection = getVoiceConnection(guildId);
     if (!connection) {
-      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Ketik `.join` terlebih dahulu.');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Ketik `.joinlow` terlebih dahulu.');
     }
 
     const arg = args.join(' ').trim();
@@ -785,7 +774,7 @@ client.on('messageCreate', async message => {
 
     if (!isNaN(index)) {
       if (index < 1 || index > files.length) {
-        return replyEmbed(0xFF3366, `❌ **Nomor lagu tidak valid!** Silakan pilih nomor 1 hingga ${files.length}. Ketik \`.list\` untuk melihat daftar.`);
+        return replyEmbed(0xFF3366, `❌ **Nomor lagu tidak valid!** Silakan pilih nomor 1 hingga ${files.length}. Ketik \`.listlow\` untuk melihat daftar.`);
       }
       targetFile = files[index - 1];
     } else {
@@ -793,7 +782,7 @@ client.on('messageCreate', async message => {
     }
 
     if (!targetFile) {
-      return replyEmbed(0xFF3366, `❌ **Lagu tidak ditemukan!** Kata kunci \`${arg}\` tidak cocok dengan lagu apa pun. Ketik \`.list\` untuk melihat daftar.`);
+      return replyEmbed(0xFF3366, `❌ **Lagu tidak ditemukan!** Kata kunci \`${arg}\` tidak cocok dengan lagu apa pun. Ketik \`.listlow\` untuk melihat daftar.`);
     }
 
     let queue = musicQueues.get(guildId) || [];
@@ -817,19 +806,19 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .pause ──
-  else if (commandName === 'pause') {
+  // ── .pauselow ──
+  else if (commandName === 'pauselow') {
     const player = musicPlayers.get(guildId);
     if (player && player.state.status === AudioPlayerStatus.Playing) {
       player.pause();
-      await replyEmbed(0xFFB300, '⏸️ **Musik berhasil dijeda!** Gunakan `.resume` untuk melanjutkan kembali.');
+      await replyEmbed(0xFFB300, '⏸️ **Musik berhasil dijeda!** Gunakan `.resumelow` untuk melanjutkan kembali.');
     } else {
       await replyEmbed(0xFF3366, '❌ **Musik tidak sedang diputar saat ini!**');
     }
   }
 
-  // ── .resume ──
-  else if (commandName === 'resume') {
+  // ── .resumelow ──
+  else if (commandName === 'resumelow') {
     const player = musicPlayers.get(guildId);
     if (player && player.state.status === AudioPlayerStatus.Paused) {
       player.unpause();
@@ -839,8 +828,8 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // ── .skip / .next ──
-  else if (commandName === 'skip' || commandName === 'next') {
+  // ── .skiplow / .nextlow ──
+  else if (commandName === 'skiplow' || commandName === 'nextlow') {
     const player = musicPlayers.get(guildId);
     const connection = getVoiceConnection(guildId);
     if (!connection) {
@@ -854,8 +843,8 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // ── .prev / .back ──
-  else if (commandName === 'prev' || commandName === 'back') {
+  // ── .prevlow / .backlow ──
+  else if (commandName === 'prevlow' || commandName === 'backlow') {
     const history = musicHistories.get(guildId) || [];
     if (history.length === 0) {
       return replyEmbed(0xFF3366, '❌ **Tidak ada riwayat lagu sebelumnya yang diputar!**');
@@ -894,8 +883,8 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .volume <0-100> ──
-  else if (commandName === 'volume') {
+  // ── .volumelow <0-100> ──
+  else if (commandName === 'volumelow') {
     const volArg = args[0];
     if (!volArg) {
       const currentVol = Math.round((musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4) * 100);
@@ -917,8 +906,8 @@ client.on('messageCreate', async message => {
     await replyEmbed(0x00FF88, `🔊 **Volume berhasil diatur ke:** \`${volume}%\``);
   }
 
-  // ── .loop ──
-  else if (commandName === 'loop') {
+  // ── .looplow ──
+  else if (commandName === 'looplow') {
     const currentLoop = musicLoops.get(guildId) !== false;
     const newLoop = !currentLoop;
     musicLoops.set(guildId, newLoop);
@@ -926,8 +915,8 @@ client.on('messageCreate', async message => {
     await replyEmbed(0x00FF88, `🔄 **Loop folder lagu telah:** \`${newLoop ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}\``);
   }
 
-  // ── .stop ──
-  else if (commandName === 'stop') {
+  // ── .stoplow ──
+  else if (commandName === 'stoplow') {
     const player = musicPlayers.get(guildId);
     if (player) {
       player.stop();

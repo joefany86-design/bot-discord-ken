@@ -2,11 +2,17 @@
  * Konfigurasi untuk Fitur Sapaan Otomatis (Auto-Greet)
  */
 module.exports = {
-  // ID Server (Guild) Discord tempat bot diperbolehkan mengirimkan sapaan otomatis
-  GREETING_GUILD_ID: process.env.GREETING_GUILD_ID || '1410239829874053296',
-
-  // ID channel Discord tempat bot akan mengirimkan sapaan otomatis
-  GREETING_CHANNEL_ID: process.env.GREETING_CHANNEL_ID || '1422642326798598348',
+  // Daftar target server (guild) dan channel tempat bot akan mengirimkan sapaan otomatis
+  targets: [
+    {
+      guildId: process.env.GREETING_GUILD_ID || '1410239829874053296',
+      channelId: process.env.GREETING_CHANNEL_ID || '1422642326798598348'
+    },
+    {
+      guildId: '1468990737847681065',
+      channelId: '1468990739378737367'
+    }
+  ],
 
   // Zona waktu untuk penjadwalan cron
   TIMEZONE: 'Asia/Jakarta',
