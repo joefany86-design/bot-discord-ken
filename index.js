@@ -1,10 +1,10 @@
 const sodium = require('libsodium-wrappers');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
-const { 
-  joinVoiceChannel, 
-  createAudioPlayer, 
-  createAudioResource, 
-  AudioPlayerStatus, 
+const {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
   VoiceConnectionStatus,
   getVoiceConnection,
   entersState,
@@ -120,7 +120,7 @@ function playLocalMusic(guildId, connection, forcePlay = false) {
   }
 
   connection.subscribe(player);
-  
+
   if (forcePlay) {
     player.stop();
     playNextLocalTrack(guildId, connection);
@@ -187,11 +187,11 @@ function playNextLocalTrack(guildId, connection) {
       inputType: StreamType.Arbitrary,
       inlineVolume: true
     });
-    
+
     // Gunakan volume yang diset atau default 0.4
     const volume = musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4;
     resource.volume?.setVolume(volume);
-    
+
     activeResources.set(guildId, resource);
 
     const player = musicPlayers.get(guildId);
@@ -214,7 +214,7 @@ function splitText(text, maxLength = 200) {
   const words = text.split(' ');
   const chunks = [];
   let currentChunk = '';
-  
+
   for (const word of words) {
     if ((currentChunk + ' ' + word).trim().length <= maxLength) {
       currentChunk = (currentChunk + ' ' + word).trim();
@@ -238,7 +238,7 @@ function speakText(connection, text, guildId) {
     // Berhentikan TTS aktif jika ada
     const existingTts = activeTtsPlayers.get(guildId);
     if (existingTts) {
-      try { existingTts.stop(); } catch (e) {}
+      try { existingTts.stop(); } catch (e) { }
     }
 
     // Pause musik lokal jika sedang berbunyi
@@ -272,7 +272,7 @@ function speakText(connection, text, guildId) {
 
       const chunk = chunks[index++];
       const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=id&client=tw-ob`;
-      
+
       https.get(ttsUrl, (res) => {
         if (res.statusCode !== 200) {
           console.error(`❌ Google TTS mengembalikan status: ${res.statusCode}`);
@@ -316,7 +316,7 @@ function setupConnectionListeners(connection, guildId, guild) {
     if (lockedChannelId) {
       console.log(`[Voice Lock] Koneksi terputus secara tidak terduga. Melakukan rejoin otomatis...`);
       try {
-        try { connection.destroy(); } catch (e) {}
+        try { connection.destroy(); } catch (e) { }
         const newConnection = joinVoiceChannel({
           channelId: lockedChannelId,
           guildId: guildId,
@@ -325,7 +325,7 @@ function setupConnectionListeners(connection, guildId, guild) {
         });
         setupConnectionListeners(newConnection, guildId, guild);
         await entersState(newConnection, VoiceConnectionStatus.Ready, 15_000);
-        
+
         const player = musicPlayers.get(guildId);
         if (player) {
           newConnection.subscribe(player);
@@ -343,13 +343,13 @@ function formatUptime(seconds) {
   const h = Math.floor((seconds % (3600 * 24)) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  
+
   const parts = [];
   if (d > 0) parts.push(`${d} hari`);
   if (h > 0) parts.push(`${h} jam`);
   if (m > 0) parts.push(`${m} menit`);
   parts.push(`${s} detik`);
-  
+
   return parts.join(' ');
 }
 
@@ -357,13 +357,13 @@ function formatUptime(seconds) {
 function cleanupResources(guildId) {
   const musicPlayer = musicPlayers.get(guildId);
   if (musicPlayer) {
-    try { musicPlayer.stop(); } catch (e) {}
+    try { musicPlayer.stop(); } catch (e) { }
     musicPlayers.delete(guildId);
   }
-  
+
   const ttsPlayer = activeTtsPlayers.get(guildId);
   if (ttsPlayer) {
-    try { ttsPlayer.stop(); } catch (e) {}
+    try { ttsPlayer.stop(); } catch (e) { }
     activeTtsPlayers.delete(guildId);
   }
 
@@ -374,7 +374,7 @@ function cleanupResources(guildId) {
 
   const connection = getVoiceConnection(guildId);
   if (connection) {
-    try { connection.destroy(); } catch (err) {}
+    try { connection.destroy(); } catch (err) { }
   }
 }
 
@@ -386,7 +386,7 @@ client.once('ready', () => {
   console.log(`  Bot online sebagai ${client.user.tag}`);
   console.log(`  Servers: ${client.guilds.cache.size}`);
   console.log(`══════════════════════════════════════`);
-  
+
   client.user.setActivity('🎵 .join & /join | Loop Radio', { type: 2 });
 
   // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
@@ -437,10 +437,10 @@ client.on('interactionCreate', async interaction => {
       // Mulai putar musik lokal otomatis
       playLocalMusic(guildId, connection, true);
 
-      await interaction.reply({ 
-        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}** dan mulai memutar musik lokal secara loop! 🎵\n` + 
-                 `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`, 
-        ephemeral: true 
+      await interaction.reply({
+        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}** dan mulai memutar musik lokal secara loop! 🎵\n` +
+          `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
+        ephemeral: true
       });
     } catch (error) {
       console.error('Kesalahan slash join:', error);
@@ -555,9 +555,9 @@ client.on('messageCreate', async message => {
       const embed = new EmbedBuilder()
         .setColor(0x00FF88)
         .setTitle('🔒 Saluran Terkunci & Bergabung!')
-        .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` + 
-                       `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.\n` + 
-                       `🎵 Mulai memutar musik lokal secara loop dari folder \`music/\`.`)
+        .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` +
+          `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.\n` +
+          `🎵 Mulai memutar musik lokal secara loop dari folder \`music/\`.`)
         .setTimestamp();
 
       await message.reply({ embeds: [embed] });
@@ -581,15 +581,15 @@ client.on('messageCreate', async message => {
     }
 
     try {
-      await message.react('🗣️').catch(() => {});
-      
+      await message.react('🗣️').catch(() => { });
+
       const embed = new EmbedBuilder()
         .setColor(0xBB86FC)
-        .setTitle('🗣️ Membacakan Teks (Google TTS)')
+        .setTitle(`🗣️ Membacakan Teks (${client.user.username})`)
         .setDescription(`> *"${text.length > 500 ? text.substring(0, 500) + '...' : text}"*`)
         .setFooter({ text: 'Bahasa Indonesia • Musik dijeda sementara' })
         .setTimestamp();
-      
+
       await message.reply({ embeds: [embed] });
       await speakText(connection, text, guildId);
     } catch (error) {
@@ -614,13 +614,13 @@ client.on('messageCreate', async message => {
     try {
       lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
       cleanupResources(guildId);
-      
+
       const embed = new EmbedBuilder()
         .setColor(0xFF3366)
         .setTitle('👋 Keluar dari Voice Channel')
         .setDescription(`Kunci saluran pada **${botVoiceChannel?.name || 'Voice Channel'}** telah dilepas dan bot berhasil keluar secara bersih.`)
         .setTimestamp();
-      
+
       await message.reply({ embeds: [embed] });
     } catch (error) {
       console.error('Kesalahan leave prefix:', error);
@@ -635,14 +635,14 @@ client.on('messageCreate', async message => {
     const memoryUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
     const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
     const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
-    
+
     // Voice stats
     const connection = getVoiceConnection(guildId);
     const channelId = lockedChannels.get(guildId);
     const isLocked = !!channelId;
     const voiceChanName = channelId ? (guild.channels.cache.get(channelId)?.name || `ID: ${channelId}`) : 'Tidak Terhubung';
     const connectionState = connection ? 'Tersambung (Ready)' : 'Terputus';
-    
+
     // Music stats
     const files = getMusicFiles();
     const currentSong = currentTracks.get(guildId) || 'Tidak ada lagu';
@@ -650,14 +650,14 @@ client.on('messageCreate', async message => {
     const history = musicHistories.get(guildId) || [];
     const isLoop = musicLoops.get(guildId) !== false;
     const currentVol = Math.round((musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4) * 100);
-    
+
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
       .setTitle('📊 Status Realtime & Statistik Bot')
       .setThumbnail(client.user.displayAvatarURL())
       .addFields(
-        { 
-          name: '🔒 Status Koneksi & Saluran', 
+        {
+          name: '🔒 Status Koneksi & Saluran',
           value: [
             `👉 **Status Koneksi**: \`${connectionState}\``,
             `👉 **Saluran Terkunci**: \`${voiceChanName}\` ${isLocked ? '🔒' : '🔓'}`,
@@ -693,7 +693,7 @@ client.on('messageCreate', async message => {
       )
       .setFooter({ text: 'Bot Radio Proteksi 2026' })
       .setTimestamp();
-    
+
     await message.reply({ embeds: [embed] });
   }
 
@@ -734,7 +734,7 @@ client.on('messageCreate', async message => {
     if (files.length === 0) {
       return replyEmbed(0xFF3366, `⚠️ **Folder music kosong!** Silakan tambahkan file audio ke folder \`${MUSIC_DIR}\`.`);
     }
-    
+
     const songsList = files.map((file, idx) => `**${idx + 1}**. \`${file}\``).join('\n');
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
@@ -742,7 +742,7 @@ client.on('messageCreate', async message => {
       .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlalu banyak)' : songsList)
       .setFooter({ text: `Total: ${files.length} lagu | Mainkan dengan perintah: .play <nomor/nama>` })
       .setTimestamp();
-    
+
     await message.reply({ embeds: [embed] });
   }
 
@@ -755,7 +755,7 @@ client.on('messageCreate', async message => {
 
     const arg = args.join(' ').trim();
     const player = musicPlayers.get(guildId);
-    
+
     if (!arg) {
       if (player && player.state.status === AudioPlayerStatus.Paused) {
         player.unpause();
@@ -770,10 +770,10 @@ client.on('messageCreate', async message => {
     if (files.length === 0) {
       return replyEmbed(0xFF3366, '❌ **Folder musik kosong!**');
     }
-    
+
     let targetFile = null;
     const index = parseInt(arg);
-    
+
     if (!isNaN(index)) {
       if (index < 1 || index > files.length) {
         return replyEmbed(0xFF3366, `❌ **Nomor lagu tidak valid!** Silakan pilih nomor 1 hingga ${files.length}. Ketik \`.list\` untuk melihat daftar.`);
@@ -782,7 +782,7 @@ client.on('messageCreate', async message => {
     } else {
       targetFile = files.find(file => file.toLowerCase().includes(arg.toLowerCase()));
     }
-    
+
     if (!targetFile) {
       return replyEmbed(0xFF3366, `❌ **Lagu tidak ditemukan!** Kata kunci \`${arg}\` tidak cocok dengan lagu apa pun. Ketik \`.list\` untuk melihat daftar.`);
     }
@@ -804,7 +804,7 @@ client.on('messageCreate', async message => {
       .setTitle('▶️ Memutar Lagu Pilihan')
       .setDescription(`Lagu: \`${targetFile}\`\n\n🔊 Volume: \`${volume}%\``)
       .setTimestamp();
-    
+
     await message.reply({ embeds: [embed] });
   }
 
@@ -851,25 +851,25 @@ client.on('messageCreate', async message => {
     if (history.length === 0) {
       return replyEmbed(0xFF3366, '❌ **Tidak ada riwayat lagu sebelumnya yang diputar!**');
     }
-    
+
     const current = currentTracks.get(guildId);
     const queue = musicQueues.get(guildId) || [];
     const player = musicPlayers.get(guildId);
     const connection = getVoiceConnection(guildId);
-    
+
     if (!connection) {
       return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!**');
     }
-    
+
     const prevTrack = history.pop();
     musicHistories.set(guildId, history);
-    
+
     if (current) {
       queue.unshift(current);
     }
     queue.unshift(prevTrack);
     musicQueues.set(guildId, queue);
-    
+
     if (player) {
       player.stop();
     } else {
@@ -892,15 +892,15 @@ client.on('messageCreate', async message => {
       const currentVol = Math.round((musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4) * 100);
       return replyEmbed(0x00D2FF, `🔊 **Volume musik saat ini adalah:** \`${currentVol}%\``);
     }
-    
+
     const volume = parseInt(volArg);
     if (isNaN(volume) || volume < 0 || volume > 100) {
       return replyEmbed(0xFF3366, '❌ **Tingkat volume harus berupa angka antara 0 hingga 100!**');
     }
-    
+
     const volDecimal = volume / 100;
     musicVolumes.set(guildId, volDecimal);
-    
+
     const resource = activeResources.get(guildId);
     if (resource && resource.volume) {
       resource.volume.setVolume(volDecimal);
@@ -913,7 +913,7 @@ client.on('messageCreate', async message => {
     const currentLoop = musicLoops.get(guildId) !== false;
     const newLoop = !currentLoop;
     musicLoops.set(guildId, newLoop);
-    
+
     await replyEmbed(0x00FF88, `🔄 **Loop folder lagu telah:** \`${newLoop ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}\``);
   }
 
@@ -927,7 +927,7 @@ client.on('messageCreate', async message => {
     musicHistories.delete(guildId);
     currentTracks.delete(guildId);
     activeResources.delete(guildId);
-    
+
     await replyEmbed(0xFF3366, '⏹️ **Musik dihentikan!** Antrean dan riwayat lagu berhasil direset.');
   }
 });
@@ -946,7 +946,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     if (lockedChannelId) {
       if (newState.channelId !== lockedChannelId) {
         console.log(`[Voice Lock] Bot dipindahkan/dikeluarkan ke channel ${newState.channelId || 'NULL'}. Rejoin otomatis ke channel terkunci: ${lockedChannelId}`);
-        
+
         try {
           const connection = joinVoiceChannel({
             channelId: lockedChannelId,
