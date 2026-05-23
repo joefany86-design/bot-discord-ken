@@ -480,7 +480,7 @@ client.on('interactionCreate', async interaction => {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
         `👉 **/join** atau **.join** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
-        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS.`,
+        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speak en <teks>\` untuk Bahasa Inggris).`,
         `👉 **/leave** atau **.leave** - Membuka kunci channel dan keluar dari Voice Channel.`,
         `👉 **.status** - Menampilkan status realtime dan statistik sistem bot.`,
         `👉 **/help** atau **.help** - Menampilkan panduan menu ini.`,
@@ -714,7 +714,7 @@ client.on('messageCreate', async message => {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
         `👉 **.join** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
-        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS.`,
+        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speak en <teks>\` untuk Bahasa Inggris).`,
         `👉 **.leave** - Membuka kunci channel dan keluar dari Voice Channel.`,
         `👉 **.status** - Menampilkan status realtime dan statistik sistem bot.`,
         `👉 **.help** - Menampilkan panduan menu ini.`,
