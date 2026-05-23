@@ -519,11 +519,20 @@ client.on('messageCreate', async message => {
   const { guildId, member, guild } = message;
   if (!guildId) return;
 
+  // Helper local untuk membalas dengan Embed Cantik & Rapi
+  const replyEmbed = async (color, description, title = null) => {
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setDescription(description);
+    if (title) embed.setTitle(title);
+    return message.reply({ embeds: [embed] });
+  };
+
   // ── .join ──
   if (commandName === 'join') {
     const voiceChannel = member?.voice?.channel;
     if (!voiceChannel) {
-      return message.reply('🔇 Anda harus bergabung ke Voice Channel terlebih dahulu!');
+      return replyEmbed(0xFF3366, '🔇 **Anda harus bergabung ke Voice Channel terlebih dahulu!**');
     }
 
     try {
@@ -546,7 +555,7 @@ client.on('messageCreate', async message => {
       const embed = new EmbedBuilder()
         .setColor(0x00FF88)
         .setTitle('🔒 Saluran Terkunci & Bergabung!')
-        .setDescription(`Berhasil bergabung ke **${voiceChannel.name}**.\n\n` + 
+        .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` + 
                        `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.\n` + 
                        `🎵 Mulai memutar musik lokal secara loop dari folder \`music/\`.`)
         .setTimestamp();
@@ -555,7 +564,7 @@ client.on('messageCreate', async message => {
     } catch (error) {
       console.error('Kesalahan join prefix:', error);
       lockedChannels.delete(guildId);
-      await message.reply('❌ Gagal bergabung ke Voice Channel.');
+      await replyEmbed(0xFF3366, '❌ **Gagal bergabung ke Voice Channel.**');
     }
   }
 
@@ -563,20 +572,29 @@ client.on('messageCreate', async message => {
   else if (commandName === 'speak') {
     const connection = getVoiceConnection(guildId);
     if (!connection) {
-      return message.reply('❌ Bot tidak berada di Voice Channel! Hubungkan bot dengan `.join` terlebih dahulu.');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `.join` terlebih dahulu.');
     }
 
     const text = args.join(' ');
     if (!text) {
-      return message.reply('❌ Harap masukkan teks yang ingin diucapkan!\nContoh: `.speak Selamat pagi semuanya`');
+      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh: `.speak Selamat pagi semuanya`');
     }
 
     try {
       await message.react('🗣️').catch(() => {});
+      
+      const embed = new EmbedBuilder()
+        .setColor(0xBB86FC)
+        .setTitle('🗣️ Membacakan Teks (Google TTS)')
+        .setDescription(`> *"${text.length > 500 ? text.substring(0, 500) + '...' : text}"*`)
+        .setFooter({ text: 'Bahasa Indonesia • Musik dijeda sementara' })
+        .setTimestamp();
+      
+      await message.reply({ embeds: [embed] });
       await speakText(connection, text, guildId);
     } catch (error) {
       console.error('Kesalahan speak prefix:', error);
-      await message.reply('❌ Terjadi kesalahan saat mengucapkan teks.');
+      await replyEmbed(0xFF3366, '❌ **Terjadi kesalahan saat mengucapkan teks.**');
     }
   }
 
@@ -584,22 +602,29 @@ client.on('messageCreate', async message => {
   else if (commandName === 'leave') {
     const hasLock = lockedChannels.has(guildId);
     if (!hasLock && !getVoiceConnection(guildId)) {
-      return message.reply('❌ Bot tidak sedang berada di Voice Channel!');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak sedang berada di Voice Channel!**');
     }
 
     const memberVoiceChannel = member?.voice?.channel;
     const botVoiceChannel = guild.members.me?.voice?.channel;
     if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
-      return message.reply(`❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`);
+      return replyEmbed(0xFF3366, `❌ **Anda harus bergabung ke Voice Channel** **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`);
     }
 
     try {
       lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
       cleanupResources(guildId);
-      await message.reply('👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel!');
+      
+      const embed = new EmbedBuilder()
+        .setColor(0xFF3366)
+        .setTitle('👋 Keluar dari Voice Channel')
+        .setDescription(`Kunci saluran pada **${botVoiceChannel?.name || 'Voice Channel'}** telah dilepas dan bot berhasil keluar secara bersih.`)
+        .setTimestamp();
+      
+      await message.reply({ embeds: [embed] });
     } catch (error) {
       console.error('Kesalahan leave prefix:', error);
-      await message.reply('❌ Terjadi kesalahan saat keluar.');
+      await replyEmbed(0xFF3366, '❌ **Terjadi kesalahan saat keluar.**');
     }
   }
 
@@ -707,12 +732,12 @@ client.on('messageCreate', async message => {
   else if (commandName === 'list') {
     const files = getMusicFiles();
     if (files.length === 0) {
-      return message.reply(`⚠️ Folder music kosong! Silakan tambahkan file audio ke folder \`${MUSIC_DIR}\`.`);
+      return replyEmbed(0xFF3366, `⚠️ **Folder music kosong!** Silakan tambahkan file audio ke folder \`${MUSIC_DIR}\`.`);
     }
     
     const songsList = files.map((file, idx) => `**${idx + 1}**. \`${file}\``).join('\n');
     const embed = new EmbedBuilder()
-      .setColor(0x00FFBB)
+      .setColor(0x00D2FF)
       .setTitle('🎵 Daftar Lagu Lokal (Folder music/)')
       .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlalu banyak)' : songsList)
       .setFooter({ text: `Total: ${files.length} lagu | Mainkan dengan perintah: .play <nomor/nama>` })
@@ -725,7 +750,7 @@ client.on('messageCreate', async message => {
   else if (commandName === 'play') {
     const connection = getVoiceConnection(guildId);
     if (!connection) {
-      return message.reply('❌ Bot tidak berada di Voice Channel! Ketik `.join` terlebih dahulu.');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Ketik `.join` terlebih dahulu.');
     }
 
     const arg = args.join(' ').trim();
@@ -734,16 +759,16 @@ client.on('messageCreate', async message => {
     if (!arg) {
       if (player && player.state.status === AudioPlayerStatus.Paused) {
         player.unpause();
-        return message.reply('▶️ Melanjutkan pemutaran lagu yang sedang dijeda.');
+        return replyEmbed(0x00FF88, '▶️ **Melanjutkan pemutaran musik** yang sedang dijeda.');
       } else {
         playLocalMusic(guildId, connection, false);
-        return message.reply('▶️ Memulai pemutaran lagu dari folder musik.');
+        return replyEmbed(0x00FF88, '▶️ **Memulai pemutaran musik** dari folder musik.');
       }
     }
 
     const files = getMusicFiles();
     if (files.length === 0) {
-      return message.reply('❌ Folder musik kosong!');
+      return replyEmbed(0xFF3366, '❌ **Folder musik kosong!**');
     }
     
     let targetFile = null;
@@ -751,7 +776,7 @@ client.on('messageCreate', async message => {
     
     if (!isNaN(index)) {
       if (index < 1 || index > files.length) {
-        return message.reply(`❌ Nomor lagu tidak valid! Silakan pilih nomor 1 hingga ${files.length}. Ketik \`.list\` untuk melihat daftar.`);
+        return replyEmbed(0xFF3366, `❌ **Nomor lagu tidak valid!** Silakan pilih nomor 1 hingga ${files.length}. Ketik \`.list\` untuk melihat daftar.`);
       }
       targetFile = files[index - 1];
     } else {
@@ -759,20 +784,28 @@ client.on('messageCreate', async message => {
     }
     
     if (!targetFile) {
-      return message.reply(`❌ Lagu dengan kata kunci \`${arg}\` tidak ditemukan! Ketik \`.list\` untuk melihat semua daftar lagu.`);
+      return replyEmbed(0xFF3366, `❌ **Lagu tidak ditemukan!** Kata kunci \`${arg}\` tidak cocok dengan lagu apa pun. Ketik \`.list\` untuk melihat daftar.`);
     }
 
     let queue = musicQueues.get(guildId) || [];
     queue.unshift(targetFile);
     musicQueues.set(guildId, queue);
 
+    const volume = Math.round((musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4) * 100);
+
     if (player) {
       player.stop();
-      message.reply(`▶️ Memutar lagu pilihan: \`${targetFile}\``);
     } else {
       playLocalMusic(guildId, connection, false);
-      message.reply(`▶️ Memutar lagu pilihan: \`${targetFile}\``);
     }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF88)
+      .setTitle('▶️ Memutar Lagu Pilihan')
+      .setDescription(`Lagu: \`${targetFile}\`\n\n🔊 Volume: \`${volume}%\``)
+      .setTimestamp();
+    
+    await message.reply({ embeds: [embed] });
   }
 
   // ── .pause ──
@@ -780,9 +813,9 @@ client.on('messageCreate', async message => {
     const player = musicPlayers.get(guildId);
     if (player && player.state.status === AudioPlayerStatus.Playing) {
       player.pause();
-      message.reply('⏸️ Musik berhasil dijeda!');
+      await replyEmbed(0xFFB300, '⏸️ **Musik berhasil dijeda!** Gunakan `.resume` untuk melanjutkan kembali.');
     } else {
-      message.reply('❌ Musik tidak sedang diputar saat ini!');
+      await replyEmbed(0xFF3366, '❌ **Musik tidak sedang diputar saat ini!**');
     }
   }
 
@@ -791,9 +824,9 @@ client.on('messageCreate', async message => {
     const player = musicPlayers.get(guildId);
     if (player && player.state.status === AudioPlayerStatus.Paused) {
       player.unpause();
-      message.reply('▶️ Musik dilanjutkan kembali!');
+      await replyEmbed(0x00FF88, '▶️ **Musik berhasil dilanjutkan kembali!**');
     } else {
-      message.reply('❌ Musik tidak sedang dijeda saat ini!');
+      await replyEmbed(0xFF3366, '❌ **Musik tidak sedang dijeda saat ini!**');
     }
   }
 
@@ -802,13 +835,13 @@ client.on('messageCreate', async message => {
     const player = musicPlayers.get(guildId);
     const connection = getVoiceConnection(guildId);
     if (!connection) {
-      return message.reply('❌ Bot tidak berada di Voice Channel!');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!**');
     }
     if (player) {
       player.stop();
-      message.reply('⏭️ Lagu dilewati, memutar lagu berikutnya...');
+      await replyEmbed(0x00D2FF, '⏭️ **Lagu dilewati!** Memutar lagu berikutnya...');
     } else {
-      message.reply('❌ Pemutar musik tidak aktif!');
+      await replyEmbed(0xFF3366, '❌ **Pemutar musik tidak aktif!**');
     }
   }
 
@@ -816,7 +849,7 @@ client.on('messageCreate', async message => {
   else if (commandName === 'prev' || commandName === 'back') {
     const history = musicHistories.get(guildId) || [];
     if (history.length === 0) {
-      return message.reply('❌ Tidak ada riwayat lagu sebelumnya yang diputar!');
+      return replyEmbed(0xFF3366, '❌ **Tidak ada riwayat lagu sebelumnya yang diputar!**');
     }
     
     const current = currentTracks.get(guildId);
@@ -825,7 +858,7 @@ client.on('messageCreate', async message => {
     const connection = getVoiceConnection(guildId);
     
     if (!connection) {
-      return message.reply('❌ Bot tidak berada di Voice Channel!');
+      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!**');
     }
     
     const prevTrack = history.pop();
@@ -839,11 +872,17 @@ client.on('messageCreate', async message => {
     
     if (player) {
       player.stop();
-      message.reply(`⏮️ Memutar kembali lagu sebelumnya: \`${prevTrack}\``);
     } else {
       playLocalMusic(guildId, connection, false);
-      message.reply(`⏮️ Memutar kembali lagu sebelumnya: \`${prevTrack}\``);
     }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00D2FF)
+      .setTitle('⏮️ Memutar Lagu Sebelumnya')
+      .setDescription(`Kembali memutar: \`${prevTrack}\``)
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
   }
 
   // ── .volume <0-100> ──
@@ -851,12 +890,12 @@ client.on('messageCreate', async message => {
     const volArg = args[0];
     if (!volArg) {
       const currentVol = Math.round((musicVolumes.get(guildId) !== undefined ? musicVolumes.get(guildId) : 0.4) * 100);
-      return message.reply(`🔊 Volume saat ini adalah **${currentVol}%**.`);
+      return replyEmbed(0x00D2FF, `🔊 **Volume musik saat ini adalah:** \`${currentVol}%\``);
     }
     
     const volume = parseInt(volArg);
     if (isNaN(volume) || volume < 0 || volume > 100) {
-      return message.reply('❌ Tingkat volume harus berupa angka antara 0 hingga 100!');
+      return replyEmbed(0xFF3366, '❌ **Tingkat volume harus berupa angka antara 0 hingga 100!**');
     }
     
     const volDecimal = volume / 100;
@@ -866,7 +905,7 @@ client.on('messageCreate', async message => {
     if (resource && resource.volume) {
       resource.volume.setVolume(volDecimal);
     }
-    message.reply(`🔊 Volume berhasil diatur ke **${volume}%**!`);
+    await replyEmbed(0x00FF88, `🔊 **Volume berhasil diatur ke:** \`${volume}%\``);
   }
 
   // ── .loop ──
@@ -875,7 +914,7 @@ client.on('messageCreate', async message => {
     const newLoop = !currentLoop;
     musicLoops.set(guildId, newLoop);
     
-    message.reply(`🔄 Loop folder lagu telah **${newLoop ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}**!`);
+    await replyEmbed(0x00FF88, `🔄 **Loop folder lagu telah:** \`${newLoop ? 'DIAKTIFKAN' : 'DINONAKTIFKAN'}\``);
   }
 
   // ── .stop ──
@@ -889,7 +928,7 @@ client.on('messageCreate', async message => {
     currentTracks.delete(guildId);
     activeResources.delete(guildId);
     
-    message.reply('⏹️ Musik dihentikan, antrean dan riwayat lagu berhasil direset!');
+    await replyEmbed(0xFF3366, '⏹️ **Musik dihentikan!** Antrean dan riwayat lagu berhasil direset.');
   }
 });
 
