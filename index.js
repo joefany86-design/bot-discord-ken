@@ -227,8 +227,8 @@ function splitText(text, maxLength = 200) {
   return chunks;
 }
 
-// Mengucapkan teks bahasa Indonesia via Google TTS (Smart Pause & Resume)
-function speakText(connection, text, guildId) {
+// Mengucapkan teks bahasa Indonesia / Inggris via Google TTS (Smart Pause & Resume)
+function speakText(connection, text, guildId, lang = 'id') {
   return new Promise((resolve) => {
     const chunks = splitText(text);
     if (chunks.length === 0 || !chunks[0]) {
@@ -271,7 +271,7 @@ function speakText(connection, text, guildId) {
       }
 
       const chunk = chunks[index++];
-      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=id&client=tw-ob`;
+      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=${lang}&client=tw-ob`;
 
       https.get(ttsUrl, (res) => {
         if (res.statusCode !== 200) {
@@ -575,23 +575,32 @@ client.on('messageCreate', async message => {
       return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `.join` terlebih dahulu.');
     }
 
-    const text = args.join(' ');
+    let lang = 'id';
+    let text = args.join(' ');
+
+    // Cek apakah argumen pertama adalah kode bahasa yang didukung (id atau en)
+    if (args[0] && (args[0].toLowerCase() === 'en' || args[0].toLowerCase() === 'id')) {
+      lang = args[0].toLowerCase();
+      text = args.slice(1).join(' ');
+    }
+
     if (!text) {
-      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh: `.speak Selamat pagi semuanya`');
+      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speak Halo semuanya` (Bahasa Indonesia)\n👉 `.speak en Hello everyone` (Bahasa Inggris)');
     }
 
     try {
       await message.react('🗣️').catch(() => { });
 
+      const langName = lang === 'en' ? 'Bahasa Inggris' : 'Bahasa Indonesia';
       const embed = new EmbedBuilder()
         .setColor(0xBB86FC)
         .setTitle(`🗣️ Membacakan Teks (${client.user.username})`)
         .setDescription(`> *"${text.length > 500 ? text.substring(0, 500) + '...' : text}"*`)
-        .setFooter({ text: 'Bahasa Indonesia • Musik dijeda sementara' })
+        .setFooter({ text: `${langName} • Musik dijeda sementara` })
         .setTimestamp();
 
       await message.reply({ embeds: [embed] });
-      await speakText(connection, text, guildId);
+      await speakText(connection, text, guildId, lang);
     } catch (error) {
       console.error('Kesalahan speak prefix:', error);
       await replyEmbed(0xFF3366, '❌ **Terjadi kesalahan saat mengucapkan teks.**');
