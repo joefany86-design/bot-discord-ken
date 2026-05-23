@@ -456,6 +456,12 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: '❌ Bot tidak sedang berada di Voice Channel!', ephemeral: true });
     }
 
+    const memberVoiceChannel = member?.voice?.channel;
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
+      return interaction.reply({ content: `❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`, ephemeral: true });
+    }
+
     try {
       lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
       cleanupResources(guildId);
@@ -579,6 +585,12 @@ client.on('messageCreate', async message => {
     const hasLock = lockedChannels.has(guildId);
     if (!hasLock && !getVoiceConnection(guildId)) {
       return message.reply('❌ Bot tidak sedang berada di Voice Channel!');
+    }
+
+    const memberVoiceChannel = member?.voice?.channel;
+    const botVoiceChannel = guild.members.me?.voice?.channel;
+    if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
+      return message.reply(`❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`);
     }
 
     try {
