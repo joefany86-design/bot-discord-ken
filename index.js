@@ -14,6 +14,7 @@ const ffmpegStatic = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
 const { initGreetings } = require('./greetings');
+const { handleLinkMirroring } = require('./bypass');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -29,10 +30,7 @@ process.env.FFMPEG_PATH = ffmpegPath;
 
 require('dotenv').config();
 
-// ═══════════════════════════════════════════════════
-// OWNER ID - Hanya user ini yang bisa memerintah bot
-// ═══════════════════════════════════════════════════
-const OWNER_ID = '436554535037698059';
+
 
 // ═══════════════════════════════════════════════════
 // GLOBAL ERROR HANDLERS (mencegah bot crash)
@@ -409,8 +407,7 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
   }
 
-  // Cek apakah user adalah owner (abaikan jika bukan)
-  if (interaction.user.id !== OWNER_ID) return;
+
 
   // ── JOIN ──
   if (commandName === 'join') {
@@ -508,10 +505,15 @@ client.on('interactionCreate', async interaction => {
 // PENANGANAN PERINTAH TEKS (PREFIX .)
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
-  if (message.author.bot || !message.content.startsWith('.')) return;
+  if (message.author.bot) return;
 
-  // Cek apakah user adalah owner (abaikan jika bukan)
-  if (message.author.id !== OWNER_ID) return;
+  // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
+  const processed = await handleLinkMirroring(message, client);
+  if (processed) return;
+
+  if (!message.content.startsWith('.')) return;
+
+
 
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
