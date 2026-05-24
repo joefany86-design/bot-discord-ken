@@ -23,13 +23,13 @@ function bypassLinks(text) {
   // Instagram Reels/Posts: mencakup instagram.com/reel/, instagram.com/reels/, instagram.com/p/
   const instagramRegex = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p)\/[^\s]+/gi;
 
-  // 1. TikTok -> vxtiktok.com
+  // 1. TikTok -> tiktxk.com
   if (tiktokRegex.test(text)) {
     modified = modified.replace(tiktokRegex, (match) => {
       // Pastikan kita tidak mengganti link yang sudah di-bypass sebelumnya
-      if (match.includes('vxtiktok.com')) return match;
+      if (match.includes('tiktxk.com')) return match;
       hasChanges = true;
-      return match.replace(/tiktok\.com/i, 'vxtiktok.com');
+      return match.replace(/tiktok\.com/i, 'tiktxk.com');
     });
   }
 
