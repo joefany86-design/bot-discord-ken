@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
+const { initIceBreakers, handleIceBreakerCommand } = require('./icebreakers');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -389,6 +390,9 @@ client.once('ready', () => {
 
   // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
   initGreetings(client);
+
+  // ICE BREAKER OTOMATIS (TRUTH OR DARE, WOULD YOU RATHER)
+  initIceBreakers(client);
 });
 
 
@@ -512,6 +516,10 @@ client.on('messageCreate', async message => {
   if (processed) return;
 
   if (!message.content.startsWith('.')) return;
+
+  // Cek perintah Ice Breaker terlebih dahulu
+  const iceBreakerHandled = await handleIceBreakerCommand(message, client);
+  if (iceBreakerHandled) return;
 
 
 
