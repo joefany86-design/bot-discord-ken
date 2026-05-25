@@ -242,5 +242,53 @@ module.exports = {
     }
 
     return embed.setTimestamp();
+  },
+
+  // 8. Embed Error / Kegagalan Sistem
+  errorEmbed(title, description) {
+    const cleanedTitle = title.replace(/^❌\s*/, '').trim();
+    const cleanedDesc = description ? description.replace(/^❌\s*/, '').trim() : '';
+    return new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle(`❌ ${cleanedTitle}`)
+      .setDescription(cleanedDesc ? `> ${cleanedDesc}` : null)
+      .setFooter({ text: 'Rupiah Server • Terjadi Kesalahan' })
+      .setTimestamp();
+  },
+
+  // 9. Embed Peringatan / Validasi Input
+  warnEmbed(title, description) {
+    const cleanedTitle = title.replace(/^[❌⚠️]\s*/, '').trim();
+    const cleanedDesc = description ? description.replace(/^[❌⚠️]\s*/, '').trim() : '';
+    return new EmbedBuilder()
+      .setColor(COLORS.WARN)
+      .setTitle(`⚠️ ${cleanedTitle}`)
+      .setDescription(cleanedDesc ? `> ${cleanedDesc}` : null)
+      .setTimestamp();
+  },
+
+  // 10. Embed Sukses Umum
+  successEmbed(title, description) {
+    const cleanedTitle = title.replace(/^[✅🟢]\s*/, '').trim();
+    const cleanedDesc = description ? description.replace(/^[✅🟢]\s*/, '').trim() : '';
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`✅ ${cleanedTitle}`)
+      .setDescription(cleanedDesc ? `> ${cleanedDesc}` : null)
+      .setTimestamp();
+  },
+
+  // 11. Embed Akses Ditolak (Owner Only)
+  accessDeniedEmbed(ownerId) {
+    return new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle('🚫 Akses Ditolak!')
+      .setDescription(
+        `Perintah administratif ini hanya dapat digunakan oleh pemilik khusus bot.\n\n` +
+        `👑 **Owner ID:** \`${ownerId}\`\n\n` +
+        `*Silakan hubungi administrator jika Anda memerlukan akses khusus.*`
+      )
+      .setFooter({ text: 'Rupiah Server • Proteksi Admin' })
+      .setTimestamp();
   }
 };

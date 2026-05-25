@@ -123,10 +123,10 @@ async function handleEconomyCommands(message, client) {
       const amount = parseInt(amountStr);
 
       if (!targetUser) {
-        return message.reply('❌ **Format Salah!** Harap sebutkan user penerima transfer.\nContoh: `.transfer @John 500`');
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan user penerima transfer.\nContoh: `.transfer @John 500`')] });
       }
       if (isNaN(amount) || amount <= 0) {
-        return message.reply('❌ **Jumlah Tidak Valid!** Nominal transfer harus berupa angka di atas 0.');
+        return message.reply({ embeds: [embeds.warnEmbed('Jumlah Tidak Valid!', 'Nominal transfer harus berupa angka di atas 0.')] });
       }
 
       const res = economy.transferBalance(author.id, targetUser.id, guildId, amount);
@@ -165,12 +165,12 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'stock') {
       const ticker = args[0];
       if (!ticker) {
-        return message.reply('❌ **Ticker Harus Diisi!** Contoh: `.stock $GAME` atau `.stock $GENERAL`');
+        return message.reply({ embeds: [embeds.warnEmbed('Ticker Harus Diisi!', 'Contoh: `.stock $GAME` atau `.stock $GENERAL`')] });
       }
 
       const stock = stocks.getStock(guildId, ticker);
       if (!stock) {
-        return message.reply(`❌ **Saham Tidak Ditemukan!** Ticker \`${ticker}\` tidak ada di server ini.`);
+        return message.reply({ embeds: [embeds.warnEmbed('Saham Tidak Ditemukan!', `Ticker \`${ticker}\` tidak ada di server ini.`)] });
       }
 
       // Ambal 5 histori harga terakhir
@@ -194,10 +194,10 @@ async function handleEconomyCommands(message, client) {
       const shares = parseInt(args[1]);
 
       if (!ticker) {
-        return message.reply('❌ **Ticker Harus Diisi!** Contoh: `.buy $GAME 10`');
+        return message.reply({ embeds: [embeds.warnEmbed('Ticker Harus Diisi!', 'Contoh: `.buy $GAME 10`')] });
       }
       if (isNaN(shares) || shares <= 0) {
-        return message.reply('❌ **Jumlah Harus Valid!** Berapa lembar saham yang ingin dibeli? Contoh: `.buy $GAME 5`');
+        return message.reply({ embeds: [embeds.warnEmbed('Jumlah Harus Valid!', 'Berapa lembar saham yang ingin dibeli? Contoh: `.buy $GAME 5`')] });
       }
 
       const res = stocks.buyStock(author.id, guildId, ticker, shares);
@@ -214,10 +214,10 @@ async function handleEconomyCommands(message, client) {
       const shares = parseInt(args[1]);
 
       if (!ticker) {
-        return message.reply('❌ **Ticker Harus Diisi!** Contoh: `.sell $GAME 10`');
+        return message.reply({ embeds: [embeds.warnEmbed('Ticker Harus Diisi!', 'Contoh: `.sell $GAME 10`')] });
       }
       if (isNaN(shares) || shares <= 0) {
-        return message.reply('❌ **Jumlah Harus Valid!** Berapa lembar saham yang ingin dijual? Contoh: `.sell $GAME 5`');
+        return message.reply({ embeds: [embeds.warnEmbed('Jumlah Harus Valid!', 'Berapa lembar saham yang ingin dijual? Contoh: `.sell $GAME 5`')] });
       }
 
       const res = stocks.sellStock(author.id, guildId, ticker, shares);
@@ -232,12 +232,12 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'sellall') {
       const ticker = args[0];
       if (!ticker) {
-        return message.reply('❌ **Ticker Harus Diisi!** Contoh: `.sellall $GAME`');
+        return message.reply({ embeds: [embeds.warnEmbed('Ticker Harus Diisi!', 'Contoh: `.sellall $GAME`')] });
       }
 
       const stock = stocks.getStock(guildId, ticker);
       if (!stock) {
-        return message.reply(`❌ **Saham tidak terdaftar!**`);
+        return message.reply({ embeds: [embeds.warnEmbed('Saham Tidak Terdaftar!', `Ticker \`${ticker}\` tidak terdaftar di server ini.`)] });
       }
 
       const portfolio = database.get(
@@ -246,7 +246,7 @@ async function handleEconomyCommands(message, client) {
       );
 
       if (!portfolio || portfolio.shares <= 0) {
-        return message.reply(`❌ **Portofolio Kosong!** Anda tidak memiliki lembar saham pada ${ticker}.`);
+        return message.reply({ embeds: [embeds.warnEmbed('Portofolio Kosong!', `Anda tidak memiliki lembar saham pada ${ticker}.`)] });
       }
 
       const res = stocks.sellStock(author.id, guildId, ticker, portfolio.shares);
@@ -291,7 +291,7 @@ async function handleEconomyCommands(message, client) {
     const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit'];
     if (adminCommands.includes(commandName)) {
       if (author.id !== '436554535037698059') {
-        return message.reply('❌ **Akses Ditolak!** Perintah Admin ini hanya dapat digunakan oleh pemilik khusus (`ID: 436554535037698059`).');
+        return message.reply({ embeds: [embeds.accessDeniedEmbed('436554535037698059')] });
       }
     }
 
@@ -303,11 +303,15 @@ async function handleEconomyCommands(message, client) {
       const amount = parseInt(args[1] || args[0]);
 
       if (!targetUser || isNaN(amount) || amount <= 0) {
-        return message.reply('❌ **Format Salah!** Contoh: `.eco-give @user 5000`');
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.eco-give @user 5000`')] });
       }
 
       economy.addBalance(targetUser.id, guildId, amount, 'ADMIN_GIVE');
-      await message.reply(`✅ Berhasil memberikan **Rp ${amount.toLocaleString('id-ID')}** koin kepada <@${targetUser.id}>!`);
+      const embed = embeds.successEmbed(
+        'Koin Berhasil Diberikan!',
+        `Berhasil memberikan **Rp ${amount.toLocaleString('id-ID')}** koin kepada <@${targetUser.id}>!`
+      );
+      await message.reply({ embeds: [embed] });
       return true;
     }
 
@@ -319,14 +323,19 @@ async function handleEconomyCommands(message, client) {
       const amount = parseInt(args[1] || args[0]);
 
       if (!targetUser || isNaN(amount) || amount <= 0) {
-        return message.reply('❌ **Format Salah!** Contoh: `.eco-take @user 5000`');
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.eco-take @user 5000`')] });
       }
 
       try {
         economy.subtractBalance(targetUser.id, guildId, amount, 'ADMIN_TAKE');
-        await message.reply(`✅ Berhasil menarik **Rp ${amount.toLocaleString('id-ID')}** koin dari <@${targetUser.id}>!`);
+        const embed = embeds.successEmbed(
+          'Koin Berhasil Ditarik!',
+          `Berhasil menarik **Rp ${amount.toLocaleString('id-ID')}** koin dari <@${targetUser.id}>!`
+        );
+        await message.reply({ embeds: [embed] });
       } catch (err) {
-        await message.reply(`❌ **Gagal!** ${err.message}`);
+        const errorMsg = err.message.replace(/^❌\s*/, '');
+        await message.reply({ embeds: [embeds.errorEmbed('Gagal Menarik Koin!', errorMsg)] });
       }
       return true;
     }
@@ -339,7 +348,7 @@ async function handleEconomyCommands(message, client) {
       let ticker = args[1];
 
       if (!channel || !ticker) {
-        return message.reply('❌ **Format Salah!** Contoh: `.market-add #game-channel $GAME`');
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.market-add #game-channel $GAME`')] });
       }
 
       ticker = ticker.toUpperCase();
@@ -349,8 +358,8 @@ async function handleEconomyCommands(message, client) {
       const existChan = database.get('SELECT 1 FROM stocks WHERE guild_id = ? AND channel_id = ?', [guildId, channel.id]);
       const existTicker = database.get('SELECT 1 FROM stocks WHERE guild_id = ? AND stock_ticker = ?', [guildId, ticker]);
 
-      if (existChan) return message.reply('❌ Channel ini sudah terdaftar sebagai saham!');
-      if (existTicker) return message.reply('❌ Ticker ini sudah digunakan oleh saham lain!');
+      if (existChan) return message.reply({ embeds: [embeds.warnEmbed('Channel Sudah Terdaftar!', 'Channel ini sudah terdaftar sebagai instrumen saham!')] });
+      if (existTicker) return message.reply({ embeds: [embeds.warnEmbed('Ticker Sudah Digunakan!', 'Ticker ini sudah digunakan oleh saham lain!')] });
 
       database.run(
         `INSERT INTO stocks (channel_id, guild_id, stock_name, stock_ticker, current_price, previous_price, total_shares, available_shares) 
@@ -367,10 +376,10 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     if (commandName === 'market-remove') {
       const ticker = args[0];
-      if (!ticker) return message.reply('❌ **Format Salah!** Contoh: `.market-remove $GAME`');
+      if (!ticker) return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.market-remove $GAME`')] });
 
       const stock = stocks.getStock(guildId, ticker);
-      if (!stock) return message.reply('❌ Saham tidak ditemukan!');
+      if (!stock) return message.reply({ embeds: [embeds.warnEmbed('Saham Tidak Ditemukan!', `Ticker \`${ticker}\` tidak ditemukan di bursa.`)] });
 
       database.transaction(() => {
         // Hapus dari bursa
@@ -406,7 +415,7 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'eco-reset') {
       const targetUser = message.mentions.users.first();
       if (!targetUser) {
-        return message.reply('❌ **Format Salah!** Harap sebutkan user yang ingin direset.\nContoh: `.eco-reset @John`');
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan user yang ingin direset.\nContoh: `.eco-reset @John`')] });
       }
 
       database.transaction(() => {
@@ -451,7 +460,17 @@ async function handleEconomyCommands(message, client) {
 
   } catch (error) {
     console.error(`❌ [Command Error - .${commandName}]:`, error.message);
-    await message.reply(`❌ **Gagal memproses perintah!** ${error.message}`).catch(() => {});
+    const cleanedMessage = error.message.replace(/^❌\s*/, '');
+    
+    // Identifikasi apakah error karena bursa tutup atau lainnya
+    const isMarketClosed = error.message.includes('TUTUP') || error.message.includes('operasional');
+    const title = isMarketClosed ? 'Bursa Saham Sedang Tutup!' : 'Gagal Memproses Perintah!';
+    
+    const embed = isMarketClosed 
+      ? embeds.warnEmbed(title, cleanedMessage).setFooter({ text: 'Silakan bertransaksi kembali pada jam operasional (08:00 - 23:00 WIB).' })
+      : embeds.errorEmbed(title, cleanedMessage);
+      
+    await message.reply({ embeds: [embed] }).catch(() => {});
     return true;
   }
 
