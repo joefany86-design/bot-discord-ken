@@ -286,14 +286,19 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059
+    // ═══════════════════════════════════════════════════
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall'];
+    if (adminCommands.includes(commandName)) {
+      if (author.id !== '436554535037698059') {
+        return message.reply('❌ **Akses Ditolak!** Perintah Admin ini hanya dapat digunakan oleh pemilik khusus (`ID: 436554535037698059`).');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════
     // Perintah Admin: .eco-give @user <jumlah>
     // ═══════════════════════════════════════════════════
     if (commandName === 'eco-give') {
-      // Validasi izin ADMIN/MANAGE_GUILD
-      if (!message.member.permissions.has('ManageGuild') && !message.member.permissions.has('Administrator')) {
-        return message.reply('❌ Anda tidak memiliki izin Admin (`ManageGuild`) untuk menggunakan perintah ini!');
-      }
-
       const targetUser = message.mentions.users.first();
       const amount = parseInt(args[1] || args[0]);
 
@@ -310,10 +315,6 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .eco-take @user <jumlah>
     // ═══════════════════════════════════════════════════
     if (commandName === 'eco-take') {
-      if (!message.member.permissions.has('ManageGuild') && !message.member.permissions.has('Administrator')) {
-        return message.reply('❌ Anda tidak memiliki izin Admin (`ManageGuild`) untuk menggunakan perintah ini!');
-      }
-
       const targetUser = message.mentions.users.first();
       const amount = parseInt(args[1] || args[0]);
 
@@ -334,10 +335,6 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .market-add #channel <ticker>
     // ═══════════════════════════════════════════════════
     if (commandName === 'market-add') {
-      if (!message.member.permissions.has('ManageGuild') && !message.member.permissions.has('Administrator')) {
-        return message.reply('❌ Anda tidak memiliki izin Admin untuk menggunakan perintah ini!');
-      }
-
       const channel = message.mentions.channels.first();
       let ticker = args[1];
 
@@ -369,10 +366,6 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .market-remove <ticker>
     // ═══════════════════════════════════════════════════
     if (commandName === 'market-remove') {
-      if (!message.member.permissions.has('ManageGuild') && !message.member.permissions.has('Administrator')) {
-        return message.reply('❌ Anda tidak memiliki izin Admin untuk menggunakan perintah ini!');
-      }
-
       const ticker = args[0];
       if (!ticker) return message.reply('❌ **Format Salah!** Contoh: `.market-remove $GAME`');
 
@@ -387,6 +380,55 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply(`✅ Sukses menghapus instrumen saham **${ticker}** dari bursa.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .eco-reset @user
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'eco-reset') {
+      const targetUser = message.mentions.users.first();
+      if (!targetUser) {
+        return message.reply('❌ **Format Salah!** Harap sebutkan user yang ingin direset.\nContoh: `.eco-reset @John`');
+      }
+
+      database.transaction(() => {
+        // Hapus wallet user tersebut di guild ini
+        database.run('DELETE FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+        // Hapus portfolio saham user tersebut di guild ini
+        database.run('DELETE FROM portfolios WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+        // Hapus riwayat transaksi user tersebut di guild ini
+        database.run('DELETE FROM transactions WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+      })();
+
+      await message.reply(`⚠️ **Data Keuangan <@${targetUser.id}> Berhasil Direset!** Saldo kembali ke 0, streak harian direset, dan seluruh kepemilikan saham telah dihapus dari server ini.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .eco-resetall
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'eco-resetall') {
+      database.transaction(() => {
+        // Hapus wallets di guild ini
+        database.run('DELETE FROM wallets WHERE guild_id = ?', [guildId]);
+        // Hapus portfolios di guild ini
+        database.run('DELETE FROM portfolios WHERE guild_id = ?', [guildId]);
+        // Hapus transactions di guild ini
+        database.run('DELETE FROM transactions WHERE guild_id = ?', [guildId]);
+        // Hapus price history di guild ini
+        database.run('DELETE FROM price_history WHERE guild_id = ?', [guildId]);
+        
+        // Reset harga saham & jumlah lembar saham di guild ini ke awal
+        database.run(
+          `UPDATE stocks 
+           SET current_price = ?, previous_price = ?, available_shares = total_shares, activity_score = 0.0 
+           WHERE guild_id = ?`,
+          [config.market.INITIAL_PRICE, config.market.INITIAL_PRICE, guildId]
+        );
+      })();
+
+      await message.reply('⚠️ **Seluruh sistem keuangan server ini telah berhasil DIRESET!** Saldo semua user, portofolio, riwayat transaksi telah dihapus, dan harga saham dikembalikan ke harga awal.');
       return true;
     }
 
