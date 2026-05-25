@@ -19,8 +19,8 @@ module.exports = {
   // Zona waktu untuk penjadwalan cron
   TIMEZONE: 'Asia/Jakarta',
 
-  // Durasi voting dalam milidetik (2 menit)
-  VOTE_DURATION_MS: 2 * 60 * 1000,
+  // Durasi voting dalam milidetik (15 menit)
+  VOTE_DURATION_MS: 15 * 60 * 1000,
 
   // Cooldown perintah manual per user dalam milidetik (5 menit)
   MANUAL_COOLDOWN_MS: 5 * 60 * 1000,
