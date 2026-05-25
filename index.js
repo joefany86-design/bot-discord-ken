@@ -16,6 +16,7 @@ const path = require('path');
 const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
 const { initIceBreakers, handleIceBreakerCommand } = require('./icebreakers');
+const { initStockMarket, handleEconomyChat, handleEconomyCommands } = require('./stockmarket');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -393,6 +394,9 @@ client.once('ready', () => {
 
   // ICE BREAKER OTOMATIS (TRUTH OR DARE, WOULD YOU RATHER)
   initIceBreakers(client);
+
+  // STOCK MARKET & EKONOMI SERVER ("RUPIAH SERVER")
+  initStockMarket(client);
 });
 
 
@@ -515,11 +519,18 @@ client.on('messageCreate', async message => {
   const processed = await handleLinkMirroring(message, client);
   if (processed) return;
 
+  // Proses perolehan koin pasif dari aktivitas chat & kontribusi skor keaktifan bursa
+  await handleEconomyChat(message);
+
   if (!message.content.startsWith('.')) return;
 
   // Cek perintah Ice Breaker terlebih dahulu
   const iceBreakerHandled = await handleIceBreakerCommand(message, client);
   if (iceBreakerHandled) return;
+
+  // Cek perintah Ekonomi / Stock Market
+  const economyHandled = await handleEconomyCommands(message, client);
+  if (economyHandled) return;
 
 
 
