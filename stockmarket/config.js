@@ -13,6 +13,9 @@ module.exports = {
   // Jika di Railway, user bisa memetakan volume persisten ke /data dan menyetel DATABASE_PATH=/data/economy.db
   DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../data/economy.db'),
 
+  // ID Channel khusus untuk Laporan Harian & Pengumuman Bursa Saham
+  REPORT_CHANNEL_ID: process.env.REPORT_CHANNEL_ID || '1478566460124041428',
+
   // Sistem Earning Poin (Rupiah Server)
   economy: {
     MSG_MIN_WORDS: 2,           // Minimal kata agar dapat koin
@@ -32,6 +35,11 @@ module.exports = {
     // Pajak / Biaya (Economy Sinks)
     TRADE_TAX_PERCENT: 5,       // Pajak 5% saat menjual saham (masuk kas server/dihapus)
     TRANSFER_TAX_PERCENT: 2,    // Pajak 2% saat transfer koin antar member
+
+    // Koin Keaktifan Voice Channel (Voice Earnings)
+    VOICE_EARN_INTERVAL_MS: 60 * 1000, // Durasi pengecekan keaktifan (setiap 1 menit)
+    VOICE_EARN_AMOUNT: 2,              // Koin yang didapatkan per menit
+    VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin (anti-farming)
   },
 
   // Logika & Aturan Stock Market

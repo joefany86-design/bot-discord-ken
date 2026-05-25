@@ -288,7 +288,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall'];
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit'];
     if (adminCommands.includes(commandName)) {
       if (author.id !== '436554535037698059') {
         return message.reply('❌ **Akses Ditolak!** Perintah Admin ini hanya dapat digunakan oleh pemilik khusus (`ID: 436554535037698059`).');
@@ -380,6 +380,23 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply(`✅ Sukses menghapus instrumen saham **${ticker}** dari bursa.`);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .market-reinit
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'market-reinit') {
+      database.transaction(() => {
+        // Hapus seluruh saham dan history/portfolio terkait di server ini
+        database.run('DELETE FROM stocks WHERE guild_id = ?', [guildId]);
+        database.run('DELETE FROM price_history WHERE guild_id = ?', [guildId]);
+        database.run('DELETE FROM portfolios WHERE guild_id = ?', [guildId]);
+      })();
+
+      // Jalankan ulang registrasi default stocks kustom
+      stocks.initDefaultStocks(guild);
+
+      await message.reply('✅ **Sukses Re-inisialisasi Saham!** Seluruh saham lama telah dihapus dan bursa saham baru telah berhasil dikonfigurasi dengan channel & ticker default kustom Anda.');
       return true;
     }
 

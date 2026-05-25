@@ -102,10 +102,16 @@ function initScheduler(client) {
         embed.addFields({ name: '👑 Top 3 Investor Terkaya Server', value: topList, inline: false });
       }
 
-      // Kirim laporan ke channel icebreaker default atau system channel guild
-      const targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
-        c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
-      );
+      // Kirim laporan ke channel khusus jika diset, atau fallback ke channel default/system channel guild
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
 
       if (targetChannel) {
         targetChannel.send({ embeds: [embed] }).catch(err => {
@@ -127,10 +133,16 @@ function initScheduler(client) {
 
       console.log(`💸 [Scheduler] Dividen berhasil didistribusikan ke ${distributions.length} investor di server ${guild.name}.`);
 
-      // Cari channel utama untuk posting notifikasi dividen
-      const targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
-        c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
-      );
+      // Cari channel utama untuk posting notifikasi dividen (prioritaskan REPORT_CHANNEL_ID jika diset)
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
 
       if (targetChannel) {
         const embed = new EmbedBuilder()
@@ -149,6 +161,43 @@ function initScheduler(client) {
   }, {
     timezone: 'Asia/Jakarta'
   });
+
+  // 4. Voice Active Earnings: Memberikan koin keaktifan setiap 1 menit bagi yang berada di Voice Channel
+  setInterval(() => {
+    console.log('⏰ [Scheduler] Memproses koin keaktifan Voice Channel...');
+    const economy = require('./economy');
+
+    client.guilds.cache.forEach(guild => {
+      guild.channels.cache.forEach(channel => {
+        // Hanya proses channel suara (voice channel & stage channel)
+        if (channel.isVoiceBased()) {
+          // Cari seluruh member manusia (bukan bot) di channel ini
+          const activeMembers = channel.members.filter(member => {
+            if (member.user.bot) return false;
+            
+            // Hindari AFK farming: abaikan jika sedang deafen (tuli) baik self atau server
+            if (member.voice.selfDeaf || member.voice.serverDeaf) return false;
+            
+            return true;
+          });
+
+          // Cek syarat minimal jumlah member di voice channel (opsional, jika diset > 1)
+          const minMembers = config.economy.VOICE_MIN_MEMBERS !== undefined ? config.economy.VOICE_MIN_MEMBERS : 2;
+          if (activeMembers.size < minMembers) return;
+
+          // Berikan koin ke masing-masing member yang aktif
+          const earnAmount = config.economy.VOICE_EARN_AMOUNT !== undefined ? config.economy.VOICE_EARN_AMOUNT : 2;
+          activeMembers.forEach(member => {
+            try {
+              economy.addBalance(member.id, guild.id, earnAmount, 'VOICE', channel.id);
+            } catch (err) {
+              console.error(`❌ Gagal memproses Voice Earn untuk ${member.id}:`, err.message);
+            }
+          });
+        }
+      });
+    });
+  }, config.economy.VOICE_EARN_INTERVAL_MS || 60000);
 
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }

@@ -15,46 +15,76 @@ function initDefaultStocks(guild) {
 
   if (existingCount > 0) return; // Sudah terinisialisasi
 
-  // Cari 4 channel teks pertama
-  const textChannels = Array.from(guild.channels.cache.values())
-    .filter(c => c.type === ChannelType.GuildText)
-    .slice(0, 4);
+  const allTextChannels = Array.from(guild.channels.cache.values())
+    .filter(c => c.type === ChannelType.GuildText);
 
-  if (textChannels.length === 0) return;
+  if (allTextChannels.length === 0) return;
 
-  db.transaction(() => {
-    textChannels.forEach((chan, idx) => {
-      // Buat ticker: Ambil 3-4 huruf pertama nama channel, jadikan uppercase
+  // Pemetaan channel khusus yang diminta user
+  const predefined = [
+    { key: 'channel-bot', ticker: '$CHAN' },
+    { key: 'living-room', ticker: '$LIVG' },
+    { key: 'spill-the-tea', ticker: '$STE' },
+    { key: 'luxury-gallery', ticker: '$LUX' }
+  ];
+
+  const selectedChannels = [];
+  const registeredTickers = new Set();
+
+  // 1. Coba cari channel yang cocok dengan kata kunci khusus
+  predefined.forEach(p => {
+    const found = allTextChannels.find(c => c.name.toLowerCase().includes(p.key));
+    if (found) {
+      selectedChannels.push({ channel: found, ticker: p.ticker });
+      registeredTickers.add(p.ticker);
+    }
+  });
+
+  // 2. Jika kurang dari 4 channel, ambil channel teks lain sebagai cadangan (fallback)
+  if (selectedChannels.length < 4) {
+    allTextChannels.forEach(chan => {
+      // Cek apakah channel ini sudah dimasukkan
+      if (selectedChannels.some(s => s.channel.id === chan.id)) return;
+      if (selectedChannels.length >= 4) return;
+
+      // Buat ticker otomatis
       let cleanName = chan.name.replace(/[^a-zA-Z0-9]/g, '');
-      let ticker = '$' + (cleanName.substring(0, 4) || `CHAN${idx}`).toUpperCase();
-      
-      // Pastikan ticker unik di server
+      let ticker = '$' + (cleanName.substring(0, 4) || 'CHAN').toUpperCase();
+
+      // Pastikan ticker unik
       let isDuplicate = true;
       let suffix = 1;
       while (isDuplicate) {
-        const dup = db.get('SELECT 1 FROM stocks WHERE guild_id = ? AND stock_ticker = ?', [guildId, ticker]);
-        if (!dup) {
+        if (!registeredTickers.has(ticker)) {
           isDuplicate = false;
         } else {
-          ticker = '$' + (cleanName.substring(0, 3) || `CH`).toUpperCase() + suffix;
+          ticker = '$' + (cleanName.substring(0, 3) || 'CH').toUpperCase() + suffix;
           suffix++;
         }
       }
 
+      selectedChannels.push({ channel: chan, ticker });
+      registeredTickers.add(ticker);
+    });
+  }
+
+  // 3. Masukkan ke database
+  db.transaction(() => {
+    selectedChannels.forEach(({ channel, ticker }) => {
       db.run(
         `INSERT INTO stocks (channel_id, guild_id, stock_name, stock_ticker, current_price, previous_price, total_shares, available_shares) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [chan.id, guildId, chan.name, ticker, config.market.INITIAL_PRICE, config.market.INITIAL_PRICE, 1000, 1000]
+        [channel.id, guildId, channel.name, ticker, config.market.INITIAL_PRICE, config.market.INITIAL_PRICE, 1000, 1000]
       );
       
       // Catat harga awal di history
       db.run(
         `INSERT INTO price_history (channel_id, guild_id, price, activity_score) 
          VALUES (?, ?, ?, 0.0)`,
-        [chan.id, guildId, config.market.INITIAL_PRICE]
+        [channel.id, guildId, config.market.INITIAL_PRICE]
       );
 
-      console.log(`📈 Terdaftar saham default: ${ticker} untuk channel #${chan.name} di guild ${guild.name}`);
+      console.log(`📈 Terdaftar saham default: ${ticker} untuk channel #${channel.name} di guild ${guild.name}`);
     });
   })();
 }
