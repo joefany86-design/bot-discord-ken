@@ -399,7 +399,7 @@ function cleanupResources(guildId) {
 // ═══════════════════════════════════════════════════
 // BOT READY EVENT
 // ═══════════════════════════════════════════════════
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`══════════════════════════════════════`);
   console.log(`  Bot online sebagai ${client.user.tag}`);
   console.log(`  Servers: ${client.guilds.cache.size}`);
