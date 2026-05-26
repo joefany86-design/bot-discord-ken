@@ -737,26 +737,35 @@ async function handleEconomyCommands(message, client) {
       const price = parseInt(args[1]);
 
       if (!role) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role yang ingin dijual.\nFormat: `.shop-add @role <harga> [deskripsi...]`')] });
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role yang ingin dijual.\nFormat: `.shop-add @role <harga> [tier] [deskripsi...]`\nContoh: `.shop-add @VIP 10000 EPIC Member VIP Server`')] });
       }
 
       if (isNaN(price) || price <= 0) {
         return message.reply({ embeds: [embeds.warnEmbed('Harga Tidak Valid!', 'Tentukan harga role berupa angka di atas 0.\nContoh: `.shop-add @VIP 5000`')] });
       }
 
-      // Menentukan tier secara otomatis berdasarkan harga (gamified auto-tier)
+      // Menentukan tier secara manual jika diberikan, atau otomatis berdasarkan harga (gamified auto-tier)
       let tier = 'COMMON';
-      if (price > 50000) {
-        tier = 'LEGENDARY';
-      } else if (price > 15000) {
-        tier = 'EPIC';
-      } else if (price > 5000) {
-        tier = 'RARE';
+      let descStartIndex = 2;
+
+      const inputTier = args[2]?.toUpperCase();
+      if (inputTier && ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(inputTier)) {
+        tier = inputTier;
+        descStartIndex = 3;
+      } else {
+        // Otomatis berdasarkan harga jika tier manual tidak didefinisikan
+        if (price > 50000) {
+          tier = 'LEGENDARY';
+        } else if (price > 15000) {
+          tier = 'EPIC';
+        } else if (price > 5000) {
+          tier = 'RARE';
+        }
       }
 
       const stock = -1; // Bawaan: tanpa batas
       const isGacha = 1; // Bawaan: dimasukkan ke pool gacha
-      const description = args.slice(2).join(' ') || null;
+      const description = args.slice(descStartIndex).join(' ') || null;
 
       // Cek apakah role sudah ada di toko
       const exist = database.get('SELECT 1 FROM shop_items WHERE guild_id = ? AND role_id = ?', [guildId, role.id]);
@@ -775,7 +784,7 @@ async function handleEconomyCommands(message, client) {
         `Sukses mendaftarkan **${role.name}** ke toko role server Kosan 1A!\n\n` +
         `🎭 **Role:** <@&${role.id}>\n` +
         `💵 **Harga:** **Rp ${price.toLocaleString('id-ID')}**\n` +
-        `🏷️ **Tier (Auto):** \`${tier}\`\n` +
+        `🏷️ **Tier / Rarity:** \`${tier}\` ${descStartIndex === 3 ? '(Manual)' : '(Auto-Price)'}\n` +
         `📦 **Stok:** \`Tanpa Batas (Unlimited)\`\n` +
         `🎲 **Masuk Pool Gacha:** \`YA (Aktif)\`\n` +
         `📝 **Deskripsi:** *${description || 'Tidak ada'}*`
