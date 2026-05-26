@@ -15,8 +15,8 @@ const fs = require('fs');
 const path = require('path');
 const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
-const { initIceBreakers, handleIceBreakerCommand } = require('./icebreakers');
 const { initStockMarket, handleEconomyChat, handleEconomyCommands } = require('./stockmarket');
+const { handleVoiceTodCommand, handleVoiceStateUpdate } = require('./voice_events');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -80,6 +80,11 @@ const musicVolumes = new Map();       // Desimal volume (0.0 - 1.0) per server (
 const musicLoops = new Map();         // Status loop folder per server (default true)
 const activeResources = new Map();    // AudioResource aktif per server (untuk update volume instan)
 const activeTtsPlayers = new Map();   // AudioPlayer TTS aktif per server
+
+// Bagikan state ke client agar bisa diakses oleh sub-modul
+client.musicPlayers = musicPlayers;
+client.activeTtsPlayers = activeTtsPlayers;
+client.lockedChannels = lockedChannels;
 
 // Helper untuk memindai file musik dari folder music/
 function getMusicFiles() {
@@ -304,6 +309,7 @@ function speakText(connection, text, guildId, lang = 'id') {
     playNextChunk();
   });
 }
+client.speakText = speakText;
 
 // Event handler kustom untuk memicu pemutaran TTS dari modul lain (seperti toko role)
 client.on('playTtsEvent', async ({ guildId, text, lang }) => {
@@ -403,9 +409,6 @@ client.once('ready', () => {
 
   // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
   initGreetings(client);
-
-  // ICE BREAKER OTOMATIS (TRUTH OR DARE, WOULD YOU RATHER)
-  initIceBreakers(client);
 
   // STOCK MARKET & EKONOMI SERVER ("RUPIAH SERVER")
   initStockMarket(client);
@@ -511,6 +514,10 @@ client.on('interactionCreate', async interaction => {
         `👉 **.volume <0-100>** - Mengatur tingkat volume musik.`,
         `👉 **.loop** - Mengaktifkan/menonaktifkan loop folder lagu.`,
         `👉 **.stop** - Menghentikan musik dan mereset antrean.`,
+        `\n🎲 **Voice Channel Event (Sprint 5)**`,
+        `👉 **.truthordare** atau **.tod** - Bermain Truth or Dare di Voice Channel (2000+ pertanyaan klasik).`,
+        `👉 **.tod status** - Melihat statistik ToD kamu.`,
+        `👉 **.tod announce** - Menyiarkan pengumuman peluncuran game ToD (Admin).`,
         `\n🔒 **Mekanisme Proteksi Saluran**`,
         `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leave** yang dapat membuka kuncinya.`
       ].join('\n'))
@@ -536,9 +543,9 @@ client.on('messageCreate', async message => {
 
   if (!message.content.startsWith('.')) return;
 
-  // Cek perintah Ice Breaker terlebih dahulu
-  const iceBreakerHandled = await handleIceBreakerCommand(message, client);
-  if (iceBreakerHandled) return;
+  // Cek perintah Voice Truth or Dare (Sprint 5)
+  const voiceTodHandled = await handleVoiceTodCommand(message, client);
+  if (voiceTodHandled) return;
 
   // Cek perintah Ekonomi / Stock Market
   const economyHandled = await handleEconomyCommands(message, client);
@@ -750,6 +757,10 @@ client.on('messageCreate', async message => {
         `👉 **.volumelow <0-100>** - Mengatur tingkat volume musik.`,
         `👉 **.looplow** - Mengaktifkan/menonaktifkan loop folder lagu.`,
         `👉 **.stoplow** - Menghentikan musik dan mereset antrean.`,
+        `\n🎲 **Voice Channel Event (Sprint 5)**`,
+        `👉 **.truthordare** atau **.tod** - Bermain Truth or Dare di Voice Channel (2000+ pertanyaan klasik).`,
+        `👉 **.tod status** - Melihat statistik ToD kamu.`,
+        `👉 **.tod announce** - Menyiarkan pengumuman peluncuran game ToD (Admin).`,
         `\n🔒 **Mekanisme Proteksi Saluran**`,
         `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leavelow** yang dapat membuka kuncinya.`
       ].join('\n'))
@@ -967,6 +978,9 @@ client.on('messageCreate', async message => {
 // VOICE STATE UPDATE HANDLER (Proteksi Saluran)
 // ═══════════════════════════════════════════════════
 client.on('voiceStateUpdate', async (oldState, newState) => {
+  // Pemicu Auto Event Voice Channel (Sprint 5)
+  handleVoiceStateUpdate(oldState, newState, client);
+
   const botId = client.user?.id;
   if (!botId) return;
 
