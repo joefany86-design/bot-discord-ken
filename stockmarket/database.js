@@ -100,7 +100,23 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market berhasil diinisialisasi.');
+  // 6. Shop Items (Toko Role Discord Gamified)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shop_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      role_id TEXT NOT NULL,
+      role_name TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      tier TEXT DEFAULT 'COMMON',
+      stock INTEGER DEFAULT -1,
+      is_gacha INTEGER DEFAULT 0,
+      description TEXT,
+      created_at INTEGER DEFAULT (strftime('%s','now'))
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market & Toko Role berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup

@@ -290,5 +290,185 @@ module.exports = {
       )
       .setFooter({ text: 'Rupiah Server • Proteksi Admin' })
       .setTimestamp();
+  },
+
+  // 12. Embed Katalog Toko Role (.shop)
+  shopEmbed(items, wallet) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🎮 TOKO ROLE DISCORD — RUPIAH SERVER')
+      .setDescription(
+        `Selamat datang di **Role Market**! Tukarkan koin **${config.CURRENCY_NAME}** Anda dengan role prestige yang bergengsi!\n\n` +
+        `💵 **Saldo Anda:** **${formatCurrency(wallet.balance)}**\n` +
+        `🎲 **Misteri Gacha:** Ketik \`.gacha-role\` seharga **Rp 1.000** untuk berkesempatan memenangkan role secara acak!`
+      );
+
+    const TIER_EMOJIS = {
+      COMMON: '🟢',
+      RARE: '🔵',
+      EPIC: '🟣',
+      LEGENDARY: '👑'
+    };
+
+    if (items.length === 0) {
+      embed.addFields({ name: '🚫 Toko Kosong', value: 'Belum ada role yang dijual saat ini. Silakan hubungi admin!' });
+    } else {
+      // Kelompokkan item berdasarkan Tier
+      const grouped = { LEGENDARY: [], EPIC: [], RARE: [], COMMON: [] };
+      items.forEach(item => {
+        const t = item.tier ? item.tier.toUpperCase() : 'COMMON';
+        if (grouped[t]) grouped[t].push(item);
+        else grouped.COMMON.push(item);
+      });
+
+      // Tampilkan berdasarkan urutan kelangkaan (Legendary teratas)
+      ['LEGENDARY', 'EPIC', 'RARE', 'COMMON'].forEach(tierName => {
+        const tierItems = grouped[tierName];
+        if (tierItems.length > 0) {
+          let content = '';
+          tierItems.forEach(item => {
+            const emoji = TIER_EMOJIS[tierName] || '🟢';
+            
+            // Format info stok
+            let stockInfo = '`Tanpa Batas`';
+            if (item.stock !== -1) {
+              if (item.stock <= 0) {
+                stockInfo = '🔴 **[ SOLD OUT ]**';
+              } else {
+                stockInfo = `⚠️ \`Sisa ${item.stock} slot\``;
+              }
+            }
+
+            const gachaStatus = item.is_gacha ? ' 🎲 *Gacha Available*' : '';
+            const desc = item.description ? `\n   *“${item.description}”*` : '';
+
+            content += `🆔 **\`ID: ${item.id}\`** | **${item.role_name}**\n` +
+                       `👉 Harga: **${formatCurrency(item.price)}** | Stok: ${stockInfo}${gachaStatus}${desc}\n\n`;
+          });
+
+          embed.addFields({
+            name: `${TIER_EMOJIS[tierName]} === KLASIFIKASI ${tierName} ===`,
+            value: content.trim(),
+            inline: false
+          });
+        }
+      });
+    }
+
+    embed.setFooter({ text: 'Beli role dengan ketik: .buy-role <ID> atau .shop-buy <ID>' }).setTimestamp();
+    return embed;
+  },
+
+  // 13. Embed Sukses Pembelian Role (.buy-role)
+  rolePurchaseSuccessEmbed(user, roleName, price, newBalance, tier) {
+    const TIER_COLORS = {
+      COMMON: COLORS.SUCCESS,
+      RARE: COLORS.INFO,
+      EPIC: COLORS.PURPLE,
+      LEGENDARY: COLORS.WARN
+    };
+
+    const TIER_EMOJIS = {
+      COMMON: '🟢',
+      RARE: '🔵',
+      EPIC: '🟣',
+      LEGENDARY: '👑'
+    };
+
+    const tierColor = TIER_COLORS[tier] || COLORS.SUCCESS;
+    const tierEmoji = TIER_EMOJIS[tier] || '🟢';
+
+    return new EmbedBuilder()
+      .setColor(tierColor)
+      .setTitle(`${tierEmoji} PEMBELIAN ROLE BERHASIL!`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `Selamat **${user.username}**! Transaksi penukaran koin berhasil diproses.\n\n` +
+        `🎭 **Role Diperoleh:** **${roleName}**\n` +
+        `🏷️ **Tingkat Kelangkaan:** \`${tierEmoji} ${tier}\`\n` +
+        `💵 **Harga Penukaran:** **${formatCurrency(price)}**\n\n` +
+        `📉 Koin Anda telah didebit secara otomatis. Sisa saldo dompet Anda sekarang adalah **${formatCurrency(newBalance)}**.`
+      )
+      .setFooter({ text: 'Role telah dipasangkan ke profil Discord Anda!' })
+      .setTimestamp();
+  },
+
+  // 14. Embed Pengumuman Heboh Sultan (EPIC & LEGENDARY)
+  broadcastMegaEmbed(user, roleName, price, tier) {
+    const TIER_COLORS = {
+      EPIC: COLORS.PURPLE,
+      LEGENDARY: COLORS.WARN
+    };
+
+    const TIER_EMOJIS = {
+      EPIC: '🟣',
+      LEGENDARY: '👑'
+    };
+
+    const tierColor = TIER_COLORS[tier] || COLORS.PURPLE;
+    const tierEmoji = TIER_EMOJIS[tier] || '👑';
+
+    return new EmbedBuilder()
+      .setColor(tierColor)
+      .setTitle(`🚨 ${tierEmoji} ANGGOTA PRESTIGE BARU TELAH LAHIR! ${tierEmoji} 🚨`)
+      .setDescription(
+        `👑 **SULTAN SERVER BARU SAJA BERAKSI!**\n\n` +
+        `Mari berikan penghormatan tinggi kepada <@${user.id}> yang telah menukarkan total **${formatCurrency(price)}** untuk mengklaim role bergengsi:\n\n` +
+        `🌟 **${roleName}** (\`${tierEmoji} ${tier} CLASS\`)\n\n` +
+        `*Aura kekayaan dan prestisenya kini terpancar di seluruh server! Hormati dia!* 🎉🚀`
+      )
+      .setFooter({ text: 'Rupiah Server • Prestige Broadcast' })
+      .setTimestamp();
+  },
+
+  // 15. Embed Hasil Gacha Role Misteri (.gacha-role)
+  gachaResultEmbed(user, item, price, newBalance, isWin) {
+    const embed = new EmbedBuilder()
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }));
+
+    const TIER_COLORS = {
+      COMMON: COLORS.SUCCESS,
+      RARE: COLORS.INFO,
+      EPIC: COLORS.PURPLE,
+      LEGENDARY: COLORS.WARN
+    };
+
+    const TIER_EMOJIS = {
+      COMMON: '🟢',
+      RARE: '🔵',
+      EPIC: '🟣',
+      LEGENDARY: '👑'
+    };
+
+    if (isWin && item) {
+      const tierColor = TIER_COLORS[item.tier] || COLORS.SUCCESS;
+      const tierEmoji = TIER_EMOJIS[item.tier] || '🟢';
+
+      embed
+        .setColor(tierColor)
+        .setTitle(`🎰 GACHA BERHASIL! JACKPOT DI TANGAN! 🎰`)
+        .setDescription(
+          `**${user.username}** baru saja melakukan roll Gacha seharga **${formatCurrency(price)}**!\n\n` +
+          `🎰 **HASIL ROLL:**\n` +
+          `🌟 **${item.role_name}**\n` +
+          `🏷️ **Kelangkaan:** \`${tierEmoji} ${item.tier}\`\n\n` +
+          `*Keberuntungan berpihak padamu! Role ini telah ditambahkan secara otomatis ke profilmu!* 😎\n` +
+          `📉 Sisa saldo Anda: **${formatCurrency(newBalance)}**`
+        );
+    } else {
+      embed
+        .setColor(COLORS.ERROR)
+        .setTitle(`🎰 ROLLING GACHA... DAN AMSYONG! 🎰`)
+        .setDescription(
+          `**${user.username}** baru saja melakukan roll Gacha seharga **${formatCurrency(price)}**!\n\n` +
+          `❌ **HASIL ROLL:**\n` +
+          `**ZONK / MAAF!** Keberuntungan belum memihak padamu kali ini. Kamu mendapatkan ampas! 😭\n\n` +
+          `*Jangan menyerah! Coba lagi dan kumpulkan koin saham lebih banyak untuk memutar gacha berikutnya!* 💪\n` +
+          `📉 Sisa saldo Anda: **${formatCurrency(newBalance)}**`
+        );
+    }
+
+    return embed.setTimestamp();
   }
 };
+

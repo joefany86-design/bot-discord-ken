@@ -286,11 +286,268 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059
+    // Perintah: .shop / .rolemarket
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit'];
+    if (commandName === 'shop' || commandName === 'rolemarket') {
+      const wallet = economy.getWallet(author.id, guildId);
+      const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+      const embed = embeds.shopEmbed(items, wallet);
+      await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .buy-role / .shop-buy <id>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'buy-role' || commandName === 'shop-buy') {
+      const id = parseInt(args[0]);
+      if (isNaN(id)) {
+        return message.reply({ embeds: [embeds.warnEmbed('ID Tidak Valid!', 'Harap sebutkan ID item toko yang ingin dibeli.\nContoh: `.buy-role 1`')] });
+      }
+
+      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      if (!item) {
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak terdaftar di toko server ini.`)] });
+      }
+
+      if (item.stock !== -1 && item.stock <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Stok Habis!', `Role **${item.role_name}** telah habis terjual (Sold Out)!`)] });
+      }
+
+      const discordRole = guild.roles.cache.get(item.role_id) || await guild.roles.fetch(item.role_id).catch(() => null);
+      if (!discordRole) {
+        return message.reply({ embeds: [embeds.errorEmbed('Role Tidak Ditemukan!', 'Role ini tidak lagi eksis di server Discord Anda. Silakan hubungi admin!')] });
+      }
+
+      const memberObj = message.member || await guild.members.fetch(author.id).catch(() => null);
+      if (!memberObj) {
+        return message.reply({ embeds: [embeds.errorEmbed('Gagal Memproses!', 'Gagal mengambil data profil anggota Discord Anda.')] });
+      }
+
+      if (memberObj.roles.cache.has(item.role_id)) {
+        return message.reply({ embeds: [embeds.warnEmbed('Sudah Memiliki Role!', `Anda sudah memiliki role **${item.role_name}** di server ini!`)] });
+      }
+
+      const wallet = economy.getWallet(author.id, guildId);
+      if (wallet.balance < item.price) {
+        return message.reply({ embeds: [embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`)] });
+      }
+
+      // Mulai penukaran: Tambahkan role dulu ke user
+      try {
+        await memberObj.roles.add(discordRole);
+      } catch (roleErr) {
+        console.error('❌ Gagal menambahkan role ke member:', roleErr.message);
+        return message.reply({ embeds: [embeds.errorEmbed('Hak Akses Bot Tidak Cukup!', 'Bot gagal menyematkan role ke akun Anda. Pastikan posisi role bot berada di atas role yang ingin dibeli di pengaturan integrasi server Discord!')] });
+      }
+
+      // Kurangi koin & stok di database
+      let finalWallet;
+      try {
+        database.transaction(() => {
+          economy.subtractBalance(author.id, guildId, item.price, 'SHOP_BUY', null);
+          if (item.stock !== -1) {
+            database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [item.id, guildId]);
+          }
+        })();
+        finalWallet = economy.getWallet(author.id, guildId);
+      } catch (dbErr) {
+        // Rollback role jika database gagal
+        await memberObj.roles.remove(discordRole).catch(() => {});
+        throw dbErr;
+      }
+
+      const successEmbed = embeds.rolePurchaseSuccessEmbed(author, item.role_name, item.price, finalWallet.balance, item.tier);
+      await message.reply({ embeds: [successEmbed] });
+
+      // Broadcast Heboh jika tingkat EPIC / LEGENDARY
+      if (item.tier === 'EPIC' || item.tier === 'LEGENDARY') {
+        const broadcastEmbed = embeds.broadcastMegaEmbed(author, item.role_name, item.price, item.tier);
+        const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+        if (reportChannel) {
+          await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+        } else {
+          await message.channel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+        }
+
+        // Picu suara TTS jika bot tersambung di voice channel
+        client.emit('playTtsEvent', {
+          guildId,
+          text: `Perhatian semuanya! Sultan ${author.username} baru saja membeli role ${item.tier} ${item.role_name}! Mari berikan penghormatan tinggi!`,
+          lang: 'id'
+        });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .gacha-role
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'gacha-role') {
+      const gachaCost = 1000;
+      const wallet = economy.getWallet(author.id, guildId);
+
+      if (wallet.balance < gachaCost) {
+        return message.reply({ embeds: [embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`)] });
+      }
+
+      const gachaItems = database.all('SELECT * FROM shop_items WHERE guild_id = ? AND is_gacha = 1', [guildId]);
+      if (gachaItems.length === 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Gacha Tidak Tersedia!', 'Belum ada role gacha yang dikonfigurasi di server ini. Silakan admin menambahkan role gacha terlebih dahulu!')] });
+      }
+
+      // Animasi rolling menegangkan
+      const rollingMsg = await message.reply('🎰 **[ GACHA START ]** Memulai putaran mesin gacha... ⏳');
+
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      await delay(1500);
+      await rollingMsg.edit('🎰 **[ 🎰 ROLLING... ]** Menghitung probabilitas keberuntungan... 🎲');
+      await delay(1500);
+
+      // Probabilitas Gacha
+      // 40% ZONK, 60% MENANG
+      const roll = Math.random() * 100;
+      if (roll < 40) {
+        // ZONK! Kurangi koin
+        let finalWallet;
+        database.transaction(() => {
+          economy.subtractBalance(author.id, guildId, gachaCost, 'GACHA_SPEND', null);
+        })();
+        finalWallet = economy.getWallet(author.id, guildId);
+
+        const zonkEmbed = embeds.gachaResultEmbed(author, null, gachaCost, finalWallet.balance, false);
+        await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
+        return true;
+      }
+
+      // MENANG! Kelompokkan berdasarkan Tier kelayakan
+      const legendary = gachaItems.filter(i => i.tier === 'LEGENDARY' && (i.stock === -1 || i.stock > 0));
+      const epic = gachaItems.filter(i => i.tier === 'EPIC' && (i.stock === -1 || i.stock > 0));
+      const rare = gachaItems.filter(i => i.tier === 'RARE' && (i.stock === -1 || i.stock > 0));
+      const common = gachaItems.filter(i => i.tier === 'COMMON' && (i.stock === -1 || i.stock > 0));
+
+      const tierRoll = Math.random() * 100;
+      let selectedItem = null;
+
+      if (tierRoll < 3 && legendary.length > 0) {
+        selectedItem = legendary[Math.floor(Math.random() * legendary.length)];
+      } else if (tierRoll < 15 && epic.length > 0) {
+        selectedItem = epic[Math.floor(Math.random() * epic.length)];
+      } else if (tierRoll < 40 && rare.length > 0) {
+        selectedItem = rare[Math.floor(Math.random() * rare.length)];
+      } else if (common.length > 0) {
+        selectedItem = common[Math.floor(Math.random() * common.length)];
+      } else {
+        // Fallback jika tier pilihan kosong, ambil acak yang tersedia
+        const available = gachaItems.filter(i => i.stock === -1 || i.stock > 0);
+        if (available.length > 0) {
+          selectedItem = available[Math.floor(Math.random() * available.length)];
+        }
+      }
+
+      if (!selectedItem) {
+        // Jika tidak ada item yang stoknya memadai
+        await rollingMsg.edit('❌ Gagal memutar gacha karena seluruh stok role gacha habis terjual!');
+        return true;
+      }
+
+      const discordRole = guild.roles.cache.get(selectedItem.role_id) || await guild.roles.fetch(selectedItem.role_id).catch(() => null);
+      if (!discordRole) {
+        await rollingMsg.edit('❌ Role hadiah gacha sudah tidak ditemukan lagi di Discord server ini. Hubungi admin!');
+        return true;
+      }
+
+      const memberObj = message.member || await guild.members.fetch(author.id).catch(() => null);
+      if (!memberObj) {
+        await rollingMsg.edit('❌ Gagal mengambil data profil anggota Discord Anda.');
+        return true;
+      }
+
+      // Cek jika user sudah punya role tersebut -> beri cashback koin Rp 500
+      const alreadyHas = memberObj.roles.cache.has(selectedItem.role_id);
+      let finalWallet;
+
+      if (alreadyHas) {
+        database.transaction(() => {
+          // Hanya kurangi koin bersih (gachaCost - cashback)
+          const netCost = gachaCost - 500;
+          economy.subtractBalance(author.id, guildId, netCost, 'GACHA_SPEND_CASHBACK', null);
+        })();
+        finalWallet = economy.getWallet(author.id, guildId);
+
+        const winEmbed = embeds.gachaResultEmbed(author, selectedItem, gachaCost, finalWallet.balance, true);
+        winEmbed.setDescription(
+          `**${author.username}** baru saja melakukan roll Gacha seharga **Rp ${gachaCost.toLocaleString('id-ID')}**!\n\n` +
+          `🎰 **HASIL ROLL:**\n` +
+          `🌟 **${selectedItem.role_name}** (\`${selectedItem.tier}\`)\n\n` +
+          `💸 **DUPLIKAT CASHBACK!** Karena Anda sudah memiliki role ini, Anda mendapatkan **cashback Rp 500**! Saldo Anda dikembalikan sebagian.\n` +
+          `📉 Sisa saldo Anda: **Rp ${finalWallet.balance.toLocaleString('id-ID')}**`
+        );
+
+        await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
+      } else {
+        // Berikan role ke user
+        try {
+          await memberObj.roles.add(discordRole);
+        } catch (roleErr) {
+          console.error('❌ Gagal menambahkan role gacha:', roleErr.message);
+          await rollingMsg.edit('❌ Gagal menyematkan role gacha. Pastikan posisi integrasi role bot berada di atas role hadiah!');
+          return true;
+        }
+
+        // Kurangi saldo & stok
+        try {
+          database.transaction(() => {
+            economy.subtractBalance(author.id, guildId, gachaCost, 'GACHA_WIN', null);
+            if (selectedItem.stock !== -1) {
+              database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [selectedItem.id, guildId]);
+            }
+          })();
+          finalWallet = economy.getWallet(author.id, guildId);
+        } catch (dbErr) {
+          await memberObj.roles.remove(discordRole).catch(() => {});
+          throw dbErr;
+        }
+
+        const winEmbed = embeds.gachaResultEmbed(author, selectedItem, gachaCost, finalWallet.balance, true);
+        await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
+
+        // Broadcast Heboh jika Legendary / Epic
+        if (selectedItem.tier === 'EPIC' || selectedItem.tier === 'LEGENDARY') {
+          const broadcastEmbed = embeds.broadcastMegaEmbed(author, selectedItem.role_name, gachaCost, selectedItem.tier);
+          broadcastEmbed.setTitle(`🎰 SULTAN HOKI: DAHSYAT JACKPOT GACHA! 🎰`);
+          broadcastEmbed.setDescription(
+            `👑 **DEWA HOKI TELAH TURUN KE SERVER!**\n\n` +
+            `<@${author.id}> baru saja melakukan spin gacha seharga **Rp ${gachaCost.toLocaleString('id-ID')}** dan mendapatkan jackpot role luar biasa:\n\n` +
+            `🌟 **${selectedItem.role_name}** (\`${selectedItem.tier} CLASS\`)\n\n` +
+            `*Semua bersorak merayakan keberuntungan spektakuler sultan gacha kita!* 🎰🚀`
+          );
+
+          const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+          if (reportChannel) {
+            await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+          } else {
+            await message.channel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+          }
+
+          client.emit('playTtsEvent', {
+            guildId,
+            text: `Wah gila sih! Sultan ${author.username} baru saja hoki besar mendapatkan jackpot role gacha ${selectedItem.role_name}! Luar biasa keberuntungannya!`,
+            lang: 'id'
+          });
+        }
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059 atau Administrator Guild
+    // ═══════════════════════════════════════════════════
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock'];
     if (adminCommands.includes(commandName)) {
-      if (author.id !== '436554535037698059') {
+      const isOwner = author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin) {
         return message.reply({ embeds: [embeds.accessDeniedEmbed('436554535037698059')] });
       }
     }
@@ -455,6 +712,100 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply('⚠️ **Seluruh sistem keuangan server ini telah berhasil DIRESET!** Saldo semua user, portofolio, riwayat transaksi telah dihapus, dan harga saham dikembalikan ke harga awal.');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .shop-add @role <harga> [tier] [stok] [is_gacha] [deskripsi]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'shop-add') {
+      const role = message.mentions.roles.first() || guild.roles.cache.get(args[0]) || guild.roles.cache.find(r => r.name.toLowerCase() === args[0]?.toLowerCase());
+      const price = parseInt(args[1]);
+
+      if (!role) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role yang ingin dijual.\nFormat: `.shop-add @role <harga> [tier: COMMON/RARE/EPIC/LEGENDARY] [stok: angka/-1] [is_gacha: 0/1] [deskripsi...]`')] });
+      }
+
+      if (isNaN(price) || price <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Harga Tidak Valid!', 'Tentukan harga role berupa angka di atas 0.\nContoh: `.shop-add @VIP 5000`')] });
+      }
+
+      // Validasi parameter opsional
+      let tier = args[2] ? args[2].toUpperCase() : 'COMMON';
+      if (!['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(tier)) {
+        tier = 'COMMON';
+      }
+
+      const stock = args[3] !== undefined ? parseInt(args[3]) : -1;
+      const isGacha = args[4] !== undefined ? parseInt(args[4]) : 0;
+      const description = args.slice(5).join(' ') || null;
+
+      // Cek apakah role sudah ada di toko
+      const exist = database.get('SELECT 1 FROM shop_items WHERE guild_id = ? AND role_id = ?', [guildId, role.id]);
+      if (exist) {
+        return message.reply({ embeds: [embeds.warnEmbed('Role Sudah Ada!', `Role **${role.name}** sudah terdaftar di toko server ini. Gunakan \`.shop-remove\` terlebih dahulu jika ingin memperbarui.`)] });
+      }
+
+      database.run(
+        `INSERT INTO shop_items (guild_id, role_id, role_name, price, tier, stock, is_gacha, description) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [guildId, role.id, role.name, price, tier, stock, isGacha, description]
+      );
+
+      const embed = embeds.successEmbed(
+        'Role Ditambahkan ke Toko!',
+        `Sukses mendaftarkan **${role.name}** ke toko role server!\n\n` +
+        `🎭 **Role:** <@&${role.id}>\n` +
+        `💵 **Harga:** **Rp ${price.toLocaleString('id-ID')}**\n` +
+        `🏷️ **Tier:** \`${tier}\`\n` +
+        `📦 **Stok:** \`${stock === -1 ? 'Tanpa Batas (Unlimited)' : stock + ' slot'}\`\n` +
+        `🎲 **Masuk Pool Gacha:** \`${isGacha === 1 ? 'YA (Aktif)' : 'TIDAK'}\`\n` +
+        `📝 **Deskripsi:** *${description || 'Tidak ada'}*`
+      );
+
+      await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .shop-remove <id>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'shop-remove') {
+      const id = parseInt(args[0]);
+      if (isNaN(id)) {
+        return message.reply({ embeds: [embeds.warnEmbed('ID Tidak Valid!', 'Tentukan ID item toko yang ingin dihapus.\nContoh: `.shop-remove 2`')] });
+      }
+
+      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      if (!item) {
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak terdaftar di toko.`)] });
+      }
+
+      database.run('DELETE FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+
+      await message.reply(`✅ Sukses menghapus role **${item.role_name}** dari daftar toko role server.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .shop-setstock <id> <stok>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'shop-setstock') {
+      const id = parseInt(args[0]);
+      const stock = parseInt(args[1]);
+
+      if (isNaN(id) || isNaN(stock)) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.shop-setstock <id> <stok>`\nContoh: `.shop-setstock 2 10` (-1 untuk unlimited)')] });
+      }
+
+      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      if (!item) {
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak ditemukan di toko.`)] });
+      }
+
+      database.run('UPDATE shop_items SET stock = ? WHERE id = ? AND guild_id = ?', [stock, id, guildId]);
+
+      await message.reply(`✅ Sukses memperbarui stok role **${item.role_name}** menjadi \`${stock === -1 ? 'Tanpa Batas (Unlimited)' : stock + ' slot'}\`.`);
       return true;
     }
 

@@ -305,6 +305,18 @@ function speakText(connection, text, guildId, lang = 'id') {
   });
 }
 
+// Event handler kustom untuk memicu pemutaran TTS dari modul lain (seperti toko role)
+client.on('playTtsEvent', async ({ guildId, text, lang }) => {
+  const connection = getVoiceConnection(guildId);
+  if (connection) {
+    try {
+      await speakText(connection, text, guildId, lang || 'id');
+    } catch (err) {
+      console.error('❌ Gagal memutar TTS event:', err.message);
+    }
+  }
+});
+
 // Setup Event Listeners untuk Koneksi Suara (Rejoin Otomatis saat Disconnected)
 function setupConnectionListeners(connection, guildId, guild) {
   connection.on('error', error => {
