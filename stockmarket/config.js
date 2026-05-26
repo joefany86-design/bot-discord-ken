@@ -6,7 +6,7 @@ const path = require('path');
 
 module.exports = {
   // Nama & Simbol Mata Uang
-  CURRENCY_NAME: 'Rupiah Server',
+  CURRENCY_NAME: 'Rupiah Server Kosan 1A',
   CURRENCY_SYMBOL: 'Rp',
 
   // Database Path

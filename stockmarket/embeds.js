@@ -296,7 +296,7 @@ module.exports = {
   shopEmbed(items, wallet) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle('🎮 TOKO ROLE DISCORD — RUPIAH SERVER')
+      .setTitle('🎮 TOKO ROLE DISCORD — RUPIAH SERVER KOSAN 1A')
       .setDescription(
         `Selamat datang di **Role Market**! Tukarkan koin **${config.CURRENCY_NAME}** Anda dengan role prestige yang bergengsi!\n\n` +
         `💵 **Saldo Anda:** **${formatCurrency(wallet.balance)}**\n` +
