@@ -297,17 +297,29 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah: .buy-role / .shop-buy <id>
+    // ═══════════════════════════════════════════════════
+    // Perintah: .buy-role / .shop-buy <@role atau ID>
     // ═══════════════════════════════════════════════════
     if (commandName === 'buy-role' || commandName === 'shop-buy') {
-      const id = parseInt(args[0]);
-      if (isNaN(id)) {
-        return message.reply({ embeds: [embeds.warnEmbed('ID Tidak Valid!', 'Harap sebutkan ID item toko yang ingin dibeli.\nContoh: `.buy-role 1`')] });
+      const input = args[0];
+      if (!input) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role atau ID item toko yang ingin dibeli.\nContoh: `.buy-role @role` atau `.buy-role <ID>`')] });
       }
 
-      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      let item = null;
+      const id = parseInt(input);
+
+      if (!isNaN(id)) {
+        item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      } else {
+        const role = message.mentions.roles.first() || guild.roles.cache.get(input) || guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
+        if (role) {
+          item = database.get('SELECT * FROM shop_items WHERE role_id = ? AND guild_id = ?', [role.id, guildId]);
+        }
+      }
+
       if (!item) {
-        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak terdaftar di toko server ini.`)] });
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item role atau ID tersebut tidak terdaftar di toko server ini.`)] });
       }
 
       if (item.stock !== -1 && item.stock <= 0) {
@@ -718,27 +730,33 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // Perintah Admin: .shop-add @role <harga> [tier] [stok] [is_gacha] [deskripsi]
     // ═══════════════════════════════════════════════════
+    // Perintah Admin: .shop-add @role <harga> [deskripsi...]
+    // ═══════════════════════════════════════════════════
     if (commandName === 'shop-add') {
       const role = message.mentions.roles.first() || guild.roles.cache.get(args[0]) || guild.roles.cache.find(r => r.name.toLowerCase() === args[0]?.toLowerCase());
       const price = parseInt(args[1]);
 
       if (!role) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role yang ingin dijual.\nFormat: `.shop-add @role <harga> [tier: COMMON/RARE/EPIC/LEGENDARY] [stok: angka/-1] [is_gacha: 0/1] [deskripsi...]`')] });
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan role yang ingin dijual.\nFormat: `.shop-add @role <harga> [deskripsi...]`')] });
       }
 
       if (isNaN(price) || price <= 0) {
         return message.reply({ embeds: [embeds.warnEmbed('Harga Tidak Valid!', 'Tentukan harga role berupa angka di atas 0.\nContoh: `.shop-add @VIP 5000`')] });
       }
 
-      // Validasi parameter opsional
-      let tier = args[2] ? args[2].toUpperCase() : 'COMMON';
-      if (!['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(tier)) {
-        tier = 'COMMON';
+      // Menentukan tier secara otomatis berdasarkan harga (gamified auto-tier)
+      let tier = 'COMMON';
+      if (price > 50000) {
+        tier = 'LEGENDARY';
+      } else if (price > 15000) {
+        tier = 'EPIC';
+      } else if (price > 5000) {
+        tier = 'RARE';
       }
 
-      const stock = args[3] !== undefined ? parseInt(args[3]) : -1;
-      const isGacha = args[4] !== undefined ? parseInt(args[4]) : 0;
-      const description = args.slice(5).join(' ') || null;
+      const stock = -1; // Bawaan: tanpa batas
+      const isGacha = 1; // Bawaan: dimasukkan ke pool gacha
+      const description = args.slice(2).join(' ') || null;
 
       // Cek apakah role sudah ada di toko
       const exist = database.get('SELECT 1 FROM shop_items WHERE guild_id = ? AND role_id = ?', [guildId, role.id]);
@@ -754,12 +772,12 @@ async function handleEconomyCommands(message, client) {
 
       const embed = embeds.successEmbed(
         'Role Ditambahkan ke Toko!',
-        `Sukses mendaftarkan **${role.name}** ke toko role server!\n\n` +
+        `Sukses mendaftarkan **${role.name}** ke toko role server Kosan 1A!\n\n` +
         `🎭 **Role:** <@&${role.id}>\n` +
         `💵 **Harga:** **Rp ${price.toLocaleString('id-ID')}**\n` +
-        `🏷️ **Tier:** \`${tier}\`\n` +
-        `📦 **Stok:** \`${stock === -1 ? 'Tanpa Batas (Unlimited)' : stock + ' slot'}\`\n` +
-        `🎲 **Masuk Pool Gacha:** \`${isGacha === 1 ? 'YA (Aktif)' : 'TIDAK'}\`\n` +
+        `🏷️ **Tier (Auto):** \`${tier}\`\n` +
+        `📦 **Stok:** \`Tanpa Batas (Unlimited)\`\n` +
+        `🎲 **Masuk Pool Gacha:** \`YA (Aktif)\`\n` +
         `📝 **Deskripsi:** *${description || 'Tidak ada'}*`
       );
 
@@ -768,42 +786,65 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .shop-remove <id>
+    // Perintah Admin: .shop-remove <@role atau ID>
     // ═══════════════════════════════════════════════════
     if (commandName === 'shop-remove') {
-      const id = parseInt(args[0]);
-      if (isNaN(id)) {
-        return message.reply({ embeds: [embeds.warnEmbed('ID Tidak Valid!', 'Tentukan ID item toko yang ingin dihapus.\nContoh: `.shop-remove 2`')] });
+      const input = args[0];
+      if (!input) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan role atau ID item toko yang ingin dihapus.\nContoh: `.shop-remove @role` atau `.shop-remove <ID>`')] });
       }
 
-      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      let item = null;
+      const id = parseInt(input);
+
+      if (!isNaN(id)) {
+        item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      } else {
+        const role = message.mentions.roles.first() || guild.roles.cache.get(input) || guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
+        if (role) {
+          item = database.get('SELECT * FROM shop_items WHERE role_id = ? AND guild_id = ?', [role.id, guildId]);
+        }
+      }
+
       if (!item) {
-        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak terdaftar di toko.`)] });
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Role atau ID tersebut tidak terdaftar di toko.`)] });
       }
 
-      database.run('DELETE FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      database.run('DELETE FROM shop_items WHERE id = ? AND guild_id = ?', [item.id, guildId]);
 
       await message.reply(`✅ Sukses menghapus role **${item.role_name}** dari daftar toko role server.`);
       return true;
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .shop-setstock <id> <stok>
+    // Perintah Admin: .shop-setstock <@role atau ID> <stok>
     // ═══════════════════════════════════════════════════
     if (commandName === 'shop-setstock') {
-      const id = parseInt(args[0]);
-      const stock = parseInt(args[1]);
+      const input = args[0];
+      const stockInput = args[1];
+      const stock = parseInt(stockInput);
 
-      if (isNaN(id) || isNaN(stock)) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.shop-setstock <id> <stok>`\nContoh: `.shop-setstock 2 10` (-1 untuk unlimited)')] });
+      if (!input || isNaN(stock)) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.shop-setstock <@role atau ID> <stok>`\nContoh: `.shop-setstock @VIP 10` (-1 untuk unlimited)')] });
       }
 
-      const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      let item = null;
+      const id = parseInt(input);
+
+      if (!isNaN(id)) {
+        item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [id, guildId]);
+      } else {
+        const role = message.mentions.roles.first() || guild.roles.cache.get(input) || guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
+        if (role) {
+          item = database.get('SELECT * FROM shop_items WHERE role_id = ? AND guild_id = ?', [role.id, guildId]);
+        }
+      }
+
       if (!item) {
-        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item dengan ID \`${id}\` tidak ditemukan di toko.`)] });
+        return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Role atau ID tersebut tidak ditemukan di toko.`)] });
       }
 
-      database.run('UPDATE shop_items SET stock = ? WHERE id = ? AND guild_id = ?', [stock, id, guildId]);
+      database.run('UPDATE shop_items SET stock = ? WHERE id = ? AND guild_id = ?', [stock, item.id, guildId]);
 
       await message.reply(`✅ Sukses memperbarui stok role **${item.role_name}** menjadi \`${stock === -1 ? 'Tanpa Batas (Unlimited)' : stock + ' slot'}\`.`);
       return true;
