@@ -178,6 +178,7 @@ async function startTodGame(message, client, category = 'chill') {
   activeGames.set(guildId, session);
 
   // 6. Buat Embed Lobby
+  const prepTimeText = category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
@@ -186,7 +187,7 @@ async function startTodGame(message, client, category = 'chill') {
       `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
       `\n👑 **Host:** ${member}`,
       `📂 **Kategori:** \`${category.toUpperCase()}\``,
-      `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`,
+      prepTimeText,
       `\n👥 **Daftar Pemain (${session.players.length}):**`,
       `1. ${member} (👑 Host)`
     ].join('\n'))
@@ -201,23 +202,25 @@ async function startTodGame(message, client, category = 'chill') {
   // Umumkan lewat TTS bahwa lobby dibuka
   audio.announceGameStart(client, guildId).catch(() => { });
 
-  // 7. Pasang Timer Lobby Timeout (60 detik)
-  session.timer = setTimeout(async () => {
-    if (activeGames.get(guildId) !== session) return;
-    cleanSession(guildId);
+  // 7. Pasang Timer Lobby Timeout (60 detik) jika bukan 'custom'
+  if (category !== 'custom') {
+    session.timer = setTimeout(async () => {
+      if (activeGames.get(guildId) !== session) return;
+      cleanSession(guildId);
 
-    const disabledComponents = lobbyComponents.map(row => {
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
-      return disabledRow;
-    });
+      const disabledComponents = lobbyComponents.map(row => {
+        const disabledRow = ActionRowBuilder.from(row);
+        disabledRow.components.forEach(comp => comp.setDisabled(true));
+        return disabledRow;
+      });
 
-    const timeoutEmbed = EmbedBuilder.from(embed)
-      .setColor(0x555555)
-      .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
+      const timeoutEmbed = EmbedBuilder.from(embed)
+        .setColor(0x555555)
+        .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
 
-    await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
-  }, 60 * 1000);
+      await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
+    }, 60 * 1000);
+  }
 
   // 8. Component Collector untuk penanganan Lobby
   const collector = lobbyMessage.createMessageComponentCollector({
@@ -281,6 +284,34 @@ async function startTodGame(message, client, category = 'chill') {
 
       // Update kategori di sesi game
       session.category = targetCategory;
+
+      // Kelola ulang timer lobi jika beralih dari/ke 'custom'
+      if (targetCategory === 'custom') {
+        if (session.timer) {
+          clearTimeout(session.timer);
+          session.timer = null;
+        }
+      } else {
+        if (!session.timer) {
+          session.timer = setTimeout(async () => {
+            if (activeGames.get(guildId) !== session) return;
+            cleanSession(guildId);
+
+            const disabledComponents = lobbyComponents.map(row => {
+              const disabledRow = ActionRowBuilder.from(row);
+              disabledRow.components.forEach(comp => comp.setDisabled(true));
+              return disabledRow;
+            });
+
+            const timeoutEmbed = EmbedBuilder.from(embed)
+              .setColor(0x555555)
+              .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
+
+            await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
+          }, 60 * 1000);
+        }
+      }
+
       await updateLobbyEmbed(interaction, session);
     }
 
@@ -352,6 +383,7 @@ async function updateLobbyEmbed(interaction, session) {
     return `${index + 1}. ${p} ${isHost ? '(👑 Host)' : ''}`;
   }).join('\n');
 
+  const prepTimeText = session.category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
@@ -360,7 +392,7 @@ async function updateLobbyEmbed(interaction, session) {
       `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
       `\n👑 **Host:** ${session.host}`,
       `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
-      `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`,
+      prepTimeText,
       `\n👥 **Daftar Pemain (${session.players.length}):**`,
       playerListString || '*Belum ada pemain bergabung*'
     ].join('\n'))
@@ -410,31 +442,34 @@ async function startNextTurn(client, guildId) {
   // Simpan list aktif terbaru ke session.players agar sinkron
   session.players = activePlayers;
 
-  // 4. Hitung indeks giliran berikutnya
-  let attempts = 0;
-  do {
-    session.currentTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
-    attempts++;
-  } while (!voiceChannel.members.has(session.players[session.currentTurnIndex].id) && attempts < session.players.length);
+  // 4. Hitung indeks giliran berikutnya secara acak tanpa pengulangan (Shuffled Deck)
+  if (!session.remainingVictims) {
+    session.remainingVictims = [];
+  }
 
-  const victim = session.players[session.currentTurnIndex];
+  // Saring calon yang masih aktif di VC
+  let candidates = activePlayers.filter(p => session.remainingVictims.includes(p.id));
 
-  // 5. Pilih Challenger (Penanya) secara ROTASI (pemain berikutnya yang aktif di VC setelah Victim)
-  let challenger = null;
-  for (let i = 1; i < session.players.length; i++) {
-    const candidateIndex = (session.currentTurnIndex + i) % session.players.length;
-    const candidate = session.players[candidateIndex];
-    if (voiceChannel.members.has(candidate.id)) {
-      challenger = candidate;
-      break;
+  // Jika semua sudah mendapat giliran, reset deck
+  if (candidates.length === 0) {
+    session.remainingVictims = activePlayers.map(p => p.id);
+    candidates = [...activePlayers];
+
+    // Hindari pemilihan korban yang sama berturut-turut jika pemain > 1
+    if (session.victim && candidates.length > 1) {
+      candidates = candidates.filter(p => p.id !== session.victim.id);
     }
   }
 
-  // Fallback jika tidak ditemukan pemain rotasi aktif (misal hanya ada 2 pemain aktif)
-  if (!challenger) {
-    const remainingInVc = session.players.filter(p => p.id !== victim.id);
-    challenger = remainingInVc[0];
-  }
+  // Ambil korban secara acak
+  const victim = candidates[Math.floor(Math.random() * candidates.length)];
+  
+  // Hapus dari daftar antrean giliran
+  session.remainingVictims = session.remainingVictims.filter(id => id !== victim.id);
+
+  // 5. Pilih Challenger (Penanya) secara acak dari pemain aktif selain Victim
+  const otherActivePlayers = activePlayers.filter(p => p.id !== victim.id);
+  const challenger = otherActivePlayers[Math.floor(Math.random() * otherActivePlayers.length)];
 
   // Update properti sesi
   session.victim = victim;
@@ -442,6 +477,7 @@ async function startNextTurn(client, guildId) {
   session.state = 'waiting_for_choice';
 
   // 6. Buat Embed Giliran Baru
+  const choiceFooterText = session.category === 'custom' ? 'Waktu memilih: Tanpa Batas Waktu ♾️' : 'Waktu memilih: 30 detik';
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 Putaran Truth or Dare Baru!')
@@ -452,7 +488,7 @@ async function startNextTurn(client, guildId) {
       `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
       `\n⏱️ **Hei ${victim}, silakan pilih TRUTH atau DARE dengan menekan tombol di bawah!**`
     ].join('\n'))
-    .setFooter({ text: 'Waktu memilih: 30 detik' })
+    .setFooter({ text: choiceFooterText })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
@@ -476,39 +512,41 @@ async function startNextTurn(client, guildId) {
   // Umumkan via TTS
   audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
 
-  // 7. Pasang Timer Choice Timeout (30 detik)
-  session.timer = setTimeout(async () => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) return;
+  // 7. Pasang Timer Choice Timeout (30 detik) jika bukan 'custom'
+  if (session.category !== 'custom') {
+    session.timer = setTimeout(async () => {
+      const currentSession = activeGames.get(guildId);
+      if (!currentSession || currentSession !== session) return;
 
-    // Timeout saat memilih = dinilai menyerah/skip, didenda, lalu lanjut putaran berikutnya!
-    const victimId = victim.id;
-    database.incrementSkipStats(victimId);
-    database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
+      // Timeout saat memilih = dinilai menyerah/skip, didenda, lalu lanjut putaran berikutnya!
+      const victimId = victim.id;
+      database.incrementSkipStats(victimId);
+      database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
 
-    const disabledRow = ActionRowBuilder.from(row);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
+      const disabledRow = ActionRowBuilder.from(row);
+      disabledRow.components.forEach(comp => comp.setDisabled(true));
 
-    const timeoutEmbed = EmbedBuilder.from(embed)
-      .setColor(0x555555)
-      .setDescription([
-        `⌛ **Waktu Memilih Habis!**`,
-        `User ${victim} tidak memilih dalam 30 detik dan dianggap menyerah.`,
-        `💸 **Denda Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
-      ].join('\n'))
-      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
+      const timeoutEmbed = EmbedBuilder.from(embed)
+        .setColor(0x555555)
+        .setDescription([
+          `⌛ **Waktu Memilih Habis!**`,
+          `User ${victim} tidak memilih dalam 30 detik dan dianggap menyerah.`,
+          `💸 **Denda Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
+        ].join('\n'))
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
-    await turnMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
-    audio.announceSkip(client, guildId, victim.displayName, config.economy.SKIP_FINE).catch(() => { });
+      await turnMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+      audio.announceSkip(client, guildId, victim.displayName, config.economy.SKIP_FINE).catch(() => { });
 
-    // Transisi ke putaran berikutnya
-    triggerNextTurnTransition(client, guildId);
-  }, config.durations.CHOICE_TIMEOUT_MS);
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
+    }, config.durations.CHOICE_TIMEOUT_MS);
+  }
 
   // 8. Component Collector untuk menangani Button Click pada giliran ini
   const collector = turnMessage.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: config.durations.CHOICE_TIMEOUT_MS
+    time: session.category === 'custom' ? 3600 * 1000 : config.durations.CHOICE_TIMEOUT_MS
   });
 
   collector.on('collect', async (interaction) => {
@@ -739,7 +777,7 @@ async function startCustomVoiceFlow(interaction, client, type) {
       `*(Setelah korban menjawab/melakukan tantangan, Juri silakan klik tombol di bawah untuk menilai!)*`,
       `\n💵 **Denda Skip:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\` | 🎁 **Hadiah Sukses:** \`Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
     ].join('\n'))
-    .setFooter({ text: `Menunggu juri menilai... Waktu batas: 60 detik` })
+    .setFooter({ text: `Menunggu juri menilai... (Tanpa Batas Waktu ♾️)` })
     .setTimestamp();
 
   // Tombol aksi untuk Challenger (Juri) menilai langsung sejak awal
@@ -761,40 +799,10 @@ async function startCustomVoiceFlow(interaction, client, type) {
   const speechText = `Juri ${session.challenger.displayName}, silakan ucapkan pertanyaan atau tantangan kustommu secara langsung kepada ${session.victim.displayName}!`;
   audio.speak(client, guildId, speechText).catch(() => { });
 
-  // Set batas waktu penyelesaian tantangan (60 detik)
-  session.timer = setTimeout(async () => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) return;
-
-    // Juri AFK / Timeout tanpa keputusan = Bebas Denda demi Keadilan
-    const disabledRow = ActionRowBuilder.from(actionRow);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-    const timeoutEmbed = EmbedBuilder.from(questionEmbed)
-      .setColor(0xFFAA00)
-      .setDescription([
-        `⌛ **Waktu Juri Terbatas Habis!**`,
-        `Juri ${session.challenger} tidak memberikan keputusan/penilaian dalam 60 detik.`,
-        `🛡️ **Anti-AFK Protection:** ${session.victim} dibebaskan dari denda karena Juri tidak merespons.`
-      ].join('\n'))
-      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-    await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
-    
-    audio.speak(
-      client, 
-      guildId, 
-      `Waktu habis! Juri tidak memberikan keputusan, sehingga korban ${session.victim.displayName} bebas dari denda.`
-    ).catch(() => { });
-
-    // Transisi ke putaran berikutnya
-    triggerNextTurnTransition(client, guildId);
-  }, config.durations.GAME_TIMEOUT_MS);
-
-  // Pasang collector keputusan Juri
+  // Pasang collector keputusan Juri (tanpa batas waktu otomatis)
   const actionCollector = session.message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: config.durations.GAME_TIMEOUT_MS
+    time: 3600 * 1000 // 1 jam (no timeout)
   });
 
   actionCollector.on('collect', async (actInteraction) => {
@@ -854,8 +862,6 @@ async function startCustomVoiceFlow(interaction, client, type) {
       await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
       audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
 
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
     }
   });
 }
@@ -878,7 +884,7 @@ function triggerNextTurnTransition(client, guildId) {
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('tod_transition_next')
-      .setLabel('👉 Putaran Berikutnya (15s)')
+      .setLabel(session.category === 'custom' ? '👉 Putaran Berikutnya' : '👉 Putaran Berikutnya (15s)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('tod_transition_stop')
@@ -889,22 +895,24 @@ function triggerNextTurnTransition(client, guildId) {
   // Edit pesan saat ini untuk menambahkan tombol transisi
   session.message.edit({ components: [row] }).catch(() => {});
 
-  // Set timeout 15 detik untuk otomatis memanggil startNextTurn
-  session.timer = setTimeout(async () => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) return;
+  if (session.category !== 'custom') {
+    // Set timeout 15 detik untuk otomatis memanggil startNextTurn
+    session.timer = setTimeout(async () => {
+      const currentSession = activeGames.get(guildId);
+      if (!currentSession || currentSession !== session) return;
 
-    // Hapus tombol transisi dari pesan lama
-    await session.message.edit({ components: [] }).catch(() => {});
+      // Hapus tombol transisi dari pesan lama
+      await session.message.edit({ components: [] }).catch(() => {});
 
-    // Jalankan giliran berikutnya
-    await startNextTurn(client, guildId);
-  }, 15 * 1000);
+      // Jalankan giliran berikutnya
+      await startNextTurn(client, guildId);
+    }, 15 * 1000);
+  }
 
   // Buat collector pendek untuk tombol transisi
   const collector = session.message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 15 * 1000
+    time: session.category === 'custom' ? 3600 * 1000 : 15 * 1000
   });
 
   collector.on('collect', async (interaction) => {
