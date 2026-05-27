@@ -633,7 +633,14 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
       console.error('Kesalahan slash join:', error);
       lockedChannels.delete(guildId);
-      await interaction.reply({ content: '❌ Gagal bergabung ke Voice Channel.', ephemeral: true });
+      await interaction.reply({
+        content: `❌ **Gagal bergabung ke Voice Channel!**\n\n` +
+          `**Kemungkinan penyebab:**\n` +
+          `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap buka port outbound UDP 50000-65535).\n` +
+          `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
+          `3️⃣ **Timeout Jaringan** (Discord gateway sedang sibuk, silakan coba lagi atau jalankan restart bot di VPS).`,
+        ephemeral: true
+      });
     }
   }
 
@@ -783,7 +790,13 @@ client.on('messageCreate', async message => {
     } catch (error) {
       console.error('Kesalahan join prefix:', error);
       lockedChannels.delete(guildId);
-      await replyEmbed(0xFF3366, '❌ **Gagal bergabung ke Voice Channel.**');
+      await replyEmbed(0xFF3366,
+        `❌ **Gagal bergabung ke Voice Channel!**\n\n` +
+        `**Kemungkinan penyebab:**\n` +
+        `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap minta support VPS untuk membuka port outbound UDP 50000-65535).\n` +
+        `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
+        `3️⃣ **Timeout Jaringan** (Jaringan VPS bermasalah, silakan coba lagi atau jalankan restart bot di VPS).`
+      );
     }
   }
 
