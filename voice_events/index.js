@@ -62,6 +62,20 @@ function cleanSession(guildId) {
 /**
  * Memulai sesi game ToD baru.
  */
+/**
+ * Mengacak urutan elemen dalam array secara in-place.
+ */
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+/**
+ * Memulai sesi game ToD baru (fase Lobby pendaftaran).
+ */
 async function startTodGame(message, client, category = 'chill') {
   const { guildId, member, channel: textChannel } = message;
 
@@ -100,51 +114,274 @@ async function startTodGame(message, client, category = 'chill') {
     return message.reply({ embeds: [embed] });
   }
 
-  // 5. Kumpulkan member aktif di VC
-  const activeMembers = Array.from(voiceChannel.members.filter(m => !m.user.bot).values());
-  if (activeMembers.length < 2) {
-    const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
-      .setDescription(`👥 **Butuh Minimal 2 Pemain!** Harus ada minimal 2 orang non-bot di dalam Voice Channel untuk bermain.`);
-    return message.reply({ embeds: [embed] });
-  }
-
   // Set cooldown awal untuk pembuat sesi
   manualCooldowns.set(member.id, Date.now());
 
-  // 6. Pilih Victim (Korban) & Challenger (Penanya)
-  const victimIndex = Math.floor(Math.random() * activeMembers.length);
-  const victim = activeMembers[victimIndex];
-
-  const remainingMembers = activeMembers.filter(m => m.id !== victim.id);
-  const challenger = remainingMembers[Math.floor(Math.random() * remainingMembers.length)];
-
-  // 7. Buat Sesi Game
+  // 5. Buat Sesi Game Baru dalam status 'lobby'
   const session = {
     guildId,
     voiceChannelId: voiceChannel.id,
     textChannel,
-    victim,
-    challenger,
     category,
-    state: 'waiting_for_choice',
-    timer: null
+    state: 'lobby',
+    host: member,
+    players: [member], // Pembuat lobby langsung otomatis gabung
+    currentTurnIndex: -1,
+    victim: null,
+    challenger: null,
+    timer: null,
+    message: null
   };
   activeGames.set(guildId, session);
 
-  // 8. Umumkan via Suara/TTS
-  audio.announceGameStart(client, guildId).catch(() => { });
-
-  // 9. Kirim Embed Interaktif dengan Buttons
+  // 6. Buat Embed Lobby
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
-    .setTitle('🎤 Voice Channel Event: TRUTH OR DARE!')
+    .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
     .setDescription([
-      `🎲 **Game Dimulai!** Botol ajaib berputar dan menunjuk kepada...`,
+      ` Sesi game Truth or Dare baru telah dibuka!`,
+      `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
+      `\n👑 **Host:** ${member}`,
+      `📂 **Kategori:** \`${category.toUpperCase()}\``,
+      `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`,
+      `\n👥 **Daftar Pemain (${session.players.length}):**`,
+      `1. ${member} (👑 Host)`
+    ].join('\n'))
+    .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_join')
+      .setLabel('🙋‍♂️ Gabung')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_leave')
+      .setLabel('🚪 Keluar')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_start')
+      .setLabel('🚀 Mulai Game')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_cancel')
+      .setLabel('❌ Batalkan')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const lobbyMessage = await textChannel.send({ embeds: [embed], components: [row] });
+  session.message = lobbyMessage;
+
+  // Umumkan lewat TTS bahwa lobby dibuka
+  audio.announceGameStart(client, guildId).catch(() => { });
+
+  // 7. Pasang Timer Lobby Timeout (60 detik)
+  session.timer = setTimeout(async () => {
+    if (activeGames.get(guildId) !== session) return;
+    cleanSession(guildId);
+
+    const disabledRow = ActionRowBuilder.from(row);
+    disabledRow.components.forEach(comp => comp.setDisabled(true));
+
+    const timeoutEmbed = EmbedBuilder.from(embed)
+      .setColor(0x555555)
+      .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
+
+    await lobbyMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+  }, 60 * 1000);
+
+  // 8. Component Collector untuk penanganan Lobby
+  const collector = lobbyMessage.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 60 * 1000
+  });
+
+  collector.on('collect', async (interaction) => {
+    // Ambil ulang sesi terbaru
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) {
+      return interaction.reply({ content: '❌ Sesi lobby ini sudah tidak aktif.', ephemeral: true });
+    }
+
+    const { customId, user } = interaction;
+
+    if (customId === 'tod_lobby_join') {
+      // Pastikan pemain berada di VC yang sama
+      const clickerMember = interaction.member;
+      const clickerVoiceChannel = clickerMember.voice.channel;
+      if (!clickerVoiceChannel || clickerVoiceChannel.id !== session.voiceChannelId) {
+        return interaction.reply({ content: '❌ Kamu harus berada di **Voice Channel** yang sama untuk bergabung!', ephemeral: true });
+      }
+
+      // Cek apakah sudah gabung
+      if (session.players.some(p => p.id === user.id)) {
+        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar di dalam lobby!', ephemeral: true });
+      }
+
+      session.players.push(clickerMember);
+      await updateLobbyEmbed(interaction, session, row);
+    } 
+    
+    else if (customId === 'tod_lobby_leave') {
+      // Cek apakah terdaftar
+      if (!session.players.some(p => p.id === user.id)) {
+        return interaction.reply({ content: '❌ Kamu belum bergabung di lobby ini!', ephemeral: true });
+      }
+
+      // Hapus dari daftar pemain
+      session.players = session.players.filter(p => p.id !== user.id);
+      await updateLobbyEmbed(interaction, session, row);
+    } 
+    
+    else if (customId === 'tod_lobby_start') {
+      // Hanya Host atau Admin yang bisa memulai
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (user.id !== session.host.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host (pembuat lobby) atau Admin yang bisa memulai game!', ephemeral: true });
+      }
+
+      // Validasi minimal 2 pemain
+      const guildInstance = interaction.guild;
+      const voiceChan = guildInstance.channels.cache.get(session.voiceChannelId);
+      const playersInVc = session.players.filter(p => voiceChan?.members.has(p.id));
+
+      if (playersInVc.length < 2) {
+        return interaction.reply({ content: '❌ **Gagal memulai!** Harus ada minimal 2 pemain terdaftar yang aktif di Voice Channel saat ini.', ephemeral: true });
+      }
+
+      // Update daftar pemain dengan yang benar-benar ada di VC
+      session.players = playersInVc;
+
+      // Hentikan timer & collector lobby
+      if (session.timer) clearTimeout(session.timer);
+      collector.stop();
+
+      // Acak urutan giliran pemain (Shuffle)
+      session.players = shuffleArray(session.players);
+      session.currentTurnIndex = -1; // Akan dinaikkan menjadi 0 di startNextTurn
+
+      // Masuk ke putaran pertama
+      await interaction.deferUpdate();
+      await startNextTurn(client, guildId);
+    } 
+    
+    else if (customId === 'tod_lobby_cancel') {
+      // Hanya Host atau Admin yang bisa membatalkan
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (user.id !== session.host.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa membatalkan lobby ini!', ephemeral: true });
+      }
+
+      if (session.timer) clearTimeout(session.timer);
+      collector.stop();
+      cleanSession(guildId);
+
+      const disabledRow = ActionRowBuilder.from(row);
+      disabledRow.components.forEach(comp => comp.setDisabled(true));
+
+      const cancelledEmbed = EmbedBuilder.from(embed)
+        .setColor(0xFF3366)
+        .setDescription(`❌ Lobby Truth or Dare dibatalkan oleh ${user}.`);
+
+      await interaction.update({ embeds: [cancelledEmbed], components: [disabledRow] });
+    }
+  });
+}
+
+/**
+ * Memperbarui embed lobby pendaftaran secara real-time.
+ */
+async function updateLobbyEmbed(interaction, session, row) {
+  const playerListString = session.players.map((p, index) => {
+    const isHost = p.id === session.host.id;
+    return `${index + 1}. ${p} ${isHost ? '(👑 Host)' : ''}`;
+  }).join('\n');
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00D2FF)
+    .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
+    .setDescription([
+      ` Sesi game Truth or Dare baru telah dibuka!`,
+      `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
+      `\n👑 **Host:** ${session.host}`,
+      `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
+      `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`,
+      `\n👥 **Daftar Pemain (${session.players.length}):**`,
+      playerListString || '*Belum ada pemain bergabung*'
+    ].join('\n'))
+    .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+/**
+ * Memulai putaran/giliran baru dalam game.
+ */
+async function startNextTurn(client, guildId) {
+  const session = activeGames.get(guildId);
+  if (!session) return;
+
+  // 1. Bersihkan timer lama jika ada
+  if (session.timer) clearTimeout(session.timer);
+
+  // 2. Ambil referensi Guild dan Voice Channel
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) {
+    cleanSession(guildId);
+    return;
+  }
+
+  const voiceChannel = guild.channels.cache.get(session.voiceChannelId);
+  if (!voiceChannel) {
+    cleanSession(guildId);
+    await session.textChannel.send('❌ **Game Berakhir!** Voice Channel permainan tidak ditemukan.');
+    return;
+  }
+
+  // 3. Saring pemain terdaftar yang MASIH berada di Voice Channel
+  const activePlayers = session.players.filter(p => voiceChannel.members.has(p.id));
+  if (activePlayers.length < 2) {
+    cleanSession(guildId);
+    const embed = new EmbedBuilder()
+      .setColor(0xFF3366)
+      .setTitle('🏁 Game Truth or Dare Selesai!')
+      .setDescription('👥 **Game Berakhir!** Jumlah pemain aktif di Voice Channel kurang dari 2 orang.');
+    await session.textChannel.send({ embeds: [embed] });
+    return;
+  }
+
+  // Simpan list aktif terbaru ke session.players agar sinkron
+  session.players = activePlayers;
+
+  // 4. Hitung indeks giliran berikutnya
+  let attempts = 0;
+  do {
+    session.currentTurnIndex = (session.currentTurnIndex + 1) % session.players.length;
+    attempts++;
+  } while (!voiceChannel.members.has(session.players[session.currentTurnIndex].id) && attempts < session.players.length);
+
+  const victim = session.players[session.currentTurnIndex];
+
+  // 5. Pilih Challenger (Penanya) secara acak dari anggota terdaftar yang aktif di VC dan bukan Victim
+  const remainingInVc = session.players.filter(p => p.id !== victim.id);
+  const challenger = remainingInVc[Math.floor(Math.random() * remainingInVc.length)];
+
+  // Update properti sesi
+  session.victim = victim;
+  session.challenger = challenger;
+  session.state = 'waiting_for_choice';
+
+  // 6. Buat Embed Giliran Baru
+  const embed = new EmbedBuilder()
+    .setColor(0x00D2FF)
+    .setTitle('🎤 Putaran Truth or Dare Baru!')
+    .setDescription([
+      `🎲 **Giliran Pemain Ditentukan!**`,
       `🎯 **Korban (Victim):** ${victim} (menjawab/melakukan)`,
       `🗣️ **Penanya (Challenger):** ${challenger} (menilai)`,
-      `📂 **Kategori:** \`${category.toUpperCase()}\``,
-      `\n⏱️ **Hei ${victim}, silakan klik tombol di bawah untuk memilih Truth atau Dare!**`
+      `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
+      `\n⏱️ **Hei ${victim}, silakan pilih TRUTH atau DARE dengan menekan tombol di bawah!**`
     ].join('\n'))
     .setFooter({ text: 'Waktu memilih: 30 detik' })
     .setTimestamp();
@@ -160,54 +397,74 @@ async function startTodGame(message, client, category = 'chill') {
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('tod_cancel')
-      .setLabel('❌ Batalkan Sesi')
+      .setLabel('❌ Akhiri Game')
       .setStyle(ButtonStyle.Danger)
   );
 
-  const gameMessage = await textChannel.send({ embeds: [embed], components: [row] });
-  session.message = gameMessage;
+  const turnMessage = await session.textChannel.send({ embeds: [embed], components: [row] });
+  session.message = turnMessage;
 
-  // Umumkan giliran lewat TTS
+  // Umumkan via TTS
   audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
 
-  // 10. Pasang Timer Choice Timeout
+  // 7. Pasang Timer Choice Timeout (30 detik)
   session.timer = setTimeout(async () => {
-    cleanSession(guildId);
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) return;
 
-    // Ganti komponen menjadi nonaktif
+    // Timeout saat memilih = dinilai menyerah/skip, didenda, lalu lanjut putaran berikutnya!
+    const victimId = victim.id;
+    database.incrementSkipStats(victimId);
+    database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
+
     const disabledRow = ActionRowBuilder.from(row);
     disabledRow.components.forEach(comp => comp.setDisabled(true));
 
     const timeoutEmbed = EmbedBuilder.from(embed)
       .setColor(0x555555)
-      .setDescription(`⌛ **Waktu Habis!** ${victim} tidak memilih Truth/Dare dalam 30 detik. Sesi game dibatalkan.`);
+      .setDescription([
+        `⌛ **Waktu Memilih Habis!**`,
+        `User ${victim} tidak memilih dalam 30 detik dan dianggap menyerah.`,
+        `💸 **Denda Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
+      ].join('\n'))
+      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
-    await gameMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+    await turnMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+    audio.announceSkip(client, guildId, victim.displayName, config.economy.SKIP_FINE).catch(() => { });
+
+    // Transisi ke putaran berikutnya
+    triggerNextTurnTransition(client, guildId);
   }, config.durations.CHOICE_TIMEOUT_MS);
 
-  // 11. Component Collector untuk menangani Button Click
-  const collector = gameMessage.createMessageComponentCollector({
+  // 8. Component Collector untuk menangani Button Click pada giliran ini
+  const collector = turnMessage.createMessageComponentCollector({
     componentType: ComponentType.Button,
     time: config.durations.CHOICE_TIMEOUT_MS
   });
 
   collector.on('collect', async (interaction) => {
-    // Tombol Batalkan hanya bisa ditekan oleh Victim atau Challenger atau Admin
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) {
+      return interaction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
+    }
+
     if (interaction.customId === 'tod_cancel') {
       const isAdmin = interaction.member.permissions.has('Administrator');
-      if (interaction.user.id !== victim.id && interaction.user.id !== challenger.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Victim, Challenger, atau Admin yang bisa membatalkan sesi ini!', ephemeral: true });
+      if (interaction.user.id !== session.host.id && interaction.user.id !== victim.id && interaction.user.id !== challenger.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host, Victim, Challenger, atau Admin yang bisa mengakhiri game ini!', ephemeral: true });
       }
 
-      cleanSession(guildId);
+      if (session.timer) clearTimeout(session.timer);
       collector.stop();
+      cleanSession(guildId);
 
       const disabledRow = ActionRowBuilder.from(row);
       disabledRow.components.forEach(comp => comp.setDisabled(true));
 
       const cancelledEmbed = EmbedBuilder.from(embed)
         .setColor(0xFF3366)
-        .setDescription(`❌ Sesi game Truth or Dare dibatalkan oleh ${interaction.user}.`);
+        .setDescription(`🛑 **Permainan diakhiri** oleh ${interaction.user}. Sesi game selesai!`)
+        .setFooter({ text: 'Game Selesai' });
 
       return interaction.update({ embeds: [cancelledEmbed], components: [disabledRow] });
     }
@@ -217,7 +474,7 @@ async function startTodGame(message, client, category = 'chill') {
       return interaction.reply({ content: '❌ Hanya Victim terpilih yang dapat menekan tombol Truth atau Dare!', ephemeral: true });
     }
 
-    // Hentikan timer timeout pilihan
+    // Hentikan timer pilihan
     if (session.timer) clearTimeout(session.timer);
     collector.stop();
 
@@ -285,12 +542,13 @@ async function handlePlayerChoice(interaction, client, type) {
 
   // 4. Set batas waktu penyelesaian tantangan (60 detik)
   session.timer = setTimeout(async () => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) return;
+
     // Timeout otomatis = skip (denda koin)
     const victimId = session.victim.id;
     database.incrementSkipStats(victimId);
     database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
-
-    cleanSession(guildId);
 
     const disabledRow = ActionRowBuilder.from(row);
     disabledRow.components.forEach(comp => comp.setDisabled(true));
@@ -302,10 +560,13 @@ async function handlePlayerChoice(interaction, client, type) {
         `User ${session.victim} gagal menyelesaikan tantangan tepat waktu.`,
         `💸 **Denda Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
       ].join('\n'))
-      .setFooter({ text: 'Sesi game berakhir secara otomatis' });
+      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
     await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
     audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
+
+    // Transisi ke putaran berikutnya
+    triggerNextTurnTransition(client, guildId);
   }, config.durations.GAME_TIMEOUT_MS);
 
   // 5. Component Collector untuk memproses keputusan Challenger (Juri)
@@ -315,6 +576,11 @@ async function handlePlayerChoice(interaction, client, type) {
   });
 
   actionCollector.on('collect', async (actInteraction) => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) {
+      return actInteraction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
+    }
+
     // Hanya Challenger (Juri) atau Admin yang bisa menekan tombol verifikasi
     const isAdmin = actInteraction.member.permissions.has('Administrator');
     if (actInteraction.user.id !== session.challenger.id && !isAdmin) {
@@ -323,7 +589,6 @@ async function handlePlayerChoice(interaction, client, type) {
 
     if (session.timer) clearTimeout(session.timer);
     actionCollector.stop();
-    cleanSession(guildId);
 
     const disabledRow = ActionRowBuilder.from(row);
     disabledRow.components.forEach(comp => comp.setDisabled(true));
@@ -342,10 +607,13 @@ async function handlePlayerChoice(interaction, client, type) {
           `Juri ${session.challenger} memverifikasi bahwa ${session.victim} telah sukses!`,
           `🎁 **Hadiah Masuk:** \`+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
         ].join('\n'))
-        .setFooter({ text: 'Permainan Selesai' });
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
       await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
       audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => { });
+
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
 
     } else if (actInteraction.customId === 'tod_action_skip') {
       // 🔴 SKIP / DENDA
@@ -359,10 +627,100 @@ async function handlePlayerChoice(interaction, client, type) {
           `User ${session.victim} memutuskan untuk skip tantangan.`,
           `💸 **Denda Koin Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
         ].join('\n'))
-        .setFooter({ text: 'Permainan Selesai' });
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
       await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
       audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
+
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
+    }
+  });
+}
+
+/**
+ * Mengatur jeda transisi sebelum melaju ke putaran berikutnya, 
+ * menyediakan tombol untuk mempercepat transisi, atau tombol untuk mengakhiri permainan secara manual.
+ */
+function triggerNextTurnTransition(client, guildId) {
+  const session = activeGames.get(guildId);
+  if (!session) return;
+
+  session.state = 'waiting_for_next';
+
+  // Sediakan tombol transisi
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_transition_next')
+      .setLabel('👉 Putaran Berikutnya (10s)')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('tod_transition_stop')
+      .setLabel('❌ Akhiri Game')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  // Edit pesan saat ini untuk menambahkan tombol transisi
+  session.message.edit({ components: [row] }).catch(() => {});
+
+  // Set timeout 10 detik untuk otomatis memanggil startNextTurn
+  session.timer = setTimeout(async () => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) return;
+
+    // Hapus tombol transisi dari pesan lama
+    await session.message.edit({ components: [] }).catch(() => {});
+
+    // Jalankan giliran berikutnya
+    await startNextTurn(client, guildId);
+  }, 10 * 1000);
+
+  // Buat collector pendek untuk tombol transisi
+  const collector = session.message.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 10 * 1000
+  });
+
+  collector.on('collect', async (interaction) => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) {
+      return interaction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
+    }
+
+    if (interaction.customId === 'tod_transition_next') {
+      // Siapa pun pemain terdaftar yang masih di VC dapat menekan tombol ini untuk melaju lebih cepat
+      const isRegistered = session.players.some(p => p.id === interaction.user.id);
+      if (!isRegistered) {
+        return interaction.reply({ content: '❌ Hanya pemain terdaftar yang bisa mempercepat giliran!', ephemeral: true });
+      }
+
+      if (session.timer) clearTimeout(session.timer);
+      collector.stop();
+
+      // Hapus tombol
+      await interaction.update({ components: [] }).catch(() => {});
+
+      // Jalankan giliran berikutnya
+      await startNextTurn(client, guildId);
+    } 
+    
+    else if (interaction.customId === 'tod_transition_stop') {
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (interaction.user.id !== session.host.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa mengakhiri game!', ephemeral: true });
+      }
+
+      if (session.timer) clearTimeout(session.timer);
+      collector.stop();
+      cleanSession(guildId);
+
+      const endEmbed = new EmbedBuilder()
+        .setColor(0xFF3366)
+        .setTitle('🏁 Game Truth or Dare Selesai!')
+        .setDescription(`🛑 Permainan diakhiri secara manual oleh ${interaction.user}. Sesi ditutup!`)
+        .setTimestamp();
+
+      await interaction.update({ embeds: [endEmbed], components: [] });
     }
   });
 }
