@@ -93,27 +93,7 @@ function getLobbyComponents(session) {
       .setStyle(ButtonStyle.Danger)
   );
 
-  const activeCategory = session.category;
-  const categoryRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_cat_chill')
-      .setLabel('🟢 Chill')
-      .setStyle(activeCategory === 'chill' ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_cat_deep')
-      .setLabel('🟡 Deep')
-      .setStyle(activeCategory === 'deep' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_cat_spicy')
-      .setLabel('🔴 Spicy (18+)')
-      .setStyle(activeCategory === 'spicy' ? ButtonStyle.Danger : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_cat_custom')
-      .setLabel('🗣️ Kustom (Ucap)')
-      .setStyle(activeCategory === 'custom' ? ButtonStyle.Success : ButtonStyle.Secondary)
-  );
-
-  return [lobbyRow, categoryRow];
+  return [lobbyRow];
 }
 
 /**
@@ -165,11 +145,11 @@ async function startTodGame(message, client, category = 'chill') {
     guildId,
     voiceChannelId: voiceChannel.id,
     textChannel,
-    category,
+    category: 'custom', // Selalu mode kustom (ucap apa aja)
     mode: 'voice_hotseat', // Mode tetap: Hot Seat Voice
     state: 'lobby',
     host: member,
-    players: [member], // Pembuat lobby langsung otomatis gabung
+    players: [member],
     currentTurnIndex: -1,
     victim: null,
     challenger: null,
@@ -182,54 +162,29 @@ async function startTodGame(message, client, category = 'chill') {
   activeGames.set(guildId, session);
 
   // 6. Buat Embed Lobby
-  const prepTimeText = category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
   const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
-    .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
+    .setColor(0x9933FF)
+    .setTitle('🎤 TRUTH OR DARE — HOT SEAT VOICE')
     .setDescription([
-      ` Sesi game Truth or Dare baru telah dibuka!`,
-      `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
+      `🎙️ Sesi Truth or Dare dibuka! Tanya apa aja lewat mikrofon!`,
       `\n👑 **Host:** ${member}`,
-      `📂 **Kategori:** \`${category.toUpperCase()}\``,
-      prepTimeText,
-      `\n👥 **Daftar Pemain (${session.players.length}):**`,
+      `⏱️ **Waktu:** Tanpa Batas ♾️`,
+      `\n👥 **Pemain (${session.players.length}):**`,
       `1. ${member} (👑 Host)`
     ].join('\n'))
-    .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
+    .setFooter({ text: 'Masuk Voice Channel lalu klik Gabung!' })
     .setTimestamp();
 
   const lobbyComponents = getLobbyComponents(session);
-
   const lobbyMessage = await textChannel.send({ embeds: [embed], components: lobbyComponents });
   session.message = lobbyMessage;
 
   // Umumkan lewat TTS bahwa lobby dibuka
   audio.announceGameStart(client, guildId).catch(() => { });
 
-  // 7. Pasang Timer Lobby Timeout (60 detik) jika bukan 'custom'
-  if (category !== 'custom') {
-    session.timer = setTimeout(async () => {
-      if (activeGames.get(guildId) !== session) return;
-      cleanSession(guildId);
-
-      const disabledComponents = lobbyComponents.map(row => {
-        const disabledRow = ActionRowBuilder.from(row);
-        disabledRow.components.forEach(comp => comp.setDisabled(true));
-        return disabledRow;
-      });
-
-      const timeoutEmbed = EmbedBuilder.from(embed)
-        .setColor(0x555555)
-        .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
-
-      await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
-    }, 60 * 1000);
-  }
-
-  // 8. Component Collector untuk penanganan Lobby
   const collector = lobbyMessage.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 60 * 1000
+    time: 3600 * 1000 // Tanpa batas waktu
   });
 
   collector.on('collect', async (interaction) => {
@@ -266,57 +221,6 @@ async function startTodGame(message, client, category = 'chill') {
 
       // Hapus dari daftar pemain
       session.players = session.players.filter(p => p.id !== user.id);
-      await updateLobbyEmbed(interaction, session);
-    } 
-    
-
-    else if (customId.startsWith('tod_cat_')) {
-      // Hanya Host atau Admin yang bisa mengubah kategori
-      const isAdmin = interaction.member.permissions.has('Administrator');
-      if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host (pembuat lobby) atau Admin yang bisa mengubah kategori!', ephemeral: true });
-      }
-
-      const targetCategory = customId.replace('tod_cat_', '');
-      
-      // Khusus kategori spicy, pastikan teks channel bertanda NSFW
-      if (targetCategory === 'spicy' && config.categories.SPICY_NSFW_ONLY && !interaction.channel.nsfw) {
-        return interaction.reply({
-          content: '🔞 **Kategori Spicy Hanya Diizinkan di Channel NSFW!**\nSilakan ubah channel ini menjadi NSFW atau gunakan kategori Chill/Deep.',
-          ephemeral: true
-        });
-      }
-
-      // Update kategori di sesi game
-      session.category = targetCategory;
-
-      // Kelola ulang timer lobi jika beralih dari/ke 'custom'
-      if (targetCategory === 'custom') {
-        if (session.timer) {
-          clearTimeout(session.timer);
-          session.timer = null;
-        }
-      } else {
-        if (!session.timer) {
-          session.timer = setTimeout(async () => {
-            if (activeGames.get(guildId) !== session) return;
-            cleanSession(guildId);
-
-            const disabledComponents = lobbyComponents.map(row => {
-              const disabledRow = ActionRowBuilder.from(row);
-              disabledRow.components.forEach(comp => comp.setDisabled(true));
-              return disabledRow;
-            });
-
-            const timeoutEmbed = EmbedBuilder.from(embed)
-              .setColor(0x555555)
-              .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
-
-            await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
-          }, 60 * 1000);
-        }
-      }
-
       await updateLobbyEmbed(interaction, session);
     }
 
@@ -388,22 +292,17 @@ async function updateLobbyEmbed(interaction, session) {
     return `${index + 1}. ${p} ${isHost ? '(👑 Host)' : ''}`;
   }).join('\n');
 
-  const prepTimeText = session.category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
-  
   const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
-    .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
+    .setColor(0x9933FF)
+    .setTitle('🎤 TRUTH OR DARE — HOT SEAT VOICE')
     .setDescription([
-      ` Sesi game Truth or Dare baru telah dibuka!`,
-      `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
+      `🎙️ Sesi Truth or Dare dibuka! Tanya apa aja lewat mikrofon!`,
       `\n👑 **Host:** ${session.host}`,
-      `🎙️ **Mode:** \`HOT SEAT VOICE (Semua Tanya Satu via Mikrofon)\``,
-      `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
-      prepTimeText,
-      `\n👥 **Daftar Pemain (${session.players.length}):**`,
-      playerListString || '*Belum ada pemain bergabung*'
+      `⏱️ **Waktu:** Tanpa Batas ♾️`,
+      `\n👥 **Pemain (${session.players.length}):**`,
+      playerListString || '*Belum ada pemain*'
     ].join('\n'))
-    .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
+    .setFooter({ text: 'Masuk Voice Channel lalu klik Gabung!' })
     .setTimestamp();
 
   const components = getLobbyComponents(session);
