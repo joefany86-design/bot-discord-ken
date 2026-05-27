@@ -11,7 +11,7 @@ const vocabulary = {
   game: ['Mobile Legends', 'Valorant', 'Minecraft', 'Genshin Impact', 'Roblox', 'GTA V', 'game cacing']
 };
 
-// 1. CHILL TRUTHS (Ringan & Lucu) — Target: 800
+// 1. CHILL TRUTHS (Ringan & Lucu)
 const chillTruthTemplates = [
   "Apa makanan teraneh yang pernah kamu makan saat lapar malam-malam?",
   "Pernahkah kamu ngobrol sendiri di depan cermin? Apa yang kamu bicarakan?",
@@ -32,10 +32,14 @@ const chillTruthTemplates = [
   "Pernahkah kamu sengaja menyembunyikan makanan ringan agar tidak diminta orang lain?",
   "Apa barang di kamarmu yang paling tidak berguna tapi malas kamu buang?",
   "Kalau kamu disuruh memakai satu warna baju seumur hidup, warna apa yang kamu pilih?",
-  "Apa chat terakhir yang kamu hapus karena takut ketahuan orang lain?"
+  "Apa chat terakhir yang kamu hapus karena takut ketahuan orang lain?",
+  "Kalau kamu jadi admin server ini selama 24 jam, hal iseng apa yang pertama kali ingin kamu lakukan?",
+  "Apa kebohongan terkecil tapi paling kocak yang pernah kamu buat agar terhindar dari ajakan main?",
+  "Siapa member di VC ini yang menurutmu punya kebiasaan paling absurd saat main game bareng?",
+  "Pernahkah kamu diam-diam kentut saat voice chat dengan mik aktif, lalu pura-pura batuk?"
 ];
 
-// 2. DEEP TRUTHS (Mendalam & Rahasia) — Target: 700
+// 2. DEEP TRUTHS (Mendalam & Rahasia)
 const deepTruthTemplates = [
   "Apa penyesalan terbesar yang masih sering kamu pikirkan sebelum tidur?",
   "Pernahkah kamu merasa sangat kesepian di tengah keramaian? Kapan momen terakhirnya?",
@@ -54,10 +58,13 @@ const deepTruthTemplates = [
   "Apakah kamu saat ini sedang merindukan seseorang yang sudah tidak ada di hidupmu?",
   "Apa pujian terbaik yang pernah kamu terima dan selalu kamu ingat?",
   "Pernahkah kamu merasa dikhianati oleh orang yang sangat kamu percayai?",
-  "Apa satu hal yang paling kamu butuhkan saat ini untuk merasa tenang?"
+  "Apa satu hal yang paling kamu butuhkan saat ini untuk merasa tenang?",
+  "Jika kamu bisa menghapus satu kenangan memalukan di depan salah satu member di VC ini, yang mana itu?",
+  "Apa satu hal tentang dirimu yang paling sering disalahpahami oleh orang-orang di server ini?",
+  "Siapa member di server ini yang paling ingin kamu temui secara langsung di dunia nyata, dan kenapa?"
 ];
 
-// 3. SPICY TRUTHS (Sensitif & 18+) — Target: 500
+// 3. SPICY TRUTHS (Sensitif & 18+)
 const spicyTruthTemplates = [
   "Siapa member di server/VC ini yang diam-diam paling menarik perhatianmu secara fisik?",
   "Apa kebohongan terbesar yang pernah kamu katakan kepada pasangan atau mantanmu?",
@@ -70,10 +77,13 @@ const spicyTruthTemplates = [
   "Siapa orang terakhir yang membuatmu merasa sangat deg-degan saat namanya muncul di notifikasi?",
   "Apa hal paling nekat atau gila yang pernah kamu lakukan demi cinta?",
   "Pernahkah kamu diam-diam merasa bosan dengan hubungan asmaramu saat ini?",
-  "Apa kriteria fisik utama yang langsung membuatmu tertarik pada seseorang?"
+  "Apa kriteria fisik utama yang langsung membuatmu tertarik pada seseorang?",
+  "Siapa member di VC ini yang paling ingin kamu ajak voice call berdua saja malam-malam sampai ketiduran?",
+  "Pernahkah kamu sengaja menyalakan camera atau voice pas lagi mandi atau setengah berpakaian?",
+  "Jika kamu dipaksa untuk berkencan dengan salah satu orang di VC ini selama seminggu, siapa yang akan kamu pilih?"
 ];
 
-// 4. CHILL DARES (Tantangan Ringan & Lucu) — Target: 800
+// 4. CHILL DARES (Tantangan Ringan & Lucu)
 const chillDareTemplates = [
   "Tirukan suara hewan pilihan teman di VC selama 15 detik tanpa tertawa!",
   "Kirim emoji terakhir yang kamu pakai sebanyak 15 kali di text channel!",
@@ -88,10 +98,13 @@ const chillDareTemplates = [
   "Katakan kalimat 'Ular melingkar di atas pagar' sebanyak 5 kali dengan sangat cepat di VC!",
   "Kirim screenshot home screen HP kamu sekarang juga!",
   "Beri hormat militer ke layar komputermu dan katakan 'Siap komandan!' dengan tegas di VC!",
-  "Roleplay jadi pelayan restoran cepat saji dan tawarkan menu ke salah satu member di VC!"
+  "Roleplay jadi pelayan restoran cepat saji dan tawarkan menu ke salah satu member di VC!",
+  "Ganti foto profil Discord kamu menjadi foto meme kocak pilihan teman di VC ini selama 30 menit!",
+  "Katakan 'Sayang sekali aku ganteng tapi jomblo' dengan gaya dramatis penuh desahan di VC!",
+  "Buka DM teratasmu saat ini dan bacakan isi pesan terakhirnya dengan keras-keras di VC!"
 ];
 
-// 5. DEEP DARES (Tantangan Seru & Personal) — Target: 700
+// 5. DEEP DARES (Tantangan Seru & Personal)
 const deepDareTemplates = [
   "Mention salah satu teman di server ini dan tulis 3 hal yang sangat kamu syukuri dari kehadirannya!",
   "Tulis apresiasi singkat 3 kalimat untuk admin server di text channel utama!",
@@ -102,10 +115,12 @@ const deepDareTemplates = [
   "Ganti profile picture Discord kamu menjadi warna polos abu-abu selama 2 jam ke depan!",
   "Kirim DM ke member acak di server ini dan katakan 'Semangat ya hari ini, kamu luar biasa!'",
   "Tulis puisi 4 baris tentang arti persahabatan di text channel!",
-  "Akui satu kesalahan konyol masa lalu yang pernah kamu lakukan di depan teman-teman VC!"
+  "Akui satu kesalahan konyol masa lalu yang pernah kamu lakukan di depan teman-teman VC!",
+  "Kirim pesan suara (Voice Note) singkat berisi ucapan terima kasih tulus ke salah satu member di VC ini secara acak!",
+  "Ceritakan tentang impian terbesarmu dalam hidup di VC secara serius selama 1 menit penuh tanpa interupsi!"
 ];
 
-// 6. SPICY DARES (Tantangan Berani & NSFW) — Target: 500
+// 6. SPICY DARES (Tantangan Berani & NSFW)
 const spicyDareTemplates = [
   "Kirim VN (Voice Note) menyanyikan reff lagu romantis sambil menyebut nama salah satu member di VC ini!",
   "Ganti status bio Discord kamu jadi 'Diam-diam mengagumi @[nama_member]' selama 1 jam!",
@@ -114,7 +129,9 @@ const spicyDareTemplates = [
   "Ganti profile picture kamu dengan foto terjelek/lucu yang kamu punya selama 1 jam!",
   "Katakan dengan suara desahan dramatis kalimat 'Oh tidak, jaringanku lemot sekali' di VC!",
   "Roleplay menyatakan cinta (nembak) kepada salah satu teman sesama jenis di VC secara meyakinkan selama 1 menit!",
-  "Tulis review cinta seolah-olah server ini adalah jodoh terbaikmu dan kirim di text channel!"
+  "Tulis review cinta seolah-olah server ini adalah jodoh terbaikmu dan kirim di text channel!",
+  "Ganti status status Discord kamu menjadi 'Sedang butuh pelukan dari @[sebutkan nama member di VC]' selama 1 jam!",
+  "Nyanyikan sepenggal lirik lagu romantis secara seksi/menggoda sambil memanggil salah satu member di VC ini!"
 ];
 
 /**
@@ -124,12 +141,12 @@ function generateQuestions() {
   const generated = [];
 
   const types = [
-    { type: 'truth', category: 'chill', templates: chillTruthTemplates, target: 850 },
-    { type: 'truth', category: 'deep', templates: deepTruthTemplates, target: 750 },
-    { type: 'truth', category: 'spicy', templates: spicyTruthTemplates, target: 550 },
-    { type: 'dare', category: 'chill', templates: chillDareTemplates, target: 850 },
-    { type: 'dare', category: 'deep', templates: deepDareTemplates, target: 750 },
-    { type: 'dare', category: 'spicy', templates: spicyDareTemplates, target: 550 }
+    { type: 'truth', category: 'chill', templates: chillTruthTemplates, target: 900 },
+    { type: 'truth', category: 'deep', templates: deepTruthTemplates, target: 800 },
+    { type: 'truth', category: 'spicy', templates: spicyTruthTemplates, target: 600 },
+    { type: 'dare', category: 'chill', templates: chillDareTemplates, target: 900 },
+    { type: 'dare', category: 'deep', templates: deepDareTemplates, target: 800 },
+    { type: 'dare', category: 'spicy', templates: spicyDareTemplates, target: 600 }
   ];
 
   for (const group of types) {
@@ -216,9 +233,9 @@ function runSeeding() {
   const { db } = require('./database');
   console.log('🏁 [Seeder] Memulai pengisian database 4.000+ pertanyaan Truth or Dare...');
 
-  // Cek apakah database sudah memiliki data cukup (minimal 4300 pertanyaan unik)
+  // Cek apakah database sudah memiliki data cukup (minimal 4500 pertanyaan unik)
   const rowCount = db.prepare('SELECT COUNT(*) as count FROM tod_questions').get();
-  if (rowCount && rowCount.count >= 4300) {
+  if (rowCount && rowCount.count >= 4500) {
     console.log(`✅ [Seeder] Database sudah terisi ${rowCount.count} pertanyaan. Melewati seeding.`);
     return;
   }
