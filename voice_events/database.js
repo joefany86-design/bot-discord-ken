@@ -272,11 +272,11 @@ module.exports = {
   getUserStats
 };
 
-// Jalankan seeding jika database kosong
+// Jalankan seeding jika database belum terisi lengkap (minimal 4300 pertanyaan)
 try {
   const rowCount = db.prepare('SELECT COUNT(*) as count FROM tod_questions').get();
-  if (!rowCount || rowCount.count === 0) {
-    console.log('⚠️ [VoiceDb] Database tod_questions kosong! Menjalankan seeder otomatis...');
+  if (!rowCount || rowCount.count < 4300) {
+    console.log(`⚠️ [VoiceDb] Database tod_questions belum terisi lengkap (${rowCount ? rowCount.count : 0}/4300)! Menjalankan seeder otomatis...`);
     const { runSeeding } = require('./questions_seed');
     runSeeding();
   }

@@ -1,4 +1,4 @@
-const { db } = require('./database');
+
 const config = require('./config');
 
 // Kumpulan template & variasi kata untuk merakit 2000+ pertanyaan berkualitas tinggi
@@ -124,26 +124,32 @@ function generateQuestions() {
   const generated = [];
 
   const types = [
-    { type: 'truth', category: 'chill', templates: chillTruthTemplates, target: 800 },
-    { type: 'truth', category: 'deep', templates: deepTruthTemplates, target: 700 },
-    { type: 'truth', category: 'spicy', templates: spicyTruthTemplates, target: 500 },
-    { type: 'dare', category: 'chill', templates: chillDareTemplates, target: 800 },
-    { type: 'dare', category: 'deep', templates: deepDareTemplates, target: 700 },
-    { type: 'dare', category: 'spicy', templates: spicyDareTemplates, target: 500 }
+    { type: 'truth', category: 'chill', templates: chillTruthTemplates, target: 850 },
+    { type: 'truth', category: 'deep', templates: deepTruthTemplates, target: 750 },
+    { type: 'truth', category: 'spicy', templates: spicyTruthTemplates, target: 550 },
+    { type: 'dare', category: 'chill', templates: chillDareTemplates, target: 850 },
+    { type: 'dare', category: 'deep', templates: deepDareTemplates, target: 750 },
+    { type: 'dare', category: 'spicy', templates: spicyDareTemplates, target: 550 }
   ];
 
   for (const group of types) {
     const { type, category, templates, target } = group;
+    const seenTexts = new Set();
     let count = 0;
 
     // Masukkan pertanyaan dasar terlebih dahulu
     for (const t of templates) {
-      generated.push({ type, category, text: t });
-      count++;
+      if (!seenTexts.has(t)) {
+        seenTexts.add(t);
+        generated.push({ type, category, text: t });
+        count++;
+      }
     }
 
     // Lakukan generasi variasi dinamis sampai target terpenuhi
-    while (count < target) {
+    let attempts = 0;
+    while (count < target && attempts < 20000) {
+      attempts++;
       const baseTemplate = templates[Math.floor(Math.random() * templates.length)];
       
       // Lakukan substitusi dinamis menggunakan vocabulary
@@ -180,11 +186,26 @@ function generateQuestions() {
       ];
       
       const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const suffixes = [
+        "", "?", "!", "??", "...", " (serius!)", " (jujur ya)", " (jangan bohong!)", 
+        " (hehe)", " (no cap)", " (hayo ngaku)", " [ToD Spesial]", " [Event VC]"
+      ];
+      const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
       
-      // Hanya ganti jika tidak sama persis dengan yang sudah dibuat
-      const finalTest = `${prefix} ${modifiedText}`;
-      generated.push({ type, category, text: finalTest });
-      count++;
+      let finalTest = `${prefix} ${modifiedText}`;
+      if (suffix) {
+        if (modifiedText.endsWith('?')) {
+          finalTest = `${prefix} ${modifiedText.slice(0, -1)}${suffix}`;
+        } else {
+          finalTest = `${prefix} ${modifiedText}${suffix}`;
+        }
+      }
+
+      if (!seenTexts.has(finalTest)) {
+        seenTexts.add(finalTest);
+        generated.push({ type, category, text: finalTest });
+        count++;
+      }
     }
   }
 
@@ -192,16 +213,17 @@ function generateQuestions() {
 }
 
 function runSeeding() {
-  console.log('🏁 [Seeder] Memulai pengisian database 2000+ pertanyaan Truth or Dare...');
+  const { db } = require('./database');
+  console.log('🏁 [Seeder] Memulai pengisian database 4.000+ pertanyaan Truth or Dare...');
 
-  // Cek apakah database sudah memiliki data cukup
+  // Cek apakah database sudah memiliki data cukup (minimal 4300 pertanyaan unik)
   const rowCount = db.prepare('SELECT COUNT(*) as count FROM tod_questions').get();
-  if (rowCount && rowCount.count >= 2000) {
+  if (rowCount && rowCount.count >= 4300) {
     console.log(`✅ [Seeder] Database sudah terisi ${rowCount.count} pertanyaan. Melewati seeding.`);
     return;
   }
 
-  console.log('🔄 [Seeder] Menghasilkan 2000+ variasi pertanyaan klasik...');
+  console.log('🔄 [Seeder] Menghasilkan 4.000+ variasi pertanyaan klasik...');
   const questions = generateQuestions();
   console.log(`📦 [Seeder] Berhasil merakit ${questions.length} pertanyaan.`);
 

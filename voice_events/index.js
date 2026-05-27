@@ -55,13 +55,6 @@ function cleanSession(guildId) {
   activeGames.delete(guildId);
 }
 
-// ═══════════════════════════════════════════════════
-// GAME LOOP IMPLEMENTATION
-// ═══════════════════════════════════════════════════
-
-/**
- * Memulai sesi game ToD baru.
- */
 /**
  * Mengacak urutan elemen dalam array secara in-place.
  */
@@ -71,6 +64,49 @@ function shuffleArray(array) {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+}
+
+// ═══════════════════════════════════════════════════
+/**
+ * Membuat komponen tombol lobby pendaftaran dengan kategori aktif yang tersorot.
+ */
+function getLobbyComponents(session) {
+  const lobbyRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_join')
+      .setLabel('🙋‍♂️ Gabung')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_leave')
+      .setLabel('🚪 Keluar')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_start')
+      .setLabel('🚀 Mulai Game')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('tod_lobby_cancel')
+      .setLabel('❌ Batalkan')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const activeCategory = session.category;
+  const categoryRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_cat_chill')
+      .setLabel('🟢 Chill')
+      .setStyle(activeCategory === 'chill' ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_cat_deep')
+      .setLabel('🟡 Deep')
+      .setStyle(activeCategory === 'deep' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_cat_spicy')
+      .setLabel('🔴 Spicy (18+)')
+      .setStyle(activeCategory === 'spicy' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+  );
+
+  return [lobbyRow, categoryRow];
 }
 
 /**
@@ -150,26 +186,9 @@ async function startTodGame(message, client, category = 'chill') {
     .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
     .setTimestamp();
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_lobby_join')
-      .setLabel('🙋‍♂️ Gabung')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('tod_lobby_leave')
-      .setLabel('🚪 Keluar')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_lobby_start')
-      .setLabel('🚀 Mulai Game')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('tod_lobby_cancel')
-      .setLabel('❌ Batalkan')
-      .setStyle(ButtonStyle.Danger)
-  );
+  const lobbyComponents = getLobbyComponents(session);
 
-  const lobbyMessage = await textChannel.send({ embeds: [embed], components: [row] });
+  const lobbyMessage = await textChannel.send({ embeds: [embed], components: lobbyComponents });
   session.message = lobbyMessage;
 
   // Umumkan lewat TTS bahwa lobby dibuka
@@ -180,14 +199,17 @@ async function startTodGame(message, client, category = 'chill') {
     if (activeGames.get(guildId) !== session) return;
     cleanSession(guildId);
 
-    const disabledRow = ActionRowBuilder.from(row);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
+    const disabledComponents = lobbyComponents.map(row => {
+      const disabledRow = ActionRowBuilder.from(row);
+      disabledRow.components.forEach(comp => comp.setDisabled(true));
+      return disabledRow;
+    });
 
     const timeoutEmbed = EmbedBuilder.from(embed)
       .setColor(0x555555)
       .setDescription(`⌛ **Lobby Ditutup!** Game dibatalkan karena tidak dimulai dalam 60 detik.`);
 
-    await lobbyMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+    await lobbyMessage.edit({ embeds: [timeoutEmbed], components: disabledComponents }).catch(() => { });
   }, 60 * 1000);
 
   // 8. Component Collector untuk penanganan Lobby
@@ -219,7 +241,7 @@ async function startTodGame(message, client, category = 'chill') {
       }
 
       session.players.push(clickerMember);
-      await updateLobbyEmbed(interaction, session, row);
+      await updateLobbyEmbed(interaction, session);
     } 
     
     else if (customId === 'tod_lobby_leave') {
@@ -230,9 +252,31 @@ async function startTodGame(message, client, category = 'chill') {
 
       // Hapus dari daftar pemain
       session.players = session.players.filter(p => p.id !== user.id);
-      await updateLobbyEmbed(interaction, session, row);
+      await updateLobbyEmbed(interaction, session);
     } 
     
+    else if (customId.startsWith('tod_cat_')) {
+      // Hanya Host atau Admin yang bisa mengubah kategori
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (user.id !== session.host.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host (pembuat lobby) atau Admin yang bisa mengubah kategori!', ephemeral: true });
+      }
+
+      const targetCategory = customId.replace('tod_cat_', '');
+      
+      // Khusus kategori spicy, pastikan teks channel bertanda NSFW
+      if (targetCategory === 'spicy' && config.categories.SPICY_NSFW_ONLY && !interaction.channel.nsfw) {
+        return interaction.reply({
+          content: '🔞 **Kategori Spicy Hanya Diizinkan di Channel NSFW!**\nSilakan ubah channel ini menjadi NSFW atau gunakan kategori Chill/Deep.',
+          ephemeral: true
+        });
+      }
+
+      // Update kategori di sesi game
+      session.category = targetCategory;
+      await updateLobbyEmbed(interaction, session);
+    }
+
     else if (customId === 'tod_lobby_start') {
       // Hanya Host atau Admin yang bisa memulai
       const isAdmin = interaction.member.permissions.has('Administrator');
@@ -276,14 +320,18 @@ async function startTodGame(message, client, category = 'chill') {
       collector.stop();
       cleanSession(guildId);
 
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
+      const currentComponents = getLobbyComponents(session);
+      const disabledComponents = currentComponents.map(row => {
+        const disabledRow = ActionRowBuilder.from(row);
+        disabledRow.components.forEach(comp => comp.setDisabled(true));
+        return disabledRow;
+      });
 
       const cancelledEmbed = EmbedBuilder.from(embed)
         .setColor(0xFF3366)
         .setDescription(`❌ Lobby Truth or Dare dibatalkan oleh ${user}.`);
 
-      await interaction.update({ embeds: [cancelledEmbed], components: [disabledRow] });
+      await interaction.update({ embeds: [cancelledEmbed], components: disabledComponents });
     }
   });
 }
@@ -291,7 +339,7 @@ async function startTodGame(message, client, category = 'chill') {
 /**
  * Memperbarui embed lobby pendaftaran secara real-time.
  */
-async function updateLobbyEmbed(interaction, session, row) {
+async function updateLobbyEmbed(interaction, session) {
   const playerListString = session.players.map((p, index) => {
     const isHost = p.id === session.host.id;
     return `${index + 1}. ${p} ${isHost ? '(👑 Host)' : ''}`;
@@ -312,7 +360,8 @@ async function updateLobbyEmbed(interaction, session, row) {
     .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
     .setTimestamp();
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const components = getLobbyComponents(session);
+  await interaction.update({ embeds: [embed], components });
 }
 
 /**

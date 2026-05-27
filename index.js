@@ -454,11 +454,11 @@ client.on('interactionCreate', async interaction => {
 
       await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
 
-      // Mulai putar musik lokal otomatis
-      playLocalMusic(guildId, connection, true);
+      // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
+      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => {});
 
       await interaction.reply({
-        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}** dan mulai memutar musik lokal secara loop! 🎵\n` +
+        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}**!\n` +
           `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
         ephemeral: true
       });
@@ -589,15 +589,14 @@ client.on('messageCreate', async message => {
 
       await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
 
-      // Mulai putar musik lokal otomatis
-      playLocalMusic(guildId, connection, true);
+      // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
+      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => {});
 
       const embed = new EmbedBuilder()
         .setColor(0x00FF88)
         .setTitle('🔒 Saluran Terkunci & Bergabung!')
         .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` +
-          `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.\n` +
-          `🎵 Mulai memutar musik lokal secara loop dari folder \`music/\`.`)
+          `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.`)
         .setTimestamp();
 
       await message.reply({ embeds: [embed] });
@@ -984,6 +983,29 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const botId = client.user?.id;
   if (!botId) return;
 
+  // --- FITUR GREETING / MENYAPA PENGGUNA YANG GABUNG VC ---
+  const botMember = newState.guild.members.me;
+  const botVoiceChannelId = botMember?.voice?.channelId;
+
+  // Cek jika pengguna lain (bukan bot) berpindah atau masuk ke Voice Channel
+  if (newState.member.id !== botId && !newState.member.user.bot) {
+    // Pengguna harus masuk ke VC bot dan berbeda dari channel sebelumnya
+    if (newState.channelId && newState.channelId === botVoiceChannelId) {
+      if (oldState.channelId !== newState.channelId) {
+        console.log(`🔊 [Voice Join] ${newState.member.displayName} bergabung ke VC bot.`);
+        const connection = getVoiceConnection(newState.guild.id);
+        if (connection) {
+          const displayName = newState.member.displayName;
+          const greetingText = `Halo ${displayName}, selamat bergabung!`;
+          speakText(connection, greetingText, newState.guild.id, 'id').catch(err => {
+            console.error('❌ Gagal memutar suara sapaan join:', err.message);
+          });
+        }
+      }
+    }
+  }
+  // --------------------------------------------------------
+
   if (oldState.member.id === botId) {
     const guildId = oldState.guild.id;
     const lockedChannelId = lockedChannels.get(guildId);
@@ -1007,9 +1029,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
           const player = musicPlayers.get(guildId);
           if (player) {
             connection.subscribe(player);
-            if (player.state.status === AudioPlayerStatus.Idle) {
-              playLocalMusic(guildId, connection, false);
-            }
+            // Jangan putar musik otomatis saat rejoin jika player idle agar sesuai keinginan user
           }
         } catch (error) {
           console.error(`❌ [Voice Lock Rejoin Error]:`, error.message);
