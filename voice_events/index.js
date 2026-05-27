@@ -666,9 +666,10 @@ async function startNextTurn(client, guildId) {
   }
 
   // 8. Component Collector untuk menangani Button Click pada giliran ini
+  const noTimerMode = session.category === 'custom' || session.mode === 'voice_hotseat';
   const collector = turnMessage.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: session.category === 'custom' ? 3600 * 1000 : config.durations.CHOICE_TIMEOUT_MS
+    time: noTimerMode ? 3600 * 1000 : config.durations.CHOICE_TIMEOUT_MS
   });
 
   collector.on('collect', async (interaction) => {
@@ -774,41 +775,43 @@ async function handlePlayerChoice(interaction, client, type) {
   // 3. Umumkan pertanyaan via TTS
   audio.announceQuestion(client, guildId, type, questionObj.question_text).catch(() => { });
 
-  // 4. Set batas waktu penyelesaian tantangan (60 detik)
-  session.timer = setTimeout(async () => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) return;
+  // 4. Set batas waktu penyelesaian tantangan (60 detik) — dilewati jika mode voice_hotseat
+  if (session.mode !== 'voice_hotseat') {
+    session.timer = setTimeout(async () => {
+      const currentSession = activeGames.get(guildId);
+      if (!currentSession || currentSession !== session) return;
 
-    // Juri AFK / Timeout tanpa keputusan = Bebas Denda demi Keadilan
-    const disabledRow = ActionRowBuilder.from(row);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
+      // Juri AFK / Timeout tanpa keputusan = Bebas Denda demi Keadilan
+      const disabledRow = ActionRowBuilder.from(row);
+      disabledRow.components.forEach(comp => comp.setDisabled(true));
 
-    const timeoutEmbed = EmbedBuilder.from(questionEmbed)
-      .setColor(0xFFAA00)
-      .setDescription([
-        `⌛ **Waktu Juri Terbatas Habis!**`,
-        `Juri ${session.challenger} tidak memberikan keputusan/penilaian dalam 60 detik.`,
-        `🛡️ **Anti-AFK Protection:** ${session.victim} dibebaskan dari denda karena Juri tidak merespons.`
-      ].join('\n'))
-      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
+      const timeoutEmbed = EmbedBuilder.from(questionEmbed)
+        .setColor(0xFFAA00)
+        .setDescription([
+          `⌛ **Waktu Juri Terbatas Habis!**`,
+          `Juri ${session.challenger} tidak memberikan keputusan/penilaian dalam 60 detik.`,
+          `🛡️ **Anti-AFK Protection:** ${session.victim} dibebaskan dari denda karena Juri tidak merespons.`
+        ].join('\n'))
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
 
-    await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
-    
-    // Umumkan via TTS bahwa Juri AFK
-    audio.speak(
-      client, 
-      guildId, 
-      `Waktu habis! Juri tidak memberikan keputusan, sehingga korban ${session.victim.displayName} bebas dari denda.`
-    ).catch(() => { });
+      await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+      
+      // Umumkan via TTS bahwa Juri AFK
+      audio.speak(
+        client, 
+        guildId, 
+        `Waktu habis! Juri tidak memberikan keputusan, sehingga korban ${session.victim.displayName} bebas dari denda.`
+      ).catch(() => { });
 
-    // Transisi ke putaran berikutnya
-    triggerNextTurnTransition(client, guildId);
-  }, config.durations.GAME_TIMEOUT_MS);
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
+    }, config.durations.GAME_TIMEOUT_MS);
+  }
 
   // 5. Component Collector untuk memproses keputusan Challenger (Juri)
   const actionCollector = session.message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: config.durations.GAME_TIMEOUT_MS
+    time: session.mode === 'voice_hotseat' ? 3600 * 1000 : config.durations.GAME_TIMEOUT_MS
   });
 
   actionCollector.on('collect', async (actInteraction) => {
@@ -1006,7 +1009,7 @@ function triggerNextTurnTransition(client, guildId) {
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('tod_transition_next')
-      .setLabel(session.category === 'custom' ? '👉 Putaran Berikutnya' : '👉 Putaran Berikutnya (15s)')
+      .setLabel((session.category === 'custom' || session.mode === 'voice_hotseat') ? '👉 Putaran Berikutnya' : '👉 Putaran Berikutnya (15s)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('tod_transition_stop')
@@ -1017,7 +1020,8 @@ function triggerNextTurnTransition(client, guildId) {
   // Edit pesan saat ini untuk menambahkan tombol transisi
   session.message.edit({ components: [row] }).catch(() => {});
 
-  if (session.category !== 'custom') {
+  const noTransitionTimer = session.category === 'custom' || session.mode === 'voice_hotseat';
+  if (!noTransitionTimer) {
     // Set timeout 15 detik untuk otomatis memanggil startNextTurn
     session.timer = setTimeout(async () => {
       const currentSession = activeGames.get(guildId);
@@ -1034,7 +1038,7 @@ function triggerNextTurnTransition(client, guildId) {
   // Buat collector pendek untuk tombol transisi
   const collector = session.message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: session.category === 'custom' ? 3600 * 1000 : 15 * 1000
+    time: noTransitionTimer ? 3600 * 1000 : 15 * 1000
   });
 
   collector.on('collect', async (interaction) => {
