@@ -2,7 +2,7 @@
 require('dotenv').config();
 
 const sodium = require('libsodium-wrappers');
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 const {
   joinVoiceChannel,
   createAudioPlayer,
@@ -402,6 +402,170 @@ function cleanupResources(guildId) {
   }
 }
 
+async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, client) {
+  // 1. Bangun embed kontrol panel utama
+  const mainEmbed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🎮 PUSAT KONTROL SENTINEL BOT')
+    .setThumbnail(client.user.displayAvatarURL())
+    .setDescription(
+      `Halo Warga **${guild.name}**! 👋✨\n\n` +
+      `Selamat datang di **Pusat Kontrol & Navigasi Sentinel Bot 2026**.\n` +
+      `Di sini Anda dapat mengakses semua daftar perintah bot secara terperinci, rapi, dan dinamis.\n\n` +
+      `👉 Silakan klik tombol di bawah ini untuk membuka menu kontrol yang sesuai:`
+    )
+    .addFields(
+      {
+        name: '👤 Panel Kontrol Member',
+        value: `Berisi semua perintah publik untuk memutar musik lokal, game Voice Channel (ToD), serta sistem ekonomi & bursa saham server.`,
+        inline: false
+      },
+      {
+        name: '🛡️ Panel Kontrol Administrator',
+        value: `Berisi semua perintah khusus Owner & Administrator untuk mengonfigurasi ekonomi, bursa saham, toko role, serta game ToD.`,
+        inline: false
+      }
+    )
+    .setFooter({ text: 'Gunakan tombol interaktif di bawah untuk bernavigasi!' })
+    .setTimestamp();
+
+  // 2. Buat barisan tombol interaktif
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('help_btn_member')
+      .setLabel('👤 Member Panel')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('help_btn_admin')
+      .setLabel('🛡️ Admin Panel')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  // 3. Kirim pesan utama
+  let replyMsg;
+  if (isInteraction) {
+    replyMsg = await replyTarget.reply({ embeds: [mainEmbed], components: [row], fetchReply: true });
+  } else {
+    replyMsg = await replyTarget.reply({ embeds: [mainEmbed], components: [row] });
+  }
+
+  // 4. Inisialisasi Collector Komponen
+  const collector = replyMsg.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 120000 // 2 menit navigasi
+  });
+
+  collector.on('collect', async i => {
+    // Tombol hanya bisa di-klik oleh si pemanggil perintah
+    if (i.user.id !== user.id) {
+      return i.reply({ content: '❌ Tombol ini hanya dapat digunakan oleh pemanggil perintah asli!', ephemeral: true });
+    }
+
+    try {
+      if (i.customId === 'help_btn_member') {
+        const memberEmbed = new EmbedBuilder()
+          .setColor(0x00FF88)
+          .setTitle('👤 PANEL KONTROL MEMBER — SENTINEL')
+          .setThumbnail(client.user.displayAvatarURL())
+          .setDescription([
+            `Berikut adalah daftar seluruh perintah publik yang dapat digunakan oleh seluruh member server:\n`,
+            `🎙️ **KONTROL UMUM & SUARA (GENERAL):**`,
+            `👉 **\`.join\`** atau **\`/join\`** - Bot masuk ke Voice Channel Anda dan mengunci saluran.`,
+            `👉 **\`.leave\`** atau **\`/leave\`** - Membuka kunci saluran dan mengeluarkan bot dari Voice Channel.`,
+            `👉 **\`.speak <teks>\`** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speak en <teks>\` untuk bahasa Inggris).`,
+            `👉 **\`.status\`** - Menampilkan status realtime koneksi, pemutar musik, dan statistik sistem bot.`,
+            `👉 **\`/help\`** atau **\`.help\`** - Membuka pusat kontrol panel interaktif ini.`,
+            `\n🎵 **PEMUTAR MUSIK LOKAL (FOLDER music/):**`,
+            `👉 **\`.list\`** - Menampilkan daftar lagu lokal yang tersedia di folder musik.`,
+            `👉 **\`.play <nomor/nama>\`** - Memutar lagu pilihan, atau melanjutkan (*resume*) musik yang dijeda.`,
+            `👉 **\`.pause\`** - Menjeda pemutaran musik saat ini.`,
+            `👉 **\`.resume\`** - Melanjutkan kembali musik yang sedang dijeda.`,
+            `👉 **\`.skip\`** atau **\`.next\`** - Melewatkan lagu ke antrean berikutnya.`,
+            `👉 **\`.prev\`** atau **\`.back\`** - Memutar kembali lagu sebelumnya di riwayat.`,
+            `👉 **\`.volume <0-100>\`** - Mengatur volume pemutar musik bot.`,
+            `👉 **\`.loop\`** - Mengaktifkan/menonaktifkan mode loop folder musik.`,
+            `👉 **\`.stop\`** - Menghentikan musik dan mereset antrean serta riwayat putar.`,
+            `\n🎲 **GAME VOICE CHANNEL (TRUTH OR DARE):**`,
+            `👉 **\`.tod\`** atau **\`.truthordare\`** - Memulai sesi lobi game Truth or Dare di Voice Channel.`,
+            `👉 **\`.tod status\`** - Mengecek profil, statistik koin, dan performa bermain ToD Anda.`,
+            `\n💸 **SISTEM EKONOMI & BURSA SAHAM:**`,
+            `👉 **\`.bal\`** atau **\`.profile\`** - Melihat saldo koin Rupiah, total nilai saham, streak, dan total earning.`,
+            `👉 **\`.daily\`** - Mengklaim hadiah koin gratis harian (Di-reset tepat pukul 12.00 malam WIB).`,
+            `👉 **\`.transfer @user <jumlah>\`** - Mengirim koin secara instan ke member lain (dikenakan pajak transfer 2%).`,
+            `👉 **\`.rich\`** atau **\`.leaderboard\`** - Menampilkan papan peringkat 10 member terkaya di server.`,
+            `👉 **\`.market\`** atau **\`.saham\`** - Membuka dashboard bursa saham channel dan meluncurkan menu perdagangan interaktif privat.`,
+            `👉 **\`.stock <ticker>\`** - Melihat tren visual histori pergerakan harga saham per 5 pembaruan.`,
+            `👉 **\`.buy <ticker> <jumlah>\`** - Membeli lembar saham channel (Batas kepemilikan: maks 500 lembar per saham).`,
+            `👉 **\`.sell <ticker> <jumlah>\`** - Menjual lembar saham Anda ke bursa (dikenakan pajak transaksi 5%).`,
+            `👉 **\`.sellall <ticker>\`** - Melikuidasi/menjual seluruh kepemilikan lembar saham Anda pada ticker terpilih.`,
+            `👉 **\`.porto\`** atau **\`.portfolio\`** - Melihat rincian aset investasi, harga beli rata-rata, dan P/L real-time Anda.`,
+            `\n🎭 **TOKO ROLE PRESTISE & SPIN GACHA:**`,
+            `👉 **\`.shop\`** atau **\`.rolemarket\`** - Membuka etalase pasar role prestise server.`,
+            `👉 **\`.buy-role <ID>\`** - Membeli role prestise bergengsi menggunakan saldo koin Anda.`,
+            `👉 **\`.gacha-role\`** - Memutar spin gacha role misteri seharga Rp 1.000 (Dua kali lipat jackpot cashback Rp 500 jika duplikat).`
+          ].join('\n'))
+          .setFooter({ text: 'Sentinel bot • Member Panel' })
+          .setTimestamp();
+
+        await i.reply({ embeds: [memberEmbed], ephemeral: true });
+      } else if (i.customId === 'help_btn_admin') {
+        // Pengecekan perizinan admin
+        const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+        const isOwner = i.user.id === OWNER_ID;
+        const memberObj = i.member || await guild.members.fetch(i.user.id).catch(() => null);
+        const isAdmin = memberObj && memberObj.permissions.has('Administrator');
+
+        if (!isOwner && !isAdmin) {
+          return i.reply({ content: '❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah panel admin.', ephemeral: true });
+        }
+
+        const adminEmbed = new EmbedBuilder()
+          .setColor(0xFF3366)
+          .setTitle('🛡️ PANEL KONTROL ADMINISTRATOR — SENTINEL')
+          .setThumbnail(client.user.displayAvatarURL())
+          .setDescription([
+            `Berikut adalah daftar seluruh perintah eksklusif khusus Owner & Administrator server untuk mengelola perekonomian, bursa saham, toko, serta game:\n`,
+            `🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
+            `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
+            `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
+            `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`,
+            `\n💰 **PENGELOLAAN SALDO EKONOMI:**`,
+            `👉 **\`.eco-give @user <jumlah>\`** - Menambahkan koin kustom secara manual ke dompet user.`,
+            `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong saldo koin dari dompet user.`,
+            `👉 **\`.eco-reset @user\`** - Mereset total saldo dompet, portofolio bursa saham, dan riwayat transaksi user kembali ke 0.`,
+            `👉 **\`.eco-resetall\`** - **[BAHAYA]** Mereset total seluruh database perekonomian server (dompet semua user, bursa, dll).`,
+            `👉 **\`.anoncemen\`** atau **\`.announcement\`** - Menyiarkan embed pengumuman pembaruan sistem ekonomi ke channel target disertai mention @everyone.`,
+            `\n📈 **SUNTIKAN & RESTURASI BURSA SAHAM:**`,
+            `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel baru sebagai instrumen saham di bursa (contoh: \`.market-add #lounge $LOUNGE\`).`,
+            `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham channel dari bursa dan membersihkan portofolio terkait.`,
+            `👉 **\`.market-reinit\`** - Menghapus seluruh instrumen bursa lama dan mengembalikannya ke setelan saham default server.`,
+            `👉 **\`.event-trigger [crash/bull/double]\`** - Memicu event crash pasar, bull run bursa, atau double earning hour secara instan.`,
+            `\n🎭 **PENGELOLAAN TOKO ROLE & PRESTISE:**`,
+            `👉 **\`.autoshoprole\`** atau **\`.shop-auto\`** - **[PREMIUM]** Membuat otomatis seluruh 5 tingkatan role khusus (Common s/d Mythic) dengan warna & izin rarity, serta mendaftarkannya langsung ke database toko role.`,
+            `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menambahkan manual role server Anda ke dalam daftar toko role dengan klasifikasi kustom.`,
+            `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus item role terdaftar dari penjualan toko.`,
+            `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`
+          ].join('\n'))
+          .setFooter({ text: 'Sentinel bot • Administrator Panel' })
+          .setTimestamp();
+
+        await i.reply({ embeds: [adminEmbed], ephemeral: true });
+      }
+    } catch (err) {
+      console.error('Error in interactive help button interaction:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    // Matikan tombol saat collector berakhir agar bersih
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('help_btn_member').setLabel('👤 Member Panel').setStyle(ButtonStyle.Primary).setDisabled(true),
+      new ButtonBuilder().setCustomId('help_btn_admin').setLabel('🛡️ Admin Panel').setStyle(ButtonStyle.Danger).setDisabled(true)
+    );
+    await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+  });
+}
+
 // ═══════════════════════════════════════════════════
 // BOT READY EVENT
 // ═══════════════════════════════════════════════════
@@ -497,38 +661,7 @@ client.on('interactionCreate', async interaction => {
 
   // ── HELP ──
   else if (commandName === 'help') {
-    const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setTitle('📖 Panduan Menu & Kontrol Bot')
-      .setThumbnail(client.user.displayAvatarURL())
-      .setDescription([
-        `👉 **/join** atau **.join** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
-        `👉 **.speak <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speak en <teks>\` untuk Bahasa Inggris).`,
-        `👉 **/leave** atau **.leave** - Membuka kunci channel dan keluar dari Voice Channel.`,
-        `👉 **.status** - Menampilkan status realtime dan statistik sistem bot.`,
-        `👉 **/help** atau **.help** - Menampilkan panduan menu ini.`,
-        `👉 **.admin** - Menampilkan panduan perintah khusus Administrator (Admin).`,
-        `\n🎵 **Kontrol Pemutar Musik Lokal (Folder music/)**`,
-        `👉 **.list** - Menampilkan daftar lagu lokal yang tersedia.`,
-        `👉 **.play <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
-        `👉 **.pause** - Menjeda lagu yang sedang diputar.`,
-        `👉 **.resume** - Melanjutkan lagu yang sedang dijeda.`,
-        `👉 **.skip / .next** - Melewatkan lagu ke lagu berikutnya.`,
-        `👉 **.prev / .back** - Memutar kembali lagu sebelumnya.`,
-        `👉 **.volume <0-100>** - Mengatur tingkat volume musik.`,
-        `👉 **.loop** - Mengaktifkan/menonaktifkan loop folder lagu.`,
-        `👉 **.stop** - Menghentikan musik dan mereset antrean.`,
-        `\n🎲 **Voice Channel Event (Sprint 5)**`,
-        `👉 **.truthordare** atau **.tod** - Bermain Truth or Dare di Voice Channel (2000+ pertanyaan klasik).`,
-        `👉 **.tod status** - Melihat statistik ToD kamu.`,
-        `👉 **.tod announce** - Menyiarkan pengumuman peluncuran game ToD (Admin).`,
-        `\n🔒 **Mekanisme Proteksi Saluran**`,
-        `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leave** yang dapat membuka kuncinya.`
-      ].join('\n'))
-      .setFooter({ text: 'Gunakan awalan titik (.) atau slash (/) untuk commands.' })
-      .setTimestamp();
-
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await sendInteractiveHelp(interaction, true, interaction.user, guild, client);
   }
 });
 
@@ -779,40 +912,9 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .help / .helplow ──
-  else if (commandName === 'help' || commandName === 'helplow') {
-    const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setTitle('📖 Panduan Menu & Kontrol Bot')
-      .setThumbnail(client.user.displayAvatarURL())
-      .setDescription([
-        `👉 **.joinlow** - Masuk ke Voice Channel Anda dan mengunci saluran.`,
-        `👉 **.speaklow <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speaklow en <teks>\` untuk Bahasa Inggris).`,
-        `👉 **.leavelow** - Membuka kunci channel dan keluar dari Voice Channel.`,
-        `👉 **.statuslow** - Menampilkan status realtime dan statistik sistem bot.`,
-        `👉 **.help** atau **.helplow** - Menampilkan panduan menu ini.`,
-        `👉 **.admin** - Menampilkan panduan perintah khusus Administrator (Admin).`,
-        `\n🎵 **Kontrol Pemutar Musik Lokal (Folder music/)**`,
-        `👉 **.listlow** - Menampilkan daftar lagu lokal yang tersedia.`,
-        `👉 **.playlow <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
-        `👉 **.pauselow** - Menjeda lagu yang sedang diputar.`,
-        `👉 **.resumelow** - Melanjutkan lagu yang sedang dijeda.`,
-        `👉 **.skiplow / .nextlow** - Melewatkan lagu ke lagu berikutnya.`,
-        `👉 **.prevlow / .backlow** - Memutar kembali lagu sebelumnya.`,
-        `👉 **.volumelow <0-100>** - Mengatur tingkat volume musik.`,
-        `👉 **.looplow** - Mengaktifkan/menonaktifkan loop folder lagu.`,
-        `👉 **.stoplow** - Menghentikan musik dan mereset antrean.`,
-        `\n🎲 **Voice Channel Event (Sprint 5)**`,
-        `👉 **.truthordare** atau **.tod** - Bermain Truth or Dare di Voice Channel (2000+ pertanyaan klasik).`,
-        `👉 **.tod status** - Melihat statistik ToD kamu.`,
-        `👉 **.tod announce** - Menyiarkan pengumuman peluncuran game ToD (Admin).`,
-        `\n🔒 **Mekanisme Proteksi Saluran**`,
-        `Begitu bot join, ia akan terus terkunci di channel tersebut. Jika dipindahkan paksa (drag) atau dikeluarkan (kick), bot akan rejoin instan secara otomatis. Hanya perintah **.leavelow** yang dapat membuka kuncinya.`
-      ].join('\n'))
-      .setFooter({ text: 'Gunakan awalan titik (.) sebelum mengetik perintah.' })
-      .setTimestamp();
-
-    await message.reply({ embeds: [embed] });
+  // ── .help / .helplow / .menu / .control ──
+  else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
+    await sendInteractiveHelp(message, false, message.author, guild, client);
   }
 
   // ── .listlow ──
