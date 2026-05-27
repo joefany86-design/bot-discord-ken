@@ -354,11 +354,11 @@ module.exports = {
         `Selamat datang di **Role Market**! Tukarkan koin **${config.CURRENCY_NAME}** Anda dengan role prestige yang bergengsi!\n\n` +
         `💵 **Saldo Anda:** **${formatCurrency(wallet.balance)}**\n` +
         `🎲 **Misteri Gacha (Hard Mode):** Ketik \`.gacha-role\` seharga **${formatCurrency(config.gacha.COST || 250)}** per roll!\n` +
-        `⚠️ *Peluang menang sangat sulit (Zonk Rate 75%). Jadilah Dewa Hoki berikutnya!*\n\n` +
-        `📊 **Tingkat Peluang (Rarity Rates):**\n` +
+        `⚠️ *Peluang menang penuh misteri dan kejutan. Jadilah Dewa Hoki berikutnya!*\n\n` +
+        `📊 **Tingkat Peluang Jackpot (Rarity Rates):**\n` +
         `• 🟢 COMMON: \`70.0%\` | 🔵 RARE: \`22.0%\` | 🟣 EPIC: \`6.8%\`\n` +
         `• 👑 LEGENDARY: \`1.1%\` | 🌟 MYTHIC: \`0.1%\` *(Jackpot Dewa!)*\n` +
-        `• 🗑️ ZONK: \`75.0%\` *(Dapatkan item sampah kocak)*`
+        `• 🗑️ ZONK: \`???\` *(Dapatkan item sampah kocak)*`
       );
 
     const TIER_EMOJIS = {
@@ -504,7 +504,7 @@ module.exports = {
         .setTitle(`🎰 GACHA SELESAI... DAN AMSYONG! 🎰`)
         .setDescription(
           `**${user.username}** baru saja memutar Gacha seharga **${formatCurrency(price)}**!\n\n` +
-          `❌ **HASIL ROLL (75% ZONK):**\n` +
+          `❌ **HASIL ROLL (ZONK):**\n` +
           `**ZONK / AMPAS TOTAL!** Keberuntungan sama sekali belum memihak padamu. 😭\n\n` +
           `🗑️ **Item Diperoleh:** **${item ? item.name : 'Angin Kosong'}**\n` +
           `📝 **Lore / Deskripsi:** *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n\n` +
