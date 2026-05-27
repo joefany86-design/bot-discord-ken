@@ -613,51 +613,23 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .eco-announce [#channel]
     // ═══════════════════════════════════════════════════
     if (commandName === 'eco-announce') {
-      const fs = require('fs');
-      const path = require('path');
       const targetChannel = message.mentions.channels.first() || message.channel;
 
       if (!targetChannel.isTextBased()) {
         return message.reply('❌ Channel target harus berupa text channel!');
       }
 
-      const filePath = path.join(__dirname, '../announcement_update.txt');
-      if (!fs.existsSync(filePath)) {
-        return message.reply('❌ File pengumuman `announcement_update.txt` tidak ditemukan di root bot!');
-      }
-
-      const content = fs.readFileSync(filePath, 'utf8');
-
       const botPermissions = targetChannel.permissionsFor(message.guild.members.me);
-      if (!botPermissions.has('SendMessages')) {
-        return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` di channel ${targetChannel}!`);
+      if (!botPermissions.has('SendMessages') || !botPermissions.has('EmbedLinks')) {
+        return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
       }
 
-      // Pecah konten pengumuman menjadi bagian kurang dari 2000 karakter agar tidak terkena limit Discord
-      const chunks = [];
-      let currentChunk = '';
-      const lines = content.split('\n');
-      
-      for (const line of lines) {
-        if (currentChunk.length + line.length + 1 > 1900) {
-          chunks.push(currentChunk.trim());
-          currentChunk = '';
-        }
-        currentChunk += line + '\n';
-      }
-      if (currentChunk.trim().length > 0) {
-        chunks.push(currentChunk.trim());
-      }
-
-      // Kirim setiap bagian pengumuman
-      for (const chunk of chunks) {
-        await targetChannel.send(chunk);
-        // Beri jeda 500ms agar pengiriman tidak terhambat rate limit
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+      // Kirim Embed Pengumuman Pembaruan Cantik & Rapi
+      const embed = embeds.updateAnnouncementEmbed(message.guild);
+      await targetChannel.send({ embeds: [embed] });
 
       if (targetChannel.id !== message.channel.id) {
-        await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting di channel ${targetChannel}.`);
+        await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting secara eksklusif dengan embed cantik di channel ${targetChannel}.`);
       }
       return true;
     }

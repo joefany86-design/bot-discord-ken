@@ -469,6 +469,52 @@ module.exports = {
     }
 
     return embed.setTimestamp();
+  },
+
+  // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
+  updateAnnouncementEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle('📢 PEMBARUAN & PENYEIMBANGAN EKONOMI SERVER KOSAN 1A 🚀')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Halo Warga Kosan 1A! 🏠✨\n` +
+        `Dalam upaya menciptakan ekosistem permainan yang lebih seru, adil, aman, dan seimbang bagi seluruh member, kami secara resmi merilis **Pembaruan Sistem Ekonomi & Keamanan Bot 2026**!\n\n` +
+        `Berikut adalah rangkuman fitur baru dan pengamanan sistem yang telah aktif per hari ini:`
+      )
+      .addFields(
+        {
+          name: '🎲 1. REVOLUSI ADIL: GAME TRUTH OR DARE (ToD)',
+          value: 
+            `* **🛡️ Anti-AFK Juri (Judge Protection)**: Jika Juri yang terpilih pergi AFK atau telat memilih keputusan (60 detik), **Victim BEBAS DENDA Rp 10.000!**\n` +
+            `* **⚖️ Juri Berputar (Rotational Challenger)**: Juri kini bergantian secara melingkar dan teratur dari pemain berikutnya yang aktif di VC. Semua mendapat giliran bertanya dan menilai secara adil!\n` +
+            `* **🙋‍♂️ Gabung Tengah Game (Join Mid-game)**: Anggota baru yang masuk VC bisa langsung klik tombol **\`🙋‍♂️ Ikut Bermain\`** saat transisi putaran untuk ikut bermain.\n` +
+            `* **💰 Penyeimbangan Koin ToD**:\n` +
+            `  - Denda Skip/Menyerah: Diturunkan drastis dari Rp 10.000 menjadi **Rp 300**!\n` +
+            `  - Hadiah Sukses: Dinaikkan dari Rp 35 menjadi **Rp 100**!`
+        },
+        {
+          name: '🎙️ 2. PERLINDUNGAN ANTI-AFK FARMING (VOICE CHANNEL)',
+          value:
+            `* **🎚️ Proteksi Mute/Deafen**: Member yang melakukan **Mute** (selfMute/serverMute) atau **Deafen** di Voice Channel **tidak akan mendapatkan koin keaktifan**.\n` +
+            `* **📈 Batas Kuota Harian**: Perolehan koin dari Voice Channel dibatasi maksimal **Rp 300 per hari** per user untuk mencegah hiperinflasi saldo server.`
+        },
+        {
+          name: '📈 3. BURSA SAHAM & TOKO ROLE (ANTI-MONOPOLI)',
+          value:
+            `* **🛑 Batas Saham (Share Cap)**: Mencegah investor kaya memonopoli bursa saham. Setiap user kini dibatasi maksimal memiliki **500 lembar saham per instrumen channel**.\n` +
+            `* **🎰 Misteri Gacha Role Premium**:\n` +
+            `  - Putar gacha seharga **Rp 1.000** dengan tingkat hoki: Common (36%), Rare (15%), Epic (7.2%), Legendary (1.8%).\n` +
+            `  - **Cashback Duplikat**: Jika memenangkan role yang sudah dimiliki, otomatis mendapatkan **cashback Rp 500**!`
+        },
+        {
+          name: '📅 4. RESET HARIAN TEPAT WAKTU (WIB/UTC+7)',
+          value:
+            `* **⏰ Sinkronisasi Tanggal**: Klaim harian \`.daily\` kini di-reset tepat pada pukul **12.00 malam WIB** (waktu Jakarta) setiap hari berdasarkan zona waktu Indonesia Barat.`
+        }
+      )
+      .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
+      .setTimestamp();
   }
 };
 
