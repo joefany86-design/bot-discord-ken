@@ -18,6 +18,25 @@ function formatCurrency(amount) {
   return `${config.CURRENCY_SYMBOL} ${amount.toLocaleString('id-ID')}`;
 }
 
+/**
+ * Membuat grafik mini ASCII (sparkline) dari array harga saham histori.
+ */
+function generateSparkline(prices) {
+  if (!prices || prices.length < 2) return '`[ ── ]` Belum ada riwayat';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min;
+  const chars = [' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+  
+  const spark = prices.map(p => {
+    if (range === 0) return chars[4]; // Garis datar jika stabil
+    const idx = Math.floor(((p - min) / range) * (chars.length - 1));
+    return chars[idx];
+  }).join('');
+  
+  return `\`${spark}\` ( ${prices.map(p => `Rp ${p.toLocaleString('id-ID')}`).join(' ➔ ')} )`;
+}
+
 module.exports = {
   COLORS,
   formatCurrency,
@@ -96,7 +115,7 @@ module.exports = {
   marketEmbed(stocks, isMarketOpen) {
     const embed = new EmbedBuilder()
       .setColor(isMarketOpen ? COLORS.SUCCESS : COLORS.ERROR)
-      .setTitle(`📈 Bursa Saham Server — ${isMarketOpen ? '🟢 BUKA' : '🔴 TUTUP'}`)
+      .setTitle(`📈 BURSA SAHAM SERVER — ${isMarketOpen ? '🟢 BUKA' : '🔴 TUTUP'}`)
       .setDescription(
         `Investasikan koin **${config.CURRENCY_NAME}** Anda ke channel server teraktif!\n` +
         `*Harga saham ter-update otomatis setiap 2 jam berdasarkan keaktifan chat.*`
@@ -109,12 +128,14 @@ module.exports = {
         const diff = stock.current_price - stock.previous_price;
         const pct = stock.previous_price > 0 ? ((diff / stock.previous_price) * 100).toFixed(1) : '0.0';
         const trendEmoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '↔️';
+        const trendIndicator = diff > 0 ? '🟢' : diff < 0 ? '🔴' : '⚪';
         const trendColor = diff > 0 ? '+' : '';
         
         embed.addFields({
-          name: `${stock.stock_ticker} — #${stock.stock_name}`,
-          value: `👉 Harga: **${formatCurrency(stock.current_price)}** per lembar\n` +
-                 `📊 Perubahan: \`${trendEmoji} ${trendColor}${pct}%\` | Stok: \`${stock.available_shares}/${stock.total_shares} lembar\``,
+          name: `🔹 **${stock.stock_ticker}** ( #${stock.stock_name} )`,
+          value: 
+            `\` Harga \` **${formatCurrency(stock.current_price)}** per lembar\n` +
+            `\` Tren  \` ${trendIndicator} **${trendColor}${pct}%** (${trendEmoji}) | sisa \`${stock.available_shares}/${stock.total_shares}\` lembar`,
           inline: false
         });
       });
@@ -131,24 +152,22 @@ module.exports = {
     const trendEmoji = diff > 0 ? '🟢 Naik' : diff < 0 ? '🔴 Turun' : '🟡 Stabil';
     
     // Bikin representasi visual chart sederhana dari history harga
-    let chartVisual = 'Belum ada data riwayat harga.';
+    let chartVisual = '`[ ── ]` Belum ada riwayat harga.';
     if (priceHistory && priceHistory.length > 0) {
       const prices = priceHistory.slice(-5).map(h => h.price);
-      if (prices.length > 1) {
-        chartVisual = '`[' + prices.map(p => `Rp ${p}`).join(' ➔ ') + ']`';
-      }
+      chartVisual = generateSparkline(prices);
     }
 
     return new EmbedBuilder()
       .setColor(diff >= 0 ? COLORS.SUCCESS : COLORS.ERROR)
-      .setTitle(`📊 Detail Saham: ${stock.stock_ticker} (${stock.stock_name})`)
+      .setTitle(`📊 DETAIL SAHAM: ${stock.stock_ticker} — #${stock.stock_name}`)
       .addFields(
-        { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}** per lembar`, inline: true },
-        { name: '💵 Harga Sebelumnya', value: `${formatCurrency(stock.previous_price)}`, inline: true },
+        { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}** /lembar`, inline: true },
+        { name: '💵 Harga Sebelumnya', value: `\`${formatCurrency(stock.previous_price)}\``, inline: true },
         { name: '📉 Performa Hari Ini', value: `\`${trendEmoji} (${diff >= 0 ? '+' : ''}${pct}%)\``, inline: true },
         { name: '🏛️ Stok Pasar', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
-        { name: '🔥 Skor Aktivitas Saat Ini', value: `\`${stock.activity_score.toFixed(1)} poin\``, inline: true },
-        { name: '📈 Tren Perubahan Harga', value: chartVisual, inline: false }
+        { name: '🔥 Keaktifan Channel', value: `\`${stock.activity_score.toFixed(1)} poin\``, inline: true },
+        { name: '📈 Tren Pergerakan Harga (5 Update Terakhir)', value: chartVisual, inline: false }
       )
       .setFooter({ text: 'Gunakan perintah .buy atau .sell untuk bertransaksi!' })
       .setTimestamp();
@@ -159,12 +178,12 @@ module.exports = {
     const totalWealth = wallet.balance + portfolio.totalPortfolioValue;
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`💼 Portofolio Investasi — ${user.username}`)
+      .setTitle(`💼 PORTOFOLIO INVESTASI — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setDescription(
-        `💰 Saldo Koin: **${formatCurrency(wallet.balance)}**\n` +
-        `📊 Valuasi Saham: **${formatCurrency(portfolio.totalPortfolioValue)}**\n` +
-        `💎 Total Kekayaan: **${formatCurrency(totalWealth)}**`
+        `💰 **Saldo Dompet**: **${formatCurrency(wallet.balance)}**\n` +
+        `📊 **Valuasi Saham**: **${formatCurrency(portfolio.totalPortfolioValue)}**\n` +
+        `💎 **Total Kekayaan**: **${formatCurrency(totalWealth)}**`
       );
 
     if (portfolio.items.length === 0) {
@@ -173,12 +192,13 @@ module.exports = {
       portfolio.items.forEach(item => {
         const profitSign = item.profitRp >= 0 ? '+' : '';
         const profitPercentSign = item.profitRp >= 0 ? '📈' : '📉';
+        const profitIndicator = item.profitRp >= 0 ? '🟢' : '🔴';
         
         embed.addFields({
-          name: `${item.ticker} — #${item.name}`,
-          value: `👉 Aset: \`${item.shares} lembar\` (Rata-rata: ${formatCurrency(item.avgPrice)})\n` +
-                 `📊 Valuasi: **${formatCurrency(item.currentValue)}**\n` +
-                 `📈 Keuntungan: \`${profitPercentSign} ${profitSign}${formatCurrency(item.profitRp)} (${profitSign}${item.profitPercent}%)\``,
+          name: `💼 **${item.ticker}** ( #${item.name} )`,
+          value:
+            `\` Aset \` **${item.shares}** lembar (Rata-rata: ${formatCurrency(item.avgPrice)})\n` +
+            `\` P L  \` ${profitIndicator} **${profitSign}${formatCurrency(item.profitRp)}** (${profitSign}${item.profitPercent}% ${profitPercentSign}) | Valuasi: \`${formatCurrency(item.currentValue)}\``,
           inline: false
         });
       });
@@ -222,7 +242,7 @@ module.exports = {
   leaderboardEmbed(guildName, leaderboard, client) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.DARK)
-      .setTitle(`🏆 Papan Peringkat Orang Terkaya — ${guildName}`)
+      .setTitle(`🏆 PAPAN PERINGKAT ORANG TERKAYA — ${guildName}`)
       .setDescription(`Daftar 10 konglomerat dengan total aset (Saldo + Nilai Saham) tertinggi.`);
 
     if (leaderboard.length === 0) {
@@ -235,8 +255,8 @@ module.exports = {
         const name = member ? `**${member.username}**` : `<@${user.userId}>`;
         
         ranks += `${medal} ${name}\n` +
-                 `ㅤㅤ💰 Saldo: \`${formatCurrency(user.balance)}\` | Aset Saham: \`${formatCurrency(user.portfolioValue)}\`\n` +
-                 `ㅤㅤ💎 **Kekayaan Total: ${formatCurrency(user.totalWealth)}**\n\n`;
+                 `   💵 Dompet: \`${formatCurrency(user.balance)}\` | 📊 Saham: \`${formatCurrency(user.portfolioValue)}\`\n` +
+                 `   💎 **Kekayaan Bersih: ${formatCurrency(user.totalWealth)}**\n\n`;
       });
       embed.setDescription(ranks);
     }
