@@ -5,7 +5,7 @@ const stocks = require('./stocks');
 const antiSpam = require('./antiSpam');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 
 /**
  * Inisialisasi Modul Stock Market.
@@ -155,7 +155,83 @@ async function handleEconomyCommands(message, client) {
       const activeStocks = stocks.getStocks(guildId);
       const isOpen = stocks.isMarketOpen();
       const embed = embeds.marketEmbed(activeStocks, isOpen);
-      await message.reply({ embeds: [embed] });
+      
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_porto')
+          .setLabel('💼 Portofolio')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_profile')
+          .setLabel('💰 Profil & Saldo')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_shop')
+          .setLabel('🛍️ Toko Role')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_gacha')
+          .setLabel('🎲 Gacha Role')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const replyMsg = await message.reply({ embeds: [embed], components: [row] });
+
+      const collector = replyMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60000
+      });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', ephemeral: true });
+        }
+
+        try {
+          if (i.customId === 'eco_btn_porto') {
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const wallet = economy.getWallet(author.id, guildId);
+            const portoEmbed = embeds.portfolioEmbed(author, porto, wallet);
+            await i.reply({ embeds: [portoEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_profile') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
+            await i.reply({ embeds: [profileEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_shop') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const shopEmbed = embeds.shopEmbed(items, wallet);
+            await i.reply({ embeds: [shopEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_gacha') {
+            const gachaCost = 1000;
+            const wallet = economy.getWallet(author.id, guildId);
+            const gachaPromptEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('🎲 Putar Gacha Role!')
+              .setDescription(
+                `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
+                `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
+                `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
+              )
+              .setFooter({ text: 'Ketik .gacha-role di chat!' });
+            await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+          }
+        } catch (err) {
+          console.error('Error handling button click:', err);
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+        }
+      });
+
+      collector.on('end', async () => {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
+        );
+        await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+      });
       return true;
     }
 
@@ -203,6 +279,15 @@ async function handleEconomyCommands(message, client) {
       const res = stocks.buyStock(author.id, guildId, ticker, shares);
       const embed = embeds.transactionSuccessEmbed(author, true, res);
       await message.reply({ embeds: [embed] });
+
+      // TTS Komentator jika volume >= 50 lembar
+      if (shares >= 50) {
+        client.emit('playTtsEvent', {
+          guildId,
+          text: `Wow gila sih! Sultan ${author.username} baru saja memborong ${shares} lembar saham ${res.ticker} senilai total ${res.totalPrice} Rupiah! Hype banget bursa hari ini!`,
+          lang: 'id'
+        });
+      }
       return true;
     }
 
@@ -223,6 +308,15 @@ async function handleEconomyCommands(message, client) {
       const res = stocks.sellStock(author.id, guildId, ticker, shares);
       const embed = embeds.transactionSuccessEmbed(author, false, res);
       await message.reply({ embeds: [embed] });
+
+      // TTS Komentator jika volume >= 50 lembar
+      if (shares >= 50) {
+        client.emit('playTtsEvent', {
+          guildId,
+          text: `Perhatian warga server! Sultan ${author.username} baru saja menjual ${shares} lembar saham ${res.ticker} senilai total ${res.finalRevenue} Rupiah! Likuiditas pasar meningkat tajam!`,
+          lang: 'id'
+        });
+      }
       return true;
     }
 
@@ -252,6 +346,15 @@ async function handleEconomyCommands(message, client) {
       const res = stocks.sellStock(author.id, guildId, ticker, portfolio.shares);
       const embed = embeds.transactionSuccessEmbed(author, false, res);
       await message.reply({ embeds: [embed] });
+
+      // TTS Komentator jika volume >= 50 lembar
+      if (portfolio.shares >= 50) {
+        client.emit('playTtsEvent', {
+          guildId,
+          text: `Perhatian warga server! Sultan ${author.username} baru saja melikuidasi seluruh ${portfolio.shares} lembar saham ${res.ticker} senilai total ${res.finalRevenue} Rupiah! Pergerakan modal yang sangat besar!`,
+          lang: 'id'
+        });
+      }
       return true;
     }
 
@@ -292,7 +395,63 @@ async function handleEconomyCommands(message, client) {
       const wallet = economy.getWallet(author.id, guildId);
       const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
       const embed = embeds.shopEmbed(items, wallet);
-      await message.reply({ embeds: [embed] });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_profile')
+          .setLabel('💰 Profil & Saldo')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_gacha')
+          .setLabel('🎲 Gacha Role')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const replyMsg = await message.reply({ embeds: [embed], components: [row] });
+
+      const collector = replyMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60000
+      });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', ephemeral: true });
+        }
+
+        try {
+          if (i.customId === 'eco_btn_profile') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
+            await i.reply({ embeds: [profileEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_gacha') {
+            const gachaCost = 1000;
+            const wallet = economy.getWallet(author.id, guildId);
+            const gachaPromptEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('🎲 Putar Gacha Role!')
+              .setDescription(
+                `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
+                `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
+                `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
+              )
+              .setFooter({ text: 'Ketik .gacha-role di chat!' });
+            await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+          }
+        } catch (err) {
+          console.error('Error handling button click in shop:', err);
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+        }
+      });
+
+      collector.on('end', async () => {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
+        );
+        await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+      });
       return true;
     }
 
@@ -429,6 +588,13 @@ async function handleEconomyCommands(message, client) {
 
         const zonkEmbed = embeds.gachaResultEmbed(author, null, gachaCost, finalWallet.balance, false);
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
+
+        // TTS Zonk / Ampas
+        client.emit('playTtsEvent', {
+          guildId,
+          text: `Amsyong! ${author.username} baru saja memutar gacha role seharga seribu Rupiah, dan hasilnya adalah ampas! Coba lagi ya, jangan menyerah!`,
+          lang: 'id'
+        });
         return true;
       }
 
