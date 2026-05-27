@@ -519,516 +519,125 @@ async function startNextTurn(client, guildId) {
   // Update properti sesi
   session.victim = victim;
   session.challenger = challenger;
-  session.state = 'waiting_for_choice';
+  session.state = 'waiting_for_completion';
 
-  // 6. Buat Embed Giliran Baru
-  const choiceFooterText = 'Waktu memilih: Tanpa Batas Waktu ♾️';
-  
-  const modeHeader = `🎙️ **MODE HOT SEAT (Voice/Mikrofon)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
-  const embedColor = 0x9933FF;
-
+  // === EMBED LANGSUNG — Challenger bicara lewat mic ===
   const embed = new EmbedBuilder()
-    .setColor(embedColor)
-    .setTitle('🎤 Putaran Truth or Dare Baru!')
+    .setColor(0x9933FF)
+    .setTitle('🎤 Truth or Dare — Hot Seat Voice')
     .setDescription([
-      modeHeader,
-      `🎯 **Korban (Victim):** ${victim} (menjawab/melakukan)`,
-      `🗣️ **Penanya (Challenger):** ${challenger} (menilai)`,
-      `📂 **Kategori:** \`${session.mode === 'voice_hotseat' ? 'VOICE (TANYA LANGSUNG)' : session.category.toUpperCase()}\``,
-      `\n⏱️ **Hei ${victim}, silakan pilih TRUTH atau DARE dengan menekan tombol di bawah!**`
+      `🔥 **Korban:** ${victim}`,
+      `🗣️ **Penanya:** ${challenger}`,
+      `💬 **Sisa Penanya:** ${session.hotseatChallengersQueue.length} orang`,
+      `\n🎙️ **${challenger}, tanya/tantang ${victim} lewat mikrofon!**`,
+      `*(Setelah dijawab, klik tombol di bawah)*`,
+      `\n💵 Denda: \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\` | 🎁 Hadiah: \`Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
     ].join('\n'))
-    .setFooter({ text: choiceFooterText })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('tod_select_truth')
-      .setLabel('🤔 TRUTH')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('tod_select_dare')
-      .setLabel('⚡ DARE')
+      .setCustomId('tod_done')
+      .setLabel('✅ Sukses')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('tod_cancel')
-      .setLabel('❌ Akhiri Game')
-      .setStyle(ButtonStyle.Danger)
+      .setCustomId('tod_skip')
+      .setLabel('❌ Menyerah')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('tod_join')
+      .setLabel('🙋‍♂️ Ikut')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_end')
+      .setLabel('⏹️ Stop')
+      .setStyle(ButtonStyle.Secondary)
   );
 
   const turnMessage = await session.textChannel.send({ embeds: [embed], components: [row] });
   session.message = turnMessage;
 
-  // Umumkan via TTS
-  if (session.mode === 'hotseat' || session.mode === 'voice_hotseat') {
-    const modeLabel = session.mode === 'voice_hotseat' ? 'Hot Seat Voice' : 'Hot Seat';
-    const text = `Giliran ${modeLabel}! Korban utama adalah ${victim.displayName}. Penanya kali ini adalah ${challenger.displayName}. Hei ${victim.displayName}, pilih truth atau dare!`;
-    audio.speak(client, guildId, text).catch(() => { });
-  } else {
-    audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
-  }
+  // TTS singkat
+  audio.speak(client, guildId, `${challenger.displayName} bertanya ke ${victim.displayName}!`).catch(() => {});
 
-  // 7. Pasang Timer Choice Timeout (30 detik) jika bukan 'custom' dan bukan 'voice_hotseat'
-  if (session.category !== 'custom' && session.mode !== 'voice_hotseat') {
-    session.timer = setTimeout(async () => {
-      const currentSession = activeGames.get(guildId);
-      if (!currentSession || currentSession !== session) return;
-
-      // Timeout saat memilih = dinilai menyerah/skip, didenda, lalu lanjut putaran berikutnya!
-      const victimId = victim.id;
-      database.incrementSkipStats(victimId);
-      database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
-
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-      const timeoutEmbed = EmbedBuilder.from(embed)
-        .setColor(0x555555)
-        .setDescription([
-          `⌛ **Waktu Memilih Habis!**`,
-          `User ${victim} tidak memilih dalam 30 detik dan dianggap menyerah.`,
-          `💸 **Denda Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await turnMessage.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
-      audio.announceSkip(client, guildId, victim.displayName, config.economy.SKIP_FINE).catch(() => { });
-
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
-    }, config.durations.CHOICE_TIMEOUT_MS);
-  }
-
-  // 8. Component Collector untuk menangani Button Click pada giliran ini
-  const noTimerMode = session.category === 'custom' || session.mode === 'voice_hotseat';
+  // Collector — semua tombol dalam satu tempat
   const collector = turnMessage.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: noTimerMode ? 3600 * 1000 : config.durations.CHOICE_TIMEOUT_MS
+    time: 3600 * 1000
   });
 
   collector.on('collect', async (interaction) => {
     const currentSession = activeGames.get(guildId);
     if (!currentSession || currentSession !== session) {
-      return interaction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
+      return interaction.reply({ content: '❌ Sesi sudah tidak aktif.', ephemeral: true });
     }
 
-    if (interaction.customId === 'tod_cancel') {
-      const isAdmin = interaction.member.permissions.has('Administrator');
-      if (interaction.user.id !== session.host.id && interaction.user.id !== victim.id && interaction.user.id !== challenger.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host, Victim, Challenger, atau Admin yang bisa mengakhiri game ini!', ephemeral: true });
+    const { customId } = interaction;
+
+    // 🙋‍♂️ Ikut Bermain
+    if (customId === 'tod_join') {
+      const member = interaction.member;
+      const vc = member.voice.channel;
+      if (!vc || vc.id !== session.voiceChannelId) {
+        return interaction.reply({ content: '❌ Masuk Voice Channel dulu!', ephemeral: true });
       }
-
-      if (session.timer) clearTimeout(session.timer);
-      collector.stop();
-      cleanSession(guildId);
-
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-      const cancelledEmbed = EmbedBuilder.from(embed)
-        .setColor(0xFF3366)
-        .setDescription(`🛑 **Permainan diakhiri** oleh ${interaction.user}. Sesi game selesai!`)
-        .setFooter({ text: 'Game Selesai' });
-
-      return interaction.update({ embeds: [cancelledEmbed], components: [disabledRow] });
-    }
-
-    // Hanya Victim yang bisa memilih Truth / Dare
-    if (interaction.user.id !== victim.id) {
-      return interaction.reply({ content: '❌ Hanya Victim terpilih yang dapat menekan tombol Truth atau Dare!', ephemeral: true });
-    }
-
-    // Hentikan timer pilihan
-    if (session.timer) clearTimeout(session.timer);
-    collector.stop();
-
-    const selectedType = interaction.customId === 'tod_select_truth' ? 'truth' : 'dare';
-    await handlePlayerChoice(interaction, client, selectedType);
-  });
-}
-
-/**
- * Menangani pemilihan Truth / Dare oleh Victim.
- */
-async function handlePlayerChoice(interaction, client, type) {
-  const { guildId, guild } = interaction;
-  const session = activeGames.get(guildId);
-  if (!session) return;
-
-  session.state = 'waiting_for_completion';
-  session.type = type;
-
-  // Jika kategori kustom atau mode voice_hotseat, alihkan ke alur ucap langsung!
-  if (session.category === 'custom' || session.mode === 'voice_hotseat') {
-    return startCustomVoiceFlow(interaction, client, type);
-  }
-
-  // 1. Ambil pertanyaan acak
-  const questionObj = database.getRandomQuestion(type, session.category, guildId);
-  if (!questionObj) {
-    cleanSession(guildId);
-    return interaction.update({
-      content: `❌ Gagal mengambil pertanyaan! Database untuk tipe \`${type.toUpperCase()}\` & kategori \`${session.category.toUpperCase()}\` kosong.`,
-      embeds: [],
-      components: []
-    });
-  }
-  session.question = questionObj;
-
-  // 2. Siapkan Embed Pertanyaan
-  const embedColor = type === 'truth' ? 0x3399FF : 0x00FF88;
-  const embedTitle = type === 'truth' ? '🤔 TRUTH QUESTION' : '⚡ DARE CHALLENGE';
-
-  const questionEmbed = new EmbedBuilder()
-    .setColor(embedColor)
-    .setTitle(`🎤 VC Event — ${embedTitle}`)
-    .setDescription([
-      `👤 **Pemain:** ${session.victim}`,
-      `🗣️ **Juri Penilai:** ${session.challenger}`,
-      `\n🚨 **PERTANYAAN / TANTANGAN:**`,
-      `>>> **${questionObj.question_text}**`,
-      `\n💵 **Denda Skip:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\` | 🎁 **Hadiah Sukses:** \`Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
-    ].join('\n'))
-    .setFooter({ text: `Menunggu juri memvalidasi... Waktu batas: 60 detik` })
-    .setTimestamp();
-
-  // Tombol aksi untuk Challenger (Juri) menilai
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_action_done')
-      .setLabel('✅ Selesai (Sukses)')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('tod_action_skip')
-      .setLabel('❌ Menyerah (Denda Koin)')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  await interaction.update({ embeds: [questionEmbed], components: [row] });
-
-  // 3. Umumkan pertanyaan via TTS
-  audio.announceQuestion(client, guildId, type, questionObj.question_text).catch(() => { });
-
-  // 4. Set batas waktu penyelesaian tantangan (60 detik) — dilewati jika mode voice_hotseat
-  if (session.mode !== 'voice_hotseat') {
-    session.timer = setTimeout(async () => {
-      const currentSession = activeGames.get(guildId);
-      if (!currentSession || currentSession !== session) return;
-
-      // Juri AFK / Timeout tanpa keputusan = Bebas Denda demi Keadilan
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-      const timeoutEmbed = EmbedBuilder.from(questionEmbed)
-        .setColor(0xFFAA00)
-        .setDescription([
-          `⌛ **Waktu Juri Terbatas Habis!**`,
-          `Juri ${session.challenger} tidak memberikan keputusan/penilaian dalam 60 detik.`,
-          `🛡️ **Anti-AFK Protection:** ${session.victim} dibebaskan dari denda karena Juri tidak merespons.`
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
-      
-      // Umumkan via TTS bahwa Juri AFK
-      audio.speak(
-        client, 
-        guildId, 
-        `Waktu habis! Juri tidak memberikan keputusan, sehingga korban ${session.victim.displayName} bebas dari denda.`
-      ).catch(() => { });
-
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
-    }, config.durations.GAME_TIMEOUT_MS);
-  }
-
-  // 5. Component Collector untuk memproses keputusan Challenger (Juri)
-  const actionCollector = session.message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: session.mode === 'voice_hotseat' ? 3600 * 1000 : config.durations.GAME_TIMEOUT_MS
-  });
-
-  actionCollector.on('collect', async (actInteraction) => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) {
-      return actInteraction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
-    }
-
-    // Hanya Challenger (Juri) atau Admin yang bisa menekan tombol verifikasi
-    const isAdmin = actInteraction.member.permissions.has('Administrator');
-    if (actInteraction.user.id !== session.challenger.id && !isAdmin) {
-      return actInteraction.reply({ content: '❌ Hanya Challenger (Juri) terpilih atau Admin yang dapat memvalidasi game ini!', ephemeral: true });
-    }
-
-    if (session.timer) clearTimeout(session.timer);
-    actionCollector.stop();
-
-    const disabledRow = ActionRowBuilder.from(row);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-    const victimId = session.victim.id;
-
-    if (actInteraction.customId === 'tod_action_done') {
-      // 🟢 SUKSES
-      database.incrementGameStats(victimId, type);
-      database.rewardUser(victimId, guildId, config.economy.SUCCESS_REWARD);
-
-      const resultEmbed = EmbedBuilder.from(questionEmbed)
-        .setColor(0x00FF88)
-        .setDescription([
-          `🎉 **Tantangan Berhasil Diselesaikan!**`,
-          `Juri ${session.challenger} memverifikasi bahwa ${session.victim} telah sukses!`,
-          `🎁 **Hadiah Masuk:** \`+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
-      audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => { });
-
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
-
-    } else if (actInteraction.customId === 'tod_action_skip') {
-      // 🔴 SKIP / DENDA
-      database.incrementSkipStats(victimId);
-      database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
-
-      const resultEmbed = EmbedBuilder.from(questionEmbed)
-        .setColor(0xFF3366)
-        .setDescription([
-          `❌ **Pemain Menyerah / Memilih Skip!**`,
-          `User ${session.victim} memutuskan untuk skip tantangan.`,
-          `💸 **Denda Koin Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
-      audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
-
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
-    }
-  });
-}
-
-/**
- * Alur khusus ketika Juri mengucapkan pertanyaan/tantangan secara langsung lewat suara.
- */
-async function startCustomVoiceFlow(interaction, client, type) {
-  const { guildId } = interaction;
-  const session = activeGames.get(guildId);
-  if (!session) return;
-
-  session.state = 'waiting_for_completion';
-  session.type = type;
-  session.question = { question_text: 'Diucapkan langsung oleh Juri lewat suara mikrofon.' };
-
-  const embedColor = type === 'truth' ? 0x3399FF : 0x00FF88;
-  const embedTitle = type === 'truth' ? '🤔 TRUTH (UCAP LANGSUNG)' : '⚡ DARE (UCAP LANGSUNG)';
-
-  const questionEmbed = new EmbedBuilder()
-    .setColor(embedColor)
-    .setTitle(`🎤 VC Event — ${embedTitle}`)
-    .setDescription([
-      `👤 **Pemain:** ${session.victim}`,
-      `🗣️ **Juri Penilai:** ${session.challenger}`,
-      `\n🗣️ **Hei ${session.challenger}, silakan ucapkan pertanyaan/tantanganmu secara langsung lewat mikrofon kepada ${session.victim}!**`,
-      `*(Setelah korban menjawab/melakukan tantangan, Juri silakan klik tombol di bawah untuk menilai!)*`,
-      `\n💵 **Denda Skip:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\` | 🎁 **Hadiah Sukses:** \`Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
-    ].join('\n'))
-    .setFooter({ text: `Menunggu juri menilai... (Tanpa Batas Waktu ♾️)` })
-    .setTimestamp();
-
-  // Tombol aksi untuk Challenger (Juri) menilai langsung sejak awal
-  const actionRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_action_done')
-      .setLabel('✅ Selesai (Sukses)')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('tod_action_skip')
-      .setLabel('❌ Menyerah (Denda Koin)')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  // Update pesan lobi menjadi embed instruksi bicara + tombol penilaian langsung
-  await interaction.update({ embeds: [questionEmbed], components: [actionRow] });
-
-  // Umumkan instruksi via TTS
-  const speechText = `Juri ${session.challenger.displayName}, silakan ucapkan pertanyaan atau tantangan kustommu secara langsung kepada ${session.victim.displayName}!`;
-  audio.speak(client, guildId, speechText).catch(() => { });
-
-  // Pasang collector keputusan Juri (tanpa batas waktu otomatis)
-  const actionCollector = session.message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 3600 * 1000 // 1 jam (no timeout)
-  });
-
-  actionCollector.on('collect', async (actInteraction) => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) {
-      return actInteraction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
-    }
-
-    // Hanya Challenger (Juri) atau Admin yang bisa menilai
-    const isUserAdmin = actInteraction.member.permissions.has('Administrator');
-    if (actInteraction.user.id !== session.challenger.id && !isUserAdmin) {
-      return actInteraction.reply({ content: '❌ Hanya Challenger (Juri) terpilih atau Admin yang dapat memvalidasi game ini!', ephemeral: true });
-    }
-
-    if (session.timer) clearTimeout(session.timer);
-    actionCollector.stop();
-
-    const disabledRow = ActionRowBuilder.from(actionRow);
-    disabledRow.components.forEach(comp => comp.setDisabled(true));
-
-    const victimId = session.victim.id;
-
-    if (actInteraction.customId === 'tod_action_done') {
-      // 🟢 SUKSES
-      database.incrementGameStats(victimId, type);
-      database.rewardUser(victimId, guildId, config.economy.SUCCESS_REWARD);
-
-      const resultEmbed = EmbedBuilder.from(questionEmbed)
-        .setColor(0x00FF88)
-        .setDescription([
-          `🎉 **Tantangan Berhasil Diselesaikan!**`,
-          `Juri ${session.challenger} memverifikasi bahwa ${session.victim} telah sukses!`,
-          `🎁 **Hadiah Masuk:** \`+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
-      audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => { });
-
-      // Transisi ke putaran berikutnya
-      triggerNextTurnTransition(client, guildId);
-
-    } else if (actInteraction.customId === 'tod_action_skip') {
-      // 🔴 SKIP / DENDA
-      database.incrementSkipStats(victimId);
-      database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
-
-      const resultEmbed = EmbedBuilder.from(questionEmbed)
-        .setColor(0xFF3366)
-        .setDescription([
-          `❌ **Pemain Menyerah / Memilih Skip!**`,
-          `User ${session.victim} memutuskan untuk skip tantangan.`,
-          `💸 **Denda Koin Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
-        ].join('\n'))
-        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
-
-      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
-      audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
-
-    }
-  });
-}
-
-/**
- * Mengatur jeda transisi sebelum melaju ke putaran berikutnya, 
- * menyediakan tombol untuk mempercepat transisi, atau tombol untuk mengakhiri permainan secara manual.
- */
-function triggerNextTurnTransition(client, guildId) {
-  const session = activeGames.get(guildId);
-  if (!session) return;
-
-  session.state = 'waiting_for_next';
-
-  // Sediakan tombol transisi + Tombol Gabung Tengah Game
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_transition_join')
-      .setLabel('🙋‍♂️ Ikut Bermain')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('tod_transition_next')
-      .setLabel((session.category === 'custom' || session.mode === 'voice_hotseat') ? '👉 Putaran Berikutnya' : '👉 Putaran Berikutnya (15s)')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('tod_transition_stop')
-      .setLabel('❌ Akhiri Game')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  // Edit pesan saat ini untuk menambahkan tombol transisi
-  session.message.edit({ components: [row] }).catch(() => {});
-
-  const noTransitionTimer = session.category === 'custom' || session.mode === 'voice_hotseat';
-  if (!noTransitionTimer) {
-    // Set timeout 15 detik untuk otomatis memanggil startNextTurn
-    session.timer = setTimeout(async () => {
-      const currentSession = activeGames.get(guildId);
-      if (!currentSession || currentSession !== session) return;
-
-      // Hapus tombol transisi dari pesan lama
-      await session.message.edit({ components: [] }).catch(() => {});
-
-      // Jalankan giliran berikutnya
-      await startNextTurn(client, guildId);
-    }, 15 * 1000);
-  }
-
-  // Buat collector pendek untuk tombol transisi
-  const collector = session.message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: noTransitionTimer ? 3600 * 1000 : 15 * 1000
-  });
-
-  collector.on('collect', async (interaction) => {
-    const currentSession = activeGames.get(guildId);
-    if (!currentSession || currentSession !== session) {
-      return interaction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
-    }
-
-    if (interaction.customId === 'tod_transition_join') {
-      const clickerMember = interaction.member;
-      const clickerVoiceChannel = clickerMember.voice.channel;
-      if (!clickerVoiceChannel || clickerVoiceChannel.id !== session.voiceChannelId) {
-        return interaction.reply({ content: '❌ Kamu harus berada di **Voice Channel** yang sama untuk bergabung!', ephemeral: true });
-      }
-
       if (session.players.some(p => p.id === interaction.user.id)) {
-        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar di dalam game!', ephemeral: true });
+        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', ephemeral: true });
       }
-
-      session.players.push(clickerMember);
-      return interaction.reply({ content: `✅ **${interaction.user.username}** berhasil bergabung ke dalam game! Giliranmu akan datang di putaran berikutnya.`, ephemeral: false });
+      session.players.push(member);
+      return interaction.reply({ content: `✅ **${interaction.user.username}** bergabung!` });
     }
 
-    else if (interaction.customId === 'tod_transition_next') {
-      // Siapa pun pemain terdaftar yang masih di VC dapat menekan tombol ini untuk melaju lebih cepat
-      const isRegistered = session.players.some(p => p.id === interaction.user.id);
-      if (!isRegistered) {
-        return interaction.reply({ content: '❌ Hanya pemain terdaftar yang bisa mempercepat giliran!', ephemeral: true });
-      }
-
-      if (session.timer) clearTimeout(session.timer);
-      collector.stop();
-
-      // Hapus tombol
-      await interaction.update({ components: [] }).catch(() => {});
-
-      // Jalankan giliran berikutnya
-      await startNextTurn(client, guildId);
-    } 
-    
-    else if (interaction.customId === 'tod_transition_stop') {
+    // ⏹️ Stop Game
+    if (customId === 'tod_end') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (interaction.user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa mengakhiri game!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya Host/Admin!', ephemeral: true });
       }
-
       if (session.timer) clearTimeout(session.timer);
       collector.stop();
       cleanSession(guildId);
-
-      const endEmbed = new EmbedBuilder()
+      const endEmbed = EmbedBuilder.from(embed)
         .setColor(0xFF3366)
-        .setTitle('🏁 Game Truth or Dare Selesai!')
-        .setDescription(`🛑 Permainan diakhiri secara manual oleh ${interaction.user}. Sesi ditutup!`)
-        .setTimestamp();
+        .setDescription(`🛑 Game diakhiri oleh ${interaction.user}.`);
+      return interaction.update({ embeds: [endEmbed], components: [] });
+    }
 
-      await interaction.update({ embeds: [endEmbed], components: [] });
+    // ✅ Sukses / ❌ Menyerah — hanya Penanya (Challenger) atau Admin
+    if (customId === 'tod_done' || customId === 'tod_skip') {
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (interaction.user.id !== session.challenger.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Penanya/Admin yang bisa menilai!', ephemeral: true });
+      }
+
+      collector.stop();
+      const disabledRow = ActionRowBuilder.from(row);
+      disabledRow.components.forEach(comp => comp.setDisabled(true));
+      const victimId = session.victim.id;
+
+      if (customId === 'tod_done') {
+        database.incrementGameStats(victimId, 'truth');
+        database.rewardUser(victimId, guildId, config.economy.SUCCESS_REWARD);
+        const resultEmbed = EmbedBuilder.from(embed)
+          .setColor(0x00FF88)
+          .setDescription(`🎉 **${session.victim} Berhasil!** Dinilai oleh ${session.challenger}\n🎁 **+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}**`);
+        await interaction.update({ embeds: [resultEmbed], components: [disabledRow] });
+        audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => {});
+      } else {
+        database.incrementSkipStats(victimId);
+        database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
+        const resultEmbed = EmbedBuilder.from(embed)
+          .setColor(0xFF3366)
+          .setDescription(`❌ **${session.victim} Menyerah!**\n💸 **Denda: Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}**`);
+        await interaction.update({ embeds: [resultEmbed], components: [disabledRow] });
+        audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => {});
+      }
+
+      // Auto-lanjut 3 detik ke giliran berikutnya
+      session.timer = setTimeout(() => {
+        const s = activeGames.get(guildId);
+        if (s && s === session) startNextTurn(client, guildId);
+      }, 3000);
     }
   });
 }
