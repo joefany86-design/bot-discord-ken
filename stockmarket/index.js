@@ -633,7 +633,28 @@ async function handleEconomyCommands(message, client) {
         return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` di channel ${targetChannel}!`);
       }
 
-      await targetChannel.send(content);
+      // Pecah konten pengumuman menjadi bagian kurang dari 2000 karakter agar tidak terkena limit Discord
+      const chunks = [];
+      let currentChunk = '';
+      const lines = content.split('\n');
+      
+      for (const line of lines) {
+        if (currentChunk.length + line.length + 1 > 1900) {
+          chunks.push(currentChunk.trim());
+          currentChunk = '';
+        }
+        currentChunk += line + '\n';
+      }
+      if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim());
+      }
+
+      // Kirim setiap bagian pengumuman
+      for (const chunk of chunks) {
+        await targetChannel.send(chunk);
+        // Beri jeda 500ms agar pengiriman tidak terhambat rate limit
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
       if (targetChannel.id !== message.channel.id) {
         await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting di channel ${targetChannel}.`);
