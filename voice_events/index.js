@@ -121,8 +121,12 @@ function getLobbyComponents(session) {
       .setStyle(activeMode === 'normal' ? ButtonStyle.Success : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('tod_mode_hotseat')
-      .setLabel('🔥 Mode Hot Seat')
-      .setStyle(activeMode === 'hotseat' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setLabel('🔥 Hot Seat (DB)')
+      .setStyle(activeMode === 'hotseat' ? ButtonStyle.Danger : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_mode_voice_hotseat')
+      .setLabel('🎙️ Hot Seat (Voice)')
+      .setStyle(activeMode === 'voice_hotseat' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   return [lobbyRow, categoryRow, modeRow];
@@ -413,7 +417,14 @@ async function updateLobbyEmbed(interaction, session) {
   }).join('\n');
 
   const prepTimeText = session.category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
-  const modeText = session.mode === 'hotseat' ? '🔥 HOT SEAT (Semua Tanya Satu)' : '🎲 NORMAL (Bergantian Acak)';
+  
+  let modeText = '🎲 NORMAL (Bergantian Acak)';
+  if (session.mode === 'hotseat') {
+    modeText = '🔥 HOT SEAT (Semua Tanya Satu via Database)';
+  } else if (session.mode === 'voice_hotseat') {
+    modeText = '🎙️ HOT SEAT VOICE (Semua Tanya Satu via Voice/Mikrofon)';
+  }
+
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
@@ -476,7 +487,7 @@ async function startNextTurn(client, guildId) {
   let victim = null;
   let challenger = null;
 
-  if (session.mode === 'hotseat') {
+  if (session.mode === 'hotseat' || session.mode === 'voice_hotseat') {
     // 4. LOGIK HOT SEAT (Semua Tanya Satu)
     if (!session.remainingHotseatVictims) {
       session.remainingHotseatVictims = [];
@@ -570,20 +581,27 @@ async function startNextTurn(client, guildId) {
   session.state = 'waiting_for_choice';
 
   // 6. Buat Embed Giliran Baru
-  const choiceFooterText = session.category === 'custom' ? 'Waktu memilih: Tanpa Batas Waktu ♾️' : 'Waktu memilih: 30 detik';
+  const choiceFooterText = (session.category === 'custom' || session.mode === 'voice_hotseat') ? 'Waktu memilih: Tanpa Batas Waktu ♾️' : 'Waktu memilih: 30 detik';
   
-  const modeHeader = session.mode === 'hotseat'
-    ? `🔥 **MODE HOT SEAT (Semua Tanya Satu)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`
-    : `🎲 **MODE NORMAL (Bergantian Acak)**\n`;
+  let modeHeader = `🎲 **MODE NORMAL (Bergantian Acak)**\n`;
+  let embedColor = 0x00D2FF;
+
+  if (session.mode === 'hotseat') {
+    modeHeader = `🔥 **MODE HOT SEAT (Database)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
+    embedColor = 0xFF5500;
+  } else if (session.mode === 'voice_hotseat') {
+    modeHeader = `🎙️ **MODE HOT SEAT (Voice/Mikrofon)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
+    embedColor = 0x9933FF;
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(session.mode === 'hotseat' ? 0xFF5500 : 0x00D2FF)
+    .setColor(embedColor)
     .setTitle('🎤 Putaran Truth or Dare Baru!')
     .setDescription([
       modeHeader,
       `🎯 **Korban (Victim):** ${victim} (menjawab/melakukan)`,
       `🗣️ **Penanya (Challenger):** ${challenger} (menilai)`,
-      `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
+      `📂 **Kategori:** \`${session.mode === 'voice_hotseat' ? 'VOICE (TANYA LANGSUNG)' : session.category.toUpperCase()}\``,
       `\n⏱️ **Hei ${victim}, silakan pilih TRUTH atau DARE dengan menekan tombol di bawah!**`
     ].join('\n'))
     .setFooter({ text: choiceFooterText })
@@ -608,15 +626,16 @@ async function startNextTurn(client, guildId) {
   session.message = turnMessage;
 
   // Umumkan via TTS
-  if (session.mode === 'hotseat') {
-    const text = `Giliran Hot Seat! Korban utama adalah ${victim.displayName}. Penanya kali ini adalah ${challenger.displayName}. Hei ${victim.displayName}, pilih truth atau dare!`;
+  if (session.mode === 'hotseat' || session.mode === 'voice_hotseat') {
+    const modeLabel = session.mode === 'voice_hotseat' ? 'Hot Seat Voice' : 'Hot Seat';
+    const text = `Giliran ${modeLabel}! Korban utama adalah ${victim.displayName}. Penanya kali ini adalah ${challenger.displayName}. Hei ${victim.displayName}, pilih truth atau dare!`;
     audio.speak(client, guildId, text).catch(() => { });
   } else {
     audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
   }
 
-  // 7. Pasang Timer Choice Timeout (30 detik) jika bukan 'custom'
-  if (session.category !== 'custom') {
+  // 7. Pasang Timer Choice Timeout (30 detik) jika bukan 'custom' dan bukan 'voice_hotseat'
+  if (session.category !== 'custom' && session.mode !== 'voice_hotseat') {
     session.timer = setTimeout(async () => {
       const currentSession = activeGames.get(guildId);
       if (!currentSession || currentSession !== session) return;
@@ -704,8 +723,8 @@ async function handlePlayerChoice(interaction, client, type) {
   session.state = 'waiting_for_completion';
   session.type = type;
 
-  // Jika kategori kustom, alihkan ke alur ucap langsung!
-  if (session.category === 'custom') {
+  // Jika kategori kustom atau mode voice_hotseat, alihkan ke alur ucap langsung!
+  if (session.category === 'custom' || session.mode === 'voice_hotseat') {
     return startCustomVoiceFlow(interaction, client, type);
   }
 
