@@ -1,3 +1,6 @@
+// Muat environment variables SEBELUM semua require agar .env tersedia di seluruh modul
+require('dotenv').config();
+
 const sodium = require('libsodium-wrappers');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const {
@@ -30,7 +33,8 @@ try {
 process.env.FFMPEG_BIN = ffmpegPath;
 process.env.FFMPEG_PATH = ffmpegPath;
 
-require('dotenv').config();
+// Owner ID dari environment variable (fallback ke default)
+const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 
 
 
@@ -235,7 +239,9 @@ function splitText(text, maxLength = 200) {
 // Mengucapkan teks bahasa Indonesia / Inggris via Google TTS (Smart Pause & Resume)
 function speakText(connection, text, guildId, lang = 'id') {
   return new Promise((resolve) => {
-    const chunks = splitText(text);
+    // Batasi panjang teks TTS untuk mencegah abuse (maks 500 karakter)
+    const safeText = text.length > 500 ? text.substring(0, 497) + '...' : text;
+    const chunks = splitText(safeText);
     if (chunks.length === 0 || !chunks[0]) {
       return resolve();
     }
@@ -418,9 +424,6 @@ client.once('clientReady', () => {
 // ═══════════════════════════════════════════════════
 // PENANGANAN SLASH COMMANDS
 // ═══════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════
-// PENANGANAN SLASH COMMANDS
-// ═══════════════════════════════════════════════════
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -571,7 +574,7 @@ client.on('messageCreate', async message => {
 
   // ── .admin (Owner & Administrator Only) ──
   if (commandName === 'admin') {
-    const isOwner = message.author.id === '436554535037698059';
+    const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
     if (!isOwner && !isAdmin) {
       return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
@@ -821,7 +824,7 @@ client.on('messageCreate', async message => {
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
       .setTitle('🎵 Daftar Lagu Lokal (Folder music/)')
-      .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlahu banyak)' : songsList)
+      .setDescription(songsList.length > 2000 ? songsList.substring(0, 1950) + '\n...dan lagu lainnya (terlalu banyak)' : songsList)
       .setFooter({ text: `Total: ${files.length} lagu | Mainkan dengan perintah: .playlow <nomor/nama>` })
       .setTimestamp();
 
@@ -1107,3 +1110,23 @@ client.on('warn', (warning) => {
     console.error(error);
   });
 })();
+
+// ═══════════════════════════════════════════════════
+// GRACEFUL SHUTDOWN (PM2 / VPS / Docker)
+// ═══════════════════════════════════════════════════
+function gracefulShutdown(signal) {
+  console.log(`⚠️ ${signal} diterima. Melakukan shutdown bersih...`);
+
+  // Bersihkan semua koneksi voice
+  client.guilds.cache.forEach(guild => {
+    cleanupResources(guild.id);
+  });
+
+  // Tutup koneksi Discord
+  client.destroy();
+  console.log('✅ Bot berhasil dimatikan secara bersih.');
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

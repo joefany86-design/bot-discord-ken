@@ -541,6 +541,53 @@ module.exports = {
       )
       .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
       .setTimestamp();
+  },
+
+  // 17. Status Event Aktif (.event)
+  eventStatusEmbed(activeEvent) {
+    const embed = new EmbedBuilder();
+    
+    if (!activeEvent) {
+      embed
+        .setColor(COLORS.DARK)
+        .setTitle('📅 Status Event Ekonomi')
+        .setDescription('💤 **Tidak ada event ekonomi yang sedang aktif saat ini.**\n\nSeluruh roda perekonomian server berjalan normal. Pantau terus bursa saham secara berkala agar tidak ketinggalan event acak berikutnya!')
+        .setFooter({ text: 'Tip: Event acak seperti Market Crash, Bull Run, dan Double Earning Hour muncul otomatis!' });
+    } else {
+      let title = '';
+      let desc = '';
+      let color = COLORS.INFO;
+      let fields = [];
+
+      if (activeEvent.type === 'DOUBLE_EARNING') {
+        title = '💰 EVENT AKTIF: DOUBLE EARNING HOUR!';
+        desc = '⚡ **Waktunya panen koin!** Keaktifan mengobrol di seluruh channel text server sedang mendapatkan booster spesial.';
+        color = COLORS.PURPLE;
+        fields.push({
+          name: '✨ Efek Event',
+          value: `🔥 Setiap koin **${config.CURRENCY_NAME}** yang kamu dapatkan dari mengirim pesan (chatting) bernilai **2 KALI LIPAT**!`
+        });
+      } else {
+        title = `📅 EVENT AKTIF: ${activeEvent.type}`;
+        desc = 'Sedang berlangsung event ekonomi di server.';
+        color = COLORS.INFO;
+      }
+
+      fields.push({
+        name: '🕒 Sisa Durasi',
+        value: `Event berakhir pada: <t:${activeEvent.endsAt}:F> (<t:${activeEvent.endsAt}:R>)`
+      });
+
+      embed
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(desc)
+        .addFields(fields)
+        .setFooter({ text: 'Gunakan .event untuk memantau status terbaru.' })
+        .setTimestamp();
+    }
+    
+    return embed;
   }
 };
 

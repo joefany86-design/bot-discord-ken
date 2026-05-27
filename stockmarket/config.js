@@ -74,5 +74,12 @@ module.exports = {
       'spam',
       'test'
     ]
+  },
+
+  // Konfigurasi Event Ekonomi Random
+  events: {
+    CRON_SCHEDULE: '0 9,12,15,18,21 * * *', // Setiap 3 jam dari jam 09:00 s/d 21:00 WIB (Asia/Jakarta)
+    TRIGGER_PROBABILITY: 0.30,            // Peluang 30% memicu event di setiap jadwal check
+    DOUBLE_EARNING_DURATION: 3600,        // Durasi Double Earning Hour (dalam detik = 1 jam)
   }
 };

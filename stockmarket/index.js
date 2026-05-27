@@ -7,6 +7,9 @@ const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder } = require('discord.js');
 
+// Owner ID dari environment variable (fallback ke default)
+const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+
 /**
  * Inisialisasi Modul Stock Market.
  * Mengaktifkan scheduler otomatis saat bot siap.
@@ -49,7 +52,14 @@ async function handleEconomyChat(message) {
     investorBonus = 3;
   }
 
-  const totalEarned = earnedCoins + investorBonus;
+  let totalEarned = earnedCoins + investorBonus;
+
+  // 3b. Cek Event Ekonomi: Double Earning Hour
+  const events = require('./events');
+  const activeEvent = events.getActiveEvent(guildId);
+  if (activeEvent && activeEvent.type === 'DOUBLE_EARNING') {
+    totalEarned *= 2;
+  }
 
   // 4. Tambahkan saldo koin & catat log message timestamp
   const nowUnix = Math.floor(Date.now() / 1000);
@@ -71,7 +81,7 @@ async function handleEconomyChat(message) {
   stocks.recordChannelActivity(channelId, guildId, 1.0);
 
   // Debug log keaktifan (opsional)
-  // console.log(`💰 [Economy] ${author.tag} dapat Rp ${totalEarned} (${earnedCoins} base + ${investorBonus} bonus investor) di #${message.channel.name}`);
+  // console.log(`💰 [Economy] ${author.tag} dapat Rp ${totalEarned} (${earnedCoins} base + ${investorBonus} bonus investor + double earning) di #${message.channel.name}`);
 }
 
 /**
@@ -91,6 +101,17 @@ async function handleEconomyCommands(message, client) {
   stocks.initDefaultStocks(guild);
 
   try {
+    // ═══════════════════════════════════════════════════
+    // Perintah: .event / .events
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'event' || commandName === 'events') {
+      const events = require('./events');
+      const activeEvent = events.getActiveEvent(guildId);
+      const embed = embeds.eventStatusEmbed(activeEvent);
+      await message.reply({ embeds: [embed] });
+      return true;
+    }
+
     // ═══════════════════════════════════════════════════
     // Perintah: .balance / .bal / .profile
     // ═══════════════════════════════════════════════════
@@ -577,7 +598,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Saham Tidak Ditemukan!', `Ticker \`${ticker}\` tidak ada di server ini.`)] });
       }
 
-      // Ambal 5 histori harga terakhir
+      // Ambil 5 histori harga terakhir
       const history = database.all(
         'SELECT * FROM price_history WHERE channel_id = ? AND guild_id = ? ORDER BY recorded_at DESC LIMIT 5',
         [stock.channel_id, guildId]
@@ -1047,15 +1068,56 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059 atau Administrator Guild
+    // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce'];
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger'];
     if (adminCommands.includes(commandName)) {
-      const isOwner = author.id === '436554535037698059';
+      const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
       if (!isOwner && !isAdmin) {
-        return message.reply({ embeds: [embeds.accessDeniedEmbed('436554535037698059')] });
+        return message.reply({ embeds: [embeds.accessDeniedEmbed(OWNER_ID)] });
       }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .event-trigger [tipe]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'event-trigger') {
+      const targetType = args[0]?.toUpperCase();
+      const events = require('./events');
+      
+      let selectedType = null;
+      if (targetType) {
+        if (events.EVENT_TYPES[targetType]) {
+          selectedType = events.EVENT_TYPES[targetType];
+        } else {
+          // Cari substring match jika diketik tidak lengkap (e.g. crash -> MARKET_CRASH)
+          const matched = Object.values(events.EVENT_TYPES).find(t => t.includes(targetType));
+          if (matched) selectedType = matched;
+        }
+      }
+
+      try {
+        if (selectedType) {
+          events.triggerEvent(client, guild, selectedType);
+          const embed = embeds.successEmbed(
+            'Event Berhasil Dipicu!',
+            `Event **${selectedType}** berhasil dipicu untuk server ini.`
+          );
+          await message.reply({ embeds: [embed] });
+        } else {
+          events.triggerRandomEvent(client, guild);
+          const embed = embeds.successEmbed(
+            'Event Acak Dipicu!',
+            `Satu event ekonomi acak berhasil dipicu untuk server ini.`
+          );
+          await message.reply({ embeds: [embed] });
+        }
+      } catch (err) {
+        const errorEmbed = embeds.errorEmbed('Gagal Memicu Event!', err.message);
+        await message.reply({ embeds: [errorEmbed] });
+      }
+      return true;
     }
 
     // ═══════════════════════════════════════════════════
@@ -1177,6 +1239,7 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply(`✅ Sukses menghapus instrumen saham **${ticker}** dari bursa.`);
+      return true;
     }
 
     // ═══════════════════════════════════════════════════

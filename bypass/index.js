@@ -6,6 +6,29 @@
  * Menggunakan Discord Webhook untuk menduplikasi identitas pengirim asli secara persis demi estetika premium.
  */
 
+// Rate limiter untuk mencegah spam webhook (maks 3 bypass per 30 detik per user)
+const bypassCooldowns = new Map();
+const BYPASS_RATE_LIMIT = 3;
+const BYPASS_RATE_WINDOW_MS = 30 * 1000;
+
+/**
+ * Mengecek apakah user masih dalam batas rate limit bypass.
+ * @param {string} userId - ID user Discord.
+ * @returns {boolean} - true jika masih diizinkan, false jika sudah mencapai limit.
+ */
+function checkBypassRateLimit(userId) {
+  const now = Date.now();
+  if (!bypassCooldowns.has(userId)) {
+    bypassCooldowns.set(userId, []);
+  }
+  const timestamps = bypassCooldowns.get(userId).filter(ts => now - ts < BYPASS_RATE_WINDOW_MS);
+  bypassCooldowns.set(userId, timestamps);
+
+  if (timestamps.length >= BYPASS_RATE_LIMIT) return false;
+  timestamps.push(now);
+  return true;
+}
+
 /**
  * Mendeteksi dan mengganti link video dari platform TikTok, Twitter/X, dan Instagram Reels.
  * @param {string} text - Teks pesan asli.
@@ -15,41 +38,29 @@ function bypassLinks(text) {
   let modified = text;
   let hasChanges = false;
 
-  // Regular expressions untuk mendeteksi link masing-masing platform
-  // TikTok: mencakup tiktok.com, vm.tiktok.com, vt.tiktok.com, www.tiktok.com
-  const tiktokRegex = /https?:\/\/(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]+/gi;
-  // Twitter / X: mencakup twitter.com, x.com, www.twitter.com, www.x.com
-  const twitterRegex = /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\s]+/gi;
-  // Instagram Reels/Posts: mencakup instagram.com/reel/, instagram.com/reels/, instagram.com/p/
-  const instagramRegex = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p)\/[^\s]+/gi;
-
   // 1. TikTok -> tnktok.com
-  if (tiktokRegex.test(text)) {
-    modified = modified.replace(tiktokRegex, (match) => {
-      // Pastikan kita tidak mengganti link yang sudah di-bypass sebelumnya
-      if (match.includes('tnktok.com')) return match;
-      hasChanges = true;
-      return match.replace(/tiktok\.com/i, 'tnktok.com');
-    });
-  }
+  // Mencakup tiktok.com, vm.tiktok.com, vt.tiktok.com, www.tiktok.com
+  modified = modified.replace(/https?:\/\/(?:[a-z0-9-]+\.)?tiktok\.com\/[^\s]+/gi, (match) => {
+    if (match.includes('tnktok.com')) return match;
+    hasChanges = true;
+    return match.replace(/tiktok\.com/i, 'tnktok.com');
+  });
 
   // 2. Twitter/X -> fxtwitter.com
-  if (twitterRegex.test(text)) {
-    modified = modified.replace(twitterRegex, (match) => {
-      if (match.includes('fxtwitter.com')) return match;
-      hasChanges = true;
-      return match.replace(/(?:www\.)?(?:twitter\.com|x\.com)/i, 'fxtwitter.com');
-    });
-  }
+  // Mencakup twitter.com, x.com, www.twitter.com, www.x.com
+  modified = modified.replace(/https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\s]+/gi, (match) => {
+    if (match.includes('fxtwitter.com')) return match;
+    hasChanges = true;
+    return match.replace(/(?:www\.)?(?:twitter\.com|x\.com)/i, 'fxtwitter.com');
+  });
 
   // 3. Instagram -> ddinstagram.com
-  if (instagramRegex.test(text)) {
-    modified = modified.replace(instagramRegex, (match) => {
-      if (match.includes('ddinstagram.com')) return match;
-      hasChanges = true;
-      return match.replace(/(?:www\.)?instagram\.com/i, 'ddinstagram.com');
-    });
-  }
+  // Mencakup instagram.com/reel/, instagram.com/reels/, instagram.com/p/
+  modified = modified.replace(/https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p)\/[^\s]+/gi, (match) => {
+    if (match.includes('ddinstagram.com')) return match;
+    hasChanges = true;
+    return match.replace(/(?:www\.)?instagram\.com/i, 'ddinstagram.com');
+  });
 
   return { hasChanges, modified };
 }
@@ -63,6 +74,9 @@ function bypassLinks(text) {
 async function handleLinkMirroring(message, client) {
   // Hanya proses jika pesan memiliki konten teks
   if (!message.content) return false;
+
+  // Cek rate limit per user (mencegah spam webhook)
+  if (!checkBypassRateLimit(message.author.id)) return false;
 
   const { hasChanges, modified } = bypassLinks(message.content);
   // Jika tidak ada link yang perlu di-bypass, lewati
@@ -154,5 +168,6 @@ async function handleLinkMirroring(message, client) {
 
 module.exports = {
   bypassLinks,
-  handleLinkMirroring
+  handleLinkMirroring,
+  checkBypassRateLimit
 };

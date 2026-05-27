@@ -116,6 +116,16 @@ function initSchema() {
     )
   `);
 
+  // 7. Active Events (Untuk menyimpan event berdurasi aktif per guild)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS active_events (
+      guild_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      ends_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id)
+    )
+  `);
+
   console.log('✅ Skema tabel database Stock Market & Toko Role berhasil diinisialisasi.');
 }
 

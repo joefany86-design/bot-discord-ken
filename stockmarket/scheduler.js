@@ -162,7 +162,33 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
-  // 4. Voice Active Earnings: Memberikan koin keaktifan setiap 1 menit bagi yang berada di Voice Channel
+  // 4. Cron Job: Random Economic Events (Berdasarkan konfigurasi schedule & peluang)
+  cron.schedule(config.events?.CRON_SCHEDULE || '0 9,12,15,18,21 * * *', () => {
+    console.log('⏰ [Scheduler] Memeriksa pemicu event ekonomi acak berkala...');
+    
+    // Pastikan pasar sedang aktif (agar tidak men-trigger crash/bull pas pasar tutup, walaupun opsional)
+    const stocks = require('./stocks');
+    if (!stocks.isMarketOpen()) {
+      console.log('⚠️ [Scheduler] Pasar sedang tutup. Trigger event acak ditangguhkan.');
+      return;
+    }
+
+    client.guilds.cache.forEach(guild => {
+      const probability = config.events?.TRIGGER_PROBABILITY || 0.30;
+      if (Math.random() < probability) {
+        try {
+          const eventsModule = require('./events');
+          eventsModule.triggerRandomEvent(client, guild);
+        } catch (err) {
+          console.error(`❌ Gagal memicu event acak di guild ${guild.name}:`, err.message);
+        }
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 5. Voice Active Earnings: Memberikan koin keaktifan setiap 1 menit bagi yang berada di Voice Channel
   setInterval(() => {
     console.log('⏰ [Scheduler] Memproses koin keaktifan Voice Channel...');
     const economy = require('./economy');
