@@ -113,7 +113,19 @@ function getLobbyComponents(session) {
       .setStyle(activeCategory === 'custom' ? ButtonStyle.Success : ButtonStyle.Secondary)
   );
 
-  return [lobbyRow, categoryRow];
+  const activeMode = session.mode || 'normal';
+  const modeRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_mode_normal')
+      .setLabel('🎲 Mode Normal')
+      .setStyle(activeMode === 'normal' ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_mode_hotseat')
+      .setLabel('🔥 Mode Hot Seat')
+      .setStyle(activeMode === 'hotseat' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+  );
+
+  return [lobbyRow, categoryRow, modeRow];
 }
 
 /**
@@ -166,6 +178,7 @@ async function startTodGame(message, client, category = 'chill') {
     voiceChannelId: voiceChannel.id,
     textChannel,
     category,
+    mode: 'normal', // Default mode: 'normal' | 'hotseat'
     state: 'lobby',
     host: member,
     players: [member], // Pembuat lobby langsung otomatis gabung
@@ -173,7 +186,10 @@ async function startTodGame(message, client, category = 'chill') {
     victim: null,
     challenger: null,
     timer: null,
-    message: null
+    message: null,
+    remainingHotseatVictims: [],
+    hotseatVictim: null,
+    hotseatChallengersQueue: []
   };
   activeGames.set(guildId, session);
 
@@ -265,6 +281,19 @@ async function startTodGame(message, client, category = 'chill') {
       await updateLobbyEmbed(interaction, session);
     } 
     
+    else if (customId.startsWith('tod_mode_')) {
+      // Hanya Host atau Admin yang bisa mengubah mode
+      const isAdmin = interaction.member.permissions.has('Administrator');
+      if (user.id !== session.host.id && !isAdmin) {
+        return interaction.reply({ content: '❌ Hanya Host (pembuat lobby) atau Admin yang bisa mengubah mode!', ephemeral: true });
+      }
+
+      const targetMode = customId.replace('tod_mode_', '');
+      session.mode = targetMode;
+
+      await updateLobbyEmbed(interaction, session);
+    }
+
     else if (customId.startsWith('tod_cat_')) {
       // Hanya Host atau Admin yang bisa mengubah kategori
       const isAdmin = interaction.member.permissions.has('Administrator');
@@ -384,6 +413,7 @@ async function updateLobbyEmbed(interaction, session) {
   }).join('\n');
 
   const prepTimeText = session.category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
+  const modeText = session.mode === 'hotseat' ? '🔥 HOT SEAT (Semua Tanya Satu)' : '🎲 NORMAL (Bergantian Acak)';
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
@@ -391,6 +421,7 @@ async function updateLobbyEmbed(interaction, session) {
       ` Sesi game Truth or Dare baru telah dibuka!`,
       `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
       `\n👑 **Host:** ${session.host}`,
+      `⚙️ **Mode Game:** \`${modeText}\``,
       `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
       prepTimeText,
       `\n👥 **Daftar Pemain (${session.players.length}):**`,
@@ -442,34 +473,96 @@ async function startNextTurn(client, guildId) {
   // Simpan list aktif terbaru ke session.players agar sinkron
   session.players = activePlayers;
 
-  // 4. Hitung indeks giliran berikutnya secara acak tanpa pengulangan (Shuffled Deck)
-  if (!session.remainingVictims) {
-    session.remainingVictims = [];
-  }
+  let victim = null;
+  let challenger = null;
 
-  // Saring calon yang masih aktif di VC
-  let candidates = activePlayers.filter(p => session.remainingVictims.includes(p.id));
-
-  // Jika semua sudah mendapat giliran, reset deck
-  if (candidates.length === 0) {
-    session.remainingVictims = activePlayers.map(p => p.id);
-    candidates = [...activePlayers];
-
-    // Hindari pemilihan korban yang sama berturut-turut jika pemain > 1
-    if (session.victim && candidates.length > 1) {
-      candidates = candidates.filter(p => p.id !== session.victim.id);
+  if (session.mode === 'hotseat') {
+    // 4. LOGIK HOT SEAT (Semua Tanya Satu)
+    if (!session.remainingHotseatVictims) {
+      session.remainingHotseatVictims = [];
     }
+    if (!session.hotseatChallengersQueue) {
+      session.hotseatChallengersQueue = [];
+    }
+
+    // Saring korban yang masih aktif di VC
+    let victimCandidates = activePlayers.filter(p => session.remainingHotseatVictims.includes(p.id));
+    const currentVictimInVc = session.hotseatVictim && activePlayers.some(p => p.id === session.hotseatVictim.id);
+
+    // Jika belum ada korban hotseat, atau korban keluar dari VC, atau antrean penanya habis
+    if (!session.hotseatVictim || !currentVictimInVc || session.hotseatChallengersQueue.length === 0) {
+      if (victimCandidates.length === 0) {
+        session.remainingHotseatVictims = activePlayers.map(p => p.id);
+        victimCandidates = [...activePlayers];
+
+        if (session.hotseatVictim && victimCandidates.length > 1) {
+          victimCandidates = victimCandidates.filter(p => p.id !== session.hotseatVictim.id);
+        }
+      }
+
+      // Ambil korban hotseat secara acak
+      const chosenVictim = victimCandidates[Math.floor(Math.random() * victimCandidates.length)];
+      session.remainingHotseatVictims = session.remainingHotseatVictims.filter(id => id !== chosenVictim.id);
+      session.hotseatVictim = chosenVictim;
+
+      // Antrean penanya adalah semua pemain aktif selain korban
+      let challengers = activePlayers.filter(p => p.id !== chosenVictim.id);
+      challengers = shuffleArray(challengers);
+      session.hotseatChallengersQueue = challengers.map(p => p.id);
+
+      // Umumkan pergantian target Hot Seat
+      const newHotseatEmbed = new EmbedBuilder()
+        .setColor(0xFF3366)
+        .setTitle('🔥 HOT SEAT BARU!')
+        .setDescription(`👑 **${chosenVictim}** sekarang berada di **Hot Seat**!\nSemua pemain lain akan bergantian mengajukan pertanyaan kepada ${chosenVictim}!`)
+        .setTimestamp();
+      await session.textChannel.send({ embeds: [newHotseatEmbed] });
+
+      await audio.speak(client, guildId, `${chosenVictim.displayName} sekarang berada di Hot Seat! Persiapkan diri Anda.`).catch(() => {});
+    }
+
+    // Ambil penanya berikutnya yang masih aktif di VC
+    let nextChallengerId = null;
+    while (session.hotseatChallengersQueue.length > 0) {
+      const tempId = session.hotseatChallengersQueue.shift();
+      if (activePlayers.some(p => p.id === tempId)) {
+        nextChallengerId = tempId;
+        break;
+      }
+    }
+
+    // Jika antrean kosong (tidak ada penanya aktif tersisa), pilih korban baru secara rekursif
+    if (!nextChallengerId) {
+      session.hotseatVictim = null;
+      session.hotseatChallengersQueue = [];
+      return startNextTurn(client, guildId);
+    }
+
+    victim = session.hotseatVictim;
+    challenger = activePlayers.find(p => p.id === nextChallengerId);
+  } else {
+    // 4. LOGIK NORMAL (Bergantian Acak)
+    if (!session.remainingVictims) {
+      session.remainingVictims = [];
+    }
+
+    let candidates = activePlayers.filter(p => session.remainingVictims.includes(p.id));
+
+    if (candidates.length === 0) {
+      session.remainingVictims = activePlayers.map(p => p.id);
+      candidates = [...activePlayers];
+
+      if (session.victim && candidates.length > 1) {
+        candidates = candidates.filter(p => p.id !== session.victim.id);
+      }
+    }
+
+    victim = candidates[Math.floor(Math.random() * candidates.length)];
+    session.remainingVictims = session.remainingVictims.filter(id => id !== victim.id);
+
+    const otherActivePlayers = activePlayers.filter(p => p.id !== victim.id);
+    challenger = otherActivePlayers[Math.floor(Math.random() * otherActivePlayers.length)];
   }
-
-  // Ambil korban secara acak
-  const victim = candidates[Math.floor(Math.random() * candidates.length)];
-  
-  // Hapus dari daftar antrean giliran
-  session.remainingVictims = session.remainingVictims.filter(id => id !== victim.id);
-
-  // 5. Pilih Challenger (Penanya) secara acak dari pemain aktif selain Victim
-  const otherActivePlayers = activePlayers.filter(p => p.id !== victim.id);
-  const challenger = otherActivePlayers[Math.floor(Math.random() * otherActivePlayers.length)];
 
   // Update properti sesi
   session.victim = victim;
@@ -478,11 +571,16 @@ async function startNextTurn(client, guildId) {
 
   // 6. Buat Embed Giliran Baru
   const choiceFooterText = session.category === 'custom' ? 'Waktu memilih: Tanpa Batas Waktu ♾️' : 'Waktu memilih: 30 detik';
+  
+  const modeHeader = session.mode === 'hotseat'
+    ? `🔥 **MODE HOT SEAT (Semua Tanya Satu)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`
+    : `🎲 **MODE NORMAL (Bergantian Acak)**\n`;
+
   const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
+    .setColor(session.mode === 'hotseat' ? 0xFF5500 : 0x00D2FF)
     .setTitle('🎤 Putaran Truth or Dare Baru!')
     .setDescription([
-      `🎲 **Giliran Pemain Ditentukan!**`,
+      modeHeader,
       `🎯 **Korban (Victim):** ${victim} (menjawab/melakukan)`,
       `🗣️ **Penanya (Challenger):** ${challenger} (menilai)`,
       `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
@@ -510,7 +608,12 @@ async function startNextTurn(client, guildId) {
   session.message = turnMessage;
 
   // Umumkan via TTS
-  audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
+  if (session.mode === 'hotseat') {
+    const text = `Giliran Hot Seat! Korban utama adalah ${victim.displayName}. Penanya kali ini adalah ${challenger.displayName}. Hei ${victim.displayName}, pilih truth atau dare!`;
+    audio.speak(client, guildId, text).catch(() => { });
+  } else {
+    audio.announcePlayerSelection(client, guildId, victim.displayName, challenger.displayName).catch(() => { });
+  }
 
   // 7. Pasang Timer Choice Timeout (30 detik) jika bukan 'custom'
   if (session.category !== 'custom') {
@@ -1230,12 +1333,15 @@ async function handleVoiceTodCommand(message, client) {
         `Kami dengan bangga meluncurkan fitur game interaktif baru di server ini: **Truth or Dare (ToD) Multiplayer**! Sekarang kalian bisa menguji keberanian, kejujuran, dan keseruan bersama teman-teman langsung di Voice Channel! 😎`,
         `\n✨ **FITUR UTAMA GAME TOD:**`,
         `👉 **4000+ Pertanyaan Klasik & Seru**: Database raksasa dengan pertanyaan-pertanyaan terbaik Bahasa Indonesia!`,
+        `👉 **2 Mode Game Seru**:`,
+        `  🎲 \`NORMAL\` - Bergantian acak di mana korban dan penanya diundi setiap putaran.`,
+        `  🔥 \`HOT SEAT\` - Satu korban di-interogasi oleh seluruh pemain lain secara bergiliran!`,
         `👉 **3 Kategori Tingkat Keseruan**:`,
         `  🟢 \`CHILL\` - Santai, seru, cocok untuk sekadar mengobrol santai.`,
         `  🟡 \`DEEP\` - Mendalam, emosional, untuk mengenal satu sama lain lebih dekat.`,
         `  🔴 \`SPICY (18+)\` - Menantang dan berani! *(Hanya bisa dimainkan di channel NSFW!)*`,
         `👉 **Integrasi Google TTS (Pembacaan Suara)**: Setiap pertanyaan/tantangan akan dibacakan langsung oleh bot dengan suara jernih di Voice Channel kalian!`,
-        `👉 **Turn-Based Multiplayer Lobby**: Dilengkapi tombol interaktif untuk Gabung, Keluar, Mulai, dan memilih Truth/Dare secara bergantian.`,
+        `👉 **Turn-Based Multiplayer Lobby**: Dilengkapi tombol interaktif untuk Gabung, Keluar, Mulai, memilih Mode, Kategori, dan menentukan giliran.`,
         `\n💰 **SISTEM EKONOMI (RUPIAH SERVER):**`,
         `🎁 **Hadiah Sukses**: Menyelesaikan tantangan/pertanyaan juri memberikan **+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}**!`,
         `💸 **Denda Menyerah**: Hati-hati! Jika memilih skip atau waktu habis, saldo dompetmu dipotong **Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}**!`,
@@ -1243,7 +1349,7 @@ async function handleVoiceTodCommand(message, client) {
         `1️⃣ Masuk ke **Voice Channel** bersama minimal 2 orang teman.`,
         `2️⃣ Ketik **\`.join\`** atau **\`.joinlow\`** untuk memanggil dan mengunci bot di VC kalian.`,
         `3️⃣ Ketik **\`.tod\`** di text channel untuk membuka game lobby.`,
-        `4️⃣ Teman-teman tinggal klik tombol **🙋‍♂️ Gabung**, lalu Host klik **🚀 Mulai Game**!`,
+        `4️⃣ Teman-teman tinggal klik tombol **🙋‍♂️ Gabung**, pilih Mode & Kategori, lalu Host klik **🚀 Mulai Game**!`,
         `5️⃣ Ketik **\`.tod status\`** untuk memantau pencapaian, denda, dan koin yang sudah kamu kumpulkan!`,
         `\n*Ayo ramaikan Voice Channel kita dan tunjukkan keberanianmu sekarang!* 🔥`
       ].join('\n'))
