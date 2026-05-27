@@ -5,7 +5,7 @@ const stocks = require('./stocks');
 const antiSpam = require('./antiSpam');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder } = require('discord.js');
 
 /**
  * Inisialisasi Modul Stock Market.
@@ -172,7 +172,11 @@ async function handleEconomyCommands(message, client) {
         new ButtonBuilder()
           .setCustomId('eco_btn_gacha')
           .setLabel('🎲 Gacha Role')
-          .setStyle(ButtonStyle.Danger)
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_trade')
+          .setLabel('📈 Beli/Jual Saham')
+          .setStyle(ButtonStyle.Success)
       );
 
       const replyMsg = await message.reply({ embeds: [embed], components: [row] });
@@ -216,6 +220,329 @@ async function handleEconomyCommands(message, client) {
               )
               .setFooter({ text: 'Ketik .gacha-role di chat!' });
             await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_trade') {
+            const latestStocks = stocks.getStocks(guildId);
+            if (latestStocks.length === 0) {
+              return i.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!', ephemeral: true });
+            }
+
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('eco_trade_select_stock')
+              .setPlaceholder('👉 Pilih Saham untuk Diperdagangkan...');
+
+            latestStocks.forEach(stock => {
+              selectMenu.addOptions(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel(`${stock.stock_ticker} - #${stock.stock_name}`)
+                  .setDescription(`Harga: Rp ${stock.current_price.toLocaleString('id-ID')} | Sisa Bursa: ${stock.available_shares} lembar`)
+                  .setValue(stock.stock_ticker)
+              );
+            });
+
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+            const tradeEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('📈 Menu Transaksi Saham Rupiah Server')
+              .setDescription(
+                `Pilih salah satu instrumen saham di bawah ini untuk memulai transaksi **Beli (BUY)** atau **Jual (SELL)** secara instan!\n\n` +
+                `*Transaksi dilakukan secara aman dan privat (ephemeral).*`
+              )
+              .setFooter({ text: 'Rupiah Server • Interactive Trading' });
+
+            const tradeMsg = await i.reply({
+              embeds: [tradeEmbed],
+              components: [selectRow],
+              ephemeral: true,
+              fetchReply: true
+            });
+
+            const tradeCollector = tradeMsg.createMessageComponentCollector({
+              time: 120000 // 2 menit transaksi
+            });
+
+            let selectedTicker = null;
+
+            const updateTradeMessage = async (interaction, ticker, isUpdateResponse = false) => {
+              const stock = stocks.getStock(guildId, ticker);
+              if (!stock) return;
+
+              const wallet = economy.getWallet(author.id, guildId);
+              const portfolio = database.get(
+                'SELECT shares, avg_buy_price, total_invested FROM portfolios WHERE user_id = ? AND guild_id = ? AND channel_id = ?',
+                [author.id, guildId, stock.channel_id]
+              );
+              const userShares = portfolio ? portfolio.shares : 0;
+              const avgBuyPrice = portfolio ? portfolio.avg_buy_price : 0;
+              const totalInvested = portfolio ? portfolio.total_invested : 0;
+
+              const currentValue = userShares * stock.current_price;
+              const profitRp = currentValue - totalInvested;
+              const profitPercent = totalInvested > 0 ? ((profitRp / totalInvested) * 100).toFixed(1) : '0.0';
+              const profitIndicator = profitRp >= 0 ? '🟢' : '🔴';
+              const profitSign = profitRp >= 0 ? '+' : '';
+
+              const activeStocksForSelect = stocks.getStocks(guildId);
+              const freshSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId('eco_trade_select_stock')
+                .setPlaceholder('👉 Pilih Saham untuk Diperdagangkan...');
+
+              activeStocksForSelect.forEach(s => {
+                freshSelectMenu.addOptions(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel(`${s.stock_ticker} - #${s.stock_name}`)
+                    .setDescription(`Harga: Rp ${s.current_price.toLocaleString('id-ID')} | Sisa Bursa: ${s.available_shares} lembar`)
+                    .setValue(s.stock_ticker)
+                    .setDefault(s.stock_ticker === ticker)
+                );
+              });
+
+              const freshSelectRow = new ActionRowBuilder().addComponents(freshSelectMenu);
+
+              const detailEmbed = new EmbedBuilder()
+                .setColor(profitRp >= 0 ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR)
+                .setTitle(`📊 Transaksi Saham: ${stock.stock_ticker} — #${stock.stock_name}`)
+                .setDescription(
+                  `🏛️ **Harga Saham:** **Rp ${stock.current_price.toLocaleString('id-ID')}** per lembar\n` +
+                  `📉 **Sisa Bursa:** \`${stock.available_shares} / ${stock.total_shares} lembar\`\n` +
+                  `💵 **Saldo Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
+                  `💼 **Kepemilikan Portofolio:**\n` +
+                  `👉 Jumlah Aset: \`${userShares} / 500 lembar\` ${userShares >= 500 ? '⚠️ (Maks)' : ''}\n` +
+                  `👉 Rata-rata Beli: \`Rp ${avgBuyPrice.toLocaleString('id-ID')}\`\n` +
+                  `👉 Nilai Valuasi: \`Rp ${currentValue.toLocaleString('id-ID')}\`\n` +
+                  `👉 P/L Real-time: ${profitIndicator} **${profitSign}Rp ${profitRp.toLocaleString('id-ID')}** (\`${profitSign}${profitPercent}%\`)`
+                )
+                .setFooter({ text: 'Pilih aksi Beli (Success) atau Jual (Danger) di bawah ini!' })
+                .setTimestamp();
+
+              // BUY row
+              const buyRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('trade_buy_1').setLabel('📥 Beli 1').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < stock.current_price || stock.available_shares < 1 || userShares >= 500),
+                new ButtonBuilder().setCustomId('trade_buy_10').setLabel('📥 Beli 10').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < stock.current_price * 10 || stock.available_shares < 10 || userShares + 10 > 500),
+                new ButtonBuilder().setCustomId('trade_buy_50').setLabel('📥 Beli 50').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < stock.current_price * 50 || stock.available_shares < 50 || userShares + 50 > 500),
+                new ButtonBuilder().setCustomId('trade_buy_max').setLabel('📥 Beli Max').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < stock.current_price || stock.available_shares < 1 || userShares >= 500),
+                new ButtonBuilder().setCustomId('trade_buy_custom').setLabel('📥 Custom').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < stock.current_price || stock.available_shares < 1 || userShares >= 500)
+              );
+
+              // SELL row
+              const sellRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('trade_sell_1').setLabel('📤 Jual 1').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1),
+                new ButtonBuilder().setCustomId('trade_sell_10').setLabel('📤 Jual 10').setStyle(ButtonStyle.Danger).setDisabled(userShares < 10),
+                new ButtonBuilder().setCustomId('trade_sell_50').setLabel('📤 Jual 50').setStyle(ButtonStyle.Danger).setDisabled(userShares < 50),
+                new ButtonBuilder().setCustomId('trade_sell_all').setLabel('📤 Jual Semua').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1),
+                new ButtonBuilder().setCustomId('trade_sell_custom').setLabel('📤 Custom').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1)
+              );
+
+              // Nav row
+              const navRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('trade_btn_back').setLabel('⬅️ Kembali ke Pilihan').setStyle(ButtonStyle.Secondary)
+              );
+
+              const components = [freshSelectRow, buyRow, sellRow, navRow];
+
+              if (isUpdateResponse) {
+                await tradeMsg.edit({ embeds: [detailEmbed], components }).catch(console.error);
+              } else {
+                await interaction.update({ embeds: [detailEmbed], components });
+              }
+            };
+
+            tradeCollector.on('collect', async iTrade => {
+              if (iTrade.user.id !== author.id) {
+                return iTrade.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+              }
+
+              try {
+                if (iTrade.customId === 'eco_trade_select_stock') {
+                  selectedTicker = iTrade.values[0];
+                  await updateTradeMessage(iTrade, selectedTicker);
+                } else if (iTrade.customId.startsWith('trade_buy_') || iTrade.customId.startsWith('trade_sell_')) {
+                  const action = iTrade.customId.startsWith('trade_buy_') ? 'BUY' : 'SELL';
+                  const amountType = iTrade.customId.split('_').pop();
+
+                  const stock = stocks.getStock(guildId, selectedTicker);
+                  if (!stock) {
+                    return iTrade.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: true });
+                  }
+
+                  let shares = 0;
+                  const wallet = economy.getWallet(author.id, guildId);
+                  const portfolio = database.get(
+                    'SELECT shares FROM portfolios WHERE user_id = ? AND guild_id = ? AND channel_id = ?',
+                    [author.id, guildId, stock.channel_id]
+                  );
+                  const userShares = portfolio ? portfolio.shares : 0;
+
+                  if (action === 'BUY') {
+                    if (amountType === '1') shares = 1;
+                    else if (amountType === '10') shares = 10;
+                    else if (amountType === '50') shares = 50;
+                    else if (amountType === 'max') {
+                      const maxAfford = Math.floor(wallet.balance / stock.current_price);
+                      const maxHoldAllowed = (config.market.MAX_SHARES_HOLD_PER_USER || 500) - userShares;
+                      shares = Math.min(maxAfford, stock.available_shares, maxHoldAllowed);
+                      if (shares <= 0) {
+                        return iTrade.reply({ content: '❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan 500 lembar)!', ephemeral: true });
+                      }
+                    } else if (amountType === 'custom') {
+                      const modal = new ModalBuilder()
+                        .setCustomId('trade_buy_modal')
+                        .setTitle(`Beli Saham ${selectedTicker}`);
+
+                      const amountInput = new TextInputBuilder()
+                        .setCustomId('buy_amount')
+                        .setLabel('Jumlah Lembar Saham')
+                        .setPlaceholder('Masukkan angka (Contoh: 25)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                      const rowModal = new ActionRowBuilder().addComponents(amountInput);
+                      modal.addComponents(rowModal);
+
+                      await iTrade.showModal(modal);
+
+                      const submitted = await iTrade.awaitModalSubmit({
+                        filter: (sub) => sub.customId === 'trade_buy_modal' && sub.user.id === author.id,
+                        time: 60000
+                      }).catch(() => null);
+
+                      if (submitted) {
+                        const inputVal = parseInt(submitted.fields.getTextInputValue('buy_amount'));
+                        if (isNaN(inputVal) || inputVal <= 0) {
+                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                        }
+
+                        try {
+                          const res = stocks.buyStock(author.id, guildId, selectedTicker, inputVal);
+                          const successEmb = embeds.transactionSuccessEmbed(author, true, res);
+                          await submitted.reply({ embeds: [successEmb], ephemeral: true });
+
+                          if (inputVal >= 50) {
+                            client.emit('playTtsEvent', {
+                              guildId,
+                              text: `Wow gila sih! Sultan ${author.username} baru saja memborong ${inputVal} lembar saham ${res.ticker} senilai total ${res.totalPrice} Rupiah! Hype banget bursa hari ini!`,
+                              lang: 'id'
+                            });
+                          }
+
+                          await updateTradeMessage(submitted, selectedTicker, true);
+                        } catch (err) {
+                          const cleaned = err.message.replace(/^❌\s*/, '');
+                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                        }
+                      }
+                      return;
+                    }
+                  } else {
+                    // SELL
+                    if (amountType === '1') shares = 1;
+                    else if (amountType === '10') shares = 10;
+                    else if (amountType === '50') shares = 50;
+                    else if (amountType === 'all') {
+                      shares = userShares;
+                      if (shares <= 0) {
+                        return iTrade.reply({ content: '❌ Anda tidak memiliki saham ini untuk dijual!', ephemeral: true });
+                      }
+                    } else if (amountType === 'custom') {
+                      const modal = new ModalBuilder()
+                        .setCustomId('trade_sell_modal')
+                        .setTitle(`Jual Saham ${selectedTicker}`);
+
+                      const amountInput = new TextInputBuilder()
+                        .setCustomId('sell_amount')
+                        .setLabel('Jumlah Lembar Saham')
+                        .setPlaceholder(`Masukkan angka (Maks: ${userShares})`)
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                      const rowModal = new ActionRowBuilder().addComponents(amountInput);
+                      modal.addComponents(rowModal);
+
+                      await iTrade.showModal(modal);
+
+                      const submitted = await iTrade.awaitModalSubmit({
+                        filter: (sub) => sub.customId === 'trade_sell_modal' && sub.user.id === author.id,
+                        time: 60000
+                      }).catch(() => null);
+
+                      if (submitted) {
+                        const inputVal = parseInt(submitted.fields.getTextInputValue('sell_amount'));
+                        if (isNaN(inputVal) || inputVal <= 0) {
+                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                        }
+
+                        try {
+                          const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal);
+                          const successEmb = embeds.transactionSuccessEmbed(author, false, res);
+                          await submitted.reply({ embeds: [successEmb], ephemeral: true });
+
+                          if (inputVal >= 50) {
+                            client.emit('playTtsEvent', {
+                              guildId,
+                              text: `Perhatian warga server! Sultan ${author.username} baru saja menjual ${inputVal} lembar saham ${res.ticker} senilai total ${res.finalRevenue} Rupiah! Pergerakan modal yang sangat besar!`,
+                              lang: 'id'
+                            });
+                          }
+
+                          await updateTradeMessage(submitted, selectedTicker, true);
+                        } catch (err) {
+                          const cleaned = err.message.replace(/^❌\s*/, '');
+                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                        }
+                      }
+                      return;
+                    }
+                  }
+
+                  // Non-custom button trade
+                  if (shares > 0) {
+                    try {
+                      if (action === 'BUY') {
+                        const res = stocks.buyStock(author.id, guildId, selectedTicker, shares);
+                        const successEmb = embeds.transactionSuccessEmbed(author, true, res);
+                        await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+                        
+                        if (shares >= 50) {
+                          client.emit('playTtsEvent', {
+                            guildId,
+                            text: `Wow gila sih! Sultan ${author.username} baru saja memborong ${shares} lembar saham ${res.ticker} senilai total ${res.totalPrice} Rupiah! Hype banget bursa hari ini!`,
+                            lang: 'id'
+                          });
+                        }
+                      } else {
+                        const res = stocks.sellStock(author.id, guildId, selectedTicker, shares);
+                        const successEmb = embeds.transactionSuccessEmbed(author, false, res);
+                        await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+
+                        if (shares >= 50) {
+                          client.emit('playTtsEvent', {
+                            guildId,
+                            text: `Perhatian warga server! Sultan ${author.username} baru saja menjual ${shares} lembar saham ${res.ticker} senilai total ${res.finalRevenue} Rupiah! Pergerakan modal yang sangat besar!`,
+                            lang: 'id'
+                          });
+                        }
+                      }
+                      await updateTradeMessage(iTrade, selectedTicker, true);
+                    } catch (err) {
+                      const cleaned = err.message.replace(/^❌\s*/, '');
+                      await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                    }
+                  }
+                } else if (iTrade.customId === 'trade_btn_back') {
+                  selectedTicker = null;
+                  const rowSelect = new ActionRowBuilder().addComponents(selectMenu);
+                  await iTrade.update({ embeds: [tradeEmbed], components: [rowSelect] });
+                }
+              } catch (err) {
+                console.error('Error in trade sub-collector:', err);
+              }
+            });
+
+            tradeCollector.on('end', async () => {
+              const selectDisabled = selectMenu.setDisabled(true);
+              const rowSelectDisabled = new ActionRowBuilder().addComponents(selectDisabled);
+              await tradeMsg.edit({ components: [rowSelectDisabled] }).catch(() => {});
+            });
           }
         } catch (err) {
           console.error('Error handling button click:', err);
@@ -228,7 +555,8 @@ async function handleEconomyCommands(message, client) {
           new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
           new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
           new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true),
-          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true)
         );
         await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
       });
