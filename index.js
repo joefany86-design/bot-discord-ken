@@ -504,6 +504,7 @@ client.on('interactionCreate', async interaction => {
         `👉 **/leave** atau **.leave** - Membuka kunci channel dan keluar dari Voice Channel.`,
         `👉 **.status** - Menampilkan status realtime dan statistik sistem bot.`,
         `👉 **/help** atau **.help** - Menampilkan panduan menu ini.`,
+        `👉 **.admin** - Menampilkan panduan perintah khusus Administrator (Admin).`,
         `\n🎵 **Kontrol Pemutar Musik Lokal (Folder music/)**`,
         `👉 **.list** - Menampilkan daftar lagu lokal yang tersedia.`,
         `👉 **.play <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
@@ -567,6 +568,45 @@ client.on('messageCreate', async message => {
     if (title) embed.setTitle(title);
     return message.reply({ embeds: [embed] });
   };
+
+  // ── .admin (Owner & Administrator Only) ──
+  if (commandName === 'admin') {
+    const isOwner = message.author.id === '436554535037698059';
+    const isAdmin = message.member && message.member.permissions.has('Administrator');
+    if (!isOwner && !isAdmin) {
+      return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFF3366)
+      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR 🛡️')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setDescription([
+        `Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator untuk mengelola game Truth or Dare, sistem ekonomi, serta bursa saham di server ini.`,
+        `\n🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
+        `👉 **\`.tod announce [#channel]\`** - Menyiarkan pengumuman peluncuran game ToD ke channel target.`,
+        `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi game ToD yang sedang aktif.`,
+        `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom ke database game ToD.`,
+        `\n💰 **KONTROL SISTEM EKONOMI (RUPIAH SERVER):**`,
+        `👉 **\`.eco-give @user <jumlah>\`** - Memberikan saldo koin kustom ke dompet user.`,
+        `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong koin dari dompet user.`,
+        `👉 **\`.eco-reset @user\`** - Mereset total saldo koin, portofolio saham, dan transaksi user ke 0.`,
+        `👉 **\`.eco-resetall\`** - **[PERINGATAN!]** Mereset total seluruh database keuangan server ini (semua user).`,
+        `\n📈 **KONTROL BURSA SAHAM (STOCK MARKET):**`,
+        `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel ke bursa saham (contoh: \`.market-add #general $GENERAL\`).`,
+        `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham dari bursa server.`,
+        `👉 **\`.market-reinit\`** - Menghapus seluruh saham lama dan mengembalikan ke saham bawaan server.`,
+        `\n🎭 **KONTROL TOKO ROLE (SHOP CONTROLS):**`,
+        `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menjual role baru di toko (tier pilihan: \`COMMON\`, \`RARE\`, \`EPIC\`, \`LEGENDARY\`).`,
+        `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus role dari toko penjualan.`,
+        `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengatur jumlah stok role yang tersedia (-1 untuk tanpa batas/unlimited).`,
+        `\n*Gunakan perintah di atas dengan bijak untuk menjaga keseimbangan ekonomi dan kenyamanan server.* 💡`
+      ].join('\n'))
+      .setFooter({ text: 'Bot Administrator Panel 2026' })
+      .setTimestamp();
+
+    return message.reply({ embeds: [embed] });
+  }
 
   // ── .joinlow ──
   if (commandName === 'joinlow') {
@@ -734,8 +774,8 @@ client.on('messageCreate', async message => {
     await message.reply({ embeds: [embed] });
   }
 
-  // ── .helplow ──
-  else if (commandName === 'helplow') {
+  // ── .help / .helplow ──
+  else if (commandName === 'help' || commandName === 'helplow') {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
       .setTitle('📖 Panduan Menu & Kontrol Bot')
@@ -745,7 +785,8 @@ client.on('messageCreate', async message => {
         `👉 **.speaklow <teks>** - Mengucapkan teks Bahasa Indonesia via Google TTS (Gunakan \`.speaklow en <teks>\` untuk Bahasa Inggris).`,
         `👉 **.leavelow** - Membuka kunci channel dan keluar dari Voice Channel.`,
         `👉 **.statuslow** - Menampilkan status realtime dan statistik sistem bot.`,
-        `👉 **.helplow** - Menampilkan panduan menu ini.`,
+        `👉 **.help** atau **.helplow** - Menampilkan panduan menu ini.`,
+        `👉 **.admin** - Menampilkan panduan perintah khusus Administrator (Admin).`,
         `\n🎵 **Kontrol Pemutar Musik Lokal (Folder music/)**`,
         `👉 **.listlow** - Menampilkan daftar lagu lokal yang tersedia.`,
         `👉 **.playlow <nomor/nama>** - Memutar lagu berdasarkan nomor/nama, atau resume.`,
