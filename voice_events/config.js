@@ -32,7 +32,7 @@ module.exports = {
   // Konfigurasi Kategori Sensitivitas
   categories: {
     DEFAULT: 'chill',
-    ALLOWED: ['chill', 'deep', 'spicy'],
+    ALLOWED: ['chill', 'deep', 'spicy', 'custom'],
     SPICY_NSFW_ONLY: true, // Spicy kategori hanya boleh di NSFW text channel
   }
 };

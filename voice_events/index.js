@@ -4,7 +4,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-  getVoiceConnection
+  getVoiceConnection,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 
 const config = require('./config');
@@ -103,7 +106,11 @@ function getLobbyComponents(session) {
     new ButtonBuilder()
       .setCustomId('tod_cat_spicy')
       .setLabel('🔴 Spicy (18+)')
-      .setStyle(activeCategory === 'spicy' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setStyle(activeCategory === 'spicy' ? ButtonStyle.Danger : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('tod_cat_custom')
+      .setLabel('🗣️ Kustom (Ucap)')
+      .setStyle(activeCategory === 'custom' ? ButtonStyle.Success : ButtonStyle.Secondary)
   );
 
   return [lobbyRow, categoryRow];
@@ -556,6 +563,11 @@ async function handlePlayerChoice(interaction, client, type) {
   session.state = 'waiting_for_completion';
   session.type = type;
 
+  // Jika kategori kustom, alihkan ke alur ucap langsung!
+  if (session.category === 'custom') {
+    return startCustomVoiceFlow(interaction, client, type);
+  }
+
   // 1. Ambil pertanyaan acak
   const questionObj = database.getRandomQuestion(type, session.category, guildId);
   if (!questionObj) {
@@ -655,6 +667,152 @@ async function handlePlayerChoice(interaction, client, type) {
     actionCollector.stop();
 
     const disabledRow = ActionRowBuilder.from(row);
+    disabledRow.components.forEach(comp => comp.setDisabled(true));
+
+    const victimId = session.victim.id;
+
+    if (actInteraction.customId === 'tod_action_done') {
+      // 🟢 SUKSES
+      database.incrementGameStats(victimId, type);
+      database.rewardUser(victimId, guildId, config.economy.SUCCESS_REWARD);
+
+      const resultEmbed = EmbedBuilder.from(questionEmbed)
+        .setColor(0x00FF88)
+        .setDescription([
+          `🎉 **Tantangan Berhasil Diselesaikan!**`,
+          `Juri ${session.challenger} memverifikasi bahwa ${session.victim} telah sukses!`,
+          `🎁 **Hadiah Masuk:** \`+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
+        ].join('\n'))
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
+
+      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
+      audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => { });
+
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
+
+    } else if (actInteraction.customId === 'tod_action_skip') {
+      // 🔴 SKIP / DENDA
+      database.incrementSkipStats(victimId);
+      database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
+
+      const resultEmbed = EmbedBuilder.from(questionEmbed)
+        .setColor(0xFF3366)
+        .setDescription([
+          `❌ **Pemain Menyerah / Memilih Skip!**`,
+          `User ${session.victim} memutuskan untuk skip tantangan.`,
+          `💸 **Denda Koin Terpotong:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\``
+        ].join('\n'))
+        .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
+
+      await actInteraction.update({ embeds: [resultEmbed], components: [disabledRow] });
+      audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
+
+      // Transisi ke putaran berikutnya
+      triggerNextTurnTransition(client, guildId);
+    }
+  });
+}
+
+/**
+ * Alur khusus ketika Juri mengucapkan pertanyaan/tantangan secara langsung lewat suara.
+ */
+async function startCustomVoiceFlow(interaction, client, type) {
+  const { guildId } = interaction;
+  const session = activeGames.get(guildId);
+  if (!session) return;
+
+  session.state = 'waiting_for_completion';
+  session.type = type;
+  session.question = { question_text: 'Diucapkan langsung oleh Juri lewat suara mikrofon.' };
+
+  const embedColor = type === 'truth' ? 0x3399FF : 0x00FF88;
+  const embedTitle = type === 'truth' ? '🤔 TRUTH (UCAP LANGSUNG)' : '⚡ DARE (UCAP LANGSUNG)';
+
+  const questionEmbed = new EmbedBuilder()
+    .setColor(embedColor)
+    .setTitle(`🎤 VC Event — ${embedTitle}`)
+    .setDescription([
+      `👤 **Pemain:** ${session.victim}`,
+      `🗣️ **Juri Penilai:** ${session.challenger}`,
+      `\n🗣️ **Hei ${session.challenger}, silakan ucapkan pertanyaan/tantanganmu secara langsung lewat mikrofon kepada ${session.victim}!**`,
+      `*(Setelah korban menjawab/melakukan tantangan, Juri silakan klik tombol di bawah untuk menilai!)*`,
+      `\n💵 **Denda Skip:** \`Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}\` | 🎁 **Hadiah Sukses:** \`Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}\``
+    ].join('\n'))
+    .setFooter({ text: `Menunggu juri menilai... Waktu batas: 60 detik` })
+    .setTimestamp();
+
+  // Tombol aksi untuk Challenger (Juri) menilai langsung sejak awal
+  const actionRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tod_action_done')
+      .setLabel('✅ Selesai (Sukses)')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('tod_action_skip')
+      .setLabel('❌ Menyerah (Denda Koin)')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  // Update pesan lobi menjadi embed instruksi bicara + tombol penilaian langsung
+  await interaction.update({ embeds: [questionEmbed], components: [actionRow] });
+
+  // Umumkan instruksi via TTS
+  const speechText = `Juri ${session.challenger.displayName}, silakan ucapkan pertanyaan atau tantangan kustommu secara langsung kepada ${session.victim.displayName}!`;
+  audio.speak(client, guildId, speechText).catch(() => { });
+
+  // Set batas waktu penyelesaian tantangan (60 detik)
+  session.timer = setTimeout(async () => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) return;
+
+    // Juri AFK / Timeout tanpa keputusan = Bebas Denda demi Keadilan
+    const disabledRow = ActionRowBuilder.from(actionRow);
+    disabledRow.components.forEach(comp => comp.setDisabled(true));
+
+    const timeoutEmbed = EmbedBuilder.from(questionEmbed)
+      .setColor(0xFFAA00)
+      .setDescription([
+        `⌛ **Waktu Juri Terbatas Habis!**`,
+        `Juri ${session.challenger} tidak memberikan keputusan/penilaian dalam 60 detik.`,
+        `🛡️ **Anti-AFK Protection:** ${session.victim} dibebaskan dari denda karena Juri tidak merespons.`
+      ].join('\n'))
+      .setFooter({ text: 'Melanjutkan ke giliran berikutnya...' });
+
+    await session.message.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => { });
+    
+    audio.speak(
+      client, 
+      guildId, 
+      `Waktu habis! Juri tidak memberikan keputusan, sehingga korban ${session.victim.displayName} bebas dari denda.`
+    ).catch(() => { });
+
+    // Transisi ke putaran berikutnya
+    triggerNextTurnTransition(client, guildId);
+  }, config.durations.GAME_TIMEOUT_MS);
+
+  // Pasang collector keputusan Juri
+  const actionCollector = session.message.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: config.durations.GAME_TIMEOUT_MS
+  });
+
+  actionCollector.on('collect', async (actInteraction) => {
+    const currentSession = activeGames.get(guildId);
+    if (!currentSession || currentSession !== session) {
+      return actInteraction.reply({ content: '❌ Sesi game ini sudah tidak aktif.', ephemeral: true });
+    }
+
+    // Hanya Challenger (Juri) atau Admin yang bisa menilai
+    const isUserAdmin = actInteraction.member.permissions.has('Administrator');
+    if (actInteraction.user.id !== session.challenger.id && !isUserAdmin) {
+      return actInteraction.reply({ content: '❌ Hanya Challenger (Juri) terpilih atau Admin yang dapat memvalidasi game ini!', ephemeral: true });
+    }
+
+    if (session.timer) clearTimeout(session.timer);
+    actionCollector.stop();
+
+    const disabledRow = ActionRowBuilder.from(actionRow);
     disabledRow.components.forEach(comp => comp.setDisabled(true));
 
     const victimId = session.victim.id;
