@@ -1180,9 +1180,13 @@ async function handleEconomyCommands(message, client) {
         return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
       }
 
-      // Kirim Embed Pengumuman Pembaruan Cantik & Rapi
+      // Kirim Embed Pengumuman Pembaruan Cantik & Rapi dengan tag @everyone
       const embed = embeds.updateAnnouncementEmbed(message.guild);
-      await targetChannel.send({ embeds: [embed] });
+      await targetChannel.send({ 
+        content: '📢 **Pemberitahuan Pembaruan Sistem Ekonomi Bot!** @everyone', 
+        embeds: [embed],
+        allowedMentions: { parse: ['everyone'] }
+      });
 
       if (targetChannel.id !== message.channel.id) {
         await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting secara eksklusif dengan embed cantik di channel ${targetChannel}.`);
