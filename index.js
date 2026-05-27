@@ -19,7 +19,6 @@ const path = require('path');
 const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
 const { initStockMarket, handleEconomyChat, handleEconomyCommands } = require('./stockmarket');
-const { handleVoiceTodCommand, handleVoiceStateUpdate } = require('./voice_events');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -485,9 +484,6 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.volume <0-100>\`** - Mengatur volume pemutar musik bot.`,
             `👉 **\`.loop\`** - Mengaktifkan/menonaktifkan mode loop folder musik.`,
             `👉 **\`.stop\`** - Menghentikan musik dan mereset antrean serta riwayat putar.`,
-            `\n🎲 **GAME VOICE CHANNEL (TRUTH OR DARE):**`,
-            `👉 **\`.tod\`** atau **\`.truthordare\`** - Memulai sesi lobi game Truth or Dare di Voice Channel.`,
-            `👉 **\`.tod status\`** - Mengecek profil, statistik koin, dan performa bermain ToD Anda.`,
             `\n💸 **SISTEM EKONOMI & BURSA SAHAM:**`,
             `👉 **\`.bal\`** atau **\`.profile\`** - Melihat saldo koin Rupiah, total nilai saham, streak, dan total earning.`,
             `👉 **\`.daily\`** - Mengklaim hadiah koin gratis harian (Di-reset tepat pukul 12.00 malam WIB).`,
@@ -525,11 +521,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription([
             `Berikut adalah daftar seluruh perintah eksklusif khusus Owner & Administrator server untuk mengelola perekonomian, bursa saham, toko, serta game:\n`,
-            `🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
-            `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
-            `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
-            `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`,
-            `\n💰 **PENGELOLAAN SALDO EKONOMI:**`,
+
             `👉 **\`.eco-give @user <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) ke dompet user.`,
             `👉 **\`.eco-giveall <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) kepada seluruh member server.`,
             `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong saldo koin dari dompet user.`,
@@ -681,9 +673,7 @@ client.on('messageCreate', async message => {
 
   if (!message.content.startsWith('.')) return;
 
-  // Cek perintah Voice Truth or Dare (Sprint 5)
-  const voiceTodHandled = await handleVoiceTodCommand(message, client);
-  if (voiceTodHandled) return;
+
 
   // Cek perintah Ekonomi / Stock Market
   const economyHandled = await handleEconomyCommands(message, client);
@@ -720,10 +710,6 @@ client.on('messageCreate', async message => {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
         `Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator untuk mengelola game Truth or Dare, sistem ekonomi, serta bursa saham di server ini.`,
-        `\n🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
-        `👉 **\`.tod announce [#channel]\`** - Menyiarkan pengumuman peluncuran game ToD ke channel target.`,
-        `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi game ToD yang sedang aktif.`,
-        `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom ke database game ToD.`,
         `\n💰 **KONTROL SISTEM EKONOMI (RUPIAH SERVER):**`,
         `👉 **\`.eco-give @user <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) ke dompet user.`,
         `👉 **\`.eco-giveall <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) kepada seluruh member server.`,
@@ -1127,8 +1113,7 @@ client.on('messageCreate', async message => {
 // VOICE STATE UPDATE HANDLER (Proteksi Saluran)
 // ═══════════════════════════════════════════════════
 client.on('voiceStateUpdate', async (oldState, newState) => {
-  // Pemicu Auto Event Voice Channel (Sprint 5)
-  handleVoiceStateUpdate(oldState, newState, client);
+
 
   const botId = client.user?.id;
   if (!botId) return;
