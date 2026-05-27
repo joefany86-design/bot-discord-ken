@@ -1070,7 +1070,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement'];
+    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
@@ -1121,22 +1121,167 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .eco-give @user <jumlah>
+    // Perintah Admin: .eco-give @user <jumlah> / random [min] [max]
     // ═══════════════════════════════════════════════════
     if (commandName === 'eco-give') {
       const targetUser = message.mentions.users.first();
-      const amount = parseInt(args[1] || args[0]);
+      if (!targetUser) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan user yang ingin diberikan koin.\nContoh: `.eco-give @user 5000` atau `.eco-give @user random 1000 5000`')] });
+      }
 
-      if (!targetUser || isNaN(amount) || amount <= 0) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.eco-give @user 5000`')] });
+      const isRandom = args.some(arg => arg.toLowerCase() === 'random');
+      let amount = 0;
+      let minRange = 1000;
+      let maxRange = 10000;
+
+      if (isRandom) {
+        const numbers = args.filter(arg => {
+          if (arg.toLowerCase() === 'random') return false;
+          if (arg.startsWith('<@') && arg.endsWith('>')) return false;
+          return !isNaN(parseInt(arg));
+        }).map(arg => parseInt(arg));
+
+        if (numbers.length >= 2) {
+          minRange = Math.min(numbers[0], numbers[1]);
+          maxRange = Math.max(numbers[0], numbers[1]);
+        } else if (numbers.length === 1) {
+          minRange = numbers[0];
+          maxRange = numbers[0] * 5;
+        }
+
+        if (minRange <= 0) minRange = 1;
+        if (maxRange < minRange) maxRange = minRange;
+
+        amount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
+      } else {
+        const numbers = args.filter(arg => !arg.startsWith('<@') || !arg.endsWith('>'))
+                            .map(arg => parseInt(arg))
+                            .filter(num => !isNaN(num) && num > 0);
+        if (numbers.length > 0) {
+          amount = numbers[0];
+        }
+      }
+
+      if (amount <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan jumlah koin berupa angka di atas 0.\nContoh: `.eco-give @user 5000` atau `.eco-give @user random 1000 5000`')] });
       }
 
       economy.addBalance(targetUser.id, guildId, amount, 'ADMIN_GIVE');
+
+      let desc = `Berhasil memberikan **Rp ${amount.toLocaleString('id-ID')}** koin kepada <@${targetUser.id}>!`;
+      if (isRandom) {
+        desc = `🎰 **HOKI ACAK!** Berhasil memberikan koin acak sejumlah **Rp ${amount.toLocaleString('id-ID')}** *(Rentang: Rp ${minRange.toLocaleString('id-ID')} - Rp ${maxRange.toLocaleString('id-ID')})* kepada <@${targetUser.id}>!`;
+      }
+
       const embed = embeds.successEmbed(
-        'Koin Berhasil Diberikan!',
-        `Berhasil memberikan **Rp ${amount.toLocaleString('id-ID')}** koin kepada <@${targetUser.id}>!`
+        isRandom ? 'Koin Acak Berhasil Diberikan!' : 'Koin Berhasil Diberikan!',
+        desc
       );
       await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .eco-giveall <jumlah> / random [min] [max]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'eco-giveall') {
+      const isRandom = args.some(arg => arg.toLowerCase() === 'random');
+      let amount = 0;
+      let minRange = 1000;
+      let maxRange = 10000;
+
+      if (isRandom) {
+        const numbers = args.filter(arg => {
+          if (arg.toLowerCase() === 'random') return false;
+          return !isNaN(parseInt(arg));
+        }).map(arg => parseInt(arg));
+
+        if (numbers.length >= 2) {
+          minRange = Math.min(numbers[0], numbers[1]);
+          maxRange = Math.max(numbers[0], numbers[1]);
+        } else if (numbers.length === 1) {
+          minRange = numbers[0];
+          maxRange = numbers[0] * 5;
+        }
+
+        if (minRange <= 0) minRange = 1;
+        if (maxRange < minRange) maxRange = minRange;
+      } else {
+        const numbers = args.map(arg => parseInt(arg)).filter(num => !isNaN(num) && num > 0);
+        if (numbers.length > 0) {
+          amount = numbers[0];
+        }
+      }
+
+      if (!isRandom && amount <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan jumlah koin berupa angka di atas 0.\nContoh: `.eco-giveall 5000` atau `.eco-giveall random 1000 5000`')] });
+      }
+
+      const statusEmbed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('⚙️ MEMPROSES BAGI-BAGI KOIN...')
+        .setDescription('Sedang mendistribusikan koin ke seluruh member server secara instan. Mohon tunggu...');
+      const statusMsg = await message.reply({ embeds: [statusEmbed] });
+
+      let members;
+      try {
+        members = await guild.members.fetch();
+      } catch (err) {
+        console.error('Gagal mengambil daftar member:', err);
+        const errEmbed = embeds.errorEmbed('Gagal!', 'Tidak dapat mengambil daftar member server.');
+        return statusMsg.edit({ embeds: [errEmbed] });
+      }
+
+      const humanMembers = members.filter(m => !m.user.bot);
+      let totalAmountGiven = 0;
+      let memberCount = 0;
+
+      try {
+        database.transaction(() => {
+          for (const [memberId, member] of humanMembers) {
+            let giveAmount = amount;
+            if (isRandom) {
+              giveAmount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
+            }
+            economy.addBalance(memberId, guildId, giveAmount, 'ADMIN_GIVEALL');
+            totalAmountGiven += giveAmount;
+            memberCount++;
+          }
+        })();
+      } catch (dbErr) {
+        console.error('Database transaction error in eco-giveall:', dbErr);
+        const errEmbed = embeds.errorEmbed('Database Error!', 'Terjadi kesalahan internal saat memperbarui saldo database.');
+        return statusMsg.edit({ embeds: [errEmbed] });
+      }
+
+      const successTitle = isRandom ? '🎰 RAIN / AIRDROP KOIN ACAK SUKSES! 💸' : '📢 BAGI-BAGI KOIN MASSAL SUKSES! 💸';
+      
+      let successDesc = '';
+      if (isRandom) {
+        successDesc = `👑 **KEMAKMURAN UNTUK SEMUA!**\n\n` +
+                      `Owner / Administrator telah menyebarkan koin keberuntungan acak kepada **${memberCount} member** server!\n\n` +
+                      `📊 **Metode Distribusi:** \`🎰 Acak (Random Roll)\`\n` +
+                      `📈 **Rentang Hadiah:** \`Rp ${minRange.toLocaleString('id-ID')} - Rp ${maxRange.toLocaleString('id-ID')}\` per member\n` +
+                      `💰 **Total Koin Tersebar:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
+                      `*Setiap warga menerima jumlah koin acak masing-masing yang unik. Cek saldo Anda dengan perintah \`.bal\`!* 🚀`;
+      } else {
+        successDesc = `👑 **DISTRIBUSI KESEJAHTERAAN SELESAI!**\n\n` +
+                      `Owner / Administrator telah membagikan koin secara merata kepada **${memberCount} member** server!\n\n` +
+                      `📊 **Metode Distribusi:** \`💵 Tetap (Fixed Amount)\`\n` +
+                      `📈 **Nominal per Member:** **Rp ${amount.toLocaleString('id-ID')}** koin\n` +
+                      `💰 **Total Koin Terdistribusi:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
+                      `*Kesejahteraan Anda telah dijamin! Silakan cek dompet masing-masing menggunakan perintah \`.bal\`!* 🚀`;
+      }
+
+      const successEmbed = new EmbedBuilder()
+        .setColor(0x00FF88)
+        .setTitle(successTitle)
+        .setDescription(successDesc)
+        .setThumbnail(guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL())
+        .setFooter({ text: 'Rupiah Server • Kesejahteraan Rakyat' })
+        .setTimestamp();
+
+      await statusMsg.edit({ embeds: [successEmbed] });
       return true;
     }
 
