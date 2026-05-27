@@ -37,6 +37,39 @@ function generateSparkline(prices) {
   return `\`${spark}\` ( ${prices.map(p => `Rp ${p.toLocaleString('id-ID')}`).join(' ➔ ')} )`;
 }
 
+/**
+ * Mengambil warna spesifik untuk role prestise agar warna embed (.shop-buy / .gacha-role)
+ * selaras secara sempurna dengan gradasi role yang diperoleh.
+ */
+function getRoleColor(roleName, tier) {
+  const ROLE_COLORS = {
+    '🥉 Common Prestige': '#979c9f',
+    '🥈 Rare Elite': '#3498db',
+    '🔮 Primordial': '#70a1ff',
+    '🥇 Epic Champion': '#5f27cd',
+    '👑 Legendary Overlord': '#9b59b6',
+    '🌟 Zenith': '#e84393',
+    '🌟 Mythic Immortal': '#ff4757',
+    '✨ Aethelgard': '#e67e22',
+    '👑 The Sovereign': '#f1c40f'
+  };
+
+  const cleanName = roleName ? roleName.trim() : '';
+  if (ROLE_COLORS[cleanName] !== undefined) {
+    return ROLE_COLORS[cleanName];
+  }
+
+  // Fallback berdasarkan Tier jika kustom role di luar default
+  const TIER_COLORS = {
+    COMMON: '#979c9f',
+    RARE: '#3498db',
+    EPIC: '#5f27cd',
+    LEGENDARY: '#9b59b6',
+    MYTHIC: '#ff4757'
+  };
+  return TIER_COLORS[tier?.toUpperCase()] || '#00FF88';
+}
+
 module.exports = {
   COLORS,
   formatCurrency,
@@ -382,14 +415,6 @@ module.exports = {
 
   // 13. Embed Sukses Pembelian Role (.buy-role)
   rolePurchaseSuccessEmbed(user, roleName, price, newBalance, tier) {
-    const TIER_COLORS = {
-      COMMON: COLORS.SUCCESS,
-      RARE: COLORS.INFO,
-      EPIC: COLORS.PURPLE,
-      LEGENDARY: COLORS.WARN,
-      MYTHIC: COLORS.ERROR
-    };
-
     const TIER_EMOJIS = {
       COMMON: '🟢',
       RARE: '🔵',
@@ -398,7 +423,7 @@ module.exports = {
       MYTHIC: '🌟'
     };
 
-    const tierColor = TIER_COLORS[tier] || COLORS.SUCCESS;
+    const tierColor = getRoleColor(roleName, tier);
     const tierEmoji = TIER_EMOJIS[tier] || '🟢';
 
     return new EmbedBuilder()
@@ -418,19 +443,13 @@ module.exports = {
 
   // 14. Embed Pengumuman Heboh Sultan (EPIC & LEGENDARY)
   broadcastMegaEmbed(user, roleName, price, tier) {
-    const TIER_COLORS = {
-      EPIC: COLORS.PURPLE,
-      LEGENDARY: COLORS.WARN,
-      MYTHIC: COLORS.ERROR
-    };
-
     const TIER_EMOJIS = {
       EPIC: '🟣',
       LEGENDARY: '👑',
       MYTHIC: '🌟'
     };
 
-    const tierColor = TIER_COLORS[tier] || COLORS.PURPLE;
+    const tierColor = getRoleColor(roleName, tier);
     const tierEmoji = TIER_EMOJIS[tier] || '👑';
 
     return new EmbedBuilder()
@@ -451,13 +470,6 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setThumbnail(user.displayAvatarURL({ dynamic: true }));
 
-    const TIER_COLORS = {
-      COMMON: COLORS.SUCCESS,
-      RARE: COLORS.INFO,
-      EPIC: COLORS.PURPLE,
-      LEGENDARY: COLORS.WARN
-    };
-
     const TIER_EMOJIS = {
       COMMON: '🟢',
       RARE: '🔵',
@@ -466,7 +478,7 @@ module.exports = {
     };
 
     if (isWin && item) {
-      const tierColor = TIER_COLORS[item.tier] || COLORS.SUCCESS;
+      const tierColor = getRoleColor(item.role_name, item.tier);
       const tierEmoji = TIER_EMOJIS[item.tier] || '🟢';
 
       embed
