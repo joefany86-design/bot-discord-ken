@@ -59,6 +59,7 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ]
 });
 
@@ -563,7 +564,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
       new ButtonBuilder().setCustomId('help_btn_member').setLabel('👤 Member Panel').setStyle(ButtonStyle.Primary).setDisabled(true),
       new ButtonBuilder().setCustomId('help_btn_admin').setLabel('🛡️ Admin Panel').setStyle(ButtonStyle.Danger).setDisabled(true)
     );
-    await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+    await replyMsg.edit({ components: [disabledRow] }).catch(() => { });
   });
 }
 
@@ -623,7 +624,7 @@ client.on('interactionCreate', async interaction => {
       await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
 
       // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
-      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => {});
+      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
 
       await interaction.reply({
         content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}**!\n` +
@@ -777,7 +778,7 @@ client.on('messageCreate', async message => {
       await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
 
       // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
-      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => {});
+      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
 
       const embed = new EmbedBuilder()
         .setColor(0x00FF88)

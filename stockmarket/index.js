@@ -1313,19 +1313,16 @@ async function handleEconomyCommands(message, client) {
         }
       });
 
-      // 3. Tarik paksa seluruh member terbaru dari Discord API (dengan batas waktu 2 detik agar tidak menggantung jika intent mati)
+      // 3. Tarik paksa seluruh member terbaru dari Discord API (tanpa timeout singkat yang membatalkan seluruh proses)
       try {
-        const fetchedMembers = await Promise.race([
-          guild.members.fetch({ force: true }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 2000))
-        ]);
+        const fetchedMembers = await guild.members.fetch({ force: true });
         for (const [id, member] of fetchedMembers) {
           if (!member.user.bot) {
             memberIds.add(id);
           }
         }
       } catch (err) {
-        console.warn('Gagal fetch all members via Discord API (intent GuildMembers mati atau timeout):', err.message);
+        console.warn('Gagal fetch all members via Discord API:', err.message);
       }
 
       if (memberIds.size === 0) {
@@ -1337,17 +1334,43 @@ async function handleEconomyCommands(message, client) {
       let memberCount = 0;
 
       try {
-        // Jangan gunakan database.transaction di sini karena economy.addBalance sudah menggunakannya secara internal.
-        // Loop ini sangat cepat karena SQLite WAL mode aktif.
-        for (const memberId of memberIds) {
-          let giveAmount = amount;
-          if (isRandom) {
-            giveAmount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
+        // Optimasi: Gunakan satu database transaction tunggal agar proses batch sangat cepat (hanya milidetik) dan aman dari locked database!
+        database.transaction(() => {
+          for (const memberId of memberIds) {
+            let giveAmount = amount;
+            if (isRandom) {
+              giveAmount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
+            }
+
+            // Pastikan wallet terdaftar (getWallet logic inline)
+            let wallet = database.get('SELECT user_id FROM wallets WHERE user_id = ? AND guild_id = ?', [memberId, guildId]);
+            if (!wallet) {
+              database.run(
+                `INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [memberId, guildId, 0, 0, 0]
+              );
+            }
+
+            // Update saldo
+            database.run(
+              `UPDATE wallets 
+               SET balance = balance + ?, total_earned = total_earned + ? 
+               WHERE user_id = ? AND guild_id = ?`,
+              [giveAmount, giveAmount, memberId, guildId]
+            );
+
+            // Catat transaksi
+            database.run(
+              `INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) 
+               VALUES (?, ?, ?, ?, ?)`,
+              [memberId, guildId, 'ADMIN_GIVEALL', null, giveAmount]
+            );
+
+            totalAmountGiven += giveAmount;
+            memberCount++;
           }
-          economy.addBalance(memberId, guildId, giveAmount, 'ADMIN_GIVEALL');
-          totalAmountGiven += giveAmount;
-          memberCount++;
-        }
+        })();
       } catch (dbErr) {
         console.error('Database error in eco-giveall:', dbErr);
         const errEmbed = embeds.errorEmbed('Database Error!', 'Terjadi kesalahan internal saat memperbarui saldo database.');
