@@ -484,6 +484,14 @@ async function startNextTurn(client, guildId) {
         return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', ephemeral: true });
       }
       session.players.push(member);
+      if (session.remainingHotseatVictims && !session.remainingHotseatVictims.includes(interaction.user.id)) {
+        session.remainingHotseatVictims.push(interaction.user.id);
+      }
+      if (session.hotseatChallengersQueue && !session.hotseatChallengersQueue.includes(interaction.user.id)) {
+        if (!session.hotseatVictim || session.hotseatVictim.id !== interaction.user.id) {
+          session.hotseatChallengersQueue.push(interaction.user.id);
+        }
+      }
       return interaction.reply({ content: `✅ **${interaction.user.username}** bergabung!` });
     }
 
@@ -578,6 +586,14 @@ async function startNextTurn(client, guildId) {
             return btnInteraction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', ephemeral: true });
           }
           session.players.push(m);
+          if (session.remainingHotseatVictims && !session.remainingHotseatVictims.includes(btnInteraction.user.id)) {
+            session.remainingHotseatVictims.push(btnInteraction.user.id);
+          }
+          if (session.hotseatChallengersQueue && !session.hotseatChallengersQueue.includes(btnInteraction.user.id)) {
+            if (!session.hotseatVictim || session.hotseatVictim.id !== btnInteraction.user.id) {
+              session.hotseatChallengersQueue.push(btnInteraction.user.id);
+            }
+          }
           return btnInteraction.reply({ content: `✅ **${btnInteraction.user.username}** bergabung!` });
         }
 
