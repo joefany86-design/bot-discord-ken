@@ -271,3 +271,16 @@ module.exports = {
   incrementSkipStats,
   getUserStats
 };
+
+// Jalankan seeding jika database kosong
+try {
+  const rowCount = db.prepare('SELECT COUNT(*) as count FROM tod_questions').get();
+  if (!rowCount || rowCount.count === 0) {
+    console.log('⚠️ [VoiceDb] Database tod_questions kosong! Menjalankan seeder otomatis...');
+    const { runSeeding } = require('./questions_seed');
+    runSeeding();
+  }
+} catch (err) {
+  console.error('[VoiceDb] Gagal melakukan auto-seeding:', err);
+}
+
