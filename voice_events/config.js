@@ -26,7 +26,7 @@ module.exports = {
     MIN_MEMBERS: 3,                 // Minimal anggota aktif di VC untuk memicu event
     MIN_ACTIVE_TIME_MS: 10 * 60 * 1000, // Durasi aktif sebelum memicu event (10 menit)
     COOLDOWN_MS: 2 * 60 * 60 * 1000,   // Cooldown antar undangan otomatis (2 jam)
-    TARGET_TEXT_CHANNEL_ID: null,   // ID Channel khusus pengumuman (null = channel default sistem)
+    TARGET_TEXT_CHANNEL_ID: process.env.AUTO_EVENT_CHANNEL_ID || '1422642326798598348',   // ID Channel khusus pengumuman (null = channel default sistem)
   },
 
   // Konfigurasi Kategori Sensitivitas
