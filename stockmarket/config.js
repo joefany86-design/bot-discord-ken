@@ -14,7 +14,7 @@ module.exports = {
   DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../data/economy.db'),
 
   // ID Channel khusus untuk Laporan Harian & Pengumuman Bursa Saham
-  REPORT_CHANNEL_ID: process.env.REPORT_CHANNEL_ID || '1478566460124041428',
+  REPORT_CHANNEL_ID: process.env.REPORT_CHANNEL_ID || '1422642326798598348',
 
   // Sistem Earning Poin (Rupiah Server)
   economy: {
