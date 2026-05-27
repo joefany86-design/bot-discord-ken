@@ -123,8 +123,8 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
-  // 3. Cron Job: Dividen Mingguan (Setiap Senin pagi pukul 08:00 WIB, saat Market Open)
-  cron.schedule('0 8 * * 1', () => {
+  // 3. Cron Job: Dividen Mingguan (Setiap Minggu malam pukul 21:00 WIB)
+  cron.schedule('0 21 * * 0', () => {
     console.log('⏰ [Scheduler] Mendistribusikan Dividen Saham Mingguan...');
 
     client.guilds.cache.forEach(guild => {
@@ -145,12 +145,24 @@ function initScheduler(client) {
       }
 
       if (targetChannel) {
+        let listText = '';
+        distributions.slice(0, 10).forEach((d, idx) => {
+          const user = client.users.cache.get(d.userId);
+          const username = user ? user.username : `<@${d.userId}>`;
+          listText += `💰 **${username}** — Dapat **Rp ${d.amount.toLocaleString('id-ID')}** dari **${d.ticker}** (Rate: \`${d.rate}%\`, Aktif: \`${d.activity}\`)\n`;
+        });
+        if (distributions.length > 10) {
+          listText += `*...dan ${distributions.length - 10} transaksi dividen lainnya!*`;
+        }
+
         const embed = new EmbedBuilder()
           .setColor(0x00FF88)
-          .setTitle('💸 DISTRIBUSI DIVIDEN MINGGUAN!')
+          .setTitle('💸 DISTRIBUSI DIVIDEN BURSA MINGGUAN! 📈')
           .setDescription(
-            `🎉 Selamat Hari Senin! Pembayaran dividen mingguan untuk seluruh investor setia saham channel server telah berhasil dikirim langsung ke dompet digital Anda.\n\n` +
-            `👉 Total Investor Menerima Dividen: **${distributions.length} member**\n` +
+            `🎉 **Selamat Hari Minggu Malam!** Pembayaran dividen mingguan dinamis berbasis keaktifan chat warga telah sukses dikirim langsung ke dompet Anda!\n\n` +
+            `Member yang memegang saham channel aktif menerima tingkat keuntungan (rate) dividen yang jauh lebih tinggi! 🔥\n\n` +
+            `👉 **Total Distribusi:** **${distributions.length} transaksi**\n` +
+            `👉 **Rincian Penerima Dividen:**\n${listText || '*Tidak ada transaksi*'}\n\n` +
             `*Periksa portofolio & saldo terbaru Anda sekarang dengan mengetik \`.porto\` atau \`.bal\`!*`
           )
           .setTimestamp();

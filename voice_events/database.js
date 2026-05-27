@@ -272,6 +272,45 @@ function getUserStats(userId) {
   };
 }
 
+/**
+ * Mendapatkan Top 5 pemain tersukses menyelesaikan Dare.
+ */
+function getTopDares(limit = 5) {
+  return db.prepare(`
+    SELECT user_id, dares_completed 
+    FROM tod_stats 
+    WHERE dares_completed > 0 
+    ORDER BY dares_completed DESC 
+    LIMIT ?
+  `).all(limit);
+}
+
+/**
+ * Mendapatkan Top 5 pemain terjawab Truth terbanyak.
+ */
+function getTopTruths(limit = 5) {
+  return db.prepare(`
+    SELECT user_id, truths_answered 
+    FROM tod_stats 
+    WHERE truths_answered > 0 
+    ORDER BY truths_answered DESC 
+    LIMIT ?
+  `).all(limit);
+}
+
+/**
+ * Mendapatkan Top 5 pemain ter-skip terbanyak (penakut).
+ */
+function getTopSkips(limit = 5) {
+  return db.prepare(`
+    SELECT user_id, skips_count 
+    FROM tod_stats 
+    WHERE skips_count > 0 
+    ORDER BY skips_count DESC 
+    LIMIT ?
+  `).all(limit);
+}
+
 module.exports = {
   db,
   getRandomQuestion,
@@ -280,7 +319,10 @@ module.exports = {
   fineUser,
   incrementGameStats,
   incrementSkipStats,
-  getUserStats
+  getUserStats,
+  getTopDares,
+  getTopTruths,
+  getTopSkips
 };
 
 // Jalankan seeding jika database belum terisi lengkap (minimal 4300 pertanyaan)

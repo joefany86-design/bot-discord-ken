@@ -940,18 +940,79 @@ async function triggerAutoEventInvitation(guild, voiceChannel) {
 // ═══════════════════════════════════════════════════
 
 /**
+ * Menampilkan Embed Papan Prestasi ToD Server (Leaderboard)
+ */
+async function sendTodLeaderboard(message, client) {
+  const topDares = database.getTopDares(5);
+  const topTruths = database.getTopTruths(5);
+  const topSkips = database.getTopSkips(5);
+
+  const fetchUsernames = async (list) => {
+    const lines = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      let username = 'Warga Misterius';
+      try {
+        const user = client.users.cache.get(item.user_id) || await client.users.fetch(item.user_id);
+        username = user.username;
+      } catch (err) {
+        username = `<@${item.user_id}>`;
+      }
+      
+      let scoreVal = '';
+      if (item.dares_completed !== undefined) scoreVal = `\`${item.dares_completed} Dare\``;
+      else if (item.truths_answered !== undefined) scoreVal = `\`${item.truths_answered} Truth\``;
+      else if (item.skips_count !== undefined) scoreVal = `\`${item.skips_count} Skip\``;
+
+      lines.push(`${i + 1}. **${username}** — ${scoreVal}`);
+    }
+    return lines.join('\n') || '*Belum ada prestasi tercatat*';
+  };
+
+  const daresList = await fetchUsernames(topDares);
+  const truthsList = await fetchUsernames(topTruths);
+  const skipsList = await fetchUsernames(topSkips);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF88)
+    .setTitle('🏆 PAPAN PRESTASI TRUTH OR DARE (ToD) 🏆')
+    .setDescription('Berikut adalah rekapitulasi keaktifan dan nyali para warga server Kosan 1A dalam game Truth or Dare!')
+    .addFields(
+      {
+        name: '👑 Warga Paling Pemberani (Dares Completed)',
+        value: daresList,
+        inline: false
+      },
+      {
+        name: '🤔 Warga Paling Jujur (Truths Answered)',
+        value: truthsList,
+        inline: false
+      },
+      {
+        name: '💀 Warga Paling Penakut (Skips Count)',
+        value: skipsList,
+        inline: false
+      }
+    )
+    .setFooter({ text: 'Sentinel Bot • ToD Leaderboard' })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] });
+}
+
+/**
  * Entrypoint untuk mengarahkan pesan teks ber-prefix .truthordare atau .tod
  */
 async function handleVoiceTodCommand(message, client) {
   const content = message.content.slice(1).trim().split(/ +/);
   const command = content.shift().toLowerCase();
 
-  if (command !== 'truthordare' && command !== 'tod') return false;
+  if (command !== 'truthordare' && command !== 'tod' && command !== 'tod-top' && command !== 'tod-leaderboard') return false;
 
-  const subCommand = content[0]?.toLowerCase();
+  const subCommand = (command === 'tod-top' || command === 'tod-leaderboard') ? 'top' : content[0]?.toLowerCase();
 
-  // ── Penanganan Subcommand: status ──
-  if (subCommand === 'status') {
+  // ── Penanganan Subcommand: status / stats ──
+  if (subCommand === 'status' || subCommand === 'stats') {
     const stats = database.getUserStats(message.author.id);
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
@@ -968,6 +1029,12 @@ async function handleVoiceTodCommand(message, client) {
       .setTimestamp();
 
     await message.reply({ embeds: [embed] });
+    return true;
+  }
+
+  // ── Penanganan Subcommand: top / leaderboard ──
+  if (subCommand === 'top' || subCommand === 'leaderboard') {
+    await sendTodLeaderboard(message, client);
     return true;
   }
 

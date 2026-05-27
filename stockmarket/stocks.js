@@ -413,17 +413,30 @@ function distributeWeeklyDividends(guildId) {
 
   db.transaction(() => {
     portfolios.forEach(p => {
-      // Nilai dividen dasar (2% dari harga pasar saat ini)
-      const baseDividend = p.current_price * config.market.WEEKLY_DIVIDEND_BASE_RATE;
-      const totalDividend = Math.floor(baseDividend * p.shares);
+      // Ambil total keaktifan chat selama 7 hari terakhir dari price_history
+      const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60);
+      const activityRow = db.get(
+        `SELECT SUM(activity_score) as total_activity 
+         FROM price_history 
+         WHERE channel_id = ? AND guild_id = ? AND recorded_at >= ?`,
+        [p.channel_id, guildId, sevenDaysAgo]
+      );
+      const weeklyActivity = (activityRow && activityRow.total_activity) ? activityRow.total_activity : 0.0;
+
+      // Kalkulasi rasio dividen dinamis (Dasar 1% + Bonus keaktifan, maks 9%)
+      const dividendRate = 0.01 + Math.min(0.08, (weeklyActivity / 1000));
+      const totalDividend = Math.floor(p.current_price * dividendRate * p.shares);
 
       if (totalDividend > 0) {
         economy.addBalance(p.user_id, guildId, totalDividend, 'DIVIDEND', p.channel_id);
         distributions.push({
           userId: p.user_id,
           ticker: p.stock_ticker,
+          name: p.stock_name,
           shares: p.shares,
-          amount: totalDividend
+          amount: totalDividend,
+          rate: (dividendRate * 100).toFixed(2),
+          activity: weeklyActivity.toFixed(1)
         });
       }
     });

@@ -1070,7 +1070,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement'];
+    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
@@ -1117,6 +1117,62 @@ async function handleEconomyCommands(message, client) {
         const errorEmbed = embeds.errorEmbed('Gagal Memicu Event!', err.message);
         await message.reply({ embeds: [errorEmbed] });
       }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .dividends-trigger
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'dividends-trigger') {
+      const distributions = stocks.distributeWeeklyDividends(guildId);
+      if (distributions.length === 0) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Tidak Ada Distribusi!', 'Tidak ada investor yang memiliki saham aktif saat ini untuk menerima dividen.')]
+        });
+      }
+
+      let listText = '';
+      distributions.slice(0, 10).forEach((d, idx) => {
+        const user = client.users.cache.get(d.userId);
+        const username = user ? user.username : `<@${d.userId}>`;
+        listText += `💰 **${username}** — Dapat **Rp ${d.amount.toLocaleString('id-ID')}** dari **${d.ticker}** (Rate: \`${d.rate}%\`, Aktif: \`${d.activity}\`)\n`;
+      });
+      if (distributions.length > 10) {
+        listText += `*...dan ${distributions.length - 10} transaksi dividen lainnya!*`;
+      }
+
+      // Cari channel utama untuk posting notifikasi dividen (prioritaskan REPORT_CHANNEL_ID jika diset)
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
+
+      if (targetChannel) {
+        const embed = new EmbedBuilder()
+          .setColor(0x00FF88)
+          .setTitle('💸 DISTRIBUSI DIVIDEN BURSA (MANUAL TRIGGER) 📈')
+          .setDescription(
+            `📢 **Pengumuman Bursa:** Pembayaran dividen mingguan dinamis berbasis keaktifan chat warga telah dipicu secara manual oleh Administrator!\n\n` +
+            `Member yang memegang saham channel aktif menerima tingkat keuntungan (rate) dividen yang jauh lebih tinggi! 🔥\n\n` +
+            `👉 **Total Distribusi:** **${distributions.length} transaksi**\n` +
+            `👉 **Rincian Penerima Dividen:**\n${listText || '*Tidak ada transaksi*'}\n\n` +
+            `*Periksa portofolio & saldo terbaru Anda sekarang dengan mengetik \`.porto\` atau \`.bal\`!*`
+          )
+          .setTimestamp();
+        
+        await targetChannel.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      const successEmbed = embeds.successEmbed(
+        'Dividen Berhasil Didistribusikan!',
+        `Sukses mendistribusikan dividen dinamis ke **${distributions.length} investor** server.`
+      );
+      await message.reply({ embeds: [successEmbed] });
       return true;
     }
 
