@@ -113,23 +113,7 @@ function getLobbyComponents(session) {
       .setStyle(activeCategory === 'custom' ? ButtonStyle.Success : ButtonStyle.Secondary)
   );
 
-  const activeMode = session.mode || 'normal';
-  const modeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('tod_mode_normal')
-      .setLabel('🎲 Mode Normal')
-      .setStyle(activeMode === 'normal' ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_mode_hotseat')
-      .setLabel('🔥 Hot Seat (DB)')
-      .setStyle(activeMode === 'hotseat' ? ButtonStyle.Danger : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('tod_mode_voice_hotseat')
-      .setLabel('🎙️ Hot Seat (Voice)')
-      .setStyle(activeMode === 'voice_hotseat' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-  );
-
-  return [lobbyRow, categoryRow, modeRow];
+  return [lobbyRow, categoryRow];
 }
 
 /**
@@ -182,7 +166,7 @@ async function startTodGame(message, client, category = 'chill') {
     voiceChannelId: voiceChannel.id,
     textChannel,
     category,
-    mode: 'normal', // Default mode: 'normal' | 'hotseat'
+    mode: 'voice_hotseat', // Mode tetap: Hot Seat Voice
     state: 'lobby',
     host: member,
     players: [member], // Pembuat lobby langsung otomatis gabung
@@ -285,18 +269,6 @@ async function startTodGame(message, client, category = 'chill') {
       await updateLobbyEmbed(interaction, session);
     } 
     
-    else if (customId.startsWith('tod_mode_')) {
-      // Hanya Host atau Admin yang bisa mengubah mode
-      const isAdmin = interaction.member.permissions.has('Administrator');
-      if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host (pembuat lobby) atau Admin yang bisa mengubah mode!', ephemeral: true });
-      }
-
-      const targetMode = customId.replace('tod_mode_', '');
-      session.mode = targetMode;
-
-      await updateLobbyEmbed(interaction, session);
-    }
 
     else if (customId.startsWith('tod_cat_')) {
       // Hanya Host atau Admin yang bisa mengubah kategori
@@ -418,13 +390,6 @@ async function updateLobbyEmbed(interaction, session) {
 
   const prepTimeText = session.category === 'custom' ? `⏱️ **Waktu Persiapan:** Tanpa Batas Waktu ♾️` : `⏱️ **Waktu Persiapan:** 60 detik (Lobby batal jika tidak dimulai)`;
   
-  let modeText = '🎲 NORMAL (Bergantian Acak)';
-  if (session.mode === 'hotseat') {
-    modeText = '🔥 HOT SEAT (Semua Tanya Satu via Database)';
-  } else if (session.mode === 'voice_hotseat') {
-    modeText = '🎙️ HOT SEAT VOICE (Semua Tanya Satu via Voice/Mikrofon)';
-  }
-
   const embed = new EmbedBuilder()
     .setColor(0x00D2FF)
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
@@ -432,7 +397,7 @@ async function updateLobbyEmbed(interaction, session) {
       ` Sesi game Truth or Dare baru telah dibuka!`,
       `Silakan bergabung untuk ikut menguji keberanian dan rahasia kalian.`,
       `\n👑 **Host:** ${session.host}`,
-      `⚙️ **Mode Game:** \`${modeText}\``,
+      `🎙️ **Mode:** \`HOT SEAT VOICE (Semua Tanya Satu via Mikrofon)\``,
       `📂 **Kategori:** \`${session.category.toUpperCase()}\``,
       prepTimeText,
       `\n👥 **Daftar Pemain (${session.players.length}):**`,
@@ -487,93 +452,69 @@ async function startNextTurn(client, guildId) {
   let victim = null;
   let challenger = null;
 
-  if (session.mode === 'hotseat' || session.mode === 'voice_hotseat') {
-    // 4. LOGIK HOT SEAT (Semua Tanya Satu)
-    if (!session.remainingHotseatVictims) {
-      session.remainingHotseatVictims = [];
-    }
-    if (!session.hotseatChallengersQueue) {
-      session.hotseatChallengersQueue = [];
-    }
-
-    // Saring korban yang masih aktif di VC
-    let victimCandidates = activePlayers.filter(p => session.remainingHotseatVictims.includes(p.id));
-    const currentVictimInVc = session.hotseatVictim && activePlayers.some(p => p.id === session.hotseatVictim.id);
-
-    // Jika belum ada korban hotseat, atau korban keluar dari VC, atau antrean penanya habis
-    if (!session.hotseatVictim || !currentVictimInVc || session.hotseatChallengersQueue.length === 0) {
-      if (victimCandidates.length === 0) {
-        session.remainingHotseatVictims = activePlayers.map(p => p.id);
-        victimCandidates = [...activePlayers];
-
-        if (session.hotseatVictim && victimCandidates.length > 1) {
-          victimCandidates = victimCandidates.filter(p => p.id !== session.hotseatVictim.id);
-        }
-      }
-
-      // Ambil korban hotseat secara acak
-      const chosenVictim = victimCandidates[Math.floor(Math.random() * victimCandidates.length)];
-      session.remainingHotseatVictims = session.remainingHotseatVictims.filter(id => id !== chosenVictim.id);
-      session.hotseatVictim = chosenVictim;
-
-      // Antrean penanya adalah semua pemain aktif selain korban
-      let challengers = activePlayers.filter(p => p.id !== chosenVictim.id);
-      challengers = shuffleArray(challengers);
-      session.hotseatChallengersQueue = challengers.map(p => p.id);
-
-      // Umumkan pergantian target Hot Seat
-      const newHotseatEmbed = new EmbedBuilder()
-        .setColor(0xFF3366)
-        .setTitle('🔥 HOT SEAT BARU!')
-        .setDescription(`👑 **${chosenVictim}** sekarang berada di **Hot Seat**!\nSemua pemain lain akan bergantian mengajukan pertanyaan kepada ${chosenVictim}!`)
-        .setTimestamp();
-      await session.textChannel.send({ embeds: [newHotseatEmbed] });
-
-      await audio.speak(client, guildId, `${chosenVictim.displayName} sekarang berada di Hot Seat! Persiapkan diri Anda.`).catch(() => {});
-    }
-
-    // Ambil penanya berikutnya yang masih aktif di VC
-    let nextChallengerId = null;
-    while (session.hotseatChallengersQueue.length > 0) {
-      const tempId = session.hotseatChallengersQueue.shift();
-      if (activePlayers.some(p => p.id === tempId)) {
-        nextChallengerId = tempId;
-        break;
-      }
-    }
-
-    // Jika antrean kosong (tidak ada penanya aktif tersisa), pilih korban baru secara rekursif
-    if (!nextChallengerId) {
-      session.hotseatVictim = null;
-      session.hotseatChallengersQueue = [];
-      return startNextTurn(client, guildId);
-    }
-
-    victim = session.hotseatVictim;
-    challenger = activePlayers.find(p => p.id === nextChallengerId);
-  } else {
-    // 4. LOGIK NORMAL (Bergantian Acak)
-    if (!session.remainingVictims) {
-      session.remainingVictims = [];
-    }
-
-    let candidates = activePlayers.filter(p => session.remainingVictims.includes(p.id));
-
-    if (candidates.length === 0) {
-      session.remainingVictims = activePlayers.map(p => p.id);
-      candidates = [...activePlayers];
-
-      if (session.victim && candidates.length > 1) {
-        candidates = candidates.filter(p => p.id !== session.victim.id);
-      }
-    }
-
-    victim = candidates[Math.floor(Math.random() * candidates.length)];
-    session.remainingVictims = session.remainingVictims.filter(id => id !== victim.id);
-
-    const otherActivePlayers = activePlayers.filter(p => p.id !== victim.id);
-    challenger = otherActivePlayers[Math.floor(Math.random() * otherActivePlayers.length)];
+  // LOGIK HOT SEAT VOICE (Semua Tanya Satu via Mikrofon)
+  if (!session.remainingHotseatVictims) {
+    session.remainingHotseatVictims = [];
   }
+  if (!session.hotseatChallengersQueue) {
+    session.hotseatChallengersQueue = [];
+  }
+
+  // Saring korban yang masih aktif di VC
+  let victimCandidates = activePlayers.filter(p => session.remainingHotseatVictims.includes(p.id));
+  const currentVictimInVc = session.hotseatVictim && activePlayers.some(p => p.id === session.hotseatVictim.id);
+
+  // Jika belum ada korban hotseat, atau korban keluar dari VC, atau antrean penanya habis
+  if (!session.hotseatVictim || !currentVictimInVc || session.hotseatChallengersQueue.length === 0) {
+    if (victimCandidates.length === 0) {
+      session.remainingHotseatVictims = activePlayers.map(p => p.id);
+      victimCandidates = [...activePlayers];
+
+      if (session.hotseatVictim && victimCandidates.length > 1) {
+        victimCandidates = victimCandidates.filter(p => p.id !== session.hotseatVictim.id);
+      }
+    }
+
+    // Ambil korban hotseat secara acak
+    const chosenVictim = victimCandidates[Math.floor(Math.random() * victimCandidates.length)];
+    session.remainingHotseatVictims = session.remainingHotseatVictims.filter(id => id !== chosenVictim.id);
+    session.hotseatVictim = chosenVictim;
+
+    // Antrean penanya adalah semua pemain aktif selain korban
+    let challengers = activePlayers.filter(p => p.id !== chosenVictim.id);
+    challengers = shuffleArray(challengers);
+    session.hotseatChallengersQueue = challengers.map(p => p.id);
+
+    // Umumkan pergantian target Hot Seat
+    const newHotseatEmbed = new EmbedBuilder()
+      .setColor(0xFF3366)
+      .setTitle('🔥 HOT SEAT BARU!')
+      .setDescription(`👑 **${chosenVictim}** sekarang berada di **Hot Seat**!\nSemua pemain lain akan bergantian mengajukan pertanyaan kepada ${chosenVictim}!`)
+      .setTimestamp();
+    await session.textChannel.send({ embeds: [newHotseatEmbed] });
+
+    await audio.speak(client, guildId, `${chosenVictim.displayName} sekarang berada di Hot Seat! Persiapkan diri Anda.`).catch(() => {});
+  }
+
+  // Ambil penanya berikutnya yang masih aktif di VC
+  let nextChallengerId = null;
+  while (session.hotseatChallengersQueue.length > 0) {
+    const tempId = session.hotseatChallengersQueue.shift();
+    if (activePlayers.some(p => p.id === tempId)) {
+      nextChallengerId = tempId;
+      break;
+    }
+  }
+
+  // Jika antrean kosong (tidak ada penanya aktif tersisa), pilih korban baru secara rekursif
+  if (!nextChallengerId) {
+    session.hotseatVictim = null;
+    session.hotseatChallengersQueue = [];
+    return startNextTurn(client, guildId);
+  }
+
+  victim = session.hotseatVictim;
+  challenger = activePlayers.find(p => p.id === nextChallengerId);
 
   // Update properti sesi
   session.victim = victim;
@@ -581,18 +522,10 @@ async function startNextTurn(client, guildId) {
   session.state = 'waiting_for_choice';
 
   // 6. Buat Embed Giliran Baru
-  const choiceFooterText = (session.category === 'custom' || session.mode === 'voice_hotseat') ? 'Waktu memilih: Tanpa Batas Waktu ♾️' : 'Waktu memilih: 30 detik';
+  const choiceFooterText = 'Waktu memilih: Tanpa Batas Waktu ♾️';
   
-  let modeHeader = `🎲 **MODE NORMAL (Bergantian Acak)**\n`;
-  let embedColor = 0x00D2FF;
-
-  if (session.mode === 'hotseat') {
-    modeHeader = `🔥 **MODE HOT SEAT (Database)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
-    embedColor = 0xFF5500;
-  } else if (session.mode === 'voice_hotseat') {
-    modeHeader = `🎙️ **MODE HOT SEAT (Voice/Mikrofon)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
-    embedColor = 0x9933FF;
-  }
+  const modeHeader = `🎙️ **MODE HOT SEAT (Voice/Mikrofon)**\n👑 **Korban Utama:** ${victim}\n💬 **Sisa Penanya Putaran Ini:** ${session.hotseatChallengersQueue.length} orang\n`;
+  const embedColor = 0x9933FF;
 
   const embed = new EmbedBuilder()
     .setColor(embedColor)
