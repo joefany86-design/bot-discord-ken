@@ -229,7 +229,7 @@ async function handleEconomyCommands(message, client) {
             const shopEmbed = embeds.shopEmbed(items, wallet);
             await i.reply({ embeds: [shopEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
-            const gachaCost = 1000;
+            const gachaCost = config.gacha.COST || 250;
             const wallet = economy.getWallet(author.id, guildId);
             const gachaPromptEmbed = new EmbedBuilder()
               .setColor(embeds.COLORS.INFO)
@@ -775,7 +775,7 @@ async function handleEconomyCommands(message, client) {
             const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
-            const gachaCost = 1000;
+            const gachaCost = config.gacha.COST || 250;
             const wallet = economy.getWallet(author.id, guildId);
             const gachaPromptEmbed = new EmbedBuilder()
               .setColor(embeds.COLORS.INFO)
@@ -904,7 +904,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .gacha-role
     // ═══════════════════════════════════════════════════
     if (commandName === 'gacha-role') {
-      const gachaCost = 1000;
+      const gachaCost = config.gacha.COST || 250;
       const wallet = economy.getWallet(author.id, guildId);
 
       if (wallet.balance < gachaCost) {
@@ -916,18 +916,23 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Gacha Tidak Tersedia!', 'Belum ada role gacha yang dikonfigurasi di server ini. Silakan admin menambahkan role gacha terlebih dahulu!')] });
       }
 
-      // Animasi rolling menegangkan
-      const rollingMsg = await message.reply('🎰 **[ GACHA START ]** Memulai putaran mesin gacha... ⏳');
+      // Animasi rolling menegangkan multi-tahap
+      const rollingMsg = await message.reply('🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙');
 
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-      await delay(1500);
-      await rollingMsg.edit('🎰 **[ 🎰 ROLLING... ]** Menghitung probabilitas keberuntungan... 🎲');
-      await delay(1500);
+      await delay(1000);
+      await rollingMsg.edit('🎰 `[ SPINNING... ] ────────── [ 🔄 ]` Menyeimbangkan tuas mesin gacha...');
+      await delay(1200);
+      await rollingMsg.edit('🎰 `[ FILTERING TIER... ] 💎✨ [ 🔮 ]` Menyaring tingkat kelangkaan...');
+      await delay(1200);
+      await rollingMsg.edit('🎰 `[ DECRYPTING JACKPOT... ] ⚡📦` Membuka peti misteri...');
+      await delay(1000);
 
-      // Probabilitas Gacha
-      // 40% ZONK, 60% MENANG
+      // Probabilitas Gacha ZONK
       const roll = Math.random() * 100;
-      if (roll < 40) {
+      const zonkRate = config.gacha.ZONK_RATE !== undefined ? config.gacha.ZONK_RATE : 75;
+
+      if (roll < zonkRate) {
         // ZONK! Kurangi koin
         let finalWallet;
         database.transaction(() => {
@@ -935,37 +940,46 @@ async function handleEconomyCommands(message, client) {
         })();
         finalWallet = economy.getWallet(author.id, guildId);
 
-        const zonkEmbed = embeds.gachaResultEmbed(author, null, gachaCost, finalWallet.balance, false);
+        // Pilih item sampah acak
+        const trashItems = config.gacha.TRASH_ITEMS || [{ name: 'Batu Kali', desc: 'Hanya batu biasa.' }];
+        const selectedTrash = trashItems[Math.floor(Math.random() * trashItems.length)];
+
+        const zonkEmbed = embeds.gachaResultEmbed(author, selectedTrash, gachaCost, finalWallet.balance, false);
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
 
-        // TTS Zonk / Ampas
+        // TTS Zonk / Ampas (dengan penyebutan item sampah)
         client.emit('playTtsEvent', {
           guildId,
-          text: `Amsyong! ${author.username} baru saja memutar gacha role seharga seribu Rupiah, dan hasilnya adalah ampas! Coba lagi ya, jangan menyerah!`,
+          text: `Amsyong! ${author.username} baru saja gacha seharga ${gachaCost} Rupiah, dan malah mendapatkan ${selectedTrash.name}! Sangat ampas!`,
           lang: 'id'
         });
         return true;
       }
 
-      // MENANG! Kelompokkan berdasarkan Tier kelayakan
+      // MENANG! Kelompokkan berdasarkan Tier kelayakan yang ada stock-nya
+      const mythic = gachaItems.filter(i => i.tier === 'MYTHIC' && (i.stock === -1 || i.stock > 0));
       const legendary = gachaItems.filter(i => i.tier === 'LEGENDARY' && (i.stock === -1 || i.stock > 0));
       const epic = gachaItems.filter(i => i.tier === 'EPIC' && (i.stock === -1 || i.stock > 0));
       const rare = gachaItems.filter(i => i.tier === 'RARE' && (i.stock === -1 || i.stock > 0));
       const common = gachaItems.filter(i => i.tier === 'COMMON' && (i.stock === -1 || i.stock > 0));
 
+      const rates = config.gacha.RATES || { COMMON: 70, RARE: 22, EPIC: 6.8, LEGENDARY: 1.1, MYTHIC: 0.1 };
       const tierRoll = Math.random() * 100;
       let selectedItem = null;
 
-      if (tierRoll < 3 && legendary.length > 0) {
+      // Logika kumulatif berdasarkan tingkat kelangkaan rates
+      if (tierRoll < rates.MYTHIC && mythic.length > 0) {
+        selectedItem = mythic[Math.floor(Math.random() * mythic.length)];
+      } else if (tierRoll < (rates.MYTHIC + rates.LEGENDARY) && legendary.length > 0) {
         selectedItem = legendary[Math.floor(Math.random() * legendary.length)];
-      } else if (tierRoll < 15 && epic.length > 0) {
+      } else if (tierRoll < (rates.MYTHIC + rates.LEGENDARY + rates.EPIC) && epic.length > 0) {
         selectedItem = epic[Math.floor(Math.random() * epic.length)];
-      } else if (tierRoll < 40 && rare.length > 0) {
+      } else if (tierRoll < (rates.MYTHIC + rates.LEGENDARY + rates.EPIC + rates.RARE) && rare.length > 0) {
         selectedItem = rare[Math.floor(Math.random() * rare.length)];
       } else if (common.length > 0) {
         selectedItem = common[Math.floor(Math.random() * common.length)];
       } else {
-        // Fallback jika tier pilihan kosong, ambil acak yang tersedia
+        // Fallback: jika tier terpilih kosong, ambil acak dari semua yang tersedia
         const available = gachaItems.filter(i => i.stock === -1 || i.stock > 0);
         if (available.length > 0) {
           selectedItem = available[Math.floor(Math.random() * available.length)];
@@ -990,14 +1004,15 @@ async function handleEconomyCommands(message, client) {
         return true;
       }
 
-      // Cek jika user sudah punya role tersebut -> beri cashback koin Rp 500
+      // Cek jika user sudah punya role tersebut -> beri cashback koin
       const alreadyHas = memberObj.roles.cache.has(selectedItem.role_id);
+      const cashbackAmount = config.gacha.CASHBACK || 100;
       let finalWallet;
 
       if (alreadyHas) {
         database.transaction(() => {
           // Hanya kurangi koin bersih (gachaCost - cashback)
-          const netCost = gachaCost - 500;
+          const netCost = gachaCost - cashbackAmount;
           economy.subtractBalance(author.id, guildId, netCost, 'GACHA_SPEND_CASHBACK', null);
         })();
         finalWallet = economy.getWallet(author.id, guildId);
@@ -1007,7 +1022,7 @@ async function handleEconomyCommands(message, client) {
           `**${author.username}** baru saja melakukan roll Gacha seharga **Rp ${gachaCost.toLocaleString('id-ID')}**!\n\n` +
           `🎰 **HASIL ROLL:**\n` +
           `🌟 **${selectedItem.role_name}** (\`${selectedItem.tier}\`)\n\n` +
-          `💸 **DUPLIKAT CASHBACK!** Karena Anda sudah memiliki role ini, Anda mendapatkan **cashback Rp 500**! Saldo Anda dikembalikan sebagian.\n` +
+          `💸 **DUPLIKAT CASHBACK!** Karena Anda sudah memiliki role ini, Anda mendapatkan **cashback Rp ${cashbackAmount}**! Saldo Anda dikembalikan sebagian.\n` +
           `📉 Sisa saldo Anda: **Rp ${finalWallet.balance.toLocaleString('id-ID')}**`
         );
 

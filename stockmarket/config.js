@@ -18,29 +18,29 @@ module.exports = {
 
   // Sistem Earning Poin (Rupiah Server)
   economy: {
-    MSG_MIN_WORDS: 2,           // Minimal kata agar dapat koin
-    MSG_MIN_LENGTH: 5,          // Minimal karakter agar dapat koin
-    COOLDOWN_MS: 30 * 1000,     // Cooldown antar pesan per user (30 detik)
+    MSG_MIN_WORDS: 3,           // Minimal kata agar dapat koin (ditingkatkan untuk mencegah spam koin pendek)
+    MSG_MIN_LENGTH: 10,         // Minimal karakter agar dapat koin
+    COOLDOWN_MS: 45 * 1000,     // Cooldown antar pesan diperketat dari 30s -> 45s
     
-    // Poin acak yang didapat per pesan
-    MIN_EARN: 5,
-    MAX_EARN: 15,
+    // Poin acak yang didapat per pesan (koin sangat berharga, dikurangi agar susah didapat)
+    MIN_EARN: 1,
+    MAX_EARN: 4,
 
-    // Daily Claim
-    DAILY_MIN: 100,
-    DAILY_MAX: 300,
-    DAILY_STREAK_BONUS: 20,     // Bonus per hari streak (e.g., streak 5 hari = +100 Rp)
+    // Daily Claim (dikurangi secara signifikan)
+    DAILY_MIN: 15,
+    DAILY_MAX: 35,
+    DAILY_STREAK_BONUS: 3,      // Bonus per hari streak
     DAILY_STREAK_CAP: 7,        // Maksimal hari streak yang dihitung bonusnya
 
-    // Pajak / Biaya (Economy Sinks)
-    TRADE_TAX_PERCENT: 5,       // Pajak 5% saat menjual saham (masuk kas server/dihapus)
-    TRANSFER_TAX_PERCENT: 2,    // Pajak 2% saat transfer koin antar member
+    // Pajak / Biaya (Economy Sinks Kuat)
+    TRADE_TAX_PERCENT: 15,      // Pajak 15% saat menjual saham (mengurangi inflasi)
+    TRANSFER_TAX_PERCENT: 10,   // Pajak transfer 10% untuk mencegah eksploitasi multi-akun (alts)
 
-    // Koin Keaktifan Voice Channel (Voice Earnings)
-    VOICE_EARN_INTERVAL_MS: 60 * 1000, // Durasi pengecekan keaktifan (setiap 1 menit)
-    VOICE_EARN_AMOUNT: 2,              // Koin yang didapatkan per menit
-    VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin (anti-farming)
-    VOICE_EARN_LIMIT_DAILY: 300,       // Maksimal koin Voice Earn per hari per user (mencegah hyperinflation)
+    // Koin Keaktifan Voice Channel (Voice Earnings Diperketat)
+    VOICE_EARN_INTERVAL_MS: 5 * 60 * 1000, // Durasi pengecekan keaktifan diperlambat menjadi setiap 5 menit
+    VOICE_EARN_AMOUNT: 1,              // Hanya 1 Rp per 5 menit
+    VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin
+    VOICE_EARN_LIMIT_DAILY: 25,        // Maksimal koin Voice Earn per hari per user diperketat ke Rp 25
   },
 
   // Logika & Aturan Stock Market
@@ -81,5 +81,33 @@ module.exports = {
     CRON_SCHEDULE: '0 9,12,15,18,21 * * *', // Setiap 3 jam dari jam 09:00 s/d 21:00 WIB (Asia/Jakarta)
     TRIGGER_PROBABILITY: 0.30,            // Peluang 30% memicu event di setiap jadwal check
     DOUBLE_EARNING_DURATION: 3600,        // Durasi Double Earning Hour (dalam detik = 1 jam)
+  },
+
+  // Konfigurasi Sistem Gacha Role Premium (Hard Mode)
+  gacha: {
+    COST: 250,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
+    CASHBACK: 100,              // Cashback jika memenangkan role yang sudah dimiliki
+    ZONK_RATE: 75,              // 75% kemungkinan zonk (sangat sulit!)
+    
+    // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
+    RATES: {
+      COMMON: 70.0,             // 70% dari pemenang
+      RARE: 22.0,               // 22% dari pemenang
+      EPIC: 6.8,                // 6.8% dari pemenang
+      LEGENDARY: 1.1,           // 1.1% dari pemenang
+      MYTHIC: 0.1               // 0.1% dari pemenang (Jackpot Dewa!)
+    },
+
+    // Kumpulan item sampah lucu untuk rasa humor ketika Zonk
+    TRASH_ITEMS: [
+      { name: '🍂 Daun Kering Hanyut', desc: 'Tidak ada gunanya sama sekali, hanya mengotori dompet Anda.' },
+      { name: '🪨 Batu Kali Licin', desc: 'Bisa dilempar ke sungai untuk melatih lemparan batu, tapi tidak bisa dibelanjakan.' },
+      { name: '🥫 Kaleng Sarden Berkarat', desc: 'Berbau amis, tajam, dan tidak berharga.' },
+      { name: '👞 Sandal Swallow Sebelah Kiri', desc: 'Mana pasangan sebelah kanannya? Entahlah, Anda hanya dapat kirinya.' },
+      { name: '🦴 Tulang Ayam Sisa Kemarin', desc: 'Bahkan kucing liar di dekat kosan pun menolaknya.' },
+      { name: '🔌 Kabel Charger Putus', desc: 'Hati-hati tersetrum, ini hanya tembaga rongsokan.' },
+      { name: '🍼 Tutup Botol Galon Bekas', desc: 'Mungkin bisa digunakan untuk kerajinan tangan kelas SD.' },
+      { name: '🧾 Struk Belanjaan Tahun Lalu', desc: 'Struk pembelian mie instan yang tinta tulisannya sudah pudar.' }
+    ]
   }
 };

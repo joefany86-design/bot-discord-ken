@@ -353,7 +353,12 @@ module.exports = {
       .setDescription(
         `Selamat datang di **Role Market**! Tukarkan koin **${config.CURRENCY_NAME}** Anda dengan role prestige yang bergengsi!\n\n` +
         `💵 **Saldo Anda:** **${formatCurrency(wallet.balance)}**\n` +
-        `🎲 **Misteri Gacha:** Ketik \`.gacha-role\` seharga **Rp 1.000** untuk berkesempatan memenangkan role secara acak!`
+        `🎲 **Misteri Gacha (Hard Mode):** Ketik \`.gacha-role\` seharga **${formatCurrency(config.gacha.COST || 250)}** per roll!\n` +
+        `⚠️ *Peluang menang sangat sulit (Zonk Rate 75%). Jadilah Dewa Hoki berikutnya!*\n\n` +
+        `📊 **Tingkat Peluang (Rarity Rates):**\n` +
+        `• 🟢 COMMON: \`70.0%\` | 🔵 RARE: \`22.0%\` | 🟣 EPIC: \`6.8%\`\n` +
+        `• 👑 LEGENDARY: \`1.1%\` | 🌟 MYTHIC: \`0.1%\` *(Jackpot Dewa!)*\n` +
+        `• 🗑️ ZONK: \`75.0%\` *(Dapatkan item sampah kocak)*`
       );
 
     const TIER_EMOJIS = {
@@ -474,7 +479,8 @@ module.exports = {
       COMMON: '🟢',
       RARE: '🔵',
       EPIC: '🟣',
-      LEGENDARY: '👑'
+      LEGENDARY: '👑',
+      MYTHIC: '🌟'
     };
 
     if (isWin && item) {
@@ -495,12 +501,14 @@ module.exports = {
     } else {
       embed
         .setColor(COLORS.ERROR)
-        .setTitle(`🎰 ROLLING GACHA... DAN AMSYONG! 🎰`)
+        .setTitle(`🎰 GACHA SELESAI... DAN AMSYONG! 🎰`)
         .setDescription(
-          `**${user.username}** baru saja melakukan roll Gacha seharga **${formatCurrency(price)}**!\n\n` +
-          `❌ **HASIL ROLL:**\n` +
-          `**ZONK / MAAF!** Keberuntungan belum memihak padamu kali ini. Kamu mendapatkan ampas! 😭\n\n` +
-          `*Jangan menyerah! Coba lagi dan kumpulkan koin saham lebih banyak untuk memutar gacha berikutnya!* 💪\n` +
+          `**${user.username}** baru saja memutar Gacha seharga **${formatCurrency(price)}**!\n\n` +
+          `❌ **HASIL ROLL (75% ZONK):**\n` +
+          `**ZONK / AMPAS TOTAL!** Keberuntungan sama sekali belum memihak padamu. 😭\n\n` +
+          `🗑️ **Item Diperoleh:** **${item ? item.name : 'Angin Kosong'}**\n` +
+          `📝 **Lore / Deskripsi:** *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n\n` +
+          `*Jangan berkecil hati! Kumpulkan koin chat dan coba hoki gacha Anda di putaran berikutnya!* 💪\n` +
           `📉 Sisa saldo Anda: **${formatCurrency(newBalance)}**`
         );
     }
@@ -534,20 +542,21 @@ module.exports = {
           name: '🎙️ 2. PERLINDUNGAN ANTI-AFK FARMING (VOICE CHANNEL)',
           value:
             `* **🎚️ Proteksi Mute/Deafen**: Member yang melakukan **Mute** (selfMute/serverMute) atau **Deafen** di Voice Channel **tidak akan mendapatkan koin keaktifan**.\n` +
-            `* **📈 Batas Kuota Harian**: Perolehan koin dari Voice Channel dibatasi maksimal **Rp 300 per hari** per user untuk mencegah hiperinflasi saldo server.`
+            `* **⏱️ Interval Diperlambat**: Pengecekan keaktifan kini dilakukan setiap **5 menit** (hanya **Rp 1 per 5 menit**).\n` +
+            `* **📈 Batas Kuota Harian**: Maksimal koin Voice Earn dibatasi sangat ketat **Rp 25 per hari** per user untuk mencegah hiperinflasi saldo server.`
         },
         {
           name: '📈 3. BURSA SAHAM & TOKO ROLE (ANTI-MONOPOLI)',
           value:
             `* **🛑 Batas Saham (Share Cap)**: Mencegah investor kaya memonopoli bursa saham. Setiap user kini dibatasi maksimal memiliki **500 lembar saham per instrumen channel**.\n` +
-            `* **🎰 Misteri Gacha Role Premium**:\n` +
-            `  - Putar gacha seharga **Rp 1.000** dengan tingkat hoki: Common (36%), Rare (15%), Epic (7.2%), Legendary (1.8%).\n` +
-            `  - **Cashback Duplikat**: Jika memenangkan role yang sudah dimiliki, otomatis mendapatkan **cashback Rp 500**!`
+            `* **🎰 Misteri Gacha Hard Mode**:\n` +
+            `  - Putar gacha seharga **Rp 250** dengan **Zonk Rate 75%**! Sisa 25% kesempatan menang dibagi rata ke pool kelangkaan.\n` +
+            `  - **Cashback Duplikat**: Jika memenangkan role yang sudah dimiliki, otomatis mendapatkan **cashback Rp 100**!`
         },
         {
           name: '📅 4. RESET HARIAN TEPAT WAKTU (WIB/UTC+7)',
           value:
-            `* **⏰ Sinkronisasi Tanggal**: Klaim harian \`.daily\` kini di-reset tepat pada pukul **12.00 malam WIB** (waktu Jakarta) setiap hari berdasarkan zona waktu Indonesia Barat.`
+            `* **⏰ Klaim Harian Seimbang**: Saldo koin harian diturunkan menjadi **Rp 15 - Rp 35** per hari dengan bonus streak **Rp 3** per hari untuk menjaga nilai koin tetap berharga.`
         },
         {
           name: '🎛️ 5. DASHBOARD TOMBOL INTERAKTIF & KOMENTATOR TTS',
@@ -559,8 +568,7 @@ module.exports = {
           name: '👑 6. KASTA ROLE DEWA & PRESTIGE TOKO PREMIUM',
           value:
             `* **💎 5 Kasta Rarity Eksklusif**: Kami merilis role prestise khusus dengan perizinan premium & warna unik: Common (Rp 15.000), Rare (Rp 75.000), Epic (Rp 350.000), Legendary (Rp 1.500.000), dan kasta tertinggi **Mythic (Rp 5.000.000)**!\n` +
-            `* **🔒 Kasta Mythic Buy-Only**: Khusus untuk role **🌟 Mythic Immortal**, role ini **TIDAK BISA didapatkan dari Gacha** (0% chance)! Anda harus mengumpulkan koin secara terhormat untuk membelinya secara prestisius!\n` +
-            `* **🎙️ Hak Izin Moderasi Suara VIP**: Member dengan role Mythic berhak mendapatkan izin khusus untuk melakukan **Mute Members** dan **Move Members** di Voice Channel!`
+            `* **🔒 Peluang Jackpot Gacha Mythic**: Role Mythic kini dapat diperoleh lewat Gacha dengan peluang super langka (**0.1%** dari pool kemenangan), atau dibeli langsung secara terhormat!`
         }
       )
       .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
