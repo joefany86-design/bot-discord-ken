@@ -5,7 +5,7 @@ const stocks = require('./stocks');
 const antiSpam = require('./antiSpam');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField } = require('discord.js');
 
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -1392,7 +1392,7 @@ async function handleEconomyCommands(message, client) {
             // Edit role yang sudah ada agar perizinan & warna sesuai rarity terbaru
             await discordRole.edit({
               color: roleDef.color,
-              permissions: roleDef.permissions,
+              permissions: PermissionsBitField.resolve(roleDef.permissions),
               reason: 'Sinkronisasi Auto Shop Role'
             });
           } else {
@@ -1400,7 +1400,7 @@ async function handleEconomyCommands(message, client) {
             discordRole = await guild.roles.create({
               name: roleDef.name,
               color: roleDef.color,
-              permissions: roleDef.permissions,
+              permissions: PermissionsBitField.resolve(roleDef.permissions),
               reason: 'Setup Auto Shop Role'
             });
           }
@@ -1449,27 +1449,27 @@ async function handleEconomyCommands(message, client) {
         )
         .setTimestamp();
 
-      let fieldContent = '';
       results.forEach(res => {
         const statusEmoji = res.status === 'SUCCESS' ? '✅' : res.status === 'WARNING' ? '⚠️' : '❌';
         const actionLabel = res.status === 'SUCCESS' ? (res.action === 'CREATED' ? '*(Baru Dibuat)*' : '*(Diperbarui)*') : '';
         const priceFormatted = embeds.formatCurrency(res.price);
         
+        let valueText = '';
         if (res.status === 'SUCCESS') {
-          fieldContent += `${statusEmoji} **${res.name}** (\`${res.tier}\`) ${actionLabel}\n` +
-                          `   • ID: <@&${res.roleId}>\n` +
-                          `   • Harga: **${priceFormatted}** | Gacha: \`Aktif\`\n` +
-                          `   • Izin Utama: \`${res.permissions.slice(4).join(', ') || 'Standar'}\`\n\n`;
+          valueText = `• **ID:** <@&${res.roleId}>\n` +
+                      `• **Harga:** ${priceFormatted}\n` +
+                      `• **Gacha:** \`${res.isGacha ? 'Aktif' : 'Non-Aktif'}\`\n` +
+                      `• **Izin Utama:** \`${res.permissions.slice(4).join(', ') || 'Standar'}\``;
         } else {
-          fieldContent += `${statusEmoji} **${res.name}** (\`${res.tier}\`)\n` +
-                          `   • Status: **Gagal**\n` +
-                          `   • Error: \`${res.message}\`\n\n`;
+          valueText = `• **Status:** Gagal\n` +
+                      `• **Error:** \`${res.message}\``;
         }
-      });
 
-      setupEmbed.addFields({
-        name: '📝 Ringkasan Pembuatan & Sinkronisasi',
-        value: fieldContent || 'Tidak ada role yang terproses.'
+        setupEmbed.addFields({
+          name: `${statusEmoji} ${res.name} (\`${res.tier}\`) ${actionLabel}`,
+          value: valueText,
+          inline: false
+        });
       });
 
       setupEmbed.setFooter({ text: 'Rupiah Server • Auto Role Setup' });
