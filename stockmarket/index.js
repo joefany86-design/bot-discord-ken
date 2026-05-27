@@ -1070,7 +1070,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger'];
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
@@ -1306,6 +1306,162 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply('⚠️ **Seluruh sistem keuangan server ini telah berhasil DIRESET!** Saldo semua user, portofolio, riwayat transaksi telah dihapus, dan harga saham dikembalikan ke harga awal.');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .autoshoprole / .shop-auto
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'autoshoprole' || commandName === 'shop-auto') {
+      const rolesToCreate = [
+        {
+          tier: 'COMMON',
+          name: '🥉 Common Prestige',
+          color: '#979c9f',
+          price: 1500,
+          permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions'],
+          description: 'Role tingkat dasar. Menunjukkan kontribusi awal Anda di server.'
+        },
+        {
+          tier: 'RARE',
+          name: '🥈 Rare Elite',
+          color: '#3498db',
+          price: 5000,
+          permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis'],
+          description: 'Role tingkat RARE. Memberikan akses menyematkan tautan dan melampirkan berkas media!'
+        },
+        {
+          tier: 'EPIC',
+          name: '🥇 Epic Champion',
+          color: '#9b59b6',
+          price: 25000,
+          permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis', 'UseExternalStickers', 'CreatePublicThreads', 'CreatePrivateThreads'],
+          description: 'Role tingkat EPIC. Membuka izin membuat thread obrolan serta menggunakan stiker eksternal!'
+        },
+        {
+          tier: 'LEGENDARY',
+          name: '👑 Legendary Overlord',
+          color: '#f1c40f',
+          price: 100000,
+          permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis', 'UseExternalStickers', 'CreatePublicThreads', 'CreatePrivateThreads', 'PrioritySpeaker', 'Connect', 'Speak', 'UseSoundboard', 'UseExternalSounds'],
+          description: 'Role tingkat tertinggi! Memberikan status VIP legendaris beserta Priority Speaker dan Soundboard!'
+        }
+      ];
+
+      const loadingMsg = await message.reply('⚙️ **[ SETUP TOKO ROLE ]** Memulai proses pembuatan/pembaruan role prestise di server Discord...');
+
+      const results = [];
+      const botMember = guild.members.me;
+
+      // Periksa apakah bot memiliki izin dasar Manage Roles
+      if (!botMember.permissions.has('ManageRoles')) {
+        return loadingMsg.edit('❌ **Gagal Setup!** Bot tidak memiliki izin `Manage Roles` (Mengelola Peran) di server ini. Silakan aktifkan izin tersebut untuk bot terlebih dahulu!');
+      }
+
+      for (const roleDef of rolesToCreate) {
+        try {
+          // 1. Cari role yang sudah ada berdasarkan nama
+          let discordRole = guild.roles.cache.find(r => r.name === roleDef.name);
+          let actionType = 'CREATED';
+
+          if (discordRole) {
+            actionType = 'UPDATED';
+            // Cek apakah posisi role bot di atas role yang ingin di-edit
+            if (botMember.roles.highest.position <= discordRole.position) {
+              results.push({
+                ...roleDef,
+                status: 'WARNING',
+                message: `Role sudah ada, tetapi tidak dapat diperbarui karena posisi role bot berada di bawah role ini.`
+              });
+              continue;
+            }
+
+            // Edit role yang sudah ada agar perizinan & warna sesuai rarity terbaru
+            await discordRole.edit({
+              color: roleDef.color,
+              permissions: roleDef.permissions,
+              reason: 'Sinkronisasi Auto Shop Role'
+            });
+          } else {
+            // Buat role baru
+            discordRole = await guild.roles.create({
+              name: roleDef.name,
+              color: roleDef.color,
+              permissions: roleDef.permissions,
+              reason: 'Setup Auto Shop Role'
+            });
+          }
+
+          // 2. Hubungkan ke database SQLite `shop_items`
+          const existInDb = database.get('SELECT id FROM shop_items WHERE guild_id = ? AND role_name = ?', [guildId, roleDef.name]);
+
+          if (existInDb) {
+            database.run(
+              `UPDATE shop_items 
+               SET role_id = ?, price = ?, tier = ?, stock = -1, is_gacha = 1, description = ? 
+               WHERE id = ? AND guild_id = ?`,
+              [discordRole.id, roleDef.price, roleDef.tier, roleDef.description, existInDb.id, guildId]
+            );
+          } else {
+            database.run(
+              `INSERT INTO shop_items (guild_id, role_id, role_name, price, tier, stock, is_gacha, description) 
+               VALUES (?, ?, ?, ?, ?, -1, 1, ?)`,
+              [guildId, discordRole.id, roleDef.name, roleDef.price, roleDef.tier, roleDef.description]
+            );
+          }
+
+          results.push({
+            ...roleDef,
+            roleId: discordRole.id,
+            status: 'SUCCESS',
+            action: actionType
+          });
+        } catch (roleErr) {
+          console.error(`Error setup role ${roleDef.name}:`, roleErr);
+          results.push({
+            ...roleDef,
+            status: 'ERROR',
+            message: roleErr.message
+          });
+        }
+      }
+
+      // 3. Bangun embed laporan premium
+      const setupEmbed = new EmbedBuilder()
+        .setColor(embeds.COLORS.PURPLE)
+        .setTitle('🎮 STATUS SETUP TOKO ROLE PRESTISE')
+        .setDescription(
+          `Proses sinkronisasi otomatis role khusus per kelangkaan (*rarity*) telah selesai dijalankan!\n\n` +
+          `⚠️ **PENTING:** Pastikan posisi role bot Anda di **Server Settings > Roles** berada di atas role-role di bawah ini agar bot dapat membagikannya kepada pembeli.`
+        )
+        .setTimestamp();
+
+      let fieldContent = '';
+      results.forEach(res => {
+        const statusEmoji = res.status === 'SUCCESS' ? '✅' : res.status === 'WARNING' ? '⚠️' : '❌';
+        const actionLabel = res.status === 'SUCCESS' ? (res.action === 'CREATED' ? '*(Baru Dibuat)*' : '*(Diperbarui)*') : '';
+        const priceFormatted = embeds.formatCurrency(res.price);
+        
+        if (res.status === 'SUCCESS') {
+          fieldContent += `${statusEmoji} **${res.name}** (\`${res.tier}\`) ${actionLabel}\n` +
+                          `   • ID: <@&${res.roleId}>\n` +
+                          `   • Harga: **${priceFormatted}** | Gacha: \`Aktif\`\n` +
+                          `   • Izin Utama: \`${res.permissions.slice(4).join(', ') || 'Standar'}\`\n\n`;
+        } else {
+          fieldContent += `${statusEmoji} **${res.name}** (\`${res.tier}\`)\n` +
+                          `   • Status: **Gagal**\n` +
+                          `   • Error: \`${res.message}\`\n\n`;
+        }
+      });
+
+      setupEmbed.addFields({
+        name: '📝 Ringkasan Pembuatan & Sinkronisasi',
+        value: fieldContent || 'Tidak ada role yang terproses.'
+      });
+
+      setupEmbed.setFooter({ text: 'Rupiah Server • Auto Role Setup' });
+
+      await loadingMsg.edit({ content: '✅ **Setup Toko Role Selesai!**', embeds: [setupEmbed] });
       return true;
     }
 
