@@ -611,33 +611,98 @@ async function startNextTurn(client, guildId) {
       }
 
       collector.stop();
-      const disabledRow = ActionRowBuilder.from(row);
-      disabledRow.components.forEach(comp => comp.setDisabled(true));
       const victimId = session.victim.id;
+      let resultEmbed;
 
       if (customId === 'tod_done') {
         database.incrementGameStats(victimId, 'truth');
         database.rewardUser(victimId, guildId, config.economy.SUCCESS_REWARD);
-        const resultEmbed = EmbedBuilder.from(embed)
+        resultEmbed = EmbedBuilder.from(embed)
           .setColor(0x00FF88)
           .setDescription(`🎉 **${session.victim} Berhasil!** Dinilai oleh ${session.challenger}\n🎁 **+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}**`);
-        await interaction.update({ embeds: [resultEmbed], components: [disabledRow] });
         audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => {});
       } else {
         database.incrementSkipStats(victimId);
         database.fineUser(victimId, guildId, config.economy.SKIP_FINE);
-        const resultEmbed = EmbedBuilder.from(embed)
+        resultEmbed = EmbedBuilder.from(embed)
           .setColor(0xFF3366)
           .setDescription(`❌ **${session.victim} Menyerah!**\n💸 **Denda: Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}**`);
-        await interaction.update({ embeds: [resultEmbed], components: [disabledRow] });
         audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => {});
       }
 
-      // Auto-lanjut 3 detik ke giliran berikutnya
-      session.timer = setTimeout(() => {
+      // Tombol lanjut setelah penilaian
+      const nextRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('tod_next')
+          .setLabel('▶️ Lanjut')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('tod_join_next')
+          .setLabel('🙋‍♂️ Ikut')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('tod_stop')
+          .setLabel('⏹️ Stop')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await interaction.update({ embeds: [resultEmbed], components: [nextRow] });
+
+      // Auto-lanjut 5 detik
+      session.timer = setTimeout(async () => {
         const s = activeGames.get(guildId);
-        if (s && s === session) startNextTurn(client, guildId);
-      }, 3000);
+        if (s && s === session) {
+          await turnMessage.edit({ components: [] }).catch(() => {});
+          startNextTurn(client, guildId);
+        }
+      }, 5000);
+
+      // Collector untuk tombol lanjut
+      const nextCollector = turnMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 5000
+      });
+
+      nextCollector.on('collect', async (btnInteraction) => {
+        const s = activeGames.get(guildId);
+        if (!s || s !== session) {
+          return btnInteraction.reply({ content: '❌ Sesi sudah tidak aktif.', ephemeral: true });
+        }
+
+        if (btnInteraction.customId === 'tod_join_next') {
+          const m = btnInteraction.member;
+          const vc = m.voice.channel;
+          if (!vc || vc.id !== session.voiceChannelId) {
+            return btnInteraction.reply({ content: '❌ Masuk Voice Channel dulu!', ephemeral: true });
+          }
+          if (session.players.some(p => p.id === btnInteraction.user.id)) {
+            return btnInteraction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', ephemeral: true });
+          }
+          session.players.push(m);
+          return btnInteraction.reply({ content: `✅ **${btnInteraction.user.username}** bergabung!` });
+        }
+
+        if (btnInteraction.customId === 'tod_stop') {
+          const isAdm = btnInteraction.member.permissions.has('Administrator');
+          if (btnInteraction.user.id !== session.host.id && !isAdm) {
+            return btnInteraction.reply({ content: '❌ Hanya Host/Admin!', ephemeral: true });
+          }
+          if (session.timer) clearTimeout(session.timer);
+          nextCollector.stop();
+          cleanSession(guildId);
+          const stopEmbed = EmbedBuilder.from(resultEmbed)
+            .setColor(0xFF3366)
+            .setDescription(`🛑 Game diakhiri oleh ${btnInteraction.user}.`);
+          return btnInteraction.update({ embeds: [stopEmbed], components: [] });
+        }
+
+        if (btnInteraction.customId === 'tod_next') {
+          if (session.timer) clearTimeout(session.timer);
+          nextCollector.stop();
+          await btnInteraction.update({ components: [] }).catch(() => {});
+          startNextTurn(client, guildId);
+        }
+      });
     }
   });
 }
