@@ -880,8 +880,8 @@ async function handleEconomyCommands(message, client) {
       const successEmbed = embeds.rolePurchaseSuccessEmbed(author, item.role_name, item.price, finalWallet.balance, item.tier);
       await message.reply({ embeds: [successEmbed] });
 
-      // Broadcast Heboh jika tingkat EPIC / LEGENDARY
-      if (item.tier === 'EPIC' || item.tier === 'LEGENDARY') {
+      // Broadcast Heboh jika tingkat EPIC / LEGENDARY / MYTHIC
+      if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
         const broadcastEmbed = embeds.broadcastMegaEmbed(author, item.role_name, item.price, item.tier);
         const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
         if (reportChannel) {
@@ -1039,8 +1039,8 @@ async function handleEconomyCommands(message, client) {
         const winEmbed = embeds.gachaResultEmbed(author, selectedItem, gachaCost, finalWallet.balance, true);
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
 
-        // Broadcast Heboh jika Legendary / Epic
-        if (selectedItem.tier === 'EPIC' || selectedItem.tier === 'LEGENDARY') {
+        // Broadcast Heboh jika Legendary / Epic / Mythic
+        if (selectedItem.tier === 'EPIC' || selectedItem.tier === 'LEGENDARY' || selectedItem.tier === 'MYTHIC') {
           const broadcastEmbed = embeds.broadcastMegaEmbed(author, selectedItem.role_name, gachaCost, selectedItem.tier);
           broadcastEmbed.setTitle(`🎰 SULTAN HOKI: DAHSYAT JACKPOT GACHA! 🎰`);
           broadcastEmbed.setDescription(
@@ -1318,7 +1318,8 @@ async function handleEconomyCommands(message, client) {
           tier: 'COMMON',
           name: '🥉 Common Prestige',
           color: '#979c9f',
-          price: 1500,
+          price: 15000,
+          isGacha: 1,
           permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions'],
           description: 'Role tingkat dasar. Menunjukkan kontribusi awal Anda di server.'
         },
@@ -1326,7 +1327,8 @@ async function handleEconomyCommands(message, client) {
           tier: 'RARE',
           name: '🥈 Rare Elite',
           color: '#3498db',
-          price: 5000,
+          price: 75000,
+          isGacha: 1,
           permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis'],
           description: 'Role tingkat RARE. Memberikan akses menyematkan tautan dan melampirkan berkas media!'
         },
@@ -1334,7 +1336,8 @@ async function handleEconomyCommands(message, client) {
           tier: 'EPIC',
           name: '🥇 Epic Champion',
           color: '#9b59b6',
-          price: 25000,
+          price: 350000,
+          isGacha: 1,
           permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis', 'UseExternalStickers', 'CreatePublicThreads', 'CreatePrivateThreads'],
           description: 'Role tingkat EPIC. Membuka izin membuat thread obrolan serta menggunakan stiker eksternal!'
         },
@@ -1342,9 +1345,19 @@ async function handleEconomyCommands(message, client) {
           tier: 'LEGENDARY',
           name: '👑 Legendary Overlord',
           color: '#f1c40f',
-          price: 100000,
+          price: 1500000,
+          isGacha: 1,
           permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis', 'UseExternalStickers', 'CreatePublicThreads', 'CreatePrivateThreads', 'PrioritySpeaker', 'Connect', 'Speak', 'UseSoundboard', 'UseExternalSounds'],
-          description: 'Role tingkat tertinggi! Memberikan status VIP legendaris beserta Priority Speaker dan Soundboard!'
+          description: 'Role tingkat LEGENDARY! Memberikan status VIP legendaris beserta Priority Speaker dan Soundboard!'
+        },
+        {
+          tier: 'MYTHIC',
+          name: '🌟 Mythic Immortal',
+          color: '#ff4757',
+          price: 5000000,
+          isGacha: 0,
+          permissions: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AddReactions', 'EmbedLinks', 'AttachFiles', 'UseExternalEmojis', 'UseExternalStickers', 'CreatePublicThreads', 'CreatePrivateThreads', 'PrioritySpeaker', 'Connect', 'Speak', 'UseSoundboard', 'UseExternalSounds', 'MuteMembers', 'MoveMembers'],
+          description: 'Role kasta tertinggi MYTHIC! Hanya dapat dibeli langsung tanpa gacha. Memberikan hak moderasi suara VIP (Mute & Move members)!'
         }
       ];
 
@@ -1398,15 +1411,15 @@ async function handleEconomyCommands(message, client) {
           if (existInDb) {
             database.run(
               `UPDATE shop_items 
-               SET role_id = ?, price = ?, tier = ?, stock = -1, is_gacha = 1, description = ? 
+               SET role_id = ?, price = ?, tier = ?, stock = -1, is_gacha = ?, description = ? 
                WHERE id = ? AND guild_id = ?`,
-              [discordRole.id, roleDef.price, roleDef.tier, roleDef.description, existInDb.id, guildId]
+              [discordRole.id, roleDef.price, roleDef.tier, roleDef.isGacha, roleDef.description, existInDb.id, guildId]
             );
           } else {
             database.run(
               `INSERT INTO shop_items (guild_id, role_id, role_name, price, tier, stock, is_gacha, description) 
-               VALUES (?, ?, ?, ?, ?, -1, 1, ?)`,
-              [guildId, discordRole.id, roleDef.name, roleDef.price, roleDef.tier, roleDef.description]
+               VALUES (?, ?, ?, ?, ?, -1, ?, ?)`,
+              [guildId, discordRole.id, roleDef.name, roleDef.price, roleDef.tier, roleDef.isGacha, roleDef.description]
             );
           }
 
@@ -1487,16 +1500,18 @@ async function handleEconomyCommands(message, client) {
       let descStartIndex = 2;
 
       const inputTier = args[2]?.toUpperCase();
-      if (inputTier && ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(inputTier)) {
+      if (inputTier && ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'].includes(inputTier)) {
         tier = inputTier;
         descStartIndex = 3;
       } else {
         // Otomatis berdasarkan harga jika tier manual tidak didefinisikan
-        if (price > 50000) {
+        if (price > 1000000) {
+          tier = 'MYTHIC';
+        } else if (price > 150000) {
           tier = 'LEGENDARY';
-        } else if (price > 15000) {
+        } else if (price > 50000) {
           tier = 'EPIC';
-        } else if (price > 5000) {
+        } else if (price > 15000) {
           tier = 'RARE';
         }
       }

@@ -327,22 +327,23 @@ module.exports = {
       COMMON: '🟢',
       RARE: '🔵',
       EPIC: '🟣',
-      LEGENDARY: '👑'
+      LEGENDARY: '👑',
+      MYTHIC: '🌟'
     };
 
     if (items.length === 0) {
       embed.addFields({ name: '🚫 Toko Kosong', value: 'Belum ada role yang dijual saat ini. Silakan hubungi admin!' });
     } else {
       // Kelompokkan item berdasarkan Tier
-      const grouped = { LEGENDARY: [], EPIC: [], RARE: [], COMMON: [] };
+      const grouped = { MYTHIC: [], LEGENDARY: [], EPIC: [], RARE: [], COMMON: [] };
       items.forEach(item => {
         const t = item.tier ? item.tier.toUpperCase() : 'COMMON';
         if (grouped[t]) grouped[t].push(item);
         else grouped.COMMON.push(item);
       });
 
-      // Tampilkan berdasarkan urutan kelangkaan (Legendary teratas)
-      ['LEGENDARY', 'EPIC', 'RARE', 'COMMON'].forEach(tierName => {
+      // Tampilkan berdasarkan urutan kelangkaan (Mythic teratas)
+      ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'].forEach(tierName => {
         const tierItems = grouped[tierName];
         if (tierItems.length > 0) {
           let content = '';
@@ -385,14 +386,16 @@ module.exports = {
       COMMON: COLORS.SUCCESS,
       RARE: COLORS.INFO,
       EPIC: COLORS.PURPLE,
-      LEGENDARY: COLORS.WARN
+      LEGENDARY: COLORS.WARN,
+      MYTHIC: COLORS.ERROR
     };
 
     const TIER_EMOJIS = {
       COMMON: '🟢',
       RARE: '🔵',
       EPIC: '🟣',
-      LEGENDARY: '👑'
+      LEGENDARY: '👑',
+      MYTHIC: '🌟'
     };
 
     const tierColor = TIER_COLORS[tier] || COLORS.SUCCESS;
@@ -417,12 +420,14 @@ module.exports = {
   broadcastMegaEmbed(user, roleName, price, tier) {
     const TIER_COLORS = {
       EPIC: COLORS.PURPLE,
-      LEGENDARY: COLORS.WARN
+      LEGENDARY: COLORS.WARN,
+      MYTHIC: COLORS.ERROR
     };
 
     const TIER_EMOJIS = {
       EPIC: '🟣',
-      LEGENDARY: '👑'
+      LEGENDARY: '👑',
+      MYTHIC: '🌟'
     };
 
     const tierColor = TIER_COLORS[tier] || COLORS.PURPLE;
