@@ -937,6 +937,61 @@ async function handleVoiceTodCommand(message, client) {
     return true;
   }
 
+  // ── Penanganan Subcommand: announce (Admin) ──
+  if (subCommand === 'announce') {
+    const isAdmin = message.member.permissions.has('Administrator');
+    if (!isAdmin) {
+      return message.reply('❌ Hanya Administrator yang dapat menyiarkan pengumuman game ToD!');
+    }
+
+    const targetChannel = message.mentions.channels.first() || message.channel;
+
+    if (!targetChannel.isTextBased()) {
+      return message.reply('❌ Channel target harus berupa text channel!');
+    }
+
+    const botPermissions = targetChannel.permissionsFor(message.guild.members.me);
+    if (!botPermissions.has('SendMessages') || !botPermissions.has('EmbedLinks')) {
+      return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF88)
+      .setTitle('🎤 EVENT BARU: TRUTH OR DARE DI VOICE CHANNEL! 🎲')
+      .setDescription([
+        `📢 **Halo semuanya!**`,
+        `Kami dengan bangga meluncurkan fitur game interaktif baru di server ini: **Truth or Dare (ToD) Multiplayer**! Sekarang kalian bisa menguji keberanian, kejujuran, dan keseruan bersama teman-teman langsung di Voice Channel! 😎`,
+        `\n✨ **FITUR UTAMA GAME TOD:**`,
+        `👉 **4000+ Pertanyaan Klasik & Seru**: Database raksasa dengan pertanyaan-pertanyaan terbaik Bahasa Indonesia!`,
+        `👉 **3 Kategori Tingkat Keseruan**:`,
+        `  🟢 \`CHILL\` - Santai, seru, cocok untuk sekadar mengobrol santai.`,
+        `  🟡 \`DEEP\` - Mendalam, emosional, untuk mengenal satu sama lain lebih dekat.`,
+        `  🔴 \`SPICY (18+)\` - Menantang dan berani! *(Hanya bisa dimainkan di channel NSFW!)*`,
+        `👉 **Integrasi Google TTS (Pembacaan Suara)**: Setiap pertanyaan/tantangan akan dibacakan langsung oleh bot dengan suara jernih di Voice Channel kalian!`,
+        `👉 **Turn-Based Multiplayer Lobby**: Dilengkapi tombol interaktif untuk Gabung, Keluar, Mulai, dan memilih Truth/Dare secara bergantian.`,
+        `\n💰 **SISTEM EKONOMI (RUPIAH SERVER):**`,
+        `🎁 **Hadiah Sukses**: Menyelesaikan tantangan/pertanyaan juri memberikan **+Rp ${config.economy.SUCCESS_REWARD.toLocaleString('id-ID')}**!`,
+        `💸 **Denda Menyerah**: Hati-hati! Jika memilih skip atau waktu habis, saldo dompetmu dipotong **Rp ${config.economy.SKIP_FINE.toLocaleString('id-ID')}**!`,
+        `\n🛠️ **CARA BERMAIN:**`,
+        `1️⃣ Masuk ke **Voice Channel** bersama minimal 2 orang teman.`,
+        `2️⃣ Ketik **\`.join\`** atau **\`.joinlow\`** untuk memanggil dan mengunci bot di VC kalian.`,
+        `3️⃣ Ketik **\`.tod\`** di text channel untuk membuka game lobby.`,
+        `4️⃣ Teman-teman tinggal klik tombol **🙋‍♂️ Gabung**, lalu Host klik **🚀 Mulai Game**!`,
+        `5️⃣ Ketik **\`.tod status\`** untuk memantau pencapaian, denda, dan koin yang sudah kamu kumpulkan!`,
+        `\n*Ayo ramaikan Voice Channel kita dan tunjukkan keberanianmu sekarang!* 🔥`
+      ].join('\n'))
+      .setThumbnail(message.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL())
+      .setFooter({ text: 'Bot Voice & Auto Events 2026 • Ketik .help untuk bantuan' })
+      .setTimestamp();
+
+    await targetChannel.send({ embeds: [embed] });
+    
+    if (targetChannel.id !== message.channel.id) {
+      await message.reply(`✅ Berhasil menyiarkan pengumuman game ToD ke channel ${targetChannel}!`);
+    }
+    return true;
+  }
+
   // ── Penanganan Subcommand: force-end (Admin / Staff) ──
   if (subCommand === 'force-end' || subCommand === 'stop') {
     const isAdmin = message.member.permissions.has('Administrator');

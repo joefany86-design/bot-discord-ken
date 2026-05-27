@@ -175,15 +175,15 @@ function fineUser(userId, guildId, coinsAmount) {
     const wallet = db.prepare('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
     const balance = wallet ? wallet.balance : 0;
 
-    // Tetap potong saldo (bisa minus atau mentok di 0 tergantung kebijakan, di sini kita biarkan bisa memotong saldo)
-    const newBalance = Math.max(0, balance - coinsAmount);
-    const finePaid = balance - newBalance; // Jumlah koin nyata yang terpotong
+    // Tetap potong saldo (bisa minus karena dia berhutang koin/denda)
+    const newBalance = balance - coinsAmount;
+    const finePaid = coinsAmount; // Jumlah koin denda
 
     if (!wallet) {
       db.prepare(`
         INSERT INTO wallets (user_id, guild_id, balance, total_earned)
-        VALUES (?, ?, 0, 0)
-      `).run(userId, guildId);
+        VALUES (?, ?, ?, 0)
+      `).run(userId, guildId, newBalance);
     } else {
       db.prepare(`
         UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?
