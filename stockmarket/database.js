@@ -3,26 +3,32 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const config = require('./config');
 
-// Pastikan folder untuk database ada
-const dbDir = path.dirname(config.DATABASE_PATH);
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-  console.log(`📁 Folder database dibuat di: ${dbDir}`);
+// Tentukan path database dan pastikan foldernya ada
+let finalDbPath = config.DATABASE_PATH;
+let dbDir = path.dirname(finalDbPath);
+let db;
+
+try {
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`📁 Folder database dibuat di: ${dbDir}`);
+  }
+  db = new Database(finalDbPath);
+} catch (error) {
+  console.warn(`⚠️ Gagal mengakses database di '${finalDbPath}' (${error.message}). Menggunakan fallback database lokal...`);
+  // Fallback ke path lokal
+  finalDbPath = path.join(__dirname, '../data/economy.db');
+  dbDir = path.dirname(finalDbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`📁 Folder database lokal dibuat di: ${dbDir}`);
+  }
+  db = new Database(finalDbPath);
 }
 
-// Inisialisasi Database SQLite
-let db;
-try {
-  db = new Database(config.DATABASE_PATH);
-  console.log(`✅ Database SQLite terhubung di: ${config.DATABASE_PATH}`);
-  
-  // Set beberapa pragma untuk performa lebih baik
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-} catch (error) {
-  console.error('❌ Gagal menginisialisasi database SQLite:', error);
-  throw error;
-}
+console.log(`✅ Database SQLite terhubung di: ${finalDbPath}`);
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 
 // Inisialisasi Tabel
 function initSchema() {
