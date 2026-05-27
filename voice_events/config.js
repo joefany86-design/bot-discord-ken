@@ -11,7 +11,7 @@ module.exports = {
   // Pengaturan Game Ekonomi (Rupiah Server)
   economy: {
     SKIP_FINE: 5000,      // Denda jika melewati tantangan (Rp)
-    SUCCESS_REWARD: 2500, // Hadiah jika berhasil melakukan tantangan (Rp)
+    SUCCESS_REWARD: 150,  // Hadiah jika berhasil melakukan tantangan (Rp)
   },
 
   // Durasi Pengecekan & Timeout
