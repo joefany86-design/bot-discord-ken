@@ -555,7 +555,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh ID 436554535037698059 atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock'];
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === '436554535037698059';
       const isAdmin = message.member && message.member.permissions.has('Administrator');
@@ -605,6 +605,38 @@ async function handleEconomyCommands(message, client) {
       } catch (err) {
         const errorMsg = err.message.replace(/^❌\s*/, '');
         await message.reply({ embeds: [embeds.errorEmbed('Gagal Menarik Koin!', errorMsg)] });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .eco-announce [#channel]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'eco-announce') {
+      const fs = require('fs');
+      const path = require('path');
+      const targetChannel = message.mentions.channels.first() || message.channel;
+
+      if (!targetChannel.isTextBased()) {
+        return message.reply('❌ Channel target harus berupa text channel!');
+      }
+
+      const filePath = path.join(__dirname, '../announcement_update.txt');
+      if (!fs.existsSync(filePath)) {
+        return message.reply('❌ File pengumuman `announcement_update.txt` tidak ditemukan di root bot!');
+      }
+
+      const content = fs.readFileSync(filePath, 'utf8');
+
+      const botPermissions = targetChannel.permissionsFor(message.guild.members.me);
+      if (!botPermissions.has('SendMessages')) {
+        return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` di channel ${targetChannel}!`);
+      }
+
+      await targetChannel.send(content);
+
+      if (targetChannel.id !== message.channel.id) {
+        await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting di channel ${targetChannel}.`);
       }
       return true;
     }

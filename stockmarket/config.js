@@ -40,6 +40,7 @@ module.exports = {
     VOICE_EARN_INTERVAL_MS: 60 * 1000, // Durasi pengecekan keaktifan (setiap 1 menit)
     VOICE_EARN_AMOUNT: 2,              // Koin yang didapatkan per menit
     VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin (anti-farming)
+    VOICE_EARN_LIMIT_DAILY: 300,       // Maksimal koin Voice Earn per hari per user (mencegah hyperinflation)
   },
 
   // Logika & Aturan Stock Market
@@ -58,6 +59,7 @@ module.exports = {
     // Batasan Transaksi
     MIN_SHARES_TRADE: 1,
     MAX_SHARES_PER_TRADE: 100,
+    MAX_SHARES_HOLD_PER_USER: 500,     // Batas maksimal lembar saham per channel yang boleh dimiliki satu user
 
     // Multiplier Dividen Mingguan
     WEEKLY_DIVIDEND_BASE_RATE: 0.02, // 2% dari harga saham saat ini

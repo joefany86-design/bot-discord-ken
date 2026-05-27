@@ -141,6 +141,18 @@ function buyStock(userId, guildId, ticker, shares) {
   }
 
   const totalPrice = stock.current_price * shares;
+
+  // 0. Cek batas kepemilikan saham per user
+  let portfolio = db.get(
+    'SELECT * FROM portfolios WHERE user_id = ? AND guild_id = ? AND channel_id = ?',
+    [userId, guildId, stock.channel_id]
+  );
+  const currentShares = portfolio ? portfolio.shares : 0;
+  const maxSharesHold = config.market.MAX_SHARES_HOLD_PER_USER || 500;
+  if (currentShares + shares > maxSharesHold) {
+    throw new Error(`❌ Kepemilikan terlampaui! Maksimal saham yang boleh Anda miliki untuk satu channel adalah ${maxSharesHold} lembar. Saat ini Anda memiliki ${currentShares} lembar.`);
+  }
+
   const wallet = economy.getWallet(userId, guildId);
   if (wallet.balance < totalPrice) {
     throw new Error(`❌ Saldo Anda tidak mencukupi! Anda butuh Rp ${totalPrice}, saldo Anda saat ini Rp ${wallet.balance}.`);

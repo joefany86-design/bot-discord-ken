@@ -177,6 +177,9 @@ function initScheduler(client) {
             
             // Hindari AFK farming: abaikan jika sedang deafen (tuli) baik self atau server
             if (member.voice.selfDeaf || member.voice.serverDeaf) return false;
+
+            // Hindari AFK farming: abaikan jika sedang mute (bisu) baik self atau server
+            if (member.voice.selfMute || member.voice.serverMute) return false;
             
             return true;
           });
@@ -187,9 +190,19 @@ function initScheduler(client) {
 
           // Berikan koin ke masing-masing member yang aktif
           const earnAmount = config.economy.VOICE_EARN_AMOUNT !== undefined ? config.economy.VOICE_EARN_AMOUNT : 2;
+          const earnLimit = config.economy.VOICE_EARN_LIMIT_DAILY || 300;
+
           activeMembers.forEach(member => {
             try {
-              economy.addBalance(member.id, guild.id, earnAmount, 'VOICE', channel.id);
+              // Cek sisa kuota harian Voice Earn
+              const dailyEarned = economy.getDailyVoiceEarnings(member.id, guild.id);
+              if (dailyEarned >= earnLimit) return; // Sudah mencapai batas harian
+
+              const remaining = earnLimit - dailyEarned;
+              const finalEarn = Math.min(earnAmount, remaining);
+              if (finalEarn > 0) {
+                economy.addBalance(member.id, guild.id, finalEarn, 'VOICE', channel.id);
+              }
             } catch (err) {
               console.error(`❌ Gagal memproses Voice Earn untuk ${member.id}:`, err.message);
             }

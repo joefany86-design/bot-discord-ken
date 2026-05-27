@@ -1,0 +1,45 @@
+📢 **PENGUMUMAN RESMI: PEMBARUAN & PENYEIMBANGAN EKONOMI SERVER KOSAN 1A** 🚀
+
+Halo Warga Kosan 1A! 🏠✨
+Dalam upaya menciptakan ekosistem permainan yang lebih seru, adil, aman dari eksploitasi, dan seimbang bagi seluruh member, kami secara resmi merilis **Pembaruan Sistem Ekonomi & Keamanan Bot 2026**!
+
+Berikut adalah daftar fitur baru, perbaikan, dan pengamanan sistem yang aktif per hari ini:
+
+---
+
+### 🎲 1. REVOLUSI ADIL: GAME TRUTH OR DARE (ToD)
+Kami merombak total sistem ToD Voice Channel agar jauh lebih seru dan bebas dari "trolling":
+* 🛡️ **Anti-AFK Juri (Judge Protection)**: Jika Juri yang terpilih pergi AFK atau telat memilih keputusan dalam 60 detik, **Korban (Victim) TIDAK AKAN DIDENDA!** Korban terproteksi secara otomatis dari pemotongan koin.
+* ⚖️ **Sistem Juri Berputar (Rotational Challenger)**: Kami membuang sistem acak murni! Juri kini bergantian secara melingkar dan teratur dari pemain berikutnya yang aktif di VC. Semua mendapat giliran bertanya dan menjawab secara adil!
+* 🙋‍♂️ **Tombol Gabung Tengah Game (Join Mid-Game)**: Anggota baru yang masuk Voice Channel di tengah permainan bisa langsung mengeklik tombol **`🙋‍♂️ Ikut Bermain`** pada sela transisi putaran untuk langsung disisipkan ke daftar giliran berikutnya.
+* 💰 **Penyeimbangan Nominal Koin ToD**:
+  - **Denda Skip/Menyerah**: Diturunkan drastis dari Rp 10.000 menjadi **Rp 300** (tidak mematikan dompet pemain!).
+  - **Hadiah Sukses**: Dinaikkan dari Rp 35 menjadi **Rp 100** agar perjuangan melakukan tantangan terasa sangat berharga!
+
+---
+
+### 🎙️ 2. PERLINDUNGAN ANTI-AFK FARMING (VOICE CHANNEL)
+Untuk menjaga keamanan Rupiah Server dari inflasi koin akibat farming pasif:
+* 🎚️ **Pendeteksi Bisukan (Mute Check)**: Pengguna yang melakukan **Mute** (selfMute/serverMute) atau **Deafen** di Voice Channel **tidak akan mendapatkan koin keaktifan**. Koin hanya mengalir ke member yang benar-benar aktif mengobrol atau mendengarkan di VC.
+* 📈 **Batas Kuota Harian (Daily Voice Earn Cap)**: Pendapatan maksimal dari keaktifan Voice Channel dibatasi maksimal **Rp 300 per hari** per user. 
+
+---
+
+### 📈 3. BURSA SAHAM & TOKO ROLE (ANTI-MONOPOLI)
+* 🛑 **Batas Kepemilikan Saham (Share Ownership Cap)**: Mencegah investor kaya memonopoli seluruh saham server. Setiap user kini dibatasi maksimal memiliki **500 lembar saham per instrumen channel**.
+* 🎰 **Sistem Gacha Role Premium Terintegrasi**: 
+  - Putar gacha misteri seharga **Rp 1.000** dengan peluang keberuntungan: **Common (36.0%)**, **Rare (15.0%)**, **Epic (7.2%)**, dan jackpot besar **Legendary (1.8%)**!
+  - **Cashback Duplikat**: Jika Anda memenangkan role gacha yang sudah Anda miliki di server, bot akan otomatis mengembalikan **Cashback Rp 500** langsung ke dompet Anda!
+
+---
+
+### 📅 4. PENYELARASAN RESET HARIAN (ZONA WAKTU WIB)
+* ⏰ **Reset Klaim Harian Tepat Waktu**: Perintah `.daily` kini di-reset tepat pada **pukul 12.00 malam WIB (Waktu Indonesia Barat)** berdasarkan zona waktu Asia/Jakarta. Tidak ada lagi kebingungan karena zona waktu global!
+
+---
+
+💡 *Yuk masuk ke Voice Channel Kosan 1A, obrolkan saham terbaikmu, tes keberanianmu lewat game ToD yang baru, dan kumpulkan koin harianmu sekarang juga!* 🎮💸
+
+Ketik **`.help`** atau **`.saham`** di text channel untuk panduan commands lengkap!
+
+**— Tim Administrator & Developer Bot Kosan 1A 2026** 🛠️🤖

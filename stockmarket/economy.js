@@ -102,8 +102,8 @@ function claimDaily(userId, guildId) {
   const wallet = getWallet(userId, guildId);
   const now = new Date();
   
-  // Format YYYY-MM-DD
-  const todayStr = now.toISOString().split('T')[0];
+  // Format YYYY-MM-DD berdasarkan Zona Waktu WIB (Asia/Jakarta) untuk reset tepat tengah malam WIB
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
   
   if (wallet.last_active_date === todayStr) {
     // Sudah mengklaim hari ini
@@ -228,11 +228,31 @@ function getLeaderboard(guildId, limit = 10) {
   }));
 }
 
+/**
+ * Mendapatkan total pendapatan dari Voice Channel hari ini berdasarkan riwayat transaksi.
+ */
+function getDailyVoiceEarnings(userId, guildId) {
+  const now = new Date();
+  // Hitung start hari ini pukul 00:00 WIB
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+  const startOfDay = new Date(`${todayStr}T00:00:00+07:00`);
+  const startOfDaySeconds = Math.floor(startOfDay.getTime() / 1000);
+
+  const result = db.get(
+    `SELECT SUM(amount) as total FROM transactions 
+     WHERE user_id = ? AND guild_id = ? AND type = 'VOICE' AND created_at >= ?`,
+    [userId, guildId, startOfDaySeconds]
+  );
+
+  return result ? (result.total || 0) : 0;
+}
+
 module.exports = {
   getWallet,
   addBalance,
   subtractBalance,
   claimDaily,
   transferBalance,
-  getLeaderboard
+  getLeaderboard,
+  getDailyVoiceEarnings
 };
