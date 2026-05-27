@@ -561,7 +561,7 @@ module.exports = {
         {
           name: '🎛️ 5. DASHBOARD TOMBOL INTERAKTIF & KOMENTATOR TTS',
           value:
-            `* **💼 Tombol Navigasi Ephemeral**: Di bawah bursa saham \`.market\` dan \`.shop\`, kini ada tombol cepat privat untuk mengecek \`💼 Portofolio\`, \`💰 Profil\`, dan \`🛍️ Toko\` tanpa mengotori ruang chat!\n` +
+            `* **💼 Tombol Navigasi Terbuka**: Di bawah bursa saham \`.market\` dan \`.shop\`, kini ada tombol-tombol interaktif publik untuk mengecek Portofolio, Profil, dan bertransaksi secara transparan di hadapan seluruh warga server!\n` +
             `* **🎙️ Komentator Suara TTS Heboh**: Bot akan bergabung ke Voice Channel Anda secara otomatis untuk memberikan komentar TTS heboh jika Anda membeli/menjual saham besar (>= 50 lembar) atau mendapatkan Zonk saat gacha role!`
         },
         {
@@ -569,6 +569,12 @@ module.exports = {
           value:
             `* **💎 5 Kasta Rarity Eksklusif**: Kami merilis role prestise khusus dengan perizinan premium & warna unik: Common (Rp 15.000), Rare (Rp 75.000), Epic (Rp 350.000), Legendary (Rp 1.500.000), dan kasta tertinggi **Mythic (Rp 5.000.000)**!\n` +
             `* **🔒 Peluang Jackpot Gacha Mythic**: Role Mythic kini dapat diperoleh lewat Gacha dengan peluang super langka (**0.1%** dari pool kemenangan), atau dibeli langsung secara terhormat!`
+        },
+        {
+          name: '💬 7. DUKUNGAN ANTI-SPAM CHAT & PAJAK PENGAMAN EKSPLOIT',
+          value:
+            `* **🛡️ Pengetatan Koin Chatting**: Cooldown pesan dinaikkan menjadi **45 detik**, minimal pesan diperpanjang menjadi **3 kata & 10 karakter**, dan reward bernilai **Rp 1 - Rp 4 per pesan**.\n` +
+            `* **🏦 Pajak Pengaman**: Pajak transfer koin antar member disesuaikan menjadi **10%** (anti-alt accounts) dan pajak penjualan saham channel disesuaikan menjadi **15%**.`
         }
       )
       .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
