@@ -196,17 +196,17 @@ async function handleEconomyCommands(message, client) {
             const porto = stocks.getPortfolio(author.id, guildId);
             const wallet = economy.getWallet(author.id, guildId);
             const portoEmbed = embeds.portfolioEmbed(author, porto, wallet);
-            await i.reply({ embeds: [portoEmbed], ephemeral: true });
+            await i.reply({ embeds: [portoEmbed] });
           } else if (i.customId === 'eco_btn_profile') {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
             const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
-            await i.reply({ embeds: [profileEmbed], ephemeral: true });
+            await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_shop') {
             const wallet = economy.getWallet(author.id, guildId);
             const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
             const shopEmbed = embeds.shopEmbed(items, wallet);
-            await i.reply({ embeds: [shopEmbed], ephemeral: true });
+            await i.reply({ embeds: [shopEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             const gachaCost = 1000;
             const wallet = economy.getWallet(author.id, guildId);
@@ -219,7 +219,7 @@ async function handleEconomyCommands(message, client) {
                 `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
               )
               .setFooter({ text: 'Ketik .gacha-role di chat!' });
-            await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+            await i.reply({ embeds: [gachaPromptEmbed] });
           } else if (i.customId === 'eco_btn_trade') {
             const latestStocks = stocks.getStocks(guildId);
             if (latestStocks.length === 0) {
@@ -752,7 +752,7 @@ async function handleEconomyCommands(message, client) {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
             const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
-            await i.reply({ embeds: [profileEmbed], ephemeral: true });
+            await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             const gachaCost = 1000;
             const wallet = economy.getWallet(author.id, guildId);
@@ -765,7 +765,7 @@ async function handleEconomyCommands(message, client) {
                 `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
               )
               .setFooter({ text: 'Ketik .gacha-role di chat!' });
-            await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+            await i.reply({ embeds: [gachaPromptEmbed] });
           }
         } catch (err) {
           console.error('Error handling button click in shop:', err);
