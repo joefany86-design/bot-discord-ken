@@ -1296,33 +1296,33 @@ async function handleEconomyCommands(message, client) {
 
       const memberIds = new Set();
       
-      // Ambil daftar member secara aman & robust dengan fallback jika intent tidak aktif
+      // 1. Ambil dari database wallets terlebih dahulu (seluruh member historis online & offline yang punya saldo/data)
       try {
-        const fetchedMembers = await guild.members.fetch();
+        const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+        activeWallets.forEach(w => {
+          memberIds.add(w.user_id);
+        });
+      } catch (dbErr) {
+        console.error('Gagal mengambil wallets dari db:', dbErr.message);
+      }
+
+      // 2. Ambil dari cache memori bot (member online/aktif saat ini)
+      guild.members.cache.forEach(member => {
+        if (!member.user.bot) {
+          memberIds.add(member.id);
+        }
+      });
+
+      // 3. Tarik paksa seluruh member terbaru dari Discord API (termasuk member offline yang belum tercatat)
+      try {
+        const fetchedMembers = await guild.members.fetch({ force: true });
         for (const [id, member] of fetchedMembers) {
           if (!member.user.bot) {
             memberIds.add(id);
           }
         }
       } catch (err) {
-        console.warn('Gagal fetch all members (intent GuildMembers mungkin belum aktif):', err.message);
-        
-        // Fallback 1: Ambil dari cache
-        guild.members.cache.forEach(member => {
-          if (!member.user.bot) {
-            memberIds.add(member.id);
-          }
-        });
-
-        // Fallback 2: Ambil dari database wallets (user aktif)
-        try {
-          const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
-          activeWallets.forEach(w => {
-            memberIds.add(w.user_id);
-          });
-        } catch (dbErr) {
-          console.error('Gagal mengambil wallets dari db:', dbErr.message);
-        }
+        console.warn('Gagal fetch all members via Discord API (intent GuildMembers mungkin belum aktif):', err.message);
       }
 
       if (memberIds.size === 0) {
@@ -1356,14 +1356,14 @@ async function handleEconomyCommands(message, client) {
       let successDesc = '';
       if (isRandom) {
         successDesc = `👑 **KEMAKMURAN UNTUK SEMUA!**\n\n` +
-                      `Owner / Administrator telah menyebarkan koin keberuntungan acak kepada **${memberCount} member** server!\n\n` +
+                      `Owner / Administrator telah menyebarkan koin keberuntungan acak kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
                       `📊 **Metode Distribusi:** \`🎰 Acak (Random Roll)\`\n` +
                       `📈 **Rentang Hadiah:** \`Rp ${minRange.toLocaleString('id-ID')} - Rp ${maxRange.toLocaleString('id-ID')}\` per member\n` +
                       `💰 **Total Koin Tersebar:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
                       `*Setiap warga menerima jumlah koin acak masing-masing yang unik. Cek saldo Anda dengan perintah \`.bal\`!* 🚀`;
       } else {
         successDesc = `👑 **DISTRIBUSI KESEJAHTERAAN SELESAI!**\n\n` +
-                      `Owner / Administrator telah membagikan koin secara merata kepada **${memberCount} member** server!\n\n` +
+                      `Owner / Administrator telah membagikan koin secara merata kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
                       `📊 **Metode Distribusi:** \`💵 Tetap (Fixed Amount)\`\n` +
                       `📈 **Nominal per Member:** **Rp ${amount.toLocaleString('id-ID')}** koin\n` +
                       `💰 **Total Koin Terdistribusi:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
