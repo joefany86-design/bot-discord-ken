@@ -1313,16 +1313,19 @@ async function handleEconomyCommands(message, client) {
         }
       });
 
-      // 3. Tarik paksa seluruh member terbaru dari Discord API (termasuk member offline yang belum tercatat)
+      // 3. Tarik paksa seluruh member terbaru dari Discord API (dengan batas waktu 2 detik agar tidak menggantung jika intent mati)
       try {
-        const fetchedMembers = await guild.members.fetch({ force: true });
+        const fetchedMembers = await Promise.race([
+          guild.members.fetch({ force: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 2000))
+        ]);
         for (const [id, member] of fetchedMembers) {
           if (!member.user.bot) {
             memberIds.add(id);
           }
         }
       } catch (err) {
-        console.warn('Gagal fetch all members via Discord API (intent GuildMembers mungkin belum aktif):', err.message);
+        console.warn('Gagal fetch all members via Discord API (intent GuildMembers mati atau timeout):', err.message);
       }
 
       if (memberIds.size === 0) {
