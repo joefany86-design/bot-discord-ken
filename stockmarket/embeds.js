@@ -531,6 +531,12 @@ module.exports = {
           name: '📅 4. RESET HARIAN TEPAT WAKTU (WIB/UTC+7)',
           value:
             `* **⏰ Sinkronisasi Tanggal**: Klaim harian \`.daily\` kini di-reset tepat pada pukul **12.00 malam WIB** (waktu Jakarta) setiap hari berdasarkan zona waktu Indonesia Barat.`
+        },
+        {
+          name: '🎛️ 5. DASHBOARD TOMBOL INTERAKTIF & KOMENTATOR TTS',
+          value:
+            `* **💼 Tombol Navigasi Ephemeral**: Di bawah bursa saham \`.market\` dan \`.shop\`, kini ada tombol cepat privat untuk mengecek \`💼 Portofolio\`, \`💰 Profil\`, dan \`🛍️ Toko\` tanpa mengotori ruang chat!\n` +
+            `* **🎙️ Komentator Suara TTS Heboh**: Bot akan bergabung ke Voice Channel Anda secara otomatis untuk memberikan komentar TTS heboh jika Anda membeli/menjual saham besar (>= 50 lembar) atau mendapatkan Zonk saat gacha role!`
         }
       )
       .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
