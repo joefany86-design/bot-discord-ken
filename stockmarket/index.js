@@ -267,14 +267,14 @@ async function handleEconomyCommands(message, client) {
               .setTitle('📈 Menu Transaksi Saham Rupiah Server')
               .setDescription(
                 `Pilih salah satu instrumen saham di bawah ini untuk memulai transaksi **Beli (BUY)** atau **Jual (SELL)** secara instan!\n\n` +
-                `*Transaksi dilakukan secara aman dan privat (ephemeral).*`
+                `*Transaksi dilakukan secara terbuka dan transparan.*`
               )
               .setFooter({ text: 'Rupiah Server • Interactive Trading' });
 
             const tradeMsg = await i.reply({
               embeds: [tradeEmbed],
               components: [selectRow],
-              ephemeral: true,
+              ephemeral: false,
               fetchReply: true
             });
 
@@ -430,13 +430,13 @@ async function handleEconomyCommands(message, client) {
                       if (submitted) {
                         const inputVal = parseInt(submitted.fields.getTextInputValue('buy_amount'));
                         if (isNaN(inputVal) || inputVal <= 0) {
-                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: false });
                         }
 
                         try {
                           const res = stocks.buyStock(author.id, guildId, selectedTicker, inputVal);
                           const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-                          await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                          await submitted.reply({ embeds: [successEmb], ephemeral: false });
 
                           if (inputVal >= 50) {
                             client.emit('playTtsEvent', {
@@ -449,7 +449,7 @@ async function handleEconomyCommands(message, client) {
                           await updateTradeMessage(submitted, selectedTicker, true);
                         } catch (err) {
                           const cleaned = err.message.replace(/^❌\s*/, '');
-                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: false });
                         }
                       }
                       return;
@@ -489,13 +489,13 @@ async function handleEconomyCommands(message, client) {
                       if (submitted) {
                         const inputVal = parseInt(submitted.fields.getTextInputValue('sell_amount'));
                         if (isNaN(inputVal) || inputVal <= 0) {
-                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                          return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: false });
                         }
 
                         try {
                           const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal);
                           const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-                          await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                          await submitted.reply({ embeds: [successEmb], ephemeral: false });
 
                           if (inputVal >= 50) {
                             client.emit('playTtsEvent', {
@@ -508,7 +508,7 @@ async function handleEconomyCommands(message, client) {
                           await updateTradeMessage(submitted, selectedTicker, true);
                         } catch (err) {
                           const cleaned = err.message.replace(/^❌\s*/, '');
-                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                          await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: false });
                         }
                       }
                       return;
@@ -521,7 +521,7 @@ async function handleEconomyCommands(message, client) {
                       if (action === 'BUY') {
                         const res = stocks.buyStock(author.id, guildId, selectedTicker, shares);
                         const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-                        await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+                        await iTrade.reply({ embeds: [successEmb], ephemeral: false });
                         
                         if (shares >= 50) {
                           client.emit('playTtsEvent', {
@@ -533,7 +533,7 @@ async function handleEconomyCommands(message, client) {
                       } else {
                         const res = stocks.sellStock(author.id, guildId, selectedTicker, shares);
                         const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-                        await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+                        await iTrade.reply({ embeds: [successEmb], ephemeral: false });
 
                         if (shares >= 50) {
                           client.emit('playTtsEvent', {
@@ -546,7 +546,7 @@ async function handleEconomyCommands(message, client) {
                       await updateTradeMessage(iTrade, selectedTicker, true);
                     } catch (err) {
                       const cleaned = err.message.replace(/^❌\s*/, '');
-                      await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                      await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: false });
                     }
                   }
                 } else if (iTrade.customId === 'trade_btn_back') {
