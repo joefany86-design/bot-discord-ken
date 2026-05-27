@@ -1223,33 +1223,59 @@ async function handleEconomyCommands(message, client) {
         .setDescription('Sedang mendistribusikan koin ke seluruh member server secara instan. Mohon tunggu...');
       const statusMsg = await message.reply({ embeds: [statusEmbed] });
 
-      let members;
+      const memberIds = new Set();
+      
+      // Ambil daftar member secara aman & robust dengan fallback jika intent tidak aktif
       try {
-        members = await guild.members.fetch();
+        const fetchedMembers = await guild.members.fetch();
+        for (const [id, member] of fetchedMembers) {
+          if (!member.user.bot) {
+            memberIds.add(id);
+          }
+        }
       } catch (err) {
-        console.error('Gagal mengambil daftar member:', err);
-        const errEmbed = embeds.errorEmbed('Gagal!', 'Tidak dapat mengambil daftar member server.');
+        console.warn('Gagal fetch all members (intent GuildMembers mungkin belum aktif):', err.message);
+        
+        // Fallback 1: Ambil dari cache
+        guild.members.cache.forEach(member => {
+          if (!member.user.bot) {
+            memberIds.add(member.id);
+          }
+        });
+
+        // Fallback 2: Ambil dari database wallets (user aktif)
+        try {
+          const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+          activeWallets.forEach(w => {
+            memberIds.add(w.user_id);
+          });
+        } catch (dbErr) {
+          console.error('Gagal mengambil wallets dari db:', dbErr.message);
+        }
+      }
+
+      if (memberIds.size === 0) {
+        const errEmbed = embeds.errorEmbed('Gagal!', 'Tidak dapat menemukan member untuk dibagikan koin.');
         return statusMsg.edit({ embeds: [errEmbed] });
       }
 
-      const humanMembers = members.filter(m => !m.user.bot);
       let totalAmountGiven = 0;
       let memberCount = 0;
 
       try {
-        database.transaction(() => {
-          for (const [memberId, member] of humanMembers) {
-            let giveAmount = amount;
-            if (isRandom) {
-              giveAmount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
-            }
-            economy.addBalance(memberId, guildId, giveAmount, 'ADMIN_GIVEALL');
-            totalAmountGiven += giveAmount;
-            memberCount++;
+        // Jangan gunakan database.transaction di sini karena economy.addBalance sudah menggunakannya secara internal.
+        // Loop ini sangat cepat karena SQLite WAL mode aktif.
+        for (const memberId of memberIds) {
+          let giveAmount = amount;
+          if (isRandom) {
+            giveAmount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
           }
-        })();
+          economy.addBalance(memberId, guildId, giveAmount, 'ADMIN_GIVEALL');
+          totalAmountGiven += giveAmount;
+          memberCount++;
+        }
       } catch (dbErr) {
-        console.error('Database transaction error in eco-giveall:', dbErr);
+        console.error('Database error in eco-giveall:', dbErr);
         const errEmbed = embeds.errorEmbed('Database Error!', 'Terjadi kesalahan internal saat memperbarui saldo database.');
         return statusMsg.edit({ embeds: [errEmbed] });
       }
