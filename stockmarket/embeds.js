@@ -542,6 +542,13 @@ module.exports = {
           value:
             `* **💼 Tombol Navigasi Ephemeral**: Di bawah bursa saham \`.market\` dan \`.shop\`, kini ada tombol cepat privat untuk mengecek \`💼 Portofolio\`, \`💰 Profil\`, dan \`🛍️ Toko\` tanpa mengotori ruang chat!\n` +
             `* **🎙️ Komentator Suara TTS Heboh**: Bot akan bergabung ke Voice Channel Anda secara otomatis untuk memberikan komentar TTS heboh jika Anda membeli/menjual saham besar (>= 50 lembar) atau mendapatkan Zonk saat gacha role!`
+        },
+        {
+          name: '👑 6. KASTA ROLE DEWA & PRESTIGE TOKO PREMIUM',
+          value:
+            `* **💎 5 Kasta Rarity Eksklusif**: Kami merilis role prestise khusus dengan perizinan premium & warna unik: Common (Rp 15.000), Rare (Rp 75.000), Epic (Rp 350.000), Legendary (Rp 1.500.000), dan kasta tertinggi **Mythic (Rp 5.000.000)**!\n` +
+            `* **🔒 Kasta Mythic Buy-Only**: Khusus untuk role **🌟 Mythic Immortal**, role ini **TIDAK BISA didapatkan dari Gacha** (0% chance)! Anda harus mengumpulkan koin secara terhormat untuk membelinya secara prestisius!\n` +
+            `* **🎙️ Hak Izin Moderasi Suara VIP**: Member dengan role Mythic berhak mendapatkan izin khusus untuk melakukan **Mute Members** dan **Move Members** di Voice Channel!`
         }
       )
       .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })

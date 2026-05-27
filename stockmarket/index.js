@@ -1070,7 +1070,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto'];
+    const adminCommands = ['eco-give', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
@@ -1168,7 +1168,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // Perintah Admin: .eco-announce [#channel]
     // ═══════════════════════════════════════════════════
-    if (commandName === 'eco-announce') {
+    if (commandName === 'eco-announce' || commandName === 'anoncemen' || commandName === 'announcement') {
       const targetChannel = message.mentions.channels.first() || message.channel;
 
       if (!targetChannel.isTextBased()) {
