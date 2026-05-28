@@ -24,6 +24,7 @@ const BROS_ROLE_ID = '1472170093416022096';         // the bros
 // Admin/Staff Roles
 const SOVEREIGN_1_ID = '1508835510087581696';     // 👑The Sovereign
 const SOVEREIGN_2_ID = '1509229714084987162';     // 👑 The Sovereign
+const MODERATOR_ROLE_ID = '1422645007084687372';   // ⚔️ Moderator
 const KOORDINATOR_KOS_ID = '1475356859727614114';   // 📌 Koordinator Kos
 const TEKNISI_ID = '1503307301363384320';          // 🪛Teknisi
 
@@ -50,7 +51,7 @@ client.once('ready', async () => {
     // 2. Set perizinan di Kategori FACILITIES
     // - everyone: tidak bisa melihat/masuk
     // - the baddies & the bros: bisa melihat, mengirim pesan, masuk voice, bicara
-    // - Admin/Staff: tetap memiliki akses penuh
+    // - Admin/Staff/Moderator: tetap memiliki akses penuh
     await facilitiesCategory.permissionOverwrites.set([
       {
         id: EVERYONE_ROLE_ID,
@@ -89,6 +90,16 @@ client.once('ready', async () => {
       },
       {
         id: SOVEREIGN_2_ID,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.Connect,
+          PermissionFlagsBits.Speak,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ManageMessages
+        ]
+      },
+      {
+        id: MODERATOR_ROLE_ID,
         allow: [
           PermissionFlagsBits.ViewChannel,
           PermissionFlagsBits.Connect,
