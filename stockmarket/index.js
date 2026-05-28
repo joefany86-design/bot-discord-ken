@@ -2236,7 +2236,7 @@ async function handleEconomyCommands(message, client) {
           `👉 Pengirim: <@${author.id}>\n` +
           `👉 Penerima: <@${targetUser.id}>\n` +
           `💰 Nominal Dikirim: **Rp ${amount.toLocaleString('id-ID')}**\n` +
-          `💸 Pajak Transfer (2%): \`Rp ${res.tax.toLocaleString('id-ID')}\`\n` +
+          `💸 Pajak Transfer (${res.taxRatePercent}%): \`Rp ${res.tax.toLocaleString('id-ID')}\`\n` +
           `📥 Bersih Diterima: **Rp ${res.amountReceived.toLocaleString('id-ID')}**`
         )
         .setTimestamp();

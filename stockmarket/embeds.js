@@ -677,7 +677,6 @@ module.exports = {
   },
 
   // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
-  // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
   updateAnnouncementEmbed(guild) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
@@ -685,7 +684,7 @@ module.exports = {
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
         `Halo Warga Kosan 1A! 👋✨\n` +
-        `Dalam rangka rilisnya fitur **Simulasi Sewa Kamar & Upgrade Kosan**, berikut adalah buku panduan lengkap serta seluruh daftar perintah (*commands*) yang aktif penuh pada bot kita hari ini:`
+        `Dalam rangka rilisnya fitur **Sistem Pet (Tamagotchi)** & **Sistem Perampokan Berisiko Tinggi**, berikut adalah buku panduan lengkap serta seluruh daftar perintah (*commands*) yang aktif penuh pada bot kita hari ini:`
       )
       .addFields(
         {
@@ -702,7 +701,8 @@ module.exports = {
             `• **Chatting** : Dapat **Rp 1-4** secara pasif per pesan di text channel (cooldown 45s).\n` +
             `• **Gaji Otomatis** : Hadiah harian **Rp 15-35** + streak dicairkan otomatis di chat pertama Anda!\n` +
             `👉 **\`.bal\`** / **\`.profile\`** - Cek saldo dompet, portofolio bursa, & kasta role prestise.\n` +
-            `👉 **\`.transfer @user <jumlah>\`** - Kirim koin instan ke warga lain (pajak transfer 10%).\n` +
+            `👉 **\`.daily\`** - Klaim hadiah koin gratis harian.\n` +
+            `👉 **\`.transfer @user <jumlah>\`** - Kirim koin instan ke warga lain (pajak transfer 10%, sewa kosan mengurangi pajak).\n` +
             `👉 **\`.rich\`** / **\`.leaderboard\`** - Papan peringkat 10 warga terkaya.`
         },
         {
@@ -731,14 +731,34 @@ module.exports = {
             `• **Pinjaman** : Pinjam koin tenor 1/3/7 hari dengan limit dinamis. Auto-debet saat jatuh tempo atau sanksi denda 5% + beku gaji + notice merah publik.`
         },
         {
-          name: '🛌 6. SIMULASI SEWA KAMAR & UPGRADE KOSAN [NEW!]',
+          name: '🛌 6. SIMULASI SEWA KAMAR & UPGRADE KOSAN',
           value:
             `👉 **\`.kos\`** / **\`.kosan\`** - Dashboard hunian, sisa durasi sewa, pasif buffs, & furniture.\n` +
             `👉 **\`.kos-sewa\`** - Sewa kamar 3 hari (Kipas: daily +5 Rp | AC: daily +15 Rp & pajak transfer 8% | Penthouse: daily +40 Rp, pajak transfer 5% & pajak jual saham 10%).\n` +
-            `👉 **\`.kos-upgrade\`** - Belanja furniture permanen (Kasur: streak daily multiplier | WiFi: limit voice harian Rp 35 | Dispenser: 10% peluang koin chat ganda + reaksi \`🥤\` | Gembok: limit pinjaman bank +150 Rp).`
+            `👉 **\`.kos-upgrade\`** - Belanja furniture permanen (Kasur: streak daily multiplier | WiFi: limit voice harian Rp 35 | Dispenser: 10% peluang koin chat ganda | Gembok: limit pinjaman bank +150 Rp & proteksi rob 50%).`
         },
         {
-          name: '🎲 7. GAME VOICE TRUTH OR DARE',
+          name: '🐾 7. SISTEM PET TAMAGOTCHI STYLE [NEW!]',
+          value:
+            `👉 **\`.pet\`** - Membuka dashboard utama status peliharaan Anda secara interaktif.\n` +
+            `👉 **\`.pet buy <nama> <slime/dragon/cat/golem>\`** - Adopsi telur pet seharga **Rp 1.500** (Menetas dalam 2 jam).\n` +
+            `👉 **\`.pet shop\`** - Toko supplies pet (Pakan Lvl 1/2, Air, Obat, & Bola Mainan).\n` +
+            `👉 **\`.pet work\`** - Menyuruh pet bekerja mencari koin secara aman (cooldown 2 jam, Golem -20m).\n` +
+            `👉 **\`.pet hunt\`** - Menyuruh pet (Min. Lvl 10) berburu di hutan liar (berhadiah besar/item gratis, cooldown 4 jam).\n` +
+            `👉 **\`.pet play\`** - Bermain lempar bola dengan pet untuk memulihkan Kebahagiaan & XP.\n` +
+            `👉 **\`.pet pvp @user <taruhan>\`** - Duel Arena PvP antar pet memperebutkan koin taruhan.\n` +
+            `👉 **\`.pet reset\`** - Mengosongkan kandang untuk mengadopsi pet baru.`
+        },
+        {
+          name: '💥 8. PERAMPOKAN BERISIKO TINGGI (HEIST & ROB) [NEW!]',
+          value:
+            `👉 **\`.rob @user\`** - Mencuri sebagian koin dompet target secara solo (sukses rate 40%). Gagal berarti denda & masuk penjara virtual.\n` +
+            `👉 **\`.heist\`** / **\`.heist start\`** - Mengajak kru merampok Bank Server. Makin ramai kru, sukses rate naik, namun denda kegagalan juga bertambah!\n` +
+            `👉 **\`.jail\`** / **\`.jail @user\`** - Cek status/sisa masa tahanan penjara virtual Anda/orang lain.\n` +
+            `• **Bail System** : Tebus jaminan menggunakan koin dari dashboard penjara virtual untuk bebas seketika.`
+        },
+        {
+          name: '🎲 9. GAME VOICE TRUTH OR DARE',
           value:
             `👉 **\`.tod\`** / **\`.truthordare\`** - Sesi lobi game Truth or Dare bahasa Indonesia di Voice Channel.\n` +
             `👉 **\`.tod status\`** - Statistik koin & pencapaian bermain ToD Anda.`

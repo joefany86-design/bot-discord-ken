@@ -221,7 +221,8 @@ function transferBalance(fromUserId, toUserId, guildId, amount) {
   return {
     amountSent: amount,
     amountReceived: amountToReceive,
-    tax
+    tax,
+    taxRatePercent
   };
 }
 
