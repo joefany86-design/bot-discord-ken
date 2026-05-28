@@ -117,10 +117,12 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     if (commandName === 'balance' || commandName === 'bal' || commandName === 'profile') {
       const targetUser = message.mentions.users.first() || author;
+      const targetMember = message.mentions.members.first() || message.member || await guild.members.fetch(targetUser.id).catch(() => null);
       const wallet = economy.getWallet(targetUser.id, guildId);
       const porto = stocks.getPortfolio(targetUser.id, guildId);
+      const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
 
-      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue);
+      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems);
       await message.reply({ embeds: [embed] });
       return true;
     }
@@ -221,7 +223,8 @@ async function handleEconomyCommands(message, client) {
           } else if (i.customId === 'eco_btn_profile') {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_shop') {
             const wallet = economy.getWallet(author.id, guildId);
@@ -787,7 +790,8 @@ async function handleEconomyCommands(message, client) {
           if (i.customId === 'eco_btn_profile') {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             const gachaCost = config.gacha.COST || 250;

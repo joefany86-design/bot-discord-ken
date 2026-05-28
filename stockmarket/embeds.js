@@ -75,9 +75,9 @@ module.exports = {
   formatCurrency,
 
   // 1. Embed Saldo / Profile
-  profileEmbed(user, wallet, portfolioValue) {
+  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = []) {
     const totalWealth = wallet.balance + portfolioValue;
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
       .setTitle(`💼 Dompet Keuangan — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
@@ -107,9 +107,51 @@ module.exports = {
           value: `\`${formatCurrency(wallet.total_earned)}\``, 
           inline: true 
         }
-      )
-      .setFooter({ text: 'Ketik .daily untuk klaim koin harian!' })
+      );
+
+    // Tambahkan info kasta role prestise yang dimiliki
+    if (member && shopItems && shopItems.length > 0) {
+      const TIER_EMOJIS = {
+        COMMON: '🟢',
+        RARE: '🔵',
+        EPIC: '🟣',
+        LEGENDARY: '👑',
+        MYTHIC: '🌟'
+      };
+
+      const ownedPrestigeRoles = [];
+      shopItems.forEach(item => {
+        if (member.roles.cache.has(item.role_id)) {
+          const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+          ownedPrestigeRoles.push(`${emoji} **${item.role_name}**`);
+        }
+      });
+
+      if (ownedPrestigeRoles.length > 0) {
+        embed.addFields({
+          name: `🎭 Koleksi Role Prestise (${ownedPrestigeRoles.length} / ${shopItems.length})`,
+          value: ownedPrestigeRoles.join('\n'),
+          inline: false
+        });
+      } else {
+        embed.addFields({
+          name: '🎭 Koleksi Role Prestise (0)',
+          value: '*Belum memiliki kasta role prestise. Beli di `.shop` atau coba peruntungan di `.gacha-role`!*',
+          inline: false
+        });
+      }
+    } else if (member) {
+      embed.addFields({
+        name: '🎭 Koleksi Role Prestise (0)',
+        value: '*Tidak ada kasta role prestise terdaftar di server ini.*',
+        inline: false
+      });
+    }
+
+    embed.setFooter({ text: 'Ketik .daily untuk klaim koin harian!' })
       .setTimestamp();
+
+    return embed;
   },
 
   // 2. Embed Klaim Harian (.daily)
