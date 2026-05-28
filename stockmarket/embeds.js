@@ -676,40 +676,71 @@ module.exports = {
   },
 
   // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
+  // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
   updateAnnouncementEmbed(guild) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle('📢 PEMBARUAN & OTOMATISASI BURSA SAHAM SENTINEL BOT 🚀')
+      .setTitle('📢 PUSAT KONTROL & BUKU PANDUAN LENGKAP SENTINEL BOT 2026 🏠🚀')
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
-        `Halo Warga Kosan 1A! 🏠✨\n` +
-        `Dalam upaya meningkatkan kepraktisan dan keseruan bermain ekonomi di server, kami secara resmi merilis **Pembaruan Sistem Ekonomi Otomatis & Robot Trading AI 2026**!\n\n` +
-        `Berikut adalah rangkuman fitur-fitur serba otomatis yang telah aktif penuh hari ini:`
+        `Halo Warga Kosan 1A! 👋✨\n` +
+        `Dalam rangka rilisnya fitur **Simulasi Sewa Kamar & Upgrade Kosan**, berikut adalah buku panduan lengkap serta seluruh daftar perintah (*commands*) yang aktif penuh pada bot kita hari ini:`
       )
       .addFields(
         {
-          name: '🤖 1. SISTEM AUTOPILOT AKTIF (SCHEDULER FIX)',
-          value: 
-            `* Seluruh sistem penjadwalan otomatis (cron jobs) bursa kini aktif penuh!\n` +
-            `* Naik-turun harga saham berdasarkan keaktifan, pembagian dividen mingguan dinamis setiap Minggu malam, dan event ekonomi acak kini berjalan **100% otomatis** di latar belakang tanpa henti.`
+          name: '🎙️ 1. KEAMANAN VOICE & GOOGLE TTS',
+          value:
+            `👉 **\`.join\`** / **\`/join\`** - Bot gabung & mengunci VC Anda (Auto-Rejoin jika dc) + menyapa otomatis.\n` +
+            `👉 **\`.leave\`** / **\`/leave\`** - Membuka kunci VC & menyuruh bot keluar secara bersih.\n` +
+            `👉 **\`.speak <teks>\`** / **\`.speak en <teks>\`** - Mengucapkan teks suara di VC.\n` +
+            `👉 **\`.status\`** - Status realtime koneksi, RAM VPS, & uptime bot.`
         },
         {
-          name: '🌅 2. GAJI HARIAN OTOMATIS (AUTO-DAILY CLAIM)',
+          name: '💸 2. EKONOMI PASIF "RUPIAH SERVER"',
           value:
-            `* **Bebas Repot**: Tidak perlu mengetik perintah \`.daily\` secara manual lagi!\n` +
-            `* **Cair Instan**: Gaji harian Anda (Rp 15 - Rp 35 + streak bonus) akan **otomatis dicairkan** begitu Anda mengirimkan chat pertama hari ini di text channel mana saja, disertai pengumuman embed ganteng!`
+            `• **Chatting** : Dapat **Rp 1-4** secara pasif per pesan di text channel (cooldown 45s).\n` +
+            `• **Gaji Otomatis** : Hadiah harian **Rp 15-35** + streak dicairkan otomatis di chat pertama Anda!\n` +
+            `👉 **\`.bal\`** / **\`.profile\`** - Cek saldo dompet, portofolio bursa, & kasta role prestise.\n` +
+            `👉 **\`.transfer @user <jumlah>\`** - Kirim koin instan ke warga lain (pajak transfer 10%).\n` +
+            `👉 **\`.rich\`** / **\`.leaderboard\`** - Papan peringkat 10 warga terkaya.`
         },
         {
-          name: '📈 3. ROBOT INVESTASI PRIBADI (.autotrade / .autoinvest)',
+          name: '📈 3. BURSA SAHAM KOSAN INTERAKTIF',
           value:
-            `* **Fitur Baru Premium**: Ketik **\`.autotrade\`** atau **\`.autoinvest\`** untuk menyalakan/mematikan asisten robot investasi otomatis Anda sendiri!\n` +
-            `* **Mekanisme DCA (Buy-the-Dip)**: Jika robot aktif dan saldo tunai Anda $\\ge$ **Rp 150**, robot akan otomatis membelikan saham termurah/sedang turun di bursa setiap 2 jam sekali (alokasi maks 30% saldo per trade).\n` +
-            `* **Mekanisme Take-Profit (TP)**: Robot akan otomatis melikuidasi/menjual seluruh saham Anda begitu persentase profit mencapai **$\\ge 15\%$** untuk mengamankan keuntungan tunai ke dompet Anda!`
+            `• **Saham Dinamis** : Channel teks terdaftar sebagai saham. Harga fluktuatif tiap 2 jam berbasis chat!\n` +
+            `👉 **\`.market\`** / **\`.saham\`** - Membuka dashboard bursa saham & panel transaksi privat.\n` +
+            `👉 **\`.stock <ticker>\`** / **\`.chart <ticker>\`** - Grafik 2D ASCII & tombol instan Beli/Jual/Refresh.\n` +
+            `👉 **\`.buy\`** / **\`.sell\`** / **\`.sellall\`** - Jual beli saham bursa (kepemilikan maks 500 lembar).\n` +
+            `👉 **\`.porto\`** / **\`.portfolio\`** - Detail aset investasi, harga rata-rata beli, & profit/loss real-time.\n` +
+            `• **Weekly Dividen** : Dividen cair otomatis ke dompet tiap Minggu malam pukul 21:00 WIB.`
         },
         {
-          name: '📊 4. LAPORAN UPDATE BURSA & ROBOT TRADING REAL-TIME',
+          name: '🤖 4. AUTO-TRADING AI & TOKO ROLE',
           value:
-            `* **Transparansi Penuh**: Setiap 2 jam sekali pada jam kerja bursa (08:00 - 23:00 WIB), laporan pergerakan saham terbaru beserta daftar aktivitas transaksi robot trading seluruh warga akan dirilis otomatis di channel bursa!`
+            `👉 **\`.autotrade\`** - Nyalakan asisten Robot Trading AI (Auto DCA & Auto Take-Profit untung >= 15%).\n` +
+            `👉 **\`.shop\`** / **\`.rolemarket\`** - Etalase belanja kasta role prestise dengan koin Rp.\n` +
+            `👉 **\`.gacha-role\`** - Spin gacha role seharga **Rp 250** (Cashback Rp 100 jika duplikat, dapet sampah lucu jika zonk).\n` +
+            `👉 **\`.indexrole\`** - Indeks koleksi role, progress bar, & status level sosial kosan.`
+        },
+        {
+          name: '🏛️ 5. CENTRAL BANK & PERBANKAN POP-UP',
+          value:
+            `👉 **\`.bank\`** - Membuka panel kontrol bank interaktif berbasis tombol & formulir pop-up.\n` +
+            `• **Tabungan** : Simpan koin di brankas dengan **Bunga Pasif +1.5% Setiap Hari**!\n` +
+            `• **Pinjaman** : Pinjam koin tenor 1/3/7 hari dengan limit dinamis. Auto-debet saat jatuh tempo atau sanksi denda 5% + beku gaji + notice merah publik.`
+        },
+        {
+          name: '🛌 6. SIMULASI SEWA KAMAR & UPGRADE KOSAN [NEW!]',
+          value:
+            `👉 **\`.kos\`** / **\`.kosan\`** - Dashboard hunian, sisa durasi sewa, pasif buffs, & furniture.\n` +
+            `👉 **\`.kos-sewa\`** - Sewa kamar 3 hari (Kipas: daily +5 Rp | AC: daily +15 Rp & pajak transfer 8% | Penthouse: daily +40 Rp, pajak transfer 5% & pajak jual saham 10%).\n` +
+            `👉 **\`.kos-upgrade\`** - Belanja furniture permanen (Kasur: streak daily multiplier | WiFi: limit voice harian Rp 35 | Dispenser: 10% peluang koin chat ganda + reaksi \`🥤\` | Gembok: limit pinjaman bank +150 Rp).`
+        },
+        {
+          name: '🎲 7. GAME VOICE TRUTH OR DARE',
+          value:
+            `👉 **\`.tod\`** / **\`.truthordare\`** - Sesi lobi game Truth or Dare bahasa Indonesia di Voice Channel.\n` +
+            `👉 **\`.tod status\`** - Statistik koin & pencapaian bermain ToD Anda.`
         }
       )
       .setFooter({ text: '— Tim Developer & Sentinel Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
