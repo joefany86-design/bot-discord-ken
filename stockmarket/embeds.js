@@ -1177,6 +1177,196 @@ module.exports = {
       .setDescription(description ? `> ${description}` : null)
       .setFooter({ text: 'Rupiah Server Kosan 1A • Struk Pembayaran Resmi' })
       .setTimestamp();
+  },
+
+  // 27. Dashboard Pet Tamagotchi (.pet)
+  petDashboardEmbed(user, pet, inventory) {
+    if (!pet) {
+      return new EmbedBuilder()
+        .setColor(COLORS.WARN)
+        .setTitle('🐾 ADOPSI PET TAMAGOTCHI PERTAMA ANDA!')
+        .setDescription(
+          `Halo **${user.username}**! Anda belum memiliki hewan peliharaan di server ini.\n\n` +
+          `Pilihlah monster tangguh Anda dan mulailah merawatnya untuk menghasilkan uang pasif & bertarung!\n\n` +
+          `💰 **Biaya Adopsi:** **Rp 1.500**\n` +
+          `👉 **Daftar Pilihan Spesies Pet:**\n` +
+          `• 🟢 **SLIME**: Vitalitas super (+20 Max HP / Tahan Lapar)\n` +
+          `• 🔥 **DRAGON**: Kekuatan tempur garang (+15% Attack di PvP)\n` +
+          `• 🐱 **CAT**: Lincah & hoki (Bonus +5% item langka dari Hunt)\n` +
+          `• 🧱 **GOLEM**: Rajin & ulet (Cooldown Kerja -20 Menit)\n\n` +
+          `*Adopsi pet sekarang dengan menekan tombol **🛎️ Adopsi Telur Pet** di bawah!*`
+        )
+        .setTimestamp();
+    }
+
+    const typeName = pet.pet_type.charAt(0) + pet.pet_type.slice(1).toLowerCase();
+    const embed = new EmbedBuilder()
+      .setTitle(`🐾 PUSAT PERAWATAN PET: ${pet.pet_name} 🐾`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setTimestamp();
+
+    if (pet.status === 'EGG') {
+      const now = Math.floor(Date.now() / 1000);
+      const isHatched = pet.hatch_at <= now;
+      
+      embed
+        .setColor(COLORS.WARN)
+        .setDescription(
+          `🥚 **STATUS PET: TELUR MONSTER**\n\n` +
+          `• **Jenis:** \`🥚 Telur ${typeName}\`\n` +
+          `• **Nama Calon Pet:** **${pet.pet_name}**\n` +
+          `• **Status Penetasan:** ${isHatched ? '🟢 **Telur siap menetas!**' : `⏳ Sedang dierami... Menetas <t:${pet.hatch_at}:R>`}\n\n` +
+          `*Hewan peliharaan Anda membutuhkan kehangatan inkubator. ${isHatched ? 'Klik tombol **🐣 Tetaskan Telur** di bawah!' : 'Tunggulah sampai hitung mundur selesai.'}*`
+        );
+      return embed;
+    }
+
+    if (pet.status === 'DEAD') {
+      embed
+        .setColor(COLORS.ERROR)
+        .setDescription(
+          `🪦 **STATUS PET: MENINGGAL DUNIA**\n\n` +
+          `Kami sangat berduka atas wafatnya **${pet.pet_name}** the **${typeName}** 😭.\n\n` +
+          `Hewan peliharaan Anda meninggal karena kelalaian perawatan (sakit/starving). Seluruh persediaan barang miliknya dibersihkan.\n\n` +
+          `👉 *Gunakan tombol **🧹 Reset Pet** di bawah jika ingin membersihkan kandang dan mengadopsi pet baru seharga Rp 1.500.*`
+        );
+      return embed;
+    }
+
+    // Status Sehat / Sakit
+    const isSick = pet.health <= 30;
+    const statusEmoji = pet.status === 'ADULT' ? '🧑 Dewasa' : '👶 Bayi';
+    const statusColor = isSick ? COLORS.ERROR : pet.health >= 80 ? COLORS.SUCCESS : COLORS.WARN;
+
+    embed.setColor(statusColor)
+      .setDescription(
+        `👤 **Pemilik:** <@${pet.user_id}>\n` +
+        `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
+        `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
+        `✨ **XP:** \`${pet.xp} / ${pet.level * 100} XP\`\n\n` +
+        `**📊 STATISTIK UTAMA PET:**\n` +
+        `❤️ HP (Kesehatan) : ${this.renderProgressBar(pet.health)} ${isSick ? '⚠️ **[ SAKIT/LEMAH ]**' : ''}\n` +
+        `🍖 Kenyangan     : ${this.renderProgressBar(pet.hunger)}\n` +
+        `💧 Hidrasi       : ${this.renderProgressBar(pet.thirst)}\n` +
+        `⚽ Kebahagiaan   : ${this.renderProgressBar(pet.happiness)}`
+      );
+
+    // Ketersediaan Supplies Inventory Singkat
+    const suppliesText = inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
+    embed.addFields({
+      name: '🎒 Persediaan Barang Pet (Supplies)',
+      value: suppliesText || '*Kosong*',
+      inline: false
+    });
+
+    // Info Cooldown Pekerjaan & Berburu
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Cooldown Work
+    let workCd = 2 * 3600;
+    if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
+    const nextWork = pet.last_work_at + workCd;
+    const canWork = now >= nextWork;
+    const workStatus = canWork ? '🟢 **Siap bekerja!**' : `⏳ Cooldown s/d <t:${nextWork}:t> (<t:${nextWork}:R>)`;
+
+    // Cooldown Hunt (Fase adult saja)
+    let huntStatus = '🔒 Terkunci (Hanya untuk pet dewasa level 10+)';
+    if (pet.level >= 10 || pet.status === 'ADULT') {
+      const nextHunt = pet.last_hunt_at + (4 * 3600);
+      const canHunt = now >= nextHunt;
+      huntStatus = canHunt ? '🟢 **Siap berburu!**' : `⏳ Cooldown s/d <t:${nextHunt}:t> (<t:${nextHunt}:R>)`;
+    }
+
+    embed.addFields({
+      name: '⏱️ Status Cooldown Aktivitas',
+      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}`,
+      inline: false
+    });
+
+    embed.setFooter({ text: 'Klik tombol di bawah ini untuk merawat pet Anda secara instan!' });
+    return embed;
+  },
+
+  // Helper ProgressBar Visual
+  renderProgressBar(value, max = 100) {
+    const totalBars = 10;
+    const filled = Math.min(totalBars, Math.round((value / max) * totalBars));
+    const empty = totalBars - filled;
+    const barStr = '🟩'.repeat(filled) + '🟥'.repeat(empty);
+    return `\`[${barStr}]\` **${value}%**`;
+  },
+
+  // 28. Toko Item Pet (.pet shop)
+  petShopEmbed(wallet, inventory) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🎒 TOKO PERSEDIAAN PET TAMAGOTCHI')
+      .setDescription(
+        `Jaga kelangsungan hidup pet Anda dengan berbelanja supplies berkualitas!\n\n` +
+        `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
+        `📦 **Persediaan Anda Saat Ini:**\n` +
+        inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n')
+      );
+
+    Object.keys(PET_ITEMS).forEach(key => {
+      const item = PET_ITEMS[key];
+      embed.addFields({
+        name: `${item.name} — ${formatCurrency(item.price)}`,
+        value: `*“${item.desc}”*\n👉 Efek: ` +
+          (item.hunger > 0 ? `\`+${item.hunger} Kenyangan\` ` : '') +
+          (item.thirst > 0 ? `\`+${item.thirst} Hidrasi\` ` : '') +
+          (item.hp > 0 ? `\`+${item.hp} HP\` ` : '') +
+          (item.happiness > 0 ? `\`+${item.happiness} Kebahagiaan\` ` : '') +
+          (item.cures ? `\`Mengobati Sakit/Pingsan\` ` : '') +
+          `\n👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``,
+        inline: false
+      });
+    });
+
+    embed.setFooter({ text: 'Gunakan tombol menu di bawah untuk bertransaksi instan!' }).setTimestamp();
+    return embed;
+  },
+
+  // 29. Embed Battle Arena PvP
+  petBattleEmbed(challengerUser, opponentUser, result) {
+    const embed = new EmbedBuilder()
+      .setTitle('⚔️ PVP PET ARENA: BATTLE REPORT ⚔️')
+      .setTimestamp();
+
+    if (result.draw) {
+      embed
+        .setColor(COLORS.WARN)
+        .setDescription(
+          `🤝 **HASIL PERTANDINGAN: SERI (DRAW) !**\n\n` +
+          `Pertempuran sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berakhir imbang!\n\n` +
+          `• Sisa HP Challenger: \`${result.challengerHP}%\`\n` +
+          `• Sisa HP Opponent: \`${result.opponentHP}%\`\n\n` +
+          `💰 Seluruh taruhan dikembalikan tanpa potongan pajak arena.`
+        );
+    } else {
+      const isChalWinner = result.winnerId === challengerUser.id;
+      const winnerUser = isChalWinner ? challengerUser : opponentUser;
+      const loserUser = isChalWinner ? opponentUser : challengerUser;
+      
+      embed
+        .setColor(COLORS.SUCCESS)
+        .setDescription(
+          `🏆 **PEMENANG ARENA: ${result.winnerName.toUpperCase()} !**\n\n` +
+          `Selamat kepada **${winnerUser.username}**! Pet kesayangan Anda (**${result.winnerName}**) sukses menumbangkan (**${result.loserName}**) milik **${loserUser.username}**!\n\n` +
+          `💰 **Total Jackpot Hadiah:** **${formatCurrency(result.prizePool)}** *(sudah potong pajak arena 5% - Rp ${result.tax.toLocaleString('id-ID')})*\n` +
+          `📈 XP & Level pet pemenang telah ditambahkan secara otomatis.`
+        );
+    }
+
+    // Log pertempuran ronde-demi-ronde
+    const battleLog = result.logs.join('\n');
+    embed.addFields({
+      name: '📝 Transkrip Jalannya Pertempuran',
+      value: `\`\`\`markdown\n${battleLog}\n\`\`\``,
+      inline: false
+    });
+
+    return embed;
   }
 };
 

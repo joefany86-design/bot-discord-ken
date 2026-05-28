@@ -6,6 +6,7 @@ const antiSpam = require('./antiSpam');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const bank = require('./bank');
+const pet = require('./pet');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField } = require('discord.js');
 const { sendAdminLog } = require('../logger');
 // Owner ID dari environment variable (fallback ke default)
@@ -776,6 +777,562 @@ async function handleKosUpgradeCommand(message, client) {
 }
 
 /**
+ * Helper untuk menampilkan dan memproses Dashboard Pet Tamagotchi
+ */
+async function handlePetCommand(message, client, args) {
+  const { guildId, author, guild } = message;
+  const subCommand = args[0] ? args[0].toLowerCase() : null;
+
+  // ── SUB-PERINTAH: BUY / ADOPT ──
+  if (subCommand === 'buy' || subCommand === 'adopt') {
+    const petName = args[1];
+    const petType = args[2];
+    if (!petName || !petType) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet buy <nama> <slime/dragon/cat/golem>`\nContoh: `.pet buy Ciko Dragon`')] });
+    }
+    try {
+      const res = pet.adoptPet(author.id, guildId, petName, petType);
+      const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil dibeli seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>. Ketik \`.pet\` untuk merawat.`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: SHOP ──
+  if (subCommand === 'shop') {
+    return handlePetShopCommand(message, client);
+  }
+
+  // ── SUB-PERINTAH: BUY-ITEM ──
+  if (subCommand === 'buy-item') {
+    const itemId = args[1];
+    const qty = parseInt(args[2] || 1);
+    if (!itemId) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet buy-item <item_id> [jumlah]`\nContoh: `.pet buy-item water 3`')] });
+    }
+    try {
+      const res = pet.buyItem(author.id, guildId, itemId, qty);
+      const successEmb = embeds.successEmbed('Pembelian Sukses! 🛒', `Berhasil membeli **${qty} pcs ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Persediaan Anda saat ini: \`${res.newInventoryQty} pcs\`.`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Pembelian Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: WORK ──
+  if (subCommand === 'work') {
+    try {
+      const res = pet.sendToWork(author.id, guildId);
+      const successEmb = embeds.successEmbed('Pet Selesai Bekerja! 💼', `**${res.pet.pet_name}** berhasil mengumpulkan upah kerja sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!\n📈 Bonus Level: \`+Rp ${res.levelBonus}\`\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Kerja Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: HUNT ──
+  if (subCommand === 'hunt') {
+    try {
+      const res = pet.sendToHunt(author.id, guildId);
+      let dropText = '';
+      if (res.dropItem) {
+        dropText = `\n🎁 **JACKPOT DROP LANGKA:** Menemukan **1x ${res.dropItem.name}** gratis!`;
+      }
+      const successEmb = embeds.successEmbed('Pet Selesai Berburu! 🏹', `**${res.pet.pet_name}** berhasil menyelesaikan perburuan di hutan liar dan membawa pulang uang sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!${dropText}\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`.`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Berburu Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: PLAY ──
+  if (subCommand === 'play') {
+    try {
+      const res = pet.playWithPet(author.id, guildId);
+      const successEmb = embeds.successEmbed('Ajak Main Berhasil! ⚽', `Anda bermain lempar bola bersama **${res.pet_name}**!\n📊 Kebahagiaan meningkat: **${res.happiness}%** (+15 XP).`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Bermain!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: RESET ──
+  if (subCommand === 'reset') {
+    try {
+      pet.resetPet(author.id, guildId);
+      const successEmb = embeds.successEmbed('Reset Pet Sukses! 🧹', 'Kandang hewan peliharaan Anda telah dibersihkan sepenuhnya. Anda sekarang bisa mengadopsi pet baru.');
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Reset Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: PVP ──
+  if (subCommand === 'pvp') {
+    const opponent = message.mentions.users.first();
+    const bet = parseInt(args[2]);
+    if (!opponent || isNaN(bet) || bet <= 0) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet pvp @user <taruhan_koin>`\nContoh: `.pet pvp @Joefany 1000`')] });
+    }
+    return handlePetPvPCommand(message, opponent, bet, client);
+  }
+
+  // ── DEFAULT: DASHBOARD UTAMA DENGAN TOMBOL INTERAKTIF ──
+  const getDashboardPanel = (userId, guildId) => {
+    const userPet = pet.getPet(userId, guildId);
+    const inventory = pet.getInventory(userId, guildId);
+    const embed = embeds.petDashboardEmbed(author, userPet, inventory);
+
+    const rows = [];
+    if (!userPet) {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi Telur Pet').setStyle(ButtonStyle.Success)
+      );
+      rows.push(row);
+    } else if (userPet.status === 'EGG') {
+      const now = Math.floor(Date.now() / 1000);
+      const isHatched = userPet.hatch_at <= now;
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan Telur').setStyle(ButtonStyle.Success).setDisabled(!isHatched),
+        new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+      );
+      rows.push(row);
+    } else if (userPet.status === 'DEAD') {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Sapu/Reset Kandang').setStyle(ButtonStyle.Danger)
+      );
+      rows.push(row);
+    } else {
+      // Pet Hidup (Baby / Adult)
+      const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_feed').setLabel('🍗 Makan').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('pet_btn_drink').setLabel('🥤 Minum').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_play').setLabel('⚽ Main').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
+      );
+      
+      const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
+        new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
+      );
+      rows.push(row1, row2);
+    }
+
+    return { embeds: [embed], components: rows };
+  };
+
+  const initialData = getDashboardPanel(author.id, guildId);
+  const replyMsg = await message.reply(initialData);
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 180000 // 3 menit interaktif
+  });
+
+  collector.on('collect', async iPet => {
+    if (iPet.user.id !== author.id) {
+      return iPet.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+    }
+
+    try {
+      if (iPet.customId === 'pet_btn_refresh') {
+        const freshData = getDashboardPanel(author.id, guildId);
+        await iPet.update(freshData);
+      }
+      
+      else if (iPet.customId === 'pet_btn_reset') {
+        collector.stop();
+        pet.resetPet(author.id, guildId);
+        await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+      }
+
+      else if (iPet.customId === 'pet_btn_nav_adopt') {
+        // Tampilkan Modal Adopsi
+        const modal = new ModalBuilder()
+          .setCustomId('pet_modal_adopt')
+          .setTitle('🛎️ Adopsi Telur Pet Tamagotchi');
+
+        const nameInput = new TextInputBuilder()
+          .setCustomId('pet_name')
+          .setLabel('Nama Pet Anda')
+          .setPlaceholder('Contoh: Ciko')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const typeInput = new TextInputBuilder()
+          .setCustomId('pet_type')
+          .setLabel('Jenis Pet (Slime / Dragon / Cat / Golem)')
+          .setPlaceholder('Ketik jenis pet pilihan Anda')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(nameInput),
+          new ActionRowBuilder().addComponents(typeInput)
+        );
+
+        await iPet.showModal(modal);
+
+        const submitted = await iPet.awaitModalSubmit({
+          filter: (sub) => sub.customId === 'pet_modal_adopt' && sub.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (submitted) {
+          try {
+            const pName = submitted.fields.getTextInputValue('pet_name');
+            const pType = submitted.fields.getTextInputValue('pet_type');
+            
+            const res = pet.adoptPet(author.id, guildId, pName, pType);
+            const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
+            
+            await submitted.reply({ embeds: [successEmb] });
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+          } catch (err) {
+            await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], ephemeral: true });
+          }
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_hatch') {
+        const freshPet = pet.getPet(author.id, guildId);
+        if (freshPet && freshPet.status === 'BABY') {
+          const successEmb = embeds.successEmbed('Telur Menetas! 🎉🐣', `Selamat! Telur pet **${freshPet.pet_name}** Anda telah resmi menetas menjadi bayi monster yang lucu! Ketik \`.pet\` untuk menyegarkan.`);
+          await iPet.reply({ embeds: [successEmb] });
+          collector.stop();
+          await replyMsg.delete().catch(() => {});
+        } else {
+          await iPet.reply({ content: '⏳ Telur Anda belum siap menetas!', ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_feed') {
+        try {
+          const res = pet.useItem(author.id, guildId, 'FOOD_BASIC', true);
+          const successEmb = embeds.successEmbed('Beri Makan Berhasil! 🍗', `Anda memberi pakan **${res.item.name}** ke pet Anda!${res.didAutoBuy ? ' *(Auto-beli Rp 150 potong dari dompet)*' : ''}\n📊 Status Baru: Kenyangan **${res.pet.hunger}%** (+10 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Beri Makan!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_drink') {
+        try {
+          const res = pet.useItem(author.id, guildId, 'WATER', true);
+          const successEmb = embeds.successEmbed('Beri Minum Berhasil! 🥤', `Anda memberi air minum **${res.item.name}** ke pet Anda!${res.didAutoBuy ? ' *(Auto-beli Rp 100 potong dari dompet)*' : ''}\n📊 Status Baru: Hidrasi **${res.pet.thirst}%** (+10 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Beri Minum!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_play') {
+        try {
+          const res = pet.playWithPet(author.id, guildId);
+          const successEmb = embeds.successEmbed('Bermain Berhasil! ⚽', `Anda mengajak pet bermain bola! \n📊 Status Baru: Kebahagiaan **${res.happiness}%** (+15 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Bermain!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_cure') {
+        try {
+          const res = pet.useItem(author.id, guildId, 'MEDICINE', true);
+          const successEmb = embeds.successEmbed('Pengobatan Berhasil! 💊', `Anda menyembuhkan pet dengan **${res.item.name}**!${res.didAutoBuy ? ' *(Auto-beli Rp 500 potong dari dompet)*' : ''}\n📊 Status Baru: HP Kesehatan **${res.pet.health}%** (+10 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Pengobatan!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_work') {
+        try {
+          const res = pet.sendToWork(author.id, guildId);
+          const successEmb = embeds.successEmbed('Selesai Bekerja! 💼', `**${res.pet.pet_name}** sukses membawa pulang uang gaji sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!\n📈 Bonus Level: \`+Rp ${res.levelBonus}\`\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, Kebahagiaan \`${res.pet.happiness}%\` (+30 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Bekerja!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_hunt') {
+        try {
+          const res = pet.sendToHunt(author.id, guildId);
+          let dropText = '';
+          if (res.dropItem) {
+            dropText = `\n🎁 **DROP LANGKA HOKI:** Menemukan **1x ${res.dropItem.name}** gratis!`;
+          }
+          const successEmb = embeds.successEmbed('Selesai Berburu! 🏹', `**${res.pet.pet_name}** berhasil kembali dari berburu dengan koin **Rp ${res.reward.toLocaleString('id-ID')}**!${dropText}\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\` (+60 XP).`);
+          await iPet.reply({ embeds: [successEmb] });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Berburu!', err.message)], ephemeral: true });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_nav_shop') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+        await handlePetShopCommand(message, client);
+      }
+    } catch (err) {
+      console.error('Error in pet dashboard collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    const freshData = getDashboardPanel(author.id, guildId);
+    freshData.components = [];
+    await replyMsg.edit(freshData).catch(() => {});
+  });
+}
+
+/**
+ * Helper untuk memproses Toko Persediaan Pet
+ */
+async function handlePetShopCommand(message, client) {
+  const { guildId, author } = message;
+
+  const getShopPanelData = (userId, guildId) => {
+    const wallet = economy.getWallet(userId, guildId);
+    const inventory = pet.getInventory(userId, guildId);
+    const embed = embeds.petShopEmbed(wallet, inventory);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('pet_select_shop_item')
+      .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
+        new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
+        new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
+        new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
+        new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY')
+      );
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+    const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
+    const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+    return { embeds: [embed], components: [selectRow, cancelRow] };
+  };
+
+  const initialData = getShopPanelData(author.id, guildId);
+  const replyMsg = await message.reply(initialData);
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 120000
+  });
+
+  collector.on('collect', async iShop => {
+    if (iShop.user.id !== author.id) {
+      return iShop.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+    }
+
+    try {
+      if (iShop.customId === 'pet_btn_cancel_shop') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+        await handlePetCommand(message, client, []);
+      } else if (iShop.customId === 'pet_select_shop_item') {
+        collector.stop();
+        const selectedItem = iShop.values[0];
+
+        try {
+          const res = pet.buyItem(author.id, guildId, selectedItem, 1);
+          const successEmb = embeds.successEmbed(
+            'Transaksi Belanja Sukses! 🛒',
+            `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang telah dimasukkan ke persediaan pet Anda.\n\n` +
+            `📉 Sisa dompetmu sekarang adalah **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+          );
+          await iShop.update({ embeds: [successEmb], components: [] });
+        } catch (err) {
+          const errorEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+          await iShop.update({ embeds: [errorEmb], components: [] });
+        }
+      }
+    } catch (err) {
+      console.error('Error in pet shop collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    const freshData = getShopPanelData(author.id, guildId);
+    freshData.components = [];
+    await replyMsg.edit(freshData).catch(() => {});
+  });
+}
+
+/**
+ * Helper untuk memproses Duel PvP Arena Pet
+ */
+async function handlePetPvPCommand(message, opponent, bet, client) {
+  const { guildId, author } = message;
+
+  if (opponent.id === author.id) {
+    return message.reply({ embeds: [embeds.warnEmbed('Pertandingan Tidak Sah!', 'Anda tidak bisa menantang hewan peliharaan Anda sendiri!')] });
+  }
+
+  // Validasi pet kedua belah pihak
+  const chalPet = pet.getPet(author.id, guildId);
+  const oppPet = pet.getPet(opponent.id, guildId);
+
+  if (!chalPet) return message.reply({ embeds: [embeds.errorEmbed('PvP Gagal!', 'Anda tidak memiliki hewan peliharaan! Gunakan `.pet` untuk adopsi.')] });
+  if (!oppPet) return message.reply({ embeds: [embeds.errorEmbed('PvP Gagal!', 'Lawan yang Anda tantang tidak memiliki hewan peliharaan!')] });
+
+  if (chalPet.status === 'EGG' || chalPet.status === 'BABY') {
+    return message.reply({ embeds: [embeds.errorEmbed('Pet Belum Cukup Umur!', 'Pet Anda masih bayi/telur. Dia harus dewasa (Level >= 10) untuk bertarung di arena!')] });
+  }
+  if (oppPet.status === 'EGG' || oppPet.status === 'BABY') {
+    return message.reply({ embeds: [embeds.errorEmbed('Lawan Belum Cukup Umur!', 'Pet lawan masih bayi/telur. Pertarungan dibatalkan.')] });
+  }
+
+  const chalWallet = economy.getWallet(author.id, guildId);
+  const oppWallet = economy.getWallet(opponent.id, guildId);
+
+  if (chalWallet.balance < bet) return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Saldo Anda tidak mencukupi taruhan Rp ${bet.toLocaleString('id-ID')}!`)] });
+  if (oppWallet.balance < bet) return message.reply({ embeds: [embeds.errorEmbed('Saldo Lawan Kurang!', `Saldo lawan tidak mencukupi taruhan Rp ${bet.toLocaleString('id-ID')}!`)] });
+
+  const pvpEmbed = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('⚔️ TANTANGAN ARENA BATTLE PET ⚔️')
+    .setDescription(
+      `🔔 <@${opponent.id}>! Anda telah ditantang oleh <@${author.id}> untuk duel adu kekuatan pet!\n\n` +
+      `📦 **Taruhan Tarung:** **Rp ${bet.toLocaleString('id-ID')}** koin\n` +
+      `🦖 **Pet Anda:** **${oppPet.pet_name}** the \`${oppPet.pet_type}\` (Lv. ${oppPet.level})\n` +
+      `⚔️ **Pet Penantang:** **${chalPet.pet_name}** the \`${chalPet.pet_type}\` (Lv. ${chalPet.level})\n\n` +
+      `*Penerima tantangan memiliki waktu **60 detik** untuk menekan tombol **🟢 Terima Duel** di bawah!*`
+    )
+    .setFooter({ text: 'Rupiah Server PvP Arena' })
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('pet_pvp_accept').setLabel('🟢 Terima Duel').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('pet_pvp_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
+  );
+
+  const replyMsg = await message.reply({ content: `<@${opponent.id}>`, embeds: [pvpEmbed], components: [row] });
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 60000
+  });
+
+  collector.on('collect', async iMatch => {
+    if (iMatch.user.id !== opponent.id) {
+      return iMatch.reply({ content: '❌ Hanya penerima tantangan asli yang bisa merespon tombol ini!', ephemeral: true });
+    }
+
+    try {
+      if (iMatch.customId === 'pet_pvp_decline') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+        await iMatch.reply({ content: `🔴 <@${author.id}>, tantangan duel PvP ditolak oleh <@${opponent.id}>.` });
+      }
+      
+      else if (iMatch.customId === 'pet_pvp_accept') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+
+        try {
+          // Eksekusi PvP
+          const result = pet.executePvP(author.id, opponent.id, guildId, bet);
+          const battleReport = embeds.petBattleEmbed(author, opponent, result);
+
+          await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport] });
+        } catch (err) {
+          await iMatch.reply({ embeds: [embeds.errorEmbed('Pertempuran Gagal Dihentikan!', err.message)] });
+        }
+      }
+    } catch (err) {
+      console.error('Error in pvp collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    await replyMsg.delete().catch(() => {});
+  });
+}
+
+/**
+ * Perintah Administratif Khusus Pet
+ */
+async function handlePetAdminCommand(message, client, args) {
+  const subCommand = args[0] ? args[0].toLowerCase() : null;
+  const target = message.mentions.users.first();
+  const { guildId } = message;
+
+  if (subCommand === 'give-xp') {
+    const amount = parseInt(args[2]);
+    if (!target || isNaN(amount) || amount <= 0) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin give-xp @user <jumlah_xp>`');
+    }
+    const petData = pet.getPet(target.id, guildId);
+    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
+
+    db.transaction(() => {
+      let newXp = petData.xp + amount;
+      let newLevel = petData.level;
+      
+      while (newXp >= newLevel * 100) {
+        newXp -= newLevel * 100;
+        newLevel++;
+      }
+
+      database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?', [newXp, newLevel, target.id, guildId]);
+    });
+
+    const freshPet = pet.getPet(target.id, guildId);
+    return message.reply(`✅ Berhasil memberikan **${amount} XP** ke pet **${freshPet.pet_name}** milik <@${target.id}>! (Sekarang Level: ${freshPet.level})`);
+  }
+
+  if (subCommand === 'heal') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin heal @user`');
+    }
+    const petData = pet.getPet(target.id, guildId);
+    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
+
+    database.run(
+      'UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ?',
+      [target.id, guildId]
+    );
+
+    return message.reply(`✅ Seluruh stats pet **${petData.pet_name}** milik <@${target.id}> berhasil dipulihkan secara instan ke 100%!`);
+  }
+
+  if (subCommand === 'reset') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin reset @user`');
+    }
+    try {
+      pet.resetPet(target.id, guildId);
+      return message.reply(`✅ Sukses mereset dan menghapus data pet milik <@${target.id}>.`);
+    } catch (err) {
+      return message.reply(`❌ Gagal mereset: ${err.message}`);
+    }
+  }
+
+  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`');
+}
+
+/**
  * Routing & Handler Perintah Teks dengan awalan titik (.)
  * Mengembalikan true jika perintah dikenali & diproses, false jika bukan perintah modul.
  */
@@ -787,6 +1344,28 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
 
   if (!guildId) return false;
+
+  // ═══════════════════════════════════════════════════
+  // Perintah: .pet (Sistem Pet Tamagotchi Style)
+  // ═══════════════════════════════════════════════════
+  if (commandName === 'pet') {
+    await handlePetCommand(message, client, args);
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Perintah Admin: .pet-admin (Owner & Admin Only)
+  // ═══════════════════════════════════════════════════
+  if (commandName === 'pet-admin') {
+    const isOwner = author.id === OWNER_ID;
+    const isGuildOwner = message.guild && author.id === message.guild.ownerId;
+    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin && !isGuildOwner) {
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat menggunakan perintah pet-admin.')] });
+    }
+    await handlePetAdminCommand(message, client, args);
+    return true;
+  }
 
   // Pastikan instrumen saham default sudah terdaftar saat perintah dijalankan
   stocks.initDefaultStocks(guild);

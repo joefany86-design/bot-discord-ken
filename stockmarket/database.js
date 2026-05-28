@@ -191,7 +191,41 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, & Kosan berhasil diinisialisasi.');
+  // 12. User Pets (Sistem Tamagotchi Pet)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_pets (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      pet_name TEXT NOT NULL,
+      pet_type TEXT NOT NULL,
+      status TEXT DEFAULT 'EGG',
+      level INTEGER DEFAULT 1,
+      xp INTEGER DEFAULT 0,
+      health INTEGER DEFAULT 100,
+      hunger INTEGER DEFAULT 100,
+      thirst INTEGER DEFAULT 100,
+      happiness INTEGER DEFAULT 100,
+      last_interaction_at INTEGER DEFAULT (strftime('%s','now')),
+      last_work_at INTEGER DEFAULT 0,
+      last_hunt_at INTEGER DEFAULT 0,
+      hatch_at INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT (strftime('%s','now')),
+      PRIMARY KEY (user_id, guild_id)
+    )
+  `);
+
+  // 13. Pet Inventory (Stok makanan & obat-obatan pet)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pet_inventory (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      quantity INTEGER DEFAULT 0,
+      PRIMARY KEY (user_id, guild_id, item_id)
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, & Sistem Pet berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup
