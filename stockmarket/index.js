@@ -1581,16 +1581,16 @@ async function handleEconomyCommands(message, client) {
       if (reportChannel) {
         const notifyEmbed = new EmbedBuilder()
           .setColor(embeds.COLORS.ERROR)
-          .setTitle('📉 PENYESUAIAN REGULASI PASAR SAHAM')
+          .setTitle('🚨 BREAKING NEWS: BENCANA FINANSIAL & INTERVENSI PASAR SAHAM! 🚨')
           .setDescription(
-            `📢 **Otoritas Jasa Keuangan Server** telah melakukan penyesuaian regulasi harga saham secara manual.\n\n` +
+            `📢 **PENGUMUMAN MUSIBAH BURSA SAHAM:** Otoritas Jasa Keuangan Server mendadak mengintervensi lantai bursa dan melakukan pemangkasan harga saham secara paksa! Kepanikan luar biasa dilaporkan melanda para investor!\n\n` +
             `🎯 **Saham Terdampak:** **${stock.stock_ticker}** (#${stock.stock_name})\n` +
-            `👉 **Kebijakan:** Penurunan Harga sebesar **-${percent}%**\n` +
+            `👉 **Kebijakan Ekstrim:** Penurunan Harga Instan Sebesar **-${percent}%** 💀\n` +
             `💵 **Harga Lama:** Rp ${oldPrice.toLocaleString('id-ID')} ➔ **Harga Baru:** Rp ${newPrice.toLocaleString('id-ID')}\n\n` +
-            `*Perubahan ini langsung berlaku di lantai bursa. Harap sesuaikan portofolio investasi Anda!*`
+            `*Bagi warga server yang mengalami kerugian portofolio parah, harap tetap tenang dan dilarang merusak fasilitas umum kosan!*`
           )
           .setTimestamp();
-        await reportChannel.send({ embeds: [notifyEmbed] }).catch(() => {});
+        await reportChannel.send({ content: '@everyone', embeds: [notifyEmbed] }).catch(() => {});
       }
       return true;
     }
