@@ -38,6 +38,64 @@ function generateSparkline(prices) {
 }
 
 /**
+ * Membuat grafik 2D ASCII (grid teks) dari array harga saham histori.
+ */
+function generate2DChart(prices) {
+  if (!prices || prices.length < 2) return '`[ ── ]` Belum cukup riwayat harga untuk membuat grafik.';
+  
+  const height = 5; // Baris grid Y (0 s/d 4)
+  const width = prices.length;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min;
+
+  // grid: 5 baris, width kolom, diisi dengan spasi kosong
+  const grid = Array(height).fill(null).map(() => Array(width).fill('   '));
+
+  prices.forEach((price, x) => {
+    // Normalisasi harga ke rentang baris (0 s/d height - 1)
+    let y = range === 0 ? 2 : Math.round(((price - min) / range) * (height - 1));
+    // Balik koordinat Y karena baris index 0 adalah bagian atas grafik
+    y = (height - 1) - y;
+
+    // Tentukan simbol penanda tren berdasarkan perbandingan dengan harga sebelumnya
+    let symbol = ' ■ '; // default stabil / awal
+    if (x > 0) {
+      if (prices[x] > prices[x - 1]) {
+        symbol = ' ▲ ';
+      } else if (prices[x] < prices[x - 1]) {
+        symbol = ' ▼ ';
+      }
+    } else {
+      symbol = ' • '; // Titik awal pertama
+    }
+
+    grid[y][x] = symbol;
+  });
+
+  // Gabungkan grid menjadi string dengan label sumbu Y di sebelah kiri
+  let chartStr = '';
+  for (let y = 0; y < height; y++) {
+    // Hitung estimasi harga pada baris Y ini untuk label sumbu Y
+    const rowVal = range === 0 ? min : max - (y * (range / (height - 1)));
+    const formattedPrice = `Rp ${Math.round(rowVal).toLocaleString('id-ID')}`;
+    const paddedLabel = formattedPrice.padEnd(8, ' ');
+
+    chartStr += `${paddedLabel} | ${grid[y].join('')}\n`;
+  }
+
+  // Tambahkan garis sumbu X di bagian bawah
+  chartStr += '         └' + '───'.repeat(width) + '\n';
+  chartStr += '          ';
+  for (let x = 0; x < width; x++) {
+    chartStr += `T-${width - 1 - x}`.padEnd(3, ' ');
+  }
+
+  return `\`\`\`text\n${chartStr}\n\`\`\``;
+}
+
+
+/**
  * Mengambil warna spesifik untuk role prestise agar warna embed (.shop-buy / .gacha-role)
  * selaras secara sempurna dengan gradasi role yang diperoleh.
  */
@@ -226,11 +284,11 @@ module.exports = {
     const pct = stock.previous_price > 0 ? ((diff / stock.previous_price) * 100).toFixed(1) : '0.0';
     const trendEmoji = diff > 0 ? '🟢 Naik' : diff < 0 ? '🔴 Turun' : '🟡 Stabil';
     
-    // Bikin representasi visual chart sederhana dari history harga
+    // Bikin representasi visual chart 2D dari history harga (maksimal 10)
     let chartVisual = '`[ ── ]` Belum ada riwayat harga.';
     if (priceHistory && priceHistory.length > 0) {
-      const prices = priceHistory.slice(-5).map(h => h.price);
-      chartVisual = generateSparkline(prices);
+      const prices = priceHistory.map(h => h.price);
+      chartVisual = generate2DChart(prices);
     }
 
     return new EmbedBuilder()
@@ -242,11 +300,70 @@ module.exports = {
         { name: '📉 Performa Hari Ini', value: `\`${trendEmoji} (${diff >= 0 ? '+' : ''}${pct}%)\``, inline: true },
         { name: '🏛️ Stok Pasar', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
         { name: '🔥 Keaktifan Channel', value: `\`${stock.activity_score.toFixed(1)} poin\``, inline: true },
-        { name: '📈 Tren Pergerakan Harga (5 Update Terakhir)', value: chartVisual, inline: false }
+        { name: '📈 Tren Pergerakan Harga (10 Pembaruan Terakhir)', value: chartVisual, inline: false }
       )
-      .setFooter({ text: 'Gunakan perintah .buy atau .sell untuk bertransaksi!' })
+      .setFooter({ text: 'Gunakan tombol di bawah ini untuk bertransaksi atau menyegarkan!' })
       .setTimestamp();
   },
+
+  // 4a. Embed Grafik Saham Premium 2D ASCII (.chart $TICKER)
+  stockChartEmbed(stock, priceHistory, client) {
+    const diff = stock.current_price - stock.previous_price;
+    
+    // Ambil harga dari histori (maksimal 10)
+    let prices = [];
+    if (priceHistory && priceHistory.length > 0) {
+      prices = priceHistory.map(h => h.price);
+    } else {
+      prices = [stock.current_price];
+    }
+    
+    // Hitung performa chart (dari titik terlama ke terbaru)
+    let chartPerformanceText = '`0.0%` (Stabil)';
+    let chartColor = COLORS.WARN;
+    if (prices.length >= 2) {
+      const firstPrice = prices[0];
+      const lastPrice = prices[prices.length - 1];
+      const chartDiff = lastPrice - firstPrice;
+      const chartPct = firstPrice > 0 ? ((chartDiff / firstPrice) * 100).toFixed(1) : '0.0';
+      const pctSign = chartDiff >= 0 ? '+' : '';
+      const trendEmoji = chartDiff > 0 ? '🟢' : chartDiff < 0 ? '🔴' : '🟡';
+      chartPerformanceText = `\`${pctSign}${chartPct}%\` (${trendEmoji})`;
+      
+      chartColor = chartDiff > 0 ? COLORS.SUCCESS : chartDiff < 0 ? COLORS.ERROR : COLORS.WARN;
+    } else {
+      chartColor = diff > 0 ? COLORS.SUCCESS : diff < 0 ? COLORS.ERROR : COLORS.WARN;
+    }
+    
+    const chartVisual = generate2DChart(prices);
+    
+    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const highPrice = Math.max(...prices);
+    const lowPrice = Math.min(...prices);
+
+    return new EmbedBuilder()
+      .setColor(chartColor)
+      .setTitle(`📈 GRAFIK BURSA: ${stock.stock_ticker} — #${stock.stock_name}`)
+      .setDescription(
+        `Investasikan koin **${config.CURRENCY_NAME}** Anda ke channel server teraktif!\n` +
+        `Berikut adalah grafik tren fluktuasi harga **${stock.stock_ticker}**:`
+      )
+      .addFields(
+        { name: '📊 Sumbu Grafik 2D ASCII', value: chartVisual, inline: false },
+        { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}**`, inline: true },
+        { name: '📈 Performa Grafik', value: chartPerformanceText, inline: true },
+        { name: '🏛️ Sisa Bursa', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
+        { name: '📈 Statistik Grafik (Range)', value: 
+          `• Tertinggi (High): \`${formatCurrency(highPrice)}\`\n` +
+          `• Terendah (Low): \`${formatCurrency(lowPrice)}\`\n` +
+          `• Rata-rata (Avg): \`${formatCurrency(Math.round(avgPrice))}\``, 
+          inline: false 
+        }
+      )
+      .setFooter({ text: 'Gunakan tombol di bawah ini untuk bertransaksi atau menyegarkan grafik!' })
+      .setTimestamp();
+  },
+
 
   // 5. Embed Portofolio (.portfolio / .porto)
   portfolioEmbed(user, portfolio, wallet) {

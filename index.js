@@ -315,7 +315,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.transfer @user <jumlah>\`** - Mengirim koin secara instan ke member lain (dikenakan pajak transfer 2%).`,
             `👉 **\`.rich\`**, **\`.leaderboard\`** atau **\`.liderbot\`** - Menampilkan papan peringkat 10 member terkaya di server.`,
             `👉 **\`.market\`** atau **\`.saham\`** - Membuka dashboard bursa saham channel dan meluncurkan menu perdagangan interaktif privat.`,
-            `👉 **\`.stock <ticker>\`** - Melihat tren visual histori pergerakan harga saham per 5 pembaruan.`,
+            `👉 **\`.stock <ticker>\`** atau **\`.chart <ticker>\`** - Melihat grafik tren 2D ASCII interaktif (10 pembaruan terakhir) lengkap dengan tombol Beli, Jual, dan Segarkan secara instan.`,
             `👉 **\`.buy <ticker> <jumlah>\`** - Membeli lembar saham channel (Batas kepemilikan: maks 500 lembar per saham).`,
             `👉 **\`.sell <ticker> <jumlah>\`** - Menjual lembar saham Anda ke bursa (dikenakan pajak transaksi 5%).`,
             `👉 **\`.sellall <ticker>\`** - Melikuidasi/menjual seluruh kepemilikan lembar saham Anda pada ticker terpilih.`,
