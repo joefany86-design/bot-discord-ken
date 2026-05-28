@@ -39,11 +39,22 @@ async function announceSkip(client, guildId, userName, fine) {
   return speak(client, guildId, `Sayang sekali, ${userName} menyerah dan didenda dua puluh koin rupiah!`);
 }
 
+async function askTruthOrDareTTS(client, guildId, userName) {
+  return speak(client, guildId, `${userName}, truth atau dare? Silakan pilih tombol di layar chat kamu.`);
+}
+
+async function readQuestionTTS(client, guildId, userName, type, questionText) {
+  const intro = type === 'truth' ? 'pertanyaannya adalah' : 'tantangannya adalah';
+  return speak(client, guildId, `${userName}, ${intro}: ${questionText}`);
+}
+
 module.exports = {
   speak,
   announceGameStart,
   announceNewHotseat,
   announceChallengerTurn,
   announceSuccess,
-  announceSkip
+  announceSkip,
+  askTruthOrDareTTS,
+  readQuestionTTS
 };

@@ -27,5 +27,16 @@ module.exports = {
     DEFAULT: 'chill',
     ALLOWED: ['chill', 'deep', 'spicy', 'custom'],
     SPICY_NSFW_ONLY: true, // Spicy kategori hanya boleh di NSFW text channel
+  },
+
+  // Konfigurasi Mode Game
+  modes: {
+    DEFAULT: 'mode_2',
+    ALLOWED: ['mode_1', 'mode_2', 'mode_3'],
+    LABELS: {
+      mode_1: '⚔️ Mode 1: Saling Tanya (1 vs 1)',
+      mode_2: '🔥 Mode 2: Interogasi (Hot Seat)',
+      mode_3: '🤖 Mode 3: Bot TTS (Bot Bertanya)'
+    }
   }
 };
