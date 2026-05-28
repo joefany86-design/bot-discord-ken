@@ -562,64 +562,40 @@ module.exports = {
   updateAnnouncementEmbed(guild) {
     return new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
-      .setTitle('📢 PEMBARUAN & PENYEIMBANGAN EKONOMI SERVER KOSAN 1A 🚀')
+      .setTitle('📢 PEMBARUAN & OTOMATISASI BURSA SAHAM SENTINEL BOT 🚀')
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
         `Halo Warga Kosan 1A! 🏠✨\n` +
-        `Dalam upaya menciptakan ekosistem permainan yang lebih seru, adil, aman, dan seimbang bagi seluruh member, kami secara resmi merilis **Pembaruan Sistem Ekonomi & Keamanan Bot 2026**!\n\n` +
-        `Berikut adalah rangkuman fitur baru dan pengamanan sistem yang telah aktif per hari ini:`
+        `Dalam upaya meningkatkan kepraktisan dan keseruan bermain ekonomi di server, kami secara resmi merilis **Pembaruan Sistem Ekonomi Otomatis & Robot Trading AI 2026**!\n\n` +
+        `Berikut adalah rangkuman fitur-fitur serba otomatis yang telah aktif penuh hari ini:`
       )
       .addFields(
         {
-          name: '🎲 1. REVOLUSI ADIL: GAME TRUTH OR DARE (ToD)',
+          name: '🤖 1. SISTEM AUTOPILOT AKTIF (SCHEDULER FIX)',
           value: 
-            `* **🛡️ Anti-AFK Juri (Judge Protection)**: Jika Juri yang terpilih pergi AFK atau telat memilih keputusan (60 detik), **Victim BEBAS DENDA Rp 10.000!**\n` +
-            `* **⚖️ Juri Berputar (Rotational Challenger)**: Juri kini bergantian secara melingkar dan teratur dari pemain berikutnya yang aktif di VC. Semua mendapat giliran bertanya dan menilai secara adil!\n` +
-            `* **🙋‍♂️ Gabung Tengah Game (Join Mid-game)**: Anggota baru yang masuk VC bisa langsung klik tombol **\`🙋‍♂️ Ikut Bermain\`** saat transisi putaran untuk ikut bermain.\n` +
-            `* **💰 Penyeimbangan Koin ToD**:\n` +
-            `  - Denda Skip/Menyerah: Diturunkan drastis dari Rp 10.000 menjadi **Rp 300**!\n` +
-            `  - Hadiah Sukses: Dinaikkan dari Rp 35 menjadi **Rp 100**!`
+            `* Seluruh sistem penjadwalan otomatis (cron jobs) bursa kini aktif penuh!\n` +
+            `* Naik-turun harga saham berdasarkan keaktifan, pembagian dividen mingguan dinamis setiap Minggu malam, dan event ekonomi acak kini berjalan **100% otomatis** di latar belakang tanpa henti.`
         },
         {
-          name: '🎙️ 2. PERLINDUNGAN ANTI-AFK FARMING (VOICE CHANNEL)',
+          name: '🌅 2. GAJI HARIAN OTOMATIS (AUTO-DAILY CLAIM)',
           value:
-            `* **🎚️ Proteksi Mute/Deafen**: Member yang melakukan **Mute** (selfMute/serverMute) atau **Deafen** di Voice Channel **tidak akan mendapatkan koin keaktifan**.\n` +
-            `* **⏱️ Interval Diperlambat**: Pengecekan keaktifan kini dilakukan setiap **5 menit** (hanya **Rp 1 per 5 menit**).\n` +
-            `* **📈 Batas Kuota Harian**: Maksimal koin Voice Earn dibatasi sangat ketat **Rp 25 per hari** per user untuk mencegah hiperinflasi saldo server.`
+            `* **Bebas Repot**: Tidak perlu mengetik perintah \`.daily\` secara manual lagi!\n` +
+            `* **Cair Instan**: Gaji harian Anda (Rp 15 - Rp 35 + streak bonus) akan **otomatis dicairkan** begitu Anda mengirimkan chat pertama hari ini di text channel mana saja, disertai pengumuman embed ganteng!`
         },
         {
-          name: '📈 3. BURSA SAHAM & TOKO ROLE (ANTI-MONOPOLI)',
+          name: '📈 3. ROBOT INVESTASI PRIBADI (.autotrade / .autoinvest)',
           value:
-            `* **🛑 Batas Saham (Share Cap)**: Mencegah investor kaya memonopoli bursa saham. Setiap user kini dibatasi maksimal memiliki **500 lembar saham per instrumen channel**.\n` +
-            `* **🎰 Misteri Gacha Hard Mode**:\n` +
-            `  - Putar gacha seharga **Rp 250** dengan **Zonk Rate 75%**! Sisa 25% kesempatan menang dibagi rata ke pool kelangkaan.\n` +
-            `  - **Cashback Duplikat**: Jika memenangkan role yang sudah dimiliki, otomatis mendapatkan **cashback Rp 100**!`
+            `* **Fitur Baru Premium**: Ketik **\`.autotrade\`** atau **\`.autoinvest\`** untuk menyalakan/mematikan asisten robot investasi otomatis Anda sendiri!\n` +
+            `* **Mekanisme DCA (Buy-the-Dip)**: Jika robot aktif dan saldo tunai Anda $\\ge$ **Rp 150**, robot akan otomatis membelikan saham termurah/sedang turun di bursa setiap 2 jam sekali (alokasi maks 30% saldo per trade).\n` +
+            `* **Mekanisme Take-Profit (TP)**: Robot akan otomatis melikuidasi/menjual seluruh saham Anda begitu persentase profit mencapai **$\\ge 15\%$** untuk mengamankan keuntungan tunai ke dompet Anda!`
         },
         {
-          name: '📅 4. RESET HARIAN TEPAT WAKTU (WIB/UTC+7)',
+          name: '📊 4. LAPORAN UPDATE BURSA & ROBOT TRADING REAL-TIME',
           value:
-            `* **⏰ Klaim Harian Seimbang**: Saldo koin harian diturunkan menjadi **Rp 15 - Rp 35** per hari dengan bonus streak **Rp 3** per hari untuk menjaga nilai koin tetap berharga.`
-        },
-        {
-          name: '🎛️ 5. DASHBOARD TOMBOL INTERAKTIF & KOMENTATOR TTS',
-          value:
-            `* **💼 Tombol Navigasi Terbuka**: Di bawah bursa saham \`.market\` dan \`.shop\`, kini ada tombol-tombol interaktif publik untuk mengecek Portofolio, Profil, dan bertransaksi secara transparan di hadapan seluruh warga server!\n` +
-            `* **🎙️ Komentator Suara TTS Heboh**: Bot akan bergabung ke Voice Channel Anda secara otomatis untuk memberikan komentar TTS heboh jika Anda membeli/menjual saham besar (>= 50 lembar) atau mendapatkan Zonk saat gacha role!`
-        },
-        {
-          name: '👑 6. KASTA ROLE DEWA & PRESTIGE TOKO PREMIUM',
-          value:
-            `* **💎 5 Kasta Rarity Eksklusif**: Kami merilis role prestise khusus dengan perizinan premium & warna unik: Common (Rp 15.000), Rare (Rp 75.000), Epic (Rp 350.000), Legendary (Rp 1.500.000), dan kasta tertinggi **Mythic (Rp 5.000.000)**!\n` +
-            `* **🔒 Peluang Jackpot Gacha Mythic**: Role Mythic kini dapat diperoleh lewat Gacha dengan peluang super langka (**0.1%** dari pool kemenangan), atau dibeli langsung secara terhormat!`
-        },
-        {
-          name: '💬 7. DUKUNGAN ANTI-SPAM CHAT & PAJAK PENGAMAN EKSPLOIT',
-          value:
-            `* **🛡️ Pengetatan Koin Chatting**: Cooldown pesan dinaikkan menjadi **45 detik**, minimal pesan diperpanjang menjadi **3 kata & 10 karakter**, dan reward bernilai **Rp 1 - Rp 4 per pesan**.\n` +
-            `* **🏦 Pajak Pengaman**: Pajak transfer koin antar member disesuaikan menjadi **10%** (anti-alt accounts) dan pajak penjualan saham channel disesuaikan menjadi **15%**.`
+            `* **Transparansi Penuh**: Setiap 2 jam sekali pada jam kerja bursa (08:00 - 23:00 WIB), laporan pergerakan saham terbaru beserta daftar aktivitas transaksi robot trading seluruh warga akan dirilis otomatis di channel bursa!`
         }
       )
-      .setFooter({ text: '— Tim Administrator & Developer Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
+      .setFooter({ text: '— Tim Developer & Sentinel Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
       .setTimestamp();
   },
 
