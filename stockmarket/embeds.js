@@ -1368,6 +1368,90 @@ module.exports = {
     });
 
     return embed;
+  },
+
+  // 30. Jail Status Embed (.jail)
+  jailStatusEmbed(user, secondsRemaining, bailAmount) {
+    const now = Math.floor(Date.now() / 1000);
+    const releaseTime = now + secondsRemaining;
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle('🚨 STATUS TAHANAN VIRTUAL 👮')
+      .setDescription(
+        `Waduh! **${user.username}**, Anda saat ini sedang ditahan di Penjara Virtual Server.\n\n` +
+        `🔒 **Status:** \`JAILED\`\n` +
+        `⏳ **Bebas Pada:** <t:${releaseTime}:t> (<t:${releaseTime}:R>)\n` +
+        `💰 **Uang Jaminan (Bail):** \`${formatCurrency(bailAmount)}\` untuk bebas instan.\n\n` +
+        `*Selama berada di dalam penjara, seluruh aktivitas ekonomi Anda dibekukan (Tidak bisa bekerja, daily, transfer, beli/jual saham, main pet, dll).*`
+      )
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/3233/3233481.png')
+      .setFooter({ text: 'Klik tombol "🔓 Tebus Jaminan" di bawah atau gunakan .jail untuk bebas!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 31. Heist Lobby Embed (.heist)
+  heistLobbyEmbed(guild, initiator, participants, timeLeft, successRate, minPrize, maxPrize, prepFee) {
+    const listKru = participants.map((p, idx) => {
+      const roles = ['🕶️ Otak Kriminal', '🚗 Pembalap Pelarian', '💣 Ahli Peledak', '🔫 Penembak Jitu', '💻 Peretas Keamanan', '🎒 Pembawa Uang'];
+      const roleStr = roles[idx] || '👥 Anggota Kru';
+      return `${idx + 1}. **<@${p}>** (${roleStr})`;
+    }).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.WARN)
+      .setTitle('🚨 OPERASI BESAR: SERVER CENTRAL BANK HEIST 🚨')
+      .setDescription(
+        `**${initiator.username}** sedang menggalang tim kriminal untuk membobol brankas Bank Pusat Server!\n\n` +
+        `💵 **Biaya Persiapan:** \`${formatCurrency(prepFee)}\` / orang (potong dompet)\n` +
+        `⏳ **Waktu Berkumpul:** \`${timeLeft} detik lagi...\`\n\n` +
+        `👥 **DAFTAR ANGGOTA KRU (${participants.length}):**\n${listKru || '*Menunggu kru bergabung...*'}`
+      )
+      .addFields(
+        {
+          name: '📈 ESTIMASI STRATEGI OPERASI',
+          value: `• **Peluang Keberhasilan:** \`${successRate}%\`\n• **Perkiraan Total Hadiah:** \`${formatCurrency(minPrize)} - ${formatCurrency(maxPrize)}\``,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk ikut perampokan ini!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 32. Heist Result Embed
+  heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours) {
+    const embed = new EmbedBuilder()
+      .setTitle(success ? '💥 LAPORAN AKHIR: BANK HEIST SUCCESS! 💰' : '🚓 LAPORAN AKHIR: BANK HEIST GAGAL! 👮')
+      .setColor(success ? COLORS.SUCCESS : COLORS.ERROR)
+      .setTimestamp();
+
+    const crewList = participants.map(p => `<@${p}>`).join(', ');
+    const logText = logs.map(l => `• ${l}`).join('\n');
+
+    if (success) {
+      embed.setDescription(
+        `🚨 **Lokasi:** Central Bank Server\n` +
+        `👥 **Kru Perampok:** ${crewList}\n\n` +
+        `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n` +
+        `🏆 **HASIL JARAHAN BRANKAS:**\n` +
+        `💰 **Total Dirampok:** \`${formatCurrency(totalReward)}\`\n` +
+        `👉 **Setiap Anggota Mendapatkan:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih!)*`
+      );
+    } else {
+      embed.setDescription(
+        `🚨 **Lokasi:** Central Bank Server\n` +
+        `👥 **Kru Perampok:** ${crewList}\n\n` +
+        `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n` +
+        `❌ **KONSEKUENSI PENANGKAPAN:**\n` +
+        `💸 **Denda per Anggota:** \`${formatCurrency(fineAmount)}\` (potong dompet)\n` +
+        `🔒 **Hukuman Penjara:** \`${jailHours} Jam\` di Penjara Virtual!`
+      );
+    }
+
+    return embed;
   }
 };
 

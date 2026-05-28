@@ -7,6 +7,7 @@ const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const bank = require('./bank');
 const pet = require('./pet');
+const robbery = require('./robbery');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField } = require('discord.js');
 const { sendAdminLog } = require('../logger');
 // Owner ID dari environment variable (fallback ke default)
@@ -1342,8 +1343,64 @@ async function handleEconomyCommands(message, client) {
   const args = message.content.slice(1).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
   const { guildId, author, guild } = message;
-
   if (!guildId) return false;
+
+  // 👮 GUARD PENJARA VIRTUAL (Jail Lock Guard)
+  // Menghalangi seluruh perintah ekonomi jika user sedang berada di dalam penjara virtual,
+  // kecuali perintah .jail, .heist-admin, .pet-admin, dan .pet jika BUKAN work/hunt/battle.
+  const jailCheck = robbery.checkJail(author.id, guildId);
+  if (jailCheck.jailed) {
+    let shouldBlock = false;
+    if (commandName === 'pet') {
+      const sub = args[0]?.toLowerCase();
+      if (['work', 'hunt', 'battle'].includes(sub)) {
+        shouldBlock = true;
+      }
+    } else if (!['jail', 'heist-admin', 'pet-admin'].includes(commandName)) {
+      shouldBlock = true;
+    }
+
+    if (shouldBlock) {
+      const jailEmbed = embeds.jailStatusEmbed(author, jailCheck.remaining, jailCheck.bailAmount);
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('jail_btn_tebus')
+          .setLabel('🔓 Tebus Jaminan')
+          .setStyle(ButtonStyle.Success)
+      );
+
+      const replyMsg = await message.reply({
+        content: `❌ **Akses Ditangguhkan!** Anda sedang ditahan di penjara virtual.`,
+        embeds: [jailEmbed],
+        components: [row]
+      });
+
+      const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
+      collector.on('collect', async iJail => {
+        if (iJail.user.id !== author.id) {
+          return iJail.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+        }
+        
+        try {
+          if (iJail.customId === 'jail_btn_tebus') {
+            const res = robbery.payBail(author.id, guildId);
+            const successEmb = embeds.successEmbed(
+              'Jaminan Ditebus! 🔓',
+              `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
+              `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
+            );
+            await iJail.reply({ embeds: [successEmb] });
+            await replyMsg.edit({ components: [] }).catch(() => {});
+            collector.stop();
+          }
+        } catch (err) {
+          await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
+        }
+      });
+
+      return true;
+    }
+  }
 
   // ═══════════════════════════════════════════════════
   // Perintah: .pet (Sistem Pet Tamagotchi Style)
@@ -1371,6 +1428,303 @@ async function handleEconomyCommands(message, client) {
   stocks.initDefaultStocks(guild);
 
   try {
+    // ═══════════════════════════════════════════════════
+    // Perintah: .rob @user
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'rob') {
+      const targetUser = message.mentions.users.first();
+      if (!targetUser) {
+        return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.rob @user` untuk merampok seseorang.')] });
+      }
+
+      try {
+        const res = robbery.robSolo(author.id, targetUser.id, guildId);
+        if (res.success) {
+          const successEmb = embeds.successEmbed(
+            '💥 Perampokan Berhasil! 💰',
+            `Anda berhasil merampok **${targetUser.username}**!\n\n` +
+            `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}`
+          );
+          await message.reply({ embeds: [successEmb] });
+        } else {
+          const failEmb = embeds.errorEmbed(
+            '🚓 Perampokan Gagal! 👮',
+            `Anda gagal merampok **${targetUser.username}**!\n\n` +
+            `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
+            `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
+          );
+          await message.reply({ embeds: [failEmb] });
+        }
+      } catch (err) {
+        await message.reply({ embeds: [embeds.errorEmbed('Operasi Gagal!', err.message)] });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .heist
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'heist') {
+      const sub = args[0]?.toLowerCase();
+
+      if (!sub || sub === 'start') {
+        try {
+          const lobby = robbery.startHeistLobby(author.id, guildId);
+          const stats = robbery.getHeistStats(1);
+          
+          const lobbyEmbed = embeds.heistLobbyEmbed(
+            guild,
+            author,
+            lobby.participants,
+            90,
+            stats.successRate,
+            stats.minPrize,
+            stats.maxPrize,
+            lobby.prepFee
+          );
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('heist_btn_join')
+              .setLabel('🤝 Ikut Heist')
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId('heist_btn_cancel')
+              .setLabel('✖️ Batalkan Operasi')
+              .setStyle(ButtonStyle.Danger)
+          );
+
+          const replyMsg = await message.reply({
+            content: `🚨 **OPERASI PERAMPOKAN BANK DIMULAI!** 🚨`,
+            embeds: [lobbyEmbed],
+            components: [row]
+          });
+
+          // Waktu hitung mundur 90 detik
+          let timeLeft = 90;
+          const interval = setInterval(async () => {
+            timeLeft -= 10;
+            if (timeLeft <= 0) {
+              clearInterval(interval);
+              return;
+            }
+
+            const currentLobby = robbery.activeHeists.get(guildId);
+            if (!currentLobby) {
+              clearInterval(interval);
+              return;
+            }
+
+            const currentStats = robbery.getHeistStats(currentLobby.participants.length);
+            const updatedEmbed = embeds.heistLobbyEmbed(
+              guild,
+              author,
+              currentLobby.participants,
+              timeLeft,
+              currentStats.successRate,
+              currentStats.minPrize,
+              currentStats.maxPrize,
+              currentLobby.prepFee
+            );
+
+            await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+          }, 10000);
+
+          // Pemicu timeout eksekusi otomatis setelah 90 detik
+          lobby.timeout = setTimeout(async () => {
+            clearInterval(interval);
+            try {
+              const currentLobby = robbery.activeHeists.get(guildId);
+              if (!currentLobby) return;
+
+              const res = robbery.executeHeist(guildId);
+              const resultEmbed = embeds.heistResultEmbed(
+                guild,
+                res.success,
+                res.participants,
+                res.logs,
+                res.totalReward,
+                res.rewardPerPerson,
+                res.fineAmount,
+                res.jailHours
+              );
+
+              await replyMsg.edit({
+                content: `💥 **OPERASI BANK HEIST SELESAI!**`,
+                embeds: [resultEmbed],
+                components: []
+              }).catch(async () => {
+                await message.channel.send({
+                  content: `💥 **OPERASI BANK HEIST SELESAI!**`,
+                  embeds: [resultEmbed]
+                });
+              });
+            } catch (err) {
+              console.error(err);
+              await message.channel.send({ content: `❌ Gagal mengeksekusi heist: ${err.message}` });
+            }
+          }, 90000);
+
+          // Collector untuk tombol interaksi
+          const collector = replyMsg.createMessageComponentCollector({
+            time: 90000
+          });
+
+          collector.on('collect', async iHeist => {
+            try {
+              if (iHeist.customId === 'heist_btn_join') {
+                const updatedLobby = robbery.joinHeistLobby(iHeist.user.id, guildId);
+                const currentStats = robbery.getHeistStats(updatedLobby.participants.length);
+                
+                const updatedEmbed = embeds.heistLobbyEmbed(
+                  guild,
+                  author,
+                  updatedLobby.participants,
+                  timeLeft,
+                  currentStats.successRate,
+                  currentStats.minPrize,
+                  currentStats.maxPrize,
+                  updatedLobby.prepFee
+                );
+
+                await iHeist.reply({ content: `🤝 Anda berhasil bergabung dengan tim heist! Biaya persiapan Rp ${updatedLobby.prepFee} terpotong.`, ephemeral: true });
+                await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+              } 
+              
+              else if (iHeist.customId === 'heist_btn_cancel') {
+                if (iHeist.user.id !== author.id) {
+                  return iHeist.reply({ content: '❌ Hanya inisiator (otak kriminal) yang bisa membatalkan operasi!', ephemeral: true });
+                }
+
+                clearInterval(interval);
+                robbery.cancelHeistLobby(author.id, guildId);
+                
+                await iHeist.reply({ content: '✖️ Operasi bank heist dibatalkan dan biaya persiapan telah dikembalikan ke seluruh kru.', ephemeral: false });
+                await replyMsg.edit({
+                  content: '❌ **Operasi bank heist dibatalkan oleh inisiator.**',
+                  embeds: [],
+                  components: []
+                }).catch(() => {});
+                collector.stop();
+              }
+            } catch (err) {
+              await iHeist.reply({ content: `❌ Error: ${err.message}`, ephemeral: true });
+            }
+          });
+
+          collector.on('end', () => {
+            clearInterval(interval);
+          });
+
+        } catch (err) {
+          await message.reply({ embeds: [embeds.errorEmbed('Gagal Memulai Heist!', err.message)] });
+        }
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .jail
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'jail') {
+      const targetUser = message.mentions.users.first() || author;
+      const jailInfo = robbery.checkJail(targetUser.id, guildId);
+
+      if (!jailInfo.jailed) {
+        return message.reply({ embeds: [embeds.successEmbed('Status Penjara', `🟢 **${targetUser.username}** bebas berkeliaran dan tidak sedang di penjara!`)] });
+      }
+
+      const jailEmbed = embeds.jailStatusEmbed(targetUser, jailInfo.remaining, jailInfo.bailAmount);
+      
+      let components = [];
+      if (targetUser.id === author.id) {
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('jail_btn_tebus_status')
+            .setLabel('🔓 Tebus Jaminan')
+            .setStyle(ButtonStyle.Success)
+        );
+        components.push(row);
+      }
+
+      const replyMsg = await message.reply({
+        content: `👮 **Status Tahanan Virtual**`,
+        embeds: [jailEmbed],
+        components
+      });
+
+      if (components.length > 0) {
+        const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
+        collector.on('collect', async iJail => {
+          if (iJail.user.id !== author.id) {
+            return iJail.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+          }
+
+          try {
+            if (iJail.customId === 'jail_btn_tebus_status') {
+              const res = robbery.payBail(author.id, guildId);
+              const successEmb = embeds.successEmbed(
+                'Jaminan Ditebus! 🔓',
+                `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
+                `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
+              );
+              await iJail.reply({ embeds: [successEmb] });
+              await replyMsg.edit({ components: [] }).catch(() => {});
+              collector.stop();
+            }
+          } catch (err) {
+            await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
+          }
+        });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .heist-admin
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'heist-admin') {
+      const isOwner = author.id === OWNER_ID;
+      const isGuildOwner = message.guild && author.id === message.guild.ownerId;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat menggunakan perintah heist-admin.')] });
+      }
+
+      const sub = args[0]?.toLowerCase();
+      if (sub === 'free' || sub === 'release') {
+        const target = message.mentions.users.first();
+        if (!target) {
+          return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.heist-admin free @user` untuk membebaskan paksa seseorang.')] });
+        }
+
+        try {
+          robbery.adminFreeUser(target.id, guildId);
+          await message.reply({ embeds: [embeds.successEmbed('Bebas Paksa!', `👮 **${target.username}** telah dibebaskan dari penjara virtual oleh administrator.`)] });
+        } catch (err) {
+          await message.reply({ embeds: [embeds.errorEmbed('Gagal Membebaskan!', err.message)] });
+        }
+      } 
+      
+      else if (sub === 'reset-cooldown' || sub === 'reset') {
+        try {
+          robbery.adminResetCooldown(guildId);
+          await message.reply({ embeds: [embeds.successEmbed('Reset Cooldown!', '🚨 Cooldown global bank heist untuk server ini telah disetel ulang.')] });
+        } catch (err) {
+          await message.reply({ embeds: [embeds.errorEmbed('Gagal Reset Cooldown!', err.message)] });
+        }
+      } 
+      
+      else {
+        return message.reply({
+          embeds: [
+            embeds.errorEmbed('Subcommand Tidak Dikenal!', 'Pilihan: `.heist-admin free @user` atau `.heist-admin reset`')
+          ]
+        });
+      }
+      return true;
+    }
+
     // ═══════════════════════════════════════════════════
     // Perintah: .event / .events
     // ═══════════════════════════════════════════════════

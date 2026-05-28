@@ -56,6 +56,22 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 1c. Migrasi dinamis: Tambahkan kolom jail_until jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN jail_until INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'jail_until' berhasil ditambahkan/diverifikasi di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 1d. Migrasi dinamis: Tambahkan kolom jail_type jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN jail_type TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'jail_type' berhasil ditambahkan/diverifikasi di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   // 2. Stocks (Data Saham Channel per Guild)
   db.exec(`
     CREATE TABLE IF NOT EXISTS stocks (
@@ -225,7 +241,15 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, & Sistem Pet berhasil diinisialisasi.');
+  // 14. Heist Cooldown (Untuk sistem perampokan bersama)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS heist_cooldown (
+      guild_id TEXT NOT NULL PRIMARY KEY,
+      last_heist_at INTEGER DEFAULT 0
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, & Sistem Pet, & Perampokan berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup
