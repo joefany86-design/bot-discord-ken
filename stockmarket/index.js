@@ -1104,7 +1104,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger'];
+    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'market-drop', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isGuildOwner = message.guild && author.id === message.guild.ownerId;
@@ -1531,6 +1531,67 @@ async function handleEconomyCommands(message, client) {
       })();
 
       await message.reply(`✅ Sukses menghapus instrumen saham **${ticker}** dari bursa.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .market-drop <ticker> <persen>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'market-drop') {
+      const ticker = args[0];
+      const percentArg = args[1];
+
+      if (!ticker || !percentArg) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Contoh: `.market-drop $LOUNGE 15` (Menurunkan harga saham $LOUNGE sebesar 15%)')] });
+      }
+
+      const stock = stocks.getStock(guildId, ticker);
+      if (!stock) {
+        return message.reply({ embeds: [embeds.warnEmbed('Saham Tidak Ditemukan!', `Ticker \`${ticker}\` tidak ditemukan di bursa.`)] });
+      }
+
+      const percent = parseInt(percentArg);
+      if (isNaN(percent) || percent < 1 || percent > 99) {
+        return message.reply({ embeds: [embeds.warnEmbed('Nilai Tidak Valid!', 'Tingkat penurunan harus berupa angka bulat antara 1 hingga 99 persen!')] });
+      }
+
+      const oldPrice = stock.current_price;
+      const newPrice = Math.max(config.market.MIN_PRICE, Math.round(oldPrice * (1 - percent / 100)));
+
+      database.transaction(() => {
+        database.run(
+          'UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?',
+          [oldPrice, newPrice, stock.channel_id, guildId]
+        );
+        database.run(
+          'INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)',
+          [stock.channel_id, guildId, newPrice]
+        );
+      })();
+
+      const successEmbed = embeds.successEmbed(
+        '📉 Harga Saham Diturunkan!',
+        `Berhasil menurunkan harga saham **${stock.stock_ticker}** (#${stock.stock_name}) sebesar **${percent}%** secara manual!\n\n` +
+        `💵 **Harga Lama:** Rp ${oldPrice.toLocaleString('id-ID')} ➔ **Harga Baru:** Rp ${newPrice.toLocaleString('id-ID')}`
+      );
+      await message.reply({ embeds: [successEmbed] });
+
+      // Kirim notifikasi ke channel info bursa saham
+      const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      if (reportChannel) {
+        const notifyEmbed = new EmbedBuilder()
+          .setColor(embeds.COLORS.ERROR)
+          .setTitle('📉 PENYESUAIAN REGULASI PASAR SAHAM')
+          .setDescription(
+            `📢 **Otoritas Jasa Keuangan Server** telah melakukan penyesuaian regulasi harga saham secara manual.\n\n` +
+            `🎯 **Saham Terdampak:** **${stock.stock_ticker}** (#${stock.stock_name})\n` +
+            `👉 **Kebijakan:** Penurunan Harga sebesar **-${percent}%**\n` +
+            `💵 **Harga Lama:** Rp ${oldPrice.toLocaleString('id-ID')} ➔ **Harga Baru:** Rp ${newPrice.toLocaleString('id-ID')}\n\n` +
+            `*Perubahan ini langsung berlaku di lantai bursa. Harap sesuaikan portofolio investasi Anda!*`
+          )
+          .setTimestamp();
+        await reportChannel.send({ embeds: [notifyEmbed] }).catch(() => {});
+      }
       return true;
     }
 
