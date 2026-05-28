@@ -632,11 +632,11 @@ module.exports = {
   indexRoleEmbed(user, member, items) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
-      .setTitle(`🎖️ KARTU INDEX ROLE PRESTISE — ${user.username}`)
+      .setTitle(`🎖️ KARTU INDEKS ROLE PRESTISE — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setDescription(
         `Halo **${user.username}**! 👋✨\n` +
-        `Berikut adalah daftar kasta/prestige role eksklusif di server ini dan status kepemilikan Anda.\n\n` +
+        `Berikut adalah daftar kasta/prestige role eksklusif di server ini dan status perolehan Anda.\n\n` +
         `💡 *Miliki role prestise dengan membelinya di \`.shop\` atau memutar spin hoki \`.gacha-role\`!*`
       );
 
@@ -670,7 +670,12 @@ module.exports = {
           let content = '';
           tierItems.forEach(item => {
             const hasRole = member.roles.cache.has(item.role_id);
-            const statusEmoji = hasRole ? '✅ **[DIMILIKI]**' : '🔒 *Belum dimiliki*';
+            
+            // Funny Indonesian customized ownership tags
+            const statusEmoji = hasRole 
+              ? '✅ **[DIMILIKI]** (Sultan Mode: **ON** 😎)' 
+              : '🔒 *Belum dimiliki* (Menanti Hoki Gacha / Rp ' + item.price.toLocaleString('id-ID') + ')';
+            
             if (hasRole) ownedCount++;
 
             const desc = item.description ? `\n   *“${item.description}”*` : '';
@@ -691,18 +696,46 @@ module.exports = {
       const emptyBlocks = 10 - filledBlocks;
       const progressBar = '🟩'.repeat(filledBlocks) + '⬛'.repeat(emptyBlocks);
 
+      // Funny status classification depending on percentage owned
+      let statusRemark = '';
+      if (percent === 0) {
+        statusRemark = '😭 **AMPAS TOTAL / BEBAN SERVER**\n*Belum punya kasta role sama sekali. Ayo ngobrol atau gacha biar gak dikira pajangan server!*';
+      } else if (percent <= 25) {
+        statusRemark = '🐣 **ANAK BAWANG**\n*Baru punya secuil kasta role. Masih jauh dari kasta sultan, tapi bolehlah buat gaya dikit!*';
+      } else if (percent <= 50) {
+        statusRemark = '😎 **SULTAN TANGGUNG**\n*Koleksi lumayan, dompet mulai bergetar. Dikit lagi bisa sombong di Voice Channel!*';
+      } else if (percent <= 80) {
+        statusRemark = '🔥 **SETENGAH DEWA / PEJUANG HOKI**\n*Aura prestisenya sudah mulai menyilaukan mata warga server Kosan 1A!*';
+      } else if (percent < 100) {
+        statusRemark = '🌟 **DEWA DEKAT DI MATA**\n*Kurang secuil lagi untuk mencapai kesempurnaan tahta absolut!*';
+      } else {
+        statusRemark = '👑 **MAHARAJA SULTAN PRESTISE (HURRY UP AND BOW! 🙇‍♂️)**\n*GILA SIH! Semua kasta role disapu bersih! Anda resmi menjadi makhluk terkaya Kosan 1A!*';
+      }
+
       embed.addFields({
         name: '📊 RINGKASAN KOLEKSI ROLE PRESTISE',
         value: 
           `🏆 **Progres Koleksi:** \`${ownedCount} / ${totalRoles} Role\` (${percent}%)\n` +
-          `✨ **Progress Bar:** [ ${progressBar} ]`
+          `✨ **Progress Bar:** [ ${progressBar} ]\n` +
+          `🎭 **Kasta Kelayakan:** ${statusRemark}`
       });
 
       // Tambahkan fields dari tiers
       embed.addFields(fieldsData);
     }
 
-    embed.setFooter({ text: 'Cek saldo Anda dengan .bal | Belanja role dengan .shop' }).setTimestamp();
+    // Funny random tip/quotes in footer
+    const funnyTips = [
+      'Tips Hoki: Mandi dulu sebelum ketik .gacha-role biar gak dapat Batu Kali!',
+      'Fakta: 99% penjudi gacha berhenti tepat sebelum mereka dapet Jackpot Mythic!',
+      'Jangan lupa sungkem dulu ke Owner jika melihat seseorang membawa kasta Mythic!',
+      'Uang bisa dicari, tapi role prestige Kosan 1A hanya milik mereka yang terpilih!',
+      'Apakah dompet Anda sudah menangis? Tenang, koin chatting gratis mengalir deras!',
+      'Peringatan: Pamer kasta role berlebihan dapat menyebabkan kecemburuan sosial tingkat tinggi!'
+    ];
+    const randomTip = funnyTips[Math.floor(Math.random() * funnyTips.length)];
+
+    embed.setFooter({ text: `💡 ${randomTip}` }).setTimestamp();
     return embed;
   }
 };
