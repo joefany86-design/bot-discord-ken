@@ -8,8 +8,85 @@ const { EmbedBuilder } = require('discord.js');
 const EVENT_TYPES = {
   MARKET_CRASH: 'MARKET_CRASH',
   BULL_RUN: 'BULL_RUN',
-  DOUBLE_EARNING: 'DOUBLE_EARNING'
+  DOUBLE_EARNING: 'DOUBLE_EARNING',
+  BREAKING_NEWS: 'BREAKING_NEWS'
 };
+
+// Bank berita dinamis bertema lokal server
+const NEWS_TEMPLATES = [
+  {
+    id: 'NEWS_001',
+    headline: '📰 KOPI HITAM BOOMING DI LOUNGE!',
+    desc: 'Warga lounge beramai-ramai memborong kopi hitam untuk maraton mengobrol. Produktivitas nongkrong meningkat drastis!',
+    tickerTarget: '$LOUNGE',
+    minImpact: 0.15,
+    maxImpact: 0.35,
+    isPositive: true
+  },
+  {
+    id: 'NEWS_002',
+    headline: '📰 KEKACAUAN DI CHANNEL LOUNGE!',
+    desc: 'Terjadi perdebatan sengit tentang merk mie instan terbaik di Lounge. Suasana memanas, obrolan menjadi tidak kondusif!',
+    tickerTarget: '$LOUNGE',
+    minImpact: -0.25,
+    maxImpact: -0.10,
+    isPositive: false
+  },
+  {
+    id: 'NEWS_003',
+    headline: '📰 SPAM KUCING DI GENERAL CHAT!',
+    desc: 'Admin ketiduran! Terjadi invasi spam gambar kucing lucu secara masif di General Chat. Investor panik dan kabur!',
+    tickerTarget: '$GENERAL',
+    minImpact: -0.30,
+    maxImpact: -0.15,
+    isPositive: false
+  },
+  {
+    id: 'NEWS_004',
+    headline: '📰 BOOMING WACANA DI GENERAL!',
+    desc: 'General chat dipenuhi wacana liburan bersama warga server yang sangat meyakinkan. Antusiasme member melonjak tinggi!',
+    tickerTarget: '$GENERAL',
+    minImpact: 0.15,
+    maxImpact: 0.30,
+    isPositive: true
+  },
+  {
+    id: 'NEWS_005',
+    headline: '📰 UPGRADE VPS SENTINEL BOT!',
+    desc: 'Developer melakukan migrasi VPS ke kecepatan tinggi dengan port jaringan premium. Delay respons bot nyaris nol!',
+    tickerTarget: '$BOT',
+    minImpact: 0.20,
+    maxImpact: 0.35,
+    isPositive: true
+  },
+  {
+    id: 'NEWS_006',
+    headline: '📰 KABEL VPS DIGIGIT TIKUS!',
+    desc: 'Koneksi ke VPS server bot mengalami gangguan karena kabel fiber optic eksternal digigit tikus tanah. Sentinel lag parah!',
+    tickerTarget: '$BOT',
+    minImpact: -0.30,
+    maxImpact: -0.15,
+    isPositive: false
+  },
+  {
+    id: 'NEWS_007',
+    headline: '📰 SUNTIKAN MODAL ASING BURSA SAHAM!',
+    desc: 'Seorang konglomerat misterius menyuntikkan dana segar Rp 10.000.000 ke dalam bursa saham server Kosan 1A!',
+    tickerTarget: 'RANDOM',
+    minImpact: 0.15,
+    maxImpact: 0.30,
+    isPositive: true
+  },
+  {
+    id: 'NEWS_008',
+    headline: '📰 SENTIMEN NEGATIF GLOBAL!',
+    desc: 'Sentimen negatif melanda industri cloud hosting global. Biaya sewa server meningkat, pasar ikut terpukul lesu!',
+    tickerTarget: 'RANDOM',
+    minImpact: -0.20,
+    maxImpact: -0.10,
+    isPositive: false
+  }
+];
 
 /**
  * Mengambil status event yang sedang aktif di Guild.
@@ -131,6 +208,72 @@ function triggerEvent(client, guild, type) {
     eventDesc = '⚡ **Waktunya panen koin!** Keaktifan mengobrol di seluruh channel text server sedang mendapatkan booster spesial.';
     effectSummary = `🔥 Selama **1 jam ke depan**, setiap koin **${config.CURRENCY_NAME}** yang kamu dapatkan dari mengirim pesan (chatting) akan bernilai **2 KALI LIPAT**!\n\n🕒 Event berakhir pada: <t:${endsAt}:F> (<t:${endsAt}:R>)`;
     embedColor = embeds.COLORS.PURPLE; // Purple
+
+  } else if (type === EVENT_TYPES.BREAKING_NEWS) {
+    // 1. Pilih template berita acak
+    const news = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
+    
+    // 2. Tentukan ticker target
+    let targetTicker = news.tickerTarget;
+    let selectedStock = null;
+    const activeStocks = stocks.getStocks(guildId) || [];
+    
+    if (activeStocks.length === 0) {
+      return { success: false, reason: 'Tidak ada saham aktif di guild ini' };
+    }
+    
+    if (targetTicker === 'RANDOM') {
+      // Pilih saham aktif secara acak
+      selectedStock = activeStocks[Math.floor(Math.random() * activeStocks.length)];
+      targetTicker = selectedStock.stock_ticker;
+    } else {
+      // Cari saham aktif berdasarkan ticker
+      selectedStock = activeStocks.find(s => s.stock_ticker.toUpperCase() === targetTicker.toUpperCase());
+      
+      // Jika ticker target tidak ditemukan (belum terdaftar di server ini), fallback ke acak
+      if (!selectedStock) {
+        selectedStock = activeStocks[Math.floor(Math.random() * activeStocks.length)];
+        targetTicker = selectedStock.stock_ticker;
+      }
+    }
+    
+    // 3. Kalkulasi dampak harga
+    const oldPrice = selectedStock.current_price;
+    const isPositive = news.isPositive;
+    const randomImpact = news.minImpact + Math.random() * (news.maxImpact - news.minImpact);
+    
+    let newPrice;
+    if (isPositive) {
+      newPrice = Math.min(config.market.MAX_PRICE, Math.round(oldPrice * (1 + randomImpact)));
+    } else {
+      newPrice = Math.max(config.market.MIN_PRICE, Math.round(oldPrice * (1 + randomImpact)));
+    }
+    
+    // 4. Update harga di database
+    db.run(
+      'UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?',
+      [oldPrice, newPrice, selectedStock.channel_id, guildId]
+    );
+
+    // Rekam riwayat harga
+    db.run(
+      'INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)',
+      [selectedStock.channel_id, guildId, newPrice]
+    );
+    
+    // Tentukan warna & persentase perubahan teks
+    const pctChange = ((newPrice - oldPrice) / oldPrice) * 100;
+    const pctSign = pctChange >= 0 ? '+' : '';
+    const pctText = `\`${pctSign}${pctChange.toFixed(1)}%\``;
+    
+    eventTitle = '🚨 BREAKING NEWS: INFO BURSA UTAMA 🚨';
+    eventDesc = `📰 **${news.headline}**\n\n💬 ${news.desc}`;
+    effectSummary = `🎯 **Saham Terpengaruh:** **${selectedStock.stock_ticker}** (#${selectedStock.stock_name})\n` +
+                    `👉 **Perubahan Instan:** ${pctText} (${isPositive ? '📈 NAIK' : '📉 TURUN'})\n` +
+                    `💵 **Harga Lama:** Rp ${oldPrice.toLocaleString('id-ID')} ➔ **Harga Baru:** Rp ${newPrice.toLocaleString('id-ID')}\n\n` +
+                    `*Warga server disarankan memantau pergerakan pasar secara bijak sebelum mengambil keputusan trading!*`;
+                    
+    embedColor = isPositive ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR;
   }
 
   // Kirim pengumuman ke channel laporan atau system channel
