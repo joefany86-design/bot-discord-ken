@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
+const { PET_ITEMS } = require('./pet');
 
 // Palette Warna Premium (HSL tailored / vibrant)
 const COLORS = {
