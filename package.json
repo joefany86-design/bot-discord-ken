@@ -1,7 +1,7 @@
 {
   "name": "discord-voice-tts-bot",
   "version": "2.0.0",
-  "description": "Discord Bot - Music YouTube, TTS, & Scheduled Greetings",
+  "description": "Discord Bot - TTS & Scheduled Greetings",
   "main": "index.js",
   "engines": {
     "node": ">=22.0.0"
