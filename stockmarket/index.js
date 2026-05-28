@@ -486,15 +486,26 @@ async function handleEconomyChat(message) {
           .setTitle(`🌅 Gaji Harian Otomatis — ${author.username}`)
           .setThumbnail(author.displayAvatarURL({ dynamic: true }))
           .setDescription(
-            `Selamat! Karena keaktifan Anda mengobrol di server hari ini, **Gaji Harian Otomatis** Anda berhasil dicairkan! 💸✨\n\n` +
-            `💰 **Hadiah:** **Rp ${dailyResult.reward.toLocaleString('id-ID')}**\n` +
-            `👉 *Detail:* Hadiah Dasar: \`Rp ${dailyResult.baseReward}\` | Streak Bonus: \`Rp ${dailyResult.streakBonus}\`\n` +
-            `🔥 **Streak Saat Ini:** \`${dailyResult.streak} hari\` berturut-turut!\n\n` +
-            `*Periksa saldo Anda kapan saja dengan mengetik \`.bal\` atau \`.porto\`!*`
+            `Selamat! Karena keaktifan Anda mengobrol di server hari ini, Gaji Harian Otomatis Anda berhasil dicairkan! 💸✨\n\n` +
+            `💰 Hadiah: Rp ${dailyResult.reward.toLocaleString('id-ID')}\n` +
+            `👉 Detail: Hadiah Dasar: Rp ${dailyResult.baseReward} | Streak Bonus: Rp ${dailyResult.streakBonus}\n` +
+            `🔥 Streak Saat Ini: ${dailyResult.streak} hari berturut-turut!\n\n` +
+            `Periksa saldo Anda kapan saja dengan mengetik .bal atau .porto!`
           )
           .setTimestamp();
 
-        message.channel.send({ embeds: [autoDailyEmbed] }).catch(() => {});
+        let targetChannel = message.guild.channels.cache.get('1508417228624887928');
+        if (!targetChannel) {
+          try {
+            targetChannel = await message.guild.channels.fetch('1508417228624887928');
+          } catch (e) {
+            targetChannel = message.channel;
+          }
+        }
+
+        if (targetChannel) {
+          await targetChannel.send({ content: `<@${author.id}>`, embeds: [autoDailyEmbed] }).catch(() => {});
+        }
       }
     }
   } catch (err) {
