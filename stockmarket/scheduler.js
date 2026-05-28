@@ -368,6 +368,142 @@ function initScheduler(client) {
     });
   }, config.economy.VOICE_EARN_INTERVAL_MS || 60000);
 
+  // 6. Cron Job: Sistem Perbankan (Bunga Tabungan & Penagihan Pinjaman Harian)
+  // Berjalan setiap hari pada pukul 00:00 WIB (Midnight Jakarta)
+  cron.schedule('0 0 * * *', () => {
+    console.log('⏰ [Scheduler] Menjalankan pemrosesan perbankan harian (Bunga & Penagihan Pinjaman)...');
+
+    const database = require('./database');
+    const economy = require('./economy');
+    const bank = require('./bank');
+    const embeds = require('./embeds');
+
+    client.guilds.cache.forEach(guild => {
+      // Tentukan target channel notifikasi
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
+
+      // ── A. PEMBAGIAN BUNGA TABUNGAN (1.5% harian) ──
+      try {
+        const savingsAccounts = database.all('SELECT * FROM bank_savings WHERE balance > 0 AND guild_id = ?', [guild.id]);
+        let totalInterestDistributed = 0;
+        let accountsCount = 0;
+
+        savingsAccounts.forEach(account => {
+          const interestAmount = Math.round(account.balance * 0.015);
+          if (interestAmount > 0) {
+            database.run(
+              'UPDATE bank_savings SET balance = balance + ?, last_interest_at = ? WHERE user_id = ? AND guild_id = ?',
+              [interestAmount, Math.floor(Date.now() / 1000), account.user_id, guild.id]
+            );
+            totalInterestDistributed += interestAmount;
+            accountsCount++;
+          }
+        });
+
+        if (accountsCount > 0 && targetChannel) {
+          console.log(`🏦 [Bank Scheduler] Bunga tabungan sebesar Rp ${totalInterestDistributed.toLocaleString('id-ID')} dibagikan ke ${accountsCount} rekening.`);
+        }
+      } catch (err) {
+        console.error('❌ Gagal memproses bunga tabungan harian:', err.message);
+      }
+
+      // ── B. PEMERIKSAAN JATUH TEMPO PINJAMAN & AUTO-DEBET & PENALTY ──
+      try {
+        const activeLoans = database.all("SELECT * FROM bank_loans WHERE status = 'ACTIVE' AND guild_id = ?", [guild.id]);
+        const nowUnix = Math.floor(Date.now() / 1000);
+
+        activeLoans.forEach(loan => {
+          if (loan.due_at <= nowUnix) {
+            // Pinjaman melewati batas jatuh tempo!
+            const userId = loan.user_id;
+            const wallet = economy.getWallet(userId, guild.id);
+            const totalDue = loan.total_due;
+
+            if (wallet.balance >= totalDue) {
+              // Skenario A: Auto-Debet berhasil melunasi utang pokok + bunga kontrak!
+              database.transaction(() => {
+                database.run(
+                  'UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND guild_id = ?',
+                  [totalDue, userId, guild.id]
+                );
+                database.run(
+                  "UPDATE bank_loans SET status = 'PAID', total_due = 0 WHERE id = ?",
+                  [loan.id]
+                );
+                database.run(
+                  'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+                  [userId, guild.id, 'LOAN_AUTO_DEBIT', -totalDue]
+                );
+              })();
+
+              if (targetChannel) {
+                const autoDebitEmbed = new EmbedBuilder()
+                  .setColor(0x00FF88)
+                  .setTitle(`🏛️ AUTO-DEBET LUNAS OTOMATIS — ${guild.name}`)
+                  .setDescription(
+                    `Tagihan pinjaman berjangka tempo milik <@${userId}> telah jatuh tempo.\n\n` +
+                    `✅ **Auto-Debet Sukses:** Pembayaran tagihan senilai **Rp ${totalDue.toLocaleString('id-ID')}** telah berhasil didebet otomatis dari dompet.\n` +
+                    `🏦 **Status Pinjaman:** **LUNAS (PAID)**`
+                  )
+                  .setTimestamp();
+                targetChannel.send({ embeds: [autoDebitEmbed] }).catch(() => {});
+              }
+            } else {
+              // Skenario B: Saldo kurang, pinjaman menjadi OVERDUE!
+              // Tambahkan denda 5% pertama kali
+              const penalty = Math.round(loan.principal_amount * 0.05);
+              database.transaction(() => {
+                database.run(
+                  "UPDATE bank_loans SET status = 'OVERDUE', penalty_accumulated = penalty_accumulated + ? WHERE id = ?",
+                  [penalty, loan.id]
+                );
+                // Matikan robot trading AI jika aktif
+                database.run(
+                  'UPDATE wallets SET auto_trade = 0 WHERE user_id = ? AND guild_id = ?',
+                  [userId, guild.id]
+                );
+              })();
+
+              // Kirim notifikasi teguran publik
+              if (targetChannel) {
+                const userObj = client.users.cache.get(userId);
+                if (userObj) {
+                  const overdueLoan = bank.getActiveLoan(userId, guild.id);
+                  const noticeEmbed = embeds.bankOverdueNoticeEmbed(userObj, overdueLoan);
+                  targetChannel.send({ content: `<@${userId}>`, embeds: [noticeEmbed] }).catch(() => {});
+                }
+              }
+            }
+          }
+        });
+
+        // ── C. UPDATE DENDA LATE-PENALTY BAGI YANG SUDAH OVERDUE ──
+        // (Berjalan bagi pinjaman yang sudah berstatus OVERDUE untuk menambahkan denda harian +5%)
+        const overdueLoans = database.all("SELECT * FROM bank_loans WHERE status = 'OVERDUE' AND guild_id = ?", [guild.id]);
+        overdueLoans.forEach(loan => {
+          const penalty = Math.round(loan.principal_amount * 0.05);
+          database.run(
+            'UPDATE bank_loans SET penalty_accumulated = penalty_accumulated + ? WHERE id = ?',
+            [penalty, loan.id]
+          );
+        });
+
+      } catch (err) {
+        console.error('❌ Gagal memproses penagihan pinjaman harian:', err.message);
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 

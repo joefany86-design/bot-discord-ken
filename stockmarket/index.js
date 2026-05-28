@@ -5,6 +5,7 @@ const stocks = require('./stocks');
 const antiSpam = require('./antiSpam');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
+const bank = require('./bank');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField } = require('discord.js');
 
 // Owner ID dari environment variable (fallback ke default)
@@ -471,7 +472,10 @@ async function handleEconomyChat(message) {
     const now = new Date();
     const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
     
-    if (wallet.last_active_date !== todayStr) {
+    const activeLoan = bank.getActiveLoan(author.id, guildId);
+    const isOverdue = activeLoan && activeLoan.status === 'OVERDUE';
+    
+    if (wallet.last_active_date !== todayStr && !isOverdue) {
       const dailyResult = economy.claimDaily(author.id, guildId);
       if (dailyResult && dailyResult.success) {
         // Kirim notifikasi embed gaji harian otomatis yang premium
@@ -568,6 +572,276 @@ async function handleEconomyCommands(message, client) {
       const activeEvent = events.getActiveEvent(guildId);
       const embed = embeds.eventStatusEmbed(activeEvent);
       await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .bank (Sistem Perbankan Premium)
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'bank') {
+      const getBankDashboardData = (userId, guildId) => {
+        const wallet = economy.getWallet(userId, guildId);
+        const savings = bank.getSavings(userId, guildId);
+        const activeLoan = bank.getActiveLoan(userId, guildId);
+        const maxLimit = bank.calculateMaxLoanLimit(userId, guildId);
+        
+        const embed = embeds.bankDashboardEmbed(author, wallet, savings, activeLoan, maxLimit);
+        
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('bank_btn_deposit')
+            .setLabel('📥 Deposit')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('bank_btn_withdraw')
+            .setLabel('📤 Tarik Uang')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('bank_btn_loan')
+            .setLabel('📜 Pinjam Uang')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(!!activeLoan),
+          new ButtonBuilder()
+            .setCustomId('bank_btn_repay')
+            .setLabel('💳 Bayar Utang')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(!activeLoan)
+        );
+        
+        return { embeds: [embed], components: [row] };
+      };
+      
+      const initialData = getBankDashboardData(author.id, guildId);
+      const replyMsg = await message.reply(initialData);
+      
+      const collector = replyMsg.createMessageComponentCollector({
+        time: 120000
+      });
+      
+      collector.on('collect', async iBank => {
+        if (iBank.user.id !== author.id) {
+          return iBank.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+        }
+        
+        try {
+          if (iBank.customId === 'bank_btn_deposit') {
+            const modal = new ModalBuilder()
+              .setCustomId('bank_modal_deposit')
+              .setTitle('🏛️ Deposit Tabungan Bank');
+              
+            const amountInput = new TextInputBuilder()
+              .setCustomId('deposit_amount')
+              .setLabel('Jumlah koin (angka atau "all")')
+              .setPlaceholder('Contoh: 5000')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true);
+              
+            modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+            await iBank.showModal(modal);
+            
+            const submitted = await iBank.awaitModalSubmit({
+              filter: (sub) => sub.customId === 'bank_modal_deposit' && sub.user.id === author.id,
+              time: 60000
+            }).catch(() => null);
+            
+            if (submitted) {
+              try {
+                const res = bank.depositSavings(author.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
+                const successEmb = embeds.bankSuccessEmbed(
+                  'Deposit Tabungan Berhasil!',
+                  `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah berhasil disimpan di brankas bank.\n\n` +
+                  `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                  `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                );
+                await submitted.reply({ embeds: [successEmb] });
+                
+                const freshData = getBankDashboardData(author.id, guildId);
+                await replyMsg.edit(freshData).catch(console.error);
+              } catch (err) {
+                await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)] });
+              }
+            }
+          }
+          
+          else if (iBank.customId === 'bank_btn_withdraw') {
+            const modal = new ModalBuilder()
+              .setCustomId('bank_modal_withdraw')
+              .setTitle('🏛️ Penarikan Saldo Bank');
+              
+            const amountInput = new TextInputBuilder()
+              .setCustomId('withdraw_amount')
+              .setLabel('Jumlah koin (angka atau "all")')
+              .setPlaceholder('Contoh: 10000')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true);
+              
+            modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+            await iBank.showModal(modal);
+            
+            const submitted = await iBank.awaitModalSubmit({
+              filter: (sub) => sub.customId === 'bank_modal_withdraw' && sub.user.id === author.id,
+              time: 60000
+            }).catch(() => null);
+            
+            if (submitted) {
+              try {
+                const res = bank.withdrawSavings(author.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
+                const successEmb = embeds.bankSuccessEmbed(
+                  'Penarikan Saldo Berhasil!',
+                  `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah berhasil ditarik ke dompet aktif.\n\n` +
+                  `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                  `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                );
+                await submitted.reply({ embeds: [successEmb] });
+                
+                const freshData = getBankDashboardData(author.id, guildId);
+                await replyMsg.edit(freshData).catch(console.error);
+              } catch (err) {
+                await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)] });
+              }
+            }
+          }
+          
+          else if (iBank.customId === 'bank_btn_loan') {
+            // Tampilkan dropdown pilihan tenor
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('bank_select_tenor')
+              .setPlaceholder('👉 Pilih jangka tempo (Tenor)...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🟢 1 Hari (Bunga 2%)').setDescription('Cocok untuk bursa saham jangka pendek.').setValue('1'),
+                new StringSelectMenuOptionBuilder().setLabel('🟡 3 Hari (Bunga 5%)').setDescription('Pilihan seimbang untuk alokasi modal sedang.').setValue('3'),
+                new StringSelectMenuOptionBuilder().setLabel('🔴 7 Hari (Bunga 10%)').setDescription('Pinjaman jangka panjang untuk mengejar kasta role.').setValue('7')
+              );
+              
+            const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
+            const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+            const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+            
+            const askTenorMsg = await iBank.reply({
+              content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang di bawah ini:',
+              components: [tenorRow, cancelRow],
+              fetchReply: true
+            });
+            
+            const tenorCollector = askTenorMsg.createMessageComponentCollector({
+              time: 60000
+            });
+            
+            tenorCollector.on('collect', async iTenor => {
+              if (iTenor.user.id !== author.id) {
+                return iTenor.reply({ content: '❌ Pilihan ini bukan untuk Anda!', ephemeral: true });
+              }
+              
+              if (iTenor.customId === 'bank_loan_cancel') {
+                tenorCollector.stop();
+                await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
+              } else if (iTenor.customId === 'bank_select_tenor') {
+                tenorCollector.stop();
+                const selectedTenor = parseInt(iTenor.values[0]);
+                const maxLimit = bank.calculateMaxLoanLimit(author.id, guildId);
+                
+                const modal = new ModalBuilder()
+                  .setCustomId(`bank_modal_loan_${selectedTenor}`)
+                  .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
+                  
+                const loanInput = new TextInputBuilder()
+                  .setCustomId('loan_amount')
+                  .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
+                  .setPlaceholder('Contoh: 10000')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true);
+                  
+                modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
+                await iTenor.showModal(modal);
+                
+                // Bersihkan pesan pemilihan tenor agar rapi
+                await askTenorMsg.delete().catch(() => {});
+                
+                const submitted = await iTenor.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}` && sub.user.id === author.id,
+                  time: 60000
+                }).catch(() => null);
+                
+                if (submitted) {
+                  try {
+                    const amountStr = submitted.fields.getTextInputValue('loan_amount');
+                    const res = bank.createLoan(author.id, guildId, amountStr, selectedTenor);
+                    const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
+                    
+                    const successEmb = embeds.bankSuccessEmbed(
+                      'Pengajuan Pinjaman Disetujui!',
+                      `Pinjaman Anda berhasil dicairkan!\n\n` +
+                      `💵 **Nominal Pokok:** **Rp ${res.principal.toLocaleString('id-ID')}**\n` +
+                      `📈 **Suku Bunga:** \`${(res.interestRate * 100).toFixed(0)}%\` (Tenor \`${res.tenorDays} Hari\`)\n` +
+                      `💳 **Total Tagihan:** **Rp ${res.totalDue.toLocaleString('id-ID')}**\n` +
+                      `📅 **Batas Pelunasan:** ${dueText}\n\n` +
+                      `*Koin telah ditambahkan ke dompet Anda. Saldo dompet Anda sekarang: Rp ${res.walletBalance.toLocaleString('id-ID')}*`
+                    );
+                    
+                    await submitted.reply({ embeds: [successEmb] });
+                    
+                    const freshData = getBankDashboardData(author.id, guildId);
+                    await replyMsg.edit(freshData).catch(console.error);
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)] });
+                  }
+                }
+              }
+            });
+            
+            tenorCollector.on('end', async () => {
+              await askTenorMsg.delete().catch(() => {});
+            });
+          }
+          
+          else if (iBank.customId === 'bank_btn_repay') {
+            try {
+              const res = bank.repayLoan(author.id, guildId);
+              let desc = '';
+              
+              if (res.isFullyPaid) {
+                desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                       `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                       `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+              } else {
+                desc = `Pembayaran cicilan berhasil diproses!\n\n` +
+                       `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                       `⚠️ **Sisa Utang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                       `💵 **Saldo Dompet Sekarang:** **Rp 0** (Koin lunas cicilan)`;
+              }
+              
+              const successEmb = embeds.bankSuccessEmbed(
+                res.isFullyPaid ? 'Pelunasan Pinjaman Sukses!' : 'Pembayaran Cicilan Diproses!',
+                desc
+              );
+              
+              await iBank.reply({ embeds: [successEmb] });
+              
+              const freshData = getBankDashboardData(author.id, guildId);
+              await replyMsg.edit(freshData).catch(console.error);
+            } catch (err) {
+              await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] });
+            }
+          }
+        } catch (err) {
+          console.error('Error in bank interactive collector:', err);
+        }
+      });
+      
+      collector.on('end', async () => {
+        if (collector.destroyed) return;
+        const freshData = getBankDashboardData(author.id, guildId);
+        freshData.components = freshData.components.map(row => {
+          const freshRow = new ActionRowBuilder();
+          row.components.forEach(comp => {
+            const freshBtn = ButtonBuilder.from(comp).setDisabled(true);
+            freshRow.addComponents(freshBtn);
+          });
+          return freshRow;
+        });
+        await replyMsg.edit(freshData).catch(() => {});
+      });
+      
       return true;
     }
 
@@ -678,6 +952,19 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .daily
     // ═══════════════════════════════════════════════════
     if (commandName === 'daily') {
+      const activeLoan = bank.getActiveLoan(author.id, guildId);
+      if (activeLoan && activeLoan.status === 'OVERDUE') {
+        const totalDebt = activeLoan.total_due + (activeLoan.penalty_accumulated || 0);
+        return message.reply({
+          embeds: [
+            embeds.bankErrorEmbed(
+              'Gaji Harian Dibekukan!',
+              `Klaim harian Anda ditangguhkan karena Anda memiliki tunggakan pinjaman yang **OVERDUE** senilai **Rp ${totalDebt.toLocaleString('id-ID')}**!\n\n` +
+              `*Segera ketik \`.bank\` dan klik tombol [Bayar Utang] untuk melunasi tunggakan Anda!*`
+            )
+          ]
+        });
+      }
       const result = economy.claimDaily(author.id, guildId);
       const embed = embeds.dailyClaimEmbed(author, result);
       await message.reply({ embeds: [embed] });

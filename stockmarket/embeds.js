@@ -872,6 +872,124 @@ module.exports = {
 
     embed.setFooter({ text: `💡 ${randomTip}` }).setTimestamp();
     return embed;
+  },
+
+  // 19. Embed Dashboard Utama Bank
+  bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`🏛️ RUPIAH SERVER CENTRAL BANK — [Kosan 1A]`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `Halo **${user.username}**! 👋\n` +
+        `Kelola tabungan berbunga dan pinjaman darurat Anda dengan aman dan mudah!`
+      )
+      .addFields(
+        { 
+          name: '💵 Dompet Utama', 
+          value: `**${formatCurrency(wallet.balance)}**`, 
+          inline: true 
+        },
+        { 
+          name: '🏦 Saldo Tabungan', 
+          value: `**${formatCurrency(savings.balance)}**\n*📈 Bunga: +1.5% / hari*`, 
+          inline: true 
+        }
+      );
+
+    if (activeLoan) {
+      const isOverdue = activeLoan.status === 'OVERDUE';
+      const statusEmoji = isOverdue ? '🔴 OVERDUE (Jatuh Tempo)' : '⏳ ACTIVE (Berjalan)';
+      const dueText = `<t:${activeLoan.due_at}:F> (<t:${activeLoan.due_at}:R>)`;
+      
+      let debtDetails = 
+        `• Pokok Pinjaman: \`${formatCurrency(activeLoan.principal_amount)}\`\n` +
+        `• Tenor Pilihan : \`${activeLoan.tenor_days} Hari\`\n` +
+        `• Batas Waktu   : ${dueText}\n` +
+        `• Bunga Kontrak : \`${(activeLoan.interest_rate * 100).toFixed(0)}%\`\n` +
+        `• Total Tagihan : **${formatCurrency(activeLoan.total_due)}**`;
+
+      if (activeLoan.penalty_accumulated > 0) {
+        debtDetails += `\n• ⚠️ Denda Akumulasi: **${formatCurrency(activeLoan.penalty_accumulated)}** (+5% / hari)`;
+      }
+
+      embed.addFields({
+        name: `🚨 Status Pinjaman: ${statusEmoji}`,
+        value: debtDetails,
+        inline: false
+      });
+
+      if (isOverdue) {
+        embed.setColor(COLORS.ERROR);
+      } else {
+        embed.setColor(COLORS.WARN);
+      }
+    } else {
+      embed.addFields({
+        name: '📜 Status Pinjaman: 🟢 BERSIH',
+        value: '*Anda tidak memiliki pinjaman aktif. Butuh modal darurat? Ajukan pinjaman di bawah!*',
+        inline: false
+      });
+    }
+
+    embed.addFields({
+      name: '📈 Limit Pinjaman Maksimalmu',
+      value: `**${formatCurrency(maxLimit)}**\n*(Limit naik seiring tingginya keaktifan chat & streak harian)*`,
+      inline: false
+    });
+
+    embed.setFooter({ text: 'Rupiah Server Bank • Klik tombol di bawah ini!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 20. Embed Sukses Bank Umum
+  bankSuccessEmbed(title, description) {
+    const cleanedTitle = title.replace(/^[✅🟢]\s*/, '').trim();
+    const cleanedDesc = description ? description.replace(/^[✅🟢]\s*/, '').trim() : '';
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`✅ ${cleanedTitle}`)
+      .setDescription(cleanedDesc ? `> ${cleanedDesc}` : null)
+      .setTimestamp();
+  },
+
+  // 21. Embed Gagal/Error Bank Umum
+  bankErrorEmbed(title, description) {
+    const cleanedTitle = title.replace(/^❌\s*/, '').trim();
+    const cleanedDesc = description ? description.replace(/^❌\s*/, '').trim() : '';
+    return new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle(`❌ ${cleanedTitle}`)
+      .setDescription(cleanedDesc ? `> ${cleanedDesc}` : null)
+      .setTimestamp();
+  },
+
+  // 22. Embed Tagihan Publik Jatuh Tempo (Overdue Notice)
+  bankOverdueNoticeEmbed(user, loan) {
+    const dueTime = `<t:${loan.due_at}:F> (<t:${loan.due_at}:R>)`;
+    const totalTunggakan = loan.total_due + (loan.penalty_accumulated || 0);
+
+    return new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle(`🚨 PEMBERITAHUAN JATUH TEMPO: SEGERA BAYAR UTANGMU!`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `⚠️ **PERHATIAN WARGA SERVER KOSAN 1A!**\n` +
+        `Pinjaman milik <@${user.id}> telah melewati batas pelunasan dan gagal dilakukan Auto-Debet karena saldo dompet tidak mencukupi!\n\n` +
+        `💸 **Pokok Pinjaman:** \`${formatCurrency(loan.principal_amount)}\`\n` +
+        `🕒 **Batas Jatuh Tempo:** ${dueTime}\n` +
+        `⚠️ **Denda Keterlambatan:** \`${formatCurrency(loan.penalty_accumulated)}\` *(+5% per hari berjalan)*\n` +
+        `💳 **Total Tunggakan:** **${formatCurrency(totalTunggakan)}**\n\n` +
+        `🚫 **SANKSI SOSIAL & EKONOMI AKTIF:**\n` +
+        `• Hadiah harian \`.daily\` Anda **DIBEKUKAN**!\n` +
+        `• Robot trading \`.autotrade\` Anda **DINONAKTIFKAN**!\n\n` +
+        `*Segera kumpulkan koin chat, ketik \`.bank\` dan klik tombol [Bayar Utang] untuk melepas sanksi!*`
+      )
+      .setFooter({ text: 'Kosan 1A Perbankan • Teguran Resmi' })
+      .setTimestamp();
   }
 };
+
 

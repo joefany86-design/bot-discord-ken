@@ -140,7 +140,36 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market & Toko Role berhasil diinisialisasi.');
+  // 8. Bank Savings (Untuk sistem tabungan berbunga)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bank_savings (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      balance INTEGER DEFAULT 0,
+      last_interest_at INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT (strftime('%s','now')),
+      PRIMARY KEY (user_id, guild_id)
+    )
+  `);
+
+  // 9. Bank Loans (Untuk sistem pinjaman berjangka tempo)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bank_loans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      principal_amount INTEGER NOT NULL,
+      interest_rate REAL NOT NULL,
+      total_due INTEGER NOT NULL,
+      penalty_accumulated INTEGER DEFAULT 0,
+      tenor_days INTEGER NOT NULL,
+      due_at INTEGER NOT NULL,
+      status TEXT DEFAULT 'ACTIVE',
+      created_at INTEGER DEFAULT (strftime('%s','now'))
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, & Perbankan berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup
