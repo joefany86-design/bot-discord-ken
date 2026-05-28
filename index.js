@@ -513,10 +513,11 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
         // Pengecekan perizinan admin
         const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
         const isOwner = i.user.id === OWNER_ID;
+        const isGuildOwner = guild && i.user.id === guild.ownerId;
         const memberObj = i.member || await guild.members.fetch(i.user.id).catch(() => null);
         const isAdmin = memberObj && memberObj.permissions.has('Administrator');
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin && !isGuildOwner) {
           return i.reply({ content: '❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah panel admin.', ephemeral: true });
         }
 
@@ -717,8 +718,9 @@ client.on('messageCreate', async message => {
   // ── .admin (Owner & Administrator Only) ──
   if (commandName === 'admin') {
     const isOwner = message.author.id === OWNER_ID;
+    const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !isAdmin && !isGuildOwner) {
       return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
     }
 

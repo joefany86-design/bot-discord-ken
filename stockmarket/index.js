@@ -1088,8 +1088,9 @@ async function handleEconomyCommands(message, client) {
     const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
+      const isGuildOwner = message.guild && author.id === message.guild.ownerId;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
-      if (!isOwner && !isAdmin) {
+      if (!isOwner && !isAdmin && !isGuildOwner) {
         return message.reply({ embeds: [embeds.accessDeniedEmbed(OWNER_ID)] });
       }
     }
