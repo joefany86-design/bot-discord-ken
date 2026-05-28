@@ -1,36 +1,79 @@
-📢 **PENGUMUMAN UPDATE BOT — RUPIAH SERVER BANK (SISTEM PERBANKAN PREMIUM)** 🏛️🚀
-═══════════════════════════════════════════════════════════════════════════
-
+📢 **KATALOG LENGKAP FITUR & PERINTAH KONTROL SENTINEL BOT 2026** 🎙️🏠🚀
+════════════════════════════════════════════════════════════════════════════════════
 Halo Warga Kosan 1A! 🏠✨
-Dalam upaya meningkatkan kesejahteraan, keamanan aset, dan pilihan modal bagi para investor bursa saham, hari ini kami resmi meluncurkan **"Rupiah Server Bank"** — Sistem Perbankan Premium yang super canggih, interaktif, dan mudah digunakan!
+Dalam rangka merayakan rilis besar-besaran pembaruan **Sistem Simulasi Kosan (Sewa & Upgrade)**, hari ini kami resmi menerbitkan panduan pusat informasi dan katalog kontrol seluruh fitur ekonomi, bursa saham, proteksi suara, dan hiburan yang dimiliki oleh **Sentinel Bot 2026**.
 
-Kini Anda dapat mengelola keuangan Anda layaknya nasabah bank modern dengan **perintah tunggal**:
-👉 Cukup ketik **`.bank`** di text channel bursa/bot server kita!
+Berikut adalah ensiklopedia seluruh perintah bot yang aktif penuh dan siap Anda gunakan:
 
-Berikut adalah rincian pembaruan fitur perbankan yang sudah aktif penuh hari ini:
+🎙️ 1. KEAMANAN & PROTEKSI VOICE CHANNEL (VOICE LOCK)
+Keamanan nongkrong Anda di Voice Channel adalah prioritas kami. Bot dilengkapi mekanisme auto-rejoin protektif!
+*   👉 **`.join`** atau **`/join`** : Menyuruh bot bergabung ke Voice Channel Anda dan mengunci saluran. Bot akan secara otomatis menyapa warga dengan suara (Google TTS). Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan!
+*   👉 **`.leave`** atau **`/leave`** : Membuka kunci saluran dan mengeluarkan bot dari Voice Channel Anda secara aman.
+*   👉 **`.status`** : Menampilkan status realtime koneksi voice, RAM VPS, uptime bot, dan statistik sistem server.
 
-📥 1. 100% TOMBOL & FORMULIR POP-UP (MODAL INTERAKTIF)
-Tidak perlu lagi menghafal perintah teks yang panjang dan rawan salah ketik!
-*   **Tombol `[ 📥 Deposit ]`**: Simpan koin dari dompet ke brankas bank. Cukup klik tombol dan isi nominal pada jendela formulir pop-up (*Modal*) Discord. Ketik angka atau `all`.
-*   **Tombol `[ 📤 Tarik Uang ]`**: Tarik koin dari bank kembali ke dompet menggunakan formulir pop-up.
-*   **Tombol `[ 📜 Pinjam Uang ]`**: Pilih jangka tempo pelunasan (tenor) lewat menu pilihan dropdown, lalu isi nominal pinjaman pada formulir pop-up.
-*   **Tombol `[ 💳 Bayar Utang ]`**: Klik sekali untuk melunasi atau mencicil utang secara instan tanpa perlu mengetik nominal lagi!
+🗣️ 2. GOOGLE TEXT-TO-SPEECH (TTS) & VOICE GREETING
+Ucapkan teks secara suara jernih dan asyik!
+*   👉 **`.speak <teks>`** : Mengucapkan teks Bahasa Indonesia di Voice Channel bot.
+*   👉 **`.speak en <teks>`** : Mengucapkan teks Bahasa Inggris di Voice Channel bot.
+*   🔊 **Sapaan Suara Otomatis** : Setiap kali ada member baru yang join ke Voice Channel bersama bot, bot akan otomatis menyapa: *"Halo [Nama], selamat bergabung!"* secara suara realtime!
 
-🏦 2. BUNGA TABUNGAN HARIAN & LIMIT DINAMIS
-*   **Bunga Tabungan Pasif**: Koin yang Anda tabung di bank dijamin 100% aman dari godaan belanja impulsif dan akan bertumbuh dengan **Bunga Pasif +1.5% Setiap Hari** yang cair otomatis!
-*   **Limit Pinjaman Dinamis**: Batas maksimal koin yang dapat Anda pinjam dihitung adil berdasarkan total keaktifan chat dan streak harian Anda. Semakin rajin mengobrol, limit pinjaman Anda akan semakin tinggi!
-*   **Pilihan Tenor & Bunga Pinjaman**:
-    *   🟢 **Tenor 1 Hari**: Bunga 2% (Cocok untuk serok saham buy the dip kilat!)
-    *   🟡 **Tenor 3 Hari**: Bunga 5% (Alokasi modal sedang)
-    *   🔴 **Tenor 7 Hari**: Bunga 10% (Pinjaman jangka panjang untuk ngebut beli role prestise)
+🔗 3. BYPASS & VIDEO LINK MIRRORING (AUTOMATIC PREVIEW)
+Kirim link video favorit Anda tanpa khawatir preview rusak atau diblokir!
+*   ℹ️ **Fitur Pasif** : Bot otomatis mendeteksi setiap link video dari **TikTok, Twitter/X, dan Instagram** yang dikirim di chat. Bot akan mem-bypass dan mengirimkan preview video langsung melalui Webhook Mirroring yang estetik tanpa merusak teks asli Anda!
 
-🚨 3. AUTO-DEBET OTOMATIS & SANKSI OVERDUE (JATUH TEMPO)
-Gunakan pinjaman dengan bijak! Bank server memiliki taring penagihan otomatis yang adil:
-*   **Auto-Debet Harian**: Saat jatuh tempo, sistem bank akan memeriksa dompet Anda. Jika saldo mencukupi, utang akan terpotong otomatis secara aman (Auto-Debet).
-*   **Sanksi Keterlambatan (Overdue)**: Jika saldo dompet tidak cukup saat jatuh tempo:
-    *   ⚠️ Suku utang ditambahkan denda keterlambatan berjalan sebesar **+5% per hari**.
-    *   🚫 Gaji harian **`.daily` dibekukan** sementara dan asisten robot trading **`.autotrade` dinonaktifkan** paksa sampai utang Anda dilunasi.
-    *   📢 Notifikasi tagihan publik tag merah menyala akan dirilis secara terbuka di channel utama untuk memperingatkan Anda.
+💸 4. EKONOMI PASIF & KLAIM GAJI HARIAN ("RUPIAH SERVER")
+*   💬 **Chat-to-Earn** : Cukup aktif mengobrol di text channel mana saja (min 3 kata & 10 karakter), Anda akan otomatis mendapatkan **Rp 1 s/d Rp 4** acak per pesan (anti-spam cooldown 45s).
+*   👉 **`.bal`** atau **`.profile`** : Melihat saldo dompet koin Rupiah Kosan, total nilai portofolio saham, daily streak, dan koleksi role prestise Anda.
+*   👉 **`.daily`** : Mengklaim gaji harian gratis senilai **Rp 15 - Rp 35** ditambah bonus streak berturut-turut!
+    *   🌅 **Gaji Cair Otomatis** : Tidak perlu ketik `.daily` lagi! Gaji harian Anda akan otomatis dicairkan di chat pertama Anda setiap harinya!
+*   👉 **`.transfer @user <jumlah>`** : Mengirim koin secara instan ke member lain (dikenakan pajak transfer normal 10% untuk mencegah eksploitasi multi-akun).
+*   👉 **`.rich`** atau **`.leaderboard`** : Menampilkan papan peringkat 10 konglomerat terkaya di server.
 
-═══════════════════════════════════════════════════════════════════════════
-*Terima kasih atas keaktifan Anda bermain ekonomi. Yuk ketik `.bank` sekarang untuk melihat brankas dan limit pinjaman Anda! Utang lancar, rezeki lancar!* 💰📈✨
+📈 5. BURSA SAHAM KOSAN INTERAKTIF (STOCK MARKET)
+Investasikan koin Anda ke text channel teraktif! Harga saham berfluktuasi dinamis setiap 2 jam berdasarkan keaktifan chat warga di channel tersebut.
+*   👉 **`.market`** atau **`.saham`** : Membuka dashboard bursa saham lengkap dan memicu panel transaksi interaktif privat.
+*   👉 **`.stock <ticker>`** atau **`.chart <ticker>`** : Melihat detail saham dan **Grafik Tren ASCII 2D** (10 pembaruan terakhir) lengkap dengan tombol instan Beli, Jual, dan Segarkan.
+*   👉 **`.buy <ticker> <jumlah>`** : Membeli lembar saham channel (Batas simpan: maks 500 lembar per saham).
+*   👉 **`.sell <ticker> <jumlah>`** : Menjual lembar saham Anda ke bursa (dikenakan pajak bursa normal 15%).
+*   👉 **`.sellall <ticker>`** : Melikuidasi/menjual seluruh lembar saham yang Anda pegang pada ticker terpilih.
+*   👉 **`.porto`** atau **`.portfolio`** : Melihat detail aset investasi, harga beli rata-rata, dan keuntungan/kerugian (Profit/Loss) real-time Anda.
+*   💸 **Weekly Dividen** : Setiap Minggu malam pukul 21:00 WIB, dividen dibagikan otomatis ke seluruh pemegang saham berbasis total keaktifan chat mingguan channel terkait (Maksimal rate 9%!).
+
+🤖 6. ROBOT INVESTASI PRIBADI (AUTO-TRADING AI ENGINE)
+*   👉 **`.autotrade`** atau **`.autoinvest`** : Membuka panel kontrol asisten robot trading pribadi. Jika diaktifkan:
+    *   📥 **Auto DCA (Buy-the-Dip)**: Jika saldo dompet Anda >= Rp 150, robot otomatis mencicil beli saham termurah/sedang turun di bursa setiap 2 jam (maks alokasi 30% saldo).
+    *   📤 **Auto Take-Profit (TP)**: Robot otomatis melikuidasi saham Anda jika keuntungan mencapai **>= 15%** dari harga beli rata-rata untuk mengamankan koin dompet!
+
+🎭 7. TOKO ROLE PRESTISE & SPIN GACHA MISTERI
+*   👉 **`.shop`** atau **`.rolemarket`** : Membuka etalase toko penjualan kasta role bergengsi server.
+*   👉 **`.buy-role <ID>`** : Membeli role prestise secara tetap menggunakan saldo koin Anda.
+*   👉 **`.gacha-role`** : Memutar spin gacha hoki seharga **Rp 250** per roll untuk memperebutkan kasta role Common s/d Mythic (Peluang Jackpot Mythic 0.1%!).
+    *   🗑️ Jika zonk, Anda akan mendapatkan item sampah kocak (seperti *Sandal Swallow Kiri*, *Daun Kering*, *Batu Kali*).
+    *   💰 Jika mendapat role duplikat yang sudah dimiliki, Anda dapat cashback Rp 100!
+*   👉 **`.indexrole`** atau **`.roleindex`** : Menampilkan kartu indeks koleksi kasta role Anda, progress bar, dan status kelas kelayakan sosial Anda di kosan (dari kasta *Beban Server* s/d *Maharaja Sultan*!).
+
+🏛️ 8. CENTRAL BANK KOSAN 1A (TABUNGAN & PINJAMAN POP-UP)
+Perbankan canggih berbasis formulir pop-up interaktif Discord (cukup ketik **`.bank`** untuk membuka panel kontrol):
+*   📥 **Tombol Deposit & Withdraw** : Simpan koin di brankas bank agar aman. Tabungan Anda mendapat **Bunga Pasif +1.5% Setiap Hari** yang cair otomatis tengah malam!
+*   📜 **Tombol Pinjam Uang** : Pinjam koin darurat dengan limit dinamis (berdasarkan keaktifan chat & streak) dengan pilihan jangka waktu pelunasan (tenor) 1 hari (bunga 2%), 3 hari (bunga 5%), atau 7 hari (bunga 10%).
+*   💳 **Tombol Bayar Utang** : Melunasi cicilan atau utang secara instan.
+*   ⚠️ **Sanksi Overdue (Jatuh Tempo)** : Jika tidak dibayar saat jatuh tempo, utang kena denda +5% per hari, `.daily` dibekukan, `.autotrade` dimatikan paksa, dan dapet notifikasi tagihan merah publik!
+
+🛌 9. NEW! SIMULASI SEWA KAMAR & UPGRADE KOSAN
+Ubah koin Anda menjadi hunian bergengsi dan perabotan kamar bernilai ekonomi tinggi!
+*   👉 **`.kos`** atau **`.kosan`** : Membuka Dashboard Hunian Kosan pribadi. Menampilkan kamar aktif, sisa durasi sewa, efek buffs, dan perabotan yang Anda miliki lengkap dengan tombol jalan pintas navigasi.
+*   👉 **`.kos-sewa`** atau **`.sewakos`** : Membuka persewaan kamar kosan berdurasi sewa 3 hari lewat menu dropdown interaktif:
+    *   💨 **Kamar Kipas Angin (Rp 150)** : Gaji Harian +Rp 5.
+    *   ❄️ **Kamar AC (Rp 350)** : Gaji Harian +Rp 15 | Pajak Transfer turun menjadi **8%** (normal 10%).
+    *   👑 **Penthouse Kosan (Rp 800)** : Gaji Harian +Rp 40 | Pajak Transfer turun menjadi **5%** | Pajak Jual Saham turun menjadi **10%** (normal 15%).
+*   👉 **`.kos-upgrade`** atau **`.upgradekos`** : Membuka katalog belanja fasilitas kamar permanen lewat menu dropdown:
+    *   🛏️ **Kasur Busa Super (Rp 200)** : Multiplier streak daily naik, bonus streak harian menjadi **+Rp 4** per hari streak.
+    *   📶 **WiFi Kosan Kencang (Rp 300)** : Batas limit perolehan Voice Earn naik menjadi **Rp 35** per hari (normal Rp 25).
+    *   💧 **Dispenser Air Galon (Rp 150)** : Peluang **10%** koin chat obrolan digandakan secara pasif dengan reaksi emoji `🥤` segar!
+    *   🔒 **Gembok Pintu Solid (Rp 250)** : Pintu kamar super aman, menaikkan batas limit pinjaman bank Anda sebesar **+Rp 150**!
+
+🎲 10. GAME VOICE TRUTH OR DARE (TOD LOBBY)
+*   👉 **`.tod`** atau **`.truthordare`** : Memulai sesi lobi game Truth or Dare interaktif berbahasa Indonesia di Voice Channel untuk meramaikan tongkrongan warga kosan!
+*   👉 **`.tod status`** : Melihat profil, statistik koin, dan performa bermain Truth or Dare Anda.
+════════════════════════════════════════════════════════════════════════════════════
+*Terima kasih atas kontribusi Anda meramaikan Rupiah Server Kosan 1A! Yuk ketik `.kos` atau `.bank` sekarang untuk mencoba keseruan fitur-fitur modern kami! Selamat nongkrong, selamat trading, dan selamat rebahan di Kamar AC!* 🛌💸📈✨

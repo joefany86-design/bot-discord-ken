@@ -989,7 +989,165 @@ module.exports = {
       )
       .setFooter({ text: 'Kosan 1A Perbankan • Teguran Resmi' })
       .setTimestamp();
+  },
+
+  // 23. Embed Dashboard Kosan Pribadi (.kos)
+  kosDashboardEmbed(user, wallet, activeRental, upgrades) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`🏠 PANEL KONTROL KAMAR KOSAN — ${user.username}`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `Selamat datang di kamarmu! Di sini kamu bisa mengatur hunian kosan dan memantau aset fasilitas yang dimiliki.\n\n` +
+        `💵 **Saldo Dompet:** **${formatCurrency(wallet.balance)}**`
+      );
+
+    // Rincian Kamar Aktif
+    if (activeRental) {
+      const dueText = `<t:${activeRental.ends_at}:F> (<t:${activeRental.ends_at}:R>)`;
+      let buffs = `• 🌅 Gaji Harian: **+${formatCurrency(activeRental.config.dailyBonus)}** /hari\n`;
+      if (activeRental.config.transferTax !== undefined) {
+        buffs += `• 💸 Pajak Transfer: **${activeRental.config.transferTax}%** (normal 10%)\n`;
+      }
+      if (activeRental.config.tradeTax !== undefined) {
+        buffs += `• 📉 Pajak Jual Saham: **${activeRental.config.tradeTax}%** (normal 15%)\n`;
+      }
+
+      embed.addFields({
+        name: `🛌 Hunian Aktif: ${activeRental.name}`,
+        value: 
+          `> *“${activeRental.config.desc}”*\n\n` +
+          `🕒 **Habis Sewa:** ${dueText}\n` +
+          `📈 **Efek Passive Buffs:**\n${buffs}`,
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '🛌 Hunian Aktif: 🧹 Tidur di Teras Kosan',
+        value: 
+          `*“Gelar tikar tipis di emperan kosan, ditemani nyamuk komplek dan angin malam yang menusuk tulang.”*\n\n` +
+          `⚠️ **Sanksi Sosial:** Kamu tidak mendapatkan bonus daily tambahan apa pun.\n` +
+          `👉 *Sewa kamarmu sekarang dengan mengetik \`.kos-sewa\`!*`,
+        inline: false
+      });
+    }
+
+    // Rincian Fasilitas Kamar
+    if (upgrades && upgrades.length > 0) {
+      let upgradesText = '';
+      upgrades.forEach(u => {
+        upgradesText += `• **${u.name}**\n  *Efek: ${u.config.desc}*\n\n`;
+      });
+
+      embed.addFields({
+        name: `🪟 Fasilitas Kamar Terpasang (${upgrades.length})`,
+        value: upgradesText.trim(),
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '🪟 Fasilitas Kamar Terpasang (0)',
+        value: `*Kosong melompong. Hanya ada jemuran basah sisa kemarin gantung di pojokan.*\n\n👉 *Belanja perlengkapan kamarmu sekarang dengan mengetik \`.kos-upgrade\`!*`,
+        inline: false
+      });
+    }
+
+    embed.setFooter({ text: 'Sentinel Kosan System 1A • Kelola kosanmu!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 24. Embed Daftar Kamar Persewaan (.kos-sewa)
+  kosRoomListEmbed(currentRental) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle('🛎️ REKAPITULASI SEWA KAMAR KOSAN 1A')
+      .setDescription(
+        `Silakan sewa kamar di bawah ini untuk memperoleh bonus harian & potongan pajak!\n` +
+        `*Durasi sewa per transaksi adalah 3 hari.*`
+      );
+
+    const rooms = config.kos.ROOMS;
+    Object.keys(rooms).forEach(key => {
+      const room = rooms[key];
+      let details = 
+        `• Biaya Sewa: **${formatCurrency(room.price)}** / 3 hari\n` +
+        `• Bonus Gaji Harian: **+${formatCurrency(room.dailyBonus)}** /hari\n`;
+      
+      if (room.transferTax !== undefined) {
+        details += `• Potongan Pajak Transfer: menjadi **${room.transferTax}%** *(normal 10%)*\n`;
+      }
+      if (room.tradeTax !== undefined) {
+        details += `• Potongan Pajak Jual Saham: menjadi **${room.tradeTax}%** *(normal 15%)*\n`;
+      }
+
+      embed.addFields({
+        name: `${room.name}`,
+        value: `*“${room.desc}”*\n${details}`,
+        inline: false
+      });
+    });
+
+    if (currentRental) {
+      embed.addFields({
+        name: '🛌 Status Sewa Aktif Anda',
+        value: `Anda saat ini sedang menyewa **${currentRental.name}** s/d <t:${currentRental.ends_at}:F> (<t:${currentRental.ends_at}:R>).`,
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '🛌 Status Sewa Aktif Anda',
+        value: 'Belum menyewa kamar (Tidur di teras kosan 🧹).',
+        inline: false
+      });
+    }
+
+    embed.setFooter({ text: 'Pilih kamar melalui tombol menu di bawah untuk transaksi!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 25. Embed Katalog Upgrade Fasilitas Kosan (.kos-upgrade)
+  kosUpgradeListEmbed(ownedUpgrades) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle('🛒 BELANJA FURNITURE & FASILITAS KAMAR KOSAN')
+      .setDescription(
+        `Beli perlengkapan kamar permanen untuk memperkuat perolehan ekonomi Rupiah Anda!\n` +
+        `*Semua upgrade bersifat PERMANEN dan tidak perlu disewa ulang.*`
+      );
+
+    const upgrades = config.kos.UPGRADES;
+    Object.keys(upgrades).forEach(key => {
+      const up = upgrades[key];
+      const isOwned = ownedUpgrades.some(o => o.id === up.id);
+      const statusText = isOwned ? '🟢 **[ SUDAH DIMILIKI ]**' : `🛒 Harga Beli: **${formatCurrency(up.price)}**`;
+
+      embed.addFields({
+        name: `${up.name}`,
+        value: `*“${up.desc}”*\n👉 ${statusText}`,
+        inline: false
+      });
+    });
+
+    embed.setFooter({ text: 'Pilih fasilitas melalui tombol menu di bawah untuk bertransaksi!' })
+      .setTimestamp();
+
+    return embed;
+  },
+
+  // 26. Embed Struk Pembayaran Sukses
+  kosSuccessReceiptEmbed(title, description) {
+    return new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`✅ ${title}`)
+      .setDescription(description ? `> ${description}` : null)
+      .setFooter({ text: 'Rupiah Server Kosan 1A • Struk Pembayaran Resmi' })
+      .setTimestamp();
   }
+}
 };
 
 

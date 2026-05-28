@@ -232,8 +232,17 @@ function sellStock(userId, guildId, ticker, shares) {
   }
 
   const rawRevenue = stock.current_price * shares;
-  // Hitung pajak penjualan 5%
-  const tax = Math.floor(rawRevenue * (config.economy.TRADE_TAX_PERCENT / 100));
+  
+  // Ambil sewa kamar aktif
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(userId, guildId);
+
+  let taxRatePercent = config.economy.TRADE_TAX_PERCENT;
+  if (activeRental && activeRental.config && activeRental.config.tradeTax !== undefined) {
+    taxRatePercent = activeRental.config.tradeTax;
+  }
+
+  const tax = Math.floor(rawRevenue * (taxRatePercent / 100));
   const finalRevenue = rawRevenue - tax;
 
   db.transaction(() => {

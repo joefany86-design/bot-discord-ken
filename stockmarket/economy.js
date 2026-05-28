@@ -141,9 +141,23 @@ function claimDaily(userId, guildId) {
     Math.random() * (config.economy.DAILY_MAX - config.economy.DAILY_MIN + 1)
   ) + config.economy.DAILY_MIN;
   
-  // Bonus streak
-  const streakBonus = (newStreak - 1) * config.economy.DAILY_STREAK_BONUS;
-  const totalReward = baseReward + streakBonus;
+  // Ambil bonus kamar kos & upgrade kasur
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(userId, guildId);
+  const hasKasur = kos.hasUpgrade(userId, guildId, 'KASUR');
+
+  // Bonus streak (jika punya kasur busa super, bonus streak bertambah +Rp 1 per hari streak)
+  const streakMultiplier = hasKasur ? (config.economy.DAILY_STREAK_BONUS + 1) : config.economy.DAILY_STREAK_BONUS;
+  const streakBonus = (newStreak - 1) * streakMultiplier;
+
+  let roomBonus = 0;
+  let roomName = '';
+  if (activeRental && activeRental.config) {
+    roomBonus = activeRental.config.dailyBonus || 0;
+    roomName = activeRental.name;
+  }
+
+  const totalReward = baseReward + streakBonus + roomBonus;
 
   db.transaction(() => {
     // Tambah saldo
@@ -163,7 +177,9 @@ function claimDaily(userId, guildId) {
     reward: totalReward,
     baseReward,
     streakBonus,
-    streak: newStreak
+    streak: newStreak,
+    roomBonus,
+    roomName
   };
 }
 
@@ -180,7 +196,15 @@ function transferBalance(fromUserId, toUserId, guildId, amount) {
   }
 
   // Hitung pajak
-  const taxRate = config.economy.TRANSFER_TAX_PERCENT / 100;
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(fromUserId, guildId);
+  
+  let taxRatePercent = config.economy.TRANSFER_TAX_PERCENT;
+  if (activeRental && activeRental.config && activeRental.config.transferTax !== undefined) {
+    taxRatePercent = activeRental.config.transferTax;
+  }
+
+  const taxRate = taxRatePercent / 100;
   const tax = Math.floor(amount * taxRate);
   const amountToReceive = amount - tax;
 
@@ -191,7 +215,7 @@ function transferBalance(fromUserId, toUserId, guildId, amount) {
     // Tambahkan ke penerima (dikurangi pajak)
     addBalance(toUserId, guildId, amountToReceive, 'TRANSFER_IN');
     
-    console.log(`💸 Transfer: ${fromUserId} -> ${toUserId} senilai Rp ${amount} (Penerima dapat Rp ${amountToReceive}, Pajak Rp ${tax})`);
+    console.log(`💸 Transfer: ${fromUserId} -> ${toUserId} senilai Rp ${amount} (Penerima dapat Rp ${amountToReceive}, Pajak Rp ${tax} - Rate ${taxRatePercent}%)`);
   })();
 
   return {

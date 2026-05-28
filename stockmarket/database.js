@@ -169,7 +169,29 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, & Perbankan berhasil diinisialisasi.');
+  // 10. Kos Rentals (Untuk melacak durasi sewa kamar berdurasi)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kos_rentals (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      room_tier TEXT NOT NULL,
+      ends_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, guild_id)
+    )
+  `);
+
+  // 11. Kos Upgrades (Untuk melacak upgrade kamar permanen yang dibeli)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS kos_upgrades (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      upgrade_id TEXT NOT NULL,
+      created_at INTEGER DEFAULT (strftime('%s','now')),
+      PRIMARY KEY (user_id, guild_id, upgrade_id)
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, & Kosan berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup

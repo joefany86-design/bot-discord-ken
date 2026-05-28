@@ -517,11 +517,29 @@ async function handleEconomyChat(message) {
 
   let totalEarned = earnedCoins + investorBonus;
 
+  // 3a. Cek Upgrade Dispenser Air (Peluang 10% double chat earn)
+  let dispenserTriggered = false;
+  try {
+    const kos = require('./kos');
+    if (kos.hasUpgrade(author.id, guildId, 'DISPENSER')) {
+      if (Math.random() < 0.10) {
+        totalEarned *= 2;
+        dispenserTriggered = true;
+      }
+    }
+  } catch (err) {
+    console.error('Error checking dispenser upgrade:', err.message);
+  }
+
   // 3b. Cek Event Ekonomi: Double Earning Hour
   const events = require('./events');
   const activeEvent = events.getActiveEvent(guildId);
   if (activeEvent && activeEvent.type === 'DOUBLE_EARNING') {
     totalEarned *= 2;
+  }
+
+  if (dispenserTriggered) {
+    message.react('🥤').catch(() => {});
   }
 
   // 4. Tambahkan saldo koin & catat log message timestamp
@@ -545,6 +563,187 @@ async function handleEconomyChat(message) {
 
   // Debug log keaktifan (opsional)
   // console.log(`💰 [Economy] ${author.tag} dapat Rp ${totalEarned} (${earnedCoins} base + ${investorBonus} bonus investor + double earning) di #${message.channel.name}`);
+}
+
+/**
+ * Helper untuk menangani perintah sewa kamar kosan.
+ */
+async function handleKosSewaCommand(message, client) {
+  const { guildId, author } = message;
+  const kos = require('./kos');
+
+  const getSewaPanelData = (userId, guildId) => {
+    const currentRental = kos.getActiveRental(userId, guildId);
+    const embed = embeds.kosRoomListEmbed(currentRental);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('kos_select_room')
+      .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('💨 Kamar Kipas Angin (Rp 150)')
+          .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
+          .setValue('KIPAS'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('❄️ Kamar AC (Rp 350)')
+          .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
+          .setValue('AC'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('👑 Penthouse Kosan (Rp 800)')
+          .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
+          .setValue('PENTHOUSE')
+      );
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('kos_btn_cancel_sewa')
+      .setLabel('✖️ Batalkan')
+      .setStyle(ButtonStyle.Secondary);
+    const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+    return { embeds: [embed], components: [selectRow, cancelRow] };
+  };
+
+  const initialData = getSewaPanelData(author.id, guildId);
+  const replyMsg = await message.reply(initialData);
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 120000
+  });
+
+  collector.on('collect', async iSewa => {
+    if (iSewa.user.id !== author.id) {
+      return iSewa.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+    }
+
+    try {
+      if (iSewa.customId === 'kos_btn_cancel_sewa') {
+        collector.stop();
+        await iSewa.update({ content: '❌ Transaksi persewaan kamar dibatalkan.', embeds: [], components: [] });
+      } else if (iSewa.customId === 'kos_select_room') {
+        collector.stop();
+        const selectedRoom = iSewa.values[0];
+        
+        try {
+          const res = kos.rentRoom(author.id, guildId, selectedRoom);
+          const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
+          
+          const successEmb = embeds.kosSuccessReceiptEmbed(
+            'Transaksi Persewaan Kamar Berhasil! 🛌',
+            `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
+            `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+            `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
+            `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.\n` +
+            `👉 *Ketik \`.kos\` untuk melihat status kamar barumu!*`
+          );
+
+          await iSewa.update({ embeds: [successEmb], components: [] });
+        } catch (err) {
+          const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
+          await iSewa.update({ embeds: [errorEmb], components: [] });
+        }
+      }
+    } catch (err) {
+      console.error('Error in room sewa collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    const freshData = getSewaPanelData(author.id, guildId);
+    freshData.components = [];
+    await replyMsg.edit(freshData).catch(() => {});
+  });
+}
+
+/**
+ * Helper untuk menangani perintah upgrade fasilitas kosan.
+ */
+async function handleKosUpgradeCommand(message, client) {
+  const { guildId, author } = message;
+  const kos = require('./kos');
+
+  const getUpgradePanelData = (userId, guildId) => {
+    const ownedUpgrades = kos.getUpgrades(userId, guildId);
+    const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('kos_select_upgrade')
+      .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
+
+    const upgradesConfig = config.kos.UPGRADES;
+    Object.keys(upgradesConfig).forEach(key => {
+      const up = upgradesConfig[key];
+      const isOwned = ownedUpgrades.some(o => o.id === up.id);
+      
+      selectMenu.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
+          .setDescription(up.desc.substring(0, 100))
+          .setValue(up.id)
+          .setDisabled(isOwned)
+      );
+    });
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('kos_btn_cancel_upgrade')
+      .setLabel('✖️ Batalkan')
+      .setStyle(ButtonStyle.Secondary);
+    const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+    return { embeds: [embed], components: [selectRow, cancelRow] };
+  };
+
+  const initialData = getUpgradePanelData(author.id, guildId);
+  const replyMsg = await message.reply(initialData);
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 120000
+  });
+
+  collector.on('collect', async iUpgrade => {
+    if (iUpgrade.user.id !== author.id) {
+      return iUpgrade.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+    }
+
+    try {
+      if (iUpgrade.customId === 'kos_btn_cancel_upgrade') {
+        collector.stop();
+        await iUpgrade.update({ content: '❌ Transaksi belanja fasilitas dibatalkan.', embeds: [], components: [] });
+      } else if (iUpgrade.customId === 'kos_select_upgrade') {
+        collector.stop();
+        const selectedUpgrade = iUpgrade.values[0];
+
+        try {
+          const res = kos.buyUpgrade(author.id, guildId, selectedUpgrade);
+
+          const successEmb = embeds.kosSuccessReceiptEmbed(
+            'Transaksi Belanja Fasilitas Berhasil! 🛒',
+            `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
+            `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+            `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
+            `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.\n` +
+            `👉 *Ketik \`.kos\` untuk melihat status kamarmu saat ini!*`
+          );
+
+          await iUpgrade.update({ embeds: [successEmb], components: [] });
+        } catch (err) {
+          const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
+          await iUpgrade.update({ embeds: [errorEmb], components: [] });
+        }
+      }
+    } catch (err) {
+      console.error('Error in upgrade collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    const freshData = getUpgradePanelData(author.id, guildId);
+    freshData.components = [];
+    await replyMsg.edit(freshData).catch(() => {});
+  });
 }
 
 /**
@@ -572,6 +771,85 @@ async function handleEconomyCommands(message, client) {
       const activeEvent = events.getActiveEvent(guildId);
       const embed = embeds.eventStatusEmbed(activeEvent);
       await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .kos / .kosan
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'kos' || commandName === 'kosan') {
+      const kos = require('./kos');
+      const getDashboardData = (userId, guildId) => {
+        const wallet = economy.getWallet(userId, guildId);
+        const activeRental = kos.getActiveRental(userId, guildId);
+        const upgrades = kos.getUpgrades(userId, guildId);
+        
+        const embed = embeds.kosDashboardEmbed(author, wallet, activeRental, upgrades);
+        
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('kos_btn_nav_sewa')
+            .setLabel('🛎️ Sewa Kamar')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('kos_btn_nav_upgrade')
+            .setLabel('🛒 Belanja Fasilitas')
+            .setStyle(ButtonStyle.Success)
+        );
+        
+        return { embeds: [embed], components: [row] };
+      };
+
+      const initialData = getDashboardData(author.id, guildId);
+      const replyMsg = await message.reply(initialData);
+
+      const collector = replyMsg.createMessageComponentCollector({
+        time: 120000
+      });
+
+      collector.on('collect', async iKos => {
+        if (iKos.user.id !== author.id) {
+          return iKos.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+        }
+
+        try {
+          if (iKos.customId === 'kos_btn_nav_sewa') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+            await handleKosSewaCommand(message, client);
+          } else if (iKos.customId === 'kos_btn_nav_upgrade') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+            await handleKosUpgradeCommand(message, client);
+          }
+        } catch (err) {
+          console.error('Error in kos dashboard interaction:', err);
+        }
+      });
+
+      collector.on('end', async () => {
+        if (collector.destroyed) return;
+        const freshData = getDashboardData(author.id, guildId);
+        freshData.components = [];
+        await replyMsg.edit(freshData).catch(() => {});
+      });
+
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .kos-sewa / .sewakos
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'kos-sewa' || commandName === 'sewakos') {
+      await handleKosSewaCommand(message, client);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .kos-upgrade / .upgradekos
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'kos-upgrade' || commandName === 'upgradekos') {
+      await handleKosUpgradeCommand(message, client);
       return true;
     }
 

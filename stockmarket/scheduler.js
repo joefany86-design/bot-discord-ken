@@ -346,10 +346,15 @@ function initScheduler(client) {
 
           // Berikan koin ke masing-masing member yang aktif
           const earnAmount = config.economy.VOICE_EARN_AMOUNT !== undefined ? config.economy.VOICE_EARN_AMOUNT : 2;
-          const earnLimit = config.economy.VOICE_EARN_LIMIT_DAILY || 300;
-
+          
           activeMembers.forEach(member => {
             try {
+              const kos = require('./kos');
+              let earnLimit = config.economy.VOICE_EARN_LIMIT_DAILY || 300;
+              if (kos.hasUpgrade(member.id, guild.id, 'WIFI')) {
+                earnLimit += 10;
+              }
+
               // Cek sisa kuota harian Voice Earn
               const dailyEarned = economy.getDailyVoiceEarnings(member.id, guild.id);
               if (dailyEarned >= earnLimit) return; // Sudah mencapai batas harian

@@ -109,5 +109,65 @@ module.exports = {
       { name: '🍼 Tutup Botol Galon Bekas', desc: 'Mungkin bisa digunakan untuk kerajinan tangan kelas SD.' },
       { name: '🧾 Struk Belanjaan Tahun Lalu', desc: 'Struk pembelian mie instan yang tinta tulisannya sudah pudar.' }
     ]
+  },
+
+  // Konfigurasi Sistem Sewa & Upgrade Kos-kosan (Rupiah Server Kosan 1A)
+  kos: {
+    // Durasi sewa: 3 hari (dalam detik)
+    RENT_DURATION_SECONDS: 3 * 24 * 60 * 60,
+
+    ROOMS: {
+      KIPAS: {
+        id: 'KIPAS',
+        name: '💨 Kamar Kipas Angin',
+        price: 150,
+        dailyBonus: 5,
+        desc: 'Kamar sederhana ber-kipas dinding, cukup dingin untuk tidur malam tanpa berkeringat.'
+      },
+      AC: {
+        id: 'AC',
+        name: '❄️ Kamar AC',
+        price: 350,
+        dailyBonus: 15,
+        transferTax: 8, // 8% pajak transfer koin (default 10%)
+        desc: 'Kamar nyaman dengan AC hembus dingin, membuat konsentrasi bekerja di kosan semakin mantap.'
+      },
+      PENTHOUSE: {
+        id: 'PENTHOUSE',
+        name: '👑 Penthouse Kosan',
+        price: 800,
+        dailyBonus: 40,
+        transferTax: 5, // 5% pajak transfer koin
+        tradeTax: 10,  // 10% pajak bursa jual saham (default 15%)
+        desc: 'Kamar kasta tertinggi kosan dengan TV 4K, kulkas mini, kasur king-size, dan privasi premium.'
+      }
+    },
+
+    UPGRADES: {
+      KASUR: {
+        id: 'KASUR',
+        name: '🛏️ Kasur Busa Super',
+        price: 200,
+        desc: 'Menggantikan tikar tipis. Memberikan bonus +Rp 1 per hari streak pada Daily Claim harian Anda.'
+      },
+      WIFI: {
+        id: 'WIFI',
+        name: '📶 WiFi Kosan Kencang',
+        price: 300,
+        desc: 'Meningkatkan limit harian perolehan koin keaktifan Voice Channel sebesar +Rp 10 (dari 25 -> 35).'
+      },
+      DISPENSER: {
+        id: 'DISPENSER',
+        name: '💧 Dispenser Air Galon',
+        price: 150,
+        desc: 'Dispenser air dingin menyegarkan di dalam kamar. Peluang 10% melipatgandakan koin chat earn Anda.'
+      },
+      GEMBOK: {
+        id: 'GEMBOK',
+        name: '🔒 Gembok Pintu Solid',
+        price: 250,
+        desc: 'Gembok besi tebal untuk pintu kamar. Meningkatkan batas limit pinjaman bank Anda sebesar +Rp 150.'
+      }
+    }
   }
 };

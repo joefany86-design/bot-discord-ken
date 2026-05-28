@@ -146,8 +146,12 @@ function getActiveLoan(userId, guildId) {
 function calculateMaxLoanLimit(userId, guildId) {
   const wallet = economy.getWallet(userId, guildId);
   
-  // Formula limit: 500 + 30% dari wallets.total_earned + 100 * wallets.streak_days
-  const baseLimit = 500;
+  // Ambil data upgrade gembok pintu
+  const kos = require('./kos');
+  const hasGembok = kos.hasUpgrade(userId, guildId, 'GEMBOK');
+
+  // Formula limit: 500 + 30% dari wallets.total_earned + 100 * wallets.streak_days + bonus gembok Rp 150
+  const baseLimit = 500 + (hasGembok ? 150 : 0);
   const earnedBonus = Math.floor((wallet.total_earned || 0) * 0.3);
   const streakBonus = (wallet.streak_days || 0) * 100;
 
