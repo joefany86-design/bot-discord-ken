@@ -1,24 +1,36 @@
-📢 **PENGUMUMAN UPDATE BOT — SPRINT 5.1 & RANDOM EVENTS** 🚀
-═══════════════════════════════════════════════════════
+📢 **PENGUMUMAN UPDATE BOT — RUPIAH SERVER BANK (SISTEM PERBANKAN PREMIUM)** 🏛️🚀
+═══════════════════════════════════════════════════════════════════════════
 
-Halo teman-teman! Kami baru saja melakukan pembaruan besar-besaran (update) untuk meningkatkan keseruan, performa, dan keamanan sistem bot di server kita! Berikut adalah daftar pembaruan terbaru yang sudah aktif:
+Halo Warga Kosan 1A! 🏠✨
+Dalam upaya meningkatkan kesejahteraan, keamanan aset, dan pilihan modal bagi para investor bursa saham, hari ini kami resmi meluncurkan **"Rupiah Server Bank"** — Sistem Perbankan Premium yang super canggih, interaktif, dan mudah digunakan!
 
-📅 1. EVENT EKONOMI RANDOM (BURSA SAHAM & CHAT BOOSTER)
-Ekonomi server kini lebih dinamis dengan event acak yang terintegrasi dengan bursa saham dan chat!
-👉 🔴 **Market Crash (-20%)**: Bursa saham goyang! Harga semua saham anjlok 20% secara instan! *Saatnya serok muatan di harga dasar!*
-👉 🟢 **Bull Run (+15%)**: Kepercayaan pasar melonjak! Semua harga saham meroket 15% secara instan! *Para holder tersenyum lebar!*
-👉 💰 **Double Earning Hour (1 Jam)**: Booster keaktifan chat! Koin obrolan bernilai **2 KALI LIPAT** selama 1 jam penuh!
-👉 🕒 **Jadwal Event**: Pemeriksaan pemicu otomatis setiap 3 jam (09:00, 12:00, 15:00, 18:00, 21:00 WIB) dengan tingkat kemunculan acak.
-👉 📋 **Perintah Baru**: Ketik `.event` kapan saja untuk melihat status event yang sedang aktif dan sisa durasinya.
+Kini Anda dapat mengelola keuangan Anda layaknya nasabah bank modern dengan **perintah tunggal**:
+👉 Cukup ketik **`.bank`** di text channel bursa/bot server kita!
 
-🐛 2. PERBAIKAN BUG KRITIS & STABILITAS SISTEM
-Kami membersihkan sistem dari berbagai bug mengganggu untuk kenyamanan maksimal:
-👉 🛠️ **Regex Bypass Fix**: Memperbaiki kegagalan mirroring otomatis pada beberapa link TikTok/Twitter/X/Instagram. Sekarang link video akan dikirim secara instan tanpa terlewat!
-👉 🛡️ **Bypass Rate Limiter**: Membatasi bypass link maksimal 3 kali per 30 detik per user untuk mencegah spam webhook.
-👉 ⚙️ **Dotenv Loading Fix**: Memperbaiki pemuatan variabel lingkungan pada startup bot agar lebih presisi.
-👉 🚪 **Graceful Shutdown**: Bot akan menutup koneksi suara secara bersih saat dimatikan/di-restart di VPS, mencegah error koneksi.
-👉 🔠 **Koreksi Typo**: Memperbaiki kata seperti "terlahu" -> "terlalu", dan "Ambal" -> "Ambil".
-👉 👤 **Owner ID Dynamic**: Menggunakan ID Owner dinamis dari file konfigurasi lingkungan, bukan hardcoded.
+Berikut adalah rincian pembaruan fitur perbankan yang sudah aktif penuh hari ini:
 
-═══════════════════════════════════════════════════════
-*Terima kasih kepada seluruh member atas dukungannya. Yuk ketik `.event` atau `.market` sekarang untuk melihat kondisi server terbaru!* 📈✨
+📥 1. 100% TOMBOL & FORMULIR POP-UP (MODAL INTERAKTIF)
+Tidak perlu lagi menghafal perintah teks yang panjang dan rawan salah ketik!
+*   **Tombol `[ 📥 Deposit ]`**: Simpan koin dari dompet ke brankas bank. Cukup klik tombol dan isi nominal pada jendela formulir pop-up (*Modal*) Discord. Ketik angka atau `all`.
+*   **Tombol `[ 📤 Tarik Uang ]`**: Tarik koin dari bank kembali ke dompet menggunakan formulir pop-up.
+*   **Tombol `[ 📜 Pinjam Uang ]`**: Pilih jangka tempo pelunasan (tenor) lewat menu pilihan dropdown, lalu isi nominal pinjaman pada formulir pop-up.
+*   **Tombol `[ 💳 Bayar Utang ]`**: Klik sekali untuk melunasi atau mencicil utang secara instan tanpa perlu mengetik nominal lagi!
+
+🏦 2. BUNGA TABUNGAN HARIAN & LIMIT DINAMIS
+*   **Bunga Tabungan Pasif**: Koin yang Anda tabung di bank dijamin 100% aman dari godaan belanja impulsif dan akan bertumbuh dengan **Bunga Pasif +1.5% Setiap Hari** yang cair otomatis!
+*   **Limit Pinjaman Dinamis**: Batas maksimal koin yang dapat Anda pinjam dihitung adil berdasarkan total keaktifan chat dan streak harian Anda. Semakin rajin mengobrol, limit pinjaman Anda akan semakin tinggi!
+*   **Pilihan Tenor & Bunga Pinjaman**:
+    *   🟢 **Tenor 1 Hari**: Bunga 2% (Cocok untuk serok saham buy the dip kilat!)
+    *   🟡 **Tenor 3 Hari**: Bunga 5% (Alokasi modal sedang)
+    *   🔴 **Tenor 7 Hari**: Bunga 10% (Pinjaman jangka panjang untuk ngebut beli role prestise)
+
+🚨 3. AUTO-DEBET OTOMATIS & SANKSI OVERDUE (JATUH TEMPO)
+Gunakan pinjaman dengan bijak! Bank server memiliki taring penagihan otomatis yang adil:
+*   **Auto-Debet Harian**: Saat jatuh tempo, sistem bank akan memeriksa dompet Anda. Jika saldo mencukupi, utang akan terpotong otomatis secara aman (Auto-Debet).
+*   **Sanksi Keterlambatan (Overdue)**: Jika saldo dompet tidak cukup saat jatuh tempo:
+    *   ⚠️ Suku utang ditambahkan denda keterlambatan berjalan sebesar **+5% per hari**.
+    *   🚫 Gaji harian **`.daily` dibekukan** sementara dan asisten robot trading **`.autotrade` dinonaktifkan** paksa sampai utang Anda dilunasi.
+    *   📢 Notifikasi tagihan publik tag merah menyala akan dirilis secara terbuka di channel utama untuk memperingatkan Anda.
+
+═══════════════════════════════════════════════════════════════════════════
+*Terima kasih atas keaktifan Anda bermain ekonomi. Yuk ketik `.bank` sekarang untuk melihat brankas dan limit pinjaman Anda! Utang lancar, rezeki lancar!* 💰📈✨
