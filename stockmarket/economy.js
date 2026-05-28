@@ -28,6 +28,7 @@ function getWallet(userId, guildId) {
       last_message_at: 0,
       streak_days: 0,
       last_active_date: '',
+      auto_trade: 0,
       created_at: now
     };
   }

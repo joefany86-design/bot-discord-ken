@@ -395,7 +395,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 // ═══════════════════════════════════════════════════
 // BOT READY EVENT
 // ═══════════════════════════════════════════════════
-client.once('clientReady', () => {
+client.once('ready', () => {
   console.log(`══════════════════════════════════════`);
   console.log(`  Bot online sebagai ${client.user.tag}`);
   console.log(`  Servers: ${client.guilds.cache.size}`);

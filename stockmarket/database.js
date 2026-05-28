@@ -48,6 +48,14 @@ function initSchema() {
     )
   `);
 
+  // 1b. Migrasi dinamis: Tambahkan kolom auto_trade jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN auto_trade INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'auto_trade' berhasil ditambahkan/diverifikasi di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   // 2. Stocks (Data Saham Channel per Guild)
   db.exec(`
     CREATE TABLE IF NOT EXISTS stocks (

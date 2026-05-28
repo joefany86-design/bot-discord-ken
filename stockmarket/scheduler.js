@@ -18,6 +18,9 @@ function initScheduler(client) {
       return;
     }
 
+    const database = require('./database');
+    const economy = require('./economy');
+
     client.guilds.cache.forEach(guild => {
       // Inisialisasi saham jika belum ada
       stocks.initDefaultStocks(guild);
@@ -27,8 +30,123 @@ function initScheduler(client) {
 
       console.log(`📈 [Scheduler] Perubahan harga saham berhasil diproses untuk guild: ${guild.name}`);
       
-      // Opsional: Kirim log perubahan harga ke channel default/pengumuman jika diset
-      // Kita bisa buat postingan log atau biarkan user melihat secara langsung via .market
+      // Tentukan channel laporan (prioritaskan REPORT_CHANNEL_ID jika diset)
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
+
+      // ── AUTO MARKET REPORT: Kirim log perubahan harga otomatis ke channel ──
+      if (targetChannel && updates.length > 0) {
+        let updateText = '';
+        updates.forEach(u => {
+          const trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
+          const trendSign = u.changePct >= 0 ? '+' : '';
+          const trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+          updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
+                        `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
+                        `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
+        });
+
+        const reportEmbed = new EmbedBuilder()
+          .setColor(0x00FF88)
+          .setTitle(`📈 LAPORAN PERGERAKAN SAHAM HARIAN — ${guild.name}`)
+          .setDescription(
+            `🔔 **Bursa Saham Server telah ter-update otomatis!**\n` +
+            `Berikut adalah data pergerakan harga saham terbaru berdasarkan aktivitas obrolan warga server:\n\n${updateText}`
+          )
+          .setFooter({ text: 'Sentinel Bot • Live Market Updates' })
+          .setTimestamp();
+
+        targetChannel.send({ embeds: [reportEmbed] }).catch(err => {
+          console.error(`❌ Gagal mengirim Laporan Bursa Berkala di guild ${guild.name}:`, err.message);
+        });
+      }
+
+      // ── AUTO-TRADING ENGINE: Jalankan robot investasi otomatis bagi member yang mengaktifkannya ──
+      try {
+        const autoTraders = database.all('SELECT * FROM wallets WHERE guild_id = ? AND auto_trade = 1', [guild.id]);
+        const tradeLogs = [];
+
+        autoTraders.forEach(trader => {
+          try {
+            const userId = trader.user_id;
+            const portfolio = stocks.getPortfolio(userId, guild.id);
+            
+            // 1. Cek Profit-Taking (Jual Otomatis jika Untung >= 15%)
+            portfolio.items.forEach(item => {
+              if (item.shares > 0 && item.profitPercent >= 15.0) {
+                const sharesToSell = item.shares;
+                const sellRes = stocks.sellStock(userId, guild.id, item.ticker, sharesToSell);
+                tradeLogs.push(`📤 **Auto-Sell [TP]**: <@${userId}> sukses melikuidasi **${sharesToSell}** lembar **${item.ticker}** pada harga **Rp ${sellRes.pricePerShare.toLocaleString('id-ID')}** (Untung: \`+${item.profitPercent}%\` | +Rp ${sellRes.finalRevenue.toLocaleString('id-ID')})`);
+              }
+            });
+
+            // Ambil dompet ter-update setelah penjualan
+            const freshWallet = economy.getWallet(userId, guild.id);
+            let balance = freshWallet.balance;
+
+            // 2. Cek Auto-Buy / DCA (Jika saldo menganggur >= Rp 150)
+            if (balance >= 150) {
+              const availableStocks = stocks.getStocks(guild.id);
+              if (availableStocks.length > 0) {
+                // Cari saham termurah di bursa yang available_shares > 0
+                const purchasable = availableStocks
+                  .filter(s => s.available_shares > 0 && s.current_price <= balance)
+                  .sort((a, b) => a.current_price - b.current_price);
+
+                if (purchasable.length > 0) {
+                  const stockToBuy = purchasable[0];
+                  // Alokasikan maksimal 30% dari saldo
+                  const maxAllocation = Math.floor(balance * 0.3);
+                  let sharesToBuy = Math.floor(maxAllocation / stockToBuy.current_price);
+                  if (sharesToBuy === 0) sharesToBuy = 1;
+
+                  const userPortfolio = database.get(
+                    'SELECT shares FROM portfolios WHERE user_id = ? AND guild_id = ? AND channel_id = ?',
+                    [userId, guild.id, stockToBuy.channel_id]
+                  );
+                  const currentShares = userPortfolio ? userPortfolio.shares : 0;
+                  const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 500;
+                  
+                  // Sesuaikan dengan quota bursa & hold user
+                  sharesToBuy = Math.min(sharesToBuy, stockToBuy.available_shares, maxHold - currentShares);
+
+                  if (sharesToBuy > 0) {
+                    const buyRes = stocks.buyStock(userId, guild.id, stockToBuy.stock_ticker, sharesToBuy);
+                    tradeLogs.push(`📥 **Auto-Buy [DCA]**: <@${userId}> mencicil beli **${sharesToBuy}** lembar **${stockToBuy.stock_ticker}** pada harga **Rp ${buyRes.pricePerShare.toLocaleString('id-ID')}** (Total: \`Rp ${buyRes.totalPrice.toLocaleString('id-ID')}\`)`);
+                  }
+                }
+              }
+            }
+          } catch (traderErr) {
+            console.error(`❌ Gagal mengeksekusi Auto-Trade untuk user ${trader.user_id}:`, traderErr.message);
+          }
+        });
+
+        // Kirim Laporan Robot Auto-Trading jika ada transaksi otomatis yang dieksekusi
+        if (tradeLogs.length > 0 && targetChannel) {
+          const autoTradeEmbed = new EmbedBuilder()
+            .setColor(0x7C4DFF)
+            .setTitle(`🤖 LAPORAN TRANSAKSI ROBOT AUTO-TRADING — ${guild.name}`)
+            .setDescription(
+              `⚡ **Robot Auto-Invest telah selesai memproses portofolio member!**\n` +
+              `Berikut adalah riwayat transaksi otomatis yang berhasil dieksekusi:\n\n` +
+              tradeLogs.join('\n')
+            )
+            .setFooter({ text: 'Ketik .autotrade untuk mengelola robot trading Anda!' })
+            .setTimestamp();
+
+          targetChannel.send({ embeds: [autoTradeEmbed] }).catch(() => {});
+        }
+      } catch (tradeEngineErr) {
+        console.error('❌ Gagal menjalankan Auto-Trading Engine:', tradeEngineErr.message);
+      }
     });
   }, {
     timezone: 'Asia/Jakarta'

@@ -36,6 +36,36 @@ async function handleEconomyChat(message) {
   // 1. Validasi filter kelayakan pesan (anti-spam, channel terlarang, dll)
   if (!antiSpam.validateMessage(message)) return;
 
+  // 1b. Auto-Daily Claim: Klaim otomatis gaji harian jika belum diklaim hari ini!
+  try {
+    const wallet = economy.getWallet(author.id, guildId);
+    const now = new Date();
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+    
+    if (wallet.last_active_date !== todayStr) {
+      const dailyResult = economy.claimDaily(author.id, guildId);
+      if (dailyResult && dailyResult.success) {
+        // Kirim notifikasi embed gaji harian otomatis yang premium
+        const autoDailyEmbed = new EmbedBuilder()
+          .setColor(embeds.COLORS.SUCCESS)
+          .setTitle(`🌅 Gaji Harian Otomatis — ${author.username}`)
+          .setThumbnail(author.displayAvatarURL({ dynamic: true }))
+          .setDescription(
+            `Selamat! Karena keaktifan Anda mengobrol di server hari ini, **Gaji Harian Otomatis** Anda berhasil dicairkan! 💸✨\n\n` +
+            `💰 **Hadiah:** **Rp ${dailyResult.reward.toLocaleString('id-ID')}**\n` +
+            `👉 *Detail:* Hadiah Dasar: \`Rp ${dailyResult.baseReward}\` | Streak Bonus: \`Rp ${dailyResult.streakBonus}\`\n` +
+            `🔥 **Streak Saat Ini:** \`${dailyResult.streak} hari\` berturut-turut!\n\n` +
+            `*Periksa saldo Anda kapan saja dengan mengetik \`.bal\` atau \`.porto\`!*`
+          )
+          .setTimestamp();
+
+        message.channel.send({ embeds: [autoDailyEmbed] }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('❌ Gagal memproses klaim gaji harian otomatis:', err.message);
+  }
+
   // 2. Acak jumlah koin Rupiah Server yang didapat (5 - 15 Rp)
   const earnedCoins = Math.floor(
     Math.random() * (config.economy.MAX_EARN - config.economy.MIN_EARN + 1)
@@ -124,6 +154,94 @@ async function handleEconomyCommands(message, client) {
 
       const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems);
       await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .autotrade / .autoinvest
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'autotrade' || commandName === 'autoinvest') {
+      const wallet = economy.getWallet(author.id, guildId);
+      const isAutoActive = wallet.auto_trade === 1;
+
+      const embed = new EmbedBuilder()
+        .setColor(isAutoActive ? embeds.COLORS.SUCCESS : embeds.COLORS.WARN)
+        .setTitle(`🤖 ROBOT AUTO-INVEST & AUTO-TRADING — ${author.username}`)
+        .setThumbnail(author.displayAvatarURL({ dynamic: true }))
+        .setDescription(
+          `Kelola robot investasi otomatis untuk portofolio saham server Anda!\n\n` +
+          `🤖 **Status Robot:** ${isAutoActive ? '🟢 **AKTIF (Running)**' : '🔴 **NON-AKTIF (Stopped)**'}\n\n` +
+          `📈 **Cara Kerja & Aturan Bot:**\n` +
+          `1️⃣ **Auto DCA (Buy-the-Dip)**: Setiap 2 jam sekali, jika Anda memiliki saldo menganggur $\\ge$ **Rp 150**, robot akan otomatis menggunakan maksimal **30%** dari saldo Anda untuk membeli saham termurah yang terdaftar di bursa.\n` +
+          `2️⃣ **Auto Take-Profit (TP)**: Jika saham yang Anda miliki mengalami kenaikan keuntungan **$\\ge$ 15%** dari harga beli rata-rata Anda, robot akan otomatis melikuidasi saham tersebut untuk mengamankan keuntungan koin Anda!\n` +
+          `3️⃣ **Laporan Otomatis**: Setiap aksi transaksi otomatis robot akan dilaporkan ke channel bursa server secara real-time!\n\n` +
+          `*Gunakan tombol di bawah untuk mengaktifkan atau menonaktifkan robot trading Anda secara instan!*`
+        )
+        .setTimestamp();
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_autotrade_toggle')
+          .setLabel(isAutoActive ? '🔴 Nonaktifkan Robot' : '🟢 Aktifkan Robot')
+          .setStyle(isAutoActive ? ButtonStyle.Danger : ButtonStyle.Success)
+      );
+
+      const replyMsg = await message.reply({ embeds: [embed], components: [row] });
+
+      const collector = replyMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60000
+      });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh pemanggil perintah asli!', ephemeral: true });
+        }
+
+        try {
+          const freshWallet = economy.getWallet(author.id, guildId);
+          const newStatus = freshWallet.auto_trade === 1 ? 0 : 1;
+
+          database.run(
+            'UPDATE wallets SET auto_trade = ? WHERE user_id = ? AND guild_id = ?',
+            [newStatus, author.id, guildId]
+          );
+
+          const updatedWallet = economy.getWallet(author.id, guildId);
+          const isNowActive = updatedWallet.auto_trade === 1;
+
+          const updatedEmbed = new EmbedBuilder()
+            .setColor(isNowActive ? embeds.COLORS.SUCCESS : embeds.COLORS.WARN)
+            .setTitle(`🤖 ROBOT AUTO-INVEST & AUTO-TRADING — ${author.username}`)
+            .setThumbnail(author.displayAvatarURL({ dynamic: true }))
+            .setDescription(
+              `Kelola robot investasi otomatis untuk portofolio saham server Anda!\n\n` +
+              `🤖 **Status Robot:** ${isNowActive ? '🟢 **AKTIF (Running)**' : '🔴 **NON-AKTIF (Stopped)**'}\n\n` +
+              `Status robot trading Anda berhasil diperbarui!\n` +
+              `${isNowActive ? '🎉 Robot sekarang aktif bekerja mencari profit bagi Anda!' : '⚠️ Robot telah dihentikan. Portofolio Anda kini kembali dikelola manual.'}`
+            )
+            .setTimestamp();
+
+          const disabledRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('eco_btn_autotrade_toggle')
+              .setLabel(isNowActive ? '🤖 Robot Aktif' : '🤖 Robot Nonaktif')
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(true)
+          );
+
+          await i.update({ embeds: [updatedEmbed], components: [disabledRow] });
+          collector.stop();
+        } catch (err) {
+          console.error('Error toggling auto-trade:', err);
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses status robot.', ephemeral: true }).catch(() => {});
+        }
+      });
+
+      collector.on('end', async () => {
+        await replyMsg.edit({ components: [] }).catch(() => {});
+      });
+
       return true;
     }
 
