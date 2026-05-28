@@ -1178,7 +1178,6 @@ module.exports = {
       .setFooter({ text: 'Rupiah Server Kosan 1A • Struk Pembayaran Resmi' })
       .setTimestamp();
   }
-}
 };
 
 
