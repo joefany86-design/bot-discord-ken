@@ -626,6 +626,84 @@ module.exports = {
     }
     
     return embed;
+  },
+
+  // 18. Embed Status Kepemilikan Role / Index Role (.indexrole)
+  indexRoleEmbed(user, member, items) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle(`🎖️ KARTU INDEX ROLE PRESTISE — ${user.username}`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `Halo **${user.username}**! 👋✨\n` +
+        `Berikut adalah daftar kasta/prestige role eksklusif di server ini dan status kepemilikan Anda.\n\n` +
+        `💡 *Miliki role prestise dengan membelinya di \`.shop\` atau memutar spin hoki \`.gacha-role\`!*`
+      );
+
+    const TIER_EMOJIS = {
+      COMMON: '🟢',
+      RARE: '🔵',
+      EPIC: '🟣',
+      LEGENDARY: '👑',
+      MYTHIC: '🌟'
+    };
+
+    if (items.length === 0) {
+      embed.addFields({ name: '🚫 Tidak Ada Item Role', value: 'Belum ada role prestise yang dikonfigurasi di server ini.' });
+    } else {
+      // Kelompokkan item berdasarkan Tier
+      const grouped = { MYTHIC: [], LEGENDARY: [], EPIC: [], RARE: [], COMMON: [] };
+      items.forEach(item => {
+        const t = item.tier ? item.tier.toUpperCase() : 'COMMON';
+        if (grouped[t]) grouped[t].push(item);
+        else grouped.COMMON.push(item);
+      });
+
+      let totalRoles = items.length;
+      let ownedCount = 0;
+
+      // Hitung dan kumpulkan data tier
+      const fieldsData = [];
+      ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'].forEach(tierName => {
+        const tierItems = grouped[tierName];
+        if (tierItems.length > 0) {
+          let content = '';
+          tierItems.forEach(item => {
+            const hasRole = member.roles.cache.has(item.role_id);
+            const statusEmoji = hasRole ? '✅ **[DIMILIKI]**' : '🔒 *Belum dimiliki*';
+            if (hasRole) ownedCount++;
+
+            const desc = item.description ? `\n   *“${item.description}”*` : '';
+            content += `• **${item.role_name}** ${statusEmoji}${desc}\n`;
+          });
+
+          fieldsData.push({
+            name: `${TIER_EMOJIS[tierName]} === KLASIFIKASI ${tierName} ===`,
+            value: content.trim(),
+            inline: false
+          });
+        }
+      });
+
+      // Progress bar / Ringkasan
+      const percent = Math.round((ownedCount / totalRoles) * 100);
+      const filledBlocks = Math.round(percent / 10);
+      const emptyBlocks = 10 - filledBlocks;
+      const progressBar = '🟩'.repeat(filledBlocks) + '⬛'.repeat(emptyBlocks);
+
+      embed.addFields({
+        name: '📊 RINGKASAN KOLEKSI ROLE PRESTISE',
+        value: 
+          `🏆 **Progres Koleksi:** \`${ownedCount} / ${totalRoles} Role\` (${percent}%)\n` +
+          `✨ **Progress Bar:** [ ${progressBar} ]`
+      });
+
+      // Tambahkan fields dari tiers
+      embed.addFields(fieldsData);
+    }
+
+    embed.setFooter({ text: 'Cek saldo Anda dengan .bal | Belanja role dengan .shop' }).setTimestamp();
+    return embed;
   }
 };
 

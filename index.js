@@ -493,7 +493,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.bal\`** atau **\`.profile\`** - Melihat saldo koin Rupiah, total nilai saham, streak, dan total earning.`,
             `👉 **\`.daily\`** - Mengklaim hadiah koin gratis harian (Di-reset tepat pukul 12.00 malam WIB).`,
             `👉 **\`.transfer @user <jumlah>\`** - Mengirim koin secara instan ke member lain (dikenakan pajak transfer 2%).`,
-            `👉 **\`.rich\`** atau **\`.leaderboard\`** - Menampilkan papan peringkat 10 member terkaya di server.`,
+            `👉 **\`.rich\`**, **\`.leaderboard\`** atau **\`.liderbot\`** - Menampilkan papan peringkat 10 member terkaya di server.`,
             `👉 **\`.market\`** atau **\`.saham\`** - Membuka dashboard bursa saham channel dan meluncurkan menu perdagangan interaktif privat.`,
             `👉 **\`.stock <ticker>\`** - Melihat tren visual histori pergerakan harga saham per 5 pembaruan.`,
             `👉 **\`.buy <ticker> <jumlah>\`** - Membeli lembar saham channel (Batas kepemilikan: maks 500 lembar per saham).`,
@@ -503,7 +503,8 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `\n🎭 **TOKO ROLE PRESTISE & SPIN GACHA:**`,
             `👉 **\`.shop\`** atau **\`.rolemarket\`** - Membuka etalase pasar role prestise server.`,
             `👉 **\`.buy-role <ID>\`** - Membeli role prestise bergengsi menggunakan saldo koin Anda.`,
-            `👉 **\`.gacha-role\`** - Memutar spin gacha role misteri seharga Rp 1.000 (Dua kali lipat jackpot cashback Rp 500 jika duplikat).`
+            `👉 **\`.gacha-role\`** - Memutar spin gacha role misteri seharga Rp 1.000 (Dua kali lipat jackpot cashback Rp 500 jika duplikat).`,
+            `👉 **\`.indexrole\`** atau **\`.roleindex\`** - Menampilkan kartu index seluruh kasta role prestise yang Anda miliki.`
           ].join('\n'))
           .setFooter({ text: 'Sentinel bot • Member Panel' })
           .setTimestamp();

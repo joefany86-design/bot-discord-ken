@@ -721,9 +721,9 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah: .rich / .leaderboard
+    // Perintah: .rich / .leaderboard / .liderbot
     // ═══════════════════════════════════════════════════
-    if (commandName === 'rich' || commandName === 'leaderboard') {
+    if (commandName === 'rich' || commandName === 'leaderboard' || commandName === 'liderbot') {
       const limit = 10;
       const leaderboard = economy.getLeaderboard(guildId, limit);
       
@@ -733,6 +733,21 @@ async function handleEconomyCommands(message, client) {
       }));
 
       const embed = embeds.leaderboardEmbed(guild.name, leaderboard, client);
+      await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .indexrole / .roleindex / .myroles
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'indexrole' || commandName === 'roleindex' || commandName === 'myroles') {
+      const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+      const memberObj = message.member || await guild.members.fetch(author.id).catch(() => null);
+      if (!memberObj) {
+        return message.reply({ embeds: [embeds.errorEmbed('Gagal Memproses!', 'Gagal mengambil data profil anggota Discord Anda.')] });
+      }
+
+      const embed = embeds.indexRoleEmbed(author, memberObj, items);
       await message.reply({ embeds: [embed] });
       return true;
     }
