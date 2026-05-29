@@ -20,7 +20,9 @@ const PET_SPECIES = {
 };
 
 /**
- * Menerapkan lazy decay: menghitung pengurangan status berdafunction applyDecay(pet) {
+ * Menerapkan lazy decay: menghitung pengurangan status berdasarkan waktu berlalu.
+ */
+function applyDecay(pet) {
   if (!pet || pet.status === 'EGG' || pet.status === 'DEAD') {
     return pet;
   }
