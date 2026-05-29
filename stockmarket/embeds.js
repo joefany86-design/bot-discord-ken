@@ -307,18 +307,21 @@ module.exports = {
         const { getXpNeeded } = require('./pet');
         const xpNeeded = getXpNeeded(pet.level, pet.trait);
         
-        let traitDesc = '';
+        let rarityText = '⚪ **COMMON** (Normal)';
         if (pet.trait) {
           const t = pet.trait.toUpperCase();
+          let traitDesc = '';
           if (t === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
           else if (t === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
           else if (t === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
           else if (t === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
+          
+          rarityText = `✨ **RARE** (${traitDesc})`;
         }
-        const traitLabel = traitDesc ? `\n🧬 **Trait:** \`${traitDesc}\`` : '';
         
         petValue = `🐾 **Nama:** **${pet.pet_name}** (${typeLabel})\n` +
-                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${xpNeeded}\`)${traitLabel}\n` +
+                   `🌟 **Raritas (Realiti):** ${rarityText}\n` +
+                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${xpNeeded}\`)\n` +
                    `📊 **Stats:** ❤️ \`${pet.health}%\` HP | 🍖 \`${pet.hunger}%\` Kenyang | 💧 \`${pet.thirst}%\` Hidrasi | ⚽ \`${pet.happiness}%\` Mood`;
       }
       embed.addFields({
@@ -1612,7 +1615,7 @@ module.exports = {
     const { getXpNeeded } = require('./pet');
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
-    let traitText = '';
+    let rarityText = '⚪ **COMMON** (Normal)';
     if (pet.trait) {
       const traitName = pet.trait.toUpperCase();
       let traitDesc = '';
@@ -1621,15 +1624,16 @@ module.exports = {
       else if (traitName === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
       else if (traitName === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
       
-      traitText = `\n🧬 **Trait:** \`${traitDesc}\``;
+      rarityText = `✨ **RARE** (${traitDesc})`;
     }
 
     embed.setColor(statusColor)
       .setDescription(
         `👤 **Pemilik:** <@${pet.user_id}>\n` +
         `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
+        `🌟 **Raritas (Realiti):** ${rarityText}\n` +
         `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${traitText}\n\n` +
+        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`\n\n` +
         `**📊 STATISTIK UTAMA PET:**\n` +
         `❤️ HP (Kesehatan) : ${this.renderProgressBar(pet.health, maxHP)} ${isSick ? '⚠️ **[ SAKIT/LEMAH ]**' : ''}\n` +
         `🍖 Kenyangan     : ${this.renderProgressBar(pet.hunger, 100)}\n` +
@@ -1699,15 +1703,17 @@ module.exports = {
         } else if (pet.status === 'DEAD') {
           statusText = `🪦 Meninggal Dunia (Reset dengan \`.pet reset\`)`;
         } else {
+          let rarityText = '⚪ COMMON';
           let traitDesc = '';
           if (pet.trait) {
+            rarityText = '✨ RARE';
             const traitName = pet.trait.toUpperCase();
             if (traitName === 'GENIUS') traitDesc = ' | 🧠 Genius';
             else if (traitName === 'STURDY') traitDesc = ' | 🛡️ Sturdy';
             else if (traitName === 'MUTANT') traitDesc = ' | 🧬 Mutant';
             else if (traitName === 'WARRIOR') traitDesc = ' | ⚔️ Warrior';
           }
-          statusText = `Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
+          statusText = `Raritas: **${rarityText}** | Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
         }
 
         embed.addFields({
