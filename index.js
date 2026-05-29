@@ -765,46 +765,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const botId = client.user?.id;
   if (!botId) return;
 
-  // --- ADMIN LOGGING VOICE EVENTS ---
-  const member = newState.member;
-  const user = member?.user;
-  if (user) {
-    // Abaikan jika user adalah bot (seperti Sentinel) agar tidak mengirim notifikasi log spam
-    if (user.bot) return;
-
-    const isBot = user.bot ? ' [BOT]' : '';
-    
-    // User Joins Voice
-    if (!oldState.channelId && newState.channelId) {
-      const embed = new EmbedBuilder()
-        .setColor(0x00FF88)
-        .setAuthor({ name: `${user.tag}${isBot}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
-        .setTitle('🎤 Warga Masuk Voice / User Joined Voice')
-        .setDescription(`<@${user.id}> masuk ke saluran suara <#${newState.channelId}>`)
-        .setTimestamp();
-      await sendAdminLog(client, newState.guild, embed);
-    }
-    // User Leaves Voice
-    else if (oldState.channelId && !newState.channelId) {
-      const embed = new EmbedBuilder()
-        .setColor(0xFF3366)
-        .setAuthor({ name: `${user.tag}${isBot}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
-        .setTitle('🔇 Warga Keluar Voice / User Left Voice')
-        .setDescription(`<@${user.id}> keluar dari saluran suara \`#${oldState.channel?.name || 'Saluran Suara'}\``)
-        .setTimestamp();
-      await sendAdminLog(client, oldState.guild, embed);
-    }
-    // User Moves Voice
-    else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-      const embed = new EmbedBuilder()
-        .setColor(0x00D2FF)
-        .setAuthor({ name: `${user.tag}${isBot}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
-        .setTitle('🔄 Warga Berpindah Voice / User Moved Voice')
-        .setDescription(`<@${user.id}> pindah dari <#${oldState.channelId}> ke <#${newState.channelId}>`)
-        .setTimestamp();
-      await sendAdminLog(client, newState.guild, embed);
-    }
-  }
 
   // --- FITUR GREETING / MENYAPA PENGGUNA YANG GABUNG VC ---
   const botMember = newState.guild.members.me;
