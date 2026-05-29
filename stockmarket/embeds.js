@@ -130,41 +130,62 @@ function getRoleColor(roleName, tier) {
 
 const PET_ASSETS = {
   EGG: [
-    'https://i.giphy.com/media/l3vRfwn22eO55yMvS/giphy.gif'
+    'https://i.giphy.com/media/mSuzNvPvE2KFrGpywl/giphy.gif',
+    'https://i.giphy.com/media/l41lGU07rD3fMQxYQ/giphy.gif',
+    'https://i.giphy.com/media/fX8zOAyerYzd3UPtBH/giphy.gif',
+    'https://i.giphy.com/media/3oEdv9R4D62GPrVY4g/giphy.gif'
   ],
   DEAD: [
-    'https://i.giphy.com/media/l3vR1v0e4n9n3r2W4/giphy.gif'
+    'https://i.giphy.com/media/ukNqewtLpt81JN7SIS/giphy.gif',
+    'https://i.giphy.com/media/xUPJPn8l1m8odg1Bxm/giphy.gif',
+    'https://i.giphy.com/media/pVGsAWjzvXcZW4ZBTE/giphy.gif',
+    'https://i.giphy.com/media/xThuWhGG79OblPr368/giphy.gif'
   ],
   SLIME: {
     BABY: [
-      'https://i.giphy.com/media/l0HlOBZcl0qDTEt2w/giphy.gif'
+      'https://i.giphy.com/media/2s4Z9TMV0oMFQsNpzn/giphy.gif',
+      'https://i.giphy.com/media/YA89yckARWXC6Y6Kx4/giphy.gif',
+      'https://i.giphy.com/media/ZLSJQUIWk47IUJft2s/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
+      'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif',
+      'https://i.giphy.com/media/3ARYgT5xzZzUhIIvWY/giphy.gif',
+      'https://i.giphy.com/media/Z8ywMJLdE4N2Z6Qlta/giphy.gif'
     ]
   },
   DRAGON: {
     BABY: [
-      'https://i.giphy.com/media/3o6Zt3zHh5Vqf0g3oQ/giphy.gif'
+      'https://i.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
+      'https://i.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
+      'https://i.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/l41YtZOb9EUAB5hsY/giphy.gif'
+      'https://i.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
+      'https://i.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
+      'https://i.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif'
     ]
   },
   CAT: {
     BABY: [
-      'https://i.giphy.com/media/3o7aD25s2x6eO6x2wM/giphy.gif'
+      'https://i.giphy.com/media/gx54W1mSpeYMg/giphy.gif',
+      'https://i.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
+      'https://i.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/l3vR6uG6qW3Gq/giphy.gif'
+      'https://i.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
+      'https://i.giphy.com/media/2wicMBKqNZlrW/giphy.gif',
+      'https://i.giphy.com/media/1k1ytCiReJMZWVtjXd/giphy.gif'
     ]
   },
   GOLEM: {
     BABY: [
-      'https://i.giphy.com/media/l3vR8e8K9K4O3e/giphy.gif'
+      'https://i.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
+      'https://i.giphy.com/media/BU327u9UNM2Sk/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/l3vR0n0e4n9n3r2W4/giphy.gif'
+      'https://i.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
+      'https://i.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
+      'https://i.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif'
     ]
   }
 };
