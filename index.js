@@ -579,35 +579,48 @@ client.on('messageCreate', async message => {
 
     const embed = new EmbedBuilder()
       .setColor(0xFF3366)
-      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR 🛡️')
+      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — SENTINEL')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
-        `Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator untuk mengelola game Truth or Dare, sistem ekonomi, serta bursa saham di server ini.`,
-        `\n🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
-        `👉 **\`.tod announce [#channel]\`** - Menyiarkan pengumuman peluncuran game ToD ke channel target.`,
-        `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi game ToD yang sedang aktif.`,
-        `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom ke database game ToD.`,
-        `\n💰 **KONTROL SISTEM EKONOMI (RUPIAH SERVER):**`,
+        `Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:\n`,
+        `🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
+        `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
+        `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
+        `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`,
+        `\n💰 **PENGELOLAAN SALDO EKONOMI:**`,
         `👉 **\`.eco-give @user <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) ke dompet user.`,
         `👉 **\`.eco-giveall <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) kepada seluruh member server.`,
-        `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong koin dari dompet user.`,
-        `👉 **\`.eco-reset @user\`** - Mereset total saldo koin, portofolio saham, dan transaksi user ke 0.`,
-        `👉 **\`.eco-announce [#channel]\`** - Menyiarkan laporan/pengumuman keuangan ke channel target.`,
-        `👉 **\`.eco-resetall\`** - **[PERINGATAN!]** Mereset total seluruh database keuangan server ini (semua user).`,
-        `\n📈 **KONTROL BURSA SAHAM (STOCK MARKET):**`,
-        `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel ke bursa saham (contoh: \`.market-add #general $GENERAL\`).`,
-        `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham dari bursa server.`,
-        `👉 **\`.market-reinit\`** - Menghapus seluruh saham lama dan mengembalikan ke saham bawaan server.`,
+        `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong saldo koin dari dompet user.`,
+        `👉 **\`.eco-reset @user\`** - Mereset total saldo dompet, portofolio bursa saham, dan riwayat transaksi user kembali ke 0.`,
+        `👉 **\`.eco-resetall\`** - **[BAHAYA]** Mereset total seluruh database perekonomian server (dompet semua user, bursa, dll).`,
+        `👉 **\`.anoncemen\`** atau **\`.announcement\`** - Menyiarkan embed pengumuman pembaruan sistem ekonomi ke channel target disertai mention @everyone.`,
+        `\n📈 **SUNTIKAN & RESTURASI BURSA SAHAM:**`,
+        `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel baru sebagai instrumen saham di bursa (contoh: \`.market-add #lounge $LOUNGE\`).`,
+        `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham channel dari bursa dan membersihkan portofolio terkait.`,
+        `👉 **\`.market-reinit\`** - Menghapus seluruh instrumen bursa lama dan mengembalikannya ke setelan saham default server.`,
         `👉 **\`.market-drop <ticker> <persen>\`** - Menurunkan harga saham secara paksa berdasarkan persentase (contoh: \`.market-drop $LOUNGE 15\`).`,
         `👉 **\`.dividends-trigger\`** - Memicu pembagian dividen mingguan bursa secara dinamis berbasis keaktifan chat warga.`,
-        `👉 **\`.event-trigger [crash/bull/double]\`** - Memicu event ekonomi acak/spesifik secara instan untuk kebutuhan uji coba.`,
-        `\n🎭 **KONTROL TOKO ROLE (SHOP CONTROLS):**`,
-        `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menjual role baru di toko (tier pilihan: \`COMMON\`, \`RARE\`, \`EPIC\`, \`LEGENDARY\`).`,
-        `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus role dari toko penjualan.`,
-        `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengatur jumlah stok role yang tersedia (-1 untuk tanpa batas/unlimited).`,
+        `👉 **\`.event-trigger [crash/bull/double]\`** - Memicu event crash pasar, bull run bursa, atau double earning hour secara instan.`,
+        `\n🎭 **PENGELOLAAN TOKO ROLE & PRESTISE:**`,
+        `👉 **\`.autoshoprole\`** atau **\`.shop-auto\`** - **[PREMIUM]** Membuat otomatis seluruh 5 tingkatan role khusus (Common s/d Mythic) dengan warna & izin rarity, serta mendaftarkannya langsung ke database toko role.`,
+        `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menambahkan manual role server Anda ke dalam daftar toko role dengan klasifikasi kustom.`,
+        `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus item role terdaftar dari penjualan toko.`,
+        `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`,
+        `\n⚡ **KONTROL BYPASS ADMIN (EBYUS) [NEW!]:**`,
+        `👉 **\`.ebyus\`** atau **\`.ebyus-panel\`** - Membuka dashboard kontrol panel visual untuk sabotase gacha, multiplier koin chat, durasi event, dan broadcast.`,
+        `👉 **\`.ebyus-gacha <mode> [durasi_menit]\`** - Mengatur manual mode gacha (\`normal\`, \`easy\`, \`super_easy\`, \`abuse\`) beserta durasi auto-reset.`,
+        `👉 **\`.ebyus-coin <multiplier> [durasi_menit]\`** - Mengatur manual pengali koin chat (\`off\`, \`3\`, \`4\`, \`5\`, \`6\`, \`7\`, \`8\`) beserta durasi auto-reset.`,
+        `👉 **\`.ebyus status\`** - Melihat status bypass ekonomi aktif (mode gacha, multiplier koin chat, sisa durasi event, dan admin pengubah).`,
+        `\n🚨 **KONTROL LAPAS & HEIST ADMINISTRASI:**`,
+        `👉 **\`.heist-admin free @user\`** - Membebaskan paksa tahanan dari Penjara Virtual secara instan.`,
+        `👉 **\`.heist-admin reset\`** - Mereset cooldown global Bank Heist server secara instan.`,
+        `\n🐾 **KONTROL KANDANG & PERAWATAN PET:**`,
+        `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
+        `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
+        `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
         `\n*Gunakan perintah di atas dengan bijak untuk menjaga keseimbangan ekonomi dan kenyamanan server.* 💡`
       ].join('\n'))
-      .setFooter({ text: 'Bot Administrator Panel 2026' })
+      .setFooter({ text: 'Sentinel bot • Administrator Panel' })
       .setTimestamp();
 
     return message.reply({ embeds: [embed] });
