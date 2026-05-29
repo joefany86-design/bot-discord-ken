@@ -1571,6 +1571,51 @@ module.exports = {
       )
       .setFooter({ text: 'Gunakan .pet untuk membuka kandang atau .pet shop untuk belanja persediaan!' })
       .setTimestamp();
+  },
+
+  // 35. Kosan & Upgrade Guide Announcement
+  kosAnnouncementEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🛌 PANDUAN LENGKAP & BENEFIT SEWA KOSAN & FURNITURE 🛌')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Optimalkan pendapatan harian Anda serta tingkatkan pertahanan dari aksi kriminal perampokan dengan menyewa kamar kosan premium dan berbelanja furniture berkualitas!`
+      )
+      .addFields(
+        {
+          name: '🛎️ 1. PILIHAN KAMAR KOSAN (Sewa 3 Hari)',
+          value:
+            `💨 **Kamar Kipas Angin:** Sewa **Rp 150**.\n` +
+            `  👉 *Benefit:* Gaji harian otomatis bertambah **+Rp 5**.\n` +
+            `❄️ **Kamar AC:** Sewa **Rp 350**.\n` +
+            `  👉 *Benefit:* Gaji harian otomatis bertambah **+Rp 15** | Pajak transfer koin berkurang menjadi **8%** (normal 10%).\n` +
+            `👑 **Penthouse Kosan:** Sewa **Rp 800**.\n` +
+            `  👉 *Benefit:* Gaji harian otomatis bertambah **+Rp 40** | Pajak transfer koin berkurang menjadi **5%** | Pajak penjualan saham berkurang menjadi **10%** (normal 15%).\n` +
+            `👉 *Tip:* Gunakan perintah \`.kos-sewa\` untuk memilih kamar secara instan.`,
+          inline: false
+        },
+        {
+          name: '🛒 2. UPGRADE FURNITURE & KEAMANAN KOSAN (Permanen)',
+          value:
+            `🛌 **Kasur Premium:** Beli **Rp 250**.\n` +
+            `  👉 *Efek:* Menambahkan pengali (*multiplier*) streak klaim gaji gratis harian.\n` +
+            `📶 **Koneksi WiFi:** Beli **Rp 200**.\n` +
+            `  👉 *Efek:* Menghasilkan pendapatan pasif saat mengobrol di saluran suara (*Voice Channel*) hingga batas limit harian **Rp 35**.\n` +
+            `🥤 **Dispenser Air:** Beli **Rp 400**.\n` +
+            `  👉 *Efek:* Memberikan **peluang 10%** koin obrolan (*chatting*) ganda secara otomatis.\n` +
+            `🔒 **Gembok Kamar:** Beli **Rp 300**.\n` +
+            `  👉 *Efek:* Meningkatkan limit pinjaman di Central Bank **+Rp 150** | Memberikan perlindungan perampokan sebesar **50%** (mengurangi setengah kerugian saat dirampok).\n` +
+            `🚨 **Alarm Keamanan:** Beli **Rp 300**.\n` +
+            `  👉 *Efek:* Mengurangi peluang keberhasilan perampok yang menargetkan Anda sebesar **15%** (sukses rate rob menjadi 25%).\n` +
+            `📷 **CCTV Palsu:** Beli **Rp 300**.\n` +
+            `  👉 *Efek:* Menambahkan denda hukuman bagi pencuri yang gagal merampok Anda sebesar **+Rp 100** kompensasi langsung ke dompet Anda.\n` +
+            `👉 *Tip:* Gunakan perintah \`.kos-upgrade\` untuk berbelanja furniture permanen.`,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Gunakan .kos untuk membuka dashboard kamar Anda!' })
+      .setTimestamp();
   }
 };
 

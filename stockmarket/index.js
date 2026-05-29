@@ -1762,6 +1762,12 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .kos / .kosan
     // ═══════════════════════════════════════════════════
     if (commandName === 'kos' || commandName === 'kosan') {
+      const firstArg = args[0]?.toLowerCase();
+      if (firstArg === 'announcement' || firstArg === 'anoncemen' || firstArg === 'info') {
+        const kosInfoEmbed = embeds.kosAnnouncementEmbed(message.guild);
+        return message.reply({ embeds: [kosInfoEmbed] });
+      }
+
       const kos = require('./kos');
       const getDashboardData = (userId, guildId) => {
         const wallet = economy.getWallet(userId, guildId);
