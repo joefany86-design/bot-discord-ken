@@ -1773,6 +1773,27 @@ module.exports = {
       )
       .setFooter({ text: 'Gunakan .ebyus untuk mengelola bypass ini secara visual!' })
       .setTimestamp();
+  },
+
+  // 40. Truth or Dare Announce Embed
+  todAnnounceEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor('#9933FF') // Deep Purple
+      .setTitle('🎲 TRUTH OR DARE GAME SESSION ACTIVE! 🎲')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `### 🎙️ Sesi Game Truth or Dare Telah Dibuka! 🎙️\n` +
+        `Sebuah sesi permainan **Truth or Dare (Group Edition)** telah resmi diluncurkan di Voice Channel oleh Administrator server!\n\n` +
+        `👥 **Ayo bergabung dan rasakan sensasinya!**\n` +
+        `• Uji keberanian Anda dalam menjawab kejujuran (**Truth**) atau melakukan tantangan (**Dare**) ekstrim secara interaktif!\n` +
+        `• Koin bonus melimpah bagi pemain yang berhasil menyelesaikan tantangan!\n\n` +
+        `👉 **Cara Bermain:**\n` +
+        `1. Masuk ke **Voice Channel** yang sama dengan Bot.\n` +
+        `2. Cari pesan lobby game dan klik tombol **🙋‍♂️ Gabung**.\n` +
+        `3. Tunggu Host memulai permainan!`
+      )
+      .setFooter({ text: 'Sentinel ToD Game System • Selamat bersenang-senang!' })
+      .setTimestamp();
   }
 };
 

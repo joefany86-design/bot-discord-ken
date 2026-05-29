@@ -1379,6 +1379,14 @@ async function handleVoiceTodCommand(message, client) {
   return true;
 }
 
+function forceStopTodGame(guildId) {
+  cleanSession(guildId);
+  try {
+    audio.clearVoiceConnection(guildId);
+  } catch (e) {}
+}
+
 module.exports = {
-  handleVoiceTodCommand
+  handleVoiceTodCommand,
+  forceStopTodGame
 };
