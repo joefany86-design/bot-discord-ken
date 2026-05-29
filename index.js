@@ -388,7 +388,19 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.autoshoprole\`** atau **\`.shop-auto\`** - **[PREMIUM]** Membuat otomatis seluruh 5 tingkatan role khusus (Common s/d Mythic) dengan warna & izin rarity, serta mendaftarkannya langsung ke database toko role.`,
             `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menambahkan manual role server Anda ke dalam daftar toko role dengan klasifikasi kustom.`,
             `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus item role terdaftar dari penjualan toko.`,
-            `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`
+            `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`,
+            `\n⚡ **KONTROL BYPASS ADMIN (EBYUS) [NEW!]:**`,
+            `👉 **\`.ebyus\`** atau **\`.ebyus-panel\`** - Membuka dashboard kontrol panel visual untuk sabotase gacha, multiplier koin chat, durasi event, dan broadcast.`,
+            `👉 **\`.ebyus-gacha <mode> [durasi_menit]\`** - Mengatur manual mode gacha (\`normal\`, \`easy\`, \`super_easy\`, \`abuse\`) beserta durasi auto-reset.`,
+            `👉 **\`.ebyus-coin <multiplier> [durasi_menit]\`** - Mengatur manual pengali koin chat (\`off\`, \`3\`, \`4\`, \`5\`, \`6\`, \`7\`, \`8\`) beserta durasi auto-reset.`,
+            `👉 **\`.ebyus status\`** - Melihat status bypass ekonomi aktif (mode gacha, multiplier koin chat, sisa durasi event, dan admin pengubah).`,
+            `\n🚨 **KONTROL LAPAS & HEIST ADMINISTRASI:**`,
+            `👉 **\`.heist-admin free @user\`** - Membebaskan paksa tahanan dari Penjara Virtual secara instan.`,
+            `👉 **\`.heist-admin reset\`** - Mereset cooldown global Bank Heist server secara instan.`,
+            `\n🐾 **KONTROL KANDANG & PERAWATAN PET:**`,
+            `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
+            `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
+            `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`
           ].join('\n'))
           .setFooter({ text: 'Sentinel bot • Administrator Panel' })
           .setTimestamp();
