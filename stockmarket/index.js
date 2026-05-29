@@ -8,7 +8,6 @@ const scheduler = require('./scheduler');
 const bank = require('./bank');
 const pet = require('./pet');
 const robbery = require('./robbery');
-const robberyPanel = require('./robberyPanel');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -1574,7 +1573,7 @@ async function handleEconomyCommands(message, client) {
 
       const targetUser = message.mentions.users.first();
       if (!targetUser) {
-        return robberyPanel.handleRobberyPanel(message, client);
+        return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.rob @user\` untuk merampok seseorang, atau \`.rob anoncemen\` untuk melihat info resiko & benefit.')] });
       }
 
       try {
@@ -1607,11 +1606,7 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'heist') {
       const sub = args[0]?.toLowerCase();
 
-      if (!sub) {
-        return robberyPanel.handleRobberyPanel(message, client);
-      }
-
-      if (sub === 'start') {
+      if (!sub || sub === 'start') {
         try {
           const lobby = robbery.startHeistLobby(author.id, guildId);
           const stats = robbery.getHeistStats(1);
@@ -1771,11 +1766,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .jail
     // ═══════════════════════════════════════════════════
     if (commandName === 'jail') {
-      const mentionedUser = message.mentions.users.first();
-      if (!mentionedUser) {
-        return robberyPanel.handleRobberyPanel(message, client);
-      }
-      const targetUser = mentionedUser;
+      const targetUser = message.mentions.users.first() || author;
       const jailInfo = robbery.checkJail(targetUser.id, guildId);
 
       if (!jailInfo.jailed) {
@@ -1874,7 +1865,7 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'bayar-hutang' || commandName === 'bayarhutang' || commandName === 'paydebt') {
       const targetUser = message.mentions.users.first();
       if (!targetUser) {
-        return robberyPanel.handleRobberyPanel(message, client);
+        return message.reply({ embeds: [embeds.warnEmbed('Target Diperlukan!', 'Format: `.bayar-hutang @user [jumlah]`\nContoh: `.bayar-hutang @Joe 500`')] });
       }
 
       if (targetUser.id === author.id) {
