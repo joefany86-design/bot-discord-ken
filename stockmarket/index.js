@@ -3303,16 +3303,34 @@ async function handleEconomyCommands(message, client) {
         return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
       }
 
-      // Kirim Multi-Embed Pengumuman Premium & Rapi dengan tag @everyone
-      const announcementEmbeds = embeds.updateAnnouncementEmbeds(message.guild);
-      await targetChannel.send({ 
-        content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*', 
-        embeds: announcementEmbeds,
-        allowedMentions: { parse: ['everyone'] }
-      });
+      try {
+        // Kirim Multi-Embed Pengumuman Premium & Rapi dengan tag @everyone
+        const announcementEmbeds = embeds.updateAnnouncementEmbeds(message.guild);
+        
+        // Bagi embed menjadi 3 pesan terpisah untuk menghindari batas 6000 karakter Discord
+        // Pesan 1: Hero Header & Voice/Economy
+        await targetChannel.send({ 
+          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*', 
+          embeds: [announcementEmbeds[0], announcementEmbeds[1]],
+          allowedMentions: { parse: ['everyone'] }
+        });
+        
+        // Pesan 2: Bursa Saham & Bank/Kosan
+        await targetChannel.send({ 
+          embeds: [announcementEmbeds[2], announcementEmbeds[3]] 
+        });
+        
+        // Pesan 3: Pet/Rob & Game/Tips/Penutup
+        await targetChannel.send({ 
+          embeds: [announcementEmbeds[4], announcementEmbeds[5]] 
+        });
 
-      if (targetChannel.id !== message.channel.id) {
-        await message.reply(`✅ **Berhasil!** Pengumuman ensiklopedia premium lengkap (**${announcementEmbeds.length} embed**) telah diposting di channel ${targetChannel}.`);
+        if (targetChannel.id !== message.channel.id) {
+          await message.reply(`✅ **Berhasil!** Pengumuman ensiklopedia premium lengkap (**${announcementEmbeds.length} embed** terbagi dalam 3 pesan) telah diposting di channel ${targetChannel}.`);
+        }
+      } catch (err) {
+        console.error('Error sending announcement:', err);
+        await message.reply({ embeds: [embeds.errorEmbed('Gagal Mengirim Pengumuman!', err.message)] });
       }
       return true;
     }
