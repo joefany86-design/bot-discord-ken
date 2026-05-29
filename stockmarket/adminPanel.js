@@ -91,9 +91,9 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
         const bankVal = savingsRow ? savingsRow.balance : 0;
         targetText += `• Dompet: \`Rp ${walletVal.toLocaleString('id-ID')}\` | Bank: \`Rp ${bankVal.toLocaleString('id-ID')}\`\n`;
         
-        const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+        const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
         if (targetPet) {
-          targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()}) | HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 300}\`\n`;
+          targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()}) | HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n`;
         } else {
           targetText += `• Pet: *Tidak ada peliharaan*\n`;
         }
@@ -518,17 +518,17 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_heal_pet') {
-          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
             return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
           }
-          database.run('UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          database.run('UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           await iAdmin.reply({ content: `❤️ Sukses memulihkan stats HP, Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, ephemeral: true });
           const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
           await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_give_xp_pet_modal') {
-          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
             return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
           }
@@ -557,7 +557,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', ephemeral: true });
             }
-            const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
             if (!petData) {
               return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
             }
@@ -570,7 +570,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
               level += 1;
               leveledUp = true;
             }
-            database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?', [newXp, level, selectedTargetUserId, guildId]);
+            database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, level, selectedTargetUserId, guildId]);
             
             await sub.reply({ content: `🧪 Sukses memberikan **+${amount} XP** ke pet milik <@${selectedTargetUserId}>!${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`, ephemeral: true });
             const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
@@ -578,7 +578,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           }
         }
         else if (action === 'action_set_level_pet_modal') {
-          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
             return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
           }
@@ -607,7 +607,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
             if (isNaN(level) || level <= 0 || level > 100) {
               return sub.reply({ content: '❌ Level harus berupa angka bulat antara 1 hingga 100!', ephemeral: true });
             }
-            const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
             if (!petData) {
               return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
             }
@@ -617,7 +617,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
               newStatus = level >= 10 ? 'ADULT' : (newStatus === 'EGG' ? 'EGG' : 'BABY');
             }
             
-            database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ?', [level, newStatus, selectedTargetUserId, guildId]);
+            database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [level, newStatus, selectedTargetUserId, guildId]);
             
             await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, ephemeral: true });
             const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
@@ -625,13 +625,26 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           }
         }
         else if (action === 'action_reset_pet') {
-          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet) untuk direset!', ephemeral: true });
+            return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet) aktif untuk direset!', ephemeral: true });
           }
-          database.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          await iAdmin.reply({ content: `💀 Sukses menghapus total data pet milik <@${selectedTargetUserId}> dari database kandang.`, ephemeral: true });
+          
+          database.transaction(() => {
+            database.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, targetPet.pet_name]);
+            const remainingRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const remaining = remainingRow ? remainingRow.count : 0;
+            if (remaining === 0) {
+              database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            } else {
+              const nextPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [selectedTargetUserId, guildId]);
+              if (nextPet) {
+                database.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, nextPet.pet_name]);
+              }
+            }
+          })();
+          
+          await iAdmin.reply({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, ephemeral: true });
           const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
           await replyMsg.edit(fresh).catch(() => {});
         }

@@ -111,7 +111,7 @@ function robSolo(userId, targetId, guildId) {
     // Berikan XP ke pet pelaku jika ada pet yang aktif
     let petXpGained = false;
     let petMsg = '';
-    const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
     if (pet && pet.status !== 'DEAD' && pet.status !== 'EGG') {
       let newXp = pet.xp + 20;
       let newLevel = pet.level;
@@ -123,7 +123,7 @@ function robSolo(userId, targetId, guildId) {
         levelUp = true;
       }
       db.run(
-        'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?',
+        'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
         [newXp, newLevel, userId, guildId]
       );
       petXpGained = true;
@@ -394,7 +394,7 @@ function executeHeist(guildId) {
 
     // Berikan XP ke pet masing-masing kru jika ada pet aktif
     participants.forEach(p => {
-      const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [p, guildId]);
+      const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p, guildId]);
       if (pet && pet.status !== 'DEAD' && pet.status !== 'EGG') {
         let newXp = pet.xp + 40; // Hadiah 40 XP untuk kesuksesan heist bersama
         let newLevel = pet.level;
@@ -406,7 +406,7 @@ function executeHeist(guildId) {
           levelUp = true;
         }
         db.run(
-          'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?',
+          'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
           [newXp, newLevel, p, guildId]
         );
       }

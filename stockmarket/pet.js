@@ -20,9 +20,7 @@ const PET_SPECIES = {
 };
 
 /**
- * Menerapkan lazy decay: menghitung pengurangan status berdasarkan waktu berlalu.
- */
-function applyDecay(pet) {
+ * Menerapkan lazy decay: menghitung pengurangan status berdafunction applyDecay(pet) {
   if (!pet || pet.status === 'EGG' || pet.status === 'DEAD') {
     return pet;
   }
@@ -85,8 +83,8 @@ function applyDecay(pet) {
   db.run(
     `UPDATE user_pets 
      SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?
-     WHERE user_id = ? AND guild_id = ?`,
-    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, pet.user_id, pet.guild_id]
+     WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, pet.user_id, pet.guild_id, pet.pet_name]
   );
 
   // Kembalikan objek pet ter-update
@@ -106,28 +104,37 @@ function applyDecay(pet) {
  * Sekaligus mendeteksi penetasan telur dan menerapkan decay.
  */
 function getPet(userId, guildId) {
-  let pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  let pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
   
-  if (!pet) return null;
+  if (!pet) {
+    // Fallback: jika tidak ada pet aktif tapi ada pet lain, aktifkan pet pertama secara otomatis
+    const anyPet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [userId, guildId]);
+    if (anyPet) {
+      db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, anyPet.pet_name]);
+      pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
+    } else {
+      return null;
+    }
+  }
 
   const now = Math.floor(Date.now() / 1000);
 
   // 1. Deteksi penetasan telur
   if (pet.status === 'EGG' && pet.hatch_at <= now) {
     db.run(
-      "UPDATE user_pets SET status = 'BABY', last_interaction_at = ? WHERE user_id = ? AND guild_id = ?",
-      [now, userId, guildId]
+      "UPDATE user_pets SET status = 'BABY', last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
+      [now, userId, guildId, pet.pet_name]
     );
-    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   }
 
   // 1b. Deteksi pertumbuhan dari BABY ke ADULT jika level >= 10
   if (pet.status === 'BABY' && pet.level >= 10) {
     db.run(
-      "UPDATE user_pets SET status = 'ADULT', last_interaction_at = ? WHERE user_id = ? AND guild_id = ?",
-      [now, userId, guildId]
+      "UPDATE user_pets SET status = 'ADULT', last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
+      [now, userId, guildId, pet.pet_name]
     );
-    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   }
 
   // 2. Terapkan decay status
@@ -150,13 +157,17 @@ function adoptPet(userId, guildId, petName, petType) {
     throw new Error('Nama pet maksimal 25 karakter!');
   }
 
-  // Cek apakah sudah punya pet
-  const existingPet = db.get('SELECT status FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
-  if (existingPet) {
-    if (existingPet.status === 'DEAD') {
-      throw new Error('Anda memiliki pet yang sudah mati. Harap reset pet Anda terlebih dahulu sebelum mengadopsi yang baru!');
-    }
-    throw new Error('Anda sudah memiliki hewan peliharaan di server ini!');
+  // Hitung jumlah pet yang sudah dimiliki
+  const petsCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  const petsCount = petsCountRow ? petsCountRow.count : 0;
+  if (petsCount >= 3) {
+    throw new Error('Anda sudah mencapai batas maksimal **3 peliharaan**! Hapus salah satu pet terlebih dahulu.');
+  }
+
+  // Cek apakah ada pet dengan nama yang sama (case-insensitive)
+  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, petName.trim()]);
+  if (nameExists) {
+    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${petName.trim()}"**! Harap gunakan nama lain.`);
   }
 
   // Kurangi saldo koin Rp 1.500
@@ -167,27 +178,43 @@ function adoptPet(userId, guildId, petName, petType) {
   const hatchDuration = 2 * 3600; // 2 Jam menetaskan telur
   const hatchAt = now + hatchDuration;
 
+  // Jika ini pet pertama, set is_active = 1, jika tidak set 0
+  const isActive = petsCount === 0 ? 1 : 0;
+
   db.run(
-    `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at)
-     VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?)`,
-    [userId, guildId, petName.trim(), typeUpper, now, hatchAt, now]
+    `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active)
+     VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, ?)`,
+    [userId, guildId, petName.trim(), typeUpper, now, hatchAt, now, isActive]
   );
 
-  return getPet(userId, guildId);
+  return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petName.trim()]);
 }
 
 /**
  * Meriset data pet (untuk menghapus pet yang mati / membuang pet).
  */
 function resetPet(userId, guildId) {
-  const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  const pet = getPet(userId, guildId);
   if (!pet) {
-    throw new Error('Anda tidak memiliki hewan peliharaan untuk diriset.');
+    throw new Error('Anda tidak memiliki peliharaan aktif untuk di-reset.');
   }
 
   db.transaction(() => {
-    db.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
-    db.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    db.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
+    
+    // Cek sisa pet
+    const remainingRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    const remaining = remainingRow ? remainingRow.count : 0;
+    
+    if (remaining === 0) {
+      db.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    } else {
+      // Aktifkan pet tersisa lainnya secara otomatis
+      const nextPet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [userId, guildId]);
+      if (nextPet) {
+        db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, nextPet.pet_name]);
+      }
+    }
   })();
 
   return true;
@@ -338,8 +365,8 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     db.run(
       `UPDATE user_pets 
        SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, last_interaction_at = ?
-       WHERE user_id = ? AND guild_id = ?`,
-      [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId]
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
     );
   })();
 
@@ -387,8 +414,8 @@ function playWithPet(userId, guildId) {
     }
 
     db.run(
-      `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ?, last_play_at = ? WHERE user_id = ? AND guild_id = ?`,
-      [newHappiness, newXp, newLevel, now, now, userId, guildId]
+      `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ?, last_play_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newHappiness, newXp, newLevel, now, now, userId, guildId, pet.pet_name]
     );
   })();
 
@@ -459,8 +486,8 @@ function sendToWork(userId, guildId) {
     db.run(
       `UPDATE user_pets 
        SET last_work_at = ?, hunger = ?, thirst = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ?
-       WHERE user_id = ? AND guild_id = ?`,
-      [now, newHunger, newThirst, newHappiness, newXp, newLevel, now, userId, guildId]
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [now, newHunger, newThirst, newHappiness, newXp, newLevel, now, userId, guildId, pet.pet_name]
     );
   })();
 
@@ -565,8 +592,8 @@ function sendToHunt(userId, guildId) {
     db.run(
       `UPDATE user_pets 
        SET last_hunt_at = ?, hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, last_interaction_at = ?
-       WHERE user_id = ? AND guild_id = ?`,
-      [now, newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId]
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [now, newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
     );
   })();
 
@@ -703,13 +730,13 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     }
 
     db.run(
-      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?`,
-      [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId]
+      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]
     );
 
     db.run(
-      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?`,
-      [lHP, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId]
+      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [lHP, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId, loserName]
     );
   })();
 
@@ -727,6 +754,25 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   };
 }
 
+function getPetsList(userId, guildId) {
+  const pets = db.all('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  return pets.map(pet => applyDecay(pet));
+}
+
+function switchActivePet(userId, guildId, petName) {
+  const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, petName.trim()]);
+  if (!pet) {
+    throw new Error(`Pet dengan nama "${petName}" tidak ditemukan!`);
+  }
+  
+  db.transaction(() => {
+    db.run('UPDATE user_pets SET is_active = 0 WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
+  })();
+  
+  return pet;
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -739,5 +785,7 @@ module.exports = {
   playWithPet,
   sendToWork,
   sendToHunt,
-  executePvP
+  executePvP,
+  getPetsList,
+  switchActivePet
 };

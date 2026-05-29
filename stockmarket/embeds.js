@@ -128,6 +128,80 @@ function getRoleColor(roleName, tier) {
   return TIER_COLORS[tier?.toUpperCase()] || '#00FF88';
 }
 
+const PET_ASSETS = {
+  EGG: [
+    'https://media.tenor.com/t1hQsh4u4kYAAAAC/pixel-art-egg.gif',
+    'https://media.tenor.com/X4yD58F7R6sAAAAC/egg-pixel.gif'
+  ],
+  DEAD: [
+    'https://media.tenor.com/1G8Vz1y4tZ8AAAAC/grave-pixel.gif',
+    'https://media.tenor.com/Wp75u6c1p2kAAAAC/pixel-grave.gif'
+  ],
+  SLIME: {
+    BABY: [
+      'https://media.tenor.com/7d2U2N5pXqUAAAAC/green-slime-pixel.gif',
+      'https://media.tenor.com/M6LwR4-h1HAAAAAC/slime-pixel-art.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/vH0U2V7mDFAAAAAC/slime-jump.gif',
+      'https://media.tenor.com/39wHwR85bRwAAAAC/slime-king-pixel.gif'
+    ]
+  },
+  DRAGON: {
+    BABY: [
+      'https://media.tenor.com/8Q_ZlW3sM1gAAAAC/baby-dragon-pixel.gif',
+      'https://media.tenor.com/o03g29V7b2IAAAAC/dragon-cute-pixel.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/PZpDDr5D_8sAAAAC/dragon-pixel-flying.gif',
+      'https://media.tenor.com/d_y7t6174GIAAAAC/red-dragon-pixel.gif'
+    ]
+  },
+  CAT: {
+    BABY: [
+      'https://media.tenor.com/Vbb_8z_Z0LIAAAAC/kitten-pixel-art.gif',
+      'https://media.tenor.com/aC-2V7s279kAAAAC/pixel-cat-cute.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/dO2gM7lFqFAAAAAC/pixel-cat-walking.gif',
+      'https://media.tenor.com/G5q38vN-P0YAAAAC/pixel-cat-sleeping.gif'
+    ]
+  },
+  GOLEM: {
+    BABY: [
+      'https://media.tenor.com/fPex7aH9a4MAAAAC/stone-golem-pixel-idle.gif',
+      'https://media.tenor.com/W2k3t5b8eGgAAAAC/small-golem-pixel.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/aV_q1hT4ZJ0AAAAC/golem-pixel-art.gif',
+      'https://media.tenor.com/E1D5t7_D82kAAAAC/golem-smash-pixel.gif'
+    ]
+  }
+};
+
+function getPetImage(pet) {
+  if (!pet) return null;
+  
+  if (pet.status === 'EGG') {
+    const eggs = PET_ASSETS.EGG;
+    return eggs[Math.floor(Math.random() * eggs.length)];
+  }
+  if (pet.status === 'DEAD') {
+    const deads = PET_ASSETS.DEAD;
+    return deads[Math.floor(Math.random() * deads.length)];
+  }
+  
+  const species = pet.pet_type.toUpperCase();
+  const stage = pet.status.toUpperCase();
+  
+  if (PET_ASSETS[species] && PET_ASSETS[species][stage]) {
+    const arr = PET_ASSETS[species][stage];
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+  
+  return null;
+}
+
 module.exports = {
   COLORS,
   formatCurrency,
@@ -199,7 +273,7 @@ module.exports = {
       }
       embed.addFields({
         name: '🐾 Status Peliharaan (Pet)',
-        value: petValue,
+        value: petValue + '\n*💡 Ketik `.pet list` untuk melihat semua peliharaan Anda.*',
         inline: false
       });
     } else {
@@ -1445,6 +1519,12 @@ module.exports = {
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setTimestamp();
 
+    // Set Random/Animated GIF matching pet species and stage
+    const petImg = getPetImage(pet);
+    if (petImg) {
+      embed.setImage(petImg);
+    }
+
     if (pet.status === 'EGG') {
       const now = Math.floor(Date.now() / 1000);
       const isHatched = pet.hatch_at <= now;
@@ -1529,6 +1609,47 @@ module.exports = {
     });
 
     embed.setFooter({ text: 'Klik tombol di bawah ini untuk merawat pet Anda secara instan!' });
+    return embed;
+  },
+
+  // 27b. List of Pets (.pet list)
+  petListEmbed(user, pets) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`🐾 DAFTAR HEWAN PELIHARAAN — ${user.username}`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription('Berikut adalah daftar seluruh peliharaan yang Anda miliki di server ini (Maksimal 3):');
+
+    if (!pets || pets.length === 0) {
+      embed.setDescription('*Anda belum memiliki hewan peliharaan. Adopsi telur seharga Rp 1.500 dengan ketik `.pet buy <nama> <spesies>`!*');
+    } else {
+      pets.forEach((pet, idx) => {
+        const activeLabel = pet.is_active ? '🟢 **AKTIF**' : '⚪ Pasif';
+        const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
+        
+        let statusText = '';
+        if (pet.status === 'EGG') {
+          statusText = `🥚 Telur (Menetas <t:${pet.hatch_at}:R>)`;
+        } else if (pet.status === 'DEAD') {
+          statusText = `🪦 Meninggal Dunia (Reset dengan \`.pet reset\`)`;
+        } else {
+          statusText = `Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood`;
+        }
+
+        embed.addFields({
+          name: `${idx + 1}. ${pet.pet_name} the ${typeLabel} (${activeLabel})`,
+          value: `╰ Status: ${statusText}`,
+          inline: false
+        });
+      });
+    }
+
+    if (pets.length < 3) {
+      embed.setFooter({ text: `Ketik .pet buy <nama> <spesies> untuk mengadopsi peliharaan berikutnya! (${pets.length}/3)` });
+    } else {
+      embed.setFooter({ text: 'Slot peliharaan Anda sudah penuh (3/3).' });
+    }
+
     return embed;
   },
 

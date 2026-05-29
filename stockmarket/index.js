@@ -776,6 +776,28 @@ async function handlePetCommand(message, client, args) {
     return message.reply({ embeds: [petInfoEmbed] });
   }
 
+  // ── SUB-PERINTAH: LIST / DAFTAR ──
+  if (subCommand === 'list' || subCommand === 'daftar') {
+    const pets = pet.getPetsList(author.id, guildId);
+    const listEmbed = embeds.petListEmbed(author, pets);
+    return message.reply({ embeds: [listEmbed] });
+  }
+
+  // ── SUB-PERINTAH: SWITCH / AKTIF ──
+  if (subCommand === 'switch' || subCommand === 'aktif') {
+    const targetName = args[1];
+    if (!targetName) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet switch <nama>`\nContoh: `.pet switch Ciko`')] });
+    }
+    try {
+      const res = pet.switchActivePet(author.id, guildId, targetName);
+      const successEmb = embeds.successEmbed('Peliharaan Aktif Diubah! 🐾', `Berhasil mengaktifkan pet **${res.pet_name}** the **${res.pet_type}** sebagai peliharaan utama Anda.`);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Mengubah Pet Aktif!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: BUY / ADOPT ──
   if (subCommand === 'buy' || subCommand === 'adopt') {
     const petName = args[1];
@@ -854,7 +876,7 @@ async function handlePetCommand(message, client, args) {
   if (subCommand === 'reset') {
     try {
       pet.resetPet(author.id, guildId);
-      const successEmb = embeds.successEmbed('Reset Pet Sukses! 🧹', 'Kandang hewan peliharaan Anda telah dibersihkan sepenuhnya. Anda sekarang bisa mengadopsi pet baru.');
+      const successEmb = embeds.successEmbed('Reset Pet Sukses! 🧹', 'Peliharaan aktif Anda telah di-reset/dihapus. Jika ada pet lain, salah satunya telah diaktifkan otomatis.');
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Reset Gagal!', err.message)] });
@@ -875,9 +897,13 @@ async function handlePetCommand(message, client, args) {
   const getDashboardPanel = (userId, guildId) => {
     const userPet = pet.getPet(userId, guildId);
     const inventory = pet.getInventory(userId, guildId);
+    const allPets = pet.getPetsList(userId, guildId);
+    
     const embed = embeds.petDashboardEmbed(author, userPet, inventory);
 
     const rows = [];
+    const canAdoptMore = allPets.length < 3;
+
     if (!userPet) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi Telur Pet').setStyle(ButtonStyle.Success)
@@ -886,15 +912,24 @@ async function handlePetCommand(message, client, args) {
     } else if (userPet.status === 'EGG') {
       const now = Math.floor(Date.now() / 1000);
       const isHatched = userPet.hatch_at <= now;
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan Telur').setStyle(ButtonStyle.Success).setDisabled(!isHatched),
-        new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-      );
+      const eggComponents = [
+        new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan Telur').setStyle(ButtonStyle.Success).setDisabled(!isHatched)
+      ];
+      if (canAdoptMore) {
+        eggComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+      }
+      eggComponents.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
+
+      const row = new ActionRowBuilder().addComponents(eggComponents);
       rows.push(row);
     } else if (userPet.status === 'DEAD') {
-      const row = new ActionRowBuilder().addComponents(
+      const deadComponents = [
         new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Sapu/Reset Kandang').setStyle(ButtonStyle.Danger)
-      );
+      ];
+      if (canAdoptMore) {
+        deadComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+      }
+      const row = new ActionRowBuilder().addComponents(deadComponents);
       rows.push(row);
     } else {
       // Pet Hidup (Baby / Adult)
@@ -905,13 +940,41 @@ async function handlePetCommand(message, client, args) {
         new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
       );
       
-      const row2 = new ActionRowBuilder().addComponents(
+      const row2Components = [
         new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
-        new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
-      );
+        new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
+      ];
+
+      if (canAdoptMore) {
+        row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+      }
+
+      row2Components.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary));
+
+      const row2 = new ActionRowBuilder().addComponents(row2Components);
       rows.push(row1, row2);
+    }
+
+    // Tambahkan Select Menu jika memiliki lebih dari 1 pet
+    if (allPets.length > 1) {
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('pet_select_active')
+        .setPlaceholder('🐾 Ganti Peliharaan Aktif...');
+
+      allPets.forEach(p => {
+        const isCurrent = p.is_active === 1;
+        const emoji = p.pet_type === 'SLIME' ? '🟢' : p.pet_type === 'DRAGON' ? '🔥' : p.pet_type === 'CAT' ? '🐱' : '🧱';
+        selectMenu.addOptions({
+          label: `${p.pet_name} the ${p.pet_type.charAt(0) + p.pet_type.slice(1).toLowerCase()} (Lv. ${p.level})`,
+          description: isCurrent ? 'Peliharaan aktif saat ini' : 'Klik untuk mengaktifkan peliharaan ini',
+          value: p.pet_name,
+          emoji: emoji,
+          default: isCurrent
+        });
+      });
+
+      rows.push(new ActionRowBuilder().addComponents(selectMenu));
     }
 
     return { embeds: [embed], components: rows };
@@ -939,6 +1002,17 @@ async function handlePetCommand(message, client, args) {
         collector.stop();
         pet.resetPet(author.id, guildId);
         await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+      }
+
+      else if (iPet.customId === 'pet_select_active') {
+        const selectedName = iPet.values[0];
+        try {
+          pet.switchActivePet(author.id, guildId, selectedName);
+          const freshData = getDashboardPanel(author.id, guildId);
+          await iPet.update(freshData);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Ganti Pet!', err.message)], ephemeral: true });
+        }
       }
 
       else if (iPet.customId === 'pet_btn_nav_adopt') {
@@ -1288,7 +1362,7 @@ async function handlePetAdminCommand(message, client, args) {
         newLevel++;
       }
 
-      database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?', [newXp, newLevel, target.id, guildId]);
+      database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, newLevel, target.id, guildId]);
     });
 
     const freshPet = pet.getPet(target.id, guildId);
@@ -1302,8 +1376,8 @@ async function handlePetAdminCommand(message, client, args) {
     const petData = pet.getPet(target.id, guildId);
     if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
 
-    database.run(
-      'UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ?',
+     database.run(
+      'UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1',
       [target.id, guildId]
     );
 

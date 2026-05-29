@@ -226,7 +226,9 @@ function initSchema() {
       last_hunt_at INTEGER DEFAULT 0,
       hatch_at INTEGER DEFAULT 0,
       created_at INTEGER DEFAULT (strftime('%s','now')),
-      PRIMARY KEY (user_id, guild_id)
+      last_play_at INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 0,
+      PRIMARY KEY (user_id, guild_id, pet_name)
     )
   `);
 
@@ -283,6 +285,62 @@ function initSchema() {
     console.log("⚡ [Database] Kolom 'jail_count' berhasil diverifikasi/ditambahkan di tabel wallets.");
   } catch (e) {
     // Kolom sudah ada
+  }
+
+  // Migrasi dinamis: Tambahkan kolom is_active dan ubah PRIMARY KEY ke (user_id, guild_id, pet_name) jika belum ada
+  try {
+    const columns = db.prepare("PRAGMA table_info(user_pets)").all();
+    const hasIsActive = columns.some(col => col.name === 'is_active');
+    if (!hasIsActive) {
+      console.log("⚡ [Database] Melakukan migrasi user_pets ke skema multi-pet...");
+      db.transaction(() => {
+        // 1. Rename tabel lama
+        db.exec("ALTER TABLE user_pets RENAME TO user_pets_old");
+        
+        // 2. Buat tabel baru dengan primary key (user_id, guild_id, pet_name)
+        db.exec(`
+          CREATE TABLE user_pets (
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            pet_name TEXT NOT NULL,
+            pet_type TEXT NOT NULL,
+            status TEXT DEFAULT 'EGG',
+            level INTEGER DEFAULT 1,
+            xp INTEGER DEFAULT 0,
+            health INTEGER DEFAULT 100,
+            hunger INTEGER DEFAULT 100,
+            thirst INTEGER DEFAULT 100,
+            happiness INTEGER DEFAULT 100,
+            last_interaction_at INTEGER DEFAULT (strftime('%s','now')),
+            last_work_at INTEGER DEFAULT 0,
+            last_hunt_at INTEGER DEFAULT 0,
+            hatch_at INTEGER DEFAULT 0,
+            created_at INTEGER DEFAULT (strftime('%s','now')),
+            last_play_at INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, guild_id, pet_name)
+          )
+        `);
+
+        // 3. Salin data dari tabel lama ke baru, set is_active = 1 untuk pet lama
+        db.exec(`
+          INSERT INTO user_pets (
+            user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
+            last_interaction_at, last_work_at, last_hunt_at, hatch_at, created_at, last_play_at, is_active
+          )
+          SELECT 
+            user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
+            last_interaction_at, last_work_at, last_hunt_at, hatch_at, created_at, COALESCE(last_play_at, 0), 1
+          FROM user_pets_old
+        `);
+
+        // 4. Hapus tabel lama
+        db.exec("DROP TABLE user_pets_old");
+      })();
+      console.log("✅ [Database] Migrasi tabel user_pets selesai dengan sukses.");
+    }
+  } catch (err) {
+    console.error("❌ [Database] Gagal melakukan migrasi user_pets:", err.message);
   }
 
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
