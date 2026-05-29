@@ -130,41 +130,41 @@ function getRoleColor(roleName, tier) {
 
 const PET_ASSETS = {
   EGG: [
-    'https://media.giphy.com/media/l3vRfwn22eO55yMvS/giphy.gif'
+    'https://i.giphy.com/media/l3vRfwn22eO55yMvS/giphy.gif'
   ],
   DEAD: [
-    'https://media.giphy.com/media/l3vR1v0e4n9n3r2W4/giphy.gif'
+    'https://i.giphy.com/media/l3vR1v0e4n9n3r2W4/giphy.gif'
   ],
   SLIME: {
     BABY: [
-      'https://media.giphy.com/media/l0HlOBZcl0qDTEt2w/giphy.gif'
+      'https://i.giphy.com/media/l0HlOBZcl0qDTEt2w/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
+      'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
     ]
   },
   DRAGON: {
     BABY: [
-      'https://media.giphy.com/media/3o6Zt3zHh5Vqf0g3oQ/giphy.gif'
+      'https://i.giphy.com/media/3o6Zt3zHh5Vqf0g3oQ/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/l41YtZOb9EUAB5hsY/giphy.gif'
+      'https://i.giphy.com/media/l41YtZOb9EUAB5hsY/giphy.gif'
     ]
   },
   CAT: {
     BABY: [
-      'https://media.giphy.com/media/3o7aD25s2x6eO6x2wM/giphy.gif'
+      'https://i.giphy.com/media/3o7aD25s2x6eO6x2wM/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/l3vR6uG6qW3Gq/giphy.gif'
+      'https://i.giphy.com/media/l3vR6uG6qW3Gq/giphy.gif'
     ]
   },
   GOLEM: {
     BABY: [
-      'https://media.giphy.com/media/l3vR8e8K9K4O3e/giphy.gif'
+      'https://i.giphy.com/media/l3vR8e8K9K4O3e/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/l3vR0n0e4n9n3r2W4/giphy.gif'
+      'https://i.giphy.com/media/l3vR0n0e4n9n3r2W4/giphy.gif'
     ]
   }
 };
