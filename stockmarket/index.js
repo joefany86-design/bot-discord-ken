@@ -3303,16 +3303,16 @@ async function handleEconomyCommands(message, client) {
         return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
       }
 
-      // Kirim Embed Pengumuman Pembaruan Cantik & Rapi dengan tag @everyone
-      const embed = embeds.updateAnnouncementEmbed(message.guild);
+      // Kirim Multi-Embed Pengumuman Premium & Rapi dengan tag @everyone
+      const announcementEmbeds = embeds.updateAnnouncementEmbeds(message.guild);
       await targetChannel.send({ 
-        content: '📢 **Pemberitahuan Pembaruan Sistem Ekonomi Bot!** @everyone', 
-        embeds: [embed],
+        content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*', 
+        embeds: announcementEmbeds,
         allowedMentions: { parse: ['everyone'] }
       });
 
       if (targetChannel.id !== message.channel.id) {
-        await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi telah diposting secara eksklusif dengan embed cantik di channel ${targetChannel}.`);
+        await message.reply(`✅ **Berhasil!** Pengumuman ensiklopedia premium lengkap (**${announcementEmbeds.length} embed**) telah diposting di channel ${targetChannel}.`);
       }
       return true;
     }

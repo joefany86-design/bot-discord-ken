@@ -675,96 +675,263 @@ module.exports = {
     return embed.setTimestamp();
   },
 
-  // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce)
-  updateAnnouncementEmbed(guild) {
-    return new EmbedBuilder()
-      .setColor(COLORS.SUCCESS)
-      .setTitle('📢 PUSAT KONTROL & BUKU PANDUAN LENGKAP SENTINEL BOT 2026 🏠🚀')
+  // 16. Embed Pengumuman Pembaruan Sistem Ekonomi (.eco-announce) — MULTI-EMBED PREMIUM
+  updateAnnouncementEmbeds(guild) {
+    const divider = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+    const miniDivider = '─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─';
+    const timestamp = new Date();
+
+    // ══════════════════════════════════════════════════
+    // EMBED 1: HERO HEADER — SELAMAT DATANG
+    // ══════════════════════════════════════════════════
+    const heroEmbed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle('📢  ENSIKLOPEDIA LENGKAP PERINTAH & FITUR SENTINEL BOT 2026  📢')
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
-        `Halo Warga Kosan 1A! 👋✨\n` +
-        `Dalam rangka rilisnya fitur **Sistem Pet (Tamagotchi)** & **Sistem Perampokan Berisiko Tinggi**, berikut adalah buku panduan lengkap serta seluruh daftar perintah (*commands*) yang aktif penuh pada bot kita hari ini:`
+        `${divider}\n\n` +
+        `Halo Warga **${guild.name}**! 👋✨\n\n` +
+        `Selamat datang di **Pusat Informasi Resmi Sentinel Bot 2026** — Bot multifungsi serba bisa yang menguasai keamanan Voice Channel, ekonomi kosan, perdagangan saham interaktif, perbankan modern, simulasi hunian, peliharaan virtual, perampokan berisiko tinggi, hingga permainan sosial!\n\n` +
+        `Di bawah ini tersaji **seluruh katalog fitur & daftar perintah** yang aktif penuh dan siap Anda gunakan.\n\n` +
+        `> 💡 *Ketik **\`.help\`** kapan saja untuk membuka panel navigasi interaktif di dalam Discord.*\n\n` +
+        `${divider}`
       )
+      .setTimestamp(timestamp);
+
+    // ══════════════════════════════════════════════════
+    // EMBED 2: VOICE & TTS + EKONOMI PASIF
+    // ══════════════════════════════════════════════════
+    const voiceEcoEmbed = new EmbedBuilder()
+      .setColor(0x00D2FF)
       .addFields(
         {
-          name: '🎙️ 1. KEAMANAN VOICE & GOOGLE TTS',
+          name: '🎙️  ① KEAMANAN VOICE CHANNEL & GOOGLE TEXT-TO-SPEECH',
           value:
-            `👉 **\`.join\`** / **\`/join\`** - Bot gabung & mengunci VC Anda (Auto-Rejoin jika dc) + menyapa otomatis.\n` +
-            `👉 **\`.leave\`** / **\`/leave\`** - Membuka kunci VC & menyuruh bot keluar secara bersih.\n` +
-            `👉 **\`.speak <teks>\`** / **\`.speak en <teks>\`** - Mengucapkan teks suara di VC.\n` +
-            `👉 **\`.status\`** - Status realtime koneksi, RAM VPS, & uptime bot.`
+            `> *Keamanan nongkrong Anda di Voice Channel adalah prioritas kami!*\n\n` +
+            `🔒 **\`.join\`** atau **\`/join\`**\n` +
+            `╰ Bot bergabung ke VC Anda & mengunci saluran. Jika dipindahkan/dikick, bot langsung **rejoin otomatis instan**! Dilengkapi sapaan suara saat bergabung.\n\n` +
+            `🔓 **\`.leave\`** atau **\`/leave\`**\n` +
+            `╰ Membuka kunci saluran & mengeluarkan bot secara aman dan bersih.\n\n` +
+            `🗣️ **\`.speak <teks>\`** · **\`.speak en <teks>\`**\n` +
+            `╰ Mengucapkan teks di Voice Channel menggunakan Google TTS (Bahasa Indonesia/Inggris).\n\n` +
+            `🔊 **Sapaan Suara Otomatis** — Setiap member yang bergabung ke VC akan disambut *"Halo [Nama], selamat bergabung!"* secara realtime!\n\n` +
+            `📊 **\`.status\`** — Statistik realtime koneksi, RAM VPS, uptime bot, & info sistem server.\n\n` +
+            `${miniDivider}`,
+          inline: false
         },
         {
-          name: '💸 2. EKONOMI PASIF "RUPIAH SERVER"',
+          name: '💸  ② EKONOMI PASIF "RUPIAH SERVER" & GAJI HARIAN',
           value:
-            `• **Chatting** : Dapat **Rp 1-4** secara pasif per pesan di text channel (cooldown 45s).\n` +
-            `• **Gaji Otomatis** : Hadiah harian **Rp 15-35** + streak dicairkan otomatis di chat pertama Anda!\n` +
-            `👉 **\`.bal\`** / **\`.profile\`** - Cek saldo dompet, portofolio bursa, & kasta role prestise.\n` +
-            `👉 **\`.daily\`** - Klaim hadiah koin gratis harian.\n` +
-            `👉 **\`.transfer @user <jumlah>\`** - Kirim koin instan ke warga lain (pajak transfer 10%, sewa kosan mengurangi pajak).\n` +
-            `👉 **\`.rich\`** / **\`.leaderboard\`** - Papan peringkat 10 warga terkaya.`
-        },
-        {
-          name: '📈 3. BURSA SAHAM KOSAN INTERAKTIF',
-          value:
-            `• **Saham Dinamis** : Channel teks terdaftar sebagai saham. Harga fluktuatif tiap 2 jam berbasis chat!\n` +
-            `👉 **\`.market\`** / **\`.saham\`** - Membuka dashboard bursa saham & panel transaksi privat.\n` +
-            `👉 **\`.stock <ticker>\`** / **\`.chart <ticker>\`** - Grafik 2D ASCII & tombol instan Beli/Jual/Refresh.\n` +
-            `👉 **\`.buy\`** / **\`.sell\`** / **\`.sellall\`** - Jual beli saham bursa (kepemilikan maks 500 lembar).\n` +
-            `👉 **\`.porto\`** / **\`.portfolio\`** - Detail aset investasi, harga rata-rata beli, & profit/loss real-time.\n` +
-            `• **Weekly Dividen** : Dividen cair otomatis ke dompet tiap Minggu malam pukul 21:00 WIB.`
-        },
-        {
-          name: '🤖 4. AUTO-TRADING AI & TOKO ROLE',
-          value:
-            `👉 **\`.autotrade\`** - Nyalakan asisten Robot Trading AI (Auto DCA & Auto Take-Profit untung >= 15%).\n` +
-            `👉 **\`.shop\`** / **\`.rolemarket\`** - Etalase belanja kasta role prestise dengan koin Rp.\n` +
-            `👉 **\`.gacha-role\`** - Spin gacha role seharga **Rp 250** (Cashback Rp 100 jika duplikat, dapet sampah lucu jika zonk).\n` +
-            `👉 **\`.indexrole\`** - Indeks koleksi role, progress bar, & status level sosial kosan.`
-        },
-        {
-          name: '🏛️ 5. CENTRAL BANK & PERBANKAN POP-UP',
-          value:
-            `👉 **\`.bank\`** - Membuka panel kontrol bank interaktif berbasis tombol & formulir pop-up.\n` +
-            `• **Tabungan** : Simpan koin di brankas dengan **Bunga Pasif +1.5% Setiap Hari**!\n` +
-            `• **Pinjaman** : Pinjam koin tenor 1/3/7 hari dengan limit dinamis. Auto-debet saat jatuh tempo atau sanksi denda 5% + beku gaji + notice merah publik.`
-        },
-        {
-          name: '🛌 6. SIMULASI SEWA KAMAR & UPGRADE KOSAN',
-          value:
-            `👉 **\`.kos\`** / **\`.kosan\`** - Dashboard hunian, sisa durasi sewa, pasif buffs, & furniture.\n` +
-            `👉 **\`.kos-sewa\`** - Sewa kamar 3 hari (Kipas: daily +5 Rp | AC: daily +15 Rp & pajak transfer 8% | Penthouse: daily +40 Rp, pajak transfer 5% & pajak jual saham 10%).\n` +
-            `👉 **\`.kos-upgrade\`** - Belanja furniture permanen (Kasur: streak daily multiplier | WiFi: limit voice harian Rp 35 | Dispenser: 10% peluang koin chat ganda | Gembok: limit pinjaman bank +150 Rp & proteksi rob 50%).`
-        },
-        {
-          name: '🐾 7. SISTEM PET TAMAGOTCHI STYLE [NEW!]',
-          value:
-            `👉 **\`.pet\`** - Membuka dashboard utama status peliharaan Anda secara interaktif.\n` +
-            `👉 **\`.pet buy <nama> <slime/dragon/cat/golem>\`** - Adopsi telur pet seharga **Rp 1.500** (Menetas dalam 2 jam).\n` +
-            `👉 **\`.pet shop\`** - Toko supplies pet (Pakan Lvl 1/2, Air, Obat, & Bola Mainan).\n` +
-            `👉 **\`.pet work\`** - Menyuruh pet bekerja mencari koin secara aman (cooldown 2 jam, Golem -20m).\n` +
-            `👉 **\`.pet hunt\`** - Menyuruh pet (Min. Lvl 10) berburu di hutan liar (berhadiah besar/item gratis, cooldown 4 jam).\n` +
-            `👉 **\`.pet play\`** - Bermain lempar bola dengan pet untuk memulihkan Kebahagiaan & XP.\n` +
-            `👉 **\`.pet pvp @user <taruhan>\`** - Duel Arena PvP antar pet memperebutkan koin taruhan.\n` +
-            `👉 **\`.pet reset\`** - Mengosongkan kandang untuk mengadopsi pet baru.`
-        },
-        {
-          name: '💥 8. PERAMPOKAN BERISIKO TINGGI (HEIST & ROB) [NEW!]',
-          value:
-            `👉 **\`.rob @user\`** - Mencuri sebagian koin dompet target secara solo (sukses rate 40%). Gagal berarti denda & masuk penjara virtual.\n` +
-            `👉 **\`.heist\`** / **\`.heist start\`** - Mengajak kru merampok Bank Server. Makin ramai kru, sukses rate naik, namun denda kegagalan juga bertambah!\n` +
-            `👉 **\`.jail\`** / **\`.jail @user\`** - Cek status/sisa masa tahanan penjara virtual Anda/orang lain.\n` +
-            `• **Bail System** : Tebus jaminan menggunakan koin dari dashboard penjara virtual untuk bebas seketika.`
-        },
-        {
-          name: '🎲 9. GAME VOICE TRUTH OR DARE',
-          value:
-            `👉 **\`.tod\`** / **\`.truthordare\`** - Sesi lobi game Truth or Dare bahasa Indonesia di Voice Channel.\n` +
-            `👉 **\`.tod status\`** - Statistik koin & pencapaian bermain ToD Anda.`
+            `> *Ngobrol di server = menghasilkan uang. Semudah itu!*\n\n` +
+            `💬 **Chat-to-Earn** — Setiap pesan minimal 3 kata & 10 karakter otomatis menghasilkan **Rp 1 s/d Rp 4** secara acak (cooldown 45 detik, anti-spam).\n\n` +
+            `🌅 **Gaji Harian Otomatis** — Tidak perlu ketik \`.daily\` lagi! Gaji harian **Rp 15 – Rp 35** + bonus streak berturut-turut akan **otomatis dicairkan** di chat pertama Anda setiap hari!\n\n` +
+            `💼 **\`.bal\`** · **\`.profile\`** — Melihat saldo dompet, portofolio saham, daily streak, & koleksi role prestise.\n\n` +
+            `💰 **\`.daily\`** — Klaim manual gaji harian gratis (jika Anda lebih suka mengklaim sendiri).\n\n` +
+            `💸 **\`.transfer @user <jumlah>\`** — Kirim koin instan ke warga lain (pajak transfer 10%, **bisa dikurangi** dengan sewa kosan!).\n\n` +
+            `🏆 **\`.rich\`** · **\`.leaderboard\`** — Papan peringkat 10 konglomerat terkaya di seluruh server.`,
+          inline: false
         }
       )
-      .setFooter({ text: '— Tim Developer & Sentinel Bot Kosan 1A 2026', iconURL: guild.iconURL({ dynamic: true }) || null })
-      .setTimestamp();
+      .setTimestamp(timestamp);
+
+    // ══════════════════════════════════════════════════
+    // EMBED 3: BURSA SAHAM + AUTO-TRADING + TOKO ROLE
+    // ══════════════════════════════════════════════════
+    const stocksEmbed = new EmbedBuilder()
+      .setColor(0x00FF88)
+      .addFields(
+        {
+          name: '📈  ③ BURSA SAHAM KOSAN INTERAKTIF',
+          value:
+            `> *Investasikan koin Anda ke text channel teraktif! Harga saham berfluktuasi dinamis setiap 2 jam.*\n\n` +
+            `📊 **\`.market\`** · **\`.saham\`** — Membuka dashboard bursa saham lengkap & memicu panel transaksi interaktif privat.\n\n` +
+            `📉 **\`.stock <ticker>\`** · **\`.chart <ticker>\`** — Melihat detail saham & **Grafik Tren ASCII 2D** (10 pembaruan terakhir) dengan tombol instan Beli, Jual, & Refresh.\n\n` +
+            `📥 **\`.buy <ticker> <jumlah>\`** — Membeli lembar saham (Maks 500 lembar per saham).\n` +
+            `📤 **\`.sell <ticker> <jumlah>\`** — Menjual saham Anda ke bursa (pajak bursa **15%**).\n` +
+            `📤 **\`.sellall <ticker>\`** — Melikuidasi seluruh lembar saham pada ticker tertentu.\n\n` +
+            `💼 **\`.porto\`** · **\`.portfolio\`** — Detail aset investasi, harga beli rata-rata, & profit/loss real-time.\n\n` +
+            `💵 **Dividen Mingguan** — Setiap **Minggu malam pukul 21:00 WIB**, dividen otomatis dibagikan ke seluruh pemegang saham berdasarkan keaktifan chat mingguan channel terkait *(Maks rate 9%)*!\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '🤖  ④ ROBOT INVESTASI PRIBADI (AUTO-TRADING AI)',
+          value:
+            `> *Biarkan robot bekerja menghasilkan cuan untuk Anda saat rebahan!*\n\n` +
+            `⚡ **\`.autotrade\`** · **\`.autoinvest\`** — Membuka panel kontrol asisten robot trading pribadi.\n\n` +
+            `📥 **Auto DCA (Buy-the-Dip)** — Jika saldo dompet Anda ≥ Rp 150, robot otomatis mencicil beli saham termurah/sedang turun setiap 2 jam *(maks alokasi 30% saldo)*.\n\n` +
+            `📤 **Auto Take-Profit (TP)** — Robot otomatis melikuidasi saham Anda saat keuntungan mencapai **≥ 15%** dari harga beli rata-rata untuk mengamankan koin dompet!\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '🎭  ⑤ TOKO ROLE PRESTISE & SPIN GACHA MISTERI',
+          value:
+            `> *Tukarkan koin Anda dengan kasta role bergengsi — atau putar roda nasib!*\n\n` +
+            `🛍️ **\`.shop\`** · **\`.rolemarket\`** — Membuka etalase toko role prestise server.\n\n` +
+            `🏷️ **\`.buy-role <ID>\`** — Membeli role bergengsi secara tetap menggunakan saldo koin.\n\n` +
+            `🎰 **\`.gacha-role\`** — Memutar spin gacha role seharga **Rp 250** per roll!\n` +
+            `╰ 🟢 Common \`70%\` · 🔵 Rare \`22%\` · 🟣 Epic \`6.8%\` · 👑 Legendary \`1.1%\` · 🌟 **Mythic \`0.1%\`**\n` +
+            `╰ 🗑️ Zonk? Dapet item sampah lucu *(Sandal Swallow Kiri, Batu Kali, Tulang Ayam…)*\n` +
+            `╰ 💰 Duplikat? Cashback **Rp 100** otomatis!\n\n` +
+            `📇 **\`.indexrole\`** · **\`.roleindex\`** — Menampilkan kartu indeks koleksi role Anda, progress bar, & status kelas sosial *(dari "Beban Server" s/d "Maharaja Sultan"!)*.`,
+          inline: false
+        }
+      )
+      .setTimestamp(timestamp);
+
+    // ══════════════════════════════════════════════════
+    // EMBED 4: BANK + KOSAN
+    // ══════════════════════════════════════════════════
+    const bankKosEmbed = new EmbedBuilder()
+      .setColor(0x7C4DFF)
+      .addFields(
+        {
+          name: '🏛️  ⑥ CENTRAL BANK KOSAN 1A (TABUNGAN & PINJAMAN)',
+          value:
+            `> *Perbankan canggih berbasis formulir pop-up interaktif Discord!*\n\n` +
+            `🏦 **\`.bank\`** — Membuka panel kontrol bank interaktif lengkap.\n\n` +
+            `📥 **Tabungan** — Simpan koin di brankas bank agar aman dari perampok. Tabungan mendapat **bunga pasif +1.5% setiap hari** yang cair otomatis tengah malam!\n\n` +
+            `📜 **Pinjaman** — Pinjam koin darurat dengan limit dinamis berdasarkan keaktifan chat & streak harian Anda:\n` +
+            `╰ 📅 **Tenor 1 hari** — Bunga 2%\n` +
+            `╰ 📅 **Tenor 3 hari** — Bunga 5%\n` +
+            `╰ 📅 **Tenor 7 hari** — Bunga 10%\n\n` +
+            `💳 **Bayar Utang** — Melunasi cicilan secara instan via tombol interaktif.\n\n` +
+            `⚠️ **Sanksi Jatuh Tempo (Overdue):**\n` +
+            `╰ 🔴 Denda akumulasi **+5%** per hari keterlambatan\n` +
+            `╰ 🔴 \`.daily\` **DIBEKUKAN** & \`.autotrade\` **DIMATIKAN PAKSA**\n` +
+            `╰ 🔴 Tagihan merah publik dikirim ke server agar semua warga tahu! 😱\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '🛌  ⑦ SIMULASI SEWA KAMAR & UPGRADE KOSAN',
+          value:
+            `> *Ubah koin Anda menjadi hunian bergengsi & perabotan bernilai ekonomi tinggi!*\n\n` +
+            `🏠 **\`.kos\`** · **\`.kosan\`** — Dashboard hunian pribadi, sisa sewa, efek buffs, & perabotan.\n\n` +
+            `🛎️ **\`.kos-sewa\`** · **\`.sewakos\`** — Persewaan kamar berdurasi 3 hari:\n` +
+            `╰ 💨 **Kamar Kipas Angin** *(Rp 150)* → Gaji Harian **+Rp 5**\n` +
+            `╰ ❄️ **Kamar AC** *(Rp 350)* → Gaji Harian **+Rp 15** | Pajak Transfer turun **8%**\n` +
+            `╰ 👑 **Penthouse Kosan** *(Rp 800)* → Gaji Harian **+Rp 40** | Pajak Transfer **5%** | Pajak Jual Saham **10%**\n\n` +
+            `🪟 **\`.kos-upgrade\`** · **\`.upgradekos\`** — Belanja fasilitas kamar **permanen**:\n` +
+            `╰ 🛏️ **Kasur Busa Super** *(Rp 200)* → Streak daily bonus naik **+Rp 4/hari**\n` +
+            `╰ 📶 **WiFi Kencang** *(Rp 300)* → Limit Voice Earn naik jadi **Rp 35/hari**\n` +
+            `╰ 💧 **Dispenser Air** *(Rp 150)* → Peluang **10%** koin chat didobelkan 🥤\n` +
+            `╰ 🔒 **Gembok Pintu** *(Rp 250)* → Limit pinjaman **+Rp 150** & proteksi rampok **-50%**\n` +
+            `╰ 🚨 **Alarm Security** *(Rp 500)* → Peluang sukses perampok turun **-15%**\n` +
+            `╰ 📹 **Kamera CCTV** *(Rp 350)* → Denda perampok gagal **+Rp 100** kompensasi`,
+          inline: false
+        }
+      )
+      .setTimestamp(timestamp);
+
+    // ══════════════════════════════════════════════════
+    // EMBED 5: PET + ROB/HEIST
+    // ══════════════════════════════════════════════════
+    const petRobEmbed = new EmbedBuilder()
+      .setColor(0xFFB300)
+      .addFields(
+        {
+          name: '🐾  ⑧ SISTEM PET VIRTUAL (TAMAGOTCHI STYLE)',
+          value:
+            `> *Adopsi, rawat, latih, dan bertarung bersama hewan peliharaan virtualmu!*\n\n` +
+            `🥚 **\`.pet buy <nama> <spesies>\`** — Adopsi telur pet seharga **Rp 1.500** *(menetas dalam 2 jam)*.\n\n` +
+            `**Pilihan Spesies & Keunggulan Unik:**\n` +
+            `╰ 🟢 **Slime** → Vitalitas tinggi, laju lapar/haus **-25%** lebih lambat\n` +
+            `╰ 🔥 **Dragon** → Attack PvP **+15%**, tangguh di pertarungan arena\n` +
+            `╰ 🐱 **Cat** → Pendapatan Hunt **+15%** & peluang item langka **+5%**\n` +
+            `╰ 🧱 **Golem** → Cooldown kerja dikurangi **20 menit**\n\n` +
+            `📋 **\`.pet\`** — Dashboard utama status pet (HP, Kenyangan, Hidrasi, Mood).\n` +
+            `🛒 **\`.pet shop\`** — Toko item perawatan (Pakan, Air, Obat, & Mainan).\n` +
+            `⚒️ **\`.pet work\`** — Kirim pet bekerja: **Rp 150–400** + bonus 5%/level *(CD: 2 jam)*.\n` +
+            `🏹 **\`.pet hunt\`** — Kirim pet berburu *(Min. Lv 10)*: **Rp 300–800** + item gratis *(CD: 4 jam)*.\n` +
+            `🎾 **\`.pet play\`** — Bermain gratis: **+25 Happiness, +15 XP**.\n` +
+            `⚔️ **\`.pet pvp @user <taruhan>\`** — Duel Arena PvP antar pet memperebutkan koin!\n` +
+            `🗑️ **\`.pet reset\`** — Mengosongkan kandang untuk adopsi ulang.\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '💥  ⑨ PERAMPOKAN BERISIKO TINGGI (ROB & BANK HEIST)',
+          value:
+            `> *High risk, high reward — atau high regret! Pilih wisely!*\n\n` +
+            `🔫 **\`.rob @user\`** — Solo robbery! Merampok **10%–25%** koin dompet target.\n` +
+            `╰ ✅ Peluang sukses dasar: **40%** *(dikurangi Alarm korban: -15%)*\n` +
+            `╰ ❌ Gagal? Didenda **Rp 200** *(+Rp 100 jika korban punya CCTV)* & dipenjara **30 menit**!\n` +
+            `╰ 🛡️ Gembok korban memotong jarahan pelaku hingga **50%**.\n\n` +
+            `🏦 **\`.heist\`** — Rampok Bank Sentral secara multiplayer!\n` +
+            `╰ 👤 1 kru: 15% sukses → Rp 1.000–2.000\n` +
+            `╰ 👥 2 kru: 30% sukses → Rp 2.500–4.500\n` +
+            `╰ 👥👥 3 kru: 45% sukses → Rp 5.000–8.000\n` +
+            `╰ 👥👥👥 4 kru: 60% sukses → Rp 9.000–14.000\n` +
+            `╰ 👥👥👥👥 **5+ kru: 75% sukses → Rp 15.000–25.000** 🔥\n` +
+            `╰ ❌ Gagal heist? **Denda + Penjara 1–2 jam** untuk seluruh kru!\n\n` +
+            `🏛️ **\`.jail\`** · **\`.jail @user\`** — Cek status/sisa waktu penjara virtual.\n` +
+            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 500 | Heist Rp 1.000.`,
+          inline: false
+        }
+      )
+      .setTimestamp(timestamp);
+
+    // ══════════════════════════════════════════════════
+    // EMBED 6: GAME ToD + LINK BYPASS + TIPS HOKI + PENUTUP
+    // ══════════════════════════════════════════════════
+    const closingEmbed = new EmbedBuilder()
+      .setColor(0xFF3366)
+      .addFields(
+        {
+          name: '🎲  ⑩ GAME VOICE TRUTH OR DARE',
+          value:
+            `> *Ramaikan tongkrongan Voice Channel dengan permainan seru!*\n\n` +
+            `🃏 **\`.tod\`** · **\`.truthordare\`** — Memulai sesi lobi game Truth or Dare interaktif berbahasa Indonesia di VC.\n\n` +
+            `📊 **\`.tod status\`** — Melihat profil, statistik koin, & performa bermain ToD Anda.\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '🔗  ⑪ BYPASS VIDEO LINK (AUTO-PREVIEW)',
+          value:
+            `> *Kirim link video tanpa khawatir preview rusak!*\n\n` +
+            `📱 Fitur **otomatis aktif** — Bot mendeteksi link **TikTok**, **Twitter/X**, & **Instagram** yang dikirim di chat, lalu mengirim preview video langsung melalui Webhook Mirroring yang estetik tanpa merusak teks asli Anda!\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '💡  TIPS & TRIK AGAR CEPAT KAYA DAN HOKI',
+          value:
+            `**🚀 Fase Awal — Kumpulkan Modal:**\n` +
+            `╰ Konsisten chatting & jaga daily streak tanpa putus!\n` +
+            `╰ Adopsi pet **Golem** (kerja lebih sering) atau **Cat** (hunt lebih untung).\n` +
+            `╰ Rajin kirim pet bekerja (\`.pet work\`) setiap cooldown selesai.\n\n` +
+            `**📈 Fase Menengah — Investasi Cerdas:**\n` +
+            `╰ Sewa **Penthouse** untuk potongan pajak & bonus daily terbesar.\n` +
+            `╰ Beli **Kasur** (streak multiplier) & **Dispenser** (10% koin chat 2x lipat).\n` +
+            `╰ Aktifkan \`.autotrade\` — biarkan robot belikan saham murah & jual saat untung!\n` +
+            `╰ Tabung koin di \`.bank\` untuk **bunga +1.5%/hari** & lindungi dari perampok.\n\n` +
+            `**💥 Fase Akhir — High Risk High Reward:**\n` +
+            `╰ Kumpulkan 5+ kru untuk \`.heist\` (peluang sukses **75%**, rampasan hingga **Rp 25.000**).\n` +
+            `╰ Tingkatkan level pet Dragon untuk menang **PvP Arena** dengan taruhan tinggi.\n` +
+            `╰ Putar \`.gacha-role\` saat saldo melimpah — siapa tahu dapat **Mythic 0.1%**! 🌟`,
+          inline: false
+        }
+      )
+      .setDescription(
+        `${divider}\n\n` +
+        `✨ *Terima kasih telah menjadi bagian dari keseruan **${guild.name}**!*\n` +
+        `*Yuk ketik **\`.kos\`**, **\`.bank\`**, atau **\`.pet\`** sekarang untuk mencoba!*\n` +
+        `*Selamat nongkrong, selamat trading, dan selamat rebahan di Kamar AC!* 🛌💸📈\n\n` +
+        `${divider}`
+      )
+      .setFooter({ text: '— Tim Developer & Sentinel Bot Kosan 1A 2026 ❤️', iconURL: guild.iconURL({ dynamic: true }) || null })
+      .setTimestamp(timestamp);
+
+    return [heroEmbed, voiceEcoEmbed, stocksEmbed, bankKosEmbed, petRobEmbed, closingEmbed];
+  },
+
+  // Backward-compatible single embed wrapper (jika diperlukan)
+  updateAnnouncementEmbed(guild) {
+    const embeds = this.updateAnnouncementEmbeds(guild);
+    return embeds[0]; // Kembalikan embed pertama saja untuk kompatibilitas lama
   },
 
   // 17. Status Event Aktif (.event)
