@@ -2832,6 +2832,7 @@ async function handleEconomyCommands(message, client) {
           throw dbErr;
         }
 
+        const winEmbed = embeds.gachaResultEmbed(author, selectedItem, gachaCost, finalWallet.balance, true);
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
 
         // Broadcast Heboh jika Legendary / Epic / Mythic
