@@ -20,8 +20,6 @@ const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
 const { initStockMarket, handleEconomyChat, handleEconomyCommands } = require('./stockmarket');
 const { handleVoiceTodCommand } = require('./voice_events');
-const { sendAdminLog, getAuditLogExecutor, getChannelTypeName } = require('./logger');
-const { AuditLogEvent } = require('discord.js');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -850,91 +848,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     }
   }
 });
-// ═══════════════════════════════════════════════════
-// CHANNEL LOGGING EVENTS
-// ═══════════════════════════════════════════════════
-client.on('channelCreate', async (channel) => {
-  if (!channel.guild) return;
-  
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const executor = await getAuditLogExecutor(channel.guild, AuditLogEvent.ChannelCreate, channel.id);
-  
-  const embed = new EmbedBuilder()
-    .setColor(0x00FF88)
-    .setTitle('📁 Saluran Baru Dibuat / Channel Created')
-    .addFields(
-      { name: 'Nama Saluran', value: `${channel.name} (<#${channel.id}>)`, inline: true },
-      { name: 'Tipe', value: getChannelTypeName(channel.type), inline: true },
-      { name: 'ID Saluran', value: `\`${channel.id}\``, inline: true },
-      { name: 'Dibuat Oleh', value: executor ? `<@${executor.id}> (${executor.tag})` : 'Tidak Diketahui / Bot', inline: false }
-    )
-    .setTimestamp();
 
-  await sendAdminLog(client, channel.guild, embed);
-});
-
-client.on('channelDelete', async (channel) => {
-  if (!channel.guild) return;
-
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const executor = await getAuditLogExecutor(channel.guild, AuditLogEvent.ChannelDelete, channel.id);
-
-  const embed = new EmbedBuilder()
-    .setColor(0xFF3366)
-    .setTitle('🗑️ Saluran Dihapus / Channel Deleted')
-    .addFields(
-      { name: 'Nama Saluran', value: `${channel.name}`, inline: true },
-      { name: 'Tipe', value: getChannelTypeName(channel.type), inline: true },
-      { name: 'ID Saluran', value: `\`${channel.id}\``, inline: true },
-      { name: 'Dihapus Oleh', value: executor ? `<@${executor.id}> (${executor.tag})` : 'Tidak Diketahui / Bot', inline: false }
-    )
-    .setTimestamp();
-
-  await sendAdminLog(client, channel.guild, embed);
-});
-
-client.on('channelUpdate', async (oldChannel, newChannel) => {
-  if (!newChannel.guild) return;
-
-  const nameChanged = oldChannel.name !== newChannel.name;
-  const topicChanged = oldChannel.topic !== newChannel.topic;
-  
-  const oldOverwrites = oldChannel.permissionOverwrites.cache;
-  const newOverwrites = newChannel.permissionOverwrites.cache;
-  const permsChanged = oldOverwrites.size !== newOverwrites.size || !oldOverwrites.every((val, key) => newOverwrites.has(key));
-
-  if (!nameChanged && !topicChanged && !permsChanged) return;
-
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const executor = await getAuditLogExecutor(newChannel.guild, AuditLogEvent.ChannelUpdate, newChannel.id);
-
-  const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
-    .setTitle('⚙️ Saluran Diperbarui / Channel Updated')
-    .setDescription(`**Saluran:** <#${newChannel.id}> (\`${newChannel.id}\`)`)
-    .setTimestamp();
-
-  if (nameChanged) {
-    embed.addFields(
-      { name: 'Nama Lama', value: `\`${oldChannel.name}\``, inline: true },
-      { name: 'Nama Baru', value: `\`${newChannel.name}\``, inline: true }
-    );
-  }
-  if (topicChanged) {
-    embed.addFields(
-      { name: 'Topik Lama', value: oldChannel.topic ? `\`${oldChannel.topic}\`` : '*Tidak Ada*', inline: false },
-      { name: 'Topik Baru', value: newChannel.topic ? `\`${newChannel.topic}\`` : '*Tidak Ada*', inline: false }
-    );
-  }
-  if (permsChanged) {
-    embed.addFields({ name: '⚠️ Perubahan Izin', value: 'Pengaturan izin (Permission Overwrites) saluran telah diperbarui.', inline: false });
-  }
-  if (executor) {
-    embed.addFields({ name: 'Diperbarui Oleh', value: `<@${executor.id}> (${executor.tag})`, inline: false });
-  }
-
-  await sendAdminLog(client, newChannel.guild, embed);
-});
 
 
 

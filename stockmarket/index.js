@@ -9,7 +9,6 @@ const bank = require('./bank');
 const pet = require('./pet');
 const robbery = require('./robbery');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
-const { sendAdminLog } = require('../logger');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 
@@ -657,21 +656,6 @@ async function handleKosSewaCommand(message, client) {
           );
 
           await iSewa.update({ embeds: [successEmb], components: [] });
-
-          // Kirim log admin
-          const adminLogEmbed = new EmbedBuilder()
-            .setColor(0x00FF88)
-            .setAuthor({ name: `${author.tag}`, iconURL: author.displayAvatarURL({ dynamic: true }) })
-            .setTitle('🛌 Sewa Kamar Kos / Room Rented')
-            .setDescription(`<@${author.id}> berhasil meng-upgrade tempat tinggal/profil dengan menyewa kamar kos baru.`)
-            .addFields(
-              { name: 'Kasta Kamar', value: `${res.name} (\`${res.roomTier}\`)`, inline: true },
-              { name: 'Biaya Sewa', value: `Rp ${res.price.toLocaleString('id-ID')}`, inline: true },
-              { name: 'Masa Aktif s/d', value: `<t:${res.endsAt}:F>`, inline: false },
-              { name: 'Sisa Saldo', value: `Rp ${res.walletBalance.toLocaleString('id-ID')}`, inline: true }
-            )
-            .setTimestamp();
-          await sendAdminLog(client, message.guild, adminLogEmbed);
         } catch (err) {
           const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
           await iSewa.update({ embeds: [errorEmb], components: [] });
@@ -761,20 +745,6 @@ async function handleKosUpgradeCommand(message, client) {
           );
 
           await iUpgrade.update({ embeds: [successEmb], components: [] });
-
-          // Kirim log admin
-          const adminLogEmbed = new EmbedBuilder()
-            .setColor(0x00D2FF)
-            .setAuthor({ name: `${author.tag}`, iconURL: author.displayAvatarURL({ dynamic: true }) })
-            .setTitle('📺 Beli Fasilitas Kos / Kos Facility Upgraded')
-            .setDescription(`<@${author.id}> berhasil meng-upgrade profil dengan membeli fasilitas kamar kos permanen baru.`)
-            .addFields(
-              { name: 'Nama Fasilitas', value: `${res.name} (\`${res.upgradeId}\`)`, inline: true },
-              { name: 'Harga', value: `Rp ${res.price.toLocaleString('id-ID')}`, inline: true },
-              { name: 'Sisa Saldo', value: `Rp ${res.walletBalance.toLocaleString('id-ID')}`, inline: true }
-            )
-            .setTimestamp();
-          await sendAdminLog(client, message.guild, adminLogEmbed);
         } catch (err) {
           const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
           await iUpgrade.update({ embeds: [errorEmb], components: [] });
@@ -2684,21 +2654,6 @@ async function handleEconomyCommands(message, client) {
       const successEmbed = embeds.rolePurchaseSuccessEmbed(author, item.role_name, item.price, finalWallet.balance, item.tier);
       await message.reply({ embeds: [successEmbed] });
 
-      // Kirim log admin
-      const adminLogEmbed = new EmbedBuilder()
-        .setColor(0xFFD700)
-        .setAuthor({ name: `${author.tag}`, iconURL: author.displayAvatarURL({ dynamic: true }) })
-        .setTitle('👑 Pembelian Role / Profile Upgrade')
-        .setDescription(`<@${author.id}> berhasil meng-upgrade profil dengan membeli role dari Toko Prestise.`)
-        .addFields(
-          { name: 'Role', value: `${item.role_name} (<@&${item.role_id}>)`, inline: true },
-          { name: 'Harga', value: `Rp ${item.price.toLocaleString('id-ID')}`, inline: true },
-          { name: 'Tingkatan (Tier)', value: `\`${item.tier}\``, inline: true },
-          { name: 'Sisa Saldo', value: `Rp ${finalWallet.balance.toLocaleString('id-ID')}`, inline: true }
-        )
-        .setTimestamp();
-      await sendAdminLog(client, guild, adminLogEmbed);
-
       // Broadcast Heboh jika tingkat EPIC / LEGENDARY / MYTHIC
       if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
         const broadcastEmbed = embeds.broadcastMegaEmbed(author, item.role_name, item.price, item.tier);
@@ -2853,20 +2808,6 @@ async function handleEconomyCommands(message, client) {
         );
 
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
-
-        // Kirim log admin
-        const adminLogEmbed = new EmbedBuilder()
-          .setColor(0x777777)
-          .setAuthor({ name: `${author.tag}`, iconURL: author.displayAvatarURL({ dynamic: true }) })
-          .setTitle('🎰 Gacha Role Duplikat / Duplicate Gacha Roll')
-          .setDescription(`<@${author.id}> melakukan spin gacha seharga Rp ${gachaCost.toLocaleString('id-ID')} tetapi mendapatkan role yang sudah dimiliki.`)
-          .addFields(
-            { name: 'Role Didapat', value: `${selectedItem.role_name} (<@&${selectedItem.role_id}>)`, inline: true },
-            { name: 'Cashback Diberikan', value: `Rp ${cashbackAmount.toLocaleString('id-ID')}`, inline: true },
-            { name: 'Sisa Saldo', value: `Rp ${finalWallet.balance.toLocaleString('id-ID')}`, inline: true }
-          )
-          .setTimestamp();
-        await sendAdminLog(client, guild, adminLogEmbed);
       } else {
         // Berikan role ke user
         try {
@@ -2892,21 +2833,6 @@ async function handleEconomyCommands(message, client) {
         }
 
         await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
-
-        // Kirim log admin
-        const adminLogEmbed = new EmbedBuilder()
-          .setColor(0xFF00FF)
-          .setAuthor({ name: `${author.tag}`, iconURL: author.displayAvatarURL({ dynamic: true }) })
-          .setTitle('🎰 Jackpot Gacha / Profile Upgrade')
-          .setDescription(`<@${author.id}> berhasil meng-upgrade profil dengan memenangkan role dari Gacha.`)
-          .addFields(
-            { name: 'Role Didapat', value: `${selectedItem.role_name} (<@&${selectedItem.role_id}>)`, inline: true },
-            { name: 'Biaya Roll', value: `Rp ${gachaCost.toLocaleString('id-ID')}`, inline: true },
-            { name: 'Tingkatan (Tier)', value: `\`${selectedItem.tier}\``, inline: true },
-            { name: 'Sisa Saldo', value: `Rp ${finalWallet.balance.toLocaleString('id-ID')}`, inline: true }
-          )
-          .setTimestamp();
-        await sendAdminLog(client, guild, adminLogEmbed);
 
         // Broadcast Heboh jika Legendary / Epic / Mythic
         if (selectedItem.tier === 'EPIC' || selectedItem.tier === 'LEGENDARY' || selectedItem.tier === 'MYTHIC') {
