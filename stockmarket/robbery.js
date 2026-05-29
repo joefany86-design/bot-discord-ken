@@ -2,6 +2,7 @@ const db = require('./database');
 const config = require('./config');
 const economy = require('./economy');
 const kos = require('./kos');
+const bm = require('./blackmarket');
 
 // Map untuk mengelola lobi heist aktif per server
 // Key: guildId, Value: HeistLobby
@@ -82,9 +83,37 @@ function robSolo(userId, targetId, guildId) {
   const hasAlarm = kos.hasUpgrade(targetId, guildId, 'ALARM');
   const hasCctv = kos.hasUpgrade(targetId, guildId, 'CCTV');
 
+  // Integrasi Black Market: Daging Bius (MEAT) untuk menonaktifkan Alarm/CCTV
+  let meatUsed = false;
+  let activeAlarm = hasAlarm;
+  let activeCctv = hasCctv;
+  if (hasAlarm || hasCctv) {
+    const meatQty = bm.getItemQty(userId, guildId, 'MEAT');
+    if (meatQty > 0) {
+      bm.consumeItem(userId, guildId, 'MEAT');
+      meatUsed = true;
+      activeAlarm = false;
+      activeCctv = false;
+    }
+  }
+
   // Kalkulasi Peluang Keberhasilan
   let successRate = config.robbery.SUCCESS_RATE; // Default 40%
-  if (hasAlarm) {
+
+  // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%
+  let lockpickUsed = false;
+  let lockpickBroken = false;
+  const lockpickQty = bm.getItemQty(userId, guildId, 'LOCKPICK');
+  if (lockpickQty > 0) {
+    lockpickUsed = true;
+    successRate += 15;
+    if (Math.random() < 0.20) {
+      bm.consumeItem(userId, guildId, 'LOCKPICK');
+      lockpickBroken = true;
+    }
+  }
+
+  if (activeAlarm) {
     successRate -= 15; // Mengurangi peluang keberhasilan sebesar 15% (menjadi 25%)
   }
 
@@ -102,6 +131,14 @@ function robSolo(userId, targetId, guildId) {
     }
 
     if (amountStolen <= 0) amountStolen = 1;
+
+    // Integrasi Black Market: Topeng Samaran (MASK) menyembunyikan identitas
+    let maskUsed = false;
+    const maskQty = bm.getItemQty(userId, guildId, 'MASK');
+    if (maskQty > 0) {
+      bm.consumeItem(userId, guildId, 'MASK');
+      maskUsed = true;
+    }
 
     db.transaction(() => {
       economy.subtractBalance(targetId, guildId, amountStolen, 'ROBBED_BY');
@@ -137,16 +174,30 @@ function robSolo(userId, targetId, guildId) {
       hasGembok,
       hasAlarm,
       petXpGained,
-      petMsg
+      petMsg,
+      meatUsed,
+      lockpickUsed,
+      lockpickBroken,
+      maskUsed
     };
   } else {
     // Gagal merampok: Pelaku didenda Rp 200 (masuk ke korban)
     let fine = 200;
-    if (hasCctv) {
+    if (activeCctv) {
       fine += 100; // CCTV palsu menambah denda pelaku +100 kompensasi ke korban
     }
 
     const finalFine = Math.min(thiefWallet.balance, fine);
+
+    // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara 50%
+    let soapUsed = false;
+    let jailDuration = config.robbery.JAIL_SOLO_SECONDS;
+    const soapQty = bm.getItemQty(userId, guildId, 'SOAP');
+    if (soapQty > 0) {
+      bm.consumeItem(userId, guildId, 'SOAP');
+      soapUsed = true;
+      jailDuration = Math.floor(jailDuration / 2);
+    }
 
     db.transaction(() => {
       if (finalFine > 0) {
@@ -154,8 +205,8 @@ function robSolo(userId, targetId, guildId) {
         economy.addBalance(targetId, guildId, finalFine, 'ROB_VICTIM_COMPENSATION');
       }
 
-      // Penjara pelaku selama 30 menit
-      const jailUntil = Math.floor(Date.now() / 1000) + config.robbery.JAIL_SOLO_SECONDS;
+      // Penjara pelaku
+      const jailUntil = Math.floor(Date.now() / 1000) + jailDuration;
       db.run(
         "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [jailUntil, userId, guildId]
@@ -165,8 +216,12 @@ function robSolo(userId, targetId, guildId) {
     return {
       success: false,
       fine: finalFine,
-      hasCctv,
-      jailDurationMinutes: Math.floor(config.robbery.JAIL_SOLO_SECONDS / 60)
+      hasCctv: activeCctv,
+      jailDurationMinutes: Math.floor(jailDuration / 60),
+      meatUsed,
+      lockpickUsed,
+      lockpickBroken,
+      soapUsed
     };
   }
 }
@@ -422,7 +477,7 @@ function executeHeist(guildId) {
   } else {
     logs.push(...actionPoolFailure);
 
-    const jailUntil = now + stats.jailDurationSeconds;
+    const soapUsedUsers = [];
 
     db.transaction(() => {
       participants.forEach(p => {
@@ -431,10 +486,21 @@ function executeHeist(guildId) {
         if (finalFine > 0) {
           economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
         }
+        
+        // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara heist 50%
+        const soapQty = bm.getItemQty(p, guildId, 'SOAP');
+        let userJailSecs = stats.jailDurationSeconds;
+        if (soapQty > 0) {
+          bm.consumeItem(p, guildId, 'SOAP');
+          userJailSecs = Math.floor(userJailSecs / 2);
+          soapUsedUsers.push(p);
+        }
+
+        const userJailUntil = now + userJailSecs;
         // Masukkan ke penjara heist
         db.run(
           "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
-          [jailUntil, p, guildId]
+          [userJailUntil, p, guildId]
         );
       });
     })();
@@ -444,7 +510,8 @@ function executeHeist(guildId) {
       participants,
       fineAmount: stats.fine,
       jailHours: stats.jailDurationSeconds / 3600,
-      logs
+      logs,
+      soapUsedUsers
     };
   }
 }

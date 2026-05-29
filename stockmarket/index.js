@@ -8,6 +8,7 @@ const scheduler = require('./scheduler');
 const bank = require('./bank');
 const pet = require('./pet');
 const robbery = require('./robbery');
+const bm = require('./blackmarket');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -889,6 +890,333 @@ async function handlePetCommand(message, client, args) {
     }
   }
 
+  // ── SUB-PERINTAH: BREED (KAWIN SILANG) ──
+  if (subCommand === 'breed') {
+    const partnerUser = message.mentions.users.first();
+    const newName = args.slice(2).join(' ');
+
+    if (!partnerUser || !newName) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet breed @user <nama_anak_baru>`\nContoh: `.pet breed @Joe Ciko`')] });
+    }
+
+    if (partnerUser.id === author.id) {
+      return message.reply({ embeds: [embeds.warnEmbed('Tidak Bisa Breeding!', 'Anda tidak bisa mengawinkan pet dengan diri Anda sendiri!')] });
+    }
+
+    const chalPet = pet.getPet(author.id, guildId);
+    const partPet = pet.getPet(partnerUser.id, guildId);
+
+    if (!chalPet) return message.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Anda tidak memiliki pet aktif!')] });
+    if (!partPet) return message.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Partner Anda tidak memiliki pet aktif!')] });
+
+    if (chalPet.status !== 'ADULT') return message.reply({ embeds: [embeds.errorEmbed('Pet Belum Dewasa!', `Pet Anda **${chalPet.pet_name}** belum Dewasa (Lv < 10)!`)] });
+    if (partPet.status !== 'ADULT') return message.reply({ embeds: [embeds.errorEmbed('Pet Partner Belum Dewasa!', `Pet partner **${partPet.pet_name}** belum Dewasa (Lv < 10)!`)] });
+
+    const chalWallet = economy.getWallet(author.id, guildId);
+    const partWallet = economy.getWallet(partnerUser.id, guildId);
+
+    if (chalWallet.balance < 800) return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Saldo Anda tidak mencukupi biaya perkawinan Rp 800!`)] });
+    if (partWallet.balance < 800) return message.reply({ embeds: [embeds.errorEmbed('Saldo Partner Kurang!', `Saldo partner Anda tidak mencukupi biaya perkawinan Rp 800!`)] });
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFF80AB)
+      .setTitle('💕 PENAWARAN PERKAWINAN PET 💕')
+      .setDescription(
+        `🔔 <@${partnerUser.id}>! Anda mendapatkan tawaran kawin silang dari <@${author.id}>!\n\n` +
+        `🦖 **Pet Anda:** **${partPet.pet_name}** (Lv. ${partPet.level} ${partPet.pet_type})\n` +
+        `⚔️ **Pet Pengirim:** **${chalPet.pet_name}** (Lv. ${chalPet.level} ${chalPet.pet_type})\n` +
+        `💰 **Biaya Masing-masing:** **Rp 800**\n` +
+        `🥚 **Nama Telur Anak:** **${newName}**\n\n` +
+        `*Klik tombol **🟢 Terima Perjodohan** di bawah untuk memulai breeding. Berlaku selama 60 detik!*`
+      )
+      .setFooter({ text: 'Rupiah Server Pet Breeding' })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_breed_accept').setLabel('🟢 Terima Perjodohan').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('pet_breed_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
+    );
+
+    const replyMsg = await message.reply({ content: `<@${partnerUser.id}>`, embeds: [embed], components: [row] });
+
+    const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
+
+    collector.on('collect', async iBreed => {
+      if (iBreed.user.id !== partnerUser.id) {
+        return iBreed.reply({ content: '❌ Hanya penerima tawaran yang bisa merespon tombol ini!', ephemeral: true });
+      }
+
+      try {
+        if (iBreed.customId === 'pet_breed_decline') {
+          collector.stop();
+          await replyMsg.delete().catch(() => {});
+          return iBreed.reply({ content: `🔴 <@${author.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerUser.id}>.` });
+        }
+
+        if (iBreed.customId === 'pet_breed_accept') {
+          collector.stop();
+          await replyMsg.delete().catch(() => {});
+
+          try {
+            const res = pet.breedPets(author.id, partnerUser.id, guildId, newName);
+            const successEmb = new EmbedBuilder()
+              .setColor(0xFF80AB)
+              .setTitle('🎉 PERKAWINAN PET BERHASIL! 🎉')
+              .setDescription(
+                `💕 Perkawinan antara **${chalPet.pet_name}** and **${partPet.pet_name}** sukses!\n\n` +
+                `🥚 **Lahir Telur Baru:** **${res.childName}** (Tipe: \`${res.childType}\`)\n` +
+                `✨ **Trait Warisan:** ${res.trait ? `**${res.trait}**` : '*Tidak ada trait khusus*'}\n` +
+                `⏳ **Penetasan Telur:** Telur akan menetas <t:${res.hatchAt}:R>.\n\n` +
+                `💸 Saldo masing-masing terpotong **Rp 800** untuk biaya perkawinan.`
+              )
+              .setFooter({ text: 'Gunakan .pet untuk melihat kandang Anda!' })
+              .setTimestamp();
+
+            return iBreed.reply({ content: `<@${author.id}> <@${partnerUser.id}>`, embeds: [successEmb] });
+          } catch (err) {
+            return iBreed.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)] });
+          }
+        }
+      } catch (err) {
+        console.error('Error in breed collector:', err);
+      }
+    });
+
+    collector.on('end', async () => {
+      if (collector.destroyed) return;
+      await replyMsg.delete().catch(() => {});
+    });
+    
+    return;
+  }
+
+  // ── SUB-PERINTAH: EXPEDITION (EKSPEDISI PVE) ──
+  if (subCommand === 'expedition' || subCommand === 'pet-expedition') {
+    const activeLobby = client.activeExpeditions = client.activeExpeditions || new Map();
+    if (activeLobby.has(guildId)) {
+      return message.reply({ embeds: [embeds.warnEmbed('Lobi Aktif!', 'Lobi ekspedisi pet sudah berjalan di server ini!')] });
+    }
+
+    const initiatorPet = pet.getPet(author.id, guildId);
+    if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!')] });
+    }
+    if (initiatorPet.health < 40) {
+      return message.reply({ embeds: [embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`)] });
+    }
+
+    const wallet = economy.getWallet(author.id, guildId);
+    if (wallet.balance < 150) {
+      return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 150 untuk biaya ransum ekspedisi!`)] });
+    }
+
+    economy.subtractBalance(author.id, guildId, 150, 'PET_EXPEDITION_FEE');
+
+    const lobby = {
+      guildId,
+      initiatorId: author.id,
+      participants: [author.id],
+      timeout: null
+    };
+    activeLobby.set(guildId, lobby);
+
+    const lobbyEmbed = new EmbedBuilder()
+      .setColor(0x3F51B5)
+      .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+      .setDescription(
+        `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+        `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
+        `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+        `🦖 **Kru Pet Saat Ini:**\n` +
+        `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${author.id}>\n\n` +
+        `💰 **Biaya Ransum:** Rp 150 koin per orang\n` +
+        `⏳ **Waktu Berkumpul:** **90 detik**\n\n` +
+        `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+      )
+      .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_exp_join').setLabel('🛡️ Ikut Ekspedisi').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('pet_exp_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Danger)
+    );
+
+    const replyMsg = await message.reply({ content: `📣 **Ekspedisi Tim Pet dibuka!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] });
+
+    let timeLeft = 90;
+    const interval = setInterval(async () => {
+      timeLeft -= 10;
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        return;
+      }
+
+      const currentLobby = activeLobby.get(guildId);
+      if (!currentLobby) {
+        clearInterval(interval);
+        return;
+      }
+
+      let petListText = '';
+      currentLobby.participants.forEach((pId, idx) => {
+        const pObj = pet.getPet(pId, guildId);
+        petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
+      });
+
+      const updatedEmbed = new EmbedBuilder()
+        .setColor(0x3F51B5)
+        .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+        .setDescription(
+          `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+          `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+          `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
+          `💰 **Biaya Ransum:** Rp 150 koin\n` +
+          `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
+          `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+        )
+        .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+        .setTimestamp();
+
+      await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+    }, 10000);
+
+    lobby.timeout = setTimeout(async () => {
+      clearInterval(interval);
+      activeLobby.delete(guildId);
+
+      const currentLobby = lobby;
+      try {
+        const res = pet.executeExpedition(guildId, currentLobby.participants);
+        
+        let reportDesc = '';
+        res.logs.forEach(log => {
+          reportDesc += `${log}\n`;
+        });
+        reportDesc += '\n📊 **Hasil Petualangan:**\n';
+        res.rewards.forEach(r => {
+          reportDesc += `🦖 **${r.petName}** (<@${r.userId}>):\n` +
+            `  • Koin Didapat: **+Rp ${r.koin}**\n` +
+            `  • XP Didapat: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+            `  • Item Ditemukan: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n\n`;
+        });
+
+        const resultEmbed = new EmbedBuilder()
+          .setColor(res.success ? 0x4CAF50 : 0xF44336)
+          .setTitle(`⚔️ EXPEDITION REPORT: ${res.zoneName} ⚔️`)
+          .setDescription(reportDesc)
+          .addFields(
+            { name: 'Kombinasi Level Tim', value: `Lv. ${res.teamPower}`, inline: true },
+            { name: 'Peluang Sukses', value: `${res.successRate}%`, inline: true }
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition' })
+          .setTimestamp();
+
+        await replyMsg.edit({
+          content: `⚔️ **EKSPEDISI PET SELESAI!**`,
+          embeds: [resultEmbed],
+          components: []
+        }).catch(async () => {
+          await message.channel.send({
+            content: `⚔️ **EKSPEDISI PET SELESAI!**`,
+            embeds: [resultEmbed]
+          });
+        });
+      } catch (err) {
+        console.error(err);
+        await message.channel.send({ content: `❌ Ekspedisi gagal diselesaikan: ${err.message}` });
+      }
+    }, 90000);
+
+    const collector = replyMsg.createMessageComponentCollector({ time: 90000 });
+
+    collector.on('collect', async iExp => {
+      try {
+        if (iExp.customId === 'pet_exp_join') {
+          const currentLobby = activeLobby.get(guildId);
+          if (!currentLobby) return iExp.reply({ content: '❌ Lobi ekspedisi sudah berakhir!', ephemeral: true });
+
+          if (currentLobby.participants.includes(iExp.user.id)) {
+            return iExp.reply({ content: '❌ Anda sudah bergabung dalam lobi ini!', ephemeral: true });
+          }
+
+          if (currentLobby.participants.length >= 4) {
+            return iExp.reply({ content: '❌ Tim ekspedisi sudah penuh (maksimal 4 pet)!', ephemeral: true });
+          }
+
+          const userPet = pet.getPet(iExp.user.id, guildId);
+          if (!userPet || userPet.status === 'DEAD' || userPet.status === 'EGG') {
+            return iExp.reply({ content: '❌ Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!', ephemeral: true });
+          }
+          if (userPet.health < 40) {
+            return iExp.reply({ content: `❌ Pet Anda **${userPet.pet_name}** terlalu lelah/sakit (HP ${userPet.health}% < 40) untuk ekspedisi!`, ephemeral: true });
+          }
+
+          const userWallet = economy.getWallet(iExp.user.id, guildId);
+          if (userWallet.balance < 150) {
+            return iExp.reply({ content: '❌ Saldo Anda kurang untuk membayar biaya ransum Rp 150!', ephemeral: true });
+          }
+
+          economy.subtractBalance(iExp.user.id, guildId, 150, 'PET_EXPEDITION_FEE');
+          currentLobby.participants.push(iExp.user.id);
+
+          await iExp.reply({ content: '🛡️ Berhasil bergabung dengan tim ekspedisi pet!', ephemeral: true });
+
+          let petListText = '';
+          currentLobby.participants.forEach((pId, idx) => {
+            const pObj = pet.getPet(pId, guildId);
+            petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
+          });
+
+          const updatedEmbed = new EmbedBuilder()
+            .setColor(0x3F51B5)
+            .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+            .setDescription(
+              `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+              `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+              `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
+              `💰 **Biaya Ransum:** Rp 150 koin\n` +
+              `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
+              `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+            )
+            .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+            .setTimestamp();
+
+          await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+        }
+
+        else if (iExp.customId === 'pet_exp_cancel') {
+          if (iExp.user.id !== author.id) {
+            return iExp.reply({ content: '❌ Hanya pembuat lobi ekspedisi yang bisa membatalkan!', ephemeral: true });
+          }
+
+          clearInterval(interval);
+          clearTimeout(lobby.timeout);
+          activeLobby.delete(guildId);
+
+          currentLobby.participants.forEach(pId => {
+            economy.addBalance(pId, guildId, 150, 'PET_EXPEDITION_REFUND');
+          });
+
+          await iExp.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.', ephemeral: false });
+          await replyMsg.edit({
+            content: '❌ **Ekspedisi tim pet dibatalkan oleh pembuat lobi.**',
+            embeds: [],
+            components: []
+          }).catch(() => {});
+          collector.stop();
+        }
+      } catch (err) {
+        await iExp.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true });
+      }
+    });
+
+    collector.on('end', () => {
+      clearInterval(interval);
+    });
+
+    return;
+  }
+
   // ── SUB-PERINTAH: PVP ──
   if (subCommand === 'pvp') {
     const opponent = message.mentions.users.first();
@@ -1173,6 +1501,124 @@ async function handlePetCommand(message, client, args) {
     const freshData = getDashboardPanel(author.id, guildId);
     freshData.components = [];
     await replyMsg.edit(freshData).catch(() => {});
+  });
+}
+
+/**
+ * Helper untuk memproses perintah Black Market (Pasar Gelap)
+ */
+async function handleBlackMarketCommand(message, client, args) {
+  const { guildId, author } = message;
+  const subCommand = args[0] ? args[0].toLowerCase() : null;
+
+  if (subCommand === 'buy') {
+    const itemId = args[1];
+    const qtyInput = args[2] ? parseInt(args[2]) : 1;
+
+    if (!itemId) {
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.bm buy <lockpick/mask/meat/soap> [jumlah]`')] });
+    }
+
+    try {
+      const res = bm.buyItem(author.id, guildId, itemId, qtyInput);
+      const successEmb = embeds.successEmbed(
+        'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+        `Berhasil membeli **${res.quantity}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+        `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)] });
+    }
+  }
+
+  if (subCommand === 'inv' || subCommand === 'inventory') {
+    const invList = bm.getInventory(author.id, guildId);
+    let descText = 'Berikut adalah peralatan kriminal yang kamu miliki di kantongmu:\n\n';
+    invList.forEach(item => {
+      descText += `${item.name} - **x${item.quantity}**\n*${item.desc}*\n\n`;
+    });
+
+    const invEmbed = new EmbedBuilder()
+      .setColor(0x2F3136)
+      .setTitle('🎒 KANTONG PERALATAN KRIMINAL')
+      .setThumbnail(author.displayAvatarURL())
+      .setDescription(descText)
+      .setTimestamp();
+
+    return message.reply({ embeds: [invEmbed] });
+  }
+
+  // Dashboard Utama Pasar Gelap
+  const bmEmbed = new EmbedBuilder()
+    .setColor(0x1A1A1A)
+    .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
+    .setDescription(
+      `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
+      `**Daftar Peralatan Tersedia:**\n\n` +
+      `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
+      `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
+      `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
+      `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
+      `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
+      `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
+      `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
+      `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+      `*Gunakan tombol di bawah untuk membeli barang secara instan, atau gunakan perintah \`.bm buy <item_id> [jumlah]\`.*`
+    )
+    .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('bm_btn_buy_lockpick').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('bm_btn_buy_mask').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('bm_btn_buy_meat').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
+  );
+
+  const replyMsg = await message.reply({ embeds: [bmEmbed], components: [row] });
+
+  const collector = replyMsg.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 60000
+  });
+
+  collector.on('collect', async i => {
+    if (i.user.id !== author.id) {
+      return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan tombol!', ephemeral: true });
+    }
+
+    let itemId = '';
+    if (i.customId === 'bm_btn_buy_lockpick') itemId = 'lockpick';
+    if (i.customId === 'bm_btn_buy_mask') itemId = 'mask';
+    if (i.customId === 'bm_btn_buy_meat') itemId = 'meat';
+    if (i.customId === 'bm_btn_buy_soap') itemId = 'soap';
+
+    try {
+      const res = bm.buyItem(author.id, guildId, itemId, 1);
+      const successEmb = embeds.successEmbed(
+        'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+        `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+        `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+      );
+      await i.update({ embeds: [successEmb], components: [] });
+      collector.stop();
+    } catch (err) {
+      await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, ephemeral: true });
+    }
+  });
+
+  collector.on('end', async () => {
+    if (collector.destroyed) return;
+    const disabledRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('bm_btn_buy_lockpick').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId('bm_btn_buy_mask').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId('bm_btn_buy_meat').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
+    );
+    await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
   });
 }
 
@@ -1544,6 +1990,14 @@ async function handleEconomyCommands(message, client) {
   }
 
   // ═══════════════════════════════════════════════════
+  // Perintah: .bm / .blackmarket (Pasar Gelap)
+  // ═══════════════════════════════════════════════════
+  if (commandName === 'bm' || commandName === 'blackmarket') {
+    await handleBlackMarketCommand(message, client, args);
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════
   // Perintah Admin: .pet-admin (Owner & Admin Only)
   // ═══════════════════════════════════════════════════
   if (commandName === 'pet-admin') {
@@ -1578,16 +2032,45 @@ async function handleEconomyCommands(message, client) {
 
       try {
         const res = robbery.robSolo(author.id, targetUser.id, guildId);
+        
+        let toolText = '';
+        if (res.meatUsed) {
+          toolText += '🥩 *Kamu melempar Daging Bius untuk menidurkan Alarm/CCTV korban!*\n';
+        }
+        if (res.lockpickUsed) {
+          toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
+        }
+
         if (res.success) {
-          const successEmb = embeds.successEmbed(
-            '💥 Perampokan Berhasil! 💰',
-            `Anda berhasil merampok **${targetUser.username}**!\n\n` +
-            `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}`
-          );
-          await message.reply({ embeds: [successEmb] });
+          if (res.maskUsed) {
+            // Hapus pesan pemicu agar nama tidak ketahuan
+            message.delete().catch(() => {});
+
+            const maskEmb = embeds.successEmbed(
+              '🎭 Perampokan Bertopeng Misterius! 💰',
+              toolText +
+              `Seorang pencuri bertopeng misterius menyelinap masuk dan merampok **${targetUser.username}**!\n\n` +
+              `💸 **Uang Dibawa Kabur:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.\n\n` +
+              `*Identitas perampok tersembunyi berkat Topeng Samaran!*`
+            );
+            await message.channel.send({ embeds: [maskEmb] });
+          } else {
+            const successEmb = embeds.successEmbed(
+              '💥 Perampokan Berhasil! 💰',
+              toolText +
+              `Anda berhasil merampok **${targetUser.username}**!\n\n` +
+              `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}`
+            );
+            await message.reply({ embeds: [successEmb] });
+          }
         } else {
+          let failText = toolText;
+          if (res.soapUsed) {
+            failText += '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n';
+          }
           const failEmb = embeds.errorEmbed(
             '🚓 Perampokan Gagal! 👮',
+            failText +
             `Anda gagal merampok **${targetUser.username}**!\n\n` +
             `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
             `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
@@ -1688,13 +2171,19 @@ async function handleEconomyCommands(message, client) {
                 res.jailHours
               );
 
+              let contentMsg = `💥 **OPERASI BANK HEIST SELESAI!**`;
+              if (!res.success && res.soapUsedUsers && res.soapUsedUsers.length > 0) {
+                const mentions = res.soapUsedUsers.map(u => `<@${u}>`).join(', ');
+                contentMsg += `\n🧼 **Sabun Licin Terpakai!** ${mentions} menggunakan Sabun Licin untuk memotong waktu penjara heist sebesar 50%!`;
+              }
+
               await replyMsg.edit({
-                content: `💥 **OPERASI BANK HEIST SELESAI!**`,
+                content: contentMsg,
                 embeds: [resultEmbed],
                 components: []
               }).catch(async () => {
                 await message.channel.send({
-                  content: `💥 **OPERASI BANK HEIST SELESAI!**`,
+                  content: contentMsg,
                   embeds: [resultEmbed]
                 });
               });

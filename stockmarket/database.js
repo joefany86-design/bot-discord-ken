@@ -360,6 +360,38 @@ function initSchema() {
     console.error("❌ [Database] Gagal melakukan migrasi user_pets:", err.message);
   }
 
+  // 16. User General Inventory (Black Market & future items)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_inventory (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        quantity INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, item_id)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'user_inventory' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel user_inventory:", e.message);
+  }
+
+  // 17. Migrasi dinamis: Tambahkan kolom trait ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN trait TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'trait' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 18. Migrasi dinamis: Tambahkan kolom last_breed_at ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN last_breed_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'last_breed_at' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 

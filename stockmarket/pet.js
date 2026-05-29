@@ -19,6 +19,14 @@ const PET_SPECIES = {
   GOLEM: { id: 'GOLEM', name: '🧱 Golem', desc: 'Terbuat dari batu kokoh. Sangat rajin bekerja (Cooldown Kerja -20 Menit).' }
 };
 
+function getXpNeeded(level, trait) {
+  const base = level * 100;
+  if (trait === 'GENIUS') {
+    return Math.round(base * 0.85); // -15% XP cap
+  }
+  return base;
+}
+
 /**
  * Menerapkan lazy decay: menghitung pengurangan status berdasarkan waktu berlalu.
  */
@@ -72,7 +80,10 @@ function applyDecay(pet) {
   }
 
   // HP berkurang -5 per jam jika lapar/haus di 0
-  const hpReduction = Math.floor((hungerOverdueHours * 5) + (thirstOverdueHours * 5));
+  let hpReduction = Math.floor((hungerOverdueHours * 5) + (thirstOverdueHours * 5));
+  if (pet.trait === 'STURDY') {
+    hpReduction = Math.floor(hpReduction / 2); // Sturdy: HP decay rate halved
+  }
   newHealth = Math.max(0, pet.health - hpReduction);
 
   let newStatus = pet.status;
@@ -354,7 +365,7 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     // Dapatkan XP dari perawatan (+10 XP per aksi perawatan)
     let newXp = pet.xp + 10;
     let newLevel = pet.level;
-    const xpNeeded = pet.level * 100;
+    const xpNeeded = getXpNeeded(pet.level, pet.trait);
     
     let levelUp = false;
     if (newXp >= xpNeeded) {
@@ -408,7 +419,7 @@ function playWithPet(userId, guildId) {
     let newHappiness = Math.min(100, pet.happiness + 25);
     let newXp = pet.xp + 15;
     let newLevel = pet.level;
-    const xpNeeded = pet.level * 100;
+    const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
     if (newXp >= xpNeeded) {
       newXp = newXp - xpNeeded;
@@ -465,7 +476,10 @@ function sendToWork(userId, guildId) {
   
   // Bonus level: +5% pendapatan per level pet
   const levelBonus = Math.floor(reward * (pet.level * 0.05));
-  const finalReward = reward + levelBonus;
+  let finalReward = reward + levelBonus;
+  if (pet.trait === 'MUTANT') {
+    finalReward = Math.round(finalReward * 1.10); // Mutant: +10% work earnings
+  }
 
   // Dampak Kerja: Mengurangi Kenyangan -15, Hidrasi -15, Kebahagiaan -10
   db.transaction(() => {
@@ -475,7 +489,7 @@ function sendToWork(userId, guildId) {
     // Beri XP (+30 XP)
     let newXp = pet.xp + 30;
     let newLevel = pet.level;
-    const xpNeeded = pet.level * 100;
+    const xpNeeded = getXpNeeded(pet.level, pet.trait);
     if (newXp >= xpNeeded) {
       newXp = newXp - xpNeeded;
       newLevel += 1;
@@ -542,7 +556,10 @@ function sendToHunt(userId, guildId) {
   }
 
   const levelBonus = Math.floor(reward * (pet.level * 0.05));
-  const finalReward = reward + levelBonus;
+  let finalReward = reward + levelBonus;
+  if (pet.trait === 'MUTANT') {
+    finalReward = Math.round(finalReward * 1.10); // Mutant: +10% hunt earnings
+  }
 
   // Peluang dapat item langka
   let dropItem = null;
@@ -580,7 +597,7 @@ function sendToHunt(userId, guildId) {
     // Beri XP (+60 XP)
     let newXp = pet.xp + 60;
     let newLevel = pet.level;
-    const xpNeeded = pet.level * 100;
+    const xpNeeded = getXpNeeded(pet.level, pet.trait);
     if (newXp >= xpNeeded) {
       newXp = newXp - xpNeeded;
       newLevel += 1;
@@ -645,8 +662,11 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   const chalBaseAtk = challenger.level * 5;
   const oppBaseAtk = opponent.level * 5;
 
-  const chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  const oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
+  let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
+  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.10; // Warrior: +10% attack
+
+  let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
+  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.10; // Warrior: +10% attack
 
   let round = 1;
   const maxRounds = 5;
@@ -715,19 +735,23 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     const lHappy = Math.max(10, (loserId === challengerId ? challenger.happiness : opponent.happiness) - 25);
 
     // Beri XP (+50 XP pemenang, +20 XP kalah)
-    const updateWinnerXp = (winnerId === challengerId ? challenger.xp : opponent.xp) + 50;
+    const winnerPet = winnerId === challengerId ? challenger : opponent;
+    const updateWinnerXp = winnerPet.xp + 50;
     let wXp = updateWinnerXp;
-    let wLevel = (winnerId === challengerId ? challenger.level : opponent.level);
-    if (wXp >= wLevel * 100) {
-      wXp -= wLevel * 100;
+    let wLevel = winnerPet.level;
+    const wXpNeeded = getXpNeeded(wLevel, winnerPet.trait);
+    if (wXp >= wXpNeeded) {
+      wXp -= wXpNeeded;
       wLevel++;
     }
 
-    const updateLoserXp = (loserId === challengerId ? challenger.xp : opponent.xp) + 20;
+    const loserPet = loserId === challengerId ? challenger : opponent;
+    const updateLoserXp = loserPet.xp + 20;
     let lXp = updateLoserXp;
-    let lLevel = (loserId === challengerId ? challenger.level : opponent.level);
-    if (lXp >= lLevel * 100) {
-      lXp -= lLevel * 100;
+    let lLevel = loserPet.level;
+    const lXpNeeded = getXpNeeded(lLevel, loserPet.trait);
+    if (lXp >= lXpNeeded) {
+      lXp -= lXpNeeded;
       lLevel++;
     }
 
@@ -775,6 +799,319 @@ function switchActivePet(userId, guildId, petName) {
   return pet;
 }
 
+/**
+ * Breeding Pet (Kawin Silang): Mengawinkan dua pet aktif dewasa.
+ */
+function breedPets(challengerId, partnerId, guildId, newPetName) {
+  const challenger = getPet(challengerId, guildId);
+  const partner = getPet(partnerId, guildId);
+
+  if (!challenger) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  if (!partner) throw new Error('Partner tidak memiliki hewan peliharaan aktif!');
+
+  if (challenger.status !== 'ADULT') {
+    throw new Error(`Pet Anda **${challenger.pet_name}** belum dewasa! Dia harus bertumbuh hingga Level >= 10.`);
+  }
+  if (partner.status !== 'ADULT') {
+    throw new Error(`Pet partner **${partner.pet_name}** belum dewasa! Harus bertumbuh hingga Level >= 10.`);
+  }
+
+  if (challenger.health < 50 || challenger.happiness < 50) {
+    throw new Error(`Pet Anda **${challenger.pet_name}** terlalu lelah atau stress untuk kawin (HP/Mood harus >= 50)!`);
+  }
+  if (partner.health < 50 || partner.happiness < 50) {
+    throw new Error(`Pet partner **${partner.pet_name}** terlalu lelah atau stress untuk kawin (HP/Mood harus >= 50)!`);
+  }
+
+  // Cek Cooldown (24 jam = 86400 detik)
+  const now = Math.floor(Date.now() / 1000);
+  const cooldownSecs = 24 * 3600;
+  if (now - (challenger.last_breed_at || 0) < cooldownSecs) {
+    const remaining = cooldownSecs - (now - (challenger.last_breed_at || 0));
+    const hours = Math.ceil(remaining / 3600);
+    throw new Error(`Pet Anda sedang lelah. Bisa kawin lagi dalam **${hours} jam**.`);
+  }
+  if (now - (partner.last_breed_at || 0) < cooldownSecs) {
+    const remaining = cooldownSecs - (now - (partner.last_breed_at || 0));
+    const hours = Math.ceil(remaining / 3600);
+    throw new Error(`Pet partner sedang lelah. Bisa kawin lagi dalam **${hours} jam**.`);
+  }
+
+  // Cek Kandang / Slot Pet Pemohon (Maksimal 3 pet)
+  const chalCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [challengerId, guildId]);
+  const chalCount = chalCountRow ? chalCountRow.count : 0;
+  if (chalCount >= 3) {
+    throw new Error('Kandang Anda sudah penuh (maksimal 3 peliharaan)! Hapus atau reset pet terlebih dahulu.');
+  }
+
+  // Cek Nama Duplikat
+  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [challengerId, guildId, newPetName.trim()]);
+  if (nameExists) {
+    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${newPetName.trim()}"**! Harap gunakan nama lain.`);
+  }
+
+  // Cek Saldo (Rp 800 per orang)
+  const breedFee = 800;
+  const chalWallet = economy.getWallet(challengerId, guildId);
+  const partWallet = economy.getWallet(partnerId, guildId);
+
+  if (chalWallet.balance < breedFee) {
+    throw new Error(`Saldo Anda kurang untuk biaya perkawinan sebesar Rp ${breedFee}!`);
+  }
+  if (partWallet.balance < breedFee) {
+    throw new Error(`Saldo partner Anda kurang untuk biaya perkawinan sebesar Rp ${breedFee}!`);
+  }
+
+  // Eksekusi Breeding
+  let childType = Math.random() < 0.5 ? challenger.pet_type : partner.pet_type;
+  
+  // Tentukan Trait Spesial (30% peluang)
+  let trait = '';
+  if (Math.random() < 0.30) {
+    const traits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
+    trait = traits[Math.floor(Math.random() * traits.length)];
+  }
+
+  const hatchDuration = 4 * 3600; // 4 Jam penetasan telur hybrid
+  const hatchAt = now + hatchDuration;
+
+  db.transaction(() => {
+    // Potong koin
+    economy.subtractBalance(challengerId, guildId, breedFee, 'PET_BREED_FEE');
+    economy.subtractBalance(partnerId, guildId, breedFee, 'PET_BREED_FEE');
+
+    // Update cooldown kedua orang tua
+    db.run('UPDATE user_pets SET last_breed_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [now, challengerId, guildId, challenger.pet_name]);
+    db.run('UPDATE user_pets SET last_breed_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [now, partnerId, guildId, partner.pet_name]);
+
+    // Masukkan anak sebagai telur tidak aktif
+    db.run(
+      `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait)
+       VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, 0, ?)`,
+      [challengerId, guildId, newPetName.trim(), childType, now, hatchAt, now, trait]
+    );
+  })();
+
+  return {
+    childName: newPetName.trim(),
+    childType,
+    trait,
+    hatchAt
+  };
+}
+
+/**
+ * Simulasi Ekspedisi Pet Kelompok (Co-op PVE)
+ */
+function executeExpedition(guildId, participantIds) {
+  const activePets = [];
+  
+  // Ambil pet aktif masing-masing pemain
+  participantIds.forEach(pId => {
+    const p = getPet(pId, guildId);
+    if (p && p.status !== 'DEAD' && p.status !== 'EGG') {
+      activePets.push({ userId: pId, pet: p });
+    }
+  });
+
+  if (activePets.length === 0) {
+    throw new Error('Tidak ada pet aktif yang memenuhi syarat ekspedisi!');
+  }
+
+  // Pastikan HP pet mencukupi (>= 40)
+  const weakPets = activePets.filter(ap => ap.pet.health < 40);
+  if (weakPets.length > 0) {
+    const names = weakPets.map(wp => `**${wp.pet.pet_name}** (<@${wp.userId}>)`).join(', ');
+    throw new Error(`Pet berikut terlalu lelah/HP kurang dari 40: ${names}.`);
+  }
+
+  // Pilih Zona Ekspedisi Dinamis berdasarkan jumlah kru
+  const kruCount = activePets.length;
+  let zoneName = '';
+  let difficulty = 20;
+  let minReward = 800;
+  let maxReward = 1600;
+
+  if (kruCount === 1) {
+    zoneName = '🌫️ Hutan Kabut (Foggy Woods)';
+    difficulty = 15;
+    minReward = 300;
+    maxReward = 600;
+  } else if (kruCount === 2) {
+    zoneName = '🌋 Goa Naga Api (Volcano Dragon Nest)';
+    difficulty = 40;
+    minReward = 800;
+    maxReward = 1400;
+  } else {
+    zoneName = '🏰 Labirin Kuno Purba (Ancient Labyrinth)';
+    difficulty = 70;
+    minReward = 1800;
+    maxReward = 3000;
+  }
+
+  // Kekuatan Tim (Total level pet)
+  const teamPower = activePets.reduce((sum, ap) => sum + ap.pet.level, 0);
+
+  // Success Rate = (timPower / difficulty) * 100
+  let successRate = Math.round((teamPower / difficulty) * 100);
+  if (successRate > 90) successRate = 90;
+  if (successRate < 25) successRate = 25;
+
+  const roll = Math.random() * 100;
+  const isSuccess = roll < successRate;
+
+  const logs = [];
+  const rewards = [];
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isSuccess) {
+    // Sukses: Koin acak dibagi merata
+    const totalPrize = minReward + Math.floor(Math.random() * (maxReward - minReward + 1));
+    const prizePerPerson = Math.floor(totalPrize / kruCount);
+
+    db.transaction(() => {
+      activePets.forEach(ap => {
+        // Berikan Koin
+        economy.addBalance(ap.userId, guildId, prizePerPerson, 'PET_EXPEDITION_REWARD');
+
+        // Berikan XP (+50 XP)
+        let newXp = ap.pet.xp + 50;
+        let newLevel = ap.pet.level;
+        const xpNeeded = getXpNeeded(newLevel, ap.pet.trait);
+        let levelUp = false;
+        if (newXp >= xpNeeded) {
+          newXp -= xpNeeded;
+          newLevel++;
+          levelUp = true;
+        }
+
+        // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
+        const newHunger = Math.max(0, ap.pet.hunger - 10);
+        const newThirst = Math.max(0, ap.pet.thirst - 10);
+        const newHappiness = Math.min(100, ap.pet.happiness + 10);
+
+        db.run(
+          `UPDATE user_pets SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [newXp, newLevel, newHunger, newThirst, newHappiness, now, ap.userId, guildId, ap.pet.pet_name]
+        );
+
+        // Peluang 20% mendapat drop item
+        let dropText = '';
+        if (Math.random() < 0.20) {
+          const rand = Math.random();
+          if (rand < 0.40) {
+            // Pakan Biasa
+            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "FOOD_BASIC", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            dropText = '🍗 Pakan Pet Biasa';
+          } else if (rand < 0.65) {
+            // Bola Karet
+            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "TOY", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            dropText = '⚽ Bola Karet';
+          } else if (rand < 0.80) {
+            // Ramuan Kesehatan
+            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "MEDICINE", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            dropText = '💊 Ramuan Kesehatan';
+          } else if (rand < 0.90) {
+            // Linggis Black Market
+            db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "LOCKPICK", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            dropText = '🗝️ Linggis Black Market';
+          } else {
+            // Sabun Black Market
+            db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "SOAP", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            dropText = '🧼 Sabun Licin Black Market';
+          }
+        }
+
+        rewards.push({
+          userId: ap.userId,
+          petName: ap.pet.pet_name,
+          koin: prizePerPerson,
+          xpGained: 50,
+          levelUp,
+          newLevel,
+          dropItem: dropText
+        });
+      });
+    })();
+
+    logs.push(
+      `⚔️ Tim pet berhasil menerobos pertahanan bos di **${zoneName}**!`,
+      `💥 Dengan koordinasi yang apik, bos zona berhasil ditaklukan dan tumpukan koin jarahan disita!`
+    );
+
+    return {
+      success: true,
+      zoneName,
+      teamPower,
+      successRate,
+      rewards,
+      logs
+    };
+  } else {
+    // Gagal: Pet terluka (-30 HP, -25 Happiness), tapi mendapat +15 XP
+    db.transaction(() => {
+      activePets.forEach(ap => {
+        let newXp = ap.pet.xp + 15;
+        let newLevel = ap.pet.level;
+        const xpNeeded = getXpNeeded(newLevel, ap.pet.trait);
+        let levelUp = false;
+        if (newXp >= xpNeeded) {
+          newXp -= xpNeeded;
+          newLevel++;
+          levelUp = true;
+        }
+
+        const newHealth = Math.max(5, ap.pet.health - 30);
+        const newHappiness = Math.max(10, ap.pet.happiness - 25);
+        const newHunger = Math.max(0, ap.pet.hunger - 15);
+        const newThirst = Math.max(0, ap.pet.thirst - 15);
+
+        db.run(
+          `UPDATE user_pets SET xp = ?, level = ?, health = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [newXp, newLevel, newHealth, newHappiness, newHunger, newThirst, now, ap.userId, guildId, ap.pet.pet_name]
+        );
+
+        rewards.push({
+          userId: ap.userId,
+          petName: ap.pet.pet_name,
+          koin: 0,
+          xpGained: 15,
+          levelUp,
+          newLevel
+        });
+      });
+    })();
+
+    logs.push(
+      `😢 Tim pet dipaksa mundur dari **${zoneName}** oleh bos penjaga yang terlampau kuat!`,
+      `🩸 Seluruh pet menderita luka-luka ringan dan stress, tapi membawa pulang sedikit pengalaman tempur.`
+    );
+
+    return {
+      success: false,
+      zoneName,
+      teamPower,
+      successRate,
+      rewards,
+      logs
+    };
+  }
+}
+
+function switchActivePet(userId, guildId, petName) {
+  const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, petName.trim()]);
+  if (!pet) {
+    throw new Error(`Pet dengan nama "${petName}" tidak ditemukan!`);
+  }
+  
+  db.transaction(() => {
+    db.run('UPDATE user_pets SET is_active = 0 WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
+  })();
+  
+  return pet;
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -789,5 +1126,7 @@ module.exports = {
   sendToHunt,
   executePvP,
   getPetsList,
-  switchActivePet
+  switchActivePet,
+  breedPets,
+  executeExpedition
 };
