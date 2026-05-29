@@ -134,9 +134,17 @@ function getPet(userId, guildId) {
 
   // 1. Deteksi penetasan telur
   if (pet.status === 'EGG' && pet.hatch_at <= now) {
+    let hatchedTrait = pet.trait || '';
+    
+    // Jika tidak ada trait (telur toko), ada 15% peluang mendapatkan trait acak
+    if (!hatchedTrait && Math.random() < 0.15) {
+      const traits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
+      hatchedTrait = traits[Math.floor(Math.random() * traits.length)];
+    }
+
     db.run(
-      "UPDATE user_pets SET status = 'BABY', last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
-      [now, userId, guildId, pet.pet_name]
+      "UPDATE user_pets SET status = 'BABY', last_interaction_at = ?, trait = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
+      [now, hatchedTrait, userId, guildId, pet.pet_name]
     );
     pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   }

@@ -1401,7 +1401,18 @@ async function handlePetCommand(message, client, args) {
       else if (iPet.customId === 'pet_btn_hatch') {
         const freshPet = pet.getPet(author.id, guildId);
         if (freshPet && freshPet.status === 'BABY') {
-          const successEmb = embeds.successEmbed('Telur Menetas! 🎉🐣', `Selamat! Telur pet **${freshPet.pet_name}** Anda telah resmi menetas menjadi bayi monster yang lucu! Ketik \`.pet\` untuk menyegarkan.`);
+          let traitText = '';
+          if (freshPet.trait) {
+            let traitDesc = '';
+            const t = freshPet.trait.toUpperCase();
+            if (t === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
+            else if (t === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
+            else if (t === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
+            else if (t === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
+            
+            traitText = `\n\n✨ **HOKI BANGET! Pet Anda menetas dengan Trait Rare:** \`${traitDesc}\`!`;
+          }
+          const successEmb = embeds.successEmbed('Telur Menetas! 🎉🐣', `Selamat! Telur pet **${freshPet.pet_name}** Anda telah resmi menetas menjadi bayi monster yang lucu!${traitText}\n\n*Ketik \`.pet\` untuk menyegarkan.*`);
           await iPet.reply({ embeds: [successEmb] });
           collector.stop();
           await replyMsg.delete().catch(() => {});
