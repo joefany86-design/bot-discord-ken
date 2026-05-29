@@ -1659,7 +1659,101 @@ module.exports = {
           inline: false
         }
       )
-      .setFooter({ text: 'Gunakan .bank untuk membuka dashboard perbankan Anda!' })
+  },
+
+  // 37. Ebyus Control Panel Embed
+  ebyusControlPanelEmbed(guild, settings) {
+    const gachaModeText = 
+      settings.gacha_mode === 'ABUSE' ? '🔴 Abuse Mode (0% Zonk - 100% Win!)' :
+      settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
+      settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
+      
+    const multiplierText = 
+      settings.coin_multiplier > 1 ? `💀 **${settings.coin_multiplier}x Multiplier Active**` : '❌ Nonaktif (1x)';
+
+    return new EmbedBuilder()
+      .setColor('#FF0055') // Neon Crimson Red
+      .setTitle(`⚡ ABUSE CONTROL DASHBOARD — ${guild.name} ⚡`)
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Selamat datang di panel kontrol sabotase ekonomi server!\n` +
+        `Gunakan dropdown menu di bawah ini untuk melanggar hukum probabilitas gacha dan melipatgandakan koin chat warga secara instan!\n\n` +
+        `🤖 **STATUS BYPASS EKONOMI SEKARANG:**\n` +
+        `🎰 **Gacha Roll Mode:** **${gachaModeText}**\n` +
+        `🪙 **Chat Multiplier:** **${multiplierText}**`
+      )
+      .addFields(
+        {
+          name: '🎰 1. MANIPULASI GACHA ROLE (gacha-role)',
+          value: 
+            `• **Normal Mode:** 75% Zonk / ampas.\n` +
+            `• **Easy Mode:** 40% Zonk (Peluang menang naik 2x).\n` +
+            `• **Super Easy:** 15% Zonk (Sangat mudah menang kasta role).\n` +
+            `• **Abuse Mode:** **0% Zonk** (Zonk dimatikan, 100% Pasti Menang!)`,
+          inline: false
+        },
+        {
+          name: '🪙 2. PENGALI KOIN CHAT (handleEconomyChat)',
+          value:
+            `• Mengalikan perolehan koin chat akhir dari warga secara masif.\n` +
+            `• Dapat disetel dinamis mulai dari **3x s/d 8x lipat** koin per pesan.`,
+          inline: false
+        },
+        {
+          name: '📢 3. SIARAN BROADCAST',
+          value:
+            `• Klik tombol **Siarkan Pengumuman** untuk mengirim pesan embed bertema neon ke channel publik agar warga segera tahu dan ikut gacha!`,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Sentinel Ebyus Panel • Dilarang disalahgunakan!' })
+      .setTimestamp();
+  },
+
+  // 38. Ebyus Broadcast Embed
+  ebyusBroadcastEmbed(guild, mode, multiplier) {
+    const gachaDesc = 
+      mode === 'ABUSE' ? '🔥 **0% ZONK! (100% PASTI MENANG ROLE)**' :
+      mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
+      mode === 'EASY' ? '⚡ **MUDAH (Hanya 40% Zonk)**' : '🟢 Normal (75% Zonk)';
+
+    const coinDesc = 
+      multiplier > 1 ? `🎉 **PELIPATGANDAAN MASIF ${multiplier}X LIPAT KOIN CHAT**` : '🟢 Normal';
+
+    return new EmbedBuilder()
+      .setColor('#FF007F') // Neon Hot Pink
+      .setTitle(`🚨 EVENT SERVER: KEBOCORAN MODIFIKASI ADMIN ACTIVE! 🚨`)
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `### ⚠️ PERINGATAN WARGA RUPIAH SERVER! ⚠️\n` +
+        `Sistem keamanan pusat server telah dimanipulasi oleh Administrator Server secara masif! Efek bypass aktif saat ini:\n\n` +
+        `🎰 **SABOTASE GACHA ROLE:**\n  👉 ${gachaDesc}\n\n` +
+        `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}\n\n` +
+        `**👉 *Jangan sia-siakan kesempatan emas ini! Segera kirim chat aktif di channel publik dan putar \`.gacha-role\` Anda sebanyak-banyaknya sebelum sistem ditutup kembali oleh sistem pusat!* ** 🎰🪙💸`
+      )
+      .setFooter({ text: 'Sistem Bypass Rupiah Server • Selamat meraup keuntungan!' })
+      .setTimestamp();
+  },
+
+  // 39. Ebyus Status Embed
+  ebyusStatusEmbed(guild, settings) {
+    const gachaModeText = 
+      settings.gacha_mode === 'ABUSE' ? '🔴 Abuse Mode (0% Zonk)' :
+      settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
+      settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
+
+    return new EmbedBuilder()
+      .setColor(COLORS.WARN)
+      .setTitle(`📊 STATUS SISTEM BYPASS EBYUS — ${guild.name}`)
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Rincian konfigurasi bypass ekonomi aktif di server saat ini:\n\n` +
+        `🎰 **Gacha Roll Mode:** **${gachaModeText}**\n` +
+        `🪙 **Chat Coin Multiplier:** **${settings.coin_multiplier}x**\n\n` +
+        `🕒 **Terakhir Diupdate:** <t:${settings.updated_at}:F> (<t:${settings.updated_at}:R>)\n` +
+        `👮 **Oleh Admin:** <@${settings.updated_by}>`
+      )
+      .setFooter({ text: 'Gunakan .ebyus untuk mengelola bypass ini secara visual!' })
       .setTimestamp();
   }
 };

@@ -249,7 +249,18 @@ function initSchema() {
     )
   `);
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, & Sistem Pet, & Perampokan berhasil diinisialisasi.');
+  // 15. Ebyus Settings (Admin Abuse / Sabotase)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ebyus_settings (
+      guild_id TEXT PRIMARY KEY,
+      gacha_mode TEXT DEFAULT 'NORMAL',
+      coin_multiplier INTEGER DEFAULT 1,
+      updated_at INTEGER DEFAULT 0,
+      updated_by TEXT
+    )
+  `);
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup

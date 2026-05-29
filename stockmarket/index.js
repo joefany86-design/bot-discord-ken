@@ -551,6 +551,12 @@ async function handleEconomyChat(message) {
     totalEarned *= 2;
   }
 
+  // 3c. Cek Admin Abuse (Ebyus) Coin Multiplier (3x s/d 8x)
+  const ebyus = database.get('SELECT coin_multiplier FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (ebyus && ebyus.coin_multiplier > 1) {
+    totalEarned *= ebyus.coin_multiplier;
+  }
+
   if (dispenserTriggered) {
     message.react('🥤').catch(() => {});
   }
@@ -2741,9 +2747,16 @@ async function handleEconomyCommands(message, client) {
       await rollingMsg.edit('🎰 `[ DECRYPTING JACKPOT... ] ⚡📦` Membuka peti misteri...');
       await delay(1000);
 
-      // Probabilitas Gacha ZONK
+      // Probabilitas Gacha ZONK (Terhubung dengan database Ebyus Settings)
       const roll = Math.random() * 100;
-      const zonkRate = config.gacha.ZONK_RATE !== undefined ? config.gacha.ZONK_RATE : 75;
+      let zonkRate = config.gacha.ZONK_RATE !== undefined ? config.gacha.ZONK_RATE : 75;
+
+      const ebyus = database.get('SELECT gacha_mode FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+      if (ebyus) {
+        if (ebyus.gacha_mode === 'EASY') zonkRate = 40;
+        else if (ebyus.gacha_mode === 'SUPER_EASY') zonkRate = 15;
+        else if (ebyus.gacha_mode === 'ABUSE') zonkRate = 0;
+      }
 
       if (roll < zonkRate) {
         // ZONK! Kurangi koin
@@ -3820,6 +3833,259 @@ async function handleEconomyCommands(message, client) {
       database.run('UPDATE shop_items SET stock = ? WHERE id = ? AND guild_id = ?', [stock, item.id, guildId]);
 
       await message.reply(`✅ Sukses memperbarui stok role **${item.role_name}** menjadi \`${stock === -1 ? 'Tanpa Batas (Unlimited)' : stock + ' slot'}\`.`);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .ebyus-gacha <normal|easy|super_easy|abuse>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'ebyus-gacha') {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Administrator!', ephemeral: true });
+      }
+
+      const mode = args[0]?.toUpperCase();
+      if (!mode || !['NORMAL', 'EASY', 'SUPER_EASY', 'ABUSE'].includes(mode)) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan mode gacha.\nFormat: `.ebyus-gacha <normal | easy | super_easy | abuse>`')] });
+      }
+
+      const getOrCreateEbyusSettings = (guildId) => {
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+        if (!settings) {
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          settings = {
+            guild_id: guildId,
+            gacha_mode: 'NORMAL',
+            coin_multiplier: 1,
+            updated_at: 0,
+            updated_by: ''
+          };
+        }
+        return settings;
+      };
+
+      getOrCreateEbyusSettings(guildId);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      database.run(
+        'UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        [mode, nowUnix, author.id, guildId]
+      );
+
+      const statusMap = {
+        NORMAL: '🟢 Normal Mode (75% Zonk)',
+        EASY: '🟡 Easy Mode (40% Zonk - Peluang menang naik 2x)',
+        SUPER_EASY: '🟠 Super Easy Mode (15% Zonk - Sangat mudah)',
+        ABUSE: '🔴 Abuse Mode (0% Zonk - 100% PASTI MENANG ROLE!)'
+      };
+
+      await message.reply(`✅ Sukses mengubah mode gacha server ini menjadi **${statusMap[mode]}**.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .ebyus-coin <off|3|4|5|6|7|8>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'ebyus-coin') {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Administrator!', ephemeral: true });
+      }
+
+      const mulArg = args[0]?.toLowerCase();
+      let multiplier = 1;
+      if (mulArg && mulArg !== 'off') {
+        multiplier = parseInt(mulArg);
+      }
+
+      if (isNaN(multiplier) || multiplier < 1 || multiplier > 8 || (multiplier > 1 && multiplier < 3)) {
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan pengali koin chat.\nFormat: `.ebyus-coin <off | 3 | 4 | 5 | 6 | 7 | 8>`')] });
+      }
+
+      const getOrCreateEbyusSettings = (guildId) => {
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+        if (!settings) {
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          settings = {
+            guild_id: guildId,
+            gacha_mode: 'NORMAL',
+            coin_multiplier: 1,
+            updated_at: 0,
+            updated_by: ''
+          };
+        }
+        return settings;
+      };
+
+      getOrCreateEbyusSettings(guildId);
+      const nowUnix = Math.floor(Date.now() / 1000);
+      database.run(
+        'UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        [multiplier, nowUnix, author.id, guildId]
+      );
+
+      await message.reply(`✅ Sukses memperbarui pengali koin chat server ini menjadi **${multiplier === 1 ? 'Nonaktif (1x)' : multiplier + 'x'}**.`);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .ebyus / .ebyus-panel (Panel Kontrol Interaktif)
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'ebyus' || commandName === 'ebyus-panel') {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const getOrCreateEbyusSettings = (guildId) => {
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+        if (!settings) {
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          settings = {
+            guild_id: guildId,
+            gacha_mode: 'NORMAL',
+            coin_multiplier: 1,
+            updated_at: 0,
+            updated_by: ''
+          };
+        }
+        return settings;
+      };
+
+      const subArg = args[0]?.toLowerCase();
+      if (subArg === 'status') {
+        const settings = getOrCreateEbyusSettings(guildId);
+        const embed = embeds.ebyusStatusEmbed(guild, settings);
+        await message.reply({ embeds: [embed] });
+        return true;
+      }
+
+      const getPanelData = (guildId) => {
+        const settings = getOrCreateEbyusSettings(guildId);
+        const embed = embeds.ebyusControlPanelEmbed(guild, settings);
+
+        // Dropdown Gacha Mode
+        const gachaSelect = new StringSelectMenuBuilder()
+          .setCustomId('ebyus_select_gacha')
+          .setPlaceholder('🎰 Atur Kesulitan Gacha Role');
+
+        const gachaOptions = [
+          { label: '🟢 Normal Mode (75% Zonk)', value: 'NORMAL', desc: 'Sesuai dengan probabilitas standar mesin gacha' },
+          { label: '🟡 Easy Mode (40% Zonk)', value: 'EASY', desc: 'Tingkat kemenangan ditingkatkan hampir 2x lipat' },
+          { label: '🟠 Super Easy Mode (15% Zonk)', value: 'SUPER_EASY', desc: 'Tingkat kemenangan ditingkatkan sangat tinggi' },
+          { label: '🔴 Abuse Mode (0% Zonk - 100% Win!)', value: 'ABUSE', desc: 'Menang terus! Tingkat kegagalan disetel ke nol persen' }
+        ];
+
+        gachaOptions.forEach(opt => {
+          gachaSelect.addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel(opt.label)
+              .setDescription(opt.desc)
+              .setValue(opt.value)
+              .setDefault(settings.gacha_mode === opt.value)
+          );
+        });
+
+        const gachaRow = new ActionRowBuilder().addComponents(gachaSelect);
+
+        // Dropdown Coin Multiplier
+        const coinSelect = new StringSelectMenuBuilder()
+          .setCustomId('ebyus_select_multiplier')
+          .setPlaceholder('🪙 Atur Pengali Koin Chat');
+
+        const coinOptions = [
+          { label: '❌ Nonaktifkan Multiplier (1x)', value: '1', desc: 'Pendapatan koin chat normal (5 - 15 Rp per chat)' },
+          { label: '⚡ 3x Coin Multiplier', value: '3', desc: 'Koin yang didapat dilipatgandakan 3 kali lipat!' },
+          { label: '⚡ 4x Coin Multiplier', value: '4', desc: 'Koin yang didapat dilipatgandakan 4 kali lipat!' },
+          { label: '⚡ 5x Coin Multiplier', value: '5', desc: 'Koin yang didapat dilipatgandakan 5 kali lipat!' },
+          { label: '⚡ 6x Coin Multiplier', value: '6', desc: 'Koin yang didapat dilipatgandakan 6 kali lipat!' },
+          { label: '⚡ 7x Coin Multiplier', value: '7', desc: 'Koin yang didapat dilipatgandakan 7 kali lipat!' },
+          { label: '💀 8x ABUSE Multiplier!', value: '8', desc: 'SABOTASE MAKSIMAL! Koin chat dilipatgandakan 8x lipat!' }
+        ];
+
+        coinOptions.forEach(opt => {
+          coinSelect.addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel(opt.label)
+              .setDescription(opt.desc)
+              .setValue(opt.value)
+              .setDefault(settings.coin_multiplier === parseInt(opt.value))
+          );
+        });
+
+        const coinRow = new ActionRowBuilder().addComponents(coinSelect);
+
+        // Buttons
+        const btnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('ebyus_btn_broadcast')
+            .setLabel('📢 Siarkan Pengumuman (Broadcast)')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('ebyus_btn_close')
+            .setLabel('❌ Tutup Panel')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        return { embeds: [embed], components: [gachaRow, coinRow, btnRow] };
+      };
+
+      const initialPanel = getPanelData(guildId);
+      const replyMsg = await message.reply(initialPanel);
+
+      const collector = replyMsg.createMessageComponentCollector({
+        time: 180000
+      });
+
+      collector.on('collect', async iEbyus => {
+        if (!iEbyus.member || !iEbyus.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+          return iEbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+        }
+
+        try {
+          const nowUnix = Math.floor(Date.now() / 1000);
+          
+          if (iEbyus.customId === 'ebyus_select_gacha') {
+            const mode = iEbyus.values[0];
+            database.run(
+              'UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+              [mode, nowUnix, iEbyus.user.id, guildId]
+            );
+            
+            const fresh = getPanelData(guildId);
+            await iEbyus.update(fresh);
+          } 
+          else if (iEbyus.customId === 'ebyus_select_multiplier') {
+            const mult = parseInt(iEbyus.values[0]);
+            database.run(
+              'UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+              [mult, nowUnix, iEbyus.user.id, guildId]
+            );
+            
+            const fresh = getPanelData(guildId);
+            await iEbyus.update(fresh);
+          }
+          else if (iEbyus.customId === 'ebyus_btn_broadcast') {
+            const settings = getOrCreateEbyusSettings(guildId);
+            const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier);
+            
+            // Broadcast ke channel tempat panel dibuka
+            await message.channel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
+            
+            await iEbyus.reply({ content: '✅ Sukses menyiarkan pengumuman Ebyus ke channel ini!', ephemeral: true });
+          }
+          else if (iEbyus.customId === 'ebyus_btn_close') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+          }
+        } catch (err) {
+          console.error('Error in ebyus panel interaction:', err);
+        }
+      });
+
+      collector.on('end', async () => {
+        if (collector.destroyed) return;
+        const fresh = getPanelData(guildId);
+        fresh.components = [];
+        await replyMsg.edit(fresh).catch(() => {});
+      });
+
       return true;
     }
 
