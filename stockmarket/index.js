@@ -3998,7 +3998,9 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // Perintah Admin: .ebyus / .ebyus-panel / .abyus / .abyus-panel / .admin-event / .panel-event / .event-panel
     // ═══════════════════════════════════════════════════
-    if (['ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-event', 'panel-event', 'event-panel'].includes(commandName)) {
+    // Perintah Admin: Panel Abyus (.abyus, .admin-abyus, .ebyus, .admin-event, dll)
+    // ═══════════════════════════════════════════════════
+    if (['ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
       }
@@ -4027,38 +4029,68 @@ async function handleEconomyCommands(message, client) {
       }
 
       const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminPanel(message, client, 'event');
+      await adminPanel.handleAdminAbyusPanel(message, client);
       return true;
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .admin-member / .panel-member / .member-panel
+    // Perintah Admin: Panel Pet (.admin-pet / .panel-pet)
     // ═══════════════════════════════════════════════════
-    if (['admin-member', 'panel-member', 'member-panel'].includes(commandName)) {
+    if (['admin-pet', 'panel-pet', 'pet-panel'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
       }
 
       const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminPanel(message, client, 'member');
+      const targetUser = message.mentions.users.first() || (args[0] ? { id: args[0] } : null);
+      await adminPanel.handleAdminPetPanel(message, client, targetUser?.id);
       return true;
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .admin-bursa / .panel-bursa / .bursa-panel
+    // Perintah Admin: Panel Bank (.admin-bank / .panel-bank)
     // ═══════════════════════════════════════════════════
-    if (['admin-bursa', 'panel-bursa', 'bursa-panel'].includes(commandName)) {
+    if (['admin-bank', 'panel-bank', 'bank-panel'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
       }
 
       const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminPanel(message, client, 'bursa');
+      const targetUser = message.mentions.users.first() || (args[0] ? { id: args[0] } : null);
+      await adminPanel.handleAdminBankPanel(message, client, targetUser?.id);
       return true;
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .admin-shop / .panel-shop / .shop-panel
+    // Perintah Admin: Panel Robbery (.admin-rob / .panel-rob / .admin-robbery)
+    // ═══════════════════════════════════════════════════
+    if (['admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const adminPanel = require('./adminPanel');
+      const targetUser = message.mentions.users.first() || (args[0] ? { id: args[0] } : null);
+      await adminPanel.handleAdminRobberyPanel(message, client, targetUser?.id);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: Panel Saham (.admin-saham / .panel-saham / .admin-bursa)
+    // ═══════════════════════════════════════════════════
+    if (['admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const adminPanel = require('./adminPanel');
+      const tickerArg = args[0]?.toUpperCase();
+      await adminPanel.handleAdminSahamPanel(message, client, tickerArg);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: Panel Shop & ToD (.admin-shop / .panel-shop / .shop-panel)
     // ═══════════════════════════════════════════════════
     if (['admin-shop', 'panel-shop', 'shop-panel'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -4066,7 +4098,7 @@ async function handleEconomyCommands(message, client) {
       }
 
       const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminPanel(message, client, 'shop');
+      await adminPanel.handleAdminShopPanel(message, client);
       return true;
     }
 

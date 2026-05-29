@@ -367,10 +367,12 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             {
               name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
               value: [
-                `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** utama secara visual.`,
-                `👉 **\`.admin-member\`** / **\`.panel-member\`** - Membuka langsung **Panel Tindakan Anggota** (suntik/tarik koin, reset/heal pet, bebas lapas).`,
-                `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (sabotase gacha, multiplier koin).`,
-                `👉 **\`.admin-bursa\`** / **\`.panel-bursa\`** - Membuka langsung **Panel Manajemen Bursa Saham** (tambah/hapus saham).`,
+                `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** (Portal Hub utama).`,
+                `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
+                `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
+                `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
+                `👉 **\`.admin-saham\`** / **\`.panel-saham\`** - Membuka langsung **Panel Bursa Saham & Event Pasar** (drop price, remove, trigger events).`,
+                `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (mode gacha, multiplier koin).`,
                 `👉 **\`.admin-shop\`** / **\`.panel-shop\`** - Membuka langsung **Panel Toko Role & Game Truth or Dare**.`
               ].join('\n')
             },
@@ -624,10 +626,12 @@ client.on('messageCreate', async message => {
         {
           name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
           value: [
-            `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** utama secara visual.`,
-            `👉 **\`.admin-member\`** / **\`.panel-member\`** - Membuka langsung **Panel Tindakan Anggota** (suntik/tarik koin, reset/heal pet, bebas lapas).`,
-            `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (sabotase gacha, multiplier koin).`,
-            `👉 **\`.admin-bursa\`** / **\`.panel-bursa\`** - Membuka langsung **Panel Manajemen Bursa Saham** (tambah/hapus saham).`,
+            `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** (Portal Hub utama).`,
+            `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
+            `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
+            `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
+            `👉 **\`.admin-saham\`** / **\`.panel-saham\`** - Membuka langsung **Panel Bursa Saham & Event Pasar** (drop price, remove, trigger events).`,
+            `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (mode gacha, multiplier koin).`,
             `👉 **\`.admin-shop\`** / **\`.panel-shop\`** - Membuka langsung **Panel Toko Role & Game Truth or Dare**.`
           ].join('\n')
         },
