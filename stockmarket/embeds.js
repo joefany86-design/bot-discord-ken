@@ -304,8 +304,21 @@ module.exports = {
         petValue = `🪦 **${pet.pet_name}** (${pet.pet_type}) telah meninggal dunia.\n*Gunakan \`.pet reset\` untuk mengadopsi pet baru.*`;
       } else {
         const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
+        const { getXpNeeded } = require('./pet');
+        const xpNeeded = getXpNeeded(pet.level, pet.trait);
+        
+        let traitDesc = '';
+        if (pet.trait) {
+          const t = pet.trait.toUpperCase();
+          if (t === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
+          else if (t === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
+          else if (t === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
+          else if (t === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
+        }
+        const traitLabel = traitDesc ? `\n🧬 **Trait:** \`${traitDesc}\`` : '';
+        
         petValue = `🐾 **Nama:** **${pet.pet_name}** (${typeLabel})\n` +
-                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${pet.level * 100}\`)\n` +
+                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${xpNeeded}\`)${traitLabel}\n` +
                    `📊 **Stats:** ❤️ \`${pet.health}%\` HP | 🍖 \`${pet.hunger}%\` Kenyang | 💧 \`${pet.thirst}%\` Hidrasi | ⚽ \`${pet.happiness}%\` Mood`;
       }
       embed.addFields({
@@ -1594,18 +1607,34 @@ module.exports = {
     const isSick = pet.health <= 30;
     const statusEmoji = pet.status === 'ADULT' ? '🧑 Dewasa' : '👶 Bayi';
     const statusColor = isSick ? COLORS.ERROR : pet.health >= 80 ? COLORS.SUCCESS : COLORS.WARN;
+    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+
+    const { getXpNeeded } = require('./pet');
+    const xpNeeded = getXpNeeded(pet.level, pet.trait);
+
+    let traitText = '';
+    if (pet.trait) {
+      const traitName = pet.trait.toUpperCase();
+      let traitDesc = '';
+      if (traitName === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
+      else if (traitName === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
+      else if (traitName === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
+      else if (traitName === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
+      
+      traitText = `\n🧬 **Trait:** \`${traitDesc}\``;
+    }
 
     embed.setColor(statusColor)
       .setDescription(
         `👤 **Pemilik:** <@${pet.user_id}>\n` +
         `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
         `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${pet.level * 100} XP\`\n\n` +
+        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${traitText}\n\n` +
         `**📊 STATISTIK UTAMA PET:**\n` +
-        `❤️ HP (Kesehatan) : ${this.renderProgressBar(pet.health)} ${isSick ? '⚠️ **[ SAKIT/LEMAH ]**' : ''}\n` +
-        `🍖 Kenyangan     : ${this.renderProgressBar(pet.hunger)}\n` +
-        `💧 Hidrasi       : ${this.renderProgressBar(pet.thirst)}\n` +
-        `⚽ Kebahagiaan   : ${this.renderProgressBar(pet.happiness)}`
+        `❤️ HP (Kesehatan) : ${this.renderProgressBar(pet.health, maxHP)} ${isSick ? '⚠️ **[ SAKIT/LEMAH ]**' : ''}\n` +
+        `🍖 Kenyangan     : ${this.renderProgressBar(pet.hunger, 100)}\n` +
+        `💧 Hidrasi       : ${this.renderProgressBar(pet.thirst, 100)}\n` +
+        `⚽ Kebahagiaan   : ${this.renderProgressBar(pet.happiness, 100)}`
       );
 
     // Ketersediaan Supplies Inventory Singkat
@@ -1670,7 +1699,15 @@ module.exports = {
         } else if (pet.status === 'DEAD') {
           statusText = `🪦 Meninggal Dunia (Reset dengan \`.pet reset\`)`;
         } else {
-          statusText = `Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood`;
+          let traitDesc = '';
+          if (pet.trait) {
+            const traitName = pet.trait.toUpperCase();
+            if (traitName === 'GENIUS') traitDesc = ' | 🧠 Genius';
+            else if (traitName === 'STURDY') traitDesc = ' | 🛡️ Sturdy';
+            else if (traitName === 'MUTANT') traitDesc = ' | 🧬 Mutant';
+            else if (traitName === 'WARRIOR') traitDesc = ' | ⚔️ Warrior';
+          }
+          statusText = `Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
         }
 
         embed.addFields({
@@ -1693,10 +1730,14 @@ module.exports = {
   // Helper ProgressBar Visual
   renderProgressBar(value, max = 100) {
     const totalBars = 10;
+    const percent = Math.min(100, Math.round((value / max) * 100));
     const filled = Math.min(totalBars, Math.round((value / max) * totalBars));
     const empty = totalBars - filled;
     const barStr = '🟩'.repeat(filled) + '🟥'.repeat(empty);
-    return `\`[${barStr}]\` **${value}%**`;
+    if (max === 100) {
+      return `\`[${barStr}]\` **${value}%**`;
+    }
+    return `\`[${barStr}]\` **${value}/${max}** (${percent}%)`;
   },
 
   // 28. Toko Item Pet (.pet shop)

@@ -1809,9 +1809,11 @@ async function handlePetAdminCommand(message, client, args) {
       let newXp = petData.xp + amount;
       let newLevel = petData.level;
       
-      while (newXp >= newLevel * 100) {
-        newXp -= newLevel * 100;
+      let xpNeeded = pet.getXpNeeded(newLevel, petData.trait);
+      while (newXp >= xpNeeded) {
+        newXp -= xpNeeded;
         newLevel++;
+        xpNeeded = pet.getXpNeeded(newLevel, petData.trait);
       }
 
       database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, newLevel, target.id, guildId]);
@@ -1829,7 +1831,7 @@ async function handlePetAdminCommand(message, client, args) {
     if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
 
      database.run(
-      'UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+      'UPDATE user_pets SET health = CASE WHEN pet_type = "SLIME" THEN 120 ELSE 100 END, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1',
       [target.id, guildId]
     );
 

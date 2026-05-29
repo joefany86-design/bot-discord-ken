@@ -159,14 +159,23 @@ function getPet(userId, guildId) {
  */
 function adoptPet(userId, guildId, petName, petType) {
   // Validasi input
-  const typeUpper = petType.toUpperCase();
+  if (!petType || typeof petType !== 'string') {
+    throw new Error('Jenis pet harus berupa teks yang valid!');
+  }
+  const typeUpper = petType.trim().toUpperCase();
   if (!PET_SPECIES[typeUpper]) {
     throw new Error(`Spesies pet tidak valid! Pilihan: ${Object.keys(PET_SPECIES).join(', ')}`);
   }
   if (!petName || petName.trim().length === 0) {
     throw new Error('Harap berikan nama untuk peliharaan Anda!');
   }
-  if (petName.length > 25) {
+  
+  // Sanitasi Nama Pet dari sebutan Discord
+  const sanitizedName = petName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+  if (sanitizedName.length === 0) {
+    throw new Error('Nama pet tidak valid setelah dibersihkan dari sebutan!');
+  }
+  if (sanitizedName.length > 25) {
     throw new Error('Nama pet maksimal 25 karakter!');
   }
 
@@ -178,9 +187,9 @@ function adoptPet(userId, guildId, petName, petType) {
   }
 
   // Cek apakah ada pet dengan nama yang sama (case-insensitive)
-  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, petName.trim()]);
+  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, sanitizedName.toLowerCase()]);
   if (nameExists) {
-    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${petName.trim()}"**! Harap gunakan nama lain.`);
+    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${sanitizedName}"**! Harap gunakan nama lain.`);
   }
 
   // Kurangi saldo koin Rp 1.500
@@ -197,10 +206,10 @@ function adoptPet(userId, guildId, petName, petType) {
   db.run(
     `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active)
      VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, ?)`,
-    [userId, guildId, petName.trim(), typeUpper, now, hatchAt, now, isActive]
+    [userId, guildId, sanitizedName, typeUpper, now, hatchAt, now, isActive]
   );
 
-  return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petName.trim()]);
+  return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sanitizedName]);
 }
 
 /**
@@ -342,8 +351,9 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     }
   }
 
-  // 2. Validasi status spesifik
-  if (item.cures && pet.health >= 100) {
+  // 2. Validasi status spesifik dengan batas HP dinamis (Slime memiliki max HP 120)
+  const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+  if (item.cures && pet.health >= maxHP) {
     throw new Error('Pet Anda dalam kondisi sangat sehat, tidak memerlukan obat-obatan!');
   }
 
@@ -359,7 +369,7 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     let newHunger = Math.min(100, pet.hunger + item.hunger);
     let newThirst = Math.min(100, pet.thirst + item.thirst);
     let newHappiness = Math.min(100, pet.happiness + item.happiness);
-    let newHealth = Math.min(100, pet.health + item.hp);
+    let newHealth = Math.min(maxHP, pet.health + item.hp);
     const now = Math.floor(Date.now() / 1000);
 
     // Dapatkan XP dari perawatan (+10 XP per aksi perawatan)
@@ -371,7 +381,7 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     if (newXp >= xpNeeded) {
       newXp = newXp - xpNeeded;
       newLevel += 1;
-      newHealth = 100; // Full HP saat naik level
+      newHealth = maxHP; // Full HP saat naik level
       levelUp = true;
     }
 
@@ -461,7 +471,7 @@ function sendToWork(userId, guildId) {
     cooldownDuration -= 20 * 60;
   }
 
-  const nextWorkTime = pet.last_work_at + cooldownDuration;
+  const nextWorkTime = (pet.last_work_at || 0) + cooldownDuration;
   if (now < nextWorkTime) {
     const timeLeft = nextWorkTime - now;
     const minLeft = Math.ceil(timeLeft / 60);
@@ -538,7 +548,7 @@ function sendToHunt(userId, guildId) {
   const now = Math.floor(Date.now() / 1000);
   const cooldownDuration = 4 * 3600; // 4 Jam
 
-  const nextHuntTime = pet.last_hunt_at + cooldownDuration;
+  const nextHuntTime = (pet.last_hunt_at || 0) + cooldownDuration;
   if (now < nextHuntTime) {
     const timeLeft = nextHuntTime - now;
     const minLeft = Math.ceil(timeLeft / 60);
@@ -844,10 +854,21 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
     throw new Error('Kandang Anda sudah penuh (maksimal 3 peliharaan)! Hapus atau reset pet terlebih dahulu.');
   }
 
+  if (!newPetName || newPetName.trim().length === 0) {
+    throw new Error('Harap tentukan nama untuk bayi pet baru Anda!');
+  }
+  const sanitizedName = newPetName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+  if (sanitizedName.length === 0) {
+    throw new Error('Nama pet tidak valid setelah dibersihkan dari sebutan!');
+  }
+  if (sanitizedName.length > 25) {
+    throw new Error('Nama pet maksimal 25 karakter!');
+  }
+
   // Cek Nama Duplikat
-  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [challengerId, guildId, newPetName.trim()]);
+  const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [challengerId, guildId, sanitizedName.toLowerCase()]);
   if (nameExists) {
-    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${newPetName.trim()}"**! Harap gunakan nama lain.`);
+    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${sanitizedName}"**! Harap gunakan nama lain.`);
   }
 
   // Cek Saldo (Rp 800 per orang)
@@ -888,12 +909,12 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
     db.run(
       `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait)
        VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, 0, ?)`,
-      [challengerId, guildId, newPetName.trim(), childType, now, hatchAt, now, trait]
+      [challengerId, guildId, sanitizedName, childType, now, hatchAt, now, trait]
     );
   })();
 
   return {
-    childName: newPetName.trim(),
+    childName: sanitizedName,
     childType,
     trait,
     hatchAt
@@ -1098,20 +1119,6 @@ function executeExpedition(guildId, participantIds) {
   }
 }
 
-function switchActivePet(userId, guildId, petName) {
-  const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, petName.trim()]);
-  if (!pet) {
-    throw new Error(`Pet dengan nama "${petName}" tidak ditemukan!`);
-  }
-  
-  db.transaction(() => {
-    db.run('UPDATE user_pets SET is_active = 0 WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
-    db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
-  })();
-  
-  return pet;
-}
-
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1128,5 +1135,6 @@ module.exports = {
   getPetsList,
   switchActivePet,
   breedPets,
-  executeExpedition
+  executeExpedition,
+  getXpNeeded
 };
