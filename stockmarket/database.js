@@ -269,6 +269,22 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // Migrasi dinamis: Tambahkan kolom last_play_at ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN last_play_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'last_play_at' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // Migrasi dinamis: Tambahkan kolom jail_count ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN jail_count INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'jail_count' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 

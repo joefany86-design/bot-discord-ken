@@ -157,7 +157,7 @@ function robSolo(userId, targetId, guildId) {
       // Penjara pelaku selama 30 menit
       const jailUntil = Math.floor(Date.now() / 1000) + config.robbery.JAIL_SOLO_SECONDS;
       db.run(
-        "UPDATE wallets SET jail_until = ?, jail_type = 'solo' WHERE user_id = ? AND guild_id = ?",
+        "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [jailUntil, userId, guildId]
       );
     })();
@@ -433,7 +433,7 @@ function executeHeist(guildId) {
         }
         // Masukkan ke penjara heist
         db.run(
-          "UPDATE wallets SET jail_until = ?, jail_type = 'heist' WHERE user_id = ? AND guild_id = ?",
+          "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
           [jailUntil, p, guildId]
         );
       });

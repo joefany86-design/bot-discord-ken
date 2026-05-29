@@ -133,7 +133,7 @@ module.exports = {
   formatCurrency,
 
   // 1. Embed Saldo / Profile
-  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = []) {
+  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null) {
     const totalWealth = wallet.balance + portfolioValue;
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
@@ -164,8 +164,51 @@ module.exports = {
           name: '📈 Total Earning', 
           value: `\`${formatCurrency(wallet.total_earned)}\``, 
           inline: true 
+        },
+        { 
+          name: '🚨 Masuk Penjara', 
+          value: `\`${wallet.jail_count || 0} kali\``, 
+          inline: true 
         }
       );
+
+    // Tambahkan info utang bank jika ada
+    let debtValue = '*Tidak ada utang*';
+    if (activeLoan) {
+      const totalDebt = activeLoan.total_due + (activeLoan.penalty_accumulated || 0);
+      debtValue = `⚠️ **Rp ${totalDebt.toLocaleString('id-ID')}**\n╰ Jatuh Tempo: <t:${activeLoan.due_at}:d> (<t:${activeLoan.due_at}:R>) ${activeLoan.status === 'OVERDUE' ? '🚨 **[JATUH TEMPO]**' : ''}`;
+    }
+    embed.addFields({
+      name: '💸 Utang Bank Sentral',
+      value: debtValue,
+      inline: false
+    });
+
+    // Tambahkan info Pet yang dimiliki
+    if (pet) {
+      let petValue = '';
+      if (pet.status === 'EGG') {
+        petValue = `🥚 **Telur Pet** (Sedang dierami, menetas <t:${pet.hatch_at}:R>)\n*Nama Calon: **${pet.pet_name}***`;
+      } else if (pet.status === 'DEAD') {
+        petValue = `🪦 **${pet.pet_name}** (${pet.pet_type}) telah meninggal dunia.\n*Gunakan \`.pet reset\` untuk mengadopsi pet baru.*`;
+      } else {
+        const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
+        petValue = `🐾 **Nama:** **${pet.pet_name}** (${typeLabel})\n` +
+                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${pet.level * 100}\`)\n` +
+                   `📊 **Stats:** ❤️ \`${pet.health}%\` HP | 🍖 \`${pet.hunger}%\` Kenyang | 💧 \`${pet.thirst}%\` Hidrasi | ⚽ \`${pet.happiness}%\` Mood`;
+      }
+      embed.addFields({
+        name: '🐾 Status Peliharaan (Pet)',
+        value: petValue,
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '🐾 Status Peliharaan (Pet)',
+        value: `*Belum memiliki peliharaan. Adopsi telur seharga Rp 1.500 dengan ketik \`.pet buy <nama> <spesies>\`!*`,
+        inline: false
+      });
+    }
 
     // Tambahkan info kasta role prestise yang dimiliki
     if (member && shopItems && shopItems.length > 0) {
@@ -1474,9 +1517,14 @@ module.exports = {
       huntStatus = canHunt ? '🟢 **Siap berburu!**' : `⏳ Cooldown s/d <t:${nextHunt}:t> (<t:${nextHunt}:R>)`;
     }
 
+    // Cooldown Play
+    const nextPlay = (pet.last_play_at || 0) + (15 * 60);
+    const canPlay = now >= nextPlay;
+    const playStatus = canPlay ? '🟢 **Siap bermain!**' : `⏳ Cooldown s/d <t:${nextPlay}:t> (<t:${nextPlay}:R>)`;
+
     embed.addFields({
       name: '⏱️ Status Cooldown Aktivitas',
-      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}`,
+      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}`,
       inline: false
     });
 

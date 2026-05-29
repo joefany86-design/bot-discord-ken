@@ -2104,8 +2104,10 @@ async function handleEconomyCommands(message, client) {
       const wallet = economy.getWallet(targetUser.id, guildId);
       const porto = stocks.getPortfolio(targetUser.id, guildId);
       const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+      const userPet = pet.getPet(targetUser.id, guildId);
+      const activeLoan = bank.getActiveLoan(targetUser.id, guildId);
 
-      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems);
+      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan);
       await message.reply({ embeds: [embed] });
       return true;
     }
@@ -2546,7 +2548,9 @@ async function handleEconomyCommands(message, client) {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems);
+            const userPet = pet.getPet(author.id, guildId);
+            const activeLoan = bank.getActiveLoan(author.id, guildId);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             const gachaCost = config.gacha.COST || 250;

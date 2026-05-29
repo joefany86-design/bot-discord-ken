@@ -563,7 +563,7 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
             }
             let newXp = petData.xp + amount;
             let level = petData.level;
-            const xpNeeded = level * 300;
+            const xpNeeded = level * 100;
             let leveledUp = false;
             if (newXp >= xpNeeded) {
               newXp -= xpNeeded;

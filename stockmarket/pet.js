@@ -364,13 +364,22 @@ function playWithPet(userId, guildId) {
     throw new Error('Pet Anda sudah sangat bahagia dan tidak ingin bermain lagi saat ini!');
   }
 
+  // Cek cooldown bermain (15 menit)
+  const now = Math.floor(Date.now() / 1000);
+  const cooldownDuration = 15 * 60; // 15 Menit
+  const nextPlayTime = (pet.last_play_at || 0) + cooldownDuration;
+  if (now < nextPlayTime) {
+    const timeLeft = nextPlayTime - now;
+    const minLeft = Math.ceil(timeLeft / 60);
+    throw new Error(`Pet Anda masih lelah bermain. Ajak dia bermain lagi dalam **${minLeft} menit**.`);
+  }
+
   // Beri batas bermain: gratis memulihkan +25 Happiness, +15 XP
   db.transaction(() => {
     let newHappiness = Math.min(100, pet.happiness + 25);
     let newXp = pet.xp + 15;
     let newLevel = pet.level;
     const xpNeeded = pet.level * 100;
-    const now = Math.floor(Date.now() / 1000);
 
     if (newXp >= xpNeeded) {
       newXp = newXp - xpNeeded;
@@ -378,8 +387,8 @@ function playWithPet(userId, guildId) {
     }
 
     db.run(
-      `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?`,
-      [newHappiness, newXp, newLevel, now, userId, guildId]
+      `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ?, last_play_at = ? WHERE user_id = ? AND guild_id = ?`,
+      [newHappiness, newXp, newLevel, now, now, userId, guildId]
     );
   })();
 
