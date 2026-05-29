@@ -130,51 +130,41 @@ function getRoleColor(roleName, tier) {
 
 const PET_ASSETS = {
   EGG: [
-    'https://media.tenor.com/t1hQsh4u4kYAAAAC/pixel-art-egg.gif',
-    'https://media.tenor.com/X4yD58F7R6sAAAAC/egg-pixel.gif'
+    'https://media.giphy.com/media/l3vRfwn22eO55yMvS/giphy.gif'
   ],
   DEAD: [
-    'https://media.tenor.com/1G8Vz1y4tZ8AAAAC/grave-pixel.gif',
-    'https://media.tenor.com/Wp75u6c1p2kAAAAC/pixel-grave.gif'
+    'https://media.giphy.com/media/l3vR1v0e4n9n3r2W4/giphy.gif'
   ],
   SLIME: {
     BABY: [
-      'https://media.tenor.com/7d2U2N5pXqUAAAAC/green-slime-pixel.gif',
-      'https://media.tenor.com/M6LwR4-h1HAAAAAC/slime-pixel-art.gif'
+      'https://media.giphy.com/media/l0HlOBZcl0qDTEt2w/giphy.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/vH0U2V7mDFAAAAAC/slime-jump.gif',
-      'https://media.tenor.com/39wHwR85bRwAAAAC/slime-king-pixel.gif'
+      'https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
     ]
   },
   DRAGON: {
     BABY: [
-      'https://media.tenor.com/8Q_ZlW3sM1gAAAAC/baby-dragon-pixel.gif',
-      'https://media.tenor.com/o03g29V7b2IAAAAC/dragon-cute-pixel.gif'
+      'https://media.giphy.com/media/3o6Zt3zHh5Vqf0g3oQ/giphy.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/PZpDDr5D_8sAAAAC/dragon-pixel-flying.gif',
-      'https://media.tenor.com/d_y7t6174GIAAAAC/red-dragon-pixel.gif'
+      'https://media.giphy.com/media/l41YtZOb9EUAB5hsY/giphy.gif'
     ]
   },
   CAT: {
     BABY: [
-      'https://media.tenor.com/Vbb_8z_Z0LIAAAAC/kitten-pixel-art.gif',
-      'https://media.tenor.com/aC-2V7s279kAAAAC/pixel-cat-cute.gif'
+      'https://media.giphy.com/media/3o7aD25s2x6eO6x2wM/giphy.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/dO2gM7lFqFAAAAAC/pixel-cat-walking.gif',
-      'https://media.tenor.com/G5q38vN-P0YAAAAC/pixel-cat-sleeping.gif'
+      'https://media.giphy.com/media/l3vR6uG6qW3Gq/giphy.gif'
     ]
   },
   GOLEM: {
     BABY: [
-      'https://media.tenor.com/fPex7aH9a4MAAAAC/stone-golem-pixel-idle.gif',
-      'https://media.tenor.com/W2k3t5b8eGgAAAAC/small-golem-pixel.gif'
+      'https://media.giphy.com/media/l3vR8e8K9K4O3e/giphy.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/aV_q1hT4ZJ0AAAAC/golem-pixel-art.gif',
-      'https://media.tenor.com/E1D5t7_D82kAAAAC/golem-smash-pixel.gif'
+      'https://media.giphy.com/media/l3vR0n0e4n9n3r2W4/giphy.gif'
     ]
   }
 };
