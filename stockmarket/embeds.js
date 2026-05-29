@@ -1596,7 +1596,7 @@ module.exports = {
           inline: false
         },
         {
-          name: '🛒 2. UPGRADE FURNITURE & KEAMANAN KOSAN (Permanen)',
+          name: '🛒 2. UPGRADE FURNITURE KOSAN (Permanen)',
           value:
             `🛌 **Kasur Premium:** Beli **Rp 250**.\n` +
             `  👉 *Efek:* Menambahkan pengali (*multiplier*) streak klaim gaji gratis harian.\n` +
@@ -1604,13 +1604,19 @@ module.exports = {
             `  👉 *Efek:* Menghasilkan pendapatan pasif saat mengobrol di saluran suara (*Voice Channel*) hingga batas limit harian **Rp 35**.\n` +
             `🥤 **Dispenser Air:** Beli **Rp 400**.\n` +
             `  👉 *Efek:* Memberikan **peluang 10%** koin obrolan (*chatting*) ganda secara otomatis.\n` +
+            `👉 *Tip:* Gunakan perintah \`.kos-upgrade\` untuk berbelanja furniture permanen.`,
+          inline: false
+        },
+        {
+          name: '🔒 3. PERTAHANAN & KEAMANAN KOSAN (Permanen)',
+          value:
             `🔒 **Gembok Kamar:** Beli **Rp 300**.\n` +
             `  👉 *Efek:* Meningkatkan limit pinjaman di Central Bank **+Rp 150** | Memberikan perlindungan perampokan sebesar **50%** (mengurangi setengah kerugian saat dirampok).\n` +
             `🚨 **Alarm Keamanan:** Beli **Rp 300**.\n` +
             `  👉 *Efek:* Mengurangi peluang keberhasilan perampok yang menargetkan Anda sebesar **15%** (sukses rate rob menjadi 25%).\n` +
             `📷 **CCTV Palsu:** Beli **Rp 300**.\n` +
             `  👉 *Efek:* Menambahkan denda hukuman bagi pencuri yang gagal merampok Anda sebesar **+Rp 100** kompensasi langsung ke dompet Anda.\n` +
-            `👉 *Tip:* Gunakan perintah \`.kos-upgrade\` untuk berbelanja furniture permanen.`,
+            `👉 *Tip:* Gunakan perintah \`.kos-upgrade\` untuk memperkuat pertahanan kamar Anda!`,
           inline: false
         }
       )
