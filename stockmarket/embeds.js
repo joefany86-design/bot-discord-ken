@@ -1671,6 +1671,11 @@ module.exports = {
     const multiplierText = 
       settings.coin_multiplier > 1 ? `💀 **${settings.coin_multiplier}x Multiplier Active**` : '❌ Nonaktif (1x)';
 
+    let durationInfoText = '♾️ **Permanen (Tanpa Batas)**';
+    if (settings.expires_at > 0) {
+      durationInfoText = `🕒 **Berakhir pada:** <t:${settings.expires_at}:F> (<t:${settings.expires_at}:R>)`;
+    }
+
     return new EmbedBuilder()
       .setColor('#FF0055') // Neon Crimson Red
       .setTitle(`⚡ ABUSE CONTROL DASHBOARD — ${guild.name} ⚡`)
@@ -1680,7 +1685,8 @@ module.exports = {
         `Gunakan dropdown menu di bawah ini untuk melanggar hukum probabilitas gacha dan melipatgandakan koin chat warga secara instan!\n\n` +
         `🤖 **STATUS BYPASS EKONOMI SEKARANG:**\n` +
         `🎰 **Gacha Roll Mode:** **${gachaModeText}**\n` +
-        `🪙 **Chat Multiplier:** **${multiplierText}**`
+        `🪙 **Chat Multiplier:** **${multiplierText}**\n` +
+        `⏱️ **Durasi Event:** ${durationInfoText}`
       )
       .addFields(
         {
@@ -1711,7 +1717,7 @@ module.exports = {
   },
 
   // 38. Ebyus Broadcast Embed
-  ebyusBroadcastEmbed(guild, mode, multiplier) {
+  ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt) {
     const gachaDesc = 
       mode === 'ABUSE' ? '🔥 **0% ZONK! (100% PASTI MENANG ROLE)**' :
       mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
@@ -1719,6 +1725,11 @@ module.exports = {
 
     const coinDesc = 
       multiplier > 1 ? `🎉 **PELIPATGANDAAN MASIF ${multiplier}X LIPAT KOIN CHAT**` : '🟢 Normal';
+
+    let durationText = '';
+    if (expiresAt > 0) {
+      durationText = `\n\n⏳ **DURASI TERBATAS!** Efek bypass ini akan berakhir otomatis pada: <t:${expiresAt}:F> (<t:${expiresAt}:R>)`;
+    }
 
     return new EmbedBuilder()
       .setColor('#FF007F') // Neon Hot Pink
@@ -1728,7 +1739,8 @@ module.exports = {
         `### ⚠️ PERINGATAN WARGA RUPIAH SERVER! ⚠️\n` +
         `Sistem keamanan pusat server telah dimanipulasi oleh Administrator Server secara masif! Efek bypass aktif saat ini:\n\n` +
         `🎰 **SABOTASE GACHA ROLE:**\n  👉 ${gachaDesc}\n\n` +
-        `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}\n\n` +
+        `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}\n` +
+        `${durationText}\n\n` +
         `**👉 *Jangan sia-siakan kesempatan emas ini! Segera kirim chat aktif di channel publik dan putar \`.gacha-role\` Anda sebanyak-banyaknya sebelum sistem ditutup kembali oleh sistem pusat!* ** 🎰🪙💸`
       )
       .setFooter({ text: 'Sistem Bypass Rupiah Server • Selamat meraup keuntungan!' })
@@ -1742,6 +1754,11 @@ module.exports = {
       settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
       settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
 
+    let durationInfoText = '♾️ **Permanen (Tanpa Batas)**';
+    if (settings.expires_at > 0) {
+      durationInfoText = `<t:${settings.expires_at}:F> (<t:${settings.expires_at}:R>)`;
+    }
+
     return new EmbedBuilder()
       .setColor(COLORS.WARN)
       .setTitle(`📊 STATUS SISTEM BYPASS EBYUS — ${guild.name}`)
@@ -1749,7 +1766,8 @@ module.exports = {
       .setDescription(
         `Rincian konfigurasi bypass ekonomi aktif di server saat ini:\n\n` +
         `🎰 **Gacha Roll Mode:** **${gachaModeText}**\n` +
-        `🪙 **Chat Coin Multiplier:** **${settings.coin_multiplier}x**\n\n` +
+        `🪙 **Chat Coin Multiplier:** **${settings.coin_multiplier}x**\n` +
+        `⏱️ **Masa Aktif:** **${durationInfoText}**\n\n` +
         `🕒 **Terakhir Diupdate:** <t:${settings.updated_at}:F> (<t:${settings.updated_at}:R>)\n` +
         `👮 **Oleh Admin:** <@${settings.updated_by}>`
       )

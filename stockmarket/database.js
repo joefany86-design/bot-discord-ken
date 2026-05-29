@@ -256,9 +256,18 @@ function initSchema() {
       gacha_mode TEXT DEFAULT 'NORMAL',
       coin_multiplier INTEGER DEFAULT 1,
       updated_at INTEGER DEFAULT 0,
-      updated_by TEXT
+      updated_by TEXT,
+      expires_at INTEGER DEFAULT 0
     )
   `);
+
+  // Migrasi dinamis: Tambahkan kolom expires_at ke ebyus_settings jika belum ada
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN expires_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'expires_at' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
 
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }

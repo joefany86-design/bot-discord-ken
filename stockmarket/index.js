@@ -3836,7 +3836,7 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .ebyus-gacha <normal|easy|super_easy|abuse>
+    // Perintah Admin: .ebyus-gacha <normal|easy|super_easy|abuse> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-gacha') {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -3845,19 +3845,26 @@ async function handleEconomyCommands(message, client) {
 
       const mode = args[0]?.toUpperCase();
       if (!mode || !['NORMAL', 'EASY', 'SUPER_EASY', 'ABUSE'].includes(mode)) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan mode gacha.\nFormat: `.ebyus-gacha <normal | easy | super_easy | abuse>`')] });
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan mode gacha.\nFormat: `.ebyus-gacha <normal | easy | super_easy | abuse> [durasi_menit]`')] });
+      }
+
+      const durArg = args[1];
+      let minutes = 0;
+      if (durArg) {
+        minutes = parseInt(durArg);
       }
 
       const getOrCreateEbyusSettings = (guildId) => {
         let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
         if (!settings) {
-          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at) VALUES (?, ?, ?, ?, ?, 0)', [guildId, 'NORMAL', 1, 0, '']);
           settings = {
             guild_id: guildId,
             gacha_mode: 'NORMAL',
             coin_multiplier: 1,
             updated_at: 0,
-            updated_by: ''
+            updated_by: '',
+            expires_at: 0
           };
         }
         return settings;
@@ -3865,9 +3872,10 @@ async function handleEconomyCommands(message, client) {
 
       getOrCreateEbyusSettings(guildId);
       const nowUnix = Math.floor(Date.now() / 1000);
+      const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
       database.run(
-        'UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
-        [mode, nowUnix, author.id, guildId]
+        'UPDATE ebyus_settings SET gacha_mode = ?, expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        [mode, expiresAt, nowUnix, author.id, guildId]
       );
 
       const statusMap = {
@@ -3877,12 +3885,13 @@ async function handleEconomyCommands(message, client) {
         ABUSE: '🔴 Abuse Mode (0% Zonk - 100% PASTI MENANG ROLE!)'
       };
 
-      await message.reply(`✅ Sukses mengubah mode gacha server ini menjadi **${statusMap[mode]}**.`);
+      let timeText = minutes > 0 ? ` selama **${minutes} menit** (auto-reset)` : ' secara **Permanen**';
+      await message.reply(`✅ Sukses mengubah mode gacha server ini menjadi **${statusMap[mode]}**${timeText}.`);
       return true;
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .ebyus-coin <off|3|4|5|6|7|8>
+    // Perintah Admin: .ebyus-coin <off|3|4|5|6|7|8> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-coin') {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -3896,19 +3905,26 @@ async function handleEconomyCommands(message, client) {
       }
 
       if (isNaN(multiplier) || multiplier < 1 || multiplier > 8 || (multiplier > 1 && multiplier < 3)) {
-        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan pengali koin chat.\nFormat: `.ebyus-coin <off | 3 | 4 | 5 | 6 | 7 | 8>`')] });
+        return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Tentukan pengali koin chat.\nFormat: `.ebyus-coin <off | 3 | 4 | 5 | 6 | 7 | 8> [durasi_menit]`')] });
+      }
+
+      const durArg = args[1];
+      let minutes = 0;
+      if (durArg) {
+        minutes = parseInt(durArg);
       }
 
       const getOrCreateEbyusSettings = (guildId) => {
         let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
         if (!settings) {
-          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at) VALUES (?, ?, ?, ?, ?, 0)', [guildId, 'NORMAL', 1, 0, '']);
           settings = {
             guild_id: guildId,
             gacha_mode: 'NORMAL',
             coin_multiplier: 1,
             updated_at: 0,
-            updated_by: ''
+            updated_by: '',
+            expires_at: 0
           };
         }
         return settings;
@@ -3916,12 +3932,14 @@ async function handleEconomyCommands(message, client) {
 
       getOrCreateEbyusSettings(guildId);
       const nowUnix = Math.floor(Date.now() / 1000);
+      const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
       database.run(
-        'UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
-        [multiplier, nowUnix, author.id, guildId]
+        'UPDATE ebyus_settings SET coin_multiplier = ?, expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        [multiplier, expiresAt, nowUnix, author.id, guildId]
       );
 
-      await message.reply(`✅ Sukses memperbarui pengali koin chat server ini menjadi **${multiplier === 1 ? 'Nonaktif (1x)' : multiplier + 'x'}**.`);
+      let timeText = minutes > 0 ? ` selama **${minutes} menit** (auto-reset)` : ' secara **Permanen**';
+      await message.reply(`✅ Sukses memperbarui pengali koin chat server ini menjadi **${multiplier === 1 ? 'Nonaktif (1x)' : multiplier + 'x'}**${timeText}.`);
       return true;
     }
 
@@ -3936,13 +3954,14 @@ async function handleEconomyCommands(message, client) {
       const getOrCreateEbyusSettings = (guildId) => {
         let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
         if (!settings) {
-          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)', [guildId, 'NORMAL', 1, 0, '']);
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at) VALUES (?, ?, ?, ?, ?, 0)', [guildId, 'NORMAL', 1, 0, '']);
           settings = {
             guild_id: guildId,
             gacha_mode: 'NORMAL',
             coin_multiplier: 1,
             updated_at: 0,
-            updated_by: ''
+            updated_by: '',
+            expires_at: 0
           };
         }
         return settings;
@@ -4011,6 +4030,42 @@ async function handleEconomyCommands(message, client) {
 
         const coinRow = new ActionRowBuilder().addComponents(coinSelect);
 
+        // Dropdown Duration
+        const durationSelect = new StringSelectMenuBuilder()
+          .setCustomId('ebyus_select_duration')
+          .setPlaceholder('⏱️ Atur Durasi Event Ebyus');
+
+        const durationOptions = [
+          { label: 'Permanen (Tanpa Batas)', value: '0', desc: 'Bypass tetap aktif selamanya sampai dimatikan manual' },
+          { label: '⏱️ 5 Menit', value: '5', desc: 'Event bypass berakhir otomatis dalam waktu 5 menit' },
+          { label: '⏱️ 10 Menit', value: '10', desc: 'Event bypass berakhir otomatis dalam waktu 10 menit' },
+          { label: '⏱️ 20 Menit', value: '20', desc: 'Event bypass berakhir otomatis dalam waktu 20 menit' },
+          { label: '⏱️ 30 Menit', value: '30', desc: 'Event bypass berakhir otomatis dalam waktu 30 menit' },
+          { label: '⏱️ 60 Menit (1 Jam)', value: '60', desc: 'Event bypass berakhir otomatis dalam waktu 1 jam' }
+        ];
+
+        // Hitung durasi tersisa dalam menit jika ada
+        let currentDurationValue = '0';
+        if (settings.expires_at > 0) {
+          const diffMin = Math.round((settings.expires_at - settings.updated_at) / 60);
+          const matchingOpt = durationOptions.find(o => Math.abs(parseInt(o.value) - diffMin) <= 2);
+          if (matchingOpt) {
+            currentDurationValue = matchingOpt.value;
+          }
+        }
+
+        durationOptions.forEach(opt => {
+          durationSelect.addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel(opt.label)
+              .setDescription(opt.desc)
+              .setValue(opt.value)
+              .setDefault(currentDurationValue === opt.value)
+          );
+        });
+
+        const durationRow = new ActionRowBuilder().addComponents(durationSelect);
+
         // Buttons
         const btnRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -4023,7 +4078,7 @@ async function handleEconomyCommands(message, client) {
             .setStyle(ButtonStyle.Danger)
         );
 
-        return { embeds: [embed], components: [gachaRow, coinRow, btnRow] };
+        return { embeds: [embed], components: [gachaRow, coinRow, durationRow, btnRow] };
       };
 
       const initialPanel = getPanelData(guildId);
@@ -4061,9 +4116,20 @@ async function handleEconomyCommands(message, client) {
             const fresh = getPanelData(guildId);
             await iEbyus.update(fresh);
           }
+          else if (iEbyus.customId === 'ebyus_select_duration') {
+            const minutes = parseInt(iEbyus.values[0]);
+            const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
+            database.run(
+              'UPDATE ebyus_settings SET expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+              [expiresAt, nowUnix, iEbyus.user.id, guildId]
+            );
+            
+            const fresh = getPanelData(guildId);
+            await iEbyus.update(fresh);
+          }
           else if (iEbyus.customId === 'ebyus_btn_broadcast') {
             const settings = getOrCreateEbyusSettings(guildId);
-            const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier);
+            const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at);
             
             // Broadcast ke channel tempat panel dibuka
             await message.channel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
