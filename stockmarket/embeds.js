@@ -1,6 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
-const { PET_ITEMS } = require('./pet');
 
 // Palette Warna Premium (HSL tailored / vibrant)
 const COLORS = {
@@ -1319,6 +1318,7 @@ module.exports = {
 
   // 28. Toko Item Pet (.pet shop)
   petShopEmbed(wallet, inventory) {
+    const { PET_ITEMS } = require('./pet');
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
       .setTitle('🎒 TOKO PERSEDIAAN PET TAMAGOTCHI')

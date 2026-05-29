@@ -709,7 +709,6 @@ async function handleKosUpgradeCommand(message, client) {
           .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
           .setDescription(up.desc.substring(0, 100))
           .setValue(up.id)
-          .setDisabled(isOwned)
       );
     });
 
