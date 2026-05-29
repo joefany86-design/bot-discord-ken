@@ -769,6 +769,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const member = newState.member;
   const user = member?.user;
   if (user) {
+    // Abaikan jika user adalah bot (seperti Sentinel) agar tidak mengirim notifikasi log spam
+    if (user.bot) return;
+
     const isBot = user.bot ? ' [BOT]' : '';
     
     // User Joins Voice
