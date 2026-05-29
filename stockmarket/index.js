@@ -794,6 +794,12 @@ async function handlePetCommand(message, client, args) {
   const { guildId, author, guild } = message;
   const subCommand = args[0] ? args[0].toLowerCase() : null;
 
+  // ── SUB-PERINTAH: ANNOUNCEMENT / INFO ──
+  if (subCommand === 'announcement' || subCommand === 'anoncemen' || subCommand === 'info') {
+    const petInfoEmbed = embeds.petAnnouncementEmbed(message.guild);
+    return message.reply({ embeds: [petInfoEmbed] });
+  }
+
   // ── SUB-PERINTAH: BUY / ADOPT ──
   if (subCommand === 'buy' || subCommand === 'adopt') {
     const petName = args[1];

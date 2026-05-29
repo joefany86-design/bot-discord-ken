@@ -1515,6 +1515,62 @@ module.exports = {
       )
       .setFooter({ text: 'Gunakan .rob @user untuk merampok solo atau .heist untuk merampok bank!' })
       .setTimestamp();
+  },
+
+  // 34. Pet System Guide Announcement
+  petAnnouncementEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🐾 PANDUAN LENGKAP & BENEFIT SISTEM PET TAMAGOTCHI 🐾')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Selamat datang di sistem peliharaan virtual Tamagotchi Kosan 1A! Rawat pet Anda, tingkatkan levelnya, dan rasakan berbagai pasif buffs menguntungkan:`
+      )
+      .addFields(
+        {
+          name: '🧬 1. SPESIES PET & PASIF BUFFS KHUSUS',
+          value:
+            `🟢 **Slime:** Vitalitas Tinggi.\n` +
+            `  👉 *Buff:* Max HP bertambah +20 | Laju kelaparan & kehausan berkurang 25% lebih lambat.\n` +
+            `🔥 **Dragon:** Naga Legendaris.\n` +
+            `  👉 *Buff:* Sangat tangguh di PvP Arena (Mendapatkan bonus **+15% Attack Power**).\n` +
+            `🐱 **Cat:** Kucing Lincah.\n` +
+            `  👉 *Buff:* Pendapatan berburu (*Hunt*) meningkat **+15%** | Peluang mendapatkan item langka gratis naik menjadi **10%** (normal 5%).\n` +
+            `🧱 **Golem:** Pekerja Keras.\n` +
+            `  👉 *Buff:* Cooldown bekerja (*Work*) dikurangi **20 Menit** (dari 2 jam menjadi 1 jam 40 menit).`,
+          inline: false
+        },
+        {
+          name: '🐣 2. FASE PERTUMBUHAN PET',
+          value:
+            `🥚 **Egg (Telur):** Diadopsi seharga **Rp 1.500** (\`.pet buy <nama> <spesies>\`). Menetas otomatis dalam waktu **2 jam**.\n` +
+            `🐣 **Baby (Bayi):** Level 1 s/d 9. Belum bisa diajak berburu (*Hunt*) atau bertarung PvP.\n` +
+            `🦁 **Adult (Dewasa):** Min. Level 10. Membuka fitur berburu liar (*Hunt*) dan pertarungan taruhan PvP Arena.`,
+          inline: false
+        },
+        {
+          name: '💼 3. MEKANIK PENDAPATAN & UPAH KOIN',
+          value:
+            `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 2 jam, Golem 1j 40m).\n` +
+            `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 4 jam.\n` +
+            `• **PvP Arena (\`.pet pvp @user <taruhan\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.`,
+          inline: false
+        },
+        {
+          name: '🍗 4. KEBUTUHAN PERAWATAN & TOKO PERSSEDIAAN (\`.pet shop\`)',
+          value:
+            `• 🍗 **Pakan Biasa (Rp 150):** +30 Kenyangan.\n` +
+            `• 🥩 **Daging Premium (Rp 350):** +70 Kenyangan, +10 HP, +5 Kebahagiaan.\n` +
+            `• 🥤 **Air Bersih (Rp 100):** +35 Hidrasi.\n` +
+            `• 💊 **Obat (Rp 500):** +50 HP & Menyembuhkan Sakit/Pingsan.\n` +
+            `• ⚽ **Bola Karet (Rp 250):** +50 Kebahagiaan.\n` +
+            `• ⚽ **Main Gratis (\`.pet play\`):** +25 Kebahagiaan & +15 XP (Gratis, tanpa item, cooldown 15 menit).\n` +
+            `👉 *Tip:* Jika pet kelaparan/kehausan menyentuh 0% terlalu lama, HP akan berkurang perlahan. Jika HP menyentuh 0%, pet akan mati (*Dead*). Kandang yang mati harus dibersihkan dengan \`.pet reset\` sebelum mengadopsi yang baru.`,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Gunakan .pet untuk membuka kandang atau .pet shop untuk belanja persediaan!' })
+      .setTimestamp();
   }
 };
 
