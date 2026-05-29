@@ -1402,7 +1402,24 @@ async function handlePetAdminCommand(message, client, args) {
     }
   }
 
-  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`');
+  if (subCommand === 'hatch') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin hatch @user`');
+    }
+    const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [target.id, guildId]);
+    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
+    if (petData.status !== 'EGG') return message.reply('❌ Pet milik user tersebut sudah menetas!');
+
+    const now = Math.floor(Date.now() / 1000);
+    database.run(
+      'UPDATE user_pets SET hatch_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+      [now - 10, target.id, guildId]
+    );
+
+    return message.reply(`🐣 **Sukses mempercepat penetasan telur!** Telur pet **${petData.pet_name}** milik <@${target.id}> sekarang siap menetas. Minta user untuk mengetik \`.pet\` dan mengklik tombol **Tetaskan Telur**!`);
+  }
+
+  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`');
 }
 
 /**

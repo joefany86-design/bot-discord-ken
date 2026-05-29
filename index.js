@@ -435,7 +435,8 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
               value: [
                 `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
                 `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
-                `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`
+                `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
+                `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`
               ].join('\n')
             }
           )
@@ -691,7 +692,8 @@ client.on('messageCreate', async message => {
           value: [
             `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
             `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
-            `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`
+            `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
+            `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`
           ].join('\n')
         }
       )

@@ -133,6 +133,10 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           .setDescription('HP, Kenyangan, Hidrasi Pet target disuntik 100%')
           .setValue('action_heal_pet'),
         new StringSelectMenuOptionBuilder()
+          .setLabel('🐣 Percepat Penetasan Telur Pet')
+          .setDescription('Mengatur status telur target agar siap menetas seketika')
+          .setValue('action_hatch_pet'),
+        new StringSelectMenuOptionBuilder()
           .setLabel('🧪 Suntik Custom XP Pet (Modal)')
           .setDescription('Menambahkan jumlah XP kustom ke Pet target')
           .setValue('action_give_xp_pet_modal'),
@@ -518,6 +522,20 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           }
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
           await iAdmin.reply({ content: `🔓 Sukses membebaskan paksa <@${selectedTargetUserId}> dari penjara virtual.`, ephemeral: true });
+          const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_hatch_pet') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
+          }
+          if (targetPet.status !== 'EGG') {
+            return iAdmin.reply({ content: '❌ Pet milik anggota terpilih sudah menetas!', ephemeral: true });
+          }
+          const now = Math.floor(Date.now() / 1000);
+          database.run('UPDATE user_pets SET hatch_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [now - 10, selectedTargetUserId, guildId]);
+          await iAdmin.reply({ content: `🐣 Sukses mempercepat penetasan telur pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>. Telur sekarang siap menetas!`, ephemeral: true });
           const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
           await replyMsg.edit(fresh).catch(() => {});
         }
