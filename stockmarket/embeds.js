@@ -1622,6 +1622,45 @@ module.exports = {
       )
       .setFooter({ text: 'Gunakan .kos untuk membuka dashboard kamar Anda!' })
       .setTimestamp();
+  },
+
+  // 36. Bank System Guide Announcement
+  bankAnnouncementEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🏛️ PANDUAN LENGKAP & BENEFIT CENTRAL BANK 🏛️')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Kelola keuangan Anda secara profesional di Central Bank! Simpan koin Anda di brankas yang aman atau ajukan pinjaman modal untuk mempercepat perputaran ekonomi Anda.`
+      )
+      .addFields(
+        {
+          name: '📥 1. REKENING TABUNGAN BANK (Savings)',
+          value:
+            `• **Deposit & Penarikan Bebas:** Simpan atau tarik koin dari dompet Anda kapan saja lewat menu \`.bank\`.\n` +
+            `• **🛡️ Proteksi Anti-Rob 100%:** Koin yang disimpan di dalam tabungan bank **sepenuhnya aman** dari segala aksi pencurian (\`.rob @user\`). Korban rob hanya kehilangan uang di dompet aktif.\n` +
+            `• **📈 Bunga Pasif Harian:** Dapatkan bagi hasil bunga pasif sebesar **+1.5%** dari total saldo tabungan Anda setiap hari secara otomatis.\n` +
+            `👉 *Tip:* Selalu depositkan sisa koin harian Anda agar terhindar dari rampok dan tetap menghasilkan bunga pasif!`,
+          inline: false
+        },
+        {
+          name: '📜 2. LAYANAN KREDIT & PINJAMAN MODAL (Loans)',
+          value:
+            `• **⚖️ Limit Pinjaman Dinamis:** Batas pinjaman maksimal dihitung otomatis berdasarkan keaktifan Anda:\n` +
+            `  *Formula:* **Rp 500 (Base) + 30% Total Earned + Rp 100 * Streak Daily**\n` +
+            `  👉 *Tambahan Limit:* Mendapatkan **+Rp 150** limit jika Anda memasang upgrade **Gembok Kamar** di Kosan.\n` +
+            `• **🗓️ Tenor & Suku Bunga Pinjaman:**\n` +
+            `  - **1 Hari:** Suku Bunga **2%**\n` +
+            `  - **3 Hari:** Suku Bunga **5%**\n` +
+            `  - **7 Hari:** Suku Bunga **10%**\n` +
+            `• **💳 Pembayaran Fleksibel:** Anda dapat mengangsur cicilan sebagian semampunya atau melunasinya langsung di dashboard.\n` +
+            `• **⚠️ Sanksi Jatuh Tempo:** Keterlambatan pembayaran melebihi batas waktu akan mengubah status pinjaman menjadi \`OVERDUE\` dan dikenakan denda akumulasi harian.\n` +
+            `👉 *Tip:* Pastikan melunasi utang tepat waktu untuk menjaga reputasi kredit Anda!`,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Gunakan .bank untuk membuka dashboard perbankan Anda!' })
+      .setTimestamp();
   }
 };
 

@@ -1847,6 +1847,12 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .bank (Sistem Perbankan Premium)
     // ═══════════════════════════════════════════════════
     if (commandName === 'bank') {
+      const firstArg = args[0]?.toLowerCase();
+      if (firstArg === 'announcement' || firstArg === 'anoncemen' || firstArg === 'info') {
+        const bankInfoEmbed = embeds.bankAnnouncementEmbed(message.guild);
+        return message.reply({ embeds: [bankInfoEmbed] });
+      }
+
       const getBankDashboardData = (userId, guildId) => {
         const wallet = economy.getWallet(userId, guildId);
         const savings = bank.getSavings(userId, guildId);
