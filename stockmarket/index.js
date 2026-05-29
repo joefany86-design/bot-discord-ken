@@ -4131,10 +4131,22 @@ async function handleEconomyCommands(message, client) {
             const settings = getOrCreateEbyusSettings(guildId);
             const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at);
             
-            // Broadcast ke channel tempat panel dibuka
-            await message.channel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
-            
-            await iEbyus.reply({ content: '✅ Sukses menyiarkan pengumuman Ebyus ke channel ini!', ephemeral: true });
+            // Broadcast ke channel spesifik: 1422642326798598348
+            let targetChannel = guild.channels.cache.get('1422642326798598348');
+            if (!targetChannel) {
+              try {
+                targetChannel = await guild.channels.fetch('1422642326798598348');
+              } catch (e) {
+                targetChannel = message.channel;
+              }
+            }
+
+            if (targetChannel) {
+              await targetChannel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
+              await iEbyus.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}>!`, ephemeral: true });
+            } else {
+              await iEbyus.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', ephemeral: true });
+            }
           }
           else if (iEbyus.customId === 'ebyus_btn_close') {
             collector.stop();
