@@ -366,7 +366,9 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription([
             `Berikut adalah daftar seluruh perintah eksklusif khusus Owner & Administrator server untuk mengelola perekonomian, bursa saham, toko, serta game:\n`,
-            `🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
+            `👑 **PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]:**`,
+            `👉 **\`.admin-panel\`** atau **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** untuk mengelola event bursa global, bypass Ebyus, dan melakukan tindakan langsung ke anggota (suntik/tarik koin, heal/XP/reset pet, bebas lapas) secara visual via dropdown menu tanpa mengetik!`,
+            `\n🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
             `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
             `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
             `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`,
@@ -583,7 +585,9 @@ client.on('messageCreate', async message => {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription([
         `Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:\n`,
-        `🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
+        `👑 **PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]:**`,
+        `👉 **\`.admin-panel\`** atau **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** untuk mengelola event bursa global, bypass Ebyus, dan melakukan tindakan langsung ke anggota (suntik/tarik koin, heal/XP/reset pet, bebas lapas) secara visual via dropdown menu tanpa mengetik!`,
+        `\n🎲 **KONTROL GAME TRUTH OR DARE (ToD):**`,
         `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
         `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
         `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`,

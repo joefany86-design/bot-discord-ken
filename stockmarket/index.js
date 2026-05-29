@@ -8,7 +8,7 @@ const scheduler = require('./scheduler');
 const bank = require('./bank');
 const pet = require('./pet');
 const robbery = require('./robbery');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 const { sendAdminLog } = require('../logger');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -1378,7 +1378,7 @@ async function handleEconomyCommands(message, client) {
       if (['work', 'hunt', 'battle'].includes(sub)) {
         shouldBlock = true;
       }
-    } else if (!['jail', 'heist-admin', 'pet-admin'].includes(commandName)) {
+    } else if (!['jail', 'heist-admin', 'pet-admin', 'admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
       shouldBlock = true;
     }
 
@@ -4162,6 +4162,399 @@ async function handleEconomyCommands(message, client) {
         const fresh = getPanelData(guildId);
         fresh.components = [];
         await replyMsg.edit(fresh).catch(() => {});
+      });
+
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .admin-panel / .adminpanel / .panel-admin / .paneladmin (Dashboard Kontrol Utama)
+    // ═══════════════════════════════════════════════════
+    if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const getOrCreateEbyusSettings = (guildId) => {
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+        if (!settings) {
+          database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at) VALUES (?, ?, ?, ?, ?, 0)', [guildId, 'NORMAL', 1, 0, '']);
+          settings = {
+            guild_id: guildId,
+            gacha_mode: 'NORMAL',
+            coin_multiplier: 1,
+            updated_at: 0,
+            updated_by: '',
+            expires_at: 0
+          };
+        }
+        return settings;
+      };
+
+      let selectedTargetUserId = null;
+
+      const getAdminPanelData = (guildId, targetUserId) => {
+        const settings = getOrCreateEbyusSettings(guildId);
+        
+        let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
+        if (targetUserId) {
+          targetText = `🎯 **<@${targetUserId}>**\n` +
+                       `• ID: \`${targetUserId}\`\n`;
+          
+          const econ = database.get('SELECT wallet, bank FROM economy WHERE user_id = ? AND guild_id = ?', [targetUserId, guildId]);
+          const walletVal = econ ? econ.wallet : 0;
+          const bankVal = econ ? econ.bank : 0;
+          targetText += `• Dompet: \`Rp ${walletVal.toLocaleString('id-ID')}\` | Bank: \`Rp ${bankVal.toLocaleString('id-ID')}\`\n`;
+          
+          const targetPet = database.get('SELECT * FROM pets WHERE user_id = ? AND guild_id = ?', [targetUserId, guildId]);
+          if (targetPet) {
+            targetText += `• Pet: **${targetPet.name}** (Lv.${targetPet.level} ${targetPet.type.toUpperCase()}) | HP: \`${targetPet.hp}%\` | XP: \`${targetPet.xp}/${targetPet.level * 300}\`\n`;
+          } else {
+            targetText += `• Pet: *Tidak ada peliharaan*\n`;
+          }
+          
+          const isJailed = database.get('SELECT * FROM jail WHERE user_id = ? AND guild_id = ?', [targetUserId, guildId]);
+          if (isJailed) {
+            targetText += `• Status Lapas: 🚨 **DITAHAN**\n`;
+          } else {
+            targetText += `• Status Lapas: 🟢 Bebas\n`;
+          }
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(0x5865F2)
+          .setTitle('🛡️ SENTINEL UNIFIED ADMINISTRATOR CONTROL DASHBOARD')
+          .setThumbnail(client.user.displayAvatarURL())
+          .setDescription(
+            `Selamat datang di **Pusat Kontrol Visual Administrator**. Gunakan panel interaktif ini untuk mengelola event global dan melakukan tindakan cepat ke anggota server tanpa mengetik perintah manual!\n\n` +
+            `📊 **STATUS BYPASS & EKONOMI SERVER:**\n` +
+            `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
+            `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
+            `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
+            `👤 **INFORMASI TARGET ANGGOTA:**\n${targetText}`
+          )
+          .setFooter({ text: 'Sentinel Admin System • Gunakan dengan bijak!' })
+          .setTimestamp();
+
+        const userSelect = new UserSelectMenuBuilder()
+          .setCustomId('admin_panel_select_target')
+          .setPlaceholder('👤 Pilih Target Anggota untuk Tindakan');
+
+        const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+        const actionSelect = new StringSelectMenuBuilder()
+          .setCustomId('admin_panel_select_action')
+          .setPlaceholder('🎯 Pilih Tindakan Cepat ke Target Anggota')
+          .setDisabled(!targetUserId);
+
+        actionSelect.addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🔓 Bebaskan dari Penjara Virtual')
+            .setDescription('Mengeluarkan paksa target dari Lapas instan')
+            .setValue('action_free_jail'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('❤️ Sembuhkan & Pulihkan Pet')
+            .setDescription('HP, Kenyangan, Hidrasi Pet target disuntik 100%')
+            .setValue('action_heal_pet'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🧪 Suntik +500 XP Pet')
+            .setDescription('Menambahkan 500 XP instan ke Pet target')
+            .setValue('action_give_xp_pet'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('💀 Reset Data Pet Target')
+            .setDescription('Menghapus total Pet target dari kandang')
+            .setValue('action_reset_pet'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('💸 Suntik Rp 10.000 Koin')
+            .setDescription('Memberikan 10k koin langsung ke dompet target')
+            .setValue('action_give_coins'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('📉 Tarik/Potong Rp 5.000 Koin')
+            .setDescription('Menarik 5k koin dari dompet target')
+            .setValue('action_take_coins'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🚨 RESET EKONOMI TARGET')
+            .setDescription('Mereset dompet, bank, & saham target ke nol')
+            .setValue('action_reset_economy')
+        );
+
+        const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+        const globalSelect = new StringSelectMenuBuilder()
+          .setCustomId('admin_panel_select_global')
+          .setPlaceholder('🌐 Picu Event Global & Bypass');
+
+        globalSelect.addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🎰 Sabotase Gacha: ABUSE (100% MENANG ROLE)')
+            .setDescription('Event bypass gacha role disetel 100% pasti menang')
+            .setValue('global_gacha_abuse'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🎰 Sabotase Gacha: NORMAL (Kembalikan ke Asal)')
+            .setDescription('Probabilitas gacha disetel ke default normal')
+            .setValue('global_gacha_normal'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🪙 Pengali Koin: 8x KOIN (Max Sabotase!)')
+            .setDescription('Koin keaktifan chat dilipatgandakan 8x lipat')
+            .setValue('global_coin_8'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🪙 Pengali Koin: Nonaktifkan Multiplier (1x)')
+            .setDescription('Mengembalikan perolehan koin chat ke normal')
+            .setValue('global_coin_1'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('📈 Picu Bursa: Event Bull Run')
+            .setDescription('Event harga saham melesat naik di bursa')
+            .setValue('global_trigger_bull'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('📉 Picu Bursa: Event Market Crash')
+            .setDescription('Event penurunan tajam harga saham bursa')
+            .setValue('global_trigger_crash'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('💰 Picu Bursa: Double Earning Hour')
+            .setDescription('Picu event pendapatan ganda bursa instan')
+            .setValue('global_trigger_double'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🚨 Reset Cooldown Global Bank Heist')
+            .setDescription('Admins & Warga bisa merampok bank lagi tanpa cooldown')
+            .setValue('global_reset_heist_cd'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('🎭 Auto-Setup 5 Toko Role Prestise')
+            .setDescription('Membuat & menyetel role Common s/d Mythic secara otomatis')
+            .setValue('global_setup_autoshop')
+        );
+
+        const globalRow = new ActionRowBuilder().addComponents(globalSelect);
+
+        const btnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('admin_panel_btn_broadcast')
+            .setLabel('📢 Broadcast Event')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('admin_panel_btn_status')
+            .setLabel('📊 Status Real-time')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('admin_panel_btn_close')
+            .setLabel('❌ Tutup Panel')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        return { embeds: [embed], components: [userRow, actionRow, globalRow, btnRow] };
+      };
+
+      const initialPanel = getAdminPanelData(guildId, selectedTargetUserId);
+      const replyMsg = await message.reply(initialPanel);
+
+      const collector = replyMsg.createMessageComponentCollector({
+        time: 300000
+      });
+
+      collector.on('collect', async iAdmin => {
+        if (!iAdmin.member || !iAdmin.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+          return iAdmin.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+        }
+
+        const nowUnix = Math.floor(Date.now() / 1000);
+
+        try {
+          if (iAdmin.customId === 'admin_panel_select_target') {
+            selectedTargetUserId = iAdmin.values[0];
+            const fresh = getAdminPanelData(guildId, selectedTargetUserId);
+            await iAdmin.update(fresh);
+          }
+          else if (iAdmin.customId === 'admin_panel_select_action') {
+            const action = iAdmin.values[0];
+            if (!selectedTargetUserId) {
+              return iAdmin.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', ephemeral: true });
+            }
+
+            let logMessage = '';
+
+            if (action === 'action_free_jail') {
+              const jail = database.get('SELECT * FROM jail WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              if (!jail) {
+                return iAdmin.reply({ content: '❌ Anggota terpilih tidak sedang berada di dalam penjara virtual!', ephemeral: true });
+              }
+              database.run('DELETE FROM jail WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `🔓 Sukses membebaskan paksa <@${selectedTargetUserId}> dari penjara virtual.`;
+            }
+            else if (action === 'action_heal_pet') {
+              const targetPet = database.get('SELECT * FROM pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              if (!targetPet) {
+                return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
+              }
+              database.run('UPDATE pets SET hp = 100, hunger = 100, hydration = 100, sickness = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `❤️ Sukses memulihkan stats HP, Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`;
+            }
+            else if (action === 'action_give_xp_pet') {
+              const targetPet = database.get('SELECT * FROM pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              if (!targetPet) {
+                return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
+              }
+              let newXp = targetPet.xp + 500;
+              let level = targetPet.level;
+              const xpNeeded = level * 300;
+              let leveledUp = false;
+              if (newXp >= xpNeeded) {
+                newXp -= xpNeeded;
+                level += 1;
+                leveledUp = true;
+              }
+              database.run('UPDATE pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?', [newXp, level, selectedTargetUserId, guildId]);
+              logMessage = `🧪 Sukses memberikan +500 XP ke pet milik <@${selectedTargetUserId}>.${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`;
+            }
+            else if (action === 'action_reset_pet') {
+              const targetPet = database.get('SELECT * FROM pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              if (!targetPet) {
+                return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet) untuk direset!', ephemeral: true });
+              }
+              database.run('DELETE FROM pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `💀 Sukses menghapus total data pet milik <@${selectedTargetUserId}> dari database kandang.`;
+            }
+            else if (action === 'action_give_coins') {
+              database.run('INSERT INTO economy (user_id, guild_id, wallet, bank, daily_streak, last_daily_at) VALUES (?, ?, 0, 0, 0, 0) ON CONFLICT(user_id, guild_id) DO NOTHING', [selectedTargetUserId, guildId]);
+              database.run('UPDATE economy SET wallet = wallet + 10000 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `💸 Sukses menyuntikkan koin **Rp 10.000** langsung ke dompet <@${selectedTargetUserId}>.`;
+            }
+            else if (action === 'action_take_coins') {
+              const targetEcon = database.get('SELECT wallet FROM economy WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              if (!targetEcon || targetEcon.wallet <= 0) {
+                return iAdmin.reply({ content: '❌ Dompet target sudah kosong (0 Rp)! Tidak bisa memotong koin.', ephemeral: true });
+              }
+              database.run('UPDATE economy SET wallet = MAX(0, wallet - 5000) WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `📉 Sukses menarik koin **Rp 5.000** dari dompet <@${selectedTargetUserId}>.`;
+            }
+            else if (action === 'action_reset_economy') {
+              database.run('DELETE FROM economy WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              database.run('DELETE FROM shares WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              logMessage = `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, dan seluruh lembar saham milik <@${selectedTargetUserId}> telah dikembalikan ke 0.`;
+            }
+
+            await iAdmin.reply({ content: logMessage, ephemeral: true });
+            const fresh = getAdminPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+          else if (iAdmin.customId === 'admin_panel_select_global') {
+            const action = iAdmin.values[0];
+            let globalMessage = '';
+
+            if (action === 'global_gacha_abuse') {
+              database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', ['ABUSE', nowUnix, iAdmin.user.id, guildId]);
+              globalMessage = '🎰 Sukses mengubah mode gacha server menjadi **ABUSE Mode (0% Zonk - 100% Menang Role!)** secara permanen.';
+            }
+            else if (action === 'global_gacha_normal') {
+              database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', ['NORMAL', nowUnix, iAdmin.user.id, guildId]);
+              globalMessage = '🎰 Sukses mengembalikan mode gacha server ke tingkat **NORMAL (75% Zonk)**.';
+            }
+            else if (action === 'global_coin_8') {
+              database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [8, nowUnix, iAdmin.user.id, guildId]);
+              globalMessage = '🪙 Sukses mengaktifkan pengali koin chat ke **8x Multiplier (SABOTASE MAKSIMAL!)** secara permanen.';
+            }
+            else if (action === 'global_coin_1') {
+              database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [1, nowUnix, iAdmin.user.id, guildId]);
+              globalMessage = '🪙 Sukses menonaktifkan multiplier koin chat (kembali ke normal 1x).';
+            }
+            else if (action === 'global_trigger_bull') {
+              const events = require('./events');
+              events.triggerEvent(client, guild, events.EVENT_TYPES.BULL_RUN);
+              globalMessage = '📈 Event bursa saham **BULL RUN** berhasil dipicu secara instan!';
+            }
+            else if (action === 'global_trigger_crash') {
+              const events = require('./events');
+              events.triggerEvent(client, guild, events.EVENT_TYPES.MARKET_CRASH);
+              globalMessage = '📉 Event bursa saham **MARKET CRASH** berhasil dipicu secara instan!';
+            }
+            else if (action === 'global_trigger_double') {
+              const events = require('./events');
+              events.triggerEvent(client, guild, events.EVENT_TYPES.DOUBLE_EARNINGS);
+              globalMessage = '💰 Event bursa saham **DOUBLE EARNING HOUR** berhasil dipicu secara instan!';
+            }
+            else if (action === 'global_reset_heist_cd') {
+              database.run(
+                'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
+                [guildId]
+              );
+              globalMessage = '🚨 Sukses mereset global cooldown Bank Heist server. Warga dapat melakukan perampokan kembali!';
+            }
+            else if (action === 'global_setup_autoshop') {
+              const defaultRoles = [
+                { name: 'Mythic Resident', color: '#FF007F', price: 1500000, tier: 'MYTHIC', desc: 'Kasta legendaris tertinggi di server.' },
+                { name: 'Legendary Resident', color: '#FFD700', price: 500000, tier: 'LEGENDARY', desc: 'Pemukim legendaris berwibawa tinggi.' },
+                { name: 'Epic Resident', color: '#9D00FF', price: 150000, tier: 'EPIC', desc: 'Warga elit yang disegani oleh publik.' },
+                { name: 'Rare Resident', color: '#00BFFF', price: 50000, tier: 'RARE', desc: 'Warga kelas menengah yang aktif.' },
+                { name: 'Common Resident', color: '#00FF88', price: 15000, tier: 'COMMON', desc: 'Anggota pemukiman resmi pemegang KTP.' }
+              ];
+              
+              let createdCount = 0;
+              for (const rData of defaultRoles) {
+                const existing = database.get('SELECT * FROM shop_items WHERE role_name = ? AND guild_id = ?', [rData.name, guildId]);
+                if (!existing) {
+                  const newRole = await guild.roles.create({
+                    name: rData.name,
+                    color: rData.color,
+                    reason: 'Sentinel Auto Shop Role Initialization'
+                  }).catch(() => null);
+                  
+                  if (newRole) {
+                    database.run(
+                      'INSERT INTO shop_items (guild_id, role_id, role_name, price, tier, stock, description) VALUES (?, ?, ?, ?, ?, -1, ?)',
+                      [guildId, newRole.id, rData.name, rData.price, rData.tier, rData.desc]
+                    );
+                    createdCount++;
+                  }
+                }
+              }
+              globalMessage = `🎭 Sukses menginisialisasi Toko Role. Berhasil mendaftarkan & membuat **${createdCount}/5** kasta role prestise server!`;
+            }
+
+            await iAdmin.reply({ content: globalMessage, ephemeral: true });
+            const fresh = getAdminPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+          else if (iAdmin.customId === 'admin_panel_btn_broadcast') {
+            const settings = getOrCreateEbyusSettings(guildId);
+            const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at);
+            
+            let targetChannel = guild.channels.cache.get('1422642326798598348');
+            if (!targetChannel) {
+              try {
+                targetChannel = await guild.channels.fetch('1422642326798598348');
+              } catch (e) {
+                targetChannel = message.channel;
+              }
+            }
+
+            if (targetChannel) {
+              await targetChannel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
+              await iAdmin.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}>!`, ephemeral: true });
+            } else {
+              await iAdmin.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', ephemeral: true });
+            }
+          }
+          else if (iAdmin.customId === 'admin_panel_btn_status') {
+            const settings = getOrCreateEbyusSettings(guildId);
+            const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
+            await iAdmin.reply({ embeds: [statusEmb], ephemeral: true });
+          }
+          else if (iAdmin.customId === 'admin_panel_btn_close') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+          }
+        } catch (err) {
+          console.error('Error in admin panel dashboard interaction:', err);
+          await iAdmin.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+        }
+      });
+
+      collector.on('end', async () => {
+        if (collector.destroyed) return;
+        try {
+          const fresh = getAdminPanelData(guildId, selectedTargetUserId);
+          fresh.components = [];
+          await replyMsg.edit(fresh).catch(() => {});
+        } catch (e) {}
       });
 
       return true;
