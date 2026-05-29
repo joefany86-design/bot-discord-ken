@@ -1472,6 +1472,49 @@ module.exports = {
     }
 
     return embed;
+  },
+
+  // 33. Rob & Heist System Guide Announcement
+  robAnnouncementEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('💥 RESIKO & BENEFIT SISTEM PERAMPOKAN KOSAN 💥')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Berikut adalah detail lengkap mengenai sistem perampokan Solo Rob (\`.rob @user\`) dan Bank Heist (\`.heist\`) di server:`
+      )
+      .addFields(
+        {
+          name: '👤 1. SOLO ROB (.rob @user)',
+          value:
+            `• **Peluang Sukses:** 40% (Berkurang 15% jika target memiliki **Alarm**).\n` +
+            `• **Benefit (Sukses):**\n` +
+            `  👉 Mencuri **10% - 25% koin** acak dari dompet korban.\n` +
+            `  👉 Jika memiliki Pet aktif, Pet mendapat **+20 XP**.\n` +
+            `  👉 Hasil rampokan dipotong **50%** jika target memiliki **Gembok**.\n` +
+            `• **Resiko (Gagal):**\n` +
+            `  👉 Denda **Rp 200** langsung diberikan ke korban (Denda **Rp 300** jika korban pasang **CCTV**).\n` +
+            `  👉 Masuk **Penjara Virtual selama 30 menit** (membekukan aktivitas ekonomi).\n` +
+            `  👉 Tebus jaminan bebas instan seharga **Rp 250** (\`.jail\` dashboard).`,
+          inline: false
+        },
+        {
+          name: '🚨 2. CENTRAL BANK HEIST MULTIPLAYER (.heist)',
+          value:
+            `• **Biaya Persiapan:** Rp 100 /orang (Modal awal untuk ikut lobi).\n` +
+            `• **Sistem Kru & Peluang (Skala Tim):**\n` +
+            `  👥 **1 Orang (Solo):** Sukses **15%** | Hadiah **Rp 1.000 - Rp 2.000** | Denda **Rp 300** & Penjara **1 Jam**.\n` +
+            `  👥 **2 Orang:** Sukses **30%** | Hadiah **Rp 2.500 - Rp 4.500** | Denda **Rp 300** & Penjara **1 Jam**.\n` +
+            `  👥 **3 Orang:** Sukses **45%** | Hadiah **Rp 5.000 - Rp 8.000** | Denda **Rp 400** & Penjara **1 Jam**.\n` +
+            `  👥 **4 Orang:** Sukses **60%** | Hadiah **Rp 9.000 - Rp 14.000** | Denda **Rp 400** & Penjara **1.5 Jam**.\n` +
+            `  👥 **5+ Orang:** Sukses **75%** | Hadiah **Rp 15.000 - Rp 25.000** | Denda **Rp 500** & Penjara **2 Jam**.\n` +
+            `• **Benefit Tambahan:** Pet aktif seluruh kru mendapatkan **+40 XP** jika berhasil.\n` +
+            `• **Resiko Gagal:** Tebus jaminan bebas instan dari penjara Heist seharga **Rp 500** per orang.`,
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Gunakan .rob @user untuk merampok solo atau .heist untuk merampok bank!' })
+      .setTimestamp();
   }
 };
 

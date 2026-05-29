@@ -1443,9 +1443,15 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .rob @user
     // ═══════════════════════════════════════════════════
     if (commandName === 'rob') {
+      const firstArg = args[0]?.toLowerCase();
+      if (firstArg === 'announcement' || firstArg === 'anoncemen' || firstArg === 'info') {
+        const robInfoEmbed = embeds.robAnnouncementEmbed(message.guild);
+        return message.reply({ embeds: [robInfoEmbed] });
+      }
+
       const targetUser = message.mentions.users.first();
       if (!targetUser) {
-        return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.rob @user` untuk merampok seseorang.')] });
+        return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.rob @user\` untuk merampok seseorang, atau \`.rob anoncemen\` untuk melihat info resiko & benefit.')] });
       }
 
       try {
