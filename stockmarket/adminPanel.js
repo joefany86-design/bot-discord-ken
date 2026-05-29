@@ -282,6 +282,10 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           .setLabel('⏱️ Set Durasi (Modal)')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
+          .setCustomId('admin_panel_btn_stop_abyus')
+          .setLabel('🛑 Stop Event Abyus')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
           .setCustomId('admin_panel_btn_close')
           .setLabel('❌ Tutup Panel')
           .setStyle(ButtonStyle.Danger)
@@ -1273,6 +1277,15 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
           await replyMsg.edit(fresh).catch(() => {});
         }
+      }
+      else if (iAdmin.customId === 'admin_panel_btn_stop_abyus') {
+        database.run(
+          'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+          ['NORMAL', 1, nowUnix, iAdmin.user.id, guildId]
+        );
+        await iAdmin.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL` dan multiplier koin chat kembali ke `1x` (nonaktif).', ephemeral: true });
+        const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
+        await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAdmin.customId === 'admin_panel_btn_status') {
         const settings = getOrCreateEbyusSettings(guildId);

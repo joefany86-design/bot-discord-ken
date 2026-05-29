@@ -551,9 +551,15 @@ async function handleEconomyChat(message) {
   }
 
   // 3c. Cek Admin Abuse (Ebyus) Coin Multiplier (3x s/d 8x)
-  const ebyus = database.get('SELECT coin_multiplier FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const ebyus = database.get('SELECT coin_multiplier, expires_at FROM ebyus_settings WHERE guild_id = ?', [guildId]);
   if (ebyus && ebyus.coin_multiplier > 1) {
-    totalEarned *= ebyus.coin_multiplier;
+    const nowUnix = Math.floor(Date.now() / 1000);
+    if (ebyus.expires_at > 0 && nowUnix > ebyus.expires_at) {
+      // Expired! Reset to 1 in DB
+      database.run('UPDATE ebyus_settings SET coin_multiplier = 1, expires_at = 0 WHERE guild_id = ?', [guildId]);
+    } else {
+      totalEarned *= ebyus.coin_multiplier;
+    }
   }
 
   if (dispenserTriggered) {
@@ -2784,11 +2790,17 @@ async function handleEconomyCommands(message, client) {
       const roll = Math.random() * 100;
       let zonkRate = config.gacha.ZONK_RATE !== undefined ? config.gacha.ZONK_RATE : 75;
 
-      const ebyus = database.get('SELECT gacha_mode FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+      const ebyus = database.get('SELECT gacha_mode, expires_at FROM ebyus_settings WHERE guild_id = ?', [guildId]);
       if (ebyus) {
-        if (ebyus.gacha_mode === 'EASY') zonkRate = 40;
-        else if (ebyus.gacha_mode === 'SUPER_EASY') zonkRate = 15;
-        else if (ebyus.gacha_mode === 'ABUSE') zonkRate = 0;
+        const nowUnix = Math.floor(Date.now() / 1000);
+        if (ebyus.expires_at > 0 && nowUnix > ebyus.expires_at) {
+          // Expired! Reset to NORMAL in DB
+          database.run('UPDATE ebyus_settings SET gacha_mode = "NORMAL", expires_at = 0 WHERE guild_id = ?', [guildId]);
+        } else {
+          if (ebyus.gacha_mode === 'EASY') zonkRate = 40;
+          else if (ebyus.gacha_mode === 'SUPER_EASY') zonkRate = 15;
+          else if (ebyus.gacha_mode === 'ABUSE') zonkRate = 0;
+        }
       }
 
       if (roll < zonkRate) {
@@ -3967,9 +3979,9 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
-    // Perintah Admin: .ebyus / .ebyus-panel (Panel Kontrol Interaktif)
+    // Perintah Admin: .ebyus / .ebyus-panel / .abyus / .abyus-panel / .admin-event / .panel-event / .event-panel
     // ═══════════════════════════════════════════════════
-    if (commandName === 'ebyus' || commandName === 'ebyus-panel') {
+    if (['ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-event', 'panel-event', 'event-panel'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
       }
@@ -3999,6 +4011,67 @@ async function handleEconomyCommands(message, client) {
 
       const adminPanel = require('./adminPanel');
       await adminPanel.handleAdminPanel(message, client, 'event');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .admin-member / .panel-member / .member-panel
+    // ═══════════════════════════════════════════════════
+    if (['admin-member', 'panel-member', 'member-panel'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminPanel(message, client, 'member');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .admin-bursa / .panel-bursa / .bursa-panel
+    // ═══════════════════════════════════════════════════
+    if (['admin-bursa', 'panel-bursa', 'bursa-panel'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminPanel(message, client, 'bursa');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .admin-shop / .panel-shop / .shop-panel
+    // ═══════════════════════════════════════════════════
+    if (['admin-shop', 'panel-shop', 'shop-panel'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminPanel(message, client, 'shop');
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .stop-abyus / .stop-ebyus (Penghentian Darurat Event Abuse)
+    // ═══════════════════════════════════════════════════
+    if (['stop-abyus', 'stop-ebyus'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      }
+
+      const nowUnix = Math.floor(Date.now() / 1000);
+      database.run(
+        'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        ['NORMAL', 1, nowUnix, message.author.id, guildId]
+      );
+
+      const embed = embeds.successEmbed(
+        '🛑 Event Abuse Berhasil Dihentikan!',
+        `Seluruh bypass ekonomi server (mode gacha & multiplier koin chat) telah dinonaktifkan sepenuhnya dan kembali ke setelan standard.`
+      );
+      await message.reply({ embeds: [embed] });
       return true;
     }
 
