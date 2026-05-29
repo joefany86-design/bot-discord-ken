@@ -3743,6 +3743,50 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // Perintah Admin: .saham-update / .saham-update-harga
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'saham-update' || commandName === 'saham-update-harga') {
+      const updates = stocks.updateStockPrices(guildId);
+      if (updates.length === 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Tidak Ada Saham!', 'Tidak ada instrumen saham aktif untuk di-update di server ini.')] });
+      }
+
+      let updateText = '';
+      updates.forEach(u => {
+        let trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
+        let trendSign = u.changePct >= 0 ? '+' : '';
+        let trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+
+        if (u.isCrashed) {
+          trendIndicator = '💥';
+          trendSign = '';
+          trendEmoji = '📉 **[BUBBLE BURST / CRASH]** 💀';
+        } else if (u.isPumped) {
+          trendIndicator = '🚀';
+          trendSign = '+';
+          trendEmoji = '📈 **[BULL RUN / PUMPED]** 🔥';
+        }
+
+        updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
+                      `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
+                      `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
+      });
+
+      const reportEmbed = new EmbedBuilder()
+        .setColor(0x00FF88)
+        .setTitle(`📈 LAPORAN PERGERAKAN SAHAM (MANUAL UPDATE) — ${guild.name}`)
+        .setDescription(
+          `🔔 **Bursa Saham Server telah di-update secara manual oleh Administrator!**\n` +
+          `Berikut adalah data pergerakan harga saham terbaru berdasarkan aktivitas obrolan warga server:\n\n${updateText}`
+        )
+        .setFooter({ text: 'Sentinel Bot • Live Market Updates' })
+        .setTimestamp();
+
+      await message.reply({ embeds: [reportEmbed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
     // Perintah Admin: .eco-give @user <jumlah> / random [min] [max]
     // ═══════════════════════════════════════════════════
     if (commandName === 'eco-give') {

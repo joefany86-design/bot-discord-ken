@@ -45,9 +45,20 @@ function initScheduler(client) {
       if (targetChannel && updates.length > 0) {
         let updateText = '';
         updates.forEach(u => {
-          const trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
-          const trendSign = u.changePct >= 0 ? '+' : '';
-          const trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+          let trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
+          let trendSign = u.changePct >= 0 ? '+' : '';
+          let trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+
+          if (u.isCrashed) {
+            trendIndicator = '💥';
+            trendSign = '';
+            trendEmoji = '📉 **[BUBBLE BURST / CRASH]** 💀';
+          } else if (u.isPumped) {
+            trendIndicator = '🚀';
+            trendSign = '+';
+            trendEmoji = '📈 **[BULL RUN / PUMPED]** 🔥';
+          }
+
           updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
                         `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
                         `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;

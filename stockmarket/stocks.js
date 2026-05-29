@@ -347,24 +347,57 @@ function updateStockPrices(guildId) {
   const stocks = db.all('SELECT * FROM stocks WHERE guild_id = ? AND is_active = 1', [guildId]);
   const updates = [];
 
+  if (stocks.length === 0) return updates;
+
+  // Cari saham termahal (highest price) dan saham termurah (lowest price)
+  let highestPrice = -Infinity;
+  let lowestPrice = Infinity;
+  let highestStock = null;
+  let lowestStock = null;
+
+  stocks.forEach(s => {
+    if (s.current_price > highestPrice) {
+      highestPrice = s.current_price;
+      highestStock = s;
+    }
+    if (s.current_price < lowestPrice) {
+      lowestPrice = s.current_price;
+      lowestStock = s;
+    }
+  });
+
+  // Tentukan apakah crash / pump terpicu
+  // Saham termahal mengalami crash jika harganya melebihi harga awal (INITIAL_PRICE = Rp 100)
+  const isCrashEligible = highestStock && highestPrice > config.market.INITIAL_PRICE;
+  // Saham termurah mengalami pump jika harganya di bawah Rp 2.000 dan bukan saham yang sama dengan saham termahal
+  const isPumpEligible = lowestStock && lowestPrice < 2000 && (stocks.length > 1 ? lowestStock.channel_id !== highestStock.channel_id : false);
+
   db.transaction(() => {
     stocks.forEach(stock => {
       const score = stock.activity_score;
       let deltaPercent = 0;
+      let isCrashed = false;
+      let isPumped = false;
 
-      // Logika perubahan harga berdasarkan activity score
-      // Baseline activity dianggap 5.0 per 2 jam
-      const baseline = 5.0;
-      if (score === 0) {
-        // Sepi total
-        deltaPercent = -0.05 - (Math.random() * 0.05); // Turun 5% s/d 10%
+      if (isCrashEligible && stock.channel_id === highestStock.channel_id) {
+        // Crash / Bubble Burst drastis (-50% s/d -85%)
+        deltaPercent = -0.50 - (Math.random() * 0.35);
+        isCrashed = true;
+      } else if (isPumpEligible && stock.channel_id === lowestStock.channel_id) {
+        // Pump / Bull Run mendadak (+50% s/d +150%)
+        deltaPercent = 0.50 + (Math.random() * 1.00);
+        isPumped = true;
       } else {
-        // Perbandingan dengan baseline
-        const ratio = (score - baseline) / baseline;
-        deltaPercent = ratio * 0.1; // Skala faktor 10%
-        
-        // Clamp perubahan agar wajar (-15% s/d +20% per update)
-        deltaPercent = Math.max(-0.15, Math.min(0.20, deltaPercent));
+        // Logika normal berbasis keaktifan chat
+        // Baseline activity dianggap 5.0 per 2 jam
+        const baseline = 5.0;
+        if (score === 0) {
+          deltaPercent = -0.05 - (Math.random() * 0.05); // Turun 5% s/d 10%
+        } else {
+          const ratio = (score - baseline) / baseline;
+          deltaPercent = ratio * 0.1; // Skala faktor 10%
+          deltaPercent = Math.max(-0.15, Math.min(0.20, deltaPercent));
+        }
       }
 
       // Hitung harga baru
@@ -396,7 +429,9 @@ function updateStockPrices(guildId) {
         oldPrice,
         newPrice,
         changePct: parseFloat(changePct),
-        activity: score
+        activity: score,
+        isCrashed,
+        isPumped
       });
     });
   })();
