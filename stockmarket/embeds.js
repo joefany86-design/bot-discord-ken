@@ -1736,7 +1736,7 @@ module.exports = {
       .setTitle(`🚨 EVENT SERVER: KEBOCORAN MODIFIKASI ADMIN ACTIVE! 🚨`)
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
-        `### ⚠️ PERINGATAN WARGA RUPIAH SERVER! ⚠️\n` +
+        `### ⚠️ PERINGATAN WARGA KOSAN 1A! ⚠️\n` +
         `Sistem keamanan pusat server telah dimanipulasi oleh Administrator Server secara masif! Efek bypass aktif saat ini:\n\n` +
         `🎰 **SABOTASE GACHA ROLE:**\n  👉 ${gachaDesc}\n\n` +
         `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}\n` +
