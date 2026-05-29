@@ -805,21 +805,26 @@ module.exports = {
           inline: false
         },
         {
-          name: '🛌  ⑦ SIMULASI SEWA KAMAR & UPGRADE KOSAN',
+          name: '🛌  ⑦ SEWA KAMAR KOSAN (3 HARI)',
           value:
-            `> *Ubah koin Anda menjadi hunian bergengsi & perabotan bernilai ekonomi tinggi!*\n\n` +
-            `🏠 **\`.kos\`** · **\`.kosan\`** — Dashboard hunian pribadi, sisa sewa, efek buffs, & perabotan.\n\n` +
+            `> *Ubah koin Anda menjadi hunian bergengsi!*\n\n` +
+            `🏠 **\`.kos\`** · **\`.kosan\`** — Dashboard hunian pribadi, sisa sewa, & efek buffs.\n\n` +
             `🛎️ **\`.kos-sewa\`** · **\`.sewakos\`** — Persewaan kamar berdurasi 3 hari:\n` +
-            `╰ 💨 **Kamar Kipas Angin** *(Rp 150)* → Gaji Harian **+Rp 5**\n` +
-            `╰ ❄️ **Kamar AC** *(Rp 350)* → Gaji Harian **+Rp 15** | Pajak Transfer turun **8%**\n` +
-            `╰ 👑 **Penthouse Kosan** *(Rp 800)* → Gaji Harian **+Rp 40** | Pajak Transfer **5%** | Pajak Jual Saham **10%**\n\n` +
-            `🪟 **\`.kos-upgrade\`** · **\`.upgradekos\`** — Belanja fasilitas kamar **permanen**:\n` +
-            `╰ 🛏️ **Kasur Busa Super** *(Rp 200)* → Streak daily bonus naik **+Rp 4/hari**\n` +
-            `╰ 📶 **WiFi Kencang** *(Rp 300)* → Limit Voice Earn naik jadi **Rp 35/hari**\n` +
-            `╰ 💧 **Dispenser Air** *(Rp 150)* → Peluang **10%** koin chat didobelkan 🥤\n` +
-            `╰ 🔒 **Gembok Pintu** *(Rp 250)* → Limit pinjaman **+Rp 150** & proteksi rampok **-50%**\n` +
-            `╰ 🚨 **Alarm Security** *(Rp 500)* → Peluang sukses perampok turun **-15%**\n` +
-            `╰ 📹 **Kamera CCTV** *(Rp 350)* → Denda perampok gagal **+Rp 100** kompensasi`,
+            `╰ 💨 **Kamar Kipas Angin** *(Rp 150)* → Daily **+Rp 5**\n` +
+            `╰ ❄️ **Kamar AC** *(Rp 350)* → Daily **+Rp 15** | Pajak Transfer **8%**\n` +
+            `╰ 👑 **Penthouse** *(Rp 800)* → Daily **+Rp 40** | Transfer **5%** | Jual Saham **10%**`,
+          inline: false
+        },
+        {
+          name: '🪟  UPGRADE FASILITAS KAMAR (PERMANEN)',
+          value:
+            `**\`.kos-upgrade\`** · **\`.upgradekos\`** — Belanja fasilitas permanen:\n` +
+            `╰ 🛏️ **Kasur Busa** *(Rp 200)* → Streak bonus **+Rp 4/hari**\n` +
+            `╰ 📶 **WiFi Kencang** *(Rp 300)* → Voice Earn **Rp 35/hari**\n` +
+            `╰ 💧 **Dispenser** *(Rp 150)* → **10%** koin chat 2x lipat 🥤\n` +
+            `╰ 🔒 **Gembok** *(Rp 250)* → Limit pinjaman **+Rp 150** & proteksi rob **-50%**\n` +
+            `╰ 🚨 **Alarm** *(Rp 500)* → Sukses rampok turun **-15%**\n` +
+            `╰ 📹 **CCTV** *(Rp 350)* → Denda perampok gagal **+Rp 100**`,
           inline: false
         }
       )
@@ -832,22 +837,27 @@ module.exports = {
       .setColor(0xFFB300)
       .addFields(
         {
-          name: '🐾  ⑧ SISTEM PET VIRTUAL (TAMAGOTCHI STYLE)',
+          name: '🐾  ⑧ SISTEM PET VIRTUAL — SPESIES & ADOPSI',
           value:
-            `> *Adopsi, rawat, latih, dan bertarung bersama hewan peliharaan virtualmu!*\n\n` +
-            `🥚 **\`.pet buy <nama> <spesies>\`** — Adopsi telur pet seharga **Rp 1.500** *(menetas dalam 2 jam)*.\n\n` +
+            `> *Adopsi, rawat, latih, dan bertarung bersama peliharaan virtualmu!*\n\n` +
+            `🥚 **\`.pet buy <nama> <spesies>\`** — Adopsi telur seharga **Rp 1.500** *(menetas 2 jam)*.\n\n` +
             `**Pilihan Spesies & Keunggulan Unik:**\n` +
-            `╰ 🟢 **Slime** → Vitalitas tinggi, laju lapar/haus **-25%** lebih lambat\n` +
-            `╰ 🔥 **Dragon** → Attack PvP **+15%**, tangguh di pertarungan arena\n` +
-            `╰ 🐱 **Cat** → Pendapatan Hunt **+15%** & peluang item langka **+5%**\n` +
-            `╰ 🧱 **Golem** → Cooldown kerja dikurangi **20 menit**\n\n` +
-            `📋 **\`.pet\`** — Dashboard utama status pet (HP, Kenyangan, Hidrasi, Mood).\n` +
-            `🛒 **\`.pet shop\`** — Toko item perawatan (Pakan, Air, Obat, & Mainan).\n` +
-            `⚒️ **\`.pet work\`** — Kirim pet bekerja: **Rp 150–400** + bonus 5%/level *(CD: 2 jam)*.\n` +
-            `🏹 **\`.pet hunt\`** — Kirim pet berburu *(Min. Lv 10)*: **Rp 300–800** + item gratis *(CD: 4 jam)*.\n` +
+            `╰ 🟢 **Slime** → Laju lapar/haus **-25%** lebih lambat\n` +
+            `╰ 🔥 **Dragon** → Attack PvP **+15%**\n` +
+            `╰ 🐱 **Cat** → Hunt **+15%** & item langka **+5%**\n` +
+            `╰ 🧱 **Golem** → Cooldown kerja **-20 menit**`,
+          inline: false
+        },
+        {
+          name: '📋  PERINTAH PET & AKSI',
+          value:
+            `📋 **\`.pet\`** — Dashboard status pet (HP, Kenyangan, Hidrasi, Mood).\n` +
+            `🛒 **\`.pet shop\`** — Toko item perawatan (Pakan, Air, Obat, Mainan).\n` +
+            `⚒️ **\`.pet work\`** — Kerja: **Rp 150–400** + bonus 5%/level *(CD: 2 jam)*.\n` +
+            `🏹 **\`.pet hunt\`** — Berburu *(Min. Lv 10)*: **Rp 300–800** + item *(CD: 4 jam)*.\n` +
             `🎾 **\`.pet play\`** — Bermain gratis: **+25 Happiness, +15 XP**.\n` +
-            `⚔️ **\`.pet pvp @user <taruhan>\`** — Duel Arena PvP antar pet memperebutkan koin!\n` +
-            `🗑️ **\`.pet reset\`** — Mengosongkan kandang untuk adopsi ulang.\n\n` +
+            `⚔️ **\`.pet pvp @user <taruhan>\`** — Duel PvP taruhan koin!\n` +
+            `🗑️ **\`.pet reset\`** — Kosongkan kandang untuk adopsi ulang.\n\n` +
             `${miniDivider}`,
           inline: false
         },
