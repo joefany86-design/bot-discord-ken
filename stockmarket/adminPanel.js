@@ -137,6 +137,10 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
           .setDescription('Menambahkan jumlah XP kustom ke Pet target')
           .setValue('action_give_xp_pet_modal'),
         new StringSelectMenuOptionBuilder()
+          .setLabel('🦁 Ubah Level Pet (Modal)')
+          .setDescription('Mengatur langsung level Pet target ke angka tertentu')
+          .setValue('action_set_level_pet_modal'),
+        new StringSelectMenuOptionBuilder()
           .setLabel('💀 Reset Data Pet Target')
           .setDescription('Menghapus total Pet target dari database kandang')
           .setValue('action_reset_pet'),
@@ -569,6 +573,53 @@ async function handleAdminPanel(message, client, initialTab = 'member') {
             database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?', [newXp, level, selectedTargetUserId, guildId]);
             
             await sub.reply({ content: `🧪 Sukses memberikan **+${amount} XP** ke pet milik <@${selectedTargetUserId}>!${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`, ephemeral: true });
+            const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_set_level_pet_modal') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iAdmin.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
+          }
+          
+          const modal = new ModalBuilder()
+            .setCustomId('admin_set_level_modal')
+            .setTitle('Atur Level Pet Member');
+
+          const lvlInput = new TextInputBuilder()
+            .setCustomId('lvl_amount')
+            .setLabel('Level Pet (1 - 100)')
+            .setPlaceholder('Contoh: 10')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(lvlInput));
+          await iAdmin.showModal(modal);
+
+          const sub = await iAdmin.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_set_level_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const level = parseInt(sub.fields.getTextInputValue('lvl_amount'));
+            if (isNaN(level) || level <= 0 || level > 100) {
+              return sub.reply({ content: '❌ Level harus berupa angka bulat antara 1 hingga 100!', ephemeral: true });
+            }
+            const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            if (!petData) {
+              return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan (pet)!', ephemeral: true });
+            }
+            
+            let newStatus = petData.status;
+            if (newStatus !== 'DEAD') {
+              newStatus = level >= 10 ? 'ADULT' : (newStatus === 'EGG' ? 'EGG' : 'BABY');
+            }
+            
+            database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ?', [level, newStatus, selectedTargetUserId, guildId]);
+            
+            await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, ephemeral: true });
             const fresh = getAdminPanelData(guildId, selectedTargetUserId, selectedTicker, activeTab);
             await replyMsg.edit(fresh).catch(() => {});
           }

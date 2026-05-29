@@ -121,6 +121,15 @@ function getPet(userId, guildId) {
     pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
   }
 
+  // 1b. Deteksi pertumbuhan dari BABY ke ADULT jika level >= 10
+  if (pet.status === 'BABY' && pet.level >= 10) {
+    db.run(
+      "UPDATE user_pets SET status = 'ADULT', last_interaction_at = ? WHERE user_id = ? AND guild_id = ?",
+      [now, userId, guildId]
+    );
+    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  }
+
   // 2. Terapkan decay status
   return applyDecay(pet);
 }
