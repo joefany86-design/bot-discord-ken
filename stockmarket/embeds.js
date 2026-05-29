@@ -218,7 +218,7 @@ module.exports = {
   formatCurrency,
 
   // 1. Embed Saldo / Profile
-  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null) {
+  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null) {
     const totalWealth = wallet.balance + portfolioValue;
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
@@ -268,6 +268,32 @@ module.exports = {
       value: debtValue,
       inline: false
     });
+
+    // Tambahkan info hutang tebusan jika ada
+    if (bailDebts) {
+      const { debts, receivables } = bailDebts;
+      let debtLines = [];
+      
+      if (debts && debts.length > 0) {
+        debts.forEach(d => {
+          debtLines.push(`🔴 Berhutang ke <@${d.creditor_id}>: **Rp ${d.amount.toLocaleString('id-ID')}**`);
+        });
+      }
+      
+      if (receivables && receivables.length > 0) {
+        receivables.forEach(r => {
+          debtLines.push(`🟢 Dipinjami oleh <@${r.debtor_id}>: **Rp ${r.amount.toLocaleString('id-ID')}**`);
+        });
+      }
+
+      if (debtLines.length > 0) {
+        embed.addFields({
+          name: '🤝 Hutang Tebusan Penjara',
+          value: debtLines.join('\n'),
+          inline: false
+        });
+      }
+    }
 
     // Tambahkan info Pet yang dimiliki
     if (pet) {

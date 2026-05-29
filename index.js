@@ -336,6 +336,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.rob @user\`** - Mencuri sebagian koin target secara solo (sukses rate 40%). Gagal masuk penjara!`,
             `👉 **\`.heist\`** / **\`.heist start\`** - Mengajak kru merampok Bank Server secara multiplayer.`,
             `👉 **\`.jail\`** / **\`.jail @user\`** - Cek status penjara virtual dan tebus jaminan agar bebas instan.`,
+            `👉 **\`.bayar-hutang @user [jumlah]\`** - Melunasi hutang tebusan jaminan penjara kepada teman.`,
             `\n🎭 **TOKO ROLE PRESTISE & SPIN GACHA:**`,
             `👉 **\`.shop\`** / **\`.rolemarket\`** - Membuka etalase pasar role prestise server.`,
             `👉 **\`.buy-role <ID>\`** - Membeli role prestise bergengsi menggunakan saldo koin Anda.`,

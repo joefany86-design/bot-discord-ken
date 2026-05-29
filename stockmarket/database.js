@@ -287,6 +287,23 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // Migrasi dinamis: Tambahkan tabel bail_debts jika belum ada
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS bail_debts (
+        guild_id TEXT NOT NULL,
+        debtor_id TEXT NOT NULL,
+        creditor_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now')),
+        PRIMARY KEY (guild_id, debtor_id, creditor_id)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'bail_debts' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel bail_debts:", e.message);
+  }
+
   // Migrasi dinamis: Tambahkan kolom is_active dan ubah PRIMARY KEY ke (user_id, guild_id, pet_name) jika belum ada
   try {
     const columns = db.prepare("PRAGMA table_info(user_pets)").all();

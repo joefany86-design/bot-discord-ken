@@ -1454,8 +1454,12 @@ async function handleEconomyCommands(message, client) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('jail_btn_tebus')
-          .setLabel('🔓 Tebus Jaminan')
-          .setStyle(ButtonStyle.Success)
+          .setLabel('🔓 Tebus Sendiri')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('jail_btn_tebus_teman')
+          .setLabel('🤝 Tebus Teman (Hutang)')
+          .setStyle(ButtonStyle.Primary)
       );
 
       const replyMsg = await message.reply({
@@ -1466,8 +1470,50 @@ async function handleEconomyCommands(message, client) {
 
       const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
       collector.on('collect', async iJail => {
+        if (iJail.customId === 'jail_btn_tebus_teman') {
+          if (iJail.user.id === author.id) {
+            return iJail.reply({ content: '❌ Anda tidak bisa menebus diri sendiri melalui tombol ini! Gunakan tombol Tebus Sendiri.', ephemeral: true });
+          }
+
+          try {
+            const clickerId = iJail.user.id;
+            const walletClicker = economy.getWallet(clickerId, guildId);
+            if (walletClicker.balance < jailCheck.bailAmount) {
+              return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, ephemeral: true });
+            }
+
+            database.transaction(() => {
+              // Potong dompet penebus
+              economy.subtractBalance(clickerId, guildId, jailCheck.bailAmount, 'BAIL_FRIEND');
+              // Bebaskan tahanan
+              database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [author.id, guildId]);
+              // Catat hutang
+              database.run(
+                `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+                 VALUES (?, ?, ?, ?) 
+                 ON CONFLICT(guild_id, debtor_id, creditor_id) 
+                 DO UPDATE SET amount = amount + EXCLUDED.amount`,
+                [guildId, author.id, clickerId, jailCheck.bailAmount]
+              );
+            });
+
+            const successEmb = embeds.successEmbed(
+              'Teman Ditebus! 🤝🔓',
+              `**<@${clickerId}>** telah menebus **<@${author.id}>** dari penjara virtual seharga **Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}**!\n\n` +
+              `👤 **<@${author.id}>** sekarang bebas berkeliaran dan berhutang **Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}** kepada **<@${clickerId}>**!\n` +
+              `💡 *<@${author.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
+            );
+            await iJail.reply({ embeds: [successEmb] });
+            await replyMsg.edit({ components: [] }).catch(() => {});
+            collector.stop();
+          } catch (err) {
+            await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
+          }
+          return;
+        }
+
         if (iJail.user.id !== author.id) {
-          return iJail.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+          return iJail.reply({ content: '❌ Tombol ini hanya untuk tahanan yang bersangkutan!', ephemeral: true });
         }
         
         try {
@@ -1731,16 +1777,18 @@ async function handleEconomyCommands(message, client) {
 
       const jailEmbed = embeds.jailStatusEmbed(targetUser, jailInfo.remaining, jailInfo.bailAmount);
       
-      let components = [];
-      if (targetUser.id === author.id) {
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('jail_btn_tebus_status')
-            .setLabel('🔓 Tebus Jaminan')
-            .setStyle(ButtonStyle.Success)
-        );
-        components.push(row);
-      }
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('jail_btn_tebus_status')
+          .setLabel('🔓 Tebus Sendiri')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(targetUser.id !== author.id),
+        new ButtonBuilder()
+          .setCustomId('jail_btn_tebus_teman_status')
+          .setLabel('🤝 Tebus Teman (Hutang)')
+          .setStyle(ButtonStyle.Primary)
+      );
+      let components = [row];
 
       const replyMsg = await message.reply({
         content: `👮 **Status Tahanan Virtual**`,
@@ -1748,31 +1796,137 @@ async function handleEconomyCommands(message, client) {
         components
       });
 
-      if (components.length > 0) {
-        const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
-        collector.on('collect', async iJail => {
-          if (iJail.user.id !== author.id) {
-            return iJail.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
+      const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
+      collector.on('collect', async iJail => {
+        if (iJail.customId === 'jail_btn_tebus_teman_status') {
+          if (iJail.user.id === targetUser.id) {
+            return iJail.reply({ content: '❌ Anda tidak bisa menebus diri sendiri melalui tombol ini! Gunakan tombol Tebus Sendiri.', ephemeral: true });
           }
 
           try {
-            if (iJail.customId === 'jail_btn_tebus_status') {
-              const res = robbery.payBail(author.id, guildId);
-              const successEmb = embeds.successEmbed(
-                'Jaminan Ditebus! 🔓',
-                `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
-                `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
-              );
-              await iJail.reply({ embeds: [successEmb] });
-              await replyMsg.edit({ components: [] }).catch(() => {});
-              collector.stop();
+            const clickerId = iJail.user.id;
+            const walletClicker = economy.getWallet(clickerId, guildId);
+            if (walletClicker.balance < jailInfo.bailAmount) {
+              return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, ephemeral: true });
             }
+
+            database.transaction(() => {
+              // Potong dompet penebus
+              economy.subtractBalance(clickerId, guildId, jailInfo.bailAmount, 'BAIL_FRIEND');
+              // Bebaskan tahanan
+              database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [targetUser.id, guildId]);
+              // Catat hutang
+              database.run(
+                `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+                 VALUES (?, ?, ?, ?) 
+                 ON CONFLICT(guild_id, debtor_id, creditor_id) 
+                 DO UPDATE SET amount = amount + EXCLUDED.amount`,
+                [guildId, targetUser.id, clickerId, jailInfo.bailAmount]
+              );
+            });
+
+            const successEmb = embeds.successEmbed(
+              'Teman Ditebus! 🤝🔓',
+              `**<@${clickerId}>** telah menebus **<@${targetUser.id}>** dari penjara virtual seharga **Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}**!\n\n` +
+              `👤 **<@${targetUser.id}>** sekarang bebas berkeliaran dan berhutang **Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}** kepada **<@${clickerId}>**!\n` +
+              `💡 *<@${targetUser.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
+            );
+            await iJail.reply({ embeds: [successEmb] });
+            await replyMsg.edit({ components: [] }).catch(() => {});
+            collector.stop();
           } catch (err) {
             await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
           }
-        });
-      }
+          return;
+        }
+
+        if (iJail.customId === 'jail_btn_tebus_status') {
+          if (iJail.user.id !== targetUser.id) {
+            return iJail.reply({ content: '❌ Tombol ini hanya untuk tahanan yang bersangkutan!', ephemeral: true });
+          }
+
+          try {
+            const res = robbery.payBail(targetUser.id, guildId);
+            const successEmb = embeds.successEmbed(
+              'Jaminan Ditebus! 🔓',
+              `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
+              `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
+            );
+            await iJail.reply({ embeds: [successEmb] });
+            await replyMsg.edit({ components: [] }).catch(() => {});
+            collector.stop();
+          } catch (err) {
+            await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
+          }
+        }
+      });
       return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .bayar-hutang / .bayarhutang / .paydebt
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'bayar-hutang' || commandName === 'bayarhutang' || commandName === 'paydebt') {
+      const targetUser = message.mentions.users.first();
+      if (!targetUser) {
+        return message.reply({ embeds: [embeds.warnEmbed('Target Diperlukan!', 'Format: `.bayar-hutang @user [jumlah]`\nContoh: `.bayar-hutang @Joe 500`')] });
+      }
+
+      if (targetUser.id === author.id) {
+        return message.reply({ embeds: [embeds.warnEmbed('Target Tidak Valid!', 'Anda tidak bisa membayar hutang ke diri sendiri!')] });
+      }
+
+      const debt = database.get(
+        'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+        [guildId, author.id, targetUser.id]
+      );
+
+      if (!debt || debt.amount <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Tidak Ada Hutang!', `Anda tidak memiliki hutang tebusan ke **${targetUser.username}**!`)] });
+      }
+
+      const wallet = economy.getWallet(author.id, guildId);
+      if (wallet.balance <= 0) {
+        return message.reply({ embeds: [embeds.warnEmbed('Saldo Habis!', 'Saldo dompet Anda kosong (Rp 0). Anda tidak bisa membayar hutang.')] });
+      }
+
+      let amountToPay = args[1] ? parseInt(args[1]) : debt.amount;
+      if (isNaN(amountToPay) || amountToPay <= 0) {
+        amountToPay = debt.amount; // fallback ke lunas
+      }
+
+      amountToPay = Math.min(amountToPay, wallet.balance, debt.amount);
+
+      database.transaction(() => {
+        // Potong dompet pembayar
+        economy.subtractBalance(author.id, guildId, amountToPay, 'PAY_DEBT');
+        // Tambah dompet penerima
+        economy.addBalance(targetUser.id, guildId, amountToPay, 'RECEIVE_DEBT_PAYMENT');
+        
+        // Kurangi hutang
+        const newDebtAmount = debt.amount - amountToPay;
+        if (newDebtAmount <= 0) {
+          database.run(
+            'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+            [guildId, author.id, targetUser.id]
+          );
+        } else {
+          database.run(
+            'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+            [newDebtAmount, guildId, author.id, targetUser.id]
+          );
+        }
+      });
+
+      const remains = debt.amount - amountToPay;
+      const remainsText = remains > 0 ? `Sisa hutang Anda: **Rp ${remains.toLocaleString('id-ID')}**` : '✨ **Hutang Anda ke dia sekarang LUNAS!**';
+
+      const successEmb = embeds.successEmbed(
+        'Pembayaran Hutang Sukses! 💸',
+        `Anda telah membayar **Rp ${amountToPay.toLocaleString('id-ID')}** kepada **${targetUser.username}** untuk melunasi hutang tebusan Anda.\n\n` +
+        `${remainsText}`
+      );
+      return message.reply({ embeds: [successEmb] });
     }
 
     // ═══════════════════════════════════════════════════
@@ -2204,7 +2358,11 @@ async function handleEconomyCommands(message, client) {
       const userPet = pet.getPet(targetUser.id, guildId);
       const activeLoan = bank.getActiveLoan(targetUser.id, guildId);
 
-      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan);
+      const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+      const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+      const bailDebts = { debts, receivables };
+
+      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts);
       await message.reply({ embeds: [embed] });
       return true;
     }
@@ -2407,7 +2565,10 @@ async function handleEconomyCommands(message, client) {
             const wallet = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const bailDebts = { debts, receivables };
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, null, null, bailDebts);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_shop') {
             const wallet = economy.getWallet(author.id, guildId);
@@ -2647,7 +2808,10 @@ async function handleEconomyCommands(message, client) {
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
             const userPet = pet.getPet(author.id, guildId);
             const activeLoan = bank.getActiveLoan(author.id, guildId);
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const bailDebts = { debts, receivables };
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             const gachaCost = config.gacha.COST || 250;
