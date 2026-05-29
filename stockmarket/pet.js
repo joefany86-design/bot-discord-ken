@@ -1030,23 +1030,23 @@ function executeExpedition(guildId, participantIds) {
           const rand = Math.random();
           if (rand < 0.40) {
             // Pakan Biasa
-            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "FOOD_BASIC", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'FOOD_BASIC', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🍗 Pakan Pet Biasa';
           } else if (rand < 0.65) {
             // Bola Karet
-            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "TOY", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TOY', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '⚽ Bola Karet';
           } else if (rand < 0.80) {
             // Ramuan Kesehatan
-            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "MEDICINE", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'MEDICINE', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '💊 Ramuan Kesehatan';
           } else if (rand < 0.90) {
             // Linggis Black Market
-            db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "LOCKPICK", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'LOCKPICK', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🗝️ Linggis Black Market';
           } else {
             // Sabun Black Market
-            db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "SOAP", 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1', [ap.userId, guildId]);
+            db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SOAP', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🧼 Sabun Licin Black Market';
           }
         }
