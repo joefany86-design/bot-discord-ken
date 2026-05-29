@@ -373,5 +373,10 @@ module.exports = {
   run: (sql, params = []) => db.prepare(sql).run(...params),
   get: (sql, params = []) => db.prepare(sql).get(...params),
   all: (sql, params = []) => db.prepare(sql).all(...params),
-  transaction: (fn) => db.transaction(fn)
+  transaction: (fn) => {
+    if (db.inTransaction) {
+      return fn;
+    }
+    return db.transaction(fn);
+  }
 };

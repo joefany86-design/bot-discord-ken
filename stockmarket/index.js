@@ -1369,7 +1369,7 @@ async function handlePetAdminCommand(message, client, args) {
       }
 
       database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, newLevel, target.id, guildId]);
-    });
+    })();
 
     const freshPet = pet.getPet(target.id, guildId);
     return message.reply(`✅ Berhasil memberikan **${amount} XP** ke pet **${freshPet.pet_name}** milik <@${target.id}>! (Sekarang Level: ${freshPet.level})`);
@@ -1482,20 +1482,18 @@ async function handleEconomyCommands(message, client) {
               return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, ephemeral: true });
             }
 
-            database.transaction(() => {
-              // Potong dompet penebus
-              economy.subtractBalance(clickerId, guildId, jailCheck.bailAmount, 'BAIL_FRIEND');
-              // Bebaskan tahanan
-              database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [author.id, guildId]);
-              // Catat hutang
-              database.run(
-                `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
-                 VALUES (?, ?, ?, ?) 
-                 ON CONFLICT(guild_id, debtor_id, creditor_id) 
-                 DO UPDATE SET amount = amount + EXCLUDED.amount`,
-                [guildId, author.id, clickerId, jailCheck.bailAmount]
-              );
-            });
+            // Potong dompet penebus
+            economy.subtractBalance(clickerId, guildId, jailCheck.bailAmount, 'BAIL_FRIEND');
+            // Bebaskan tahanan
+            database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [author.id, guildId]);
+            // Catat hutang
+            database.run(
+              `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+               VALUES (?, ?, ?, ?) 
+               ON CONFLICT(guild_id, debtor_id, creditor_id) 
+               DO UPDATE SET amount = amount + EXCLUDED.amount`,
+              [guildId, author.id, clickerId, jailCheck.bailAmount]
+            );
 
             const successEmb = embeds.successEmbed(
               'Teman Ditebus! 🤝🔓',
@@ -1810,20 +1808,18 @@ async function handleEconomyCommands(message, client) {
               return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, ephemeral: true });
             }
 
-            database.transaction(() => {
-              // Potong dompet penebus
-              economy.subtractBalance(clickerId, guildId, jailInfo.bailAmount, 'BAIL_FRIEND');
-              // Bebaskan tahanan
-              database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [targetUser.id, guildId]);
-              // Catat hutang
-              database.run(
-                `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
-                 VALUES (?, ?, ?, ?) 
-                 ON CONFLICT(guild_id, debtor_id, creditor_id) 
-                 DO UPDATE SET amount = amount + EXCLUDED.amount`,
-                [guildId, targetUser.id, clickerId, jailInfo.bailAmount]
-              );
-            });
+            // Potong dompet penebus
+            economy.subtractBalance(clickerId, guildId, jailInfo.bailAmount, 'BAIL_FRIEND');
+            // Bebaskan tahanan
+            database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [targetUser.id, guildId]);
+            // Catat hutang
+            database.run(
+              `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+               VALUES (?, ?, ?, ?) 
+               ON CONFLICT(guild_id, debtor_id, creditor_id) 
+               DO UPDATE SET amount = amount + EXCLUDED.amount`,
+              [guildId, targetUser.id, clickerId, jailInfo.bailAmount]
+            );
 
             const successEmb = embeds.successEmbed(
               'Teman Ditebus! 🤝🔓',
@@ -1916,7 +1912,7 @@ async function handleEconomyCommands(message, client) {
             [newDebtAmount, guildId, author.id, targetUser.id]
           );
         }
-      });
+      })();
 
       const remains = debt.amount - amountToPay;
       const remainsText = remains > 0 ? `Sisa hutang Anda: **Rp ${remains.toLocaleString('id-ID')}**` : '✨ **Hutang Anda ke dia sekarang LUNAS!**';
