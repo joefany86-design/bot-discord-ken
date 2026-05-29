@@ -111,7 +111,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       new StringSelectMenuOptionBuilder()
         .setLabel('💀 Reset Data Pet Kandang')
         .setDescription('Menghapus total Pet target dari kandang (database)')
-        .setValue('action_reset_pet')
+        .setValue('action_reset_pet'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎁 Beri Pet Kustom (Modal)')
+        .setDescription('Buatkan pet baru dengan spesies, level, & trait khusus')
+        .setValue('action_give_custom_pet_modal')
     );
 
     const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -188,8 +192,9 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (!targetPet) {
             return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
           }
-          database.run('UPDATE user_pets SET health = 100, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
-          await iPet.reply({ content: `❤️ Sukses memulihkan stats HP, Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, ephemeral: true });
+          const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
+          database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
+          await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, ephemeral: true });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -288,6 +293,137 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, ephemeral: true });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_give_custom_pet_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_give_custom_modal')
+            .setTitle('Beri Pet Kustom');
+
+          const nameInput = new TextInputBuilder()
+            .setCustomId('custom_pet_name')
+            .setLabel('Nama Pet')
+            .setPlaceholder('Contoh: Ciko')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const typeInput = new TextInputBuilder()
+            .setCustomId('custom_pet_type')
+            .setLabel('Spesies (Slime/Dragon/Cat/Golem)')
+            .setPlaceholder('Ketik jenis pet')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const traitInput = new TextInputBuilder()
+            .setCustomId('custom_pet_trait')
+            .setLabel('Trait (Genius/Sturdy/Mutant/Warrior/None)')
+            .setPlaceholder('Kosongkan jika tidak ada')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const lvlInput = new TextInputBuilder()
+            .setCustomId('custom_pet_level')
+            .setLabel('Level Awal (1 - 100)')
+            .setPlaceholder('Default: 1')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const statusInput = new TextInputBuilder()
+            .setCustomId('custom_pet_status')
+            .setLabel('Status/Fase (BABY/ADULT/EGG)')
+            .setPlaceholder('Default: BABY')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(nameInput),
+            new ActionRowBuilder().addComponents(typeInput),
+            new ActionRowBuilder().addComponents(traitInput),
+            new ActionRowBuilder().addComponents(lvlInput),
+            new ActionRowBuilder().addComponents(statusInput)
+          );
+
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_give_custom_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            try {
+              const pName = sub.fields.getTextInputValue('custom_pet_name');
+              const pType = sub.fields.getTextInputValue('custom_pet_type').trim().toUpperCase();
+              let pTrait = sub.fields.getTextInputValue('custom_pet_trait').trim().toUpperCase();
+              let pLevel = parseInt(sub.fields.getTextInputValue('custom_pet_level')) || 1;
+              let pStatus = sub.fields.getTextInputValue('custom_pet_status').trim().toUpperCase() || 'BABY';
+
+              // Validasi Spesies
+              const petModule = require('./pet');
+              if (!petModule.PET_SPECIES[pType]) {
+                return sub.reply({ content: `❌ Spesies tidak valid! Pilihan: ${Object.keys(petModule.PET_SPECIES).join(', ')}`, ephemeral: true });
+              }
+
+              // Sanitasi & Validasi Nama
+              const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+              if (sanitizedName.length === 0 || sanitizedName.length > 25) {
+                return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', ephemeral: true });
+              }
+
+              // Validasi Slot
+              const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              const count = countRow ? countRow.count : 0;
+              if (count >= 3) {
+                return sub.reply({ content: '❌ Anggota terpilih sudah memiliki batas maksimal **3 pet**!', ephemeral: true });
+              }
+
+              // Cek Duplikat Nama
+              const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedTargetUserId, guildId, sanitizedName.toLowerCase()]);
+              if (nameExists) {
+                return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, ephemeral: true });
+              }
+
+              // Validasi Trait
+              const validTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+              if (pTrait === 'NONE' || !validTraits.includes(pTrait)) {
+                pTrait = '';
+              }
+
+              // Clamping Level
+              pLevel = Math.max(1, Math.min(100, pLevel));
+
+              // Validasi Status
+              const validStatuses = ['BABY', 'ADULT', 'EGG'];
+              if (!validStatuses.includes(pStatus)) {
+                pStatus = 'BABY';
+              }
+              if (pLevel >= 10 && pStatus === 'BABY') {
+                pStatus = 'ADULT';
+              }
+
+              const now = Math.floor(Date.now() / 1000);
+              const isActive = count === 0 ? 1 : 0;
+              let hatchAt = 0;
+              if (pStatus === 'EGG') {
+                hatchAt = now + 7200;
+              }
+
+              const maxHP = pType === 'SLIME' ? 120 : 100;
+
+              database.run(
+                `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait)
+                 VALUES (?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, ?, ?, ?, ?, ?)`,
+                [selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP, now, hatchAt, now, isActive, pTrait]
+              );
+
+              const traitText = pTrait ? ` dengan Trait **${pTrait}**` : '';
+              await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType})${traitText} level **${pLevel}** (Status: **${pStatus}**) ke <@${selectedTargetUserId}>!`, ephemeral: true });
+              
+              const fresh = getPetPanelData(guildId, selectedTargetUserId);
+              await replyMsg.edit(fresh).catch(() => {});
+            } catch (err) {
+              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, ephemeral: true }).catch(() => {});
+            }
           }
         }
         else if (action === 'action_reset_pet') {
