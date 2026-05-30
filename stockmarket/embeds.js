@@ -943,10 +943,9 @@ module.exports = {
       ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'].forEach(tierName => {
         const tierItems = grouped[tierName];
         if (tierItems.length > 0) {
+          const emoji = TIER_EMOJIS[tierName] || '🟢';
           let content = '';
           tierItems.forEach(item => {
-            const emoji = TIER_EMOJIS[tierName] || '🟢';
-            
             // Format info stok
             let stockInfo = '`♾️ Tanpa Batas`';
             if (item.stock !== -1) {
