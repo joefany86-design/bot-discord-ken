@@ -557,8 +557,8 @@ function sendToWork(userId, guildId) {
   const baseRewardMax = 400;
   let reward = Math.floor(Math.random() * (baseRewardMax - baseRewardMin + 1)) + baseRewardMin;
   
-  // Bonus level: +5% pendapatan per level pet
-  const levelBonus = Math.floor(reward * (pet.level * 0.05));
+  // Bonus level: +5% pendapatan per level pet (dibatasi di maksimal Level 20 untuk menyeimbangkan ekonomi)
+  const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
   if (pet.trait === 'MUTANT') {
     finalReward = Math.round(finalReward * 1.10); // Mutant: +10% work earnings
@@ -635,7 +635,7 @@ function sendToHunt(userId, guildId) {
     reward = Math.round(reward * 1.15);
   }
 
-  const levelBonus = Math.floor(reward * (pet.level * 0.05));
+  const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
   if (pet.trait === 'MUTANT') {
     finalReward = Math.round(finalReward * 1.10); // Mutant: +10% hunt earnings

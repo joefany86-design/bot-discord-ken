@@ -21,7 +21,7 @@ module.exports = {
     MSG_MIN_WORDS: 3,           // Minimal kata agar dapat koin (ditingkatkan untuk mencegah spam koin pendek)
     MSG_MIN_LENGTH: 10,         // Minimal karakter agar dapat koin
     COOLDOWN_MS: 45 * 1000,     // Cooldown antar pesan diperketat dari 30s -> 45s
-    
+
     // Poin acak yang didapat per pesan (koin sangat berharga, dikurangi agar susah didapat)
     MIN_EARN: 1,
     MAX_EARN: 4,
@@ -46,7 +46,7 @@ module.exports = {
   // Logika & Aturan Stock Market
   market: {
     UPDATE_INTERVAL_MS: 2 * 60 * 60 * 1000, // Update harga setiap 2 jam
-    
+
     // Jam Operasional (WIB)
     OPEN_HOUR: 8,               // Buka jam 08:00 WIB
     CLOSE_HOUR: 23,             // Tutup jam 23:00 WIB (perdagangan mati setelah jam 23:00)
@@ -88,7 +88,7 @@ module.exports = {
     COST: 250,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
     CASHBACK: 100,              // Cashback jika memenangkan role yang sudah dimiliki
     ZONK_RATE: 75,              // 75% kemungkinan zonk (sangat sulit!)
-    
+
     // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
     RATES: {
       COMMON: 70.0,             // 70% dari pemenang
@@ -194,5 +194,42 @@ module.exports = {
     COOLDOWN_HEIST_SECONDS: 6 * 3600, // Cooldown Heist: 6 jam (21600 detik)
     MIN_ROB_BALANCE_ROBBER: 300,  // Saldo minimal pelaku agar bisa merampok
     MIN_ROB_BALANCE_VICTIM: 500,  // Saldo minimal korban agar bisa dirampok
+  },
+
+  // Konfigurasi Game Kasino (Slot & Coinflip)
+  casino: {
+    COINFLIP_TAX_PERCENT: 5,     // Pajak kemenangan coinflip 5%
+    COINFLIP_MIN_BET: 20,
+    COINFLIP_MAX_BET: 5000,
+    
+    SLOT_MIN_BET: 20,
+    SLOT_MAX_BET: 1000,
+    
+    // Emojis yang digunakan di reel slot
+    SLOT_EMOJIS: ['💎', '👑', '🍒', '🍇', '🍋', '❌'],
+    
+    // Multipliers hasil slot
+    MULTIPLIERS: {
+      THREE_DIAMONDS: 10.0, // 💎💎💎
+      THREE_KINGS: 8.0,     // 👑👑👑
+      THREE_CHERRIES: 5.0,  // 🍒🍒🍒
+      THREE_GRAPES: 3.5,    // 🍇🍇🍇
+      THREE_LEMONS: 2.5,    // 🍋🍋🍋
+      TWO_DIAMONDS: 1.5,
+      TWO_KINGS: 1.2,
+      TWO_CHERRIES: 1.0,
+      JACKPOT_ANY_THREE: 2.0 // Tiga apapun yang cocok selain di atas
+    }
+  },
+
+  // Konfigurasi Barang Mewah (Luxury & Collectibles Shop)
+  luxury: {
+    ITEMS: {
+      LAMBO: { id: 'LAMBO', name: '🏎️ Mobil Sports Lamborgini Kosan', price: 25000, desc: 'Mobil super kencang untuk nongkrong di depan kosan. Simbol kekayaan mutlak!' },
+      GOLD: { id: 'GOLD', name: '👑 Batangan Emas Murni 24 Karat', price: 12000, desc: 'Emas murni seberat 100 gram untuk investasi masa tua dan pajangan laci kosan.' },
+      KEY: { id: 'KEY', name: '🔑 Kunci Emas Penthouse Kosan', price: 10000, desc: 'Kunci duplikat berlapis emas sebagai bukti Anda adalah penghuni Penthouse sejati.' },
+      ROLEX: { id: 'ROLEX', name: '⌚ Jam Tangan Mewah Rolek Master', price: 6000, desc: 'Jam tangan mekanis elegan yang menunjukkan waktu sultan sangatlah berharga.' },
+      IPHONE: { id: 'IPHONE', name: '📱 iPhone 16 Pro Max Layar Retak', price: 3500, desc: 'Biar layar retak, yang penting logo apel kroak di belakang tetap terlihat!' }
+    }
   }
 };
