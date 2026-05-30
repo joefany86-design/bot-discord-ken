@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
+const db = require('./database');
 
 // Palette Warna Premium (HSL tailored / vibrant)
 const COLORS = {
@@ -36,6 +37,36 @@ function generateSparkline(prices) {
   
   return `\`${spark}\` ( ${prices.map(p => `Rp ${p.toLocaleString('id-ID')}`).join(' ➔ ')} )`;
 }
+
+/**
+ * Membuat grafik mini ASCII (sparkline) dari array harga saham histori secara horizontal ringkas.
+ */
+function getInlineSparkline(prices) {
+  if (!prices || prices.length < 2) return '`[───]`';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min;
+  const chars = [' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+  
+  const spark = prices.map(p => {
+    if (range === 0) return chars[3];
+    const idx = Math.floor(((p - min) / range) * (chars.length - 1));
+    return chars[idx];
+  }).join('');
+  
+  return `\`[${spark}]\``;
+}
+
+/**
+ * Membuat progress bar ketersediaan saham di bursa.
+ */
+function getMarketProgressBar(available, total, size = 10) {
+  const sold = total - available;
+  const filledCount = Math.min(size, Math.max(0, Math.round((sold / total) * size)));
+  const emptyCount = size - filledCount;
+  return '▰'.repeat(filledCount) + '▱'.repeat(emptyCount);
+}
+
 
 /**
  * Membuat grafik 2D ASCII (grid teks) dari array harga saham histori.
@@ -452,27 +483,55 @@ module.exports = {
       .setTitle(`📈 BURSA SAHAM SERVER — ${isMarketOpen ? '🟢 BUKA' : '🔴 TUTUP'}`)
       .setDescription(
         `Investasikan koin **${config.CURRENCY_NAME}** Anda ke channel server teraktif!\n` +
-        `*Harga saham ter-update otomatis setiap 2 jam berdasarkan keaktifan chat.*`
+        `*Harga saham ter-update otomatis setiap 2 jam berdasarkan keaktifan chat.*\n` +
+        `────────────────────────────────────────`
       );
 
     if (stocks.length === 0) {
       embed.addFields({ name: '🚫 Bursa Kosong', value: 'Belum ada saham channel terdaftar.' });
     } else {
-      stocks.forEach(stock => {
+      let desc = embed.data.description || '';
+      desc += '\n\n';
+      
+      stocks.forEach((stock, idx) => {
         const diff = stock.current_price - stock.previous_price;
         const pct = stock.previous_price > 0 ? ((diff / stock.previous_price) * 100).toFixed(1) : '0.0';
         const trendEmoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '↔️';
-        const trendIndicator = diff > 0 ? '🟢' : diff < 0 ? '🔴' : '⚪';
-        const trendColor = diff > 0 ? '+' : '';
+        const trendColor = diff > 0 ? '🟢 +' : diff < 0 ? '🔴 ' : '⚪ ';
         
-        embed.addFields({
-          name: `🔹 **${stock.stock_ticker}** ( #${stock.stock_name} )`,
-          value: 
-            `\` Harga \` **${formatCurrency(stock.current_price)}** per lembar\n` +
-            `\` Tren  \` ${trendIndicator} **${trendColor}${pct}%** (${trendEmoji}) | sisa \`${stock.available_shares}/${stock.total_shares}\` lembar`,
-          inline: false
-        });
+        // Ambil riwayat harga 5 pembaruan terakhir dari price_history untuk sparkline
+        let prices = [];
+        try {
+          const history = db.all(
+            'SELECT price FROM price_history WHERE channel_id = ? AND guild_id = ? ORDER BY id DESC LIMIT 5',
+            [stock.channel_id, stock.guild_id]
+          );
+          prices = history.reverse().map(h => h.price);
+        } catch (err) {
+          console.error(`Gagal mengambil histori harga untuk ${stock.stock_ticker}:`, err);
+        }
+        
+        // Pastikan harga saat ini ada di akhir list histori jika belum tercatat
+        if (prices.length === 0 || prices[prices.length - 1] !== stock.current_price) {
+          prices.push(stock.current_price);
+          if (prices.length > 5) prices.shift();
+        }
+
+        const sparkline = getInlineSparkline(prices);
+        const barSize = 10;
+        const progressBar = getMarketProgressBar(stock.available_shares, stock.total_shares, barSize);
+        const soldCount = stock.total_shares - stock.available_shares;
+        const soldPct = ((soldCount / stock.total_shares) * 100).toFixed(0);
+
+        desc += `🔹 **${stock.stock_ticker}** — <#${stock.channel_id}>\n` +
+                `   ├─ 💵 **Harga** : **${formatCurrency(stock.current_price)}** / lembar\n` +
+                `   ├─ 📊 **Tren**  : ${trendColor}**${pct}%** (${trendEmoji}) ${sparkline}\n` +
+                `   ├─ 📦 **Stok**  : \`${stock.available_shares} / ${stock.total_shares}\` lembar\n` +
+                `   └─ 🛡️ **Pasar** : \`${progressBar}\` *(${soldPct}% Terbeli)*\n\n`;
       });
+
+      desc += `────────────────────────────────────────`;
+      embed.setDescription(desc);
     }
 
     embed.setFooter({ text: 'Beli saham dengan: .buy <ticker> <jumlah>' }).setTimestamp();
