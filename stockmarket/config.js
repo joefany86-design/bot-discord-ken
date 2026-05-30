@@ -254,10 +254,11 @@ module.exports = {
       PENTHOUSE: { flat: 0, percent: 0.0 }
     },
     INTEREST_RATE_ROOMS: {
-      DEFAULT: 1.0,  // 1% harian
-      KIPAS: 1.5,    // 1.5% harian
-      AC: 2.0,      // 2% harian
-      PENTHOUSE: 3.0 // 3% harian
-    }
+      DEFAULT: 0.5,  // 0.5% harian (sebelumnya 1.0%)
+      KIPAS: 0.75,   // 0.75% harian (sebelumnya 1.5%)
+      AC: 1.0,      // 1.0% harian (sebelumnya 2.0%)
+      PENTHOUSE: 1.5 // 1.5% harian (sebelumnya 3.0%)
+    },
+    INTEREST_CAP: 20000 // Batas maksimal saldo tabungan yang mendapatkan bunga harian
   }
 };

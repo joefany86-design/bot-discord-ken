@@ -1271,7 +1271,7 @@ module.exports = {
           value:
             `> *Perbankan canggih berbasis formulir pop-up interaktif Discord!*\n\n` +
             `🏦 **\`.bank\`** — Membuka panel kontrol bank interaktif lengkap.\n\n` +
-            `📥 **Tabungan** — Simpan koin di brankas bank agar aman dari perampok. Tabungan mendapat **bunga pasif +1.5% setiap hari** yang cair otomatis tengah malam!\n\n` +
+            `📥 **Tabungan** — Simpan koin di brankas bank agar aman dari perampok. Tabungan mendapat **bunga pasif s/d +0.75% setiap hari** (Maksimal saldo dihitung bunga Rp 20.000) yang cair otomatis tengah malam!\n\n` +
             `📜 **Pinjaman** — Pinjam koin darurat dengan limit dinamis berdasarkan keaktifan chat & streak harian Anda:\n` +
             `╰ 📅 **Tenor 1 hari** — Bunga 2%\n` +
             `╰ 📅 **Tenor 3 hari** — Bunga 5%\n` +
@@ -1397,7 +1397,7 @@ module.exports = {
             `╰ Sewa **Penthouse** untuk potongan pajak & bonus daily terbesar.\n` +
             `╰ Beli **Kasur** (streak multiplier) & **Dispenser** (10% koin chat 2x lipat).\n` +
             `╰ Aktifkan \`.autotrade\` — biarkan robot belikan saham murah & jual saat untung!\n` +
-            `╰ Tabung koin di \`.bank\` untuk **bunga +1.5%/hari** & lindungi dari perampok.\n\n` +
+            `╰ Tabung koin di \`.bank\` untuk **bunga pasif harian** & lindungi dari perampok.\n\n` +
             `**💥 Fase Akhir — High Risk High Reward:**\n` +
             `╰ Kumpulkan 5+ kru untuk \`.heist\` (peluang sukses **75%**, rampasan hingga **Rp 25.000**).\n` +
             `╰ Tingkatkan level pet Dragon untuk menang **PvP Arena** dengan taruhan tinggi.\n` +
@@ -2482,7 +2482,8 @@ module.exports = {
             `  - 💬 *Pasif (0 - 5 pesan harian):* Bunga **0%** (Saldo tabungan Anda dipastikan menyusut dipotong biaya keamanan!)\n` +
             `  - 💬 *Aktif Sedang (6 - 20 pesan):* Mendapatkan **50% dari bunga kasta**\n` +
             `  - 👑 *Sultan Aktif (21+ pesan):* Mendapatkan **100% bunga maksimal** sesuai kasta kamar Anda!\n` +
-            `  - *Maksimal Bunga Kasta:* Default **1.0%** | Kipas **1.5%** | AC **2.0%** | Penthouse **3.0% harian** (Bunga Sultan!)\n` +
+            `  - *Maksimal Bunga Kasta:* Default **0.5%** | Kipas **0.75%** | AC **1.0%** | Penthouse **1.5% harian**\n` +
+            `  - *Batas Bunga:* Bunga harian hanya dihitung maksimal dari **Rp 20.000** saldo tabungan Anda (mencegah hiperinflasi).\n` +
             `👉 *Tip:* Tingkatkan kasta kamar sewa kosan Anda dan aktiflah mengobrol untuk meminimalkan pajak perbankan dan memaksimalkan bunga tabungan Sultan!`,
           inline: false
         },

@@ -539,7 +539,11 @@ function initScheduler(client) {
             : config.bank.INTEREST_RATE_ROOMS.DEFAULT;
 
           const finalInterestPercent = maxRate * mult;
-          const interestAmount = Math.floor(account.balance * (finalInterestPercent / 100));
+          
+          // Batas maksimal saldo tabungan yang diperhitungkan untuk bunga harian (INTEREST_CAP)
+          const interestCap = config.bank.INTEREST_CAP || 20000;
+          const balanceForInterest = Math.min(account.balance, interestCap);
+          const interestAmount = Math.floor(balanceForInterest * (finalInterestPercent / 100));
 
           // 4. Hitung Biaya Keamanan Harian (Pajak Admin Penyusutan)
           const feeConfig = config.bank.DAILY_SECURITY_FEE[roomTier] !== undefined
