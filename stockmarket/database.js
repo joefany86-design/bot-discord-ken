@@ -118,6 +118,14 @@ function initSchema() {
     )
   `);
 
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_transactions_user_guild ON transactions (user_id, guild_id)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_transactions_guild ON transactions (guild_id)");
+    console.log("⚡ [Database] Index untuk tabel 'transactions' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat index pada tabel transactions:", e.message);
+  }
+
   // 5. Price History (Untuk chart pergerakan harga saham)
   db.exec(`
     CREATE TABLE IF NOT EXISTS price_history (
@@ -129,6 +137,13 @@ function initSchema() {
       recorded_at INTEGER DEFAULT (strftime('%s','now'))
     )
   `);
+
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_price_history_channel_guild ON price_history (channel_id, guild_id)");
+    console.log("⚡ [Database] Index untuk tabel 'price_history' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat index pada tabel price_history:", e.message);
+  }
 
   // 6. Shop Items (Toko Role Discord Gamified)
   db.exec(`

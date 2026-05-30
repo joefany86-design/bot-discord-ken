@@ -1044,6 +1044,19 @@ function gracefulShutdown(signal) {
   // Tutup koneksi Discord
   client.destroy();
   console.log('✅ Bot berhasil dimatikan secara bersih.');
+
+  // Tutup database SQLite secara bersih agar file WAL di-flush & di-checkpoint
+  try {
+    const { db } = require('./stockmarket/database');
+    if (db) {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      db.close();
+      console.log('✅ Database SQLite berhasil ditutup secara bersih (WAL ter-checkpoint & ter-truncate).');
+    }
+  } catch (err) {
+    console.error('❌ Gagal menutup database secara bersih:', err.message);
+  }
+
   process.exit(0);
 }
 
