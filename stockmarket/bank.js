@@ -1,5 +1,6 @@
 const db = require('./database');
 const economy = require('./economy');
+const config = require('./config');
 
 /**
  * Mendapatkan data rekening tabungan (savings) user.
@@ -52,18 +53,30 @@ function depositSavings(userId, guildId, amountInput) {
     throw new Error(`Saldo dompet tidak mencukupi! Saldo Anda saat ini Rp ${wallet.balance.toLocaleString('id-ID')}`);
   }
 
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(userId, guildId);
+  const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
+
+  // Get deposit tax rate
+  const taxRate = config.bank.DEPOSIT_TAX_ROOMS[roomTier] !== undefined
+    ? config.bank.DEPOSIT_TAX_ROOMS[roomTier]
+    : config.bank.DEPOSIT_TAX_ROOMS.DEFAULT;
+
+  const tax = Math.floor(amount * (taxRate / 100));
+  const netDeposit = amount - tax;
+
   db.transaction(() => {
-    // Kurangi saldo wallet
+    // Kurangi saldo wallet sebesar amount penuh
     db.run(
       'UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND guild_id = ?',
       [amount, userId, guildId]
     );
 
-    // Tambah saldo bank
+    // Tambah saldo bank sebesar netDeposit setelah dipotong pajak
     getSavings(userId, guildId); // Pastikan row tabungan dibuat
     db.run(
       'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
-      [amount, userId, guildId]
+      [netDeposit, userId, guildId]
     );
 
     // Catat transaksi
@@ -75,6 +88,10 @@ function depositSavings(userId, guildId, amountInput) {
 
   return {
     amount,
+    tax,
+    netAmount: netDeposit,
+    roomTier,
+    taxRate,
     walletBalance: economy.getWallet(userId, guildId).balance,
     savingsBalance: getSavings(userId, guildId).balance
   };
@@ -101,17 +118,29 @@ function withdrawSavings(userId, guildId, amountInput) {
     throw new Error(`Saldo tabungan bank Anda tidak mencukupi! Saldo tabungan Anda Rp ${savings.balance.toLocaleString('id-ID')}`);
   }
 
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(userId, guildId);
+  const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
+
+  // Get withdraw tax rate
+  const taxRate = config.bank.WITHDRAW_TAX_ROOMS[roomTier] !== undefined
+    ? config.bank.WITHDRAW_TAX_ROOMS[roomTier]
+    : config.bank.WITHDRAW_TAX_ROOMS.DEFAULT;
+
+  const tax = Math.floor(amount * (taxRate / 100));
+  const netReceive = amount - tax;
+
   db.transaction(() => {
-    // Kurangi saldo bank
+    // Kurangi saldo bank sebesar amount penuh
     db.run(
       'UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?',
       [amount, userId, guildId]
     );
 
-    // Tambah saldo wallet
+    // Tambah saldo wallet sebesar netReceive setelah dipotong pajak
     db.run(
       'UPDATE wallets SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
-      [amount, userId, guildId]
+      [netReceive, userId, guildId]
     );
 
     // Catat transaksi
@@ -123,6 +152,10 @@ function withdrawSavings(userId, guildId, amountInput) {
 
   return {
     amount,
+    tax,
+    netAmount: netReceive,
+    roomTier,
+    taxRate,
     walletBalance: economy.getWallet(userId, guildId).balance,
     savingsBalance: getSavings(userId, guildId).balance
   };

@@ -406,26 +406,90 @@ function initScheduler(client) {
         );
       }
 
-      // ── A. PEMBAGIAN BUNGA TABUNGAN (1.5% harian) ──
+      // ── A. PROSES BUNGA DAN PENYUSUTAN TABUNGAN HARIAN (MIDNIGHT BANK PROCESSING) ──
       try {
         const savingsAccounts = database.all('SELECT * FROM bank_savings WHERE balance > 0 AND guild_id = ?', [guild.id]);
         let totalInterestDistributed = 0;
+        let totalTaxDrained = 0;
         let accountsCount = 0;
+        const nowUnix = Math.floor(Date.now() / 1000);
+        const activeThresholdTime = nowUnix - 24 * 3600;
+        const kos = require('./kos');
 
         savingsAccounts.forEach(account => {
-          const interestAmount = Math.round(account.balance * 0.015);
-          if (interestAmount > 0) {
-            database.run(
-              'UPDATE bank_savings SET balance = balance + ?, last_interest_at = ? WHERE user_id = ? AND guild_id = ?',
-              [interestAmount, Math.floor(Date.now() / 1000), account.user_id, guild.id]
-            );
-            totalInterestDistributed += interestAmount;
-            accountsCount++;
+          const userId = account.user_id;
+          const activeRental = kos.getActiveRental(userId, guild.id);
+          const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
+
+          // 1. Kueri keaktifan chat (transaksi EARN) 24 jam terakhir
+          const chatRow = database.get(
+            "SELECT COUNT(*) as cnt FROM transactions WHERE user_id = ? AND guild_id = ? AND type = 'EARN' AND created_at >= ?",
+            [userId, guild.id, activeThresholdTime]
+          );
+          const activeMsgs = chatRow ? chatRow.cnt : 0;
+
+          // 2. Hitung multiplier bunga harian aktif
+          let mult = 0;
+          if (activeMsgs > 5 && activeMsgs <= 20) {
+            mult = 0.5;
+          } else if (activeMsgs > 20) {
+            mult = 1.0;
           }
+
+          // 3. Ambil rate maksimal bunga kos tier
+          const maxRate = config.bank.INTEREST_RATE_ROOMS[roomTier] !== undefined
+            ? config.bank.INTEREST_RATE_ROOMS[roomTier]
+            : config.bank.INTEREST_RATE_ROOMS.DEFAULT;
+
+          const finalInterestPercent = maxRate * mult;
+          const interestAmount = Math.floor(account.balance * (finalInterestPercent / 100));
+
+          // 4. Hitung Biaya Keamanan Harian (Pajak Admin Penyusutan)
+          const feeConfig = config.bank.DAILY_SECURITY_FEE[roomTier] !== undefined
+            ? config.bank.DAILY_SECURITY_FEE[roomTier]
+            : config.bank.DAILY_SECURITY_FEE.DEFAULT;
+
+          const flatFee = feeConfig.flat;
+          const percentFee = feeConfig.percent;
+          const securityFeeAmount = Math.floor(account.balance * (percentFee / 100)) + flatFee;
+
+          // 5. Hitung perubahan saldo bersih (Net Change)
+          const netChange = interestAmount - securityFeeAmount;
+
+          // 6. Jalankan update saldo bank (capping di minimal Rp 0 jika menyusut di bawah 0)
+          database.run(
+            'UPDATE bank_savings SET balance = CASE WHEN balance + ? < 0 THEN 0 ELSE balance + ? END, last_interest_at = ? WHERE user_id = ? AND guild_id = ?',
+            [netChange, netChange, nowUnix, userId, guild.id]
+          );
+
+          if (netChange > 0) {
+            totalInterestDistributed += netChange;
+          } else if (netChange < 0) {
+            totalTaxDrained += Math.abs(netChange);
+          }
+          accountsCount++;
         });
 
         if (accountsCount > 0 && targetChannel) {
-          console.log(`🏦 [Bank Scheduler] Bunga tabungan sebesar Rp ${totalInterestDistributed.toLocaleString('id-ID')} dibagikan ke ${accountsCount} rekening.`);
+          console.log(`🏦 [Bank Scheduler] Pemrosesan harian selesai untuk ${accountsCount} rekening.`);
+          
+          const bankReportEmbed = new EmbedBuilder()
+            .setColor(0x00A2E8)
+            .setTitle(`🏦 LAPORAN KINERJA PERBANKAN HARIAN — ${guild.name}`)
+            .setDescription(
+              `🔔 **Tengah malam telah tiba! Sistem Bank Kosan 1A telah memproses seluruh tabungan warga:**\n\n` +
+              `📊 **Ringkasan Akumulasi Perbankan:**\n` +
+              `┊ 👥 Akun Diproses: **${accountsCount} Rekening**\n` +
+              `┊ 📈 Bunga Didistribusikan: **+Rp ${totalInterestDistributed.toLocaleString('id-ID')}** (Bagi warga aktif chat)\n` +
+              `┊ 📉 Penyusutan Saldo Pasif: **-Rp ${totalTaxDrained.toLocaleString('id-ID')}** (Biaya keamanan dibakar!)\n\n` +
+              `💡 *Tips Kosan: Naikkan kelas sewa kamar kos Anda untuk menikmati potongan pajak bank harian dan bunga Sultan yang lebih tinggi!*`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Bank Sentral Kosan 1A • Keamanan Terjamin' });
+
+          targetChannel.send({ embeds: [bankReportEmbed] }).catch(err => {
+            console.error('❌ Gagal mengirim Laporan Perbankan Tengah Malam:', err.message);
+          });
         }
       } catch (err) {
         console.error('❌ Gagal memproses bunga tabungan harian:', err.message);

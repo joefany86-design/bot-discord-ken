@@ -231,5 +231,33 @@ module.exports = {
       ROLEX: { id: 'ROLEX', name: '⌚ Jam Tangan Mewah Rolek Master', price: 6000, desc: 'Jam tangan mekanis elegan yang menunjukkan waktu sultan sangatlah berharga.' },
       IPHONE: { id: 'IPHONE', name: '📱 iPhone 16 Pro Max Layar Retak', price: 3500, desc: 'Biar layar retak, yang penting logo apel kroak di belakang tetap terlihat!' }
     }
+  },
+
+  // Konfigurasi Sistem Perbankan Dinamis (Pajak, Bunga & Penyusutan)
+  bank: {
+    DEPOSIT_TAX_ROOMS: {
+      DEFAULT: 2,
+      KIPAS: 1.5,
+      AC: 1.0,
+      PENTHOUSE: 0.0
+    },
+    WITHDRAW_TAX_ROOMS: {
+      DEFAULT: 5,
+      KIPAS: 4.0,
+      AC: 2.5,
+      PENTHOUSE: 0.0
+    },
+    DAILY_SECURITY_FEE: {
+      DEFAULT: { flat: 15, percent: 0.5 },
+      KIPAS: { flat: 10, percent: 0.3 },
+      AC: { flat: 5, percent: 0.1 },
+      PENTHOUSE: { flat: 0, percent: 0.0 }
+    },
+    INTEREST_RATE_ROOMS: {
+      DEFAULT: 1.0,  // 1% harian
+      KIPAS: 1.5,    // 1.5% harian
+      AC: 2.0,      // 2% harian
+      PENTHOUSE: 3.0 // 3% harian
+    }
   }
 };

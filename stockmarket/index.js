@@ -726,11 +726,22 @@ function initStockMarket(client) {
               if (submitted) {
                 try {
                   const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
+                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
+                                       res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                                       res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                  const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
+                                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
+                                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
                   const successEmb = embeds.bankSuccessEmbed(
                     'Deposit Tabungan Berhasil!',
-                    `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah disimpan.\n\n` +
+                    `Koin disetor: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                    `✂️ Pajak Administrasi (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                    `📥 Bersih masuk Bank: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                    `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
                     `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                    `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                    `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                    taxSavedMsg
                   );
                   await submitted.reply({ embeds: [successEmb], ephemeral: true });
                   await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
@@ -763,11 +774,22 @@ function initStockMarket(client) {
               if (submitted) {
                 try {
                   const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
+                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
+                                       res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                                       res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                  const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
+                                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
+                                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
                   const successEmb = embeds.bankSuccessEmbed(
                     'Penarikan Saldo Berhasil!',
-                    `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah ditarik.\n\n` +
+                    `Koin ditarik: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                    `✂️ Pajak Penarikan (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                    `💰 Bersih diterima Dompet: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                    `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
                     `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                    `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                    `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                    taxSavedMsg
                   );
                   await submitted.reply({ embeds: [successEmb], ephemeral: true });
                   await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
@@ -3881,11 +3903,22 @@ async function handleEconomyCommands(message, client) {
             if (submitted) {
               try {
                 const res = bank.depositSavings(author.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
+                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
+                                     res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                                     res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
+                                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
+                                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
                 const successEmb = embeds.bankSuccessEmbed(
                   'Deposit Tabungan Berhasil!',
-                  `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah berhasil disimpan di brankas bank.\n\n` +
+                  `Koin disetor: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                  `✂️ Pajak Administrasi (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                  `📥 Bersih masuk Bank: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                  `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
                   `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                  `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                  taxSavedMsg
                 );
                 await submitted.reply({ embeds: [successEmb] });
 
@@ -3920,11 +3953,22 @@ async function handleEconomyCommands(message, client) {
             if (submitted) {
               try {
                 const res = bank.withdrawSavings(author.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
+                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
+                                     res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                                     res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
+                                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
+                                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
                 const successEmb = embeds.bankSuccessEmbed(
                   'Penarikan Saldo Berhasil!',
-                  `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah berhasil ditarik ke dompet aktif.\n\n` +
+                  `Koin ditarik: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                  `✂️ Pajak Penarikan (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                  `💰 Bersih diterima Dompet: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                  `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
                   `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                  `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                  taxSavedMsg
                 );
                 await submitted.reply({ embeds: [successEmb] });
 
