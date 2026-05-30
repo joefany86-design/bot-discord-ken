@@ -3320,7 +3320,7 @@ async function handleEconomyCommands(message, client) {
       );
 
       const portalMsg = await message.reply({
-        content: `🎭 **TOKO ROLE PRESTISE SERVER**\nKlik tombol di bawah ini untuk membuka etalase toko secara privat di channel ini.`,
+        content: `🎭 **TOKO ROLE PRESTISE SERVER KOSAN 1A**\nKlik tombol di bawah ini untuk membuka etalase toko secara privat di channel ini.`,
         components: [portalRow]
       });
 
