@@ -160,63 +160,69 @@ function getRoleColor(roleName, tier) {
 }
 
 const PET_ASSETS = {
+  // 🥚 Telur menetas — animasi telur bergetar / menetas
   EGG: [
-    'https://i.giphy.com/media/mSuzNvPvE2KFrGpywl/giphy.gif',
-    'https://i.giphy.com/media/l41lGU07rD3fMQxYQ/giphy.gif',
-    'https://i.giphy.com/media/fX8zOAyerYzd3UPtBH/giphy.gif',
-    'https://i.giphy.com/media/3oEdv9R4D62GPrVY4g/giphy.gif'
+    'https://media.giphy.com/media/mSuzNvPvE2KFrGpywl/giphy.gif',
+    'https://media.giphy.com/media/l41lGU07rD3fMQxYQ/giphy.gif',
+    'https://media.giphy.com/media/fX8zOAyerYzd3UPtBH/giphy.gif',
+    'https://media.giphy.com/media/3oEdv9R4D62GPrVY4g/giphy.gif'
   ],
+  // 🪦 Pet mati — animasi sedih / RIP
   DEAD: [
-    'https://i.giphy.com/media/ukNqewtLpt81JN7SIS/giphy.gif',
-    'https://i.giphy.com/media/xUPJPn8l1m8odg1Bxm/giphy.gif',
-    'https://i.giphy.com/media/pVGsAWjzvXcZW4ZBTE/giphy.gif',
-    'https://i.giphy.com/media/xThuWhGG79OblPr368/giphy.gif'
+    'https://media.giphy.com/media/ukNqewtLpt81JN7SIS/giphy.gif',
+    'https://media.giphy.com/media/xUPJPn8l1m8odg1Bxm/giphy.gif',
+    'https://media.giphy.com/media/pVGsAWjzvXcZW4ZBTE/giphy.gif',
+    'https://media.giphy.com/media/xThuWhGG79OblPr368/giphy.gif'
   ],
+  // 🟢 Slime — animasi slime lucu bergerak-gerak
   SLIME: {
     BABY: [
-      'https://i.giphy.com/media/2s4Z9TMV0oMFQsNpzn/giphy.gif',
-      'https://i.giphy.com/media/YA89yckARWXC6Y6Kx4/giphy.gif',
-      'https://i.giphy.com/media/ZLSJQUIWk47IUJft2s/giphy.gif'
+      'https://media.giphy.com/media/2s4Z9TMV0oMFQsNpzn/giphy.gif',
+      'https://media.giphy.com/media/YA89yckARWXC6Y6Kx4/giphy.gif',
+      'https://media.giphy.com/media/ZLSJQUIWk47IUJft2s/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif',
-      'https://i.giphy.com/media/3ARYgT5xzZzUhIIvWY/giphy.gif',
-      'https://i.giphy.com/media/Z8ywMJLdE4N2Z6Qlta/giphy.gif'
+      'https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif',
+      'https://media.giphy.com/media/3ARYgT5xzZzUhIIvWY/giphy.gif',
+      'https://media.giphy.com/media/Z8ywMJLdE4N2Z6Qlta/giphy.gif'
     ]
   },
+  // 🔥 Dragon — animasi naga keren bernapas api
   DRAGON: {
     BABY: [
-      'https://i.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
-      'https://i.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
-      'https://i.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif'
+      'https://media.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
+      'https://media.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
+      'https://media.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
-      'https://i.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
-      'https://i.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif'
+      'https://media.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
+      'https://media.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
+      'https://media.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif'
     ]
   },
+  // 🐱 Cat — animasi kucing menggemaskan
   CAT: {
     BABY: [
-      'https://i.giphy.com/media/gx54W1mSpeYMg/giphy.gif',
-      'https://i.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
-      'https://i.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif'
+      'https://media.giphy.com/media/gx54W1mSpeYMg/giphy.gif',
+      'https://media.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
+      'https://media.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
-      'https://i.giphy.com/media/2wicMBKqNZlrW/giphy.gif',
-      'https://i.giphy.com/media/1k1ytCiReJMZWVtjXd/giphy.gif'
+      'https://media.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
+      'https://media.giphy.com/media/2wicMBKqNZlrW/giphy.gif',
+      'https://media.giphy.com/media/1k1ytCiReJMZWVtjXd/giphy.gif'
     ]
   },
+  // 🧱 Golem — animasi golem batu bergerak
   GOLEM: {
     BABY: [
-      'https://i.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
-      'https://i.giphy.com/media/BU327u9UNM2Sk/giphy.gif'
+      'https://media.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
+      'https://media.giphy.com/media/BU327u9UNM2Sk/giphy.gif'
     ],
     ADULT: [
-      'https://i.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
-      'https://i.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
-      'https://i.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif'
+      'https://media.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
+      'https://media.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
+      'https://media.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif'
     ]
   }
 };
@@ -1875,14 +1881,33 @@ module.exports = {
         .setTimestamp();
     }
 
+    // Warna aksen per spesies pet
+    const SPECIES_COLORS = {
+      SLIME:  0x00E676, // Hijau neon
+      DRAGON: 0xFF5722, // Oranye api
+      CAT:    0xFFB300, // Kuning emas
+      GOLEM:  0x78909C  // Abu-abu batu
+    };
+    const SPECIES_EMOJI = {
+      SLIME: '🟢', DRAGON: '🔥', CAT: '🐱', GOLEM: '🧱'
+    };
+
     const typeName = pet.pet_type.charAt(0) + pet.pet_type.slice(1).toLowerCase();
+    const speciesColor = SPECIES_COLORS[pet.pet_type] || COLORS.INFO;
+    const speciesEmoji = SPECIES_EMOJI[pet.pet_type] || '🐾';
+
+    // Ambil GIF animasi sesuai spesies & fase
+    const petImg = getPetImage(pet);
+
     const embed = new EmbedBuilder()
-      .setTitle(`🐾 PUSAT PERAWATAN PET: ${pet.pet_name} 🐾`)
-      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setAuthor({
+        name: `🐾 Kandang Pet — ${user.username}`,
+        iconURL: user.displayAvatarURL({ dynamic: true })
+      })
+      .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
       .setTimestamp();
 
-    // Set Random/Animated GIF matching pet species and stage
-    const petImg = getPetImage(pet);
+    // Pasang GIF animasi sebagai gambar utama embed (banner bawah)
     if (petImg) {
       embed.setImage(petImg);
     }
@@ -1890,62 +1915,75 @@ module.exports = {
     if (pet.status === 'EGG') {
       const now = Math.floor(Date.now() / 1000);
       const isHatched = pet.hatch_at <= now;
-      
+
       embed
-        .setColor(COLORS.WARN)
+        .setColor(0xFFD700) // Emas — telur istimewa
+        .setTitle(`🥚 TELUR MONSTER: ${pet.pet_name}`)
         .setDescription(
-          `🥚 **STATUS PET: TELUR MONSTER**\n\n` +
-          `• **Jenis:** \`🥚 Telur ${typeName}\`\n` +
-          `• **Nama Calon Pet:** **${pet.pet_name}**\n` +
-          `• **Status Penetasan:** ${isHatched ? '🟢 **Telur siap menetas!**' : `⏳ Sedang dierami... Menetas <t:${pet.hatch_at}:R>`}\n\n` +
-          `*Hewan peliharaan Anda membutuhkan kehangatan inkubator. ${isHatched ? 'Klik tombol **🐣 Tetaskan Telur** di bawah!' : 'Tunggulah sampai hitung mundur selesai.'}*`
-        );
+          `> ${isHatched ? '✅ **Telur sudah siap menetas!**' : `⏳ Menetas <t:${pet.hatch_at}:R>`}\n\n` +
+          `**Spesies:** \`${speciesEmoji} ${typeName}\`\n` +
+          `**Nama Calon Pet:** **${pet.pet_name}**\n\n` +
+          `*${isHatched ? '🐣 Klik tombol **Tetaskan** di bawah untuk memulai petualangan!' : 'Telur sedang dierami dengan penuh kasih sayang... Sabar ya!'}*`
+        )
+        .setFooter({ text: '🥚 Telur Monster • Kosan 1A Pet System' });
       return embed;
     }
 
     if (pet.status === 'DEAD') {
       embed
-        .setColor(COLORS.ERROR)
+        .setColor(0x424242) // Abu gelap — suasana duka
+        .setTitle(`🪦 IN MEMORIAM: ${pet.pet_name}`)
         .setDescription(
-          `🪦 **STATUS PET: MENINGGAL DUNIA**\n\n` +
-          `Kami sangat berduka atas wafatnya **${pet.pet_name}** the **${typeName}** 😭.\n\n` +
-          `Hewan peliharaan Anda meninggal karena kelalaian perawatan (sakit/starving). Seluruh persediaan barang miliknya dibersihkan.\n\n` +
-          `👉 *Gunakan tombol **🧹 Reset Pet** di bawah jika ingin membersihkan kandang dan mengadopsi pet baru seharga Rp 1.500.*`
-        );
+          `> 😭 **Pet Anda telah meninggal dunia.**\n\n` +
+          `**${pet.pet_name}** the **${typeName}** telah berpulang karena kekurangan perawatan.\n\n` +
+          `Semoga arwahnya tenang di alam monster sana... 🕯️\n\n` +
+          `👉 Klik **🧹 Reset Kandang** di bawah untuk mengadopsi pet baru seharga **Rp 1.500**.`
+        )
+        .setFooter({ text: '🪦 Rest in Peace • Kosan 1A Pet System' });
       return embed;
     }
 
-    // Status Sehat / Sakit
+    // ── STATUS SEHAT / SAKIT ──
     const isSick = pet.health <= 30;
-    const statusEmoji = pet.status === 'ADULT' ? '🧑 Dewasa' : '👶 Bayi';
-    const statusColor = isSick ? COLORS.ERROR : pet.health >= 80 ? COLORS.SUCCESS : COLORS.WARN;
+    const isWeak = pet.health <= 60 && pet.health > 30;
+    const statusEmoji = pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi';
+    const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : speciesColor;
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
 
     const { getXpNeeded } = require('./pet');
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
-    let rarityText = '⚪ **COMMON** (Normal)';
+    // XP Progress bar teks
+    const xpRatio = Math.min(1, pet.xp / (xpNeeded || 1));
+    const xpBarLen = 12;
+    const xpFilled = Math.round(xpRatio * xpBarLen);
+    const xpBar = '█'.repeat(xpFilled) + '░'.repeat(xpBarLen - xpFilled);
+    const xpPct = Math.round(xpRatio * 100);
+
+    // Rarity & Trait
+    let rarityBadge = '⚪ COMMON';
+    let traitLine = '';
     if (pet.trait) {
       const traitName = pet.trait.toUpperCase();
-      let traitDesc = '';
-      if (traitName === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
-      else if (traitName === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
-      else if (traitName === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
-      else if (traitName === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
-      
-      rarityText = `✨ **RARE** (${traitDesc})`;
+      if (traitName === 'GENIUS')  { rarityBadge = '🧠 RARE · GENIUS';  traitLine = '`-15% XP cap`'; }
+      else if (traitName === 'STURDY')  { rarityBadge = '🛡️ RARE · STURDY';  traitLine = '`HP decay ÷2`'; }
+      else if (traitName === 'MUTANT')  { rarityBadge = '🧬 RARE · MUTANT';  traitLine = '`+10% work/hunt`'; }
+      else if (traitName === 'WARRIOR') { rarityBadge = '⚔️ RARE · WARRIOR'; traitLine = '`+10% ATK`'; }
     }
 
-    const multText = pet.xp_multiplier > 1.0 ? ` ⚡ **(${pet.xp_multiplier}x XP Booster)**` : '';
-    embed.setColor(statusColor)
+    const multText = (pet.xp_multiplier || 1.0) > 1.0 ? `⚡ **${pet.xp_multiplier}x XP**` : '1x';
+    const healthStatus = isSick ? '🚨 **KRITIS!**' : isWeak ? '⚠️ Lemah' : '💚 Sehat';
+
+    embed
+      .setColor(statusColor)
+      .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
       .setDescription(
-        `👤 **Pemilik:** <@${pet.user_id}>\n` +
-        `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
-        `🌟 **Raritas (Realiti):** ${rarityText}\n` +
-        `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${multText}\n` +
-        `🤖 **Auto Care:** ${pet.auto_feed === 1 ? '🟢 **AKTIF (Potong Saldo)**' : '🔴 **NONAKTIF**'}`
-      );
+        `> 👤 <@${pet.user_id}> · ${statusEmoji} · ${healthStatus}\n` +
+        `> 🌟 **${rarityBadge}** ${traitLine ? `· ${traitLine}` : ''}\n` +
+        `> ⚡ **XP Booster:** ${multText} · 🤖 Auto Care: ${pet.auto_feed === 1 ? '🟢 ON' : '🔴 OFF'}\n\n` +
+        `**✨ XP Progress** \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
+      )
+      .setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet System · Klik tombol di bawah untuk merawat!` });
 
     // Statistik Utama Pet (Inline Fields memanjang ke kanan)
     embed.addFields(
