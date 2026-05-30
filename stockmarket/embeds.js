@@ -229,8 +229,8 @@ module.exports = {
       else if (totalProfit < 0) accentColor = 0xED4245;
     }
 
-    // Helper to center pure ASCII text in a 29-character box
-    const centerText = (text, width = 29) => {
+    // Helper to center pure ASCII text in a 23-character box
+    const centerText = (text, width = 23) => {
       const padTotal = width - text.length;
       if (padTotal <= 0) return text;
       const padLeft = Math.floor(padTotal / 2);
@@ -257,10 +257,10 @@ module.exports = {
     // ── HEADER ──
     desc += `💼 **FINANCIAL DASHBOARD** · ${tier.emoji} **${tier.name} MEMBER**\n`;
     desc += `\`\`\`\n`;
-    desc += `┌─────────────────────────────┐\n`;
-    desc += `│${centerText('FINANCIAL DASHBOARD')}│\n`;
-    desc += `│${centerText(`${tier.name} TIER`)}│\n`;
-    desc += `└─────────────────────────────┘\n`;
+    desc += `┌───────────────────────┐\n`;
+    desc += `│${centerText('FINANCIAL DASHBOARD', 23)}│\n`;
+    desc += `│${centerText(`${tier.name} TIER`, 23)}│\n`;
+    desc += `└───────────────────────┘\n`;
     desc += `\`\`\`\n`;
 
     // ── RINGKASAN KEUANGAN ──
