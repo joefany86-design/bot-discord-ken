@@ -670,6 +670,89 @@ module.exports = {
     return embed.setTimestamp();
   },
 
+  // 7a. Embed Papan Peringkat Pet (Pet Leaderboard)
+  petLeaderboardEmbed(guildName, topPets, category, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
+    let catName = 'LEVEL & XP';
+    let catFooter = 'Ketik `.pet top pvp` untuk melihat pet petarung terkuat!';
+    if (category === 'pvp') {
+      catName = 'KEMENANGAN PVP ARENA';
+      catFooter = 'Ketik `.pet top cp` untuk melihat pet dengan kekuatan tempur tertinggi!';
+    } else if (category === 'cp') {
+      catName = 'COMBAT POWER (CP)';
+      catFooter = 'Ketik `.pet top level` untuk melihat pet dengan level tertinggi!';
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF88) // Neon Emerald Green
+      .setTitle(`🏆 PAPAN PERINGKAT PET TERHEBAT — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `🦁 **TAMAGOTCHI PET HALL OF FAME** 🦁\n` +
+        `*10 peliharaan terkuat di server berdasarkan kategori **${catName}**.*\n` +
+        `────────────────────────────────────────`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    }
+
+    const getTierLabel = (lvl) => {
+      if (lvl >= 90) return '👑 GODLIKE CLASS';
+      if (lvl >= 70) return '🌟 MYTHIC CLASS';
+      if (lvl >= 50) return '🏆 LEGENDARY CLASS';
+      if (lvl >= 25) return '🛡️ ELITE CLASS';
+      return '🪵 STARTER CLASS';
+    };
+
+    const getSpeciesName = (type) => {
+      const sp = {
+        SLIME: 'Slime 🟢',
+        DRAGON: 'Naga / Dragon 🔥',
+        CAT: 'Kucing / Cat 🐱',
+        GOLEM: 'Golem 🧱'
+      };
+      return sp[type] || type;
+    };
+
+    if (topPets.length === 0) {
+      embed.addFields({ name: '🚫 Kosong', value: 'Belum ada data peliharaan aktif di server ini.' });
+    } else {
+      let ranks = '';
+      topPets.forEach((p, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        const owner = client.users.cache.get(p.user_id);
+        const ownerName = owner ? owner.username : p.user_id;
+
+        // Custom stats detail based on category
+        let categoryDetail = '';
+        if (category === 'pvp') {
+          const totalGames = (p.pvp_wins || 0) + (p.pvp_losses || 0);
+          const wr = totalGames > 0 ? (((p.pvp_wins || 0) / totalGames) * 100).toFixed(1) : '0.0';
+          categoryDetail = `🏆 **PVP   : \`${p.pvp_wins || 0} Wins\`** (Lose: \`${p.pvp_losses || 0}\` | WR: \`${wr}%\`)`;
+        } else if (category === 'cp') {
+          categoryDetail = `⚡ **CP    : \`${p.cp || 0} CP\`**`;
+        } else {
+          categoryDetail = `📈 **Level : \`Lv.${p.level}\`** (XP: \`${p.xp}\`)`;
+        }
+
+        const traitLabel = p.trait ? ` (🧠 Trait: ${p.trait.toUpperCase()})` : '';
+
+        ranks += `${medal} **${p.pet_name}** — *Milik ${ownerName}*\n` +
+                 `   ├─ 🐾 Spesies : ${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}\n` +
+                 `   ├─ 📊 Status  : 🟢 ${p.status.toUpperCase()}\n` +
+                 `   ├─ 🧬 Stats   : ❤️\`${p.health}%\` 🍖\`${p.hunger}%\` 💧\`${p.thirst}%\` ⚽\`${p.happiness}%\`\n` +
+                 `   ├─ 🏆 Kelas   : \`${getTierLabel(p.level)}\`\n` +
+                 `   └─ ${categoryDetail}\n\n`;
+      });
+      embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
+    }
+
+    embed.setFooter({ text: catFooter });
+    return embed.setTimestamp();
+  },
+
   // 8. Embed Error / Kegagalan Sistem
   errorEmbed(title, description) {
     const cleanedTitle = title.replace(/^❌\s*/, '').trim();

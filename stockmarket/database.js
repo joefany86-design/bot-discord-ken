@@ -416,6 +416,22 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 22. Migrasi dinamis: Tambahkan kolom pvp_wins ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN pvp_wins INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'pvp_wins' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 23. Migrasi dinamis: Tambahkan kolom pvp_losses ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN pvp_losses INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'pvp_losses' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 

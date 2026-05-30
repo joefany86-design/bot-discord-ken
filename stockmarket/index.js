@@ -1551,6 +1551,29 @@ async function handlePetCommand(message, client, args) {
     return message.reply({ embeds: [listEmbed] });
   }
 
+  // ── SUB-PERINTAH: TOP / LEADERBOARD ──
+  if (subCommand === 'top' || subCommand === 'leaderboard') {
+    const category = args[1] ? args[1].toLowerCase() : 'level';
+    if (!['level', 'pvp', 'cp'].includes(category)) {
+      return message.reply({ embeds: [embeds.warnEmbed('Kategori Tidak Valid!', 'Kategori leaderboard pet yang tersedia:\n👉 `.pet top level` (Level & XP)\n👉 `.pet top pvp` (Kemenangan PvP Arena)\n👉 `.pet top cp` (Combat Power - CP)')] });
+    }
+    
+    try {
+      const topPets = pet.getPetLeaderboard(guildId, category, 10);
+      
+      // Pastikan cache user Discord terisi
+      await Promise.all(topPets.map(async p => {
+        try { await client.users.fetch(p.user_id); } catch (e) { }
+      }));
+      
+      const embed = embeds.petLeaderboardEmbed(guild.name, topPets, category, client);
+      return message.reply({ embeds: [embed] });
+    } catch (err) {
+      console.error('Error fetching pet leaderboard:', err);
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Leaderboard Pet!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: SWITCH / AKTIF ──
   if (subCommand === 'switch' || subCommand === 'aktif') {
     const targetName = args[1];

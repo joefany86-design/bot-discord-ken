@@ -792,12 +792,12 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     let { newXp: lXp, newLevel: lLevel } = addXp(loserPet, lXpGained, lMaxHP);
 
     db.run(
-      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_wins = pvp_wins + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]
     );
 
     db.run(
-      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [lHP, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId, loserName]
     );
   })();
@@ -1222,6 +1222,46 @@ function executeExpedition(guildId, participantIds) {
   }
 }
 
+/**
+ * Mendapatkan daftar pet teratas di guild untuk leaderboard.
+ */
+function getPetLeaderboard(guildId, category = 'level', limit = 10) {
+  let orderByClause = '';
+  if (category === 'pvp') {
+    orderByClause = 'ORDER BY pvp_wins DESC, (pvp_wins * 1.0 / (pvp_wins + pvp_losses)) DESC, level DESC';
+  } else if (category === 'cp') {
+    orderByClause = `ORDER BY (
+      (level * 120) + health + (happiness * 1.5) + 
+      (CASE 
+        WHEN trait IN ('GENIUS', 'WARRIOR', 'MUTANT') THEN 250 
+        WHEN trait = 'STURDY' THEN 150 
+        ELSE 0 
+      END)
+    ) DESC`;
+  } else {
+    // Default: level
+    orderByClause = 'ORDER BY level DESC, xp DESC, created_at ASC';
+  }
+
+  const pets = db.all(
+    `SELECT *,
+            ((level * 120) + health + (happiness * 1.5) + 
+             (CASE 
+               WHEN trait IN ('GENIUS', 'WARRIOR', 'MUTANT') THEN 250 
+               WHEN trait = 'STURDY' THEN 150 
+               ELSE 0 
+             END)
+            ) as cp
+     FROM user_pets
+     WHERE guild_id = ? AND status != 'DEAD'
+     ${orderByClause}
+     LIMIT ?`,
+    [guildId, limit]
+  );
+
+  return pets.map(p => applyDecay(p));
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1240,5 +1280,6 @@ module.exports = {
   breedPets,
   executeExpedition,
   getXpNeeded,
-  checkExpeditionLimit
+  checkExpeditionLimit,
+  getPetLeaderboard
 };
