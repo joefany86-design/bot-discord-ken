@@ -954,28 +954,62 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
   // Pastikan wallet terdaftar
   economy.getWallet(userId, guildId);
 
-  const wallet = db.get('SELECT daily_expedition_count, last_expedition_date FROM wallets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
-  const now = new Date();
-  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+  const wallet = db.get(
+    'SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?',
+    [userId, guildId]
+  );
 
-  let currentCount = 0;
-  if (wallet && wallet.last_expedition_date === todayStr) {
-    currentCount = wallet.daily_expedition_count || 0;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  let cooldownUntil = wallet ? (wallet.expedition_cooldown_until || 0) : 0;
+  let currentCount = wallet ? (wallet.daily_expedition_count || 0) : 0;
+
+  // 1. Cek jika masih dalam masa cooldown
+  if (nowUnix < cooldownUntil) {
+    const timeLeft = cooldownUntil - nowUnix;
+    const hours = Math.floor(timeLeft / 3600);
+    const minutes = Math.floor((timeLeft % 3600) / 60);
+    const seconds = timeLeft % 60;
+    
+    let timeStr = '';
+    if (hours > 0) timeStr += `${hours} jam `;
+    if (minutes > 0 || hours > 0) timeStr += `${minutes} menit `;
+    timeStr += `${seconds} detik`;
+
+    throw new Error(`Anda sedang dalam masa cooldown ekspedisi pet (5 jam) setelah bermain 10 kali! Harap tunggu **${timeStr}** lagi.`);
   }
 
+  // 2. Jika cooldown sudah terlewati, dan count = 10, reset count ke 0
   if (currentCount >= 10) {
-    throw new Error('Anda sudah mencapai batas maksimal **10 ekspedisi** hari ini!');
+    currentCount = 0;
+    if (!dryRun) {
+      db.run(
+        'UPDATE wallets SET daily_expedition_count = 0 WHERE user_id = ? AND guild_id = ?',
+        [userId, guildId]
+      );
+    }
   }
 
+  // 3. Jika ini eksekusi nyata, tambahkan jumlah permainan
   if (!dryRun) {
+    const nextCount = currentCount + 1;
+    let nextCooldown = 0;
+
+    // Jika mencapai 10 kali bermain, set cooldown 5 jam
+    if (nextCount >= 10) {
+      nextCooldown = nowUnix + (5 * 3600); // 5 jam dari sekarang
+    }
+
     db.run(
       `UPDATE wallets 
-       SET daily_expedition_count = ?, last_expedition_date = ? 
+       SET daily_expedition_count = ?, expedition_cooldown_until = ? 
        WHERE user_id = ? AND guild_id = ?`,
-      [currentCount + 1, todayStr, userId, guildId]
+      [nextCount, nextCooldown, userId, guildId]
     );
+    
+    return nextCount;
   }
-  return currentCount + 1;
+
+  return currentCount;
 }
 
 /**

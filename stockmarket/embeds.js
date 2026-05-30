@@ -1805,7 +1805,7 @@ module.exports = {
 
     embed.addFields({
       name: '⏱️ Status Cooldown & Aktivitas',
-      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}\n🛡️ **Ekspedisi (.pet expedition) :** Aktif (Maks 10x per hari)`,
+      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}\n🛡️ **Ekspedisi (.pet expedition) :** Aktif (Maks 10 main, CD 5 jam setelahnya)`,
       inline: false
     });
 
@@ -2116,7 +2116,7 @@ module.exports = {
             `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 1 jam, Golem 40m).\n` +
             `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 2 jam.\n` +
             `• **PvP Arena (\`.pet pvp @user <taruhan>\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.\n` +
-            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (1-4 kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 10x/hari, biaya Rp 150).`,
+            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (Tanpa Batas Kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 10 main, CD 5 jam setelahnya, biaya Rp 150).`,
           inline: false
         },
         {

@@ -432,6 +432,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 24. Migrasi dinamis: Tambahkan kolom expedition_cooldown_until ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN expedition_cooldown_until INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'expedition_cooldown_until' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 
