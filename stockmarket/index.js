@@ -2596,9 +2596,7 @@ async function handlePetCommand(message, client, args) {
       }
 
       else if (iPet.customId === 'pet_btn_nav_shop') {
-        collector.stop();
-        await replyMsg.delete().catch(() => { });
-        await handlePetShopCommand(message, client);
+        await handlePetShopCommand(iPet, client, true);
       }
     } catch (err) {
       console.error('Error in pet dashboard collector:', err);
@@ -2776,8 +2774,9 @@ async function handleCoinflipCommand(message, client, args) {
 /**
  * Helper untuk memproses Toko Persediaan Pet
  */
-async function handlePetShopCommand(message, client) {
-  const { guildId, author } = message;
+async function handlePetShopCommand(context, client, isInteraction = false) {
+  const guildId = context.guildId;
+  const author = isInteraction ? context.user : context.author;
 
   const getShopPanelData = (userId, guildId) => {
     const wallet = economy.getWallet(userId, guildId);
@@ -2807,7 +2806,14 @@ async function handlePetShopCommand(message, client) {
   };
 
   const initialData = getShopPanelData(author.id, guildId);
-  const replyMsg = await message.reply(initialData);
+  let replyMsg;
+  if (isInteraction) {
+    initialData.ephemeral = true;
+    initialData.fetchReply = true;
+    replyMsg = await context.reply(initialData);
+  } else {
+    replyMsg = await context.reply(initialData);
+  }
 
   const collector = replyMsg.createMessageComponentCollector({
     time: 120000
@@ -2821,8 +2827,12 @@ async function handlePetShopCommand(message, client) {
     try {
       if (iShop.customId === 'pet_btn_cancel_shop') {
         collector.stop();
-        await replyMsg.delete().catch(() => { });
-        await handlePetCommand(message, client, []);
+        if (isInteraction) {
+          await context.deleteReply().catch(() => { });
+        } else {
+          await replyMsg.delete().catch(() => { });
+          await handlePetCommand(context, client, []);
+        }
       } else if (iShop.customId === 'pet_select_shop_item') {
         collector.stop();
         const selectedItem = iShop.values[0];
