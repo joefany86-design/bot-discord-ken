@@ -584,6 +584,31 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
+  // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung (Channel ID: 1509762623917265137)
+  if (message.channelId === '1509762623917265137') {
+    const activeLobby = client.activeExpeditions;
+    if (activeLobby && activeLobby.has(message.guildId)) {
+      const lobby = activeLobby.get(message.guildId);
+      const isInitiator = message.author.id === lobby.initiatorId;
+      const isOwner = message.author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+
+      if (!isInitiator && !isOwner && !isAdmin) {
+        await message.delete().catch(() => {});
+        const warnMsg = await message.channel.send({
+          content: `⚠️ <@${message.author.id}>, silakan tunggu sampai ekspedisi pet selesai sebelum mengobrol di channel ini!`
+        }).catch(() => null);
+
+        if (warnMsg) {
+          setTimeout(() => {
+            warnMsg.delete().catch(() => {});
+          }, 5000);
+        }
+        return;
+      }
+    }
+  }
+
   // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
   const processed = await handleLinkMirroring(message, client);
   if (processed) return;

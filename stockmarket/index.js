@@ -2721,7 +2721,19 @@ async function handlePetAdminCommand(message, client, args) {
     return message.reply(`🐣 **Sukses mempercepat penetasan telur!** Telur pet **${petData.pet_name}** milik <@${target.id}> sekarang siap menetas. Minta user untuk mengetik \`.pet\` dan mengklik tombol **Tetaskan Telur**!`);
   }
 
-  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`');
+  if (subCommand === 'reset-expedition' || subCommand === 'clear-expedition') {
+    const activeLobby = client.activeExpeditions;
+    if (activeLobby && activeLobby.has(guildId)) {
+      const lobby = activeLobby.get(guildId);
+      if (lobby.timeout) clearTimeout(lobby.timeout);
+      activeLobby.delete(guildId);
+      return message.reply('✅ Sukses mereset secara paksa lobi ekspedisi pet yang aktif di server ini.');
+    } else {
+      return message.reply('❌ Tidak ada lobi ekspedisi pet yang aktif di server ini saat ini.');
+    }
+  }
+
+  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`');
 }
 
 /**
