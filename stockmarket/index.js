@@ -1234,12 +1234,25 @@ async function handleEconomyChat(message) {
           )
           .setTimestamp();
 
-        let targetChannel = message.guild.channels.cache.get('1508417228624887928');
+        let targetChannel = null;
+        if (config.REPORT_CHANNEL_ID) {
+          targetChannel = message.guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+          if (!targetChannel) {
+            try {
+              targetChannel = await message.guild.channels.fetch(config.REPORT_CHANNEL_ID);
+            } catch (e) {
+              // Silent fail for fetch, proceed to fallback
+            }
+          }
+        }
         if (!targetChannel) {
-          try {
-            targetChannel = await message.guild.channels.fetch('1508417228624887928');
-          } catch (e) {
-            targetChannel = message.channel;
+          targetChannel = message.guild.channels.cache.get('1508417228624887928');
+          if (!targetChannel) {
+            try {
+              targetChannel = await message.guild.channels.fetch('1508417228624887928');
+            } catch (e) {
+              targetChannel = message.channel;
+            }
           }
         }
 

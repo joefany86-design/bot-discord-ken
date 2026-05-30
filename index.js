@@ -600,13 +600,13 @@ client.on('messageCreate', async message => {
     '1422656689710305381'
   ];
   if (BLOCKED_CMD_CHANNELS.includes(message.channelId)) {
-    await message.delete().catch(() => {});
+    await message.delete().catch(() => { });
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#1508417228624887928>! Saluran ini tidak mendukung perintah bot.`
     }).catch(() => null);
     if (warnMsg) {
       setTimeout(() => {
-        warnMsg.delete().catch(() => {});
+        warnMsg.delete().catch(() => { });
       }, 5000);
     }
     return;
@@ -891,7 +891,8 @@ client.on('messageCreate', async message => {
   // ── .help / .helplow / .menu / .control ──
   else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
     await sendInteractiveHelp(message, false, message.author, guild, client);
-  }});
+  }
+});
 
 // ═══════════════════════════════════════════════════
 // VOICE STATE UPDATE HANDLER (Proteksi Saluran)
