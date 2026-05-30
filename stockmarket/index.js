@@ -3804,31 +3804,26 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
-  // Opsi 2: Centralized Response Cleanup (Auto-delete bot responses for temporary info/warnings/errors)
-  const originalReply = message.reply.bind(message);
-  message.reply = async (options) => {
-    const reply = await originalReply(options);
+  // Helper: kirim balasan dengan auto-delete opsional (tidak menimpa message.reply yang sudah ada)
+  const SHORT_INFO_CMDS = ['bal', 'balance', 'profile', 'porto', 'portfolio', 'daily', 'status', 'event'];
+  const WARN_ERROR_COLORS = new Set([16757504, 16724838, 0xFFB300, 0xFF3366]);
+
+  const autoReply = async (options) => {
+    const reply = await message.reply(options);
     let isTemporary = false;
 
-    // 1. Jika bertipe embed dan warn/error color
+    // 1. Cek warna embed warn/error → jadikan sementara
     if (options && options.embeds && options.embeds.length > 0) {
-      const embed = options.embeds[0];
-      const color = embed.data ? embed.data.color : null;
-      if (color === 16757504 || color === 16724838 || color === 0xFFB300 || color === 0xFF3366) {
-        isTemporary = true;
-      }
+      const color = options.embeds[0]?.data?.color;
+      if (WARN_ERROR_COLORS.has(color)) isTemporary = true;
     }
 
-    // 2. Jika command adalah perintah info jangka pendek
-    if (['bal', 'balance', 'profile', 'porto', 'portfolio', 'daily', 'status', 'event'].includes(commandName)) {
-      isTemporary = true;
-    }
+    // 2. Perintah info singkat → jadikan sementara
+    if (SHORT_INFO_CMDS.includes(commandName)) isTemporary = true;
 
-    // Jika bersifat sementara, hapus setelah 25 detik secara otomatis
+    // Hapus balasan sementara setelah 25 detik
     if (isTemporary) {
-      setTimeout(() => {
-        reply.delete().catch(() => {});
-      }, 25000);
+      setTimeout(() => { reply.delete().catch(() => {}); }, 25000);
     }
     return reply;
   };
@@ -3838,7 +3833,7 @@ async function handleEconomyCommands(message, client) {
   if (message.channelId === '1509762623917265137') {
     if (!['pet', 'pet-admin', 'admin-pet', 'panel-pet'].includes(commandName)) {
       const warnEmb = embeds.warnEmbed('Saluran Khusus Pet! 🐾', 'Saluran ini hanya dapat digunakan untuk bermain pet (`.pet`)! Silakan gunakan channel obrolan/bot untuk perintah lainnya.');
-      await message.reply({ embeds: [warnEmb] });
+      await autoReply({ embeds: [warnEmb] });
       return true; // Berhenti memproses perintah lain
     }
   }
@@ -3849,7 +3844,7 @@ async function handleEconomyCommands(message, client) {
     const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       const warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
-      await message.reply({ embeds: [warnEmb] });
+      await autoReply({ embeds: [warnEmb] });
       return true; // Berhenti memproses perintah
     }
   }
@@ -3966,7 +3961,7 @@ async function handleEconomyCommands(message, client) {
         `⚠️ **Mini-game Cozy Flower Garden saat ini sedang dikunci oleh Owner untuk keperluan pengujian.**\n\n` +
         `Tunggu pengumuman rilis resminya ya! ✨`
       );
-      await message.reply({ embeds: [warnEmb] });
+      await autoReply({ embeds: [warnEmb] });
       return true; // Hentikan pemrosesan
     }
 
