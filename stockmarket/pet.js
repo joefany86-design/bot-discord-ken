@@ -975,7 +975,7 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     if (minutes > 0 || hours > 0) timeStr += `${minutes} menit `;
     timeStr += `${seconds} detik`;
 
-    throw new Error(`Anda sedang dalam masa cooldown ekspedisi pet (5 jam) setelah bermain 10 kali! Harap tunggu **${timeStr}** lagi.`);
+    throw new Error(`Anda sedang dalam masa cooldown ekspedisi pet (3 jam) setelah bermain 10 kali! Harap tunggu **${timeStr}** lagi.`);
   }
 
   // 2. Jika cooldown sudah terlewati, dan count = 10, reset count ke 0
@@ -994,9 +994,9 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     const nextCount = currentCount + 1;
     let nextCooldown = 0;
 
-    // Jika mencapai 10 kali bermain, set cooldown 5 jam
+    // Jika mencapai 10 kali bermain, set cooldown 3 jam
     if (nextCount >= 10) {
-      nextCooldown = nowUnix + (5 * 3600); // 5 jam dari sekarang
+      nextCooldown = nowUnix + (3 * 3600); // 3 jam dari sekarang
     }
 
     db.run(
