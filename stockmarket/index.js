@@ -3978,14 +3978,13 @@ async function handleEconomyCommands(message, client) {
   if (gardenCommands.includes(commandName)) {
     const isOwner = author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!config.garden.SYSTEM_ACTIVE && !isOwner && !isAdmin) {
-      const warnEmb = embeds.warnEmbed(
-        '🌸 Fitur Sedang Tahap Uji Coba! 🌸',
-        `⚠️ **Mini-game Cozy Flower Garden saat ini sedang dikunci oleh Owner untuk keperluan pengujian.**\n\n` +
-        `Tunggu pengumuman rilis resminya ya! ✨`
+    if (!isOwner && !isAdmin) {
+      const errEmb = embeds.errorEmbed(
+        'Akses Ditolak!',
+        'Fitur Cozy Flower Garden (`.kebun`) dikunci khusus untuk Administrator server.'
       );
-      await autoReply({ embeds: [warnEmb] });
-      return true; // Hentikan pemrosesan
+      await autoReply({ embeds: [errEmb] });
+      return true;
     }
 
     await handleGardenCommand(message, client, args, commandName);
