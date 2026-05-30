@@ -638,34 +638,50 @@ client.on('messageCreate', async message => {
 
   if (!message.content.startsWith('.')) return;
 
-  // Decorator untuk memitigasi error 'Unknown Message' jika perintah teks dihapus sebelum bot sempat membalas
+  // Decorator untuk memitigasi error 'Unknown Message' / 'Invalid Form Body' jika pesan teks dihapus sebelum bot sempat membalas
   const originalReply = message.reply.bind(message);
   message.reply = async (options) => {
     try {
       return await originalReply(options);
     } catch (err) {
-      if (err.code === 10008 || err.message.includes('Unknown Message') || err.message.includes('message_reference')) {
-        const mention = `<@${message.author.id}>, `;
-        if (typeof options === 'string') {
-          return await message.channel.send({ content: mention + options });
-        } else {
-          const payload = { ...options };
-          if (payload.content) {
-            payload.content = mention + payload.content;
+      // Tangkap semua variasi error referensi pesan yang tidak valid:
+      // - err.code 10008: Unknown Message (Discord REST)
+      // - err.code 50035: Invalid Form Body (Discord REST) dengan message_reference
+      // - err.message mengandung kata kunci referensi
+      const isRefError = (
+        err.code === 10008 ||
+        err.code === 50035 ||
+        err.message?.includes('Unknown Message') ||
+        err.message?.includes('message_reference') ||
+        err.message?.includes('Invalid Form Body') ||
+        JSON.stringify(err.rawError || {}).includes('message_reference')
+      );
+      if (isRefError) {
+        const mention = `<@${message.author.id}> `;
+        try {
+          if (typeof options === 'string') {
+            return await message.channel.send({ content: mention + options });
           } else {
-            payload.content = mention.trim();
+            const payload = { ...options };
+            payload.content = mention + (payload.content || '').trim();
+            // Hapus message_reference agar tidak gagal lagi
+            delete payload.reply;
+            delete payload.messageReference;
+            return await message.channel.send(payload);
           }
-          return await message.channel.send(payload);
+        } catch (sendErr) {
+          console.error('❌ Gagal fallback channel.send:', sendErr.message);
         }
+        return null;
       }
       throw err;
     }
   };
 
-  // Hapus pesan perintah user (.commands) setelah jeda singkat agar tidak memicu error reference
+  // Hapus pesan perintah user (.commands) setelah 2 detik agar bot punya waktu cukup untuk membalas
   setTimeout(() => {
     message.delete().catch(() => {});
-  }, 1000);
+  }, 2000);
 
   // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
   const BLOCKED_CMD_CHANNELS = [
