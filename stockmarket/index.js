@@ -584,6 +584,7 @@ function initStockMarket(client) {
     try {
       // ── PORTAL PERMANEN: TOKO ROLE ──
       if (customId === 'eco_btn_open_shop_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const wallet = economy.getWallet(user.id, guildId);
         const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
         const embed = embeds.shopEmbed(items, wallet);
@@ -593,13 +594,14 @@ function initStockMarket(client) {
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
         );
 
-        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        const privateMsg = await interaction.editReply({ embeds: [embed], components: [row] });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
 
         collector.on('collect', async i => {
           if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
 
           if (i.customId === 'eco_btn_profile') {
+            await i.deferReply({ ephemeral: true });
             const wallet2 = economy.getWallet(user.id, guildId);
             const porto = stocks.getPortfolio(user.id, guildId);
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -608,7 +610,7 @@ function initStockMarket(client) {
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
             const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
-            await i.reply({ embeds: [profileEmbed], flags: 64 });
+            await i.editReply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             await executeGachaRoll({
               replyTarget: i,
@@ -633,6 +635,7 @@ function initStockMarket(client) {
 
       // ── PORTAL PERMANEN: BURSA SAHAM ──
       else if (customId === 'eco_btn_open_market_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const activeStocks = stocks.getStocks(guildId);
         const isOpen = stocks.isMarketOpen();
         const embed = embeds.marketEmbed(activeStocks, isOpen);
@@ -646,17 +649,19 @@ function initStockMarket(client) {
           row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
         }
 
-        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        const privateMsg = await interaction.editReply({ embeds: [embed], components: [row] });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
 
         collector.on('collect', async i => {
           if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
 
           if (i.customId === 'eco_btn_porto') {
+            await i.deferReply({ ephemeral: true });
             const wallet2 = economy.getWallet(user.id, guildId);
             const porto = stocks.getPortfolio(user.id, guildId);
-            await i.reply({ embeds: [embeds.portfolioEmbed(user, porto, wallet2)], flags: 64 });
+            await i.editReply({ embeds: [embeds.portfolioEmbed(user, porto, wallet2)] });
           } else if (i.customId === 'eco_btn_profile') {
+            await i.deferReply({ ephemeral: true });
             const wallet2 = economy.getWallet(user.id, guildId);
             const porto = stocks.getPortfolio(user.id, guildId);
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -664,11 +669,12 @@ function initStockMarket(client) {
             const activeLoan = bank.getActiveLoan(user.id, guildId);
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-            await i.reply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items)], flags: 64 });
+            await i.editReply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items)] });
           } else if (i.customId === 'eco_btn_shop') {
+            await i.deferReply({ ephemeral: true });
             const wallet2 = economy.getWallet(user.id, guildId);
             const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            await i.reply({ embeds: [embeds.shopEmbed(items, wallet2)], flags: 64 });
+            await i.editReply({ embeds: [embeds.shopEmbed(items, wallet2)] });
           } else if (i.customId === 'eco_btn_trade') {
             await sendInteractiveTradePanel(i, activeStocks[0].stock_ticker, user, guildId, client);
           }
@@ -689,6 +695,7 @@ function initStockMarket(client) {
 
       // ── PORTAL PERMANEN: BANK SENTRAL ──
       else if (customId === 'eco_btn_open_bank_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const getBankDashboardDataPrivate = (targetUserId) => {
           const wallet = economy.getWallet(targetUserId, guildId);
           const savings = bank.getSavings(targetUserId, guildId);
@@ -708,7 +715,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getBankDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
+        const privateMsg = await interaction.editReply({ ...initialData });
         const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
 
         collector.on('collect', async iBank => {
@@ -923,6 +930,7 @@ function initStockMarket(client) {
 
       // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
       else if (customId === 'eco_btn_open_bm_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const bmEmbed = new EmbedBuilder()
           .setColor(0x1A1A1A)
           .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
@@ -949,7 +957,7 @@ function initStockMarket(client) {
           new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
         );
 
-        const privateMsg = await interaction.reply({ embeds: [bmEmbed], components: [row], flags: 64 });
+        const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [row] });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
         collector.on('collect', async i => {
@@ -990,6 +998,7 @@ function initStockMarket(client) {
 
       // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
       else if (customId === 'pet_btn_open_pet_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const getDashboardPanelPrivate = (targetUserId) => {
           const userPet = pet.getPet(targetUserId, guildId);
           const inventory = pet.getInventory(targetUserId, guildId);
@@ -1084,7 +1093,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getDashboardPanelPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
+        const privateMsg = await interaction.editReply({ ...initialData });
         const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
 
         collector.on('collect', async iPet => {
@@ -1277,6 +1286,7 @@ function initStockMarket(client) {
 
       // ── PORTAL PERMANEN: KOSAN (.kos) ──
       else if (customId === 'eco_btn_open_kos_private_perm') {
+        await interaction.deferReply({ ephemeral: true });
         const kos = require('./kos');
 
         const getKosDashboardDataPrivate = (targetUserId) => {
@@ -1358,7 +1368,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getKosDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
+        const privateMsg = await interaction.editReply({ ...initialData });
         const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
 
         collector.on('collect', async iKos => {
@@ -2720,7 +2730,7 @@ async function handleGardenCommand(message, client, args, commandName) {
 
     collector.on('collect', async i => {
       if (i.user.id !== author.id) {
-        return i.reply({ content: '❌ Tombol ini hanya dapat ditekan oleh pemilik kebun!', flags: 64 });
+        return await i.reply({ content: '❌ Tombol ini hanya dapat ditekan oleh pemilik kebun!', flags: 64 }).catch(() => {});
       }
 
       try {
@@ -2730,17 +2740,18 @@ async function handleGardenCommand(message, client, args, commandName) {
           const flowerKey = parts[1];
           const slotIdx = parseInt(parts[2]);
 
+          await i.deferReply({ ephemeral: true }).catch(() => {});
+
           try {
             const res = garden.plantSeed(author.id, guildId, slotIdx, flowerKey);
             
-            await i.reply({
+            await i.editReply({
               embeds: [embeds.successEmbed(
                 '🌱 Penanaman Berhasil!',
                 `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
                 `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
-              )],
-              flags: 64
-            });
+              )]
+            }).catch(() => {});
 
             const updatedSlots = garden.getGardenSlots(author.id, guildId);
             const updatedWallet = economy.getWallet(author.id, guildId);
@@ -2750,11 +2761,12 @@ async function handleGardenCommand(message, client, args, commandName) {
               components: [row, row2]
             }).catch(() => {});
           } catch (err) {
-            await i.reply({ content: `❌ Gagal menanam: ${err.message}`, flags: 64 });
+            await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => {});
           }
         } 
         
         else if (i.customId === 'garden_btn_water_all') {
+          await i.deferReply({ ephemeral: true }).catch(() => {});
           try {
             const res = garden.waterPlant(author.id, guildId, 'all');
             const updatedSlots = garden.getGardenSlots(author.id, guildId);
@@ -2766,24 +2778,26 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
             );
 
-            await i.reply({ embeds: [successEmb], flags: 64 });
+            await i.editReply({ embeds: [successEmb] }).catch(() => {});
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
               components: [row, row2]
             }).catch(() => {});
           } catch (err) {
-            await i.reply({ content: `❌ Gagal menyiram: ${err.message}`, flags: 64 });
+            await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => {});
           }
         } 
         
         else if (i.customId === 'garden_btn_harvest_all') {
+          await i.deferReply({ ephemeral: true }).catch(() => {});
           try {
             const slots = garden.getGardenSlots(author.id, guildId);
             const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
 
             if (harvestable.length === 0) {
-              return i.reply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!', flags: 64 });
+              await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => {});
+              return;
             }
 
             const harvestedNames = [];
@@ -2802,20 +2816,20 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
             );
 
-            await i.reply({ embeds: [successEmb], flags: 64 });
+            await i.editReply({ embeds: [successEmb] }).catch(() => {});
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
               components: [row, row2]
             }).catch(() => {});
           } catch (err) {
-            await i.reply({ content: `❌ Gagal memanen: ${err.message}`, flags: 64 });
+            await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => {});
           }
         } 
         
         else if (i.customId === 'garden_btn_shop') {
           const walletShop = economy.getWallet(author.id, guildId);
-          await i.deferUpdate();
+          await i.deferUpdate().catch(() => {});
           await replyMsg.edit({
             embeds: [embeds.gardenShopEmbed(author, walletShop)],
             components: [shopRow1, shopRow2, shopRow3]
@@ -2824,17 +2838,17 @@ async function handleGardenCommand(message, client, args, commandName) {
         
         else if (i.customId.startsWith('garden_buy_')) {
           const itemKey = i.customId.replace('garden_buy_', '');
+          await i.deferReply({ ephemeral: true }).catch(() => {});
           try {
             const res = garden.buySeed(author.id, guildId, itemKey, 1);
             
-            await i.reply({
+            await i.editReply({
               embeds: [embeds.successEmbed(
                 '🛒 Pembelian Berhasil!',
                 `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
                 `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-              )],
-              flags: 64
-            });
+              )]
+            }).catch(() => {});
 
             const walletShop = economy.getWallet(author.id, guildId);
             await replyMsg.edit({
@@ -2842,7 +2856,7 @@ async function handleGardenCommand(message, client, args, commandName) {
               components: [shopRow1, shopRow2, shopRow3]
             }).catch(() => {});
           } catch (err) {
-            await i.reply({ content: `❌ Gagal membeli: ${err.message}`, flags: 64 });
+            await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => {});
           }
         }
 
@@ -2854,7 +2868,7 @@ async function handleGardenCommand(message, client, args, commandName) {
             new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
           );
 
-          await i.deferUpdate();
+          await i.deferUpdate().catch(() => {});
           await replyMsg.edit({
             embeds: [embeds.bouquetCraftEmbed(author, guildId)],
             components: [craftRow]
@@ -2865,7 +2879,7 @@ async function handleGardenCommand(message, client, args, commandName) {
           const updatedSlots = garden.getGardenSlots(author.id, guildId);
           const updatedWallet = economy.getWallet(author.id, guildId);
 
-          await i.deferUpdate();
+          await i.deferUpdate().catch(() => {});
           await replyMsg.edit({
             embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
             components: [row, row2]
@@ -2874,6 +2888,7 @@ async function handleGardenCommand(message, client, args, commandName) {
         
         else if (i.customId.startsWith('garden_craft_')) {
           const recipe = i.customId.replace('garden_craft_', '');
+          await i.deferReply({ ephemeral: true }).catch(() => {});
           try {
             const res = garden.craftBouquet(author.id, guildId, recipe);
             const successEmb = embeds.successEmbed(
@@ -2883,13 +2898,13 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
             );
 
-            await i.reply({ embeds: [successEmb], flags: 64 });
+            await i.editReply({ embeds: [successEmb] }).catch(() => {});
 
             await replyMsg.edit({
               embeds: [embeds.bouquetCraftEmbed(author, guildId)]
             }).catch(() => {});
           } catch (err) {
-            await i.reply({ content: `❌ Gagal merangkai: ${err.message}`, flags: 64 });
+            await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => {});
           }
         }
       } catch (err) {
