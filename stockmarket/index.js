@@ -957,7 +957,7 @@ function initStockMarket(client) {
             } else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
               const result = pet.toggleAutoFeed(user.id, guildId);
               const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] , ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_reset') {
               pet.resetPet(user.id, guildId);
@@ -969,32 +969,32 @@ function initStockMarket(client) {
             } else if (iPet.customId === 'pet_btn_hatch') {
               const res = pet.getPet(user.id, guildId);
               if (res && res.status === 'BABY') {
-                await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] });
+                await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)], ephemeral: true });
                 await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
               }
             } else if (iPet.customId === 'pet_btn_feed') {
               const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_drink') {
               const res = pet.useItem(user.id, guildId, 'WATER', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_play') {
               const res = pet.playWithPet(user.id, guildId);
-              await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_cure') {
               const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_work') {
               const res = pet.sendToWork(user.id, guildId);
-              await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_hunt') {
               const res = pet.sendToHunt(user.id, guildId);
-              await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] });
+              await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], ephemeral: true });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_nav_shop') {
               await iPet.update(getShopPanelDataPrivate(user.id));
@@ -1049,7 +1049,7 @@ function initStockMarket(client) {
                   const pName = submitted.fields.getTextInputValue('pet_name');
                   const pType = submitted.fields.getTextInputValue('pet_type');
                   const res = pet.adoptPet(user.id, guildId, pName, pType);
-                  await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)] });
+                  await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)], ephemeral: true });
                   await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], ephemeral: true });
@@ -2167,7 +2167,7 @@ async function handlePetCommand(message, client, args) {
       else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
         const result = pet.toggleAutoFeed(author.id, guildId);
         const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] });
+        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] , ephemeral: true });
         await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
       }
 
@@ -2228,7 +2228,7 @@ async function handlePetCommand(message, client, args) {
             const res = pet.adoptPet(author.id, guildId, pName, pType);
             const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
 
-            await submitted.reply({ embeds: [successEmb] });
+            await submitted.reply({ embeds: [successEmb], ephemeral: true });
             collector.stop();
             await replyMsg.delete().catch(() => { });
           } catch (err) {
@@ -2252,7 +2252,7 @@ async function handlePetCommand(message, client, args) {
             traitText = `\n\n✨ **HOKI BANGET! Pet Anda menetas dengan Trait Rare:** \`${traitDesc}\`!`;
           }
           const successEmb = embeds.successEmbed('Telur Menetas! 🎉🐣', `Selamat! Telur pet **${freshPet.pet_name}** Anda telah resmi menetas menjadi bayi monster yang lucu!${traitText}\n\n*Ketik \`.pet\` untuk menyegarkan.*`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           collector.stop();
           await replyMsg.delete().catch(() => { });
         } else {
@@ -2264,7 +2264,7 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.useItem(author.id, guildId, 'FOOD_BASIC', true);
           const successEmb = embeds.successEmbed('Beri Makan Berhasil! 🍗', `Anda memberi pakan **${res.item.name}** ke pet Anda!${res.didAutoBuy ? ' *(Auto-beli Rp 150 potong dari dompet)*' : ''}\n📊 Status Baru: Kenyangan **${res.pet.hunger}%** (+10 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
@@ -2276,7 +2276,7 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.useItem(author.id, guildId, 'WATER', true);
           const successEmb = embeds.successEmbed('Beri Minum Berhasil! 🥤', `Anda memberi air minum **${res.item.name}** ke pet Anda!${res.didAutoBuy ? ' *(Auto-beli Rp 100 potong dari dompet)*' : ''}\n📊 Status Baru: Hidrasi **${res.pet.thirst}%** (+10 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
@@ -2288,7 +2288,7 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.playWithPet(author.id, guildId);
           const successEmb = embeds.successEmbed('Bermain Berhasil! ⚽', `Anda mengajak pet bermain bola! \n📊 Status Baru: Kebahagiaan **${res.happiness}%** (+15 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
@@ -2300,7 +2300,7 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.useItem(author.id, guildId, 'MEDICINE', true);
           const successEmb = embeds.successEmbed('Pengobatan Berhasil! 💊', `Anda menyembuhkan pet dengan **${res.item.name}**!${res.didAutoBuy ? ' *(Auto-beli Rp 500 potong dari dompet)*' : ''}\n📊 Status Baru: HP Kesehatan **${res.pet.health}%** (+10 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
@@ -2312,7 +2312,7 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.sendToWork(author.id, guildId);
           const successEmb = embeds.successEmbed('Selesai Bekerja! 💼', `**${res.pet.pet_name}** sukses membawa pulang uang gaji sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!\n📈 Bonus Level: \`+Rp ${res.levelBonus}\`\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, Kebahagiaan \`${res.pet.happiness}%\` (+30 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
@@ -2328,7 +2328,7 @@ async function handlePetCommand(message, client, args) {
             dropText = `\n🎁 **DROP LANGKA HOKI:** Menemukan **1x ${res.dropItem.name}** gratis!`;
           }
           const successEmb = embeds.successEmbed('Selesai Berburu! 🏹', `**${res.pet.pet_name}** berhasil kembali dari berburu dengan koin **Rp ${res.reward.toLocaleString('id-ID')}**!${dropText}\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\` (+60 XP).`);
-          await iPet.reply({ embeds: [successEmb] });
+          await iPet.reply({ embeds: [successEmb], ephemeral: true });
           const freshData = getDashboardPanel(author.id, guildId);
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
