@@ -2945,6 +2945,27 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // ── FILTER SALURAN KHUSUS PET (Channel ID: 1509762623917265137) ──
+  // 1. Jika mengetik perintah non-pet di channel khusus pet, blokir
+  if (message.channelId === '1509762623917265137') {
+    if (!['pet', 'pet-admin', 'admin-pet', 'panel-pet'].includes(commandName)) {
+      const warnEmb = embeds.warnEmbed('Saluran Khusus Pet! 🐾', 'Saluran ini hanya dapat digunakan untuk bermain pet (`.pet`)! Silakan gunakan channel obrolan/bot untuk perintah lainnya.');
+      await message.reply({ embeds: [warnEmb] });
+      return true; // Berhenti memproses perintah lain
+    }
+  }
+
+  // 2. Jika mengetik perintah pet di channel lain, blokir (kecuali admin/owner)
+  if (['pet', 'pet-admin'].includes(commandName) && message.channelId !== '1509762623917265137') {
+    const isOwner = author.id === OWNER_ID;
+    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      const warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
+      await message.reply({ embeds: [warnEmb] });
+      return true; // Berhenti memproses perintah
+    }
+  }
+
   // 👮 GUARD PENJARA VIRTUAL (Jail Lock Guard)
   // Menghalangi seluruh perintah ekonomi jika user sedang berada di dalam penjara virtual,
   // kecuali perintah .jail, .heist-admin, .pet-admin, dan .pet jika BUKAN work/hunt/battle.
