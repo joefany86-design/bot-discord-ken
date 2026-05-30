@@ -638,8 +638,34 @@ client.on('messageCreate', async message => {
 
   if (!message.content.startsWith('.')) return;
 
-  // Opsi 1: Hapus pesan perintah user (.commands) secara instan agar chat bersih & rapi
-  message.delete().catch(() => {});
+  // Decorator untuk memitigasi error 'Unknown Message' jika perintah teks dihapus sebelum bot sempat membalas
+  const originalReply = message.reply.bind(message);
+  message.reply = async (options) => {
+    try {
+      return await originalReply(options);
+    } catch (err) {
+      if (err.code === 10008 || err.message.includes('Unknown Message') || err.message.includes('message_reference')) {
+        const mention = `<@${message.author.id}>, `;
+        if (typeof options === 'string') {
+          return await message.channel.send({ content: mention + options });
+        } else {
+          const payload = { ...options };
+          if (payload.content) {
+            payload.content = mention + payload.content;
+          } else {
+            payload.content = mention.trim();
+          }
+          return await message.channel.send(payload);
+        }
+      }
+      throw err;
+    }
+  };
+
+  // Hapus pesan perintah user (.commands) setelah jeda singkat agar tidak memicu error reference
+  setTimeout(() => {
+    message.delete().catch(() => {});
+  }, 1000);
 
   // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
   const BLOCKED_CMD_CHANNELS = [
