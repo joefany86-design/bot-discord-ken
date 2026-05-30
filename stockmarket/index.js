@@ -1771,7 +1771,7 @@ async function handlePetCommand(message, client, args) {
   }
 
   // ── SUB-PERINTAH: EXPEDITION (EKSPEDISI PVE) ──
-  if (subCommand === 'expedition' || subCommand === 'pet-expedition') {
+  if (subCommand === 'expedition' || subCommand === 'pet-expedition' || subCommand === 'expidition') {
     const activeLobby = client.activeExpeditions = client.activeExpeditions || new Map();
     if (activeLobby.has(guildId)) {
       return message.reply({ embeds: [embeds.warnEmbed('Lobi Aktif!', 'Lobi ekspedisi pet sudah berjalan di server ini!')] });

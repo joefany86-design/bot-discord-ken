@@ -636,7 +636,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(COLORS.DARK)
       .setTitle(`🏆 PAPAN PERINGKAT ORANG TERKAYA — ${guildName}`)
-      .setDescription(`Daftar 10 konglomerat dengan total aset (Saldo + Nilai Saham) tertinggi.`);
+      .setDescription(`Daftar 10 konglomerat dengan total aset (Saldo + Saham + Bank) tertinggi.`);
 
     if (leaderboard.length === 0) {
       embed.addFields({ name: '🚫 Kosong', value: 'Belum ada data ekonomi untuk server ini.' });
@@ -648,7 +648,7 @@ module.exports = {
         const name = member ? `**${member.username}**` : `<@${user.userId}>`;
         
         ranks += `${medal} ${name}\n` +
-                 `   💵 Dompet: \`${formatCurrency(user.balance)}\` | 📊 Saham: \`${formatCurrency(user.portfolioValue)}\`\n` +
+                 `   💵 Dompet: \`${formatCurrency(user.balance)}\` | 📊 Saham: \`${formatCurrency(user.portfolioValue)}\` | 🏦 Bank: \`${formatCurrency(user.bankBalance)}\`\n` +
                  `   💎 **Kekayaan Bersih: ${formatCurrency(user.totalWealth)}**\n\n`;
       });
       embed.setDescription(ranks);
@@ -1708,8 +1708,8 @@ module.exports = {
     const playStatus = canPlay ? '🟢 **Siap bermain!**' : `⏳ Cooldown s/d <t:${nextPlay}:t> (<t:${nextPlay}:R>)`;
 
     embed.addFields({
-      name: '⏱️ Status Cooldown Aktivitas',
-      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}`,
+      name: '⏱️ Status Cooldown & Aktivitas',
+      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}\n🛡️ **Ekspedisi (.pet expedition) :** Aktif (Maks 10x per hari)`,
       inline: false
     });
 
@@ -2019,7 +2019,8 @@ module.exports = {
           value:
             `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 1 jam, Golem 40m).\n` +
             `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 2 jam.\n` +
-            `• **PvP Arena (\`.pet pvp @user <taruhan\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.`,
+            `• **PvP Arena (\`.pet pvp @user <taruhan>\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.\n` +
+            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (1-4 kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 10x/hari, biaya Rp 150).`,
           inline: false
         },
         {

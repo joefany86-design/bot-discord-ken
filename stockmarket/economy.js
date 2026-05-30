@@ -231,16 +231,21 @@ function transferBalance(fromUserId, toUserId, guildId, amount) {
  * Mengembalikan daftar Top Terkaya di server (leaderboard).
  */
 function getLeaderboard(guildId, limit = 10) {
-  // Query untuk mendapatkan total nilai portofolio per user
+  // Query untuk mendapatkan total nilai portofolio dan saldo bank per user
   const wallets = db.all(
     `SELECT w.*, 
-            COALESCE(SUM(p.shares * s.current_price), 0) as portfolio_value
+            COALESCE(pv.portfolio_value, 0) as portfolio_value,
+            COALESCE(bs.balance, 0) as bank_balance
      FROM wallets w
-     LEFT JOIN portfolios p ON w.user_id = p.user_id AND w.guild_id = p.guild_id
-     LEFT JOIN stocks s ON p.channel_id = s.channel_id AND p.guild_id = s.guild_id
+     LEFT JOIN bank_savings bs ON w.user_id = bs.user_id AND w.guild_id = bs.guild_id
+     LEFT JOIN (
+       SELECT p.user_id, p.guild_id, SUM(p.shares * s.current_price) as portfolio_value
+       FROM portfolios p
+       JOIN stocks s ON p.channel_id = s.channel_id AND p.guild_id = s.guild_id
+       GROUP BY p.user_id, p.guild_id
+     ) pv ON w.user_id = pv.user_id AND w.guild_id = pv.guild_id
      WHERE w.guild_id = ?
-     GROUP BY w.user_id
-     ORDER BY (w.balance + COALESCE(SUM(p.shares * s.current_price), 0)) DESC
+     ORDER BY (w.balance + COALESCE(pv.portfolio_value, 0) + COALESCE(bs.balance, 0)) DESC
      LIMIT ?`,
     [guildId, limit]
   );
@@ -249,7 +254,8 @@ function getLeaderboard(guildId, limit = 10) {
     userId: w.user_id,
     balance: w.balance,
     portfolioValue: w.portfolio_value,
-    totalWealth: w.balance + w.portfolio_value,
+    bankBalance: w.bank_balance,
+    totalWealth: w.balance + w.portfolio_value + w.bank_balance,
     streak: w.streak_days
   }));
 }

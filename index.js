@@ -329,6 +329,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.pet buy <nama> <slime/dragon/cat/golem>\`** - Adopsi telur pet seharga **Rp 1.500**.`,
             `👉 **\`.pet shop\`** / **\`.pet buy-item <item_id> [jumlah]\`** - Belanja persediaan barang pet.`,
             `👉 **\`.pet work\`** / **\`.pet hunt\`** - Kirim pet bekerja secara aman atau berburu di hutan liar.`,
+            `👉 **\`.pet expedition\`** - Lobi co-op PVE berpetualang kelompok mengalahkan bos zona (Hadiah koin & jackpot drop item).`,
             `👉 **\`.pet play\`** - Bermain bersama pet untuk memulihkan kebahagiaan & XP.`,
             `👉 **\`.pet pvp @user <taruhan>\`** - Duel Arena PvP antar pet memperebutkan koin taruhan.`,
             `👉 **\`.pet reset\`** - Mengosongkan kandang untuk mengadopsi pet baru.`,
