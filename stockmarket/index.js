@@ -2655,20 +2655,26 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   }
 
   // Animasi rolling menegangkan multi-tahap
-  let rollingMsg;
+  let rollingMsg = null;
   if (isInteraction) {
-    rollingMsg = await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', ephemeral: replyTarget.channelId === SHOP_CHANNEL_ID, fetchReply: true });
+    await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', ephemeral: replyTarget.channelId === SHOP_CHANNEL_ID });
   } else {
     rollingMsg = await replyTarget.reply('🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙');
   }
 
+  // Helper: edit pesan rolling — untuk interaksi pakai editReply, untuk message pakai rollingMsg.edit
+  const editRolling = (data) => {
+    if (isInteraction) return replyTarget.editReply(typeof data === 'string' ? { content: data } : data);
+    return rollingMsg.edit(data);
+  };
+
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   await delay(1000);
-  await rollingMsg.edit('🎰 `[ SPINNING... ] ────────── [ 🔄 ]` Menyeimbangkan tuas mesin gacha...');
+  await editRolling('🎰 `[ SPINNING... ] ────────── [ 🔄 ]` Menyeimbangkan tuas mesin gacha...');
   await delay(1200);
-  await rollingMsg.edit('🎰 `[ FILTERING TIER... ] 💎✨ [ 🔮 ]` Menyaring tingkat kelangkaan...');
+  await editRolling('🎰 `[ FILTERING TIER... ] 💎✨ [ 🔮 ]` Menyaring tingkat kelangkaan...');
   await delay(1200);
-  await rollingMsg.edit('🎰 `[ DECRYPTING JACKPOT... ] ⚡📦` Membuka peti misteri...');
+  await editRolling('🎰 `[ DECRYPTING JACKPOT... ] ⚡📦` Membuka peti misteri...');
   await delay(1000);
 
   // Probabilitas Gacha ZONK
@@ -2698,7 +2704,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     const selectedTrash = trashItems[Math.floor(Math.random() * trashItems.length)];
 
     const zonkEmbed = embeds.gachaResultEmbed(user, selectedTrash, gachaCost, finalWallet.balance, false);
-    await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
+    await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
 
     client.emit('playTtsEvent', {
       guildId,
@@ -2737,19 +2743,19 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   }
 
   if (!selectedItem) {
-    await rollingMsg.edit('❌ Gagal memutar gacha karena seluruh stok role gacha habis terjual!');
+    await editRolling('❌ Gagal memutar gacha karena seluruh stok role gacha habis terjual!');
     return;
   }
 
   const discordRole = guild.roles.cache.get(selectedItem.role_id) || await guild.roles.fetch(selectedItem.role_id).catch(() => null);
   if (!discordRole) {
-    await rollingMsg.edit('❌ Role hadiah gacha sudah tidak ditemukan lagi di Discord server ini. Hubungi admin!');
+    await editRolling('❌ Role hadiah gacha sudah tidak ditemukan lagi di Discord server ini. Hubungi admin!');
     return;
   }
 
   const memberObj = member || await guild.members.fetch(user.id).catch(() => null);
   if (!memberObj) {
-    await rollingMsg.edit('❌ Gagal mengambil data profil anggota Discord Anda.');
+    await editRolling('❌ Gagal mengambil data profil anggota Discord Anda.');
     return;
   }
 
@@ -2773,13 +2779,13 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
       `📉 Sisa saldo Anda: **Rp ${finalWallet.balance.toLocaleString('id-ID')}**`
     );
 
-    await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
+    await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
   } else {
     try {
       await memberObj.roles.add(discordRole);
     } catch (roleErr) {
       console.error('❌ Gagal menambahkan role gacha:', roleErr.message);
-      await rollingMsg.edit('❌ Gagal menyematkan role gacha. Pastikan posisi integrasi role bot berada di atas role hadiah!');
+      await editRolling('❌ Gagal menyematkan role gacha. Pastikan posisi integrasi role bot berada di atas role hadiah!');
       return;
     }
 
@@ -2797,7 +2803,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     }
 
     const winEmbed = embeds.gachaResultEmbed(user, selectedItem, gachaCost, finalWallet.balance, true);
-    await rollingMsg.edit({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
+    await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
 
     // Broadcast Heboh jika Legendary / Epic / Mythic
     if (selectedItem.tier === 'EPIC' || selectedItem.tier === 'LEGENDARY' || selectedItem.tier === 'MYTHIC') {
