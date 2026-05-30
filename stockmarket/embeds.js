@@ -528,14 +528,26 @@ module.exports = {
       .setThumbnail(user.displayAvatarURL({ dynamic: true }));
 
     if (result.success) {
+      let desc = `Selamat **${user.username}**! Kamu mendapatkan **${formatCurrency(result.reward)}** hari ini.\n\n` +
+                 `💰 Hadiah Dasar: \`${formatCurrency(result.baseReward)}\`\n` +
+                 `🔥 Bonus Streak: \`${formatCurrency(result.streakBonus)}\` (${result.streak} hari)`;
+
+      if (result.roomBonus > 0) {
+        desc += `\n🛌 Bonus Kamar (${result.roomName}): \`${formatCurrency(result.roomBonus)}\``;
+      }
+
+      if (result.debtPaidDetails) {
+        const { creditorId, paidAmount, remainingDebt } = result.debtPaidDetails;
+        desc += `\n\n⚠️ **POTONGAN HUTANG OTOMATIS!**\n` +
+                `Sebesar **${formatCurrency(paidAmount)}** (50% dari hadiah) dipotong secara otomatis untuk mencicil hutang tebusan Anda kepada <@${creditorId}>.\n` +
+                `╰ 💰 Bersih Diterima: **${formatCurrency(result.finalReward)}**\n` +
+                `╰ 🧾 Sisa Hutang Anda: **${remainingDebt > 0 ? formatCurrency(remainingDebt) : '✨ LUNAS!'}**`;
+      }
+
       embed
         .setColor(COLORS.SUCCESS)
         .setTitle('🎉 Hadiah Harian Berhasil Diklaim!')
-        .setDescription(
-          `Selamat **${user.username}**! Kamu mendapatkan **${formatCurrency(result.reward)}** hari ini.\n\n` +
-          `💰 Hadiah Dasar: \`${formatCurrency(result.baseReward)}\`\n` +
-          `🔥 Bonus Streak: \`${formatCurrency(result.streakBonus)}\` (${result.streak} hari)`
-        )
+        .setDescription(desc)
         .setFooter({ text: 'Kembali lagi besok untuk mempertahankan streak!' });
     } else {
       // Hitung sisa waktu (jam, menit, detik)

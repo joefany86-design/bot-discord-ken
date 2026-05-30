@@ -158,28 +158,93 @@ function claimDaily(userId, guildId) {
   }
 
   const totalReward = baseReward + streakBonus + roomBonus;
+  
+  let finalPlayerReward = totalReward;
+  let debtPaidDetails = null;
 
-  db.transaction(() => {
-    // Tambah saldo
-    addBalance(userId, guildId, totalReward, 'DAILY');
+  // Cek apakah ada hutang tebusan (bail debt) ke teman
+  const activeDebt = db.get(
+    'SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ? ORDER BY created_at ASC LIMIT 1',
+    [userId, guildId]
+  );
+
+  if (activeDebt && activeDebt.amount > 0) {
+    const creditorId = activeDebt.creditor_id;
+    // Potong 50% dari total daily reward untuk mencicil hutang teman secara paksa
+    const paidAmount = Math.min(Math.floor(totalReward * 0.5), activeDebt.amount);
     
-    // Update streak dan tanggal aktif terakhir
-    db.run(
-      `UPDATE wallets 
-       SET streak_days = ?, last_active_date = ? 
-       WHERE user_id = ? AND guild_id = ?`,
-      [newStreak, todayStr, userId, guildId]
-    );
-  })();
+    if (paidAmount > 0) {
+      finalPlayerReward = totalReward - paidAmount;
+      const remainingDebt = activeDebt.amount - paidAmount;
+      
+      db.transaction(() => {
+        // Tambah koin ke dompet teman (creditor)
+        addBalance(creditorId, guildId, paidAmount, 'RECEIVE_DEBT_PAYMENT');
+        
+        // Kurangi hutang tebusan
+        if (remainingDebt <= 0) {
+          db.run(
+            'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+            [guildId, userId, creditorId]
+          );
+        } else {
+          db.run(
+            'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+            [remainingDebt, guildId, userId, creditorId]
+          );
+        }
+        
+        // Catat transaksi pemotongan hutang pada debtor
+        db.run(
+          'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+          [userId, guildId, 'PAY_DEBT', -paidAmount]
+        );
+
+        // Tambah saldo bersih ke dompet pelaku setelah dipotong hutang
+        addBalance(userId, guildId, finalPlayerReward, 'DAILY');
+        
+        // Update streak dan tanggal aktif terakhir
+        db.run(
+          `UPDATE wallets 
+           SET streak_days = ?, last_active_date = ? 
+           WHERE user_id = ? AND guild_id = ?`,
+          [newStreak, todayStr, userId, guildId]
+        );
+      })();
+      
+      debtPaidDetails = {
+        creditorId,
+        paidAmount,
+        remainingDebt
+      };
+    }
+  }
+
+  if (!debtPaidDetails) {
+    db.transaction(() => {
+      // Tambah saldo penuh jika tidak ada hutang
+      addBalance(userId, guildId, totalReward, 'DAILY');
+      
+      // Update streak dan tanggal aktif terakhir
+      db.run(
+        `UPDATE wallets 
+         SET streak_days = ?, last_active_date = ? 
+         WHERE user_id = ? AND guild_id = ?`,
+        [newStreak, todayStr, userId, guildId]
+      );
+    })();
+  }
 
   return {
     success: true,
     reward: totalReward,
+    finalReward: finalPlayerReward,
     baseReward,
     streakBonus,
     streak: newStreak,
     roomBonus,
-    roomName
+    roomName,
+    debtPaidDetails
   };
 }
 

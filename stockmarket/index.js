@@ -1449,18 +1449,27 @@ async function handleEconomyChat(message) {
     if (wallet.last_active_date !== todayStr && !isOverdue) {
       const dailyResult = economy.claimDaily(author.id, guildId);
       if (dailyResult && dailyResult.success) {
+        let dailyDesc = `Selamat! Karena keaktifan Anda mengobrol di server hari ini, Gaji Harian Otomatis Anda berhasil dicairkan! 💸✨\n\n` +
+          `💰 Hadiah: Rp ${dailyResult.reward.toLocaleString('id-ID')}\n` +
+          `👉 Detail: Hadiah Dasar: Rp ${dailyResult.baseReward} | Streak Bonus: Rp ${dailyResult.streakBonus}\n` +
+          `🔥 Streak Saat Ini: ${dailyResult.streak} hari berturut-turut!`;
+
+        if (dailyResult.debtPaidDetails) {
+          const { creditorId, paidAmount, remainingDebt } = dailyResult.debtPaidDetails;
+          dailyDesc += `\n\n⚠️ **POTONGAN HUTANG OTOMATIS!**\n` +
+            `Sebesar **Rp ${paidAmount.toLocaleString('id-ID')}** dipotong otomatis untuk mencicil hutang tebusan Anda kepada <@${creditorId}>.\n` +
+            `╰ 💰 Bersih Diterima: **Rp ${dailyResult.finalReward.toLocaleString('id-ID')}**\n` +
+            `╰ 🧾 Sisa Hutang Anda: **${remainingDebt > 0 ? `Rp ${remainingDebt.toLocaleString('id-ID')}` : '✨ LUNAS!'}**`;
+        }
+
+        dailyDesc += `\n\nPeriksa saldo Anda kapan saja dengan mengetik .bal atau .porto!`;
+
         // Kirim notifikasi embed gaji harian otomatis yang premium
         const autoDailyEmbed = new EmbedBuilder()
           .setColor(embeds.COLORS.SUCCESS)
           .setTitle(`🌅 Gaji Harian Otomatis — ${author.username}`)
           .setThumbnail(author.displayAvatarURL({ dynamic: true }))
-          .setDescription(
-            `Selamat! Karena keaktifan Anda mengobrol di server hari ini, Gaji Harian Otomatis Anda berhasil dicairkan! 💸✨\n\n` +
-            `💰 Hadiah: Rp ${dailyResult.reward.toLocaleString('id-ID')}\n` +
-            `👉 Detail: Hadiah Dasar: Rp ${dailyResult.baseReward} | Streak Bonus: Rp ${dailyResult.streakBonus}\n` +
-            `🔥 Streak Saat Ini: ${dailyResult.streak} hari berturut-turut!\n\n` +
-            `Periksa saldo Anda kapan saja dengan mengetik .bal atau .porto!`
-          )
+          .setDescription(dailyDesc)
           .setTimestamp();
 
         let targetChannel = null;
