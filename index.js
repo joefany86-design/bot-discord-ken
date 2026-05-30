@@ -609,8 +609,8 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Papan Peringkat Realtime (Channel ID: 1510230591860113418)
-  if (message.channelId === '1510230591860113418') {
+  // Proteksi Saluran Papan Peringkat Realtime (Channel ID: 1510230591860113418 / 1510232295448117308)
+  if (message.channelId === '1510230591860113418' || message.channelId === '1510232295448117308') {
     const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
 

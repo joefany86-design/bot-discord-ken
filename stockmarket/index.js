@@ -446,46 +446,64 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
 
 /**
  * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard & Pet Leaderboard)
- * secara berkala setiap 5 detik di channel 1510230591860113418.
+ * secara berkala setiap 5 detik di channel masing-masing.
  */
 function startRealtimeLeaderboard(client) {
   console.log('🏆 Memulai Papan Peringkat Realtime (5s)...');
 
   setInterval(async () => {
+    // ── 1. KANGLOMERAT LEADERBOARD (Channel: 1510230591860113418) ──
     try {
-      const channel = await client.channels.fetch('1510230591860113418').catch(() => null);
-      if (!channel) return;
+      const richChannel = await client.channels.fetch('1510230591860113418').catch(() => null);
+      if (richChannel) {
+        const guildId = richChannel.guild.id;
+        const guildName = richChannel.guild.name;
 
-      const guildId = channel.guild.id;
-      const guildName = channel.guild.name;
+        const richData = economy.getLeaderboard(guildId, 10);
+        await Promise.all(richData.map(async u => {
+          try { await client.users.fetch(u.userId); } catch (e) {}
+        }));
+        const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
 
-      // 1. Ambil data Top 10 Terkaya
-      const richData = economy.getLeaderboard(guildId, 10);
-      await Promise.all(richData.map(async u => {
-        try { await client.users.fetch(u.userId); } catch (e) {}
-      }));
-      const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
+        const messages = await richChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+        const payload = { embeds: [richEmbed], components: [] };
 
-      // 2. Ambil data Top 10 Pet (Level & XP)
-      const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
-      await Promise.all(topPets.map(async p => {
-        try { await client.users.fetch(p.user_id); } catch (e) {}
-      }));
-      const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
-
-      // 3. Cari pesan terakhir bot di channel tersebut
-      const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
-      let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-
-      const payload = { embeds: [richEmbed, petEmbed], components: [] };
-
-      if (leaderboardMsg) {
-        await leaderboardMsg.edit(payload).catch(() => {});
-      } else {
-        await channel.send(payload).catch(() => {});
+        if (leaderboardMsg) {
+          await leaderboardMsg.edit(payload).catch(() => {});
+        } else {
+          await richChannel.send(payload).catch(() => {});
+        }
       }
     } catch (err) {
-      console.error('❌ Error updating realtime leaderboard:', err);
+      console.error('❌ Error updating realtime rich leaderboard:', err);
+    }
+
+    // ── 2. TOP PET LEADERBOARD (Channel: 1510232295448117308) ──
+    try {
+      const petChannel = await client.channels.fetch('1510232295448117308').catch(() => null);
+      if (petChannel) {
+        const guildId = petChannel.guild.id;
+        const guildName = petChannel.guild.name;
+
+        const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
+        await Promise.all(topPets.map(async p => {
+          try { await client.users.fetch(p.user_id); } catch (e) {}
+        }));
+        const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
+
+        const messages = await petChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+        const payload = { embeds: [petEmbed], components: [] };
+
+        if (leaderboardMsg) {
+          await leaderboardMsg.edit(payload).catch(() => {});
+        } else {
+          await petChannel.send(payload).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating realtime pet leaderboard:', err);
     }
   }, 5000);
 }
