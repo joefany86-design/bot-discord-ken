@@ -1,3 +1,4 @@
+require('dotenv').config();
 const db = require('../stockmarket/database');
 
 async function resetCooldowns() {
