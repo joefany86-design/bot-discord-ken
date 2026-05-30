@@ -4990,34 +4990,73 @@ async function handleEconomyCommands(message, client) {
       }
 
       let updateText = '';
-      updates.forEach(u => {
-        let trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
-        let trendSign = u.changePct >= 0 ? '+' : '';
-        let trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+      // Helper: buat activity bar visual
+      const getActivityBar = (score, maxScore = 100) => {
+        const barLen = 8;
+        const filled = Math.min(barLen, Math.max(0, Math.round((score / maxScore) * barLen)));
+        return '█'.repeat(filled) + '░'.repeat(barLen - filled);
+      };
+
+      // Hitung statistik ringkasan
+      const gainers = updates.filter(u => u.changePct > 0 && !u.isPumped);
+      const losers = updates.filter(u => u.changePct < 0 && !u.isCrashed);
+      const pumped = updates.filter(u => u.isPumped);
+      const crashed = updates.filter(u => u.isCrashed);
+
+      updates.forEach((u, idx) => {
+        let trendBadge = '';
+        let trendArrow = '';
+        let priceColor = '';
+        const sign = u.changePct >= 0 ? '+' : '';
 
         if (u.isCrashed) {
-          trendIndicator = '💥';
-          trendSign = '';
-          trendEmoji = '📉 **[BUBBLE BURST / CRASH]** 💀';
+          trendBadge = '\n> ⚠️ `「  BUBBLE BURST / CRASH  」` 💀';
+          trendArrow = '💥';
+          priceColor = '🔴';
         } else if (u.isPumped) {
-          trendIndicator = '🚀';
-          trendSign = '+';
-          trendEmoji = '📈 **[BULL RUN / PUMPED]** 🔥';
+          trendBadge = '\n> 🎯 `「  BULL RUN / PUMPED  」` 🔥';
+          trendArrow = '🚀';
+          priceColor = '🟢';
+        } else if (u.changePct > 0) {
+          trendArrow = '📈';
+          priceColor = '🟢';
+        } else if (u.changePct < 0) {
+          trendArrow = '📉';
+          priceColor = '🔴';
+        } else {
+          trendArrow = '↔️';
+          priceColor = '⚪';
         }
 
-        updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
-          `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
-          `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
+        const activityBar = getActivityBar(u.activity);
+
+        updateText += `> ${priceColor} **${u.ticker}** · \`#${u.name}\`\n`;
+        updateText += `> ┊ 💵 Harga   ─  **Rp ${u.newPrice.toLocaleString('id-ID')}**  ·  ${trendArrow} \`${sign}${u.changePct}%\`\n`;
+        updateText += `> ┊ ⚡ Aktivitas ─  \`${activityBar}\` \`${u.activity.toFixed(1)} poin\``;
+        updateText += trendBadge;
+        updateText += '\n\n';
       });
+
+      // Summary bar
+      let summaryLine = '```\n';
+      summaryLine += `  📊 Ringkasan:  `;
+      const summaryParts = [];
+      if (pumped.length > 0)  summaryParts.push(`🚀 ${pumped.length} Pumped`);
+      if (gainers.length > 0) summaryParts.push(`🟢 ${gainers.length} Naik`);
+      if (losers.length > 0)  summaryParts.push(`🔴 ${losers.length} Turun`);
+      if (crashed.length > 0) summaryParts.push(`💀 ${crashed.length} Crash`);
+      summaryLine += summaryParts.join('  │  ') || '⚪ Stabil';
+      summaryLine += '\n```';
 
       const reportEmbed = new EmbedBuilder()
         .setColor(0x00FF88)
-        .setTitle(`📈 LAPORAN PERGERAKAN SAHAM (MANUAL UPDATE) — ${guild.name}`)
+        .setTitle(`📈  LAPORAN PERGERAKAN SAHAM (MANUAL)  ─  ${guild.name}`)
         .setDescription(
-          `🔔 **Bursa Saham Server telah di-update secara manual oleh Administrator!**\n` +
-          `Berikut adalah data pergerakan harga saham terbaru berdasarkan aktivitas obrolan warga server:\n\n${updateText}`
+          `${summaryLine}\n` +
+          `${updateText}` +
+          `─────────────────────────────────────`
         )
-        .setFooter({ text: 'Sentinel Bot • Live Market Updates' })
+        .setFooter({ text: `Sentinel Bot  •  Manual Update by Admin  •  ${updates.length} saham diperbarui` })
         .setTimestamp();
 
       await message.reply({ embeds: [reportEmbed] });

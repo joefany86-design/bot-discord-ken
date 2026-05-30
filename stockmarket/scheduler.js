@@ -43,35 +43,75 @@ function initScheduler(client) {
 
       // ── AUTO MARKET REPORT: Kirim log perubahan harga otomatis ke channel ──
       if (targetChannel && updates.length > 0) {
+        // Helper: buat activity bar visual
+        const getActivityBar = (score, maxScore = 100) => {
+          const barLen = 8;
+          const filled = Math.min(barLen, Math.max(0, Math.round((score / maxScore) * barLen)));
+          return '█'.repeat(filled) + '░'.repeat(barLen - filled);
+        };
+
+        // Hitung statistik ringkasan
+        const gainers = updates.filter(u => u.changePct > 0 && !u.isPumped);
+        const losers = updates.filter(u => u.changePct < 0 && !u.isCrashed);
+        const pumped = updates.filter(u => u.isPumped);
+        const crashed = updates.filter(u => u.isCrashed);
+
         let updateText = '';
-        updates.forEach(u => {
-          let trendIndicator = u.changePct >= 0 ? '🟢' : '🔴';
-          let trendSign = u.changePct >= 0 ? '+' : '';
-          let trendEmoji = u.changePct >= 0 ? '📈' : '📉';
+        updates.forEach((u, idx) => {
+          // Tentukan badge tren
+          let trendBadge = '';
+          let trendArrow = '';
+          let priceColor = '';
+          const sign = u.changePct >= 0 ? '+' : '';
 
           if (u.isCrashed) {
-            trendIndicator = '💥';
-            trendSign = '';
-            trendEmoji = '📉 **[BUBBLE BURST / CRASH]** 💀';
+            trendBadge = '\n> ⚠️ `「  BUBBLE BURST / CRASH  」` 💀';
+            trendArrow = '💥';
+            priceColor = '🔴';
           } else if (u.isPumped) {
-            trendIndicator = '🚀';
-            trendSign = '+';
-            trendEmoji = '📈 **[BULL RUN / PUMPED]** 🔥';
+            trendBadge = '\n> 🎯 `「  BULL RUN / PUMPED  」` 🔥';
+            trendArrow = '🚀';
+            priceColor = '🟢';
+          } else if (u.changePct > 0) {
+            trendArrow = '📈';
+            priceColor = '🟢';
+          } else if (u.changePct < 0) {
+            trendArrow = '📉';
+            priceColor = '🔴';
+          } else {
+            trendArrow = '↔️';
+            priceColor = '⚪';
           }
 
-          updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
-                        `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
-                        `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
+          const activityBar = getActivityBar(u.activity);
+
+          updateText += `> ${priceColor} **${u.ticker}** · \`#${u.name}\`\n`;
+          updateText += `> ┊ 💵 Harga   ─  **Rp ${u.newPrice.toLocaleString('id-ID')}**  ·  ${trendArrow} \`${sign}${u.changePct}%\`\n`;
+          updateText += `> ┊ ⚡ Aktivitas ─  \`${activityBar}\` \`${u.activity.toFixed(1)} poin\``;
+          updateText += trendBadge;
+          updateText += '\n\n';
         });
+
+        // Summary bar
+        let summaryLine = '```\n';
+        summaryLine += `  📊 Ringkasan:  `;
+        const parts = [];
+        if (pumped.length > 0)  parts.push(`🚀 ${pumped.length} Pumped`);
+        if (gainers.length > 0) parts.push(`🟢 ${gainers.length} Naik`);
+        if (losers.length > 0)  parts.push(`🔴 ${losers.length} Turun`);
+        if (crashed.length > 0) parts.push(`💀 ${crashed.length} Crash`);
+        summaryLine += parts.join('  │  ') || '⚪ Stabil';
+        summaryLine += '\n```';
 
         const reportEmbed = new EmbedBuilder()
           .setColor(0x00FF88)
-          .setTitle(`📈 LAPORAN PERGERAKAN SAHAM HARIAN — ${guild.name}`)
+          .setTitle(`📈  LAPORAN PERGERAKAN SAHAM  ─  ${guild.name}`)
           .setDescription(
-            `🔔 **Bursa Saham Server telah ter-update otomatis!**\n` +
-            `Berikut adalah data pergerakan harga saham terbaru berdasarkan aktivitas obrolan warga server:\n\n${updateText}`
+            `${summaryLine}\n` +
+            `${updateText}` +
+            `─────────────────────────────────────`
           )
-          .setFooter({ text: 'Sentinel Bot • Live Market Updates' })
+          .setFooter({ text: `Sentinel Bot  •  Live Market Updates  •  ${updates.length} saham diperbarui` })
           .setTimestamp();
 
         targetChannel.send({ embeds: [reportEmbed] }).catch(err => {
@@ -82,7 +122,7 @@ function initScheduler(client) {
       // ── AUTO-TRADING ENGINE: Jalankan robot investasi otomatis bagi member yang mengaktifkannya ──
       try {
         const autoTraders = database.all('SELECT * FROM wallets WHERE guild_id = ? AND auto_trade = 1', [guild.id]);
-        const tradeLogs = [];
+        const tradeLogs = []; // { type: 'BUY'|'SELL', userId, ticker, shares, price, total, profit, profitPct }
 
         autoTraders.forEach(trader => {
           try {
@@ -94,7 +134,15 @@ function initScheduler(client) {
               if (item.shares > 0 && item.profitPercent >= 15.0) {
                 const sharesToSell = item.shares;
                 const sellRes = stocks.sellStock(userId, guild.id, item.ticker, sharesToSell);
-                tradeLogs.push(`📤 **Auto-Sell [TP]**: <@${userId}> sukses melikuidasi **${sharesToSell}** lembar **${item.ticker}** pada harga **Rp ${sellRes.pricePerShare.toLocaleString('id-ID')}** (Untung: \`+${item.profitPercent}%\` | +Rp ${sellRes.finalRevenue.toLocaleString('id-ID')})`);
+                tradeLogs.push({
+                  type: 'SELL',
+                  userId,
+                  ticker: item.ticker,
+                  shares: sharesToSell,
+                  price: sellRes.pricePerShare,
+                  total: sellRes.finalRevenue,
+                  profitPct: item.profitPercent
+                });
               }
             });
 
@@ -130,7 +178,14 @@ function initScheduler(client) {
 
                   if (sharesToBuy > 0) {
                     const buyRes = stocks.buyStock(userId, guild.id, stockToBuy.stock_ticker, sharesToBuy);
-                    tradeLogs.push(`📥 **Auto-Buy [DCA]**: <@${userId}> mencicil beli **${sharesToBuy}** lembar **${stockToBuy.stock_ticker}** pada harga **Rp ${buyRes.pricePerShare.toLocaleString('id-ID')}** (Total: \`Rp ${buyRes.totalPrice.toLocaleString('id-ID')}\`)`);
+                    tradeLogs.push({
+                      type: 'BUY',
+                      userId,
+                      ticker: stockToBuy.stock_ticker,
+                      shares: sharesToBuy,
+                      price: buyRes.pricePerShare,
+                      total: buyRes.totalPrice
+                    });
                   }
                 }
               }
@@ -142,13 +197,46 @@ function initScheduler(client) {
 
         // Kirim Laporan Robot Auto-Trading jika ada transaksi otomatis yang dieksekusi
         if (tradeLogs.length > 0 && targetChannel) {
+          // Pisahkan SELL dan BUY
+          const sells = tradeLogs.filter(t => t.type === 'SELL');
+          const buys = tradeLogs.filter(t => t.type === 'BUY');
+
+          let tradeText = '';
+
+          // ── SELL / Take Profit ──
+          if (sells.length > 0) {
+            let totalProfit = 0;
+            tradeText += `**📤  TAKE PROFIT ─ Likuidasi Otomatis**\n`;
+            sells.forEach(s => {
+              totalProfit += s.total;
+              tradeText += `> ┊ 🟢 <@${s.userId}> menjual **${s.shares}** lbr **${s.ticker}**\n`;
+              tradeText += `> ┊    @ Rp ${s.price.toLocaleString('id-ID')}  ·  \`+${s.profitPct}%\`  ·  **+Rp ${s.total.toLocaleString('id-ID')}**\n`;
+            });
+            tradeText += `> ┊ 💰 Total Hasil Likuidasi: **Rp ${totalProfit.toLocaleString('id-ID')}**\n\n`;
+          }
+
+          // ── BUY / DCA ──
+          if (buys.length > 0) {
+            let totalSpent = 0;
+            tradeText += `**📥  DOLLAR-COST AVERAGING ─ Cicilan Otomatis**\n`;
+            buys.forEach(b => {
+              totalSpent += b.total;
+              tradeText += `> ┊ 🔵 <@${b.userId}> membeli **${b.shares}** lbr **${b.ticker}**\n`;
+              tradeText += `> ┊    @ Rp ${b.price.toLocaleString('id-ID')}  ·  **Rp ${b.total.toLocaleString('id-ID')}**\n`;
+            });
+            tradeText += `> ┊ 💸 Total Investasi Masuk: **Rp ${totalSpent.toLocaleString('id-ID')}**\n`;
+          }
+
+          // Summary
+          const uniqueTraders = [...new Set(tradeLogs.map(t => t.userId))].length;
+
           const autoTradeEmbed = new EmbedBuilder()
             .setColor(0x7C4DFF)
-            .setTitle(`🤖 LAPORAN TRANSAKSI ROBOT AUTO-TRADING — ${guild.name}`)
+            .setTitle(`🤖  ROBOT AUTO-TRADING  ─  ${guild.name}`)
             .setDescription(
-              `⚡ **Robot Auto-Invest telah selesai memproses portofolio member!**\n` +
-              `Berikut adalah riwayat transaksi otomatis yang berhasil dieksekusi:\n\n` +
-              tradeLogs.join('\n')
+              `\`\`\`\n  ⚡ ${tradeLogs.length} transaksi  │  👥 ${uniqueTraders} trader  │  📤 ${sells.length} sell  │  📥 ${buys.length} buy\n\`\`\`\n` +
+              `${tradeText}\n` +
+              `─────────────────────────────────────`
             )
             .setFooter({ text: 'Ketik .autotrade untuk mengelola robot trading Anda!' })
             .setTimestamp();
