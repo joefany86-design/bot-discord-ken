@@ -1527,6 +1527,51 @@ module.exports = {
 
   // 19. Embed Dashboard Utama Bank
   bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit) {
+    const kos = require('./kos');
+    const activeRental = kos.getActiveRental(wallet.user_id, wallet.guild_id);
+    const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
+
+    const depositTax = config.bank.DEPOSIT_TAX_ROOMS[roomTier] !== undefined
+      ? config.bank.DEPOSIT_TAX_ROOMS[roomTier]
+      : config.bank.DEPOSIT_TAX_ROOMS.DEFAULT;
+
+    const withdrawTax = config.bank.WITHDRAW_TAX_ROOMS[roomTier] !== undefined
+      ? config.bank.WITHDRAW_TAX_ROOMS[roomTier]
+      : config.bank.WITHDRAW_TAX_ROOMS.DEFAULT;
+
+    const feeConfig = config.bank.DAILY_SECURITY_FEE[roomTier] !== undefined
+      ? config.bank.DAILY_SECURITY_FEE[roomTier]
+      : config.bank.DAILY_SECURITY_FEE.DEFAULT;
+
+    const maxInterest = config.bank.INTEREST_RATE_ROOMS[roomTier] !== undefined
+      ? config.bank.INTEREST_RATE_ROOMS[roomTier]
+      : config.bank.INTEREST_RATE_ROOMS.DEFAULT;
+
+    // Hitung keaktifan pesan dalam 24 jam terakhir
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const activeThresholdTime = nowUnix - 24 * 3600;
+    const chatRow = db.get(
+      "SELECT COUNT(*) as cnt FROM transactions WHERE user_id = ? AND guild_id = ? AND type = 'EARN' AND created_at >= ?",
+      [wallet.user_id, wallet.guild_id, activeThresholdTime]
+    );
+    const activeMsgs = chatRow ? chatRow.cnt : 0;
+
+    let mult = 0;
+    let statusKeaktifan = '❌ Pasif (Bunga 0%)';
+    if (activeMsgs > 5 && activeMsgs <= 20) {
+      mult = 0.5;
+      statusKeaktifan = '🟡 Aktif Sedang (Bunga 50%)';
+    } else if (activeMsgs > 20) {
+      mult = 1.0;
+      statusKeaktifan = '🟢 Sultan Aktif (Bunga 100%)';
+    }
+
+    const currentInterest = maxInterest * mult;
+    const interestProjection = Math.floor(savings.balance * (currentInterest / 100));
+    const securityFeeAmount = Math.floor(savings.balance * (feeConfig.percent / 100)) + feeConfig.flat;
+    const netProjection = interestProjection - securityFeeAmount;
+    const roomName = activeRental ? activeRental.name : 'Teras Kosan 🧹';
+
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
       .setTitle(`🏛️ RUPIAH SERVER CENTRAL BANK — [Kosan 1A]`)
@@ -1543,10 +1588,21 @@ module.exports = {
         },
         { 
           name: '🏦 Saldo Tabungan', 
-          value: `**${formatCurrency(savings.balance)}**\n*📈 Bunga: +1.5% / hari*`, 
+          value: `**${formatCurrency(savings.balance)}**\n*Bunga Hari Ini: +${currentInterest.toFixed(1)}%*`, 
           inline: true 
         }
       );
+
+    embed.addFields({
+      name: `🏢 Status Kamar & Regulasi Bank (${roomName})`,
+      value: 
+        `📥 Pajak Deposit: \`${depositTax}%\` | 📤 Pajak Penarikan: \`${withdrawTax}%\`\n` +
+        `🛡️ Biaya Keamanan Harian: \`${feeConfig.flat > 0 || feeConfig.percent > 0 ? `Rp ${feeConfig.flat} + ${feeConfig.percent}%` : 'Bebas Biaya (Rp 0)'}\` (\`${formatCurrency(securityFeeAmount)}\` malam ini)\n` +
+        `📈 Bunga Maksimal Kasta: \`+${maxInterest.toFixed(1)}%\` harian\n` +
+        `💬 Chat 24 Jam Terakhir: **${activeMsgs} pesan** (\`${statusKeaktifan}\`)\n` +
+        `📊 Proyeksi Net Tengah Malam: **${netProjection >= 0 ? `+${formatCurrency(netProjection)}` : `-${formatCurrency(Math.abs(netProjection))}`}**`,
+      inline: false
+    });
 
     if (activeLoan) {
       const isOverdue = activeLoan.status === 'OVERDUE';
@@ -2325,12 +2381,20 @@ module.exports = {
       )
       .addFields(
         {
-          name: '📥 1. REKENING TABUNGAN BANK (Savings)',
+          name: '📥 1. REKENING TABUNGAN BANK (Savings) & REGULASI DINAMIS',
           value:
             `• **Deposit & Penarikan Bebas:** Simpan atau tarik koin dari dompet Anda kapan saja lewat menu \`.bank\`.\n` +
-            `• **🛡️ Proteksi Anti-Rob 100%:** Koin yang disimpan di dalam tabungan bank **sepenuhnya aman** dari segala aksi pencurian (\`.rob @user\`). Korban rob hanya kehilangan uang di dompet aktif.\n` +
-            `• **📈 Bunga Pasif Harian:** Dapatkan bagi hasil bunga pasif sebesar **+1.5%** dari total saldo tabungan Anda setiap hari secara otomatis.\n` +
-            `👉 *Tip:* Selalu depositkan sisa koin harian Anda agar terhindar dari rampok dan tetap menghasilkan bunga pasif!`,
+            `• **🛡️ Proteksi Anti-Rob 100%:** Koin di dalam tabungan bank **sepenuhnya aman** dari segala aksi pencurian (\`.rob @user\`). Korban rob hanya kehilangan uang di dompet aktif.\n` +
+            `• **📥 Pajak Deposit & 📤 Penarikan:** Setiap deposit dikenakan pajak **1.0% - 2.0%**, dan penarikan dikenakan **2.5% - 5.0%** depending on your Room Tier. (Penthouse BEBAS PAJAK!).\n` +
+            `• **📉 Biaya Keamanan Harian (Passive Drain):** Dikenakan biaya admin keamanan otomatis setiap tengah malam (**00:00 WIB**):\n` +
+            `  - *Default:* **Rp 15 + 0.5%** dari total saldo\n` +
+            `  - *Kipas:* **Rp 10 + 0.3%** | *AC:* **Rp 5 + 0.1%** | *Penthouse:* **Rp 0 (Bebas Biaya)**\n` +
+            `• **📈 Bunga Harian Aktif (Active Chat Interest):** Cair tengah malam **hanya jika Anda aktif mengobrol** hari itu:\n` +
+            `  - 💬 *Pasif (0 - 5 pesan harian):* Bunga **0%** (Saldo tabungan Anda dipastikan menyusut dipotong biaya keamanan!)\n` +
+            `  - 💬 *Aktif Sedang (6 - 20 pesan):* Mendapatkan **50% dari bunga kasta**\n` +
+            `  - 👑 *Sultan Aktif (21+ pesan):* Mendapatkan **100% bunga maksimal** sesuai kasta kamar Anda!\n` +
+            `  - *Maksimal Bunga Kasta:* Default **1.0%** | Kipas **1.5%** | AC **2.0%** | Penthouse **3.0% harian** (Bunga Sultan!)\n` +
+            `👉 *Tip:* Tingkatkan kasta kamar sewa kosan Anda dan aktiflah mengobrol untuk meminimalkan pajak perbankan dan memaksimalkan bunga tabungan Sultan!`,
           inline: false
         },
         {
