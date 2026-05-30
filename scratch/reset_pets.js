@@ -2,17 +2,33 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-// 1. Dapatkan path database dari config
-const configPath = path.join(__dirname, '../stockmarket/config.js');
-let dbPath;
+// 1. Cari path database yang mungkin
+const pathsToTry = [
+  process.env.DATABASE_PATH,
+  '/data/db/economy.db', // Jalur produksi VPS
+  path.join(__dirname, '../data/economy.db') // Jalur lokal fallback
+];
 
-if (fs.existsSync(configPath)) {
-  const config = require(configPath);
-  dbPath = config.DATABASE_PATH;
+let dbPath = null;
+for (const p of pathsToTry) {
+  if (p && fs.existsSync(p)) {
+    dbPath = p;
+    break;
+  }
 }
 
-// Fallback jika tidak ada config atau path
-if (!dbPath || !fs.existsSync(path.dirname(dbPath))) {
+// Jika tidak ada yang ketemu di atas, coba ambil dari config
+if (!dbPath) {
+  try {
+    const config = require('../stockmarket/config.js');
+    if (config.DATABASE_PATH && fs.existsSync(config.DATABASE_PATH)) {
+      dbPath = config.DATABASE_PATH;
+    }
+  } catch (e) {}
+}
+
+// Terakhir, jika masih tidak ada, default ke jalur lokal fallback
+if (!dbPath) {
   dbPath = path.join(__dirname, '../data/economy.db');
 }
 
@@ -36,7 +52,7 @@ if (highLevelPets.length === 0) {
 } else {
   console.log(`⚠️ Menemukan ${highLevelPets.length} pet dengan level > 40:`);
   highLevelPets.forEach(pet => {
-    console.log(`   👤 User ID: ${pet.user_id} | Guild ID: ${pet.guild_id} | Nama: ${pet.pet_name} | Tipe: ${pet.pet_type} | Level: ${pet.level} (XP: ${pet.xp})`);
+    console.log(`   User ID: ${pet.user_id} | Guild ID: ${pet.guild_id} | Nama: ${pet.pet_name} | Tipe: ${pet.pet_type} | Level: ${pet.level} (XP: ${pet.xp})`);
   });
 
   console.log('\n🔄 Memulai proses reset level ke 3...');
