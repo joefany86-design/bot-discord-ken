@@ -116,7 +116,8 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
   if (!initialData) return;
 
   if (isInteraction) {
-    tradeMsg = await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID, fetchReply: true });
+    await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID });
+    tradeMsg = await messageOrInteraction.fetchReply();
   } else {
     tradeMsg = await messageOrInteraction.reply(initialData);
   }
@@ -309,7 +310,9 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
               }
             }
             const freshData = getEmbedAndComponents(selectedTicker);
-            await iTrade.message.edit(freshData).catch(console.error);
+            await iTrade.message.edit(freshData).catch(err => {
+              if (err.code !== 10008) console.error('Error edit trade message:', err.message);
+            });
           } catch (err) {
             const cleaned = err.message.replace(/^❌\s*/, '');
             await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
@@ -581,7 +584,7 @@ function initStockMarket(client) {
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
         );
 
-        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
 
         collector.on('collect', async i => {
@@ -634,7 +637,7 @@ function initStockMarket(client) {
           row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
         }
 
-        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
 
         collector.on('collect', async i => {
@@ -696,7 +699,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getBankDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
 
         collector.on('collect', async iBank => {
@@ -816,9 +819,9 @@ function initStockMarket(client) {
               const askTenorMsg = await iBank.reply({
                 content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
                 components: [tenorRow, cancelRow],
-                ephemeral: true,
-                fetchReply: true
+                ephemeral: true
               });
+              await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => {});
 
               const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -937,7 +940,7 @@ function initStockMarket(client) {
           new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
         );
 
-        const privateMsg = await interaction.reply({ embeds: [bmEmbed], components: [row], ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ embeds: [bmEmbed], components: [row], flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
         collector.on('collect', async i => {
@@ -1072,7 +1075,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getDashboardPanelPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
 
         collector.on('collect', async iPet => {
@@ -1130,7 +1133,7 @@ function initStockMarket(client) {
                   )
                   .setTimestamp();
 
-                const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], ephemeral: true, fetchReply: true });
+                const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64 });
                 const boosterCollector = subPrivateMsg.createMessageComponentCollector({
                   componentType: ComponentType.StringSelect,
                   time: 60000
@@ -1346,7 +1349,7 @@ function initStockMarket(client) {
         };
 
         const initialData = getKosDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const privateMsg = await interaction.reply({ ...initialData, flags: 64 });
         const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
 
         collector.on('collect', async iKos => {
@@ -2399,7 +2402,7 @@ async function handlePetCommand(message, client, args) {
             )
             .setTimestamp();
 
-          const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], ephemeral: true, fetchReply: true });
+          const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64 });
           const boosterCollector = subPrivateMsg.createMessageComponentCollector({
             componentType: ComponentType.StringSelect,
             time: 60000
@@ -4141,9 +4144,9 @@ async function handleEconomyCommands(message, client) {
 
             const askTenorMsg = await iBank.reply({
               content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang di bawah ini:',
-              components: [tenorRow, cancelRow],
-              fetchReply: true
+              components: [tenorRow, cancelRow]
             });
+            await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => {});
 
             const tenorCollector = askTenorMsg.createMessageComponentCollector({
               time: 60000
