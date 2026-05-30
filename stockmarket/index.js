@@ -3804,6 +3804,48 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // ── FILTER SALURAN KHUSUS ADMIN PANEL ──
+  const adminCommands = [
+    'admin-panel', 'adminpanel', 'panel-admin', 'paneladmin',
+    'admin-pet', 'panel-pet', 'pet-panel',
+    'admin-bank', 'panel-bank', 'bank-panel',
+    'admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel',
+    'admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel',
+    'admin-shop', 'panel-shop', 'shop-panel',
+    'ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'
+  ];
+
+  if (adminCommands.includes(commandName)) {
+    // 1. Check if user is administrator
+    if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      await message.delete().catch(() => {});
+      await author.send('❌ Akses Ditolak! Menu ini dikunci khusus untuk Administrator server.').catch(() => {});
+      return true;
+    }
+
+    // 2. Resolve admin channel
+    const settings = database.get('SELECT admin_panel_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+    const targetChannelId = settings?.admin_panel_channel_id;
+
+    if (targetChannelId) {
+      if (message.channelId !== targetChannelId) {
+        await message.delete().catch(() => {});
+        const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin: <#${targetChannelId}>`);
+        setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+        return true;
+      }
+    } else {
+      // Fallback: check channel name
+      const isDefaultAdminChannel = ['panel-admin', 'admin-panel'].includes(message.channel.name?.toLowerCase());
+      if (!isDefaultAdminChannel) {
+        await message.delete().catch(() => {});
+        const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin! Silakan buat channel bernama \`#panel-admin\` atau jalankan \`.setup-panel-admin\` terlebih dahulu.`);
+        setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+        return true;
+      }
+    }
+  }
+
   // Helper: kirim balasan langsung tanpa auto-delete
   const autoReply = async (options) => {
     return message.reply(options);
@@ -6746,6 +6788,76 @@ async function handleEconomyCommands(message, client) {
 
       await message.channel.send({ embeds: [embed], components: [row1, row2] });
       return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .setup-panel-admin / .setup-admin-panel
+    // ═══════════════════════════════════════════════════
+    if (['setup-admin-panel', 'setup-adminpanel', 'setup-panel-admin', 'setup-paneladmin'].includes(commandName)) {
+      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        await message.delete().catch(() => {});
+        await author.send('❌ Akses Ditolak! Hanya Administrator yang dapat menggunakan perintah setup ini.').catch(() => {});
+        return true;
+      }
+
+      const { ChannelType, PermissionFlagsBits } = require('discord.js');
+      const guild = message.guild;
+      
+      // Look up parent category
+      const STAFF_CATEGORY_ID = '1472479634971955221';
+      const parentId = guild.channels.cache.has(STAFF_CATEGORY_ID) ? STAFF_CATEGORY_ID : null;
+
+      try {
+        // Create the channel
+        const adminChannel = await guild.channels.create({
+          name: '🛡️┃panel-admin',
+          type: ChannelType.GuildText,
+          parent: parentId,
+          permissionOverwrites: [
+            {
+              id: guild.roles.everyone.id,
+              deny: [PermissionFlagsBits.ViewChannel]
+            },
+            {
+              id: client.user.id,
+              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ManageMessages]
+            }
+          ]
+        });
+
+        if (parentId) {
+          await adminChannel.lockPermissions().catch(() => {});
+        } else {
+          // If no staff category, allow Administrator role/permission explicitly
+          const adminRoles = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.Administrator));
+          for (const [rId, role] of adminRoles) {
+            await adminChannel.permissionOverwrites.edit(role.id, {
+              ViewChannel: true,
+              SendMessages: true,
+              EmbedLinks: true
+            }).catch(() => {});
+          }
+        }
+
+        // Check if row exists, if not insert it
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guild.id]);
+        if (!settings) {
+          database.run(
+            'INSERT INTO ebyus_settings (guild_id, admin_panel_channel_id) VALUES (?, ?)',
+            [guild.id, adminChannel.id]
+          );
+        } else {
+          database.run(
+            'UPDATE ebyus_settings SET admin_panel_channel_id = ? WHERE guild_id = ?',
+            [adminChannel.id, guild.id]
+          );
+        }
+
+        return message.reply({ content: `✅ Berhasil membuat channel khusus admin panel: <#${adminChannel.id}>! Channel ini dikunci agar hanya bisa dilihat oleh Administrator.` });
+      } catch (err) {
+        console.error('Error creating admin panel channel:', err);
+        return message.reply({ content: `❌ Gagal membuat channel: ${err.message}` });
+      }
     }
 
   } catch (error) {

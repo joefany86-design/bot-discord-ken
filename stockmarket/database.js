@@ -286,6 +286,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // Migrasi dinamis: Tambahkan kolom admin_panel_channel_id ke ebyus_settings jika belum ada
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN admin_panel_channel_id TEXT");
+    console.log("⚡ [Database] Kolom 'admin_panel_channel_id' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   // Migrasi dinamis: Tambahkan kolom last_play_at ke user_pets jika belum ada
   try {
     db.exec("ALTER TABLE user_pets ADD COLUMN last_play_at INTEGER DEFAULT 0");
