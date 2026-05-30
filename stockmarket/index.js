@@ -445,6 +445,52 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
 }
 
 /**
+ * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard & Pet Leaderboard)
+ * secara berkala setiap 5 detik di channel 1510230591860113418.
+ */
+function startRealtimeLeaderboard(client) {
+  console.log('🏆 Memulai Papan Peringkat Realtime (5s)...');
+
+  setInterval(async () => {
+    try {
+      const channel = await client.channels.fetch('1510230591860113418').catch(() => null);
+      if (!channel) return;
+
+      const guildId = channel.guild.id;
+      const guildName = channel.guild.name;
+
+      // 1. Ambil data Top 10 Terkaya
+      const richData = economy.getLeaderboard(guildId, 10);
+      await Promise.all(richData.map(async u => {
+        try { await client.users.fetch(u.userId); } catch (e) {}
+      }));
+      const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
+
+      // 2. Ambil data Top 10 Pet (Level & XP)
+      const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
+      await Promise.all(topPets.map(async p => {
+        try { await client.users.fetch(p.user_id); } catch (e) {}
+      }));
+      const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
+
+      // 3. Cari pesan terakhir bot di channel tersebut
+      const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+      let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+
+      const payload = { embeds: [richEmbed, petEmbed], components: [] };
+
+      if (leaderboardMsg) {
+        await leaderboardMsg.edit(payload).catch(() => {});
+      } else {
+        await channel.send(payload).catch(() => {});
+      }
+    } catch (err) {
+      console.error('❌ Error updating realtime leaderboard:', err);
+    }
+  }, 5000);
+}
+
+/**
  * Inisialisasi Modul Stock Market.
  * Mengaktifkan scheduler otomatis saat bot siap.
  */
@@ -458,6 +504,9 @@ function initStockMarket(client) {
 
   // Jalankan scheduler cron-jobs
   scheduler.initScheduler(client);
+
+  // Jalankan realtime leaderboard untuk channel 1510230591860113418
+  startRealtimeLeaderboard(client);
 
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {

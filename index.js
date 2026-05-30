@@ -609,6 +609,26 @@ client.on('messageCreate', async message => {
     }
   }
 
+  // Proteksi Saluran Papan Peringkat Realtime (Channel ID: 1510230591860113418)
+  if (message.channelId === '1510230591860113418') {
+    const isOwner = message.author.id === OWNER_ID;
+    const isAdmin = message.member && message.member.permissions.has('Administrator');
+
+    if (!isOwner && !isAdmin) {
+      await message.delete().catch(() => {});
+      const warnMsg = await message.channel.send({
+        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk menampilkan papan peringkat realtime!`
+      }).catch(() => null);
+
+      if (warnMsg) {
+        setTimeout(() => {
+          warnMsg.delete().catch(() => {});
+        }, 5000);
+      }
+      return;
+    }
+  }
+
   // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
   const processed = await handleLinkMirroring(message, client);
   if (processed) return;
