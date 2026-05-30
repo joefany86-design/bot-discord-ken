@@ -740,7 +740,7 @@ module.exports = {
       .setDescription(
         `💰 **DAFTAR WARGA YANG BELUM KLAIM GAJI HARI INI** 💰\n` +
         `*10 warga terkaya yang belum mengetik \`.daily\` atau mengklaim gaji hari ini.*\n` +
-        `*Peluang mencuri uang mereka meningkat menjadi **80%** menggunakan perintah \`.rob\`!*\n` +
+        `*Peluang mencuri uang mereka meningkat menjadi **50%** menggunakan perintah \`.rob\`!*\n` +
         `────────────────────────────────────────`
       );
 
