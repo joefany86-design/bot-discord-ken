@@ -1761,7 +1761,8 @@ module.exports = {
         `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
         `🌟 **Raritas (Realiti):** ${rarityText}\n` +
         `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${multText}`
+        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${multText}\n` +
+        `🤖 **Auto Care:** ${pet.auto_feed === 1 ? '🟢 **AKTIF (Potong Saldo)**' : '🔴 **NONAKTIF**'}`
       );
 
     // Statistik Utama Pet (Inline Fields memanjang ke kanan)

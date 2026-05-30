@@ -890,8 +890,16 @@ function initStockMarket(client) {
               new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
             ];
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
-            row2Components.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary));
             rows.push(new ActionRowBuilder().addComponents(row2Components));
+
+            const row3Components = [
+              new ButtonBuilder()
+                .setCustomId('pet_btn_toggle_auto_feed')
+                .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
+                .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
+              new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
+            ];
+            rows.push(new ActionRowBuilder().addComponents(row3Components));
           }
           if (allPets.length > 1) {
             const selectMenu = new StringSelectMenuBuilder().setCustomId('pet_select_active').setPlaceholder('🐾 Ganti Peliharaan Aktif...');
@@ -946,6 +954,11 @@ function initStockMarket(client) {
           try {
             if (iPet.customId === 'pet_btn_refresh') {
               await iPet.update(getDashboardPanelPrivate(user.id));
+            } else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
+              const result = pet.toggleAutoFeed(user.id, guildId);
+              const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
+              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_reset') {
               pet.resetPet(user.id, guildId);
               await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });

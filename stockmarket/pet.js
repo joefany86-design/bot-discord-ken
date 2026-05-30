@@ -66,51 +66,86 @@ function applyDecay(pet) {
   const elapsedHours = elapsedSeconds / 3600;
 
   if (elapsedHours < 0.25) {
-    // Kurang dari 15 menit, lewati decay agar hemat query
     return pet;
   }
 
-  // Pengurangan per jam
   let hungerDecayRate = 4;
   let thirstDecayRate = 5;
   let happinessDecayRate = 3;
 
-  // Kelebihan Slime: Mengurangi laju kelaparan & kehausan sebesar 25%
   if (pet.pet_type === 'SLIME') {
     hungerDecayRate = 3;
     thirstDecayRate = 4;
   }
 
-  // Hitung jumlah pengurangan
-  const hungerReduction = Math.floor(elapsedHours * hungerDecayRate);
-  const thirstReduction = Math.floor(elapsedHours * thirstDecayRate);
-  const happinessReduction = Math.floor(elapsedHours * happinessDecayRate);
-
-  let newHunger = Math.max(0, pet.hunger - hungerReduction);
-  let newThirst = Math.max(0, pet.thirst - thirstReduction);
-  let newHappiness = Math.max(0, pet.happiness - happinessReduction);
+  let newHunger = pet.hunger;
+  let newThirst = pet.thirst;
+  let newHappiness = pet.happiness;
   let newHealth = pet.health;
 
-  // Hitung sisa waktu ketika hunger/thirst berada di 0 untuk mengurangi HP
-  // Sederhananya, jika status saat ini 0, kurangi HP berdasarkan jam berlebih
   let hungerOverdueHours = 0;
-  if (pet.hunger - hungerReduction < 0) {
-    const hungerUsedUpHours = pet.hunger / hungerDecayRate;
-    hungerOverdueHours = Math.max(0, elapsedHours - hungerUsedUpHours);
-  }
-
   let thirstOverdueHours = 0;
-  if (pet.thirst - thirstReduction < 0) {
-    const thirstUsedUpHours = pet.thirst / thirstDecayRate;
-    thirstOverdueHours = Math.max(0, elapsedHours - thirstUsedUpHours);
+
+  const wallet = db.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [pet.user_id, pet.guild_id]);
+  let balance = wallet ? wallet.balance : 0;
+  let balanceChanged = false;
+
+  const hoursToSimulate = Math.floor(elapsedHours);
+  const fractionalHour = elapsedHours - hoursToSimulate;
+
+  for (let h = 0; h < hoursToSimulate; h++) {
+    newHunger = Math.max(0, newHunger - hungerDecayRate);
+    newThirst = Math.max(0, newThirst - thirstDecayRate);
+    newHappiness = Math.max(0, newHappiness - happinessDecayRate);
+
+    if (pet.auto_feed === 1) {
+      if (newHunger <= 50 && balance >= 150) {
+        balance -= 150;
+        newHunger = Math.min(100, newHunger + 30);
+        balanceChanged = true;
+      }
+      if (newThirst <= 50 && balance >= 100) {
+        balance -= 100;
+        newThirst = Math.min(100, newThirst + 35);
+        balanceChanged = true;
+      }
+    }
+
+    if (newHunger === 0) hungerOverdueHours += 1;
+    if (newThirst === 0) thirstOverdueHours += 1;
   }
 
-  // HP berkurang -5 per jam jika lapar/haus di 0
+  if (fractionalHour > 0) {
+    newHunger = Math.max(0, newHunger - (fractionalHour * hungerDecayRate));
+    newThirst = Math.max(0, newThirst - (fractionalHour * thirstDecayRate));
+    newHappiness = Math.max(0, newHappiness - (fractionalHour * happinessDecayRate));
+
+    if (pet.auto_feed === 1) {
+      if (newHunger <= 50 && balance >= 150) {
+        balance -= 150;
+        newHunger = Math.min(100, newHunger + 30);
+        balanceChanged = true;
+      }
+      if (newThirst <= 50 && balance >= 100) {
+        balance -= 100;
+        newThirst = Math.min(100, newThirst + 35);
+        balanceChanged = true;
+      }
+    }
+
+    if (newHunger === 0) hungerOverdueHours += fractionalHour;
+    if (newThirst === 0) thirstOverdueHours += fractionalHour;
+  }
+
+  if (balanceChanged && wallet) {
+    db.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [balance, pet.user_id, pet.guild_id]);
+  }
+
   let hpReduction = Math.floor((hungerOverdueHours * 5) + (thirstOverdueHours * 5));
   if (pet.trait === 'STURDY') {
-    hpReduction = Math.floor(hpReduction / 2); // Sturdy: HP decay rate halved
+    hpReduction = Math.floor(hpReduction / 2);
   }
-  newHealth = Math.max(0, pet.health - hpReduction);
+  newHealth = Math.max(0, newHealth - hpReduction);
 
   let newStatus = pet.status;
   if (newHealth <= 0) {
@@ -118,7 +153,6 @@ function applyDecay(pet) {
     newHealth = 0;
   }
 
-  // Update ke database
   db.run(
     `UPDATE user_pets 
      SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?
@@ -126,7 +160,6 @@ function applyDecay(pet) {
     [newHunger, newThirst, newHappiness, newHealth, newStatus, now, pet.user_id, pet.guild_id, pet.pet_name]
   );
 
-  // Kembalikan objek pet ter-update
   return {
     ...pet,
     hunger: newHunger,
@@ -1296,6 +1329,30 @@ function getPetLeaderboard(guildId, category = 'level', limit = 10) {
   return pets.map(p => applyDecay(p));
 }
 
+function toggleAutoFeed(userId, guildId) {
+  const pet = getPet(userId, guildId);
+  if (!pet) {
+    throw new Error("Anda belum memiliki pet aktif!");
+  }
+  if (pet.status === 'DEAD') {
+    throw new Error("Pet Anda sudah mati. Silakan adopsi pet baru!");
+  }
+  if (pet.status === 'EGG') {
+    throw new Error("Pet Anda masih berbentuk telur. Tunggu sampai menetas!");
+  }
+
+  const newStatus = pet.auto_feed === 1 ? 0 : 1;
+  db.run(
+    'UPDATE user_pets SET auto_feed = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+    [newStatus, userId, guildId, pet.pet_name]
+  );
+
+  return {
+    petName: pet.pet_name,
+    autoFeed: newStatus
+  };
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1315,5 +1372,6 @@ module.exports = {
   executeExpedition,
   getXpNeeded,
   checkExpeditionLimit,
-  getPetLeaderboard
+  getPetLeaderboard,
+  toggleAutoFeed
 };

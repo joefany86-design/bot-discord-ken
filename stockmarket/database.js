@@ -440,6 +440,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 25. Migrasi dinamis: Tambahkan kolom auto_feed ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN auto_feed INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'auto_feed' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 
