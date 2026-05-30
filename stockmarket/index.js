@@ -2108,10 +2108,18 @@ async function handlePetCommand(message, client, args) {
         row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
       }
 
-      row2Components.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary));
-
       const row2 = new ActionRowBuilder().addComponents(row2Components);
-      rows.push(row1, row2);
+
+      const row3Components = [
+        new ButtonBuilder()
+          .setCustomId('pet_btn_toggle_auto_feed')
+          .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
+          .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
+      ];
+      const row3 = new ActionRowBuilder().addComponents(row3Components);
+
+      rows.push(row1, row2, row3);
     }
 
     // Tambahkan Select Menu jika memiliki lebih dari 1 pet
@@ -2154,6 +2162,13 @@ async function handlePetCommand(message, client, args) {
       if (iPet.customId === 'pet_btn_refresh') {
         const freshData = getDashboardPanel(author.id, guildId);
         await iPet.update(freshData);
+      }
+
+      else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
+        const result = pet.toggleAutoFeed(author.id, guildId);
+        const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
+        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] });
+        await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
       }
 
       else if (iPet.customId === 'pet_btn_reset') {
