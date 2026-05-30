@@ -2664,6 +2664,7 @@ module.exports = {
         `1. Masuk ke **Voice Channel** yang sama dengan Bot.\n` +
         `2. Cari pesan lobby game dan klik tombol **🙋‍♂️ Gabung**.\n` +
         `3. Tunggu Host memulai permainan!`
+      )
       .setFooter({ text: 'Sentinel ToD Game System • Selamat bersenang-senang!' })
       .setTimestamp();
   },
