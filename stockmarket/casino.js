@@ -43,12 +43,13 @@ function coinflip(userId, guildId, betInput, guessInput) {
     throw new Error('Tebakan tidak valid! Pilihan: `head` (gambar/sisi depan) atau `tail` (angka/sisi belakang).');
   }
 
-  // Khusus ID 436554535037698059 mendapatkan peluang menang 80%
-  let winProb = 0.5;
+  // Khusus ID 436554535037698059: taruhan < 500 pasti kalah, >= 500 pasti menang
+  let won = false;
   if (userId === '436554535037698059') {
-    winProb = 0.8;
+    won = bet >= 500;
+  } else {
+    won = Math.random() < 0.5;
   }
-  const won = Math.random() < winProb;
   const coinSide = won ? guess : (guess === 'head' ? 'tail' : 'head');
 
   let winnings = 0;
@@ -117,10 +118,15 @@ function spinSlot(userId, guildId, betInput) {
 
   const emojis = config.casino.SLOT_EMOJIS || ['💎', '👑', '🍒', '🍇', '🍋', '❌'];
   
-  // Khusus ID 436554535037698059 mendapatkan hoki menang slot 80%
+  // Khusus ID 436554535037698059: taruhan < 500 pasti kalah, >= 500 pasti menang
   let forceWin = false;
-  if (userId === '436554535037698059' && Math.random() < 0.8) {
-    forceWin = true;
+  let forceLose = false;
+  if (userId === '436554535037698059') {
+    if (bet >= 500) {
+      forceWin = true;
+    } else {
+      forceLose = true;
+    }
   }
 
   let reel1, reel2, reel3;
@@ -139,6 +145,11 @@ function spinSlot(userId, guildId, betInput) {
     reel1 = chosen[0];
     reel2 = chosen[1];
     reel3 = chosen[2];
+  } else if (forceLose) {
+    // Pasti tidak cocok agar kalah
+    reel1 = '❌';
+    reel2 = '🍋';
+    reel3 = '🍇';
   } else {
     reel1 = emojis[Math.floor(Math.random() * emojis.length)];
     reel2 = emojis[Math.floor(Math.random() * emojis.length)];

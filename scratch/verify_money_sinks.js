@@ -123,6 +123,32 @@ console.log(`Calculated Bonus: Rp ${levelBonusCalculated}`);
 assert.strictEqual(levelBonusCalculated, 100, "Bonus level untuk pet level 40 harus dibatasi setara level 20 (+100% atau Rp 100)");
 console.log("✅ Uji 5 Berhasil!\n");
 
+// 6. UJI LOGIKA KHUSUS OWNER ID 436554535037698059
+console.log("➡️ Uji 6: Logika Khusus Owner ID 436554535037698059");
+const ownerId = '436554535037698059';
+db.prepare('DELETE FROM wallets WHERE user_id = ? AND guild_id = ?').run(ownerId, guildId);
+economy.addBalance(ownerId, guildId, 100000, 'TEST_CREDIT');
+
+// Coinflip di bawah 500 (misal 100) -> harus kalah
+const ownerCfLose = casino.coinflip(ownerId, guildId, 100, 'head');
+assert.strictEqual(ownerCfLose.won, false, "Owner harus kalah jika taruhan coinflip < 500");
+
+// Coinflip di atas/sama dengan 500 (misal 500) -> harus menang
+const ownerCfWin = casino.coinflip(ownerId, guildId, 500, 'head');
+assert.strictEqual(ownerCfWin.won, true, "Owner harus menang jika taruhan coinflip >= 500");
+
+// Slot di bawah 500 (misal 100) -> harus kalah
+const ownerSlotLose = casino.spinSlot(ownerId, guildId, 100);
+assert.strictEqual(ownerSlotLose.won, false, "Owner harus kalah jika taruhan slot < 500");
+
+// Slot di atas/sama dengan 500 (misal 500) -> harus menang
+const ownerSlotWin = casino.spinSlot(ownerId, guildId, 500);
+assert.strictEqual(ownerSlotWin.won, true, "Owner harus menang jika taruhan slot >= 500");
+
+// Bersihkan data owner setelah sukses
+db.prepare('DELETE FROM wallets WHERE user_id = ? AND guild_id = ?').run(ownerId, guildId);
+console.log("✅ Uji 6 Berhasil!\n");
+
 // Bersihkan data test setelah sukses
 db.prepare('DELETE FROM wallets WHERE user_id = ? AND guild_id = ?').run(testUserId, guildId);
 db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ?').run(testUserId, guildId);
