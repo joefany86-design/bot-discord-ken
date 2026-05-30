@@ -154,7 +154,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
   collector.on('collect', async iPet => {
     if (!iPet.member || !iPet.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iPet.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iPet.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -174,38 +174,38 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       else if (iPet.customId === 'admin_pet_select_action') {
         const action = iPet.values[0];
         if (!selectedTargetUserId) {
-          return iPet.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', ephemeral: true });
+          return iPet.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', flags: 64 });
         }
 
         if (action === 'action_hatch_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
           if (targetPet.status !== 'EGG') {
-            return iPet.reply({ content: '❌ Pet milik anggota terpilih sudah menetas!', ephemeral: true });
+            return iPet.reply({ content: '❌ Pet milik anggota terpilih sudah menetas!', flags: 64 });
           }
           const now = Math.floor(Date.now() / 1000);
           database.run('UPDATE user_pets SET hatch_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [now - 10, selectedTargetUserId, guildId]);
-          await iPet.reply({ content: `🐣 Sukses mempercepat penetasan telur pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>. Telur sekarang siap menetas!`, ephemeral: true });
+          await iPet.reply({ content: `🐣 Sukses mempercepat penetasan telur pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>. Telur sekarang siap menetas!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_heal_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
           const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
           database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
-          await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, ephemeral: true });
+          await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_give_xp_pet_modal') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
           
           const modal = new ModalBuilder()
@@ -230,11 +230,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (sub) {
             const amount = parseInt(sub.fields.getTextInputValue('xp_amount'));
             if (isNaN(amount) || amount <= 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', ephemeral: true });
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
             const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
             if (!petData) {
-              return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+              return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
             }
             let newXp = petData.xp + amount;
             let level = petData.level;
@@ -247,7 +247,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             }
             database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, level, selectedTargetUserId, guildId]);
             
-            await sub.reply({ content: `🧪 Sukses memberikan **+${amount} XP** ke pet milik <@${selectedTargetUserId}>!${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`, ephemeral: true });
+            await sub.reply({ content: `🧪 Sukses memberikan **+${amount} XP** ke pet milik <@${selectedTargetUserId}>!${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -255,7 +255,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         else if (action === 'action_set_level_pet_modal') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
           
           const modal = new ModalBuilder()
@@ -280,11 +280,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (sub) {
             const level = parseInt(sub.fields.getTextInputValue('lvl_amount'));
             if (isNaN(level) || level <= 0 || level > 100) {
-              return sub.reply({ content: '❌ Level harus berupa angka bulat antara 1 hingga 100!', ephemeral: true });
+              return sub.reply({ content: '❌ Level harus berupa angka bulat antara 1 hingga 100!', flags: 64 });
             }
             const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
             if (!petData) {
-              return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', ephemeral: true });
+              return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
             }
             
             let newStatus = petData.status;
@@ -294,7 +294,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             
             database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [level, newStatus, selectedTargetUserId, guildId]);
             
-            await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, ephemeral: true });
+            await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -365,26 +365,26 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               // Validasi Spesies
               const petModule = require('./pet');
               if (!petModule.PET_SPECIES[pType]) {
-                return sub.reply({ content: `❌ Spesies tidak valid! Pilihan: ${Object.keys(petModule.PET_SPECIES).join(', ')}`, ephemeral: true });
+                return sub.reply({ content: `❌ Spesies tidak valid! Pilihan: ${Object.keys(petModule.PET_SPECIES).join(', ')}`, flags: 64 });
               }
 
               // Sanitasi & Validasi Nama
               const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
               if (sanitizedName.length === 0 || sanitizedName.length > 25) {
-                return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', ephemeral: true });
+                return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
               }
 
               // Validasi Slot
               const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
               const count = countRow ? countRow.count : 0;
               if (count >= 3) {
-                return sub.reply({ content: '❌ Anggota terpilih sudah memiliki batas maksimal **3 pet**!', ephemeral: true });
+                return sub.reply({ content: '❌ Anggota terpilih sudah memiliki batas maksimal **3 pet**!', flags: 64 });
               }
 
               // Cek Duplikat Nama
               const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedTargetUserId, guildId, sanitizedName.toLowerCase()]);
               if (nameExists) {
-                return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, ephemeral: true });
+                return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
               }
 
               // Validasi Trait
@@ -421,19 +421,19 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               );
 
               const traitText = pTrait ? ` dengan Trait **${pTrait}**` : '';
-              await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType})${traitText} level **${pLevel}** (Status: **${pStatus}**) ke <@${selectedTargetUserId}>!`, ephemeral: true });
+              await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType})${traitText} level **${pLevel}** (Status: **${pStatus}**) ke <@${selectedTargetUserId}>!`, flags: 64 });
               
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
               await replyMsg.edit(fresh).catch(() => {});
             } catch (err) {
-              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, ephemeral: true }).catch(() => {});
+              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, flags: 64 }).catch(() => {});
             }
           }
         }
         else if (action === 'action_reset_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif untuk direset!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif untuk direset!', flags: 64 });
           }
           
           database.transaction(() => {
@@ -450,14 +450,14 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             }
           })();
           
-          await iPet.reply({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, ephemeral: true });
+          await iPet.reply({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_set_custom_image_modal') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', ephemeral: true });
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
           }
 
           const modal = new ModalBuilder()
@@ -486,21 +486,21 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const savedUrl = petModule.setCustomImage(selectedTargetUserId, guildId, url);
               
               if (savedUrl) {
-                await sub.reply({ content: `📸 Sukses! Gambar pet aktif milik <@${selectedTargetUserId}> berhasil diubah secara kustom.`, ephemeral: true });
+                await sub.reply({ content: `📸 Sukses! Gambar pet aktif milik <@${selectedTargetUserId}> berhasil diubah secara kustom.`, flags: 64 });
               } else {
-                await sub.reply({ content: `📸 Sukses mereset gambar pet aktif milik <@${selectedTargetUserId}> ke tampilan bawaan.`, ephemeral: true });
+                await sub.reply({ content: `📸 Sukses mereset gambar pet aktif milik <@${selectedTargetUserId}> ke tampilan bawaan.`, flags: 64 });
               }
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
               await replyMsg.edit(fresh).catch(() => {});
             } catch (err) {
-              await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, ephemeral: true }).catch(() => {});
+              await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, flags: 64 }).catch(() => {});
             }
           }
         }
       }
     } catch (err) {
       console.error('Error in Pet Panel Interaction:', err);
-      await iPet.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iPet.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -633,7 +633,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
 
   collector.on('collect', async iBank => {
     if (!iBank.member || !iBank.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iBank.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iBank.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -653,7 +653,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       else if (iBank.customId === 'admin_bank_select_action') {
         const action = iBank.values[0];
         if (!selectedTargetUserId) {
-          return iBank.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', ephemeral: true });
+          return iBank.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', flags: 64 });
         }
 
         if (action === 'action_give_coins_modal') {
@@ -679,10 +679,10 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           if (sub) {
             const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', ephemeral: true });
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
             economy.addBalance(selectedTargetUserId, guildId, amount, 'ADMIN_GIVE');
-            await sub.reply({ content: `💸 Sukses menyuntikkan koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke dompet <@${selectedTargetUserId}>!`, ephemeral: true });
+            await sub.reply({ content: `💸 Sukses menyuntikkan koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke dompet <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -710,14 +710,14 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           if (sub) {
             const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', ephemeral: true });
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
             const wallet = economy.getWallet(selectedTargetUserId, guildId);
             const amountToTake = Math.min(wallet.balance, amount);
             if (amountToTake > 0) {
               economy.subtractBalance(selectedTargetUserId, guildId, amountToTake, 'ADMIN_TAKE');
             }
-            await sub.reply({ content: `📉 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari dompet <@${selectedTargetUserId}>!`, ephemeral: true });
+            await sub.reply({ content: `📉 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari dompet <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -726,7 +726,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           database.run('UPDATE wallets SET balance = 0, total_earned = 0, total_invested = 0, streak_days = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('UPDATE bank_savings SET balance = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM portfolios WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          await iBank.reply({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, dan seluruh lembar saham milik <@${selectedTargetUserId}> telah dikembalikan ke 0.`, ephemeral: true });
+          await iBank.reply({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, dan seluruh lembar saham milik <@${selectedTargetUserId}> telah dikembalikan ke 0.`, flags: 64 });
           const fresh = getBankPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -757,10 +757,10 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           if (sub) {
             const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', ephemeral: true });
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
             database.run('UPDATE wallets SET balance = balance + ?, total_earned = total_earned + ? WHERE guild_id = ?', [amount, amount, guildId]);
-            await sub.reply({ content: `💸 Sukses membagikan koin **Rp ${amount.toLocaleString('id-ID')}** kepada seluruh member terdaftar di server ini!`, ephemeral: true });
+            await sub.reply({ content: `💸 Sukses membagikan koin **Rp ${amount.toLocaleString('id-ID')}** kepada seluruh member terdaftar di server ini!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -768,7 +768,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       }
     } catch (err) {
       console.error('Error in Bank Panel Interaction:', err);
-      await iBank.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iBank.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -892,7 +892,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
   collector.on('collect', async iRob => {
     if (!iRob.member || !iRob.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iRob.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iRob.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -912,7 +912,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
       else if (iRob.customId === 'admin_rob_select_action') {
         const action = iRob.values[0];
         if (!selectedTargetUserId) {
-          return iRob.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', ephemeral: true });
+          return iRob.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', flags: 64 });
         }
 
         if (action === 'action_free_jail') {
@@ -920,10 +920,10 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
           const wallet = database.get('SELECT jail_until FROM wallets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           const isJailed = wallet && wallet.jail_until > nowUnix;
           if (!isJailed) {
-            return iRob.reply({ content: '❌ Anggota terpilih tidak sedang berada di dalam penjara virtual!', ephemeral: true });
+            return iRob.reply({ content: '❌ Anggota terpilih tidak sedang berada di dalam penjara virtual!', flags: 64 });
           }
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
-          await iRob.reply({ content: `🔓 Sukses membebaskan paksa <@${selectedTargetUserId}> dari penjara virtual.`, ephemeral: true });
+          await iRob.reply({ content: `🔓 Sukses membebaskan paksa <@${selectedTargetUserId}> dari penjara virtual.`, flags: 64 });
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -936,18 +936,18 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
             'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
             [guildId]
           );
-          await iRob.reply({ content: '🚨 Sukses mereset global cooldown Bank Heist server. Warga dapat melakukan perampokan kembali!', ephemeral: true });
+          await iRob.reply({ content: '🚨 Sukses mereset global cooldown Bank Heist server. Warga dapat melakukan perampokan kembali!', flags: 64 });
         }
         else if (action === 'global_free_all_jail') {
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
-          await iRob.reply({ content: '🔓 Sukses membebaskan seluruh tahanan dari penjara virtual secara massal!', ephemeral: true });
+          await iRob.reply({ content: '🔓 Sukses membebaskan seluruh tahanan dari penjara virtual secara massal!', flags: 64 });
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
       }
     } catch (err) {
       console.error('Error in Robbery Panel Interaction:', err);
-      await iRob.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iRob.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -1106,7 +1106,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
   collector.on('collect', async iSaham => {
     if (!iSaham.member || !iSaham.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iSaham.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iSaham.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -1126,7 +1126,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
       else if (iSaham.customId === 'admin_saham_select_action') {
         const action = iSaham.values[0];
         if (!selectedTicker || selectedTicker === 'KOSONG') {
-          return iSaham.reply({ content: '❌ Silakan pilih ticker saham terlebih dahulu!', ephemeral: true });
+          return iSaham.reply({ content: '❌ Silakan pilih ticker saham terlebih dahulu!', flags: 64 });
         }
 
         if (action === 'bursa_action_drop_modal') {
@@ -1152,11 +1152,11 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           if (sub) {
             const percent = parseInt(sub.fields.getTextInputValue('drop_percent'));
             if (isNaN(percent) || percent < 1 || percent > 99) {
-              return sub.reply({ content: '❌ Nilai harus berupa angka bulat antara 1 hingga 99!', ephemeral: true });
+              return sub.reply({ content: '❌ Nilai harus berupa angka bulat antara 1 hingga 99!', flags: 64 });
             }
             const stock = stocks.getStock(guildId, selectedTicker);
             if (!stock) {
-              return sub.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: true });
+              return sub.reply({ content: '❌ Saham tidak ditemukan!', flags: 64 });
             }
             const oldPrice = stock.current_price;
             const newPrice = Math.max(config.market.MIN_PRICE, Math.round(oldPrice * (1 - percent / 100)));
@@ -1172,7 +1172,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
               );
             })();
 
-            await sub.reply({ content: `📉 Sukses menurunkan harga saham **${selectedTicker}** sebesar **${percent}%** (Lama: Rp ${oldPrice.toLocaleString('id-ID')} -> Baru: Rp ${newPrice.toLocaleString('id-ID')})!`, ephemeral: true });
+            await sub.reply({ content: `📉 Sukses menurunkan harga saham **${selectedTicker}** sebesar **${percent}%** (Lama: Rp ${oldPrice.toLocaleString('id-ID')} -> Baru: Rp ${newPrice.toLocaleString('id-ID')})!`, flags: 64 });
             const fresh = getSahamPanelData(guildId, selectedTicker);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1180,14 +1180,14 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
         else if (action === 'bursa_action_remove') {
           const stock = stocks.getStock(guildId, selectedTicker);
           if (!stock) {
-            return iSaham.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: true });
+            return iSaham.reply({ content: '❌ Saham tidak ditemukan!', flags: 64 });
           }
           database.transaction(() => {
             database.run('DELETE FROM stocks WHERE stock_ticker = ? AND guild_id = ?', [selectedTicker, guildId]);
             database.run('DELETE FROM portfolios WHERE channel_id = ? AND guild_id = ?', [stock.channel_id, guildId]);
           })();
           selectedTicker = null;
-          await iSaham.reply({ content: `❌ Sukses menghapus instrumen saham **${stock.stock_ticker}** dari bursa server.`, ephemeral: true });
+          await iSaham.reply({ content: `❌ Sukses menghapus instrumen saham **${stock.stock_ticker}** dari bursa server.`, flags: 64 });
           const fresh = getSahamPanelData(guildId, selectedTicker);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1198,21 +1198,21 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
         if (action === 'global_trigger_bull') {
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.BULL_RUN);
-          await iSaham.reply({ content: '📈 Event bursa saham **BULL RUN** berhasil dipicu secara instan!', ephemeral: true });
+          await iSaham.reply({ content: '📈 Event bursa saham **BULL RUN** berhasil dipicu secara instan!', flags: 64 });
         }
         else if (action === 'global_trigger_crash') {
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.MARKET_CRASH);
-          await iSaham.reply({ content: '📉 Event bursa saham **MARKET CRASH** berhasil dipicu secara instan!', ephemeral: true });
+          await iSaham.reply({ content: '📉 Event bursa saham **MARKET CRASH** berhasil dipicu secara instan!', flags: 64 });
         }
         else if (action === 'global_trigger_double') {
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.DOUBLE_EARNINGS);
-          await iSaham.reply({ content: '💰 Event bursa saham **DOUBLE EARNING HOUR** berhasil dipicu secara instan!', ephemeral: true });
+          await iSaham.reply({ content: '💰 Event bursa saham **DOUBLE EARNING HOUR** berhasil dipicu secara instan!', flags: 64 });
         }
         else if (action === 'global_trigger_dividends') {
           const triggerSuccess = scheduler.triggerDividendsWeekly ? scheduler.triggerDividendsWeekly(client, guildId) : false;
-          await iSaham.reply({ content: `💸 Pembagian Dividen Saham Mingguan berhasil dipicu secara manual!`, ephemeral: true });
+          await iSaham.reply({ content: `💸 Pembagian Dividen Saham Mingguan berhasil dipicu secara manual!`, flags: 64 });
         }
         else if (action === 'bursa_global_add_modal') {
           const modal = new ModalBuilder()
@@ -1253,12 +1253,12 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
             const channelObj = guild.channels.cache.get(chId);
             if (!channelObj) {
-              return sub.reply({ content: '❌ Text channel dengan ID tersebut tidak ditemukan di server ini!', ephemeral: true });
+              return sub.reply({ content: '❌ Text channel dengan ID tersebut tidak ditemukan di server ini!', flags: 64 });
             }
 
             const existing = database.get('SELECT * FROM stocks WHERE (stock_ticker = ? OR channel_id = ?) AND guild_id = ?', [tickName, chId, guildId]);
             if (existing) {
-              return sub.reply({ content: '❌ Ticker saham atau ID channel tersebut sudah terdaftar di bursa!', ephemeral: true });
+              return sub.reply({ content: '❌ Ticker saham atau ID channel tersebut sudah terdaftar di bursa!', flags: 64 });
             }
 
             database.run(
@@ -1266,7 +1266,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
               [guildId, chId, channelObj.name, tickName]
             );
 
-            await sub.reply({ content: `✅ Sukses mendaftarkan channel <#${chId}> sebagai saham **${tickName}** di bursa!`, ephemeral: true });
+            await sub.reply({ content: `✅ Sukses mendaftarkan channel <#${chId}> sebagai saham **${tickName}** di bursa!`, flags: 64 });
             const fresh = getSahamPanelData(guildId, selectedTicker);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1292,14 +1292,14 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
               }
             });
           })();
-          await iSaham.reply({ content: '🔄 Sukses mereset total seluruh instrumen bursa saham server kembali ke setelan default.', ephemeral: true });
+          await iSaham.reply({ content: '🔄 Sukses mereset total seluruh instrumen bursa saham server kembali ke setelan default.', flags: 64 });
           const fresh = getSahamPanelData(guildId, selectedTicker);
           await replyMsg.edit(fresh).catch(() => {});
         }
       }
     } catch (err) {
       console.error('Error in Saham Panel Interaction:', err);
-      await iSaham.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iSaham.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -1442,7 +1442,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
   collector.on('collect', async iAbyus => {
     if (!iAbyus.member || !iAbyus.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iAbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iAbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
@@ -1451,14 +1451,14 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       if (iAbyus.customId === 'admin_abyus_select_gacha') {
         const mode = iAbyus.values[0];
         database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
-        await iAbyus.reply({ content: `🎰 Sukses mengubah mode gacha server menjadi **${mode}**!`, ephemeral: true });
+        await iAbyus.reply({ content: `🎰 Sukses mengubah mode gacha server menjadi **${mode}**!`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_select_multiplier') {
         const mult = parseInt(iAbyus.values[0]);
         database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
-        await iAbyus.reply({ content: `🪙 Sukses mengubah multiplier koin chat menjadi **${mult}x**!`, ephemeral: true });
+        await iAbyus.reply({ content: `🪙 Sukses mengubah multiplier koin chat menjadi **${mult}x**!`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
@@ -1477,9 +1477,9 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
         if (targetChannel) {
           await targetChannel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
-          await iAbyus.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}>!`, ephemeral: true });
+          await iAbyus.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}>!`, flags: 64 });
         } else {
-          await iAbyus.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', ephemeral: true });
+          await iAbyus.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', flags: 64 });
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_duration') {
@@ -1505,12 +1505,12 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         if (sub) {
           const minutes = parseInt(sub.fields.getTextInputValue('dur_minutes'));
           if (isNaN(minutes) || minutes < 0) {
-            return sub.reply({ content: '❌ Durasi harus berupa angka di atas 0!', ephemeral: true });
+            return sub.reply({ content: '❌ Durasi harus berupa angka di atas 0!', flags: 64 });
           }
           const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
           database.run('UPDATE ebyus_settings SET expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
           
-          await sub.reply({ content: `⏱️ Sukses memperbarui durasi event bypass menjadi **${minutes} menit** (auto-reset).`, ephemeral: true });
+          await sub.reply({ content: `⏱️ Sukses memperbarui durasi event bypass menjadi **${minutes} menit** (auto-reset).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1520,14 +1520,14 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
           ['NORMAL', 1, nowUnix, iAbyus.user.id, guildId]
         );
-        await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL` dan multiplier koin chat kembali ke `1x` (nonaktif).', ephemeral: true });
+        await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL` dan multiplier koin chat kembali ke `1x` (nonaktif).', flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_btn_status') {
         const settings = getOrCreateEbyusSettings(guildId);
         const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
-        await iAbyus.reply({ embeds: [statusEmb], ephemeral: true });
+        await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
         collector.stop('transition');
@@ -1539,7 +1539,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       }
     } catch (err) {
       console.error('Error in Abyus Panel Interaction:', err);
-      await iAbyus.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iAbyus.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -1663,7 +1663,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
   collector.on('collect', async iShop => {
     if (!iShop.member || !iShop.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iShop.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iShop.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -1722,12 +1722,12 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             const tier = sub.fields.getTextInputValue('role_tier').trim().toUpperCase();
 
             if (isNaN(price) || price <= 0) {
-              return sub.reply({ content: '❌ Harga harus berupa angka di atas 0!', ephemeral: true });
+              return sub.reply({ content: '❌ Harga harus berupa angka di atas 0!', flags: 64 });
             }
 
             const roleObj = guild.roles.cache.get(rId);
             if (!roleObj) {
-              return sub.reply({ content: '❌ Role dengan ID tersebut tidak ditemukan di server!', ephemeral: true });
+              return sub.reply({ content: '❌ Role dengan ID tersebut tidak ditemukan di server!', flags: 64 });
             }
 
             database.run(
@@ -1735,7 +1735,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
               [guildId, rId, roleObj.name, price, tier, `Koleksi kasta role ${tier} eksklusif.`]
             );
 
-            await sub.reply({ content: `✅ Sukses menjual role <@&${rId}> seharga **Rp ${price.toLocaleString('id-ID')}** di etalase Toko!`, ephemeral: true });
+            await sub.reply({ content: `✅ Sukses menjual role <@&${rId}> seharga **Rp ${price.toLocaleString('id-ID')}** di etalase Toko!`, flags: 64 });
             const fresh = getShopPanelData(guildId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1764,7 +1764,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             const rId = sub.fields.getTextInputValue('role_id').trim();
             database.run('DELETE FROM shop_items WHERE role_id = ? AND guild_id = ?', [rId, guildId]);
             
-            await sub.reply({ content: `❌ Sukses menghapus role ID \`${rId}\` dari etalase toko.`, ephemeral: true });
+            await sub.reply({ content: `❌ Sukses menghapus role ID \`${rId}\` dari etalase toko.`, flags: 64 });
             const fresh = getShopPanelData(guildId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1804,12 +1804,12 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             const stock = parseInt(sub.fields.getTextInputValue('role_stock'));
 
             if (isNaN(stock) || stock < -1) {
-              return sub.reply({ content: '❌ Stok tidak valid!', ephemeral: true });
+              return sub.reply({ content: '❌ Stok tidak valid!', flags: 64 });
             }
 
             database.run('UPDATE shop_items SET stock = ? WHERE role_id = ? AND guild_id = ?', [stock, rId, guildId]);
 
-            await sub.reply({ content: `✅ Sukses memperbarui stok role ID \`${rId}\` menjadi **${stock === -1 ? 'Unlimited' : stock + ' slot'}**!`, ephemeral: true });
+            await sub.reply({ content: `✅ Sukses memperbarui stok role ID \`${rId}\` menjadi **${stock === -1 ? 'Unlimited' : stock + ' slot'}**!`, flags: 64 });
             const fresh = getShopPanelData(guildId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1842,7 +1842,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
               }
             }
           }
-          await iShop.reply({ content: `🎭 Sukses menginisialisasi Toko Role. Berhasil mendaftarkan & membuat **${createdCount}/5** kasta role prestise server!`, ephemeral: true });
+          await iShop.reply({ content: `🎭 Sukses menginisialisasi Toko Role. Berhasil mendaftarkan & membuat **${createdCount}/5** kasta role prestise server!`, flags: 64 });
           const fresh = getShopPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1853,7 +1853,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
         if (action === 'tod_action_announce') {
           const todAnnounceEmb = embeds.todAnnounceEmbed ? embeds.todAnnounceEmbed(guild) : new EmbedBuilder().setTitle('🎲 TRUTH OR DARE GAME').setDescription('Game Truth or Dare telah diluncurkan di Voice Channel!');
           await messageOrInteraction.channel.send({ content: '@everyone 🎲 **GAME TRUTH OR DARE AKTIF!** 🎲', embeds: [todAnnounceEmb] });
-          await iShop.reply({ content: '📢 Sukses menyiarkan template pengumuman ToD ke channel ini!', ephemeral: true });
+          await iShop.reply({ content: '📢 Sukses menyiarkan template pengumuman ToD ke channel ini!', flags: 64 });
         }
         else if (action === 'tod_action_stop') {
           try {
@@ -1867,7 +1867,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
               }
             }
           } catch (e) {}
-          await iShop.reply({ content: '🛑 Sukses menghentikan paksa sesi aktif game ToD di Voice Channel.', ephemeral: true });
+          await iShop.reply({ content: '🛑 Sukses menghentikan paksa sesi aktif game ToD di Voice Channel.', flags: 64 });
         }
         else if (action === 'tod_action_add_question_modal') {
           const modal = new ModalBuilder()
@@ -1913,7 +1913,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             const qText = sub.fields.getTextInputValue('question_text').trim();
 
             if (!['truth', 'dare'].includes(qType) || !['chill', 'deep', 'spicy'].includes(qCat)) {
-              return sub.reply({ content: '❌ Tipe atau Kategori tidak valid! Pilihan tipe: truth/dare. Pilihan kategori: chill/deep/spicy.', ephemeral: true });
+              return sub.reply({ content: '❌ Tipe atau Kategori tidak valid! Pilihan tipe: truth/dare. Pilihan kategori: chill/deep/spicy.', flags: 64 });
             }
 
             database.run(
@@ -1921,13 +1921,13 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
               [qType, qCat, qText, author.id]
             );
 
-            await sub.reply({ content: `✅ Sukses menambahkan pertanyaan **${qType}** (${qCat}) ke database!`, ephemeral: true });
+            await sub.reply({ content: `✅ Sukses menambahkan pertanyaan **${qType}** (${qCat}) ke database!`, flags: 64 });
           }
         }
       }
     } catch (err) {
       console.error('Error in Shop Panel Interaction:', err);
-      await iShop.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iShop.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
@@ -2024,7 +2024,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
   collector.on('collect', async iHub => {
     if (!iHub.member || !iHub.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iHub.reply({ content: '❌ Akses Ditolak! Tombol ini dikunci khusus untuk Administrator server.', ephemeral: true });
+      return iHub.reply({ content: '❌ Akses Ditolak! Tombol ini dikunci khusus untuk Administrator server.', flags: 64 });
     }
 
     try {
@@ -2058,7 +2058,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
       }
     } catch (err) {
       console.error('Error in Hub Panel Interaction:', err);
-      await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, ephemeral: true }).catch(() => {});
+      await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
     }
   });
 
