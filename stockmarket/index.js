@@ -1041,6 +1041,154 @@ function initStockMarket(client) {
           await privateMsg.edit({ components: [] }).catch(() => {});
         });
       }
+
+      // ── PORTAL PERMANEN: KOSAN (.kos) ──
+      else if (customId === 'eco_btn_open_kos_private_perm') {
+        const kos = require('./kos');
+
+        const getKosDashboardDataPrivate = (targetUserId) => {
+          const wallet = economy.getWallet(targetUserId, guildId);
+          const activeRental = kos.getActiveRental(targetUserId, guildId);
+          const upgrades = kos.getUpgrades(targetUserId, guildId);
+          const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
+          
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+          );
+          
+          return { embeds: [embed], components: [row] };
+        };
+
+        const getSewaPanelDataPrivate = (targetUserId) => {
+          const currentRental = kos.getActiveRental(targetUserId, guildId);
+          const embed = embeds.kosRoomListEmbed(currentRental);
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('kos_select_room_perm')
+            .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel('💨 Kamar Kipas Angin (Rp 150)')
+                .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
+                .setValue('KIPAS'),
+              new StringSelectMenuOptionBuilder()
+                .setLabel('❄️ Kamar AC (Rp 350)')
+                .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
+                .setValue('AC'),
+              new StringSelectMenuOptionBuilder()
+                .setLabel('👑 Penthouse Kosan (Rp 800)')
+                .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
+                .setValue('PENTHOUSE')
+            );
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+          const backBtn = new ButtonBuilder()
+            .setCustomId('kos_btn_back_dashboard_perm')
+            .setLabel('✖️ Kembali ke Dashboard')
+            .setStyle(ButtonStyle.Secondary);
+          const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+          return { embeds: [embed], components: [selectRow, backRow] };
+        };
+
+        const getUpgradePanelDataPrivate = (targetUserId) => {
+          const ownedUpgrades = kos.getUpgrades(targetUserId, guildId);
+          const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('kos_select_upgrade_perm')
+            .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
+
+          const upgradesConfig = config.kos.UPGRADES;
+          Object.keys(upgradesConfig).forEach(key => {
+            const up = upgradesConfig[key];
+            const isOwned = ownedUpgrades.some(o => o.id === up.id);
+            
+            selectMenu.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
+                .setDescription(up.desc.substring(0, 100))
+                .setValue(up.id)
+            );
+          });
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+          const backBtn = new ButtonBuilder()
+            .setCustomId('kos_btn_back_dashboard_perm')
+            .setLabel('✖️ Kembali ke Dashboard')
+            .setStyle(ButtonStyle.Secondary);
+          const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+          return { embeds: [embed], components: [selectRow, backRow] };
+        };
+
+        const initialData = getKosDashboardDataPrivate(user.id);
+        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+        collector.on('collect', async iKos => {
+          if (iKos.user.id !== user.id) return iKos.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
+
+          try {
+            if (iKos.customId === 'kos_btn_refresh_perm') {
+              await iKos.update(getKosDashboardDataPrivate(user.id));
+            } else if (iKos.customId === 'kos_btn_nav_sewa_perm') {
+              await iKos.update(getSewaPanelDataPrivate(user.id));
+            } else if (iKos.customId === 'kos_btn_nav_upgrade_perm') {
+              await iKos.update(getUpgradePanelDataPrivate(user.id));
+            } else if (iKos.customId === 'kos_btn_back_dashboard_perm') {
+              await iKos.update(getKosDashboardDataPrivate(user.id));
+            } else if (iKos.customId === 'kos_select_room_perm') {
+              const selectedRoom = iKos.values[0];
+              try {
+                const res = kos.rentRoom(user.id, guildId, selectedRoom);
+                const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
+                
+                const successEmb = embeds.kosSuccessReceiptEmbed(
+                  'Transaksi Persewaan Kamar Berhasil! 🛌',
+                  `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
+                  `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                  `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
+                  `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                );
+
+                await iKos.reply({ embeds: [successEmb], ephemeral: true });
+                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => {});
+              } catch (err) {
+                const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
+                await iKos.reply({ embeds: [errorEmb], ephemeral: true });
+              }
+            } else if (iKos.customId === 'kos_select_upgrade_perm') {
+              const selectedUpgrade = iKos.values[0];
+              try {
+                const res = kos.buyUpgrade(user.id, guildId, selectedUpgrade);
+
+                const successEmb = embeds.kosSuccessReceiptEmbed(
+                  'Transaksi Belanja Fasilitas Berhasil! 🛒',
+                  `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
+                  `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                  `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
+                  `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                );
+
+                await iKos.reply({ embeds: [successEmb], ephemeral: true });
+                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => {});
+              } catch (err) {
+                const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
+                await iKos.reply({ embeds: [errorEmb], ephemeral: true });
+              }
+            }
+          } catch (err) {
+            console.error('Error in Kos permanent collector:', err);
+          }
+        });
+
+        collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => {});
+        });
+      }
     } catch (err) {
       console.error('Error handling permanent portal click:', err);
     }
@@ -5535,12 +5683,13 @@ async function handleEconomyCommands(message, client) {
           `📈 **Bursa Saham** — Investasi saham channel server.\n` +
           `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
           `🐾 **Pusat Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
-          `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).`
+          `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).\n` +
+          `🏠 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.`
         )
         .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
         .setTimestamp();
 
-      const row = new ActionRowBuilder().addComponents(
+      const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('eco_btn_open_shop_private_perm')
           .setLabel('🛍️ Toko')
@@ -5552,7 +5701,10 @@ async function handleEconomyCommands(message, client) {
         new ButtonBuilder()
           .setCustomId('eco_btn_open_bank_private_perm')
           .setLabel('🏦 Bank')
-          .setStyle(ButtonStyle.Secondary),
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('pet_btn_open_pet_private_perm')
           .setLabel('🐾 Pet')
@@ -5560,10 +5712,14 @@ async function handleEconomyCommands(message, client) {
         new ButtonBuilder()
           .setCustomId('eco_btn_open_bm_private_perm')
           .setLabel('🕵️‍♂️ BM')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_kos_private_perm')
+          .setLabel('🏠 Kosan')
           .setStyle(ButtonStyle.Secondary)
       );
 
-      await message.channel.send({ embeds: [embed], components: [row] });
+      await message.channel.send({ embeds: [embed], components: [row1, row2] });
       return true;
     }
 

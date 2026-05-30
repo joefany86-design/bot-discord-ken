@@ -43,13 +43,14 @@ client.once('ready', async () => {
         `📈 **Bursa Saham** — Investasi saham channel server.\n` +
         `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
         `🐾 **Pusat Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
-        `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).`
+        `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).\n` +
+        `🏠 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.`
       )
       .setImage('attachment://kosan_dashboard_banner.png')
       .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
       .setTimestamp();
 
-    const row = new ActionRowBuilder().addComponents(
+    const row1 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('eco_btn_open_shop_private_perm')
         .setLabel('🛍️ Toko')
@@ -61,7 +62,10 @@ client.once('ready', async () => {
       new ButtonBuilder()
         .setCustomId('eco_btn_open_bank_private_perm')
         .setLabel('🏦 Bank')
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('pet_btn_open_pet_private_perm')
         .setLabel('🐾 Pet')
@@ -69,10 +73,14 @@ client.once('ready', async () => {
       new ButtonBuilder()
         .setCustomId('eco_btn_open_bm_private_perm')
         .setLabel('🕵️‍♂️ BM')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('eco_btn_open_kos_private_perm')
+        .setLabel('🏠 Kosan')
         .setStyle(ButtonStyle.Secondary)
     );
 
-    await channel.send({ embeds: [embed], components: [row], files: [attachment] });
+    await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
     
     console.log('✅ Portal baru yang super premium berhasil dikirim!');
     process.exit(0);
