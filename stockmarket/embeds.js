@@ -633,10 +633,21 @@ module.exports = {
 
   // 7. Embed Leaderboard Terkaya
   leaderboardEmbed(guildName, leaderboard, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
     const embed = new EmbedBuilder()
-      .setColor(COLORS.DARK)
-      .setTitle(`🏆 PAPAN PERINGKAT ORANG TERKAYA — ${guildName}`)
-      .setDescription(`Daftar 10 konglomerat dengan total aset (Saldo + Saham + Bank) tertinggi.`);
+      .setColor(0xFFD700) // Premium Gold Color!
+      .setTitle(`🏆 PAPAN PERINGKAT ORANG TERKAYA — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `👑 **KONGLEMERAT RUPIAH SERVER KOSAN 1A** 👑\n` +
+        `*10 warga terhormat dengan akumulasi aset (Dompet + Saham + Bank) tertinggi.*\n` +
+        `────────────────────────────────────────`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    }
 
     if (leaderboard.length === 0) {
       embed.addFields({ name: '🚫 Kosong', value: 'Belum ada data ekonomi untuk server ini.' });
@@ -648,10 +659,12 @@ module.exports = {
         const name = member ? `**${member.username}**` : `<@${user.userId}>`;
         
         ranks += `${medal} ${name}\n` +
-                 `   💵 Dompet: \`${formatCurrency(user.balance)}\` | 📊 Saham: \`${formatCurrency(user.portfolioValue)}\` | 🏦 Bank: \`${formatCurrency(user.bankBalance)}\`\n` +
-                 `   💎 **Kekayaan Bersih: ${formatCurrency(user.totalWealth)}**\n\n`;
+                 `   ├─ 💵 Dompet : \`${formatCurrency(user.balance)}\`\n` +
+                 `   ├─ 📊 Saham  : \`${formatCurrency(user.portfolioValue)}\`\n` +
+                 `   ├─ 🏦 Bank   : \`${formatCurrency(user.bankBalance)}\`\n` +
+                 `   └─ 💎 **Total : \`${formatCurrency(user.totalWealth)}\`**\n\n`;
       });
-      embed.setDescription(ranks);
+      embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
     }
 
     return embed.setTimestamp();
