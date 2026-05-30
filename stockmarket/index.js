@@ -918,7 +918,11 @@ function initStockMarket(client) {
               new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
               new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
               new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
-              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY')
+              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
             );
 
           const selectRow = new ActionRowBuilder().addComponents(selectMenu);
