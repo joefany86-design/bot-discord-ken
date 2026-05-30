@@ -115,7 +115,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       new StringSelectMenuOptionBuilder()
         .setLabel('🎁 Beri Pet Kustom (Modal)')
         .setDescription('Buatkan pet baru dengan spesies, level, & trait khusus')
-        .setValue('action_give_custom_pet_modal')
+        .setValue('action_give_custom_pet_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
+        .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
+        .setValue('action_set_custom_image_modal')
     );
 
     const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -437,18 +441,61 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             const remainingRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
             const remaining = remainingRow ? remainingRow.count : 0;
             if (remaining === 0) {
-              database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+               database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
             } else {
-              const nextPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [selectedTargetUserId, guildId]);
-              if (nextPet) {
-                database.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, nextPet.pet_name]);
-              }
+               const nextPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [selectedTargetUserId, guildId]);
+               if (nextPet) {
+                 database.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, nextPet.pet_name]);
+               }
             }
           })();
           
           await iPet.reply({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, ephemeral: true });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_set_custom_image_modal') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', ephemeral: true });
+          }
+
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_set_custom_image_modal')
+            .setTitle('Ubah Gambar Pet Custom');
+
+          const urlInput = new TextInputBuilder()
+            .setCustomId('image_url')
+            .setLabel('URL Gambar / GIF')
+            .setPlaceholder('https://... (Ketik "reset" untuk hapus)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(urlInput));
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_set_custom_image_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            try {
+              const url = sub.fields.getTextInputValue('image_url');
+              const petModule = require('./pet');
+              const savedUrl = petModule.setCustomImage(selectedTargetUserId, guildId, url);
+              
+              if (savedUrl) {
+                await sub.reply({ content: `📸 Sukses! Gambar pet aktif milik <@${selectedTargetUserId}> berhasil diubah secara kustom.`, ephemeral: true });
+              } else {
+                await sub.reply({ content: `📸 Sukses mereset gambar pet aktif milik <@${selectedTargetUserId}> ke tampilan bawaan.`, ephemeral: true });
+              }
+              const fresh = getPetPanelData(guildId, selectedTargetUserId);
+              await replyMsg.edit(fresh).catch(() => {});
+            } catch (err) {
+              await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, ephemeral: true }).catch(() => {});
+            }
+          }
         }
       }
     } catch (err) {

@@ -1811,6 +1811,11 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: IMAGE / SETIMAGE ──
   if (subCommand === 'image' || subCommand === 'setimage') {
+    const { PermissionsBitField } = require('discord.js');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Perintah ini hanya dapat digunakan oleh Administrator server.')] });
+    }
+
     const url = args[1];
     if (!url) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet image <link_gambar_atau_gif>`\nContoh: `.pet image https://i.imgur.com/xxx.gif`\nAtau ketik `.pet image reset` untuk mengembalikan ke gambar bawaan.')] });
