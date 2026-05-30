@@ -505,6 +505,43 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime pet leaderboard:', err);
     }
+
+    // ── 3. DAILY LEADERBOARD (Channel: 1510240252458176662) ──
+    try {
+      const dailyChannel = await client.channels.fetch('1510240252458176662').catch(() => null);
+      if (dailyChannel) {
+        const guildId = dailyChannel.guild.id;
+        const guildName = dailyChannel.guild.name;
+
+        const now = new Date();
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+        const query = `
+          SELECT user_id, balance, last_active_date, streak_days 
+          FROM wallets 
+          WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date != ?)
+          ORDER BY balance DESC
+          LIMIT 10
+        `;
+        const list = database.all(query, [guildId, todayStr]);
+
+        await Promise.all(list.map(async u => {
+          try { await client.users.fetch(u.user_id); } catch (e) {}
+        }));
+        const dailyEmbed = embeds.dailyLeaderboardEmbed(guildName, list, client);
+
+        const messages = await dailyChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+        const payload = { embeds: [dailyEmbed], components: [] };
+
+        if (leaderboardMsg) {
+          await leaderboardMsg.edit(payload).catch(() => {});
+        } else {
+          await dailyChannel.send(payload).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating realtime daily leaderboard:', err);
+    }
   }, 5000);
 }
 

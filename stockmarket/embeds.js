@@ -670,6 +670,46 @@ module.exports = {
     return embed.setTimestamp();
   },
 
+  // 7b. Embed Papan Peringkat Belum Ambil Daily
+  dailyLeaderboardEmbed(guildName, list, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFF3366) // Neon Hot Pink (COLORS.ERROR)
+      .setTitle(`🚨 TARGET ROB: BELUM AMBIL DAILY — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `💰 **DAFTAR WARGA YANG BELUM KLAIM GAJI HARI INI** 💰\n` +
+        `*10 warga terkaya yang belum mengetik \`.daily\` atau mengklaim gaji hari ini.*\n` +
+        `*Peluang mencuri uang mereka meningkat menjadi **80%** menggunakan perintah \`.rob\`!*\n` +
+        `────────────────────────────────────────`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    }
+
+    if (list.length === 0) {
+      embed.addFields({ name: '🎉 Aman!', value: 'Semua warga sudah mengklaim gaji harian mereka hari ini.' });
+    } else {
+      let ranks = '';
+      list.forEach((user, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        const member = client.users.cache.get(user.user_id);
+        const name = member ? `**${member.username}**` : `<@${user.user_id}>`;
+        const klaim = user.last_active_date || 'Belum Pernah';
+        
+        ranks += `${medal} ${name}\n` +
+                 `   ├─ 💵 Saldo Dompet : \`${formatCurrency(user.balance)}\`\n` +
+                 `   ├─ 📅 Klaim Terakhir: \`${klaim}\`\n` +
+                 `   └─ 🔥 Streak Harian: \`${user.streak_days} hari\`\n\n`;
+      });
+      embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
+    }
+
+    return embed.setTimestamp();
+  },
+
   // 7a. Embed Papan Peringkat Pet (Pet Leaderboard)
   petLeaderboardEmbed(guildName, topPets, category, client) {
     const guild = client.guilds.cache.find(g => g.name === guildName);
