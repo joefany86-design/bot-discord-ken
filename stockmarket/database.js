@@ -448,6 +448,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 26. Migrasi dinamis: Tambahkan kolom custom_image ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN custom_image TEXT DEFAULT NULL");
+    console.log("⚡ [Database] Kolom 'custom_image' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 

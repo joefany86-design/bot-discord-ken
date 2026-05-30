@@ -277,6 +277,10 @@ const PET_ASSETS = {
 function getPetImage(pet) {
   if (!pet) return null;
   
+  if (pet.custom_image) {
+    return pet.custom_image;
+  }
+
   if (pet.status === 'EGG') {
     const eggs = PET_ASSETS.EGG;
     return eggs[Math.floor(Math.random() * eggs.length)];

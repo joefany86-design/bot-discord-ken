@@ -1366,6 +1366,35 @@ function toggleAutoFeed(userId, guildId) {
   };
 }
 
+/**
+ * Mengatur URL gambar custom untuk pet aktif.
+ */
+function setCustomImage(userId, guildId, imageUrl) {
+  const pet = getPet(userId, guildId);
+  if (!pet) {
+    throw new Error("Anda belum memiliki pet aktif!");
+  }
+  
+  let validUrl = null;
+  if (imageUrl && typeof imageUrl === 'string') {
+    const trimmed = imageUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      validUrl = trimmed;
+    } else if (trimmed.toLowerCase() === 'reset' || trimmed.toLowerCase() === 'none' || trimmed.toLowerCase() === 'default') {
+      validUrl = null;
+    } else {
+      throw new Error("Link gambar tidak valid! Harus berawalan `http://` atau `https://`, atau ketik `reset` untuk menghapus gambar custom.");
+    }
+  }
+
+  db.run(
+    'UPDATE user_pets SET custom_image = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+    [validUrl, userId, guildId, pet.pet_name]
+  );
+
+  return validUrl;
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1386,5 +1415,6 @@ module.exports = {
   getXpNeeded,
   checkExpeditionLimit,
   getPetLeaderboard,
-  toggleAutoFeed
+  toggleAutoFeed,
+  setCustomImage
 };

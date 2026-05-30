@@ -1809,6 +1809,28 @@ async function handlePetCommand(message, client, args) {
     return handlePetShopCommand(message, client);
   }
 
+  // ── SUB-PERINTAH: IMAGE / SETIMAGE ──
+  if (subCommand === 'image' || subCommand === 'setimage') {
+    const url = args[1];
+    if (!url) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet image <link_gambar_atau_gif>`\nContoh: `.pet image https://i.imgur.com/xxx.gif`\nAtau ketik `.pet image reset` untuk mengembalikan ke gambar bawaan.')] });
+    }
+    try {
+      const savedUrl = pet.setCustomImage(author.id, guildId, url);
+      let desc = '';
+      if (savedUrl) {
+        desc = `Berhasil mengubah gambar pet aktif Anda!\n\n**Preview URL:**\n${savedUrl}`;
+      } else {
+        desc = `Berhasil menghapus gambar kustom. Pet Anda sekarang kembali menggunakan aset gambar bawaan sistem.`;
+      }
+      const successEmb = embeds.successEmbed('Update Gambar Pet Sukses! 📸', desc);
+      if (savedUrl) successEmb.setImage(savedUrl);
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Update Gambar Gagal!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: BUY-ITEM ──
   if (subCommand === 'buy-item') {
     const itemId = args[1];
