@@ -3822,7 +3822,7 @@ async function handleEconomyCommands(message, client) {
       const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
       const bailDebts = { debts, receivables };
 
-      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts);
+      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items);
       await message.reply({ embeds: [embed] });
       return true;
     }

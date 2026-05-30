@@ -217,127 +217,208 @@ module.exports = {
   COLORS,
   formatCurrency,
 
-  // 1. Embed Saldo / Profile
-  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null) {
+  // 1. Embed Saldo / Profile (Premium UI)
+  profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null, portfolioItems = []) {
     const totalWealth = wallet.balance + portfolioValue;
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.INFO)
-      .setTitle(`💼 Dompet Keuangan — ${user.username}`)
-      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-      .addFields(
-        { 
-          name: '💵 Saldo Rupiah Server', 
-          value: `**${formatCurrency(wallet.balance)}**`, 
-          inline: true 
-        },
-        { 
-          name: '📊 Nilai Investasi Saham', 
-          value: `**${formatCurrency(portfolioValue)}**`, 
-          inline: true 
-        },
-        { 
-          name: '💎 Total Kekayaan', 
-          value: `**${formatCurrency(totalWealth)}**`, 
-          inline: false 
-        },
-        { 
-          name: '🔥 Streak Keaktifan', 
-          value: `\`${wallet.streak_days} hari berturut-turut\` ${wallet.streak_days >= 3 ? '⚡' : ''}`, 
-          inline: true 
-        },
-        { 
-          name: '📈 Total Earning', 
-          value: `\`${formatCurrency(wallet.total_earned)}\``, 
-          inline: true 
-        },
-        { 
-          name: '🚨 Masuk Penjara', 
-          value: `\`${wallet.jail_count || 0} kali\``, 
-          inline: true 
-        }
-      );
 
-    // Tambahkan info utang bank jika ada
-    let debtValue = '*Tidak ada utang*';
+    // ── Determine dynamic accent color based on portfolio performance ──
+    let accentColor = COLORS.INFO;
+    if (portfolioItems.length > 0) {
+      const totalProfit = portfolioItems.reduce((sum, i) => sum + i.profitRp, 0);
+      if (totalProfit > 0) accentColor = 0x00D166; // Vibrant green for profit
+      else if (totalProfit < 0) accentColor = 0xED4245; // Red for loss
+    }
+
+    // ── Helper: generate mini bar ──
+    const miniBar = (value, max, filled = '█', empty = '░', len = 10) => {
+      const ratio = Math.min(1, Math.max(0, value / (max || 1)));
+      const filledCount = Math.round(ratio * len);
+      return '`' + filled.repeat(filledCount) + empty.repeat(len - filledCount) + '`';
+    };
+
+    // ── Helper: wealth tier badge ──
+    const getWealthBadge = (total) => {
+      if (total >= 50000) return '💎 **DIAMOND TIER**';
+      if (total >= 20000) return '👑 **GOLD TIER**';
+      if (total >= 10000) return '🥈 **SILVER TIER**';
+      if (total >= 5000) return '🥉 **BRONZE TIER**';
+      return '🪵 **STARTER**';
+    };
+
+    const embed = new EmbedBuilder()
+      .setColor(accentColor)
+      .setAuthor({ name: `💼 Financial Dashboard`, iconURL: user.displayAvatarURL({ dynamic: true }) })
+      .setTitle(`${user.username}`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }));
+
+    // ═══════════════════════════════════════
+    // SECTION 1: RINGKASAN KEUANGAN
+    // ═══════════════════════════════════════
+    const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
+    const balanceBar = miniBar(wallet.balance, totalWealth || 1);
+    const investBar = miniBar(portfolioValue, totalWealth || 1);
+
+    embed.setDescription(
+      `${getWealthBadge(totalWealth)}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `💵 **Saldo Dompet**\n` +
+      `╰ **${formatCurrency(wallet.balance)}** ${balanceBar}\n\n` +
+      `📊 **Nilai Investasi Saham**\n` +
+      `╰ **${formatCurrency(portfolioValue)}** ${investBar}\n\n` +
+      `💎 **Total Kekayaan Bersih**\n` +
+      `╰ **${formatCurrency(totalWealth)}**\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+    );
+
+    // ═══════════════════════════════════════
+    // SECTION 2: STATISTIK AKTIVITAS
+    // ═══════════════════════════════════════
+    embed.addFields({
+      name: `${streakEmoji} Statistik Aktivitas`,
+      value:
+        `╭ 🔥 Streak: **${wallet.streak_days} hari** berturut-turut\n` +
+        `├ 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n` +
+        `├ 🤖 Robot Trading: ${wallet.auto_trade ? '🟢 **AKTIF**' : '🔴 **NONAKTIF**'}\n` +
+        `╰ 🚨 Masuk Penjara: **${wallet.jail_count || 0}** kali`,
+      inline: false
+    });
+
+    // ═══════════════════════════════════════
+    // SECTION 3: PORTOFOLIO SAHAM
+    // ═══════════════════════════════════════
+    if (portfolioItems.length > 0) {
+      let stockLines = '';
+      let totalInvested = 0;
+      let totalCurrent = 0;
+
+      portfolioItems.forEach((item, idx) => {
+        const profitSign = item.profitRp >= 0 ? '+' : '';
+        const profitEmoji = item.profitRp > 0 ? '🟢' : item.profitRp < 0 ? '🔴' : '⚪';
+        const trendArrow = item.profitRp > 0 ? '↗' : item.profitRp < 0 ? '↘' : '→';
+
+        totalInvested += item.totalInvested;
+        totalCurrent += item.currentValue;
+
+        stockLines +=
+          `${profitEmoji} **${item.ticker}** ─ #${item.name}\n` +
+          `╰ 📦 \`${item.shares}\` lbr × Rp \`${item.currentPrice.toLocaleString('id-ID')}\` = **Rp ${item.currentValue.toLocaleString('id-ID')}**\n` +
+          `╰ ${trendArrow} P/L: \`${profitSign}${item.profitPercent}%\` (**${profitSign}Rp ${item.profitRp.toLocaleString('id-ID')}**)\n`;
+
+        if (idx < portfolioItems.length - 1) stockLines += '\n';
+      });
+
+      const totalPL = totalCurrent - totalInvested;
+      const totalPLPct = totalInvested > 0 ? ((totalPL / totalInvested) * 100).toFixed(1) : '0.0';
+      const plSign = totalPL >= 0 ? '+' : '';
+      const plEmoji = totalPL > 0 ? '📈' : totalPL < 0 ? '📉' : '📊';
+
+      stockLines +=
+        `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${plEmoji} **Total P/L:** \`${plSign}${totalPLPct}%\` (**${plSign}Rp ${totalPL.toLocaleString('id-ID')}**)`;
+
+      embed.addFields({
+        name: `📈 Portofolio Saham (${portfolioItems.length} Aset)`,
+        value: stockLines,
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '📈 Portofolio Saham (0 Aset)',
+        value: `*Belum memiliki saham. Beli pertama Anda di \`.market\` atau \`.trade <ticker>\`!*`,
+        inline: false
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // SECTION 4: UTANG BANK
+    // ═══════════════════════════════════════
+    let debtValue = '╰ ✅ *Tidak ada utang aktif*';
     if (activeLoan) {
       const totalDebt = activeLoan.total_due + (activeLoan.penalty_accumulated || 0);
-      debtValue = `⚠️ **Rp ${totalDebt.toLocaleString('id-ID')}**\n╰ Jatuh Tempo: <t:${activeLoan.due_at}:d> (<t:${activeLoan.due_at}:R>) ${activeLoan.status === 'OVERDUE' ? '🚨 **[JATUH TEMPO]**' : ''}`;
+      const statusBadge = activeLoan.status === 'OVERDUE' ? '🚨 **JATUH TEMPO**' : '⏳ Aktif';
+      debtValue =
+        `╰ ⚠️ **Rp ${totalDebt.toLocaleString('id-ID')}** ${statusBadge}\n` +
+        `╰ 📅 Jatuh Tempo: <t:${activeLoan.due_at}:d> (<t:${activeLoan.due_at}:R>)`;
     }
     embed.addFields({
-      name: '💸 Utang Bank Sentral',
+      name: '🏛️ Status Utang Bank Sentral',
       value: debtValue,
       inline: false
     });
 
-    // Tambahkan info hutang tebusan jika ada
+    // ═══════════════════════════════════════
+    // SECTION 5: HUTANG TEBUSAN PENJARA
+    // ═══════════════════════════════════════
     if (bailDebts) {
       const { debts, receivables } = bailDebts;
       let debtLines = [];
-      
+
       if (debts && debts.length > 0) {
         debts.forEach(d => {
-          debtLines.push(`🔴 Berhutang ke <@${d.creditor_id}>: **Rp ${d.amount.toLocaleString('id-ID')}**`);
+          debtLines.push(`╰ 🔴 Berhutang ke <@${d.creditor_id}>: **Rp ${d.amount.toLocaleString('id-ID')}**`);
         });
       }
-      
+
       if (receivables && receivables.length > 0) {
         receivables.forEach(r => {
-          debtLines.push(`🟢 Dipinjami oleh <@${r.debtor_id}>: **Rp ${r.amount.toLocaleString('id-ID')}**`);
+          debtLines.push(`╰ 🟢 Piutang dari <@${r.debtor_id}>: **Rp ${r.amount.toLocaleString('id-ID')}**`);
         });
       }
 
       if (debtLines.length > 0) {
         embed.addFields({
-          name: '🤝 Hutang Tebusan Penjara',
+          name: '🤝 Hutang & Piutang Tebusan',
           value: debtLines.join('\n'),
           inline: false
         });
       }
     }
 
-    // Tambahkan info Pet yang dimiliki
+    // ═══════════════════════════════════════
+    // SECTION 6: STATUS PET
+    // ═══════════════════════════════════════
     if (pet) {
       let petValue = '';
       if (pet.status === 'EGG') {
-        petValue = `🥚 **Telur Pet** (Sedang dierami, menetas <t:${pet.hatch_at}:R>)\n*Nama Calon: **${pet.pet_name}***`;
+        petValue = `╰ 🥚 **Telur Pet** — Menetas <t:${pet.hatch_at}:R>\n╰ *Nama Calon: **${pet.pet_name}***`;
       } else if (pet.status === 'DEAD') {
-        petValue = `🪦 **${pet.pet_name}** (${pet.pet_type}) telah meninggal dunia.\n*Gunakan \`.pet reset\` untuk mengadopsi pet baru.*`;
+        petValue = `╰ 🪦 **${pet.pet_name}** (${pet.pet_type}) telah meninggal.\n╰ *Ketik \`.pet reset\` untuk adopsi baru.*`;
       } else {
         const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
         const { getXpNeeded } = require('./pet');
         const xpNeeded = getXpNeeded(pet.level, pet.trait);
-        
-        let rarityText = '⚪ **COMMON** (Normal)';
+        const xpBar = miniBar(pet.xp, xpNeeded, '▓', '░', 8);
+
+        let rarityText = '⚪ Common';
         if (pet.trait) {
           const t = pet.trait.toUpperCase();
-          let traitDesc = '';
-          if (t === 'GENIUS') traitDesc = '🧠 Genius (-15% XP cap)';
-          else if (t === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
-          else if (t === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
-          else if (t === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
-          
-          rarityText = `✨ **RARE** (${traitDesc})`;
+          if (t === 'GENIUS') rarityText = '🧠 Genius';
+          else if (t === 'STURDY') rarityText = '🛡️ Sturdy';
+          else if (t === 'MUTANT') rarityText = '🧬 Mutant';
+          else if (t === 'WARRIOR') rarityText = '⚔️ Warrior';
         }
-        
-        petValue = `🐾 **Nama:** **${pet.pet_name}** (${typeLabel})\n` +
-                   `🌟 **Raritas (Realiti):** ${rarityText}\n` +
-                   `⭐ **Level:** \`Lv. ${pet.level}\` (XP: \`${pet.xp}/${xpNeeded}\`)\n` +
-                   `📊 **Stats:** ❤️ \`${pet.health}%\` HP | 🍖 \`${pet.hunger}%\` Kenyang | 💧 \`${pet.thirst}%\` Hidrasi | ⚽ \`${pet.happiness}%\` Mood`;
+
+        petValue =
+          `╰ 🐾 **${pet.pet_name}** (${typeLabel}) — ${rarityText}\n` +
+          `╰ ⭐ Lv. **${pet.level}** ${xpBar} \`${pet.xp}/${xpNeeded} XP\`\n` +
+          `╰ ❤️ \`${pet.health}%\` · 🍖 \`${pet.hunger}%\` · 💧 \`${pet.thirst}%\` · ⚽ \`${pet.happiness}%\``;
       }
       embed.addFields({
-        name: '🐾 Status Peliharaan (Pet)',
-        value: petValue + '\n*💡 Ketik `.pet list` untuk melihat semua peliharaan Anda.*',
+        name: '🐾 Peliharaan',
+        value: petValue,
         inline: false
       });
     } else {
       embed.addFields({
-        name: '🐾 Status Peliharaan (Pet)',
-        value: `*Belum memiliki peliharaan. Adopsi telur seharga Rp 1.500 dengan ketik \`.pet buy <nama> <spesies>\`!*`,
+        name: '🐾 Peliharaan',
+        value: `╰ *Belum punya. Adopsi telur \`Rp 1.500\` dengan \`.pet buy <nama> <spesies>\`!*`,
         inline: false
       });
     }
 
-    // Tambahkan info kasta role prestise yang dimiliki
+    // ═══════════════════════════════════════
+    // SECTION 7: ROLE PRESTISE
+    // ═══════════════════════════════════════
     if (member && shopItems && shopItems.length > 0) {
       const TIER_EMOJIS = {
         COMMON: '🟢',
@@ -351,32 +432,32 @@ module.exports = {
       shopItems.forEach(item => {
         if (member.roles.cache.has(item.role_id)) {
           const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-          ownedPrestigeRoles.push(`${emoji} **${item.role_name}**`);
+          ownedPrestigeRoles.push(`╰ ${emoji} **${item.role_name}**`);
         }
       });
 
       if (ownedPrestigeRoles.length > 0) {
         embed.addFields({
-          name: `🎭 Koleksi Role Prestise (${ownedPrestigeRoles.length} / ${shopItems.length})`,
+          name: `🎭 Role Prestise (${ownedPrestigeRoles.length}/${shopItems.length})`,
           value: ownedPrestigeRoles.join('\n'),
           inline: false
         });
       } else {
         embed.addFields({
-          name: '🎭 Koleksi Role Prestise (0)',
-          value: '*Belum memiliki kasta role prestise. Beli di `.shop` atau coba peruntungan di `.gacha-role`!*',
+          name: '🎭 Role Prestise (0)',
+          value: `╰ *Belum punya. Beli di \`.shop\` atau coba \`.gacha-role\`!*`,
           inline: false
         });
       }
     } else if (member) {
       embed.addFields({
-        name: '🎭 Koleksi Role Prestise (0)',
-        value: '*Tidak ada kasta role prestise terdaftar di server ini.*',
+        name: '🎭 Role Prestise (0)',
+        value: `╰ *Tidak ada role prestise terdaftar di server ini.*`,
         inline: false
       });
     }
 
-    embed.setFooter({ text: 'Ketik .daily untuk klaim koin harian!' })
+    embed.setFooter({ text: '💡 .daily · .market · .porto · .shop · .pet · .kos' })
       .setTimestamp();
 
     return embed;
