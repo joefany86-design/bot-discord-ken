@@ -208,6 +208,17 @@ function robSolo(userId, targetId, guildId) {
       jailDuration = Math.floor(jailDuration / 2);
     }
 
+    // Integrasi Luxury Shop: Lamborgini memotong penjara 25% (kabur naik mobil kencang)
+    let lamboUsed = false;
+    const lamboQty = db.get(
+      "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'LAMBO'",
+      [userId, guildId]
+    );
+    if (lamboQty && lamboQty.quantity > 0) {
+      jailDuration = Math.floor(jailDuration * 0.75);
+      lamboUsed = true;
+    }
+
     db.transaction(() => {
       if (finalFine > 0) {
         economy.subtractBalance(userId, guildId, finalFine, 'ROB_FAILED_FINE');
@@ -231,6 +242,7 @@ function robSolo(userId, targetId, guildId) {
       lockpickUsed,
       lockpickBroken,
       soapUsed,
+      lamboUsed,
       victimClaimedDaily
     };
   }

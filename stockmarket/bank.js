@@ -155,7 +155,21 @@ function calculateMaxLoanLimit(userId, guildId) {
   const earnedBonus = Math.floor((wallet.total_earned || 0) * 0.3);
   const streakBonus = (wallet.streak_days || 0) * 100;
 
-  return baseLimit + earnedBonus + streakBonus;
+  // Integrasi Luxury Shop: Batangan Emas menambah limit pinjaman +Rp 500 (kolateral emas)
+  let goldBonus = 0;
+  try {
+    const goldQty = db.get(
+      "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'GOLD'",
+      [userId, guildId]
+    );
+    if (goldQty && goldQty.quantity > 0) {
+      goldBonus = 500;
+    }
+  } catch (e) {
+    console.error("Gagal membaca emas batangan untuk limit bank:", e.message);
+  }
+
+  return baseLimit + earnedBonus + streakBonus + goldBonus;
 }
 
 /**

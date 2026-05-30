@@ -544,6 +544,19 @@ function sendToWork(userId, guildId) {
     cooldownDuration -= 20 * 60;
   }
 
+  // Integrasi Luxury Shop: Rolex mengurangi cooldown kerja pet sebesar 5 menit (300 detik)
+  try {
+    const rolexQty = db.get(
+      "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'ROLEX'",
+      [userId, guildId]
+    );
+    if (rolexQty && rolexQty.quantity > 0) {
+      cooldownDuration -= 5 * 60;
+    }
+  } catch (e) {
+    console.error("Gagal membaca rolex untuk pet work cooldown:", e.message);
+  }
+
   const nextWorkTime = (pet.last_work_at || 0) + cooldownDuration;
   if (now < nextWorkTime) {
     const timeLeft = nextWorkTime - now;

@@ -3517,6 +3517,9 @@ async function handleEconomyCommands(message, client) {
           if (res.soapUsed) {
             failText += '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n';
           }
+          if (res.lamboUsed) {
+            failText += '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n';
+          }
           const failEmb = embeds.errorEmbed(
             '🚓 Perampokan Gagal! 👮',
             failText +

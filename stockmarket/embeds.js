@@ -311,6 +311,27 @@ module.exports = {
     desc += `┊ 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
     desc += `┊ 🚨 Penjara: **${wallet.jail_count || 0}** kali\n\n`;
 
+    // ── KOLEKSI MEWAH / BADGES ──
+    try {
+      const luxuryItems = db.all(
+        "SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id IN ('LAMBO', 'GOLD', 'ROLEX') AND quantity > 0",
+        [user.id, wallet.guild_id]
+      );
+      if (luxuryItems && luxuryItems.length > 0) {
+        let badgesText = '';
+        luxuryItems.forEach(item => {
+          if (item.item_id === 'LAMBO') badgesText += '🏎️ `[ SULTAN LAMBO ]` ';
+          if (item.item_id === 'GOLD') badgesText += '👑 `[ EMAS BATANGAN ]` ';
+          if (item.item_id === 'ROLEX') badgesText += '⌚ `[ ROLEX OWNER ]` ';
+        });
+        if (badgesText.length > 0) {
+          desc += `🏆 **Lencana Status Mewah**\n┊ ${badgesText}\n\n`;
+        }
+      }
+    } catch (e) {
+      console.error("Gagal memuat lencana mewah:", e.message);
+    }
+
     // ── PORTOFOLIO SAHAM ──
     if (portfolioItems.length > 0) {
       let totalInvested = 0;
