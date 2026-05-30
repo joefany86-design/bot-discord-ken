@@ -4390,15 +4390,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .rich / .leaderboard / .liderbot
     // ═══════════════════════════════════════════════════
     if (commandName === 'rich' || commandName === 'leaderboard' || commandName === 'liderbot') {
-      const limit = 10;
-      const leaderboard = economy.getLeaderboard(guildId, limit);
-
-      // Pastikan cache user terisi
-      await Promise.all(leaderboard.map(async u => {
-        try { await client.users.fetch(u.userId); } catch (e) { }
-      }));
-
-      const embed = embeds.leaderboardEmbed(guild.name, leaderboard, client);
+      const embed = embeds.warnEmbed(
+        'Papan Peringkat Dinonaktifkan! ❌',
+        'Perintah `.rich` manual sudah tidak digunakan lagi.\n\n👉 Silakan lihat papan peringkat realtime terbaru di channel: <#1510230591860113418>!'
+      );
       await message.reply({ embeds: [embed] });
       return true;
     }
