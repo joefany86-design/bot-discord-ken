@@ -12,6 +12,8 @@ const bm = require('./blackmarket');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+// ID Channel Portal Shop (#🛍️┃shop) — panel hanya privat di channel ini
+const SHOP_CHANNEL_ID = '1510121069783023646';
 
 
 /**
@@ -114,7 +116,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
   if (!initialData) return;
 
   if (isInteraction) {
-    tradeMsg = await messageOrInteraction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+    tradeMsg = await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID, fetchReply: true });
   } else {
     tradeMsg = await messageOrInteraction.reply(initialData);
   }
@@ -142,7 +144,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
 
         const stock = stocks.getStock(guildId, selectedTicker);
         if (!stock) {
-          return iTrade.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: true });
+          return iTrade.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
         }
 
         let shares = 0;
@@ -162,7 +164,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             const maxHoldAllowed = (config.market.MAX_SHARES_HOLD_PER_USER || 500) - userShares;
             shares = Math.min(maxAfford, stock.available_shares, maxHoldAllowed);
             if (shares <= 0) {
-              return iTrade.reply({ content: '❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan 500 lembar)!', ephemeral: true });
+              return iTrade.reply({ content: '❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan 500 lembar)!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
             }
           } else if (amountType === 'custom') {
             const modal = new ModalBuilder()
@@ -189,13 +191,13 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (submitted) {
               const inputVal = parseInt(submitted.fields.getTextInputValue('buy_amount'));
               if (isNaN(inputVal) || inputVal <= 0) {
-                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
               }
 
               try {
                 const res = stocks.buyStock(author.id, guildId, selectedTicker, inputVal);
                 const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-                await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                await submitted.reply({ embeds: [successEmb], ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
 
                 if (inputVal >= 50) {
                   client.emit('playTtsEvent', {
@@ -210,7 +212,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
                 await tradeMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
-                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
               }
             }
             return;
@@ -223,7 +225,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
           else if (amountType === 'all') {
             shares = userShares;
             if (shares <= 0) {
-              return iTrade.reply({ content: '❌ Anda tidak memiliki saham ini untuk dijual!', ephemeral: true });
+              return iTrade.reply({ content: '❌ Anda tidak memiliki saham ini untuk dijual!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
             }
           } else if (amountType === 'custom') {
             const modal = new ModalBuilder()
@@ -250,13 +252,13 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (submitted) {
               const inputVal = parseInt(submitted.fields.getTextInputValue('sell_amount'));
               if (isNaN(inputVal) || inputVal <= 0) {
-                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: true });
+                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
               }
 
               try {
                 const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal);
                 const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-                await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                await submitted.reply({ embeds: [successEmb], ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
 
                 if (inputVal >= 50) {
                   client.emit('playTtsEvent', {
@@ -271,7 +273,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
                 await tradeMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
-                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
               }
             }
             return;
@@ -284,7 +286,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (action === 'BUY') {
               const res = stocks.buyStock(author.id, guildId, selectedTicker, shares);
               const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-              await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+              await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
               
               if (shares >= 50) {
                 client.emit('playTtsEvent', {
@@ -296,7 +298,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             } else {
               const res = stocks.sellStock(author.id, guildId, selectedTicker, shares);
               const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-              await iTrade.reply({ embeds: [successEmb], ephemeral: true });
+              await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
 
               if (shares >= 50) {
                 client.emit('playTtsEvent', {
@@ -310,7 +312,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             await iTrade.message.edit(freshData).catch(console.error);
           } catch (err) {
             const cleaned = err.message.replace(/^❌\s*/, '');
-            await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: true });
+            await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
           }
         }
       }
@@ -3751,139 +3753,100 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .market / .saham
     // ═══════════════════════════════════════════════════
     if (commandName === 'market' || commandName === 'saham') {
-      const portalRow = new ActionRowBuilder().addComponents(
+      const activeStocks = stocks.getStocks(guildId);
+      const isOpen = stocks.isMarketOpen();
+      const embed = embeds.marketEmbed(activeStocks, isOpen);
+
+      const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId('eco_btn_open_market_private')
-          .setLabel('📈 Buka Dashboard Saham')
+          .setCustomId('eco_btn_porto')
+          .setLabel('💼 Portofolio')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_profile')
+          .setLabel('💰 Profil & Saldo')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_shop')
+          .setLabel('🛍️ Toko Role')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_gacha')
+          .setLabel('🎲 Gacha Role')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_trade')
+          .setLabel('📈 Beli/Jual Saham')
           .setStyle(ButtonStyle.Success)
       );
 
-      const portalMsg = await message.reply({
-        content: `📈 **BURSA SAHAM KOSAN INTERAKTIF**\nKlik tombol di bawah ini untuk membuka dashboard saham secara privat di channel ini.`,
-        components: [portalRow]
-      });
+      const marketMsg = await message.reply({ embeds: [embed], components: [row] });
 
-      const portalCollector = portalMsg.createMessageComponentCollector({
+      const collector = marketMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 120000 // Aktif selama 2 menit
+        time: 120000 // 2 menit transaksi
       });
 
-      portalCollector.on('collect', async iOpen => {
-        if (iOpen.user.id !== author.id) {
-          return iOpen.reply({ content: '❌ Hanya orang yang memanggil perintah ini yang bisa membuka panel!', ephemeral: true });
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', ephemeral: true });
         }
 
-        // Hapus pesan pemicu dan pesan portal agar bersih dari chat publik
-        await portalMsg.delete().catch(() => {});
-        await message.delete().catch(() => {});
-
-        const clicker = iOpen.user;
-        const activeStocks = stocks.getStocks(guildId);
-        const isOpen = stocks.isMarketOpen();
-        const embed = embeds.marketEmbed(activeStocks, isOpen);
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('eco_btn_porto')
-            .setLabel('💼 Portofolio')
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId('eco_btn_profile')
-            .setLabel('💰 Profil & Saldo')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId('eco_btn_shop')
-            .setLabel('🛍️ Toko Role')
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId('eco_btn_gacha')
-            .setLabel('🎲 Gacha Role')
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId('eco_btn_trade')
-            .setLabel('📈 Beli/Jual Saham')
-            .setStyle(ButtonStyle.Success)
-        );
-
-        const privateMsg = await iOpen.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
-
-        const collector = privateMsg.createMessageComponentCollector({
-          componentType: ComponentType.Button,
-          time: 120000 // 2 menit transaksi
-        });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== clicker.id) {
-            return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang membuka panel ini!', ephemeral: true });
-          }
-
-          try {
-            if (i.customId === 'eco_btn_porto') {
-              const porto = stocks.getPortfolio(clicker.id, guildId);
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const portoEmbed = embeds.portfolioEmbed(clicker, porto, wallet);
-              await i.reply({ embeds: [portoEmbed], ephemeral: true });
-            } else if (i.customId === 'eco_btn_profile') {
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const porto = stocks.getPortfolio(clicker.id, guildId);
-              const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-              const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [clicker.id, guildId]);
-              const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [clicker.id, guildId]);
-              const bailDebts = { debts, receivables };
-              const profileEmbed = embeds.profileEmbed(clicker, wallet, porto.totalPortfolioValue, i.member, shopItems, null, null, bailDebts);
-              await i.reply({ embeds: [profileEmbed], ephemeral: true });
-            } else if (i.customId === 'eco_btn_shop') {
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-              const shopEmbed = embeds.shopEmbed(items, wallet);
-              await i.reply({ embeds: [shopEmbed], ephemeral: true });
-            } else if (i.customId === 'eco_btn_gacha') {
-              const gachaCost = config.gacha.COST || 250;
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const gachaPromptEmbed = new EmbedBuilder()
-                .setColor(embeds.COLORS.INFO)
-                .setTitle('🎲 Putar Gacha Role!')
-                .setDescription(
-                  `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
-                  `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
-                  `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
-                )
-                .setFooter({ text: 'Ketik .gacha-role di chat!' });
-              await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
-            } else if (i.customId === 'eco_btn_trade') {
-              const latestStocks = stocks.getStocks(guildId);
-              if (latestStocks.length === 0) {
-                return i.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!', ephemeral: true });
-              }
-              await sendInteractiveTradePanel(i, latestStocks[0].stock_ticker, clicker, guildId, client);
+        try {
+          if (i.customId === 'eco_btn_porto') {
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const wallet = economy.getWallet(author.id, guildId);
+            const portoEmbed = embeds.portfolioEmbed(author, porto, wallet);
+            await i.reply({ embeds: [portoEmbed] });
+          } else if (i.customId === 'eco_btn_profile') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const bailDebts = { debts, receivables };
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, null, null, bailDebts);
+            await i.reply({ embeds: [profileEmbed] });
+          } else if (i.customId === 'eco_btn_shop') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const shopEmbed = embeds.shopEmbed(items, wallet);
+            await i.reply({ embeds: [shopEmbed] });
+          } else if (i.customId === 'eco_btn_gacha') {
+            const gachaCost = config.gacha.COST || 250;
+            const wallet = economy.getWallet(author.id, guildId);
+            const gachaPromptEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('🎲 Putar Gacha Role!')
+              .setDescription(
+                `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
+                `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
+                `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
+              )
+              .setFooter({ text: 'Ketik .gacha-role di chat!' });
+            await i.reply({ embeds: [gachaPromptEmbed] });
+          } else if (i.customId === 'eco_btn_trade') {
+            const latestStocks = stocks.getStocks(guildId);
+            if (latestStocks.length === 0) {
+              return i.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!', ephemeral: true });
             }
-          } catch (err) {
-            console.error('Error handling button click in private market panel:', err);
-            await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+            await sendInteractiveTradePanel(i, latestStocks[0].stock_ticker, author, guildId, client);
           }
-        });
-
-        collector.on('end', async () => {
-          const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true)
-          );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
-        });
+        } catch (err) {
+          console.error('Error handling button click in market panel:', err);
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+        }
       });
 
-      portalCollector.on('end', async () => {
-        const disabledPortalRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('eco_btn_open_market_private')
-            .setLabel('📈 Waktu Habis')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true)
+      collector.on('end', async () => {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true)
         );
-        await portalMsg.edit({ components: [disabledPortalRow] }).catch(() => {});
+        await marketMsg.edit({ components: [disabledRow] }).catch(() => {});
       });
 
       return true;
@@ -4049,110 +4012,71 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .shop / .rolemarket
     // ═══════════════════════════════════════════════════
     if (commandName === 'shop' || commandName === 'rolemarket') {
-      const portalRow = new ActionRowBuilder().addComponents(
+      const wallet = economy.getWallet(author.id, guildId);
+      const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+      const embed = embeds.shopEmbed(items, wallet);
+
+      const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId('eco_btn_open_shop_private')
-          .setLabel('🛍️ Buka Toko Role')
-          .setStyle(ButtonStyle.Success)
+          .setCustomId('eco_btn_profile')
+          .setLabel('💰 Profil & Saldo')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_gacha')
+          .setLabel('🎲 Gacha Role')
+          .setStyle(ButtonStyle.Danger)
       );
 
-      const portalMsg = await message.reply({
-        content: `🎭 **TOKO ROLE PRESTISE SERVER KOSAN 1A**\nKlik tombol di bawah ini untuk membuka etalase toko secara privat di channel ini.`,
-        components: [portalRow]
-      });
+      const shopMsg = await message.reply({ embeds: [embed], components: [row] });
 
-      const portalCollector = portalMsg.createMessageComponentCollector({
+      const collector = shopMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 120000 // Aktif selama 2 menit
+        time: 120000 // 2 menit navigasi
       });
 
-      portalCollector.on('collect', async iOpen => {
-        if (iOpen.user.id !== author.id) {
-          return iOpen.reply({ content: '❌ Hanya orang yang memanggil perintah ini yang bisa membuka panel!', ephemeral: true });
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', ephemeral: true });
         }
 
-        // Hapus pesan pemicu dan pesan portal agar bersih dari chat publik
-        await portalMsg.delete().catch(() => {});
-        await message.delete().catch(() => {});
-
-        const clicker = iOpen.user;
-        const wallet = economy.getWallet(clicker.id, guildId);
-        const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-        const embed = embeds.shopEmbed(items, wallet);
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('eco_btn_profile')
-            .setLabel('💰 Profil & Saldo')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId('eco_btn_gacha')
-            .setLabel('🎲 Gacha Role')
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        const privateMsg = await iOpen.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
-
-        const collector = privateMsg.createMessageComponentCollector({
-          componentType: ComponentType.Button,
-          time: 120000 // 2 menit navigasi
-        });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== clicker.id) {
-            return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang membuka panel ini!', ephemeral: true });
+        try {
+          if (i.customId === 'eco_btn_profile') {
+            const wallet = economy.getWallet(author.id, guildId);
+            const porto = stocks.getPortfolio(author.id, guildId);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const userPet = pet.getPet(author.id, guildId);
+            const activeLoan = bank.getActiveLoan(author.id, guildId);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
+            const bailDebts = { debts, receivables };
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts);
+            await i.reply({ embeds: [profileEmbed] });
+          } else if (i.customId === 'eco_btn_gacha') {
+            const gachaCost = config.gacha.COST || 250;
+            const wallet = economy.getWallet(author.id, guildId);
+            const gachaPromptEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('🎲 Putar Gacha Role!')
+              .setDescription(
+                `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
+                `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
+                `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
+              )
+              .setFooter({ text: 'Ketik .gacha-role di chat!' });
+            await i.reply({ embeds: [gachaPromptEmbed] });
           }
-
-          try {
-            if (i.customId === 'eco_btn_profile') {
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const porto = stocks.getPortfolio(clicker.id, guildId);
-              const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-              const userPet = pet.getPet(clicker.id, guildId);
-              const activeLoan = bank.getActiveLoan(clicker.id, guildId);
-              const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [clicker.id, guildId]);
-              const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [clicker.id, guildId]);
-              const bailDebts = { debts, receivables };
-              const profileEmbed = embeds.profileEmbed(clicker, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts);
-              await i.reply({ embeds: [profileEmbed], ephemeral: true });
-            } else if (i.customId === 'eco_btn_gacha') {
-              const gachaCost = config.gacha.COST || 250;
-              const wallet = economy.getWallet(clicker.id, guildId);
-              const gachaPromptEmbed = new EmbedBuilder()
-                .setColor(embeds.COLORS.INFO)
-                .setTitle('🎲 Putar Gacha Role!')
-                .setDescription(
-                  `Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n` +
-                  `💵 **Saldo Anda:** Rp ${wallet.balance.toLocaleString('id-ID')}\n` +
-                  `💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`
-                )
-                .setFooter({ text: 'Ketik .gacha-role di chat!' });
-              await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
-            }
-          } catch (err) {
-            console.error('Error handling button click in shop:', err);
-            await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
-          }
-        });
-
-        collector.on('end', async () => {
-          const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
-          );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
-        });
+        } catch (err) {
+          console.error('Error handling button click in shop:', err);
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+        }
       });
 
-      portalCollector.on('end', async () => {
-        const disabledPortalRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('eco_btn_open_shop_private')
-            .setLabel('🛍️ Waktu Habis')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(true)
+      collector.on('end', async () => {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
         );
-        await portalMsg.edit({ components: [disabledPortalRow] }).catch(() => {});
+        await shopMsg.edit({ components: [disabledRow] }).catch(() => {});
       });
 
       return true;
