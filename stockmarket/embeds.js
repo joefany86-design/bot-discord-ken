@@ -1658,13 +1658,14 @@ module.exports = {
       rarityText = `✨ **RARE** (${traitDesc})`;
     }
 
+    const multText = pet.xp_multiplier > 1.0 ? ` ⚡ **(${pet.xp_multiplier}x XP Booster)**` : '';
     embed.setColor(statusColor)
       .setDescription(
         `👤 **Pemilik:** <@${pet.user_id}>\n` +
         `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
         `🌟 **Raritas (Realiti):** ${rarityText}\n` +
         `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\``
+        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`${multText}`
       );
 
     // Statistik Utama Pet (Inline Fields memanjang ke kanan)
@@ -1686,17 +1687,17 @@ module.exports = {
     // Info Cooldown Pekerjaan & Berburu
     const now = Math.floor(Date.now() / 1000);
     
-    // Cooldown Work
-    let workCd = 2 * 3600;
+    // Cooldown Work (Work: 1 Jam)
+    let workCd = 1 * 3600;
     if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
     const nextWork = pet.last_work_at + workCd;
     const canWork = now >= nextWork;
     const workStatus = canWork ? '🟢 **Siap bekerja!**' : `⏳ Cooldown s/d <t:${nextWork}:t> (<t:${nextWork}:R>)`;
 
-    // Cooldown Hunt (Fase adult saja)
+    // Cooldown Hunt (Hunt: 2 Jam, Fase adult saja)
     let huntStatus = '🔒 Terkunci (Hanya untuk pet dewasa level 10+)';
     if (pet.level >= 10 || pet.status === 'ADULT') {
-      const nextHunt = pet.last_hunt_at + (4 * 3600);
+      const nextHunt = pet.last_hunt_at + (2 * 3600);
       const canHunt = now >= nextHunt;
       huntStatus = canHunt ? '🟢 **Siap berburu!**' : `⏳ Cooldown s/d <t:${nextHunt}:t> (<t:${nextHunt}:R>)`;
     }
@@ -1803,6 +1804,7 @@ module.exports = {
           (item.hp > 0 ? `\`+${item.hp} HP\` ` : '') +
           (item.happiness > 0 ? `\`+${item.happiness} Kebahagiaan\` ` : '') +
           (item.cures ? `\`Mengobati Sakit/Pingsan\` ` : '') +
+          (item.multiplier ? `\`Meningkatkan Multiplier XP Pet menjadi ${item.multiplier}x secara permanen\` ` : '') +
           `\n👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``,
         inline: false
       });
@@ -2001,13 +2003,13 @@ module.exports = {
             `🐱 **Cat:** Kucing Lincah.\n` +
             `  👉 *Buff:* Pendapatan berburu (*Hunt*) meningkat **+15%** | Peluang mendapatkan item langka gratis naik menjadi **10%** (normal 5%).\n` +
             `🧱 **Golem:** Pekerja Keras.\n` +
-            `  👉 *Buff:* Cooldown bekerja (*Work*) dikurangi **20 Menit** (dari 2 jam menjadi 1 jam 40 menit).`,
+            `  👉 *Buff:* Cooldown bekerja (*Work*) dikurangi **20 Menit** (dari 1 jam menjadi 40 menit).`,
           inline: false
         },
         {
           name: '🐣 2. FASE PERTUMBUHAN PET',
           value:
-            `🥚 **Egg (Telur):** Diadopsi seharga **Rp 1.500** (\`.pet buy <nama> <spesies>\`). Menetas otomatis dalam waktu **2 jam**.\n` +
+            `🥚 **Egg (Telur):** Diadopsi seharga **Rp 1.500** (\`.pet buy <nama> <spesies>\`). Menetas otomatis dalam waktu **1 jam**.\n` +
             `🐣 **Baby (Bayi):** Level 1 s/d 9. Belum bisa diajak berburu (*Hunt*) atau bertarung PvP.\n` +
             `🦁 **Adult (Dewasa):** Min. Level 10. Membuka fitur berburu liar (*Hunt*) dan pertarungan taruhan PvP Arena.`,
           inline: false
@@ -2015,8 +2017,8 @@ module.exports = {
         {
           name: '💼 3. MEKANIK PENDAPATAN & UPAH KOIN',
           value:
-            `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 2 jam, Golem 1j 40m).\n` +
-            `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 4 jam.\n` +
+            `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 1 jam, Golem 40m).\n` +
+            `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 2 jam.\n` +
             `• **PvP Arena (\`.pet pvp @user <taruhan\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.`,
           inline: false
         },

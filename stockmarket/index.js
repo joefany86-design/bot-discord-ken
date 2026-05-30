@@ -1632,6 +1632,25 @@ async function handlePetCommand(message, client, args) {
     }
   }
 
+  // ── SUB-PERINTAH: USE / PAKAI ──
+  if (subCommand === 'use' || subCommand === 'pakai' || subCommand === 'use-item') {
+    const itemId = args[1];
+    if (!itemId) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet use <item_id>`\nContoh: `.pet use XP_2X`')] });
+    }
+    try {
+      const res = pet.useItem(author.id, guildId, itemId, false);
+      const successEmb = embeds.successEmbed(
+        'Penggunaan Item Sukses! ✨',
+        `Berhasil menggunakan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n` +
+        (res.item.multiplier ? `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!` : `📊 Status baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`)
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: RESET ──
   if (subCommand === 'reset') {
     try {
@@ -1756,6 +1775,12 @@ async function handlePetCommand(message, client, args) {
     }
     if (initiatorPet.health < 40) {
       return message.reply({ embeds: [embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`)] });
+    }
+
+    try {
+      pet.checkExpeditionLimit(author.id, guildId, true); // dryRun = true
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message)] });
     }
 
     const wallet = economy.getWallet(author.id, guildId);
@@ -1892,16 +1917,18 @@ async function handlePetCommand(message, client, args) {
             return iExp.reply({ content: '❌ Anda sudah bergabung dalam lobi ini!', ephemeral: true });
           }
 
-          if (currentLobby.participants.length >= 4) {
-            return iExp.reply({ content: '❌ Tim ekspedisi sudah penuh (maksimal 4 pet)!', ephemeral: true });
-          }
-
           const userPet = pet.getPet(iExp.user.id, guildId);
           if (!userPet || userPet.status === 'DEAD' || userPet.status === 'EGG') {
             return iExp.reply({ content: '❌ Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!', ephemeral: true });
           }
           if (userPet.health < 40) {
             return iExp.reply({ content: `❌ Pet Anda **${userPet.pet_name}** terlalu lelah/sakit (HP ${userPet.health}% < 40) untuk ekspedisi!`, ephemeral: true });
+          }
+
+          try {
+            pet.checkExpeditionLimit(iExp.user.id, guildId, true); // dryRun = true
+          } catch (err) {
+            return iExp.reply({ content: `❌ ${err.message}`, ephemeral: true });
           }
 
           const userWallet = economy.getWallet(iExp.user.id, guildId);
@@ -2405,7 +2432,11 @@ async function handlePetShopCommand(message, client) {
         new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
         new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
         new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
-        new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY')
+        new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
       );
 
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);

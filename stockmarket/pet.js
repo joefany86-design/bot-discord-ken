@@ -8,7 +8,11 @@ const PET_ITEMS = {
   FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 350, hunger: 70, thirst: 0, hp: 10, happiness: 5, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
   WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 100, hunger: 0, thirst: 35, hp: 0, happiness: 0, desc: 'Air mineral segar untuk hidrasi pet.' },
   MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
-  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, desc: 'Bola karet elastis untuk meningkatkan mood pet.' }
+  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
+  XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
+  XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
+  XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
+  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 10000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
 };
 
 // Konfigurasi Spesies Pet
@@ -25,6 +29,28 @@ function getXpNeeded(level, trait) {
     return Math.round(base * 0.85); // -15% XP cap
   }
   return base;
+}
+
+/**
+ * Menambahkan XP ke pet dan memproses kemungkinan naik level berulang kali (recursive/iterative level up)
+ */
+function addXp(pet, xpGained, maxHP) {
+  let newXp = pet.xp + xpGained;
+  let newLevel = pet.level;
+  let levelUp = false;
+
+  while (true) {
+    const xpNeeded = getXpNeeded(newLevel, pet.trait);
+    if (newXp >= xpNeeded) {
+      newXp -= xpNeeded;
+      newLevel += 1;
+      levelUp = true;
+    } else {
+      break;
+    }
+  }
+
+  return { newXp, newLevel, levelUp };
 }
 
 /**
@@ -205,7 +231,7 @@ function adoptPet(userId, guildId, petName, petType) {
   economy.subtractBalance(userId, guildId, eggPrice, 'PET_ADOPT');
 
   const now = Math.floor(Date.now() / 1000);
-  const hatchDuration = 2 * 3600; // 2 Jam menetaskan telur
+  const hatchDuration = 1 * 3600; // 1 Jam menetaskan telur
   const hatchAt = now + hatchDuration;
 
   // Jika ini pet pertama, set is_active = 1, jika tidak set 0
@@ -361,8 +387,14 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
 
   // 2. Validasi status spesifik dengan batas HP dinamis (Slime memiliki max HP 120)
   const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
-  if (item.cures && pet.health >= maxHP) {
+  if (!item.multiplier && item.cures && pet.health >= maxHP) {
     throw new Error('Pet Anda dalam kondisi sangat sehat, tidak memerlukan obat-obatan!');
+  }
+
+  if (item.multiplier) {
+    if ((pet.xp_multiplier || 1.0) >= item.multiplier) {
+      throw new Error(`Pet Anda sudah memiliki pengali XP **${pet.xp_multiplier || 1.0}x** atau lebih tinggi!`);
+    }
   }
 
   // 3. Eksekusi konsumsi item
@@ -373,32 +405,37 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
       [userId, guildId, item.id]
     );
 
-    // Update stats pet
-    let newHunger = Math.min(100, pet.hunger + item.hunger);
-    let newThirst = Math.min(100, pet.thirst + item.thirst);
-    let newHappiness = Math.min(100, pet.happiness + item.happiness);
-    let newHealth = Math.min(maxHP, pet.health + item.hp);
     const now = Math.floor(Date.now() / 1000);
 
-    // Dapatkan XP dari perawatan (+10 XP per aksi perawatan)
-    let newXp = pet.xp + 10;
-    let newLevel = pet.level;
-    const xpNeeded = getXpNeeded(pet.level, pet.trait);
-    
-    let levelUp = false;
-    if (newXp >= xpNeeded) {
-      newXp = newXp - xpNeeded;
-      newLevel += 1;
-      newHealth = maxHP; // Full HP saat naik level
-      levelUp = true;
-    }
+    if (item.multiplier) {
+      // Set XP multiplier
+      db.run(
+        `UPDATE user_pets 
+         SET xp_multiplier = ?, last_interaction_at = ?
+         WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+        [item.multiplier, now, userId, guildId, pet.pet_name]
+      );
+    } else {
+      // Update stats pet
+      let newHunger = Math.min(100, pet.hunger + item.hunger);
+      let newThirst = Math.min(100, pet.thirst + item.thirst);
+      let newHappiness = Math.min(100, pet.happiness + item.happiness);
+      let newHealth = Math.min(maxHP, pet.health + item.hp);
 
-    db.run(
-      `UPDATE user_pets 
-       SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, last_interaction_at = ?
-       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-      [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
-    );
+      // Dapatkan XP dari perawatan (+10 XP per aksi perawatan) dikali xp_multiplier
+      let xpGained = Math.round(10 * (pet.xp_multiplier || 1.0));
+      let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
+      if (levelUp) {
+        newHealth = maxHP; // Full HP saat naik level
+      }
+
+      db.run(
+        `UPDATE user_pets 
+         SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, last_interaction_at = ?
+         WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+        [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
+      );
+    }
   })();
 
   const updatedPet = getPet(userId, guildId);
@@ -432,17 +469,12 @@ function playWithPet(userId, guildId) {
     throw new Error(`Pet Anda masih lelah bermain. Ajak dia bermain lagi dalam **${minLeft} menit**.`);
   }
 
-  // Beri batas bermain: gratis memulihkan +25 Happiness, +15 XP
+  // Beri batas bermain: gratis memulihkan +25 Happiness, +15 XP dikali xp_multiplier
   db.transaction(() => {
     let newHappiness = Math.min(100, pet.happiness + 25);
-    let newXp = pet.xp + 15;
-    let newLevel = pet.level;
-    const xpNeeded = getXpNeeded(pet.level, pet.trait);
-
-    if (newXp >= xpNeeded) {
-      newXp = newXp - xpNeeded;
-      newLevel += 1;
-    }
+    let xpGained = Math.round(15 * (pet.xp_multiplier || 1.0));
+    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     db.run(
       `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ?, last_play_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
@@ -472,8 +504,8 @@ function sendToWork(userId, guildId) {
 
   const now = Math.floor(Date.now() / 1000);
 
-  // Hitung cooldown
-  let cooldownDuration = 2 * 3600; // 2 Jam
+  // Hitung cooldown (Work: 1 Jam)
+  let cooldownDuration = 1 * 3600; // 1 Jam
   // Golem Perk: Cooldown kerja dikurangi 20 menit (1200 detik)
   if (pet.pet_type === 'GOLEM') {
     cooldownDuration -= 20 * 60;
@@ -504,14 +536,10 @@ function sendToWork(userId, guildId) {
     // Tambahkan saldo uang bot
     economy.addBalance(userId, guildId, finalReward, 'PET_WORK');
 
-    // Beri XP (+30 XP)
-    let newXp = pet.xp + 30;
-    let newLevel = pet.level;
-    const xpNeeded = getXpNeeded(pet.level, pet.trait);
-    if (newXp >= xpNeeded) {
-      newXp = newXp - xpNeeded;
-      newLevel += 1;
-    }
+    // Beri XP (+30 XP) dikali xp_multiplier
+    let xpGained = Math.round(30 * (pet.xp_multiplier || 1.0));
+    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const newHunger = Math.max(0, pet.hunger - 15);
     const newThirst = Math.max(0, pet.thirst - 15);
@@ -554,7 +582,7 @@ function sendToHunt(userId, guildId) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const cooldownDuration = 4 * 3600; // 4 Jam
+  const cooldownDuration = 2 * 3600; // 2 Jam
 
   const nextHuntTime = (pet.last_hunt_at || 0) + cooldownDuration;
   if (now < nextHuntTime) {
@@ -612,14 +640,10 @@ function sendToHunt(userId, guildId) {
     // Berikan koin
     economy.addBalance(userId, guildId, finalReward, 'PET_HUNT');
 
-    // Beri XP (+60 XP)
-    let newXp = pet.xp + 60;
-    let newLevel = pet.level;
-    const xpNeeded = getXpNeeded(pet.level, pet.trait);
-    if (newXp >= xpNeeded) {
-      newXp = newXp - xpNeeded;
-      newLevel += 1;
-    }
+    // Beri XP (+60 XP) dikali xp_multiplier
+    let xpGained = Math.round(60 * (pet.xp_multiplier || 1.0));
+    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const newHunger = Math.max(0, pet.hunger - 25);
     const newThirst = Math.max(0, pet.thirst - 25);
@@ -752,26 +776,16 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     const wHappy = Math.max(20, (winnerId === challengerId ? challenger.happiness : opponent.happiness) - 5);
     const lHappy = Math.max(10, (loserId === challengerId ? challenger.happiness : opponent.happiness) - 25);
 
-    // Beri XP (+50 XP pemenang, +20 XP kalah)
+    // Beri XP (+50 XP pemenang, +20 XP kalah) dikali xp_multiplier masing-masing
     const winnerPet = winnerId === challengerId ? challenger : opponent;
-    const updateWinnerXp = winnerPet.xp + 50;
-    let wXp = updateWinnerXp;
-    let wLevel = winnerPet.level;
-    const wXpNeeded = getXpNeeded(wLevel, winnerPet.trait);
-    if (wXp >= wXpNeeded) {
-      wXp -= wXpNeeded;
-      wLevel++;
-    }
+    const wMaxHP = winnerPet.pet_type === 'SLIME' ? 120 : 100;
+    const wXpGained = Math.round(50 * (winnerPet.xp_multiplier || 1.0));
+    let { newXp: wXp, newLevel: wLevel } = addXp(winnerPet, wXpGained, wMaxHP);
 
     const loserPet = loserId === challengerId ? challenger : opponent;
-    const updateLoserXp = loserPet.xp + 20;
-    let lXp = updateLoserXp;
-    let lLevel = loserPet.level;
-    const lXpNeeded = getXpNeeded(lLevel, loserPet.trait);
-    if (lXp >= lXpNeeded) {
-      lXp -= lXpNeeded;
-      lLevel++;
-    }
+    const lMaxHP = loserPet.pet_type === 'SLIME' ? 120 : 100;
+    const lXpGained = Math.round(20 * (loserPet.xp_multiplier || 1.0));
+    let { newXp: lXp, newLevel: lLevel } = addXp(loserPet, lXpGained, lMaxHP);
 
     db.run(
       `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
@@ -901,7 +915,7 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
     trait = traits[Math.floor(Math.random() * traits.length)];
   }
 
-  const hatchDuration = 4 * 3600; // 4 Jam penetasan telur hybrid
+  const hatchDuration = 2 * 3600; // 2 Jam penetasan telur hybrid
   const hatchAt = now + hatchDuration;
 
   db.transaction(() => {
@@ -927,6 +941,37 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
     trait,
     hatchAt
   };
+}
+
+/**
+ * Memeriksa dan menambahkan jumlah partisipasi ekspedisi harian (Maks 10)
+ */
+function checkExpeditionLimit(userId, guildId, dryRun = false) {
+  // Pastikan wallet terdaftar
+  economy.getWallet(userId, guildId);
+
+  const wallet = db.get('SELECT daily_expedition_count, last_expedition_date FROM wallets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+
+  let currentCount = 0;
+  if (wallet && wallet.last_expedition_date === todayStr) {
+    currentCount = wallet.daily_expedition_count || 0;
+  }
+
+  if (currentCount >= 10) {
+    throw new Error('Anda sudah mencapai batas maksimal **10 ekspedisi** hari ini!');
+  }
+
+  if (!dryRun) {
+    db.run(
+      `UPDATE wallets 
+       SET daily_expedition_count = ?, last_expedition_date = ? 
+       WHERE user_id = ? AND guild_id = ?`,
+      [currentCount + 1, todayStr, userId, guildId]
+    );
+  }
+  return currentCount + 1;
 }
 
 /**
@@ -1000,19 +1045,16 @@ function executeExpedition(guildId, participantIds) {
 
     db.transaction(() => {
       activePets.forEach(ap => {
+        // Increment daily expedition count
+        checkExpeditionLimit(ap.userId, guildId, false);
+
         // Berikan Koin
         economy.addBalance(ap.userId, guildId, prizePerPerson, 'PET_EXPEDITION_REWARD');
 
-        // Berikan XP (+50 XP)
-        let newXp = ap.pet.xp + 50;
-        let newLevel = ap.pet.level;
-        const xpNeeded = getXpNeeded(newLevel, ap.pet.trait);
-        let levelUp = false;
-        if (newXp >= xpNeeded) {
-          newXp -= xpNeeded;
-          newLevel++;
-          levelUp = true;
-        }
+        // Berikan XP (+200 XP dasar) dikali xp_multiplier
+        let xpGained = Math.round(200 * (ap.pet.xp_multiplier || 1.0));
+        const maxHP = ap.pet.pet_type === 'SLIME' ? 120 : 100;
+        let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
         const newHunger = Math.max(0, ap.pet.hunger - 10);
@@ -1055,7 +1097,7 @@ function executeExpedition(guildId, participantIds) {
           userId: ap.userId,
           petName: ap.pet.pet_name,
           koin: prizePerPerson,
-          xpGained: 50,
+          xpGained: xpGained,
           levelUp,
           newLevel,
           dropItem: dropText
@@ -1128,18 +1170,15 @@ function executeExpedition(guildId, participantIds) {
     // Pilih salah satu skenario secara acak
     const selectedScenario = failScenarios[Math.floor(Math.random() * failScenarios.length)];
 
-    // Gagal: Pet terluka (-30 HP, -25 Happiness), tapi mendapat +15 XP
+    // Gagal: Pet terluka (-30 HP, -25 Happiness), tapi mendapat +60 XP dasar dikali xp_multiplier
     db.transaction(() => {
       activePets.forEach(ap => {
-        let newXp = ap.pet.xp + 15;
-        let newLevel = ap.pet.level;
-        const xpNeeded = getXpNeeded(newLevel, ap.pet.trait);
-        let levelUp = false;
-        if (newXp >= xpNeeded) {
-          newXp -= xpNeeded;
-          newLevel++;
-          levelUp = true;
-        }
+        // Increment daily expedition count
+        checkExpeditionLimit(ap.userId, guildId, false);
+
+        let xpGained = Math.round(60 * (ap.pet.xp_multiplier || 1.0));
+        const maxHP = ap.pet.pet_type === 'SLIME' ? 120 : 100;
+        let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         const newHealth = Math.max(5, ap.pet.health - 30);
         const newHappiness = Math.max(10, ap.pet.happiness - 25);
@@ -1155,7 +1194,7 @@ function executeExpedition(guildId, participantIds) {
           userId: ap.userId,
           petName: ap.pet.pet_name,
           koin: 0,
-          xpGained: 15,
+          xpGained: xpGained,
           levelUp,
           newLevel
         });
@@ -1196,5 +1235,6 @@ module.exports = {
   switchActivePet,
   breedPets,
   executeExpedition,
-  getXpNeeded
+  getXpNeeded,
+  checkExpeditionLimit
 };

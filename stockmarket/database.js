@@ -392,6 +392,30 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 19. Migrasi dinamis: Tambahkan kolom daily_expedition_count ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN daily_expedition_count INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'daily_expedition_count' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 20. Migrasi dinamis: Tambahkan kolom last_expedition_date ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN last_expedition_date TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'last_expedition_date' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 21. Migrasi dinamis: Tambahkan kolom xp_multiplier ke user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN xp_multiplier REAL DEFAULT 1.0");
+    console.log("⚡ [Database] Kolom 'xp_multiplier' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
 }
 
