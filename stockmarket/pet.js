@@ -569,7 +569,8 @@ function sendToHunt(userId, guildId) {
   if (!pet) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
   if (pet.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
-  if (pet.status === 'BABY') {
+  const isGodPet = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
+  if (!isGodPet && pet.status === 'BABY') {
     throw new Error('Pet Anda masih bayi! Dia harus bertumbuh menjadi dewasa (Level >= 10) terlebih dahulu sebelum bisa berburu.');
   }
 
@@ -676,10 +677,13 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   if (!challenger) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (!opponent) throw new Error('Lawan tidak memiliki hewan peliharaan!');
 
-  if (challenger.status === 'EGG' || challenger.status === 'BABY') {
+  const isGodChallenger = challenger.pet_name.toLowerCase() === 'ramzi' && challenger.user_id === '436554535037698059';
+  if (!isGodChallenger && (challenger.status === 'EGG' || challenger.status === 'BABY')) {
     throw new Error('Pet Anda harus berstatus Dewasa (Level >= 10) untuk bertarung di PvP Arena!');
   }
-  if (opponent.status === 'EGG' || opponent.status === 'BABY') {
+
+  const isGodOpponent = opponent.pet_name.toLowerCase() === 'ramzi' && opponent.user_id === '436554535037698059';
+  if (!isGodOpponent && (opponent.status === 'EGG' || opponent.status === 'BABY')) {
     throw new Error('Pet lawan masih bayi atau berupa telur! Pertarungan dibatalkan.');
   }
 
@@ -701,8 +705,8 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   // Hitung stats tempur awal
   // Base Attack = Level * 5
   // Dragon Perk: +15% Attack
-  const chalBaseAtk = challenger.level * 5;
-  const oppBaseAtk = opponent.level * 5;
+  const chalBaseAtk = isGodChallenger ? 99999 : challenger.level * 5;
+  const oppBaseAtk = isGodOpponent ? 99999 : opponent.level * 5;
 
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.10; // Warrior: +10% attack

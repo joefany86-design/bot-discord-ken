@@ -137,7 +137,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         await iTrade.update(updateData);
       } else if (iTrade.customId === 'trade_btn_exit') {
         tradeCollector.stop();
-        await iTrade.update({ content: '👋 Selesai bertransaksi!', embeds: [], components: [] }).catch(() => {});
+        await iTrade.update({ content: '👋 Selesai bertransaksi!', embeds: [], components: [] }).catch(() => { });
       } else if (iTrade.customId.startsWith('trade_buy_') || iTrade.customId.startsWith('trade_sell_')) {
         const action = iTrade.customId.startsWith('trade_buy_') ? 'BUY' : 'SELL';
         const amountType = iTrade.customId.split('_').pop();
@@ -287,7 +287,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
               const res = stocks.buyStock(author.id, guildId, selectedTicker, shares);
               const successEmb = embeds.transactionSuccessEmbed(author, true, res);
               await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
-              
+
               if (shares >= 50) {
                 client.emit('playTtsEvent', {
                   guildId,
@@ -337,7 +337,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         });
         return freshRow;
       });
-      await tradeMsg.edit(disabledData).catch(() => {});
+      await tradeMsg.edit(disabledData).catch(() => { });
     }
   });
 }
@@ -366,7 +366,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
     );
     history.reverse();
 
-    const embed = isChartCommand 
+    const embed = isChartCommand
       ? embeds.stockChartEmbed(currentStock, history, client)
       : embeds.stockDetailEmbed(currentStock, history);
 
@@ -407,7 +407,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
         // Sembunyikan tombol di chart asli agar rapi sebelum masuk panel trading
         const disabledData = fetchEmbedAndButtons(stock);
         disabledData.components = [];
-        await replyMsg.edit(disabledData).catch(() => {});
+        await replyMsg.edit(disabledData).catch(() => { });
 
         await sendInteractiveTradePanel(i, stock.stock_ticker, author, guildId, client);
       } else if (i.customId.startsWith('eco_btn_chart_sell_')) {
@@ -415,7 +415,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
         // Sembunyikan tombol di chart asli agar rapi sebelum masuk panel trading
         const disabledData = fetchEmbedAndButtons(stock);
         disabledData.components = [];
-        await replyMsg.edit(disabledData).catch(() => {});
+        await replyMsg.edit(disabledData).catch(() => { });
 
         await sendInteractiveTradePanel(i, stock.stock_ticker, author, guildId, client);
       } else if (i.customId.startsWith('eco_btn_chart_refresh_')) {
@@ -440,7 +440,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
         new ButtonBuilder().setCustomId(`eco_btn_chart_refresh_${stock.stock_ticker}`).setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary).setDisabled(true)
       )
     ];
-    await replyMsg.edit(disabledData).catch(() => {});
+    await replyMsg.edit(disabledData).catch(() => { });
   });
 }
 
@@ -450,7 +450,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
  */
 function initStockMarket(client) {
   console.log('⚡ Menginisialisasi Modul Stock Market "Rupiah Server"...');
-  
+
   // Daftarkan saham default untuk seluruh server yang terhubung
   client.guilds.cache.forEach(guild => {
     stocks.initDefaultStocks(guild);
@@ -482,7 +482,7 @@ function initStockMarket(client) {
 
         collector.on('collect', async i => {
           if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
-          
+
           if (i.customId === 'eco_btn_profile') {
             const wallet2 = economy.getWallet(user.id, guildId);
             const porto = stocks.getPortfolio(user.id, guildId);
@@ -511,7 +511,7 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
             new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
           );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
         });
       }
 
@@ -535,7 +535,7 @@ function initStockMarket(client) {
 
         collector.on('collect', async i => {
           if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
-          
+
           if (i.customId === 'eco_btn_porto') {
             const wallet2 = economy.getWallet(user.id, guildId);
             const porto = stocks.getPortfolio(user.id, guildId);
@@ -567,7 +567,7 @@ function initStockMarket(client) {
           if (activeStocks.length > 0 && isOpen) {
             disabledRow.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true));
           }
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
         });
       }
 
@@ -578,16 +578,16 @@ function initStockMarket(client) {
           const savings = bank.getSavings(targetUserId, guildId);
           const activeLoan = bank.getActiveLoan(targetUserId, guildId);
           const maxLimit = bank.calculateMaxLoanLimit(targetUserId, guildId);
-          
+
           const embed = embeds.bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit);
-          
+
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('bank_btn_deposit').setLabel('📥 Deposit').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('bank_btn_withdraw').setLabel('📤 Tarik').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId('bank_btn_loan').setLabel('📜 Pinjam').setStyle(ButtonStyle.Success).setDisabled(!!activeLoan),
             new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan)
           );
-          
+
           return { embeds: [embed], components: [row] };
         };
 
@@ -597,28 +597,28 @@ function initStockMarket(client) {
 
         collector.on('collect', async iBank => {
           if (iBank.user.id !== user.id) return iBank.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
-          
+
           try {
             if (iBank.customId === 'bank_btn_deposit') {
               const modal = new ModalBuilder()
                 .setCustomId('bank_modal_deposit_perm')
                 .setTitle('🏛️ Deposit Tabungan Bank');
-                
+
               const amountInput = new TextInputBuilder()
                 .setCustomId('deposit_amount')
                 .setLabel('Jumlah koin (angka atau "all")')
                 .setPlaceholder('Contoh: 5000')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
-                
+
               modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
               await iBank.showModal(modal);
-              
+
               const submitted = await iBank.awaitModalSubmit({
                 filter: (sub) => sub.customId === 'bank_modal_deposit_perm' && sub.user.id === user.id,
                 time: 60000
               }).catch(() => null);
-              
+
               if (submitted) {
                 try {
                   const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
@@ -629,33 +629,33 @@ function initStockMarket(client) {
                     `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
                   );
                   await submitted.reply({ embeds: [successEmb], ephemeral: true });
-                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], ephemeral: true });
                 }
               }
             }
-            
+
             else if (iBank.customId === 'bank_btn_withdraw') {
               const modal = new ModalBuilder()
                 .setCustomId('bank_modal_withdraw_perm')
                 .setTitle('🏛️ Penarikan Saldo Bank');
-                
+
               const amountInput = new TextInputBuilder()
                 .setCustomId('withdraw_amount')
                 .setLabel('Jumlah koin (angka atau "all")')
                 .setPlaceholder('Contoh: 10000')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
-                
+
               modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
               await iBank.showModal(modal);
-              
+
               const submitted = await iBank.awaitModalSubmit({
                 filter: (sub) => sub.customId === 'bank_modal_withdraw_perm' && sub.user.id === user.id,
                 time: 60000
               }).catch(() => null);
-              
+
               if (submitted) {
                 try {
                   const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
@@ -666,13 +666,13 @@ function initStockMarket(client) {
                     `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
                   );
                   await submitted.reply({ embeds: [successEmb], ephemeral: true });
-                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], ephemeral: true });
                 }
               }
             }
-            
+
             else if (iBank.customId === 'bank_btn_loan') {
               const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId('bank_select_tenor_perm')
@@ -682,23 +682,23 @@ function initStockMarket(client) {
                   new StringSelectMenuOptionBuilder().setLabel('3 Hari (Bunga 5%)').setValue('3'),
                   new StringSelectMenuOptionBuilder().setLabel('7 Hari (Bunga 10%)').setValue('7')
                 );
-                
+
               const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
               const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
               const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
-              
+
               const askTenorMsg = await iBank.reply({
                 content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
                 components: [tenorRow, cancelRow],
                 ephemeral: true,
                 fetchReply: true
               });
-              
+
               const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
-              
+
               tenorCollector.on('collect', async iTenor => {
                 if (iTenor.user.id !== user.id) return;
-                
+
                 if (iTenor.customId === 'bank_loan_cancel_perm') {
                   tenorCollector.stop();
                   await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
@@ -706,34 +706,34 @@ function initStockMarket(client) {
                   tenorCollector.stop();
                   const selectedTenor = parseInt(iTenor.values[0]);
                   const maxLimit = bank.calculateMaxLoanLimit(user.id, guildId);
-                  
+
                   const modal = new ModalBuilder()
                     .setCustomId(`bank_modal_loan_${selectedTenor}_perm`)
                     .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
-                    
+
                   const loanInput = new TextInputBuilder()
                     .setCustomId('loan_amount')
                     .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
                     .setPlaceholder('Contoh: 10000')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
-                    
+
                   modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
                   await iTenor.showModal(modal);
-                  
-                  await askTenorMsg.delete().catch(() => {});
-                  
+
+                  await askTenorMsg.delete().catch(() => { });
+
                   const submitted = await iTenor.awaitModalSubmit({
                     filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}_perm` && sub.user.id === user.id,
                     time: 60000
                   }).catch(() => null);
-                  
+
                   if (submitted) {
                     try {
                       const amountStr = submitted.fields.getTextInputValue('loan_amount');
                       const res = bank.createLoan(user.id, guildId, amountStr, selectedTenor);
                       const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
-                      
+
                       const successEmb = embeds.bankSuccessEmbed(
                         'Pinjaman Disetujui!',
                         `Pinjaman Anda berhasil dicairkan!\n\n` +
@@ -742,9 +742,9 @@ function initStockMarket(client) {
                         `💳 **Total Tagihan:** **Rp ${res.totalDue.toLocaleString('id-ID')}**\n` +
                         `📅 **Jatuh Tempo:** ${dueText}`
                       );
-                      
+
                       await submitted.reply({ embeds: [successEmb], ephemeral: true });
-                      await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                      await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
                     } catch (err) {
                       await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], ephemeral: true });
                     }
@@ -752,23 +752,23 @@ function initStockMarket(client) {
                 }
               });
             }
-            
+
             else if (iBank.customId === 'bank_btn_repay') {
               try {
                 const res = bank.repayLoan(user.id, guildId);
                 let desc = '';
                 if (res.isFullyPaid) {
                   desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                         `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                         `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
                 } else {
                   desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
-                         `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                         `⚠️ **Sisa Hutang:** **Rp ${res.remainingPrincipal.toLocaleString('id-ID')}**\n` +
-                         `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                    `⚠️ **Sisa Hutang:** **Rp ${res.remainingPrincipal.toLocaleString('id-ID')}**\n` +
+                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
                 }
                 await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], ephemeral: true });
-                await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], ephemeral: true });
               }
@@ -779,7 +779,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => {});
+          await privateMsg.edit({ components: [] }).catch(() => { });
         });
       }
 
@@ -846,7 +846,7 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('bm_btn_buy_meat_perm').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
             new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
           );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
         });
       }
 
@@ -882,7 +882,11 @@ function initStockMarket(client) {
             ));
             const row2Components = [
               new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
-              new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
+              new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(
+                !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
+                userPet.level < 10 &&
+                userPet.status !== 'ADULT'
+              ),
               new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
             ];
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
@@ -938,7 +942,7 @@ function initStockMarket(client) {
 
         collector.on('collect', async iPet => {
           if (iPet.user.id !== user.id) return iPet.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
-          
+
           try {
             if (iPet.customId === 'pet_btn_refresh') {
               await iPet.update(getDashboardPanelPrivate(user.id));
@@ -953,32 +957,32 @@ function initStockMarket(client) {
               const res = pet.getPet(user.id, guildId);
               if (res && res.status === 'BABY') {
                 await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
               }
             } else if (iPet.customId === 'pet_btn_feed') {
               const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_drink') {
               const res = pet.useItem(user.id, guildId, 'WATER', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_play') {
               const res = pet.playWithPet(user.id, guildId);
               await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_cure') {
               const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_work') {
               const res = pet.sendToWork(user.id, guildId);
               await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_hunt') {
               const res = pet.sendToHunt(user.id, guildId);
               await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_nav_shop') {
               await iPet.update(getShopPanelDataPrivate(user.id));
             } else if (iPet.customId === 'pet_btn_cancel_shop') {
@@ -992,7 +996,7 @@ function initStockMarket(client) {
                   `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang dimasukkan ke kandang.\n\nSisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
                 );
                 await iPet.reply({ embeds: [successEmb], ephemeral: true });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await iPet.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], ephemeral: true });
               }
@@ -1033,19 +1037,19 @@ function initStockMarket(client) {
                   const pType = submitted.fields.getTextInputValue('pet_type');
                   const res = pet.adoptPet(user.id, guildId, pName, pType);
                   await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)] });
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], ephemeral: true });
                 }
               }
             }
           } catch (err) {
-            await iPet.reply({ content: `❌ Gagal: ${err.message}`, ephemeral: true }).catch(() => {});
+            await iPet.reply({ content: `❌ Gagal: ${err.message}`, ephemeral: true }).catch(() => { });
           }
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => {});
+          await privateMsg.edit({ components: [] }).catch(() => { });
         });
       }
 
@@ -1058,13 +1062,13 @@ function initStockMarket(client) {
           const activeRental = kos.getActiveRental(targetUserId, guildId);
           const upgrades = kos.getUpgrades(targetUserId, guildId);
           const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
-          
+
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
           );
-          
+
           return { embeds: [embed], components: [row] };
         };
 
@@ -1112,7 +1116,7 @@ function initStockMarket(client) {
           Object.keys(upgradesConfig).forEach(key => {
             const up = upgradesConfig[key];
             const isOwned = ownedUpgrades.some(o => o.id === up.id);
-            
+
             selectMenu.addOptions(
               new StringSelectMenuOptionBuilder()
                 .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
@@ -1152,7 +1156,7 @@ function initStockMarket(client) {
               try {
                 const res = kos.rentRoom(user.id, guildId, selectedRoom);
                 const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
-                
+
                 const successEmb = embeds.kosSuccessReceiptEmbed(
                   'Transaksi Persewaan Kamar Berhasil! 🛌',
                   `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
@@ -1162,7 +1166,7 @@ function initStockMarket(client) {
                 );
 
                 await iKos.reply({ embeds: [successEmb], ephemeral: true });
-                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => {});
+                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
                 await iKos.reply({ embeds: [errorEmb], ephemeral: true });
@@ -1181,7 +1185,7 @@ function initStockMarket(client) {
                 );
 
                 await iKos.reply({ embeds: [successEmb], ephemeral: true });
-                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => {});
+                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
                 await iKos.reply({ embeds: [errorEmb], ephemeral: true });
@@ -1193,7 +1197,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => {});
+          await privateMsg.edit({ components: [] }).catch(() => { });
         });
       }
     } catch (err) {
@@ -1217,10 +1221,10 @@ async function handleEconomyChat(message) {
     const wallet = economy.getWallet(author.id, guildId);
     const now = new Date();
     const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
-    
+
     const activeLoan = bank.getActiveLoan(author.id, guildId);
     const isOverdue = activeLoan && activeLoan.status === 'OVERDUE';
-    
+
     if (wallet.last_active_date !== todayStr && !isOverdue) {
       const dailyResult = economy.claimDaily(author.id, guildId);
       if (dailyResult && dailyResult.success) {
@@ -1261,7 +1265,7 @@ async function handleEconomyChat(message) {
         }
 
         if (targetChannel) {
-          await targetChannel.send({ content: `<@${author.id}>`, embeds: [autoDailyEmbed] }).catch(() => {});
+          await targetChannel.send({ content: `<@${author.id}>`, embeds: [autoDailyEmbed] }).catch(() => { });
         }
       }
     }
@@ -1321,14 +1325,14 @@ async function handleEconomyChat(message) {
   }
 
   if (dispenserTriggered) {
-    message.react('🥤').catch(() => {});
+    message.react('🥤').catch(() => { });
   }
 
   // 4. Tambahkan saldo koin & catat log message timestamp
   const nowUnix = Math.floor(Date.now() / 1000);
   database.transaction(() => {
     economy.addBalance(author.id, guildId, totalEarned, 'EARN', channelId);
-    
+
     // Simpan timestamp pesan terakhir untuk cooldown anti-spam
     database.run(
       'UPDATE wallets SET last_message_at = ? WHERE user_id = ? AND guild_id = ?',
@@ -1405,11 +1409,11 @@ async function handleKosSewaCommand(message, client) {
       } else if (iSewa.customId === 'kos_select_room') {
         collector.stop();
         const selectedRoom = iSewa.values[0];
-        
+
         try {
           const res = kos.rentRoom(author.id, guildId, selectedRoom);
           const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
-          
+
           const successEmb = embeds.kosSuccessReceiptEmbed(
             'Transaksi Persewaan Kamar Berhasil! 🛌',
             `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
@@ -1434,7 +1438,7 @@ async function handleKosSewaCommand(message, client) {
     if (collector.destroyed) return;
     const freshData = getSewaPanelData(author.id, guildId);
     freshData.components = [];
-    await replyMsg.edit(freshData).catch(() => {});
+    await replyMsg.edit(freshData).catch(() => { });
   });
 }
 
@@ -1457,7 +1461,7 @@ async function handleKosUpgradeCommand(message, client) {
     Object.keys(upgradesConfig).forEach(key => {
       const up = upgradesConfig[key];
       const isOwned = ownedUpgrades.some(o => o.id === up.id);
-      
+
       selectMenu.addOptions(
         new StringSelectMenuOptionBuilder()
           .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
@@ -1523,7 +1527,7 @@ async function handleKosUpgradeCommand(message, client) {
     if (collector.destroyed) return;
     const freshData = getUpgradePanelData(author.id, guildId);
     freshData.components = [];
-    await replyMsg.edit(freshData).catch(() => {});
+    await replyMsg.edit(freshData).catch(() => { });
   });
 }
 
@@ -1725,13 +1729,13 @@ async function handlePetCommand(message, client, args) {
       try {
         if (iBreed.customId === 'pet_breed_decline') {
           collector.stop();
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
           return iBreed.reply({ content: `🔴 <@${author.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerUser.id}>.` });
         }
 
         if (iBreed.customId === 'pet_breed_accept') {
           collector.stop();
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
 
           try {
             const res = pet.breedPets(author.id, partnerUser.id, guildId, newName);
@@ -1760,9 +1764,9 @@ async function handlePetCommand(message, client, args) {
 
     collector.on('end', async () => {
       if (collector.destroyed) return;
-      await replyMsg.delete().catch(() => {});
+      await replyMsg.delete().catch(() => { });
     });
-    
+
     return;
   }
 
@@ -1859,7 +1863,7 @@ async function handlePetCommand(message, client, args) {
         .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
         .setTimestamp();
 
-      await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+      await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
     }, 10000);
 
     lobby.timeout = setTimeout(async () => {
@@ -1869,7 +1873,7 @@ async function handlePetCommand(message, client, args) {
       const currentLobby = lobby;
       try {
         const res = pet.executeExpedition(guildId, currentLobby.participants);
-        
+
         let reportDesc = '';
         res.logs.forEach(log => {
           reportDesc += `${log}\n`;
@@ -1965,7 +1969,7 @@ async function handlePetCommand(message, client, args) {
             .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
             .setTimestamp();
 
-          await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+          await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
         }
 
         else if (iExp.customId === 'pet_exp_cancel') {
@@ -1986,7 +1990,7 @@ async function handlePetCommand(message, client, args) {
             content: '❌ **Ekspedisi tim pet dibatalkan oleh pembuat lobi.**',
             embeds: [],
             components: []
-          }).catch(() => {});
+          }).catch(() => { });
           collector.stop();
         }
       } catch (err) {
@@ -2016,7 +2020,7 @@ async function handlePetCommand(message, client, args) {
     const userPet = pet.getPet(userId, guildId);
     const inventory = pet.getInventory(userId, guildId);
     const allPets = pet.getPetsList(userId, guildId);
-    
+
     const embed = embeds.petDashboardEmbed(author, userPet, inventory);
 
     const rows = [];
@@ -2057,7 +2061,7 @@ async function handlePetCommand(message, client, args) {
         new ButtonBuilder().setCustomId('pet_btn_play').setLabel('⚽ Main').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
       );
-      
+
       const row2Components = [
         new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
@@ -2115,7 +2119,7 @@ async function handlePetCommand(message, client, args) {
         const freshData = getDashboardPanel(author.id, guildId);
         await iPet.update(freshData);
       }
-      
+
       else if (iPet.customId === 'pet_btn_reset') {
         collector.stop();
         pet.resetPet(author.id, guildId);
@@ -2169,13 +2173,13 @@ async function handlePetCommand(message, client, args) {
           try {
             const pName = submitted.fields.getTextInputValue('pet_name');
             const pType = submitted.fields.getTextInputValue('pet_type');
-            
+
             const res = pet.adoptPet(author.id, guildId, pName, pType);
             const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
-            
+
             await submitted.reply({ embeds: [successEmb] });
             collector.stop();
-            await replyMsg.delete().catch(() => {});
+            await replyMsg.delete().catch(() => { });
           } catch (err) {
             await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], ephemeral: true });
           }
@@ -2193,13 +2197,13 @@ async function handlePetCommand(message, client, args) {
             else if (t === 'STURDY') traitDesc = '🛡️ Sturdy (HP decay rate halved)';
             else if (t === 'MUTANT') traitDesc = '🧬 Mutant (+10% work/hunt earnings)';
             else if (t === 'WARRIOR') traitDesc = '⚔️ Warrior (+10% attack)';
-            
+
             traitText = `\n\n✨ **HOKI BANGET! Pet Anda menetas dengan Trait Rare:** \`${traitDesc}\`!`;
           }
           const successEmb = embeds.successEmbed('Telur Menetas! 🎉🐣', `Selamat! Telur pet **${freshPet.pet_name}** Anda telah resmi menetas menjadi bayi monster yang lucu!${traitText}\n\n*Ketik \`.pet\` untuk menyegarkan.*`);
           await iPet.reply({ embeds: [successEmb] });
           collector.stop();
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
         } else {
           await iPet.reply({ content: '⏳ Telur Anda belum siap menetas!', ephemeral: true });
         }
@@ -2283,7 +2287,7 @@ async function handlePetCommand(message, client, args) {
 
       else if (iPet.customId === 'pet_btn_nav_shop') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
         await handlePetShopCommand(message, client);
       }
     } catch (err) {
@@ -2295,7 +2299,7 @@ async function handlePetCommand(message, client, args) {
     if (collector.destroyed) return;
     const freshData = getDashboardPanel(author.id, guildId);
     freshData.components = [];
-    await replyMsg.edit(freshData).catch(() => {});
+    await replyMsg.edit(freshData).catch(() => { });
   });
 }
 
@@ -2413,7 +2417,7 @@ async function handleBlackMarketCommand(message, client, args) {
       new ButtonBuilder().setCustomId('bm_btn_buy_meat').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
       new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
-    await replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+    await replyMsg.edit({ components: [disabledRow] }).catch(() => { });
   });
 }
 
@@ -2465,7 +2469,7 @@ async function handlePetShopCommand(message, client) {
     try {
       if (iShop.customId === 'pet_btn_cancel_shop') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
         await handlePetCommand(message, client, []);
       } else if (iShop.customId === 'pet_select_shop_item') {
         collector.stop();
@@ -2493,7 +2497,7 @@ async function handlePetShopCommand(message, client) {
     if (collector.destroyed) return;
     const freshData = getShopPanelData(author.id, guildId);
     freshData.components = [];
-    await replyMsg.edit(freshData).catch(() => {});
+    await replyMsg.edit(freshData).catch(() => { });
   });
 }
 
@@ -2559,13 +2563,13 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
     try {
       if (iMatch.customId === 'pet_pvp_decline') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
         await iMatch.reply({ content: `🔴 <@${author.id}>, tantangan duel PvP ditolak oleh <@${opponent.id}>.` });
       }
-      
+
       else if (iMatch.customId === 'pet_pvp_accept') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
 
         try {
           // Eksekusi PvP
@@ -2584,7 +2588,7 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
 
   collector.on('end', async () => {
     if (collector.destroyed) return;
-    await replyMsg.delete().catch(() => {});
+    await replyMsg.delete().catch(() => { });
   });
 }
 
@@ -2607,7 +2611,7 @@ async function handlePetAdminCommand(message, client, args) {
     database.transaction(() => {
       let newXp = petData.xp + amount;
       let newLevel = petData.level;
-      
+
       let xpNeeded = pet.getXpNeeded(newLevel, petData.trait);
       while (newXp >= xpNeeded) {
         newXp -= xpNeeded;
@@ -2629,7 +2633,7 @@ async function handlePetAdminCommand(message, client, args) {
     const petData = pet.getPet(target.id, guildId);
     if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
 
-     database.run(
+    database.run(
       'UPDATE user_pets SET health = CASE WHEN pet_type = "SLIME" THEN 120 ELSE 100 END, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1',
       [target.id, guildId]
     );
@@ -2846,7 +2850,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
       })();
       finalWallet = economy.getWallet(user.id, guildId);
     } catch (dbErr) {
-      await memberObj.roles.remove(discordRole).catch(() => {});
+      await memberObj.roles.remove(discordRole).catch(() => { });
       throw dbErr;
     }
 
@@ -2866,7 +2870,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
 
       const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
       if (reportChannel) {
-        await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+        await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
       }
 
       client.emit('playTtsEvent', {
@@ -2958,7 +2962,7 @@ async function handleEconomyCommands(message, client) {
               `💡 *<@${author.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
             );
             await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => {});
+            await replyMsg.edit({ components: [] }).catch(() => { });
             collector.stop();
           } catch (err) {
             await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
@@ -2969,7 +2973,7 @@ async function handleEconomyCommands(message, client) {
         if (iJail.user.id !== author.id) {
           return iJail.reply({ content: '❌ Tombol ini hanya untuk tahanan yang bersangkutan!', ephemeral: true });
         }
-        
+
         try {
           if (iJail.customId === 'jail_btn_tebus') {
             const res = robbery.payBail(author.id, guildId);
@@ -2979,7 +2983,7 @@ async function handleEconomyCommands(message, client) {
               `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
             );
             await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => {});
+            await replyMsg.edit({ components: [] }).catch(() => { });
             collector.stop();
           }
         } catch (err) {
@@ -3042,7 +3046,7 @@ async function handleEconomyCommands(message, client) {
 
       try {
         const res = robbery.robSolo(author.id, targetUser.id, guildId);
-        
+
         let toolText = '';
         if (res.meatUsed) {
           toolText += '🥩 *Kamu melempar Daging Bius untuk menidurkan Alarm/CCTV korban!*\n';
@@ -3054,7 +3058,7 @@ async function handleEconomyCommands(message, client) {
         if (res.success) {
           if (res.maskUsed) {
             // Hapus pesan pemicu agar nama tidak ketahuan
-            message.delete().catch(() => {});
+            message.delete().catch(() => { });
 
             const maskEmb = embeds.successEmbed(
               '🎭 Perampokan Bertopeng Misterius! 💰',
@@ -3103,7 +3107,7 @@ async function handleEconomyCommands(message, client) {
         try {
           const lobby = robbery.startHeistLobby(author.id, guildId);
           const stats = robbery.getHeistStats(1);
-          
+
           const lobbyEmbed = embeds.heistLobbyEmbed(
             guild,
             author,
@@ -3159,7 +3163,7 @@ async function handleEconomyCommands(message, client) {
               currentLobby.prepFee
             );
 
-            await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+            await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
           }, 10000);
 
           // Pemicu timeout eksekusi otomatis setelah 90 detik
@@ -3213,7 +3217,7 @@ async function handleEconomyCommands(message, client) {
               if (iHeist.customId === 'heist_btn_join') {
                 const updatedLobby = robbery.joinHeistLobby(iHeist.user.id, guildId);
                 const currentStats = robbery.getHeistStats(updatedLobby.participants.length);
-                
+
                 const updatedEmbed = embeds.heistLobbyEmbed(
                   guild,
                   author,
@@ -3226,9 +3230,9 @@ async function handleEconomyCommands(message, client) {
                 );
 
                 await iHeist.reply({ content: `🤝 Anda berhasil bergabung dengan tim heist! Biaya persiapan Rp ${updatedLobby.prepFee} terpotong.`, ephemeral: true });
-                await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
-              } 
-              
+                await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
+              }
+
               else if (iHeist.customId === 'heist_btn_cancel') {
                 if (iHeist.user.id !== author.id) {
                   return iHeist.reply({ content: '❌ Hanya inisiator (otak kriminal) yang bisa membatalkan operasi!', ephemeral: true });
@@ -3236,13 +3240,13 @@ async function handleEconomyCommands(message, client) {
 
                 clearInterval(interval);
                 robbery.cancelHeistLobby(author.id, guildId);
-                
+
                 await iHeist.reply({ content: '✖️ Operasi bank heist dibatalkan dan biaya persiapan telah dikembalikan ke seluruh kru.', ephemeral: false });
                 await replyMsg.edit({
                   content: '❌ **Operasi bank heist dibatalkan oleh inisiator.**',
                   embeds: [],
                   components: []
-                }).catch(() => {});
+                }).catch(() => { });
                 collector.stop();
               }
             } catch (err) {
@@ -3273,7 +3277,7 @@ async function handleEconomyCommands(message, client) {
       }
 
       const jailEmbed = embeds.jailStatusEmbed(targetUser, jailInfo.remaining, jailInfo.bailAmount);
-      
+
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('jail_btn_tebus_status')
@@ -3327,7 +3331,7 @@ async function handleEconomyCommands(message, client) {
               `💡 *<@${targetUser.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
             );
             await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => {});
+            await replyMsg.edit({ components: [] }).catch(() => { });
             collector.stop();
           } catch (err) {
             await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
@@ -3348,7 +3352,7 @@ async function handleEconomyCommands(message, client) {
               `💵 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
             );
             await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => {});
+            await replyMsg.edit({ components: [] }).catch(() => { });
             collector.stop();
           } catch (err) {
             await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, ephemeral: true });
@@ -3397,7 +3401,7 @@ async function handleEconomyCommands(message, client) {
         economy.subtractBalance(author.id, guildId, amountToPay, 'PAY_DEBT');
         // Tambah dompet penerima
         economy.addBalance(targetUser.id, guildId, amountToPay, 'RECEIVE_DEBT_PAYMENT');
-        
+
         // Kurangi hutang
         const newDebtAmount = debt.amount - amountToPay;
         if (newDebtAmount <= 0) {
@@ -3448,8 +3452,8 @@ async function handleEconomyCommands(message, client) {
         } catch (err) {
           await message.reply({ embeds: [embeds.errorEmbed('Gagal Membebaskan!', err.message)] });
         }
-      } 
-      
+      }
+
       else if (sub === 'reset-cooldown' || sub === 'reset') {
         try {
           robbery.adminResetCooldown(guildId);
@@ -3457,8 +3461,8 @@ async function handleEconomyCommands(message, client) {
         } catch (err) {
           await message.reply({ embeds: [embeds.errorEmbed('Gagal Reset Cooldown!', err.message)] });
         }
-      } 
-      
+      }
+
       else {
         return message.reply({
           embeds: [
@@ -3495,9 +3499,9 @@ async function handleEconomyCommands(message, client) {
         const wallet = economy.getWallet(userId, guildId);
         const activeRental = kos.getActiveRental(userId, guildId);
         const upgrades = kos.getUpgrades(userId, guildId);
-        
+
         const embed = embeds.kosDashboardEmbed(author, wallet, activeRental, upgrades);
-        
+
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('kos_btn_nav_sewa')
@@ -3508,7 +3512,7 @@ async function handleEconomyCommands(message, client) {
             .setLabel('🛒 Belanja Fasilitas')
             .setStyle(ButtonStyle.Success)
         );
-        
+
         return { embeds: [embed], components: [row] };
       };
 
@@ -3527,11 +3531,11 @@ async function handleEconomyCommands(message, client) {
         try {
           if (iKos.customId === 'kos_btn_nav_sewa') {
             collector.stop();
-            await replyMsg.delete().catch(() => {});
+            await replyMsg.delete().catch(() => { });
             await handleKosSewaCommand(message, client);
           } else if (iKos.customId === 'kos_btn_nav_upgrade') {
             collector.stop();
-            await replyMsg.delete().catch(() => {});
+            await replyMsg.delete().catch(() => { });
             await handleKosUpgradeCommand(message, client);
           }
         } catch (err) {
@@ -3543,7 +3547,7 @@ async function handleEconomyCommands(message, client) {
         if (collector.destroyed) return;
         const freshData = getDashboardData(author.id, guildId);
         freshData.components = [];
-        await replyMsg.edit(freshData).catch(() => {});
+        await replyMsg.edit(freshData).catch(() => { });
       });
 
       return true;
@@ -3580,9 +3584,9 @@ async function handleEconomyCommands(message, client) {
         const savings = bank.getSavings(userId, guildId);
         const activeLoan = bank.getActiveLoan(userId, guildId);
         const maxLimit = bank.calculateMaxLoanLimit(userId, guildId);
-        
+
         const embed = embeds.bankDashboardEmbed(author, wallet, savings, activeLoan, maxLimit);
-        
+
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('bank_btn_deposit')
@@ -3603,43 +3607,43 @@ async function handleEconomyCommands(message, client) {
             .setStyle(ButtonStyle.Danger)
             .setDisabled(!activeLoan)
         );
-        
+
         return { embeds: [embed], components: [row] };
       };
-      
+
       const initialData = getBankDashboardData(author.id, guildId);
       const replyMsg = await message.reply(initialData);
-      
+
       const collector = replyMsg.createMessageComponentCollector({
         time: 120000
       });
-      
+
       collector.on('collect', async iBank => {
         if (iBank.user.id !== author.id) {
           return iBank.reply({ content: '❌ Tombol ini bukan untuk Anda!', ephemeral: true });
         }
-        
+
         try {
           if (iBank.customId === 'bank_btn_deposit') {
             const modal = new ModalBuilder()
               .setCustomId('bank_modal_deposit')
               .setTitle('🏛️ Deposit Tabungan Bank');
-              
+
             const amountInput = new TextInputBuilder()
               .setCustomId('deposit_amount')
               .setLabel('Jumlah koin (angka atau "all")')
               .setPlaceholder('Contoh: 5000')
               .setStyle(TextInputStyle.Short)
               .setRequired(true);
-              
+
             modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
             await iBank.showModal(modal);
-            
+
             const submitted = await iBank.awaitModalSubmit({
               filter: (sub) => sub.customId === 'bank_modal_deposit' && sub.user.id === author.id,
               time: 60000
             }).catch(() => null);
-            
+
             if (submitted) {
               try {
                 const res = bank.depositSavings(author.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
@@ -3650,7 +3654,7 @@ async function handleEconomyCommands(message, client) {
                   `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
                 );
                 await submitted.reply({ embeds: [successEmb] });
-                
+
                 const freshData = getBankDashboardData(author.id, guildId);
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
@@ -3658,27 +3662,27 @@ async function handleEconomyCommands(message, client) {
               }
             }
           }
-          
+
           else if (iBank.customId === 'bank_btn_withdraw') {
             const modal = new ModalBuilder()
               .setCustomId('bank_modal_withdraw')
               .setTitle('🏛️ Penarikan Saldo Bank');
-              
+
             const amountInput = new TextInputBuilder()
               .setCustomId('withdraw_amount')
               .setLabel('Jumlah koin (angka atau "all")')
               .setPlaceholder('Contoh: 10000')
               .setStyle(TextInputStyle.Short)
               .setRequired(true);
-              
+
             modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
             await iBank.showModal(modal);
-            
+
             const submitted = await iBank.awaitModalSubmit({
               filter: (sub) => sub.customId === 'bank_modal_withdraw' && sub.user.id === author.id,
               time: 60000
             }).catch(() => null);
-            
+
             if (submitted) {
               try {
                 const res = bank.withdrawSavings(author.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
@@ -3689,7 +3693,7 @@ async function handleEconomyCommands(message, client) {
                   `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
                 );
                 await submitted.reply({ embeds: [successEmb] });
-                
+
                 const freshData = getBankDashboardData(author.id, guildId);
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
@@ -3697,7 +3701,7 @@ async function handleEconomyCommands(message, client) {
               }
             }
           }
-          
+
           else if (iBank.customId === 'bank_btn_loan') {
             // Tampilkan dropdown pilihan tenor
             const selectMenu = new StringSelectMenuBuilder()
@@ -3708,26 +3712,26 @@ async function handleEconomyCommands(message, client) {
                 new StringSelectMenuOptionBuilder().setLabel('🟡 3 Hari (Bunga 5%)').setDescription('Pilihan seimbang untuk alokasi modal sedang.').setValue('3'),
                 new StringSelectMenuOptionBuilder().setLabel('🔴 7 Hari (Bunga 10%)').setDescription('Pinjaman jangka panjang untuk mengejar kasta role.').setValue('7')
               );
-              
+
             const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
             const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
             const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
-            
+
             const askTenorMsg = await iBank.reply({
               content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang di bawah ini:',
               components: [tenorRow, cancelRow],
               fetchReply: true
             });
-            
+
             const tenorCollector = askTenorMsg.createMessageComponentCollector({
               time: 60000
             });
-            
+
             tenorCollector.on('collect', async iTenor => {
               if (iTenor.user.id !== author.id) {
                 return iTenor.reply({ content: '❌ Pilihan ini bukan untuk Anda!', ephemeral: true });
               }
-              
+
               if (iTenor.customId === 'bank_loan_cancel') {
                 tenorCollector.stop();
                 await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
@@ -3735,35 +3739,35 @@ async function handleEconomyCommands(message, client) {
                 tenorCollector.stop();
                 const selectedTenor = parseInt(iTenor.values[0]);
                 const maxLimit = bank.calculateMaxLoanLimit(author.id, guildId);
-                
+
                 const modal = new ModalBuilder()
                   .setCustomId(`bank_modal_loan_${selectedTenor}`)
                   .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
-                  
+
                 const loanInput = new TextInputBuilder()
                   .setCustomId('loan_amount')
                   .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
                   .setPlaceholder('Contoh: 10000')
                   .setStyle(TextInputStyle.Short)
                   .setRequired(true);
-                  
+
                 modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
                 await iTenor.showModal(modal);
-                
+
                 // Bersihkan pesan pemilihan tenor agar rapi
-                await askTenorMsg.delete().catch(() => {});
-                
+                await askTenorMsg.delete().catch(() => { });
+
                 const submitted = await iTenor.awaitModalSubmit({
                   filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}` && sub.user.id === author.id,
                   time: 60000
                 }).catch(() => null);
-                
+
                 if (submitted) {
                   try {
                     const amountStr = submitted.fields.getTextInputValue('loan_amount');
                     const res = bank.createLoan(author.id, guildId, amountStr, selectedTenor);
                     const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
-                    
+
                     const successEmb = embeds.bankSuccessEmbed(
                       'Pengajuan Pinjaman Disetujui!',
                       `Pinjaman Anda berhasil dicairkan!\n\n` +
@@ -3773,9 +3777,9 @@ async function handleEconomyCommands(message, client) {
                       `📅 **Batas Pelunasan:** ${dueText}\n\n` +
                       `*Koin telah ditambahkan ke dompet Anda. Saldo dompet Anda sekarang: Rp ${res.walletBalance.toLocaleString('id-ID')}*`
                     );
-                    
+
                     await submitted.reply({ embeds: [successEmb] });
-                    
+
                     const freshData = getBankDashboardData(author.id, guildId);
                     await replyMsg.edit(freshData).catch(console.error);
                   } catch (err) {
@@ -3784,35 +3788,35 @@ async function handleEconomyCommands(message, client) {
                 }
               }
             });
-            
+
             tenorCollector.on('end', async () => {
-              await askTenorMsg.delete().catch(() => {});
+              await askTenorMsg.delete().catch(() => { });
             });
           }
-          
+
           else if (iBank.customId === 'bank_btn_repay') {
             try {
               const res = bank.repayLoan(author.id, guildId);
               let desc = '';
-              
+
               if (res.isFullyPaid) {
                 desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                       `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                       `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                  `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                  `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
               } else {
                 desc = `Pembayaran cicilan berhasil diproses!\n\n` +
-                       `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                       `⚠️ **Sisa Utang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
-                       `💵 **Saldo Dompet Sekarang:** **Rp 0** (Koin lunas cicilan)`;
+                  `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                  `⚠️ **Sisa Utang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                  `💵 **Saldo Dompet Sekarang:** **Rp 0** (Koin lunas cicilan)`;
               }
-              
+
               const successEmb = embeds.bankSuccessEmbed(
                 res.isFullyPaid ? 'Pelunasan Pinjaman Sukses!' : 'Pembayaran Cicilan Diproses!',
                 desc
               );
-              
+
               await iBank.reply({ embeds: [successEmb] });
-              
+
               const freshData = getBankDashboardData(author.id, guildId);
               await replyMsg.edit(freshData).catch(console.error);
             } catch (err) {
@@ -3823,7 +3827,7 @@ async function handleEconomyCommands(message, client) {
           console.error('Error in bank interactive collector:', err);
         }
       });
-      
+
       collector.on('end', async () => {
         if (collector.destroyed) return;
         const freshData = getBankDashboardData(author.id, guildId);
@@ -3835,9 +3839,9 @@ async function handleEconomyCommands(message, client) {
           });
           return freshRow;
         });
-        await replyMsg.edit(freshData).catch(() => {});
+        await replyMsg.edit(freshData).catch(() => { });
       });
-      
+
       return true;
     }
 
@@ -3939,12 +3943,12 @@ async function handleEconomyCommands(message, client) {
           collector.stop();
         } catch (err) {
           console.error('Error toggling auto-trade:', err);
-          await i.reply({ content: '❌ Terjadi kesalahan saat memproses status robot.', ephemeral: true }).catch(() => {});
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses status robot.', ephemeral: true }).catch(() => { });
         }
       });
 
       collector.on('end', async () => {
-        await replyMsg.edit({ components: [] }).catch(() => {});
+        await replyMsg.edit({ components: [] }).catch(() => { });
       });
 
       return true;
@@ -3989,7 +3993,7 @@ async function handleEconomyCommands(message, client) {
       }
 
       const res = economy.transferBalance(author.id, targetUser.id, guildId, amount);
-      
+
       const embed = new EmbedBuilder()
         .setColor(embeds.COLORS.SUCCESS)
         .setTitle('💸 Transfer Berhasil!')
@@ -4089,7 +4093,7 @@ async function handleEconomyCommands(message, client) {
           }
         } catch (err) {
           console.error('Error handling button click in market panel:', err);
-          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => { });
         }
       });
 
@@ -4101,7 +4105,7 @@ async function handleEconomyCommands(message, client) {
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true),
           new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true)
         );
-        await marketMsg.edit({ components: [disabledRow] }).catch(() => {});
+        await marketMsg.edit({ components: [disabledRow] }).catch(() => { });
       });
 
       return true;
@@ -4237,10 +4241,10 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'rich' || commandName === 'leaderboard' || commandName === 'liderbot') {
       const limit = 10;
       const leaderboard = economy.getLeaderboard(guildId, limit);
-      
+
       // Pastikan cache user terisi
       await Promise.all(leaderboard.map(async u => {
-        try { await client.users.fetch(u.userId); } catch (e) {}
+        try { await client.users.fetch(u.userId); } catch (e) { }
       }));
 
       const embed = embeds.leaderboardEmbed(guild.name, leaderboard, client);
@@ -4319,7 +4323,7 @@ async function handleEconomyCommands(message, client) {
           }
         } catch (err) {
           console.error('Error handling button click in shop:', err);
-          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => {});
+          await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', ephemeral: true }).catch(() => { });
         }
       });
 
@@ -4328,7 +4332,7 @@ async function handleEconomyCommands(message, client) {
           new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
         );
-        await shopMsg.edit({ components: [disabledRow] }).catch(() => {});
+        await shopMsg.edit({ components: [disabledRow] }).catch(() => { });
       });
 
       return true;
@@ -4403,7 +4407,7 @@ async function handleEconomyCommands(message, client) {
         finalWallet = economy.getWallet(author.id, guildId);
       } catch (dbErr) {
         // Rollback role jika database gagal
-        await memberObj.roles.remove(discordRole).catch(() => {});
+        await memberObj.roles.remove(discordRole).catch(() => { });
         throw dbErr;
       }
 
@@ -4415,9 +4419,9 @@ async function handleEconomyCommands(message, client) {
         const broadcastEmbed = embeds.broadcastMegaEmbed(author, item.role_name, item.price, item.tier);
         const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
         if (reportChannel) {
-          await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+          await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
         } else {
-          await message.channel.send({ embeds: [broadcastEmbed] }).catch(() => {});
+          await message.channel.send({ embeds: [broadcastEmbed] }).catch(() => { });
         }
 
         // Picu suara TTS jika bot tersambung di voice channel
@@ -4465,7 +4469,7 @@ async function handleEconomyCommands(message, client) {
     if (commandName === 'event-trigger') {
       const targetType = args[0]?.toUpperCase();
       const events = require('./events');
-      
+
       let selectedType = null;
       if (targetType) {
         if (events.EVENT_TYPES[targetType]) {
@@ -4544,8 +4548,8 @@ async function handleEconomyCommands(message, client) {
             `*Periksa portofolio & saldo terbaru Anda sekarang dengan mengetik \`.porto\` atau \`.bal\`!*`
           )
           .setTimestamp();
-        
-        await targetChannel.send({ embeds: [embed] }).catch(() => {});
+
+        await targetChannel.send({ embeds: [embed] }).catch(() => { });
       }
 
       const successEmbed = embeds.successEmbed(
@@ -4582,8 +4586,8 @@ async function handleEconomyCommands(message, client) {
         }
 
         updateText += `🔹 **${u.ticker}** (#${u.name})\n` +
-                      `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
-                      `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
+          `   👉 Harga Baru: **Rp ${u.newPrice.toLocaleString('id-ID')}** (${trendIndicator} \`${trendSign}${u.changePct}%\` ${trendEmoji})\n` +
+          `   👉 Keaktifan: \`${u.activity.toFixed(1)} poin\`\n\n`;
       });
 
       const reportEmbed = new EmbedBuilder()
@@ -4635,8 +4639,8 @@ async function handleEconomyCommands(message, client) {
         amount = Math.floor(Math.random() * (maxRange - minRange + 1)) + minRange;
       } else {
         const numbers = args.filter(arg => !arg.startsWith('<@') || !arg.endsWith('>'))
-                            .map(arg => parseInt(arg))
-                            .filter(num => !isNaN(num) && num > 0);
+          .map(arg => parseInt(arg))
+          .filter(num => !isNaN(num) && num > 0);
         if (numbers.length > 0) {
           amount = numbers[0];
         }
@@ -4704,7 +4708,7 @@ async function handleEconomyCommands(message, client) {
       const statusMsg = await message.reply({ embeds: [statusEmbed] });
 
       const memberIds = new Set();
-      
+
       // 1. Ambil dari database wallets terlebih dahulu (seluruh member historis online & offline yang punya saldo/data)
       try {
         const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
@@ -4787,22 +4791,22 @@ async function handleEconomyCommands(message, client) {
       }
 
       const successTitle = isRandom ? '🎰 RAIN / AIRDROP KOIN ACAK SUKSES! 💸' : '📢 BAGI-BAGI KOIN MASSAL SUKSES! 💸';
-      
+
       let successDesc = '';
       if (isRandom) {
         successDesc = `👑 **KEMAKMURAN UNTUK SEMUA!**\n\n` +
-                      `Owner / Administrator telah menyebarkan koin keberuntungan acak kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
-                      `📊 **Metode Distribusi:** \`🎰 Acak (Random Roll)\`\n` +
-                      `📈 **Rentang Hadiah:** \`Rp ${minRange.toLocaleString('id-ID')} - Rp ${maxRange.toLocaleString('id-ID')}\` per member\n` +
-                      `💰 **Total Koin Tersebar:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
-                      `*Setiap warga menerima jumlah koin acak masing-masing yang unik. Cek saldo Anda dengan perintah \`.bal\`!* 🚀`;
+          `Owner / Administrator telah menyebarkan koin keberuntungan acak kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
+          `📊 **Metode Distribusi:** \`🎰 Acak (Random Roll)\`\n` +
+          `📈 **Rentang Hadiah:** \`Rp ${minRange.toLocaleString('id-ID')} - Rp ${maxRange.toLocaleString('id-ID')}\` per member\n` +
+          `💰 **Total Koin Tersebar:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
+          `*Setiap warga menerima jumlah koin acak masing-masing yang unik. Cek saldo Anda dengan perintah \`.bal\`!* 🚀`;
       } else {
         successDesc = `👑 **DISTRIBUSI KESEJAHTERAAN SELESAI!**\n\n` +
-                      `Owner / Administrator telah membagikan koin secara merata kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
-                      `📊 **Metode Distribusi:** \`💵 Tetap (Fixed Amount)\`\n` +
-                      `📈 **Nominal per Member:** **Rp ${amount.toLocaleString('id-ID')}** koin\n` +
-                      `💰 **Total Koin Terdistribusi:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
-                      `*Kesejahteraan Anda telah dijamin! Silakan cek dompet masing-masing menggunakan perintah \`.bal\`!* 🚀`;
+          `Owner / Administrator telah membagikan koin secara merata kepada **${memberCount} member** server (baik yang sedang **online** maupun **offline**)! 👥✨\n\n` +
+          `📊 **Metode Distribusi:** \`💵 Tetap (Fixed Amount)\`\n` +
+          `📈 **Nominal per Member:** **Rp ${amount.toLocaleString('id-ID')}** koin\n` +
+          `💰 **Total Koin Terdistribusi:** **Rp ${totalAmountGiven.toLocaleString('id-ID')}** koin\n\n` +
+          `*Kesejahteraan Anda telah dijamin! Silakan cek dompet masing-masing menggunakan perintah \`.bal\`!* 🚀`;
       }
 
       const successEmbed = new EmbedBuilder()
@@ -4860,23 +4864,23 @@ async function handleEconomyCommands(message, client) {
       try {
         // Kirim Multi-Embed Pengumuman Premium & Rapi dengan tag @everyone
         const announcementEmbeds = embeds.updateAnnouncementEmbeds(message.guild);
-        
+
         // Bagi embed menjadi 3 pesan terpisah untuk menghindari batas 6000 karakter Discord
         // Pesan 1: Hero Header & Voice/Economy
-        await targetChannel.send({ 
-          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*', 
+        await targetChannel.send({
+          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*',
           embeds: [announcementEmbeds[0], announcementEmbeds[1]],
           allowedMentions: { parse: ['everyone'] }
         });
-        
+
         // Pesan 2: Bursa Saham & Bank/Kosan
-        await targetChannel.send({ 
-          embeds: [announcementEmbeds[2], announcementEmbeds[3]] 
+        await targetChannel.send({
+          embeds: [announcementEmbeds[2], announcementEmbeds[3]]
         });
-        
+
         // Pesan 3: Pet/Rob & Game/Tips/Penutup
-        await targetChannel.send({ 
-          embeds: [announcementEmbeds[4], announcementEmbeds[5]] 
+        await targetChannel.send({
+          embeds: [announcementEmbeds[4], announcementEmbeds[5]]
         });
 
         if (targetChannel.id !== message.channel.id) {
@@ -4997,7 +5001,7 @@ async function handleEconomyCommands(message, client) {
             `*Bagi warga server yang mengalami kerugian portofolio parah, harap tetap tenang dan dilarang merusak fasilitas umum kosan!*`
           )
           .setTimestamp();
-        await reportChannel.send({ content: '@everyone', embeds: [notifyEmbed] }).catch(() => {});
+        await reportChannel.send({ content: '@everyone', embeds: [notifyEmbed] }).catch(() => { });
       }
       return true;
     }
@@ -5055,7 +5059,7 @@ async function handleEconomyCommands(message, client) {
         database.run('DELETE FROM transactions WHERE guild_id = ?', [guildId]);
         // Hapus price history di guild ini
         database.run('DELETE FROM price_history WHERE guild_id = ?', [guildId]);
-        
+
         // Reset harga saham & jumlah lembar saham di guild ini ke awal
         database.run(
           `UPDATE stocks 
@@ -5249,16 +5253,16 @@ async function handleEconomyCommands(message, client) {
         const statusEmoji = res.status === 'SUCCESS' ? '✅' : res.status === 'WARNING' ? '⚠️' : '❌';
         const actionLabel = res.status === 'SUCCESS' ? (res.action === 'CREATED' ? '*(Baru Dibuat)*' : '*(Diperbarui)*') : '';
         const priceFormatted = embeds.formatCurrency(res.price);
-        
+
         let valueText = '';
         if (res.status === 'SUCCESS') {
           valueText = `• **ID:** <@&${res.roleId}>\n` +
-                      `• **Harga:** ${priceFormatted}\n` +
-                      `• **Gacha:** \`${res.isGacha ? 'Aktif' : 'Non-Aktif'}\`\n` +
-                      `• **Izin Utama:** \`${res.permissions.slice(4).join(', ') || 'Standar'}\``;
+            `• **Harga:** ${priceFormatted}\n` +
+            `• **Gacha:** \`${res.isGacha ? 'Aktif' : 'Non-Aktif'}\`\n` +
+            `• **Izin Utama:** \`${res.permissions.slice(4).join(', ') || 'Standar'}\``;
         } else {
           valueText = `• **Status:** Gagal\n` +
-                      `• **Error:** \`${res.message}\``;
+            `• **Error:** \`${res.message}\``;
         }
 
         setupEmbed.addFields({
@@ -5669,7 +5673,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat menggunakan perintah .setup-portal.')] });
       }
 
-      await message.delete().catch(() => {});
+      await message.delete().catch(() => { });
 
       const embed = new EmbedBuilder()
         .setColor(embeds.COLORS.PURPLE)
@@ -5723,16 +5727,16 @@ async function handleEconomyCommands(message, client) {
   } catch (error) {
     console.error(`❌ [Command Error - .${commandName}]:`, error.message);
     const cleanedMessage = error.message.replace(/^❌\s*/, '');
-    
+
     // Identifikasi apakah error karena bursa tutup atau lainnya
     const isMarketClosed = error.message.includes('TUTUP') || error.message.includes('operasional');
     const title = isMarketClosed ? 'Bursa Saham Sedang Tutup!' : 'Gagal Memproses Perintah!';
-    
-    const embed = isMarketClosed 
+
+    const embed = isMarketClosed
       ? embeds.warnEmbed(title, cleanedMessage).setFooter({ text: 'Silakan bertransaksi kembali pada jam operasional (08:00 - 23:00 WIB).' })
       : embeds.errorEmbed(title, cleanedMessage);
-      
-    await message.reply({ embeds: [embed] }).catch(() => {});
+
+    await message.reply({ embeds: [embed] }).catch(() => { });
     return true;
   }
 
