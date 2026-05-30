@@ -678,11 +678,6 @@ client.on('messageCreate', async message => {
     }
   };
 
-  // Hapus pesan perintah user (.commands) setelah 2 detik agar bot punya waktu cukup untuk membalas
-  setTimeout(() => {
-    message.delete().catch(() => {});
-  }, 2000);
-
   // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
   const BLOCKED_CMD_CHANNELS = [
     '1510121069783023646', // #🛍️┃shop (Portal Dashboard)

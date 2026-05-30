@@ -3804,28 +3804,9 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
-  // Helper: kirim balasan dengan auto-delete opsional (tidak menimpa message.reply yang sudah ada)
-  const SHORT_INFO_CMDS = ['bal', 'balance', 'profile', 'porto', 'portfolio', 'daily', 'status', 'event'];
-  const WARN_ERROR_COLORS = new Set([16757504, 16724838, 0xFFB300, 0xFF3366]);
-
+  // Helper: kirim balasan langsung tanpa auto-delete
   const autoReply = async (options) => {
-    const reply = await message.reply(options);
-    let isTemporary = false;
-
-    // 1. Cek warna embed warn/error → jadikan sementara
-    if (options && options.embeds && options.embeds.length > 0) {
-      const color = options.embeds[0]?.data?.color;
-      if (WARN_ERROR_COLORS.has(color)) isTemporary = true;
-    }
-
-    // 2. Perintah info singkat → jadikan sementara
-    if (SHORT_INFO_CMDS.includes(commandName)) isTemporary = true;
-
-    // Hapus balasan sementara setelah 25 detik
-    if (isTemporary) {
-      setTimeout(() => { reply.delete().catch(() => {}); }, 25000);
-    }
-    return reply;
+    return message.reply(options);
   };
 
   // ── FILTER SALURAN KHUSUS PET (Channel ID: 1509762623917265137) ──
