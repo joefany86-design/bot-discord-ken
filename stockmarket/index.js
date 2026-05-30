@@ -9,6 +9,7 @@ const bank = require('./bank');
 const pet = require('./pet');
 const robbery = require('./robbery');
 const bm = require('./blackmarket');
+const garden = require('./garden');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -2656,6 +2657,390 @@ async function handlePetCommand(message, client, args) {
 }
 
 /**
+ * Helper untuk memproses perintah Cozy Flower Garden
+ */
+async function handleGardenCommand(message, client, args, commandName) {
+  const { guildId, author } = message;
+
+  // 1. .kebun / .garden (Dashboard Utama Interaktif)
+  if (commandName === 'kebun' || commandName === 'garden') {
+    const slots = garden.getGardenSlots(author.id, guildId);
+    const wallet = economy.getWallet(author.id, guildId);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('garden_btn_water_all').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('garden_btn_harvest_all').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('garden_btn_shop').setLabel('🛒 Toko Benih').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('garden_btn_craft').setLabel('💐 Rangkai Buket').setStyle(ButtonStyle.Secondary)
+    );
+
+    const replyMsg = await message.reply({
+      embeds: [embeds.gardenEmbed(author, slots, wallet.last_water_at)],
+      components: [row]
+    });
+
+    const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
+
+    collector.on('collect', async i => {
+      if (i.user.id !== author.id) {
+        return i.reply({ content: '❌ Tombol ini hanya dapat ditekan oleh pemilik kebun!', flags: 64 });
+      }
+
+      try {
+        if (i.customId === 'garden_btn_water_all') {
+          try {
+            const res = garden.waterPlant(author.id, guildId, 'all');
+            const updatedSlots = garden.getGardenSlots(author.id, guildId);
+            const updatedWallet = economy.getWallet(author.id, guildId);
+
+            const successEmb = embeds.successEmbed(
+              '💦 Penyiraman Berhasil!',
+              `Berhasil menyiram **${res.wateredCount}** tanaman (Slot: **${res.slotsWatered.join(', ')}**).\n` +
+              `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
+            );
+
+            await i.reply({ embeds: [successEmb], flags: 64 });
+
+            await replyMsg.edit({
+              embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
+              components: [row]
+            }).catch(() => {});
+          } catch (err) {
+            await i.reply({ content: `❌ Gagal menyiram: ${err.message}`, flags: 64 });
+          }
+        } 
+        
+        else if (i.customId === 'garden_btn_harvest_all') {
+          try {
+            const slots = garden.getGardenSlots(author.id, guildId);
+            const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
+
+            if (harvestable.length === 0) {
+              return i.reply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!', flags: 64 });
+            }
+
+            const harvestedNames = [];
+            harvestable.forEach(s => {
+              const res = garden.harvestPlant(author.id, guildId, s.slot_index);
+              harvestedNames.push(`Slot #${res.slotIndex}: **${res.flowerName}**`);
+            });
+
+            const updatedSlots = garden.getGardenSlots(author.id, guildId);
+            const updatedWallet = economy.getWallet(author.id, guildId);
+
+            const successEmb = embeds.successEmbed(
+              '🧺 Panen Bunga Sukses!',
+              `Berhasil memanen **${harvestedNames.length}** kuntum bunga segar:\n` +
+              harvestedNames.map(name => `• ${name}`).join('\n') + `\n\n` +
+              `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
+            );
+
+            await i.reply({ embeds: [successEmb], flags: 64 });
+
+            await replyMsg.edit({
+              embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
+              components: [row]
+            }).catch(() => {});
+          } catch (err) {
+            await i.reply({ content: `❌ Gagal memanen: ${err.message}`, flags: 64 });
+          }
+        } 
+        
+        else if (i.customId === 'garden_btn_shop') {
+          const walletShop = economy.getWallet(author.id, guildId);
+          const shopRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Success)
+          );
+
+          await i.deferUpdate();
+          await replyMsg.edit({
+            embeds: [embeds.gardenShopEmbed(author, walletShop)],
+            components: [shopRow]
+          }).catch(() => {});
+        } 
+        
+        else if (i.customId === 'garden_btn_craft') {
+          const craftRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_craft_love').setLabel('💖 Resep Love').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_craft_peace').setLabel('🪻 Resep Peace').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_craft_imperial').setLabel('👑 Resep Imperial').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
+          );
+
+          await i.deferUpdate();
+          await replyMsg.edit({
+            embeds: [embeds.bouquetCraftEmbed(author, guildId)],
+            components: [craftRow]
+          }).catch(() => {});
+        } 
+        
+        else if (i.customId === 'garden_btn_back') {
+          const updatedSlots = garden.getGardenSlots(author.id, guildId);
+          const updatedWallet = economy.getWallet(author.id, guildId);
+
+          await i.deferUpdate();
+          await replyMsg.edit({
+            embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
+            components: [row]
+          }).catch(() => {});
+        } 
+        
+        else if (i.customId.startsWith('garden_craft_')) {
+          const recipe = i.customId.replace('garden_craft_', '');
+          try {
+            const res = garden.craftBouquet(author.id, guildId, recipe);
+            const successEmb = embeds.successEmbed(
+              '💐 Buket Berhasil Dirangkai!',
+              `Selamat! Anda berhasil merangkai **${res.bouquetName}**.\n\n` +
+              `*${res.desc}*\n\n` +
+              `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
+            );
+
+            await i.reply({ embeds: [successEmb], flags: 64 });
+
+            await replyMsg.edit({
+              embeds: [embeds.bouquetCraftEmbed(author, guildId)]
+            }).catch(() => {});
+          } catch (err) {
+            await i.reply({ content: `❌ Gagal merangkai: ${err.message}`, flags: 64 });
+          }
+        }
+      } catch (err) {
+        console.error("Error in garden interaction collector:", err);
+      }
+    });
+
+    collector.on('end', async () => {
+      const slotsEnd = garden.getGardenSlots(author.id, guildId);
+      const walletEnd = economy.getWallet(author.id, guildId);
+      await replyMsg.edit({
+        embeds: [embeds.gardenEmbed(author, slotsEnd, walletEnd.last_water_at)],
+        components: []
+      }).catch(() => {});
+    });
+  }
+
+  // 2. .toko-kebun / .gardenshop
+  else if (commandName === 'toko-kebun' || commandName === 'gardenshop') {
+    if (args[0]?.toLowerCase() === 'beli') {
+      const seedName = args[1]?.toLowerCase();
+      const qty = parseInt(args[2]) || 1;
+
+      if (!seedName) {
+        return message.reply({
+          embeds: [
+            embeds.errorEmbed(
+              'Format Salah!',
+              'Harap sebutkan benih yang ingin dibeli.\nContoh: `.toko-kebun beli mawar 3`'
+            )
+          ]
+        });
+      }
+
+      try {
+        const res = garden.buySeed(author.id, guildId, seedName, qty);
+        return message.reply({
+          embeds: [
+            embeds.successEmbed(
+              '🛒 Pembelian Berhasil!',
+              `Anda berhasil membeli **${res.quantityBought}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
+              `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+            )
+          ]
+        });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Pembelian Gagal!', err.message)] });
+      }
+    } else {
+      const wallet = economy.getWallet(author.id, guildId);
+      return message.reply({ embeds: [embeds.gardenShopEmbed(author, wallet)] });
+    }
+  }
+
+  // 3. .tanam <slot> <bunga>
+  else if (commandName === 'tanam') {
+    const slotIdx = parseInt(args[0]);
+    const flowerName = args[1]?.toLowerCase();
+
+    if (isNaN(slotIdx) || !flowerName) {
+      return message.reply({
+        embeds: [
+          embeds.errorEmbed(
+            'Format Salah!',
+            'Harap sebutkan nomor slot tanah dan jenis benih bunga.\n' +
+            'Contoh: `.tanam 1 mawar`\n\n' +
+            '*Pilihan bunga: mawar, tulip, lavender, sakura, anggrek.*'
+          )
+        ]
+      });
+    }
+
+    try {
+      const res = garden.plantSeed(author.id, guildId, slotIdx, flowerName);
+      return message.reply({
+        embeds: [
+          embeds.successEmbed(
+            '🌱 Penanaman Berhasil!',
+            `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
+            `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
+          )
+        ]
+      });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menanam!', err.message)] });
+    }
+  }
+
+  // 4. .siram [slot]
+  else if (commandName === 'siram') {
+    const slotInput = args[0] ? args[0].toLowerCase() : 'all';
+
+    try {
+      const res = garden.waterPlant(author.id, guildId, slotInput);
+      return message.reply({
+        embeds: [
+          embeds.successEmbed(
+            '💦 Penyiraman Berhasil!',
+            slotInput === 'all'
+              ? `Berhasil menyiram **${res.wateredCount}** tanaman (Slot: **${res.slotsWatered.join(', ')}**).\nTanaman tumbuh 30 menit lebih cepat!`
+              : `Berhasil menyiram tanaman di **Slot #${res.slotsWatered[0]}**.\nTanaman tumbuh 30 menit lebih cepat!`
+          )
+        ]
+      });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menyiram!', err.message)] });
+    }
+  }
+
+  // 5. .panen <slot>
+  else if (commandName === 'panen') {
+    const slotIdx = parseInt(args[0]);
+
+    if (isNaN(slotIdx)) {
+      return message.reply({
+        embeds: [
+          embeds.errorEmbed(
+            'Format Salah!',
+            'Harap sebutkan nomor slot tanah yang ingin dipanen.\nContoh: `.panen 1`'
+          )
+        ]
+      });
+    }
+
+    try {
+      const res = garden.harvestPlant(author.id, guildId, slotIdx);
+      let rarityEmoji = '🌹';
+      if (res.rarity === 'RARE') rarityEmoji = '🪻';
+      if (res.rarity === 'EPIC') rarityEmoji = '👑';
+
+      return message.reply({
+        embeds: [
+          embeds.successEmbed(
+            '🧺 Panen Bunga Sukses!',
+            `Anda berhasil memanen **${rarityEmoji} ${res.flowerName}** matang dari **Slot #${res.slotIndex}**!\n\n` +
+            `Bunga kini disimpan aman di inventory Anda. Kumpulkan bahan untuk merangkai buket bunga sultan!`
+          )
+        ]
+      });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memanen!', err.message)] });
+    }
+  }
+
+  // 6. .jual-bunga <bunga> <jumlah|all>
+  else if (commandName === 'jual-bunga') {
+    const flowerName = args[0]?.toLowerCase();
+    const qtyInput = args[1] || 'all';
+
+    if (!flowerName) {
+      return message.reply({
+        embeds: [
+          embeds.errorEmbed(
+            'Format Salah!',
+            'Gunakan: `.jual-bunga <nama_bunga> <jumlah|all>`\n' +
+            'Contoh: `.jual-bunga mawar all` atau `.jual-bunga mawar 2`'
+          )
+        ]
+      });
+    }
+
+    try {
+      const res = garden.sellFlowers(author.id, guildId, flowerName, qtyInput);
+      return message.reply({
+        embeds: [
+          embeds.successEmbed(
+            '💰 Penjualan Sukses!',
+            `Anda berhasil menjual **${res.quantitySold}x ${res.flowerName}** ke pasar seharga **Rp ${res.earnings.toLocaleString('id-ID')}**!\n\n` +
+            `💸 Saldo dompet Anda sekarang: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+          )
+        ]
+      });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menjual!', err.message)] });
+    }
+  }
+
+  // 7. .buket [jenis]
+  else if (commandName === 'buket') {
+    const bouquetType = args[0]?.toLowerCase();
+
+    if (!bouquetType) {
+      return message.reply({ embeds: [embeds.bouquetCraftEmbed(author, guildId)] });
+    }
+
+    try {
+      const res = garden.craftBouquet(author.id, guildId, bouquetType);
+      return message.reply({
+        embeds: [
+          embeds.successEmbed(
+            '💐 Buket Berhasil Dirangkai!',
+            `Selamat! Anda berhasil merangkai **${res.bouquetName}**.\n\n` +
+            `*${res.desc}*\n\n` +
+            `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain!`
+          )
+        ]
+      });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Merangkai!', err.message)] });
+    }
+  }
+
+  // 8. .gift-buket @user <jenis> [pesan]
+  else if (commandName === 'gift-buket') {
+    const targetUser = message.mentions.users.first();
+    const bType = args[1]?.toLowerCase();
+
+    let messageText = '';
+    if (args.length > 2) {
+      messageText = args.slice(2).join(' ');
+      if (messageText.startsWith('"') && messageText.endsWith('"')) {
+        messageText = messageText.slice(1, -1);
+      }
+    }
+
+    if (!targetUser || !bType) {
+      return message.reply({
+        embeds: [
+          embeds.errorEmbed(
+            'Format Salah!',
+            'Gunakan: `.gift-buket @user <jenis_buket> [pesan_ucapan]`\n' +
+            'Contoh: `.gift-buket @John love "selamat pagi"'
+          )
+        ]
+      });
+    }
+
+    try {
+      const res = garden.giftBouquet(author.id, targetUser.id, guildId, bType, messageText);
+      const giftEmbed = embeds.giftBouquetEmbed(author, targetUser, res.bouquetName, res.messageText);
+      return message.reply({ embeds: [giftEmbed] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Pengiriman Gagal!', err.message)] });
+    }
+  }
+}
+
+/**
  * Helper untuk memproses perintah Black Market (Pasar Gelap)
  */
 async function handleBlackMarketCommand(message, client, args) {
@@ -3465,7 +3850,25 @@ async function handleEconomyCommands(message, client) {
       });
 
       return true;
+  }
+
+  // ── COZY FLOWER GARDEN FEATURE GUARD & ROUTING ──
+  const gardenCommands = ['kebun', 'garden', 'toko-kebun', 'gardenshop', 'tanam', 'siram', 'panen', 'jual-bunga', 'buket', 'gift-buket'];
+  if (gardenCommands.includes(commandName)) {
+    const isOwner = author.id === OWNER_ID;
+    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!config.garden.SYSTEM_ACTIVE && !isOwner && !isAdmin) {
+      const warnEmb = embeds.warnEmbed(
+        '🌸 Fitur Sedang Tahap Uji Coba! 🌸',
+        `⚠️ **Mini-game Cozy Flower Garden saat ini sedang dikunci oleh Owner untuk keperluan pengujian.**\n\n` +
+        `Tunggu pengumuman rilis resminya ya! ✨`
+      );
+      await message.reply({ embeds: [warnEmb] });
+      return true; // Hentikan pemrosesan
     }
+
+    await handleGardenCommand(message, client, args, commandName);
+    return true; // Berhasil ditangani
   }
 
   // ═══════════════════════════════════════════════════

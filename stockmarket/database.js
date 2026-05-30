@@ -471,7 +471,34 @@ function initSchema() {
     // Kolom sudah ada
   }
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, & Ebyus Settings berhasil diinisialisasi.');
+  // 27. Migrasi dinamis: Tambahkan kolom last_water_at ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN last_water_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'last_water_at' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 28. Migrasi dinamis: Tambahkan tabel garden_slots jika belum ada
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS garden_slots (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        slot_index INTEGER NOT NULL, -- Slot 1, 2, atau 3
+        seed_id TEXT DEFAULT NULL,   -- ID Benih (SEED_ROSE, dll)
+        planted_at INTEGER DEFAULT 0, -- Unix timestamp detik ditanam
+        last_watered_at INTEGER DEFAULT 0, -- Unix timestamp terakhir disiram
+        water_count INTEGER DEFAULT 0, -- Berapa kali sudah disiram
+        PRIMARY KEY (user_id, guild_id, slot_index)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'garden_slots' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel garden_slots:", e.message);
+  }
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup

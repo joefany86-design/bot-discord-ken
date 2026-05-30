@@ -2664,8 +2664,189 @@ module.exports = {
         `1. Masuk ke **Voice Channel** yang sama dengan Bot.\n` +
         `2. Cari pesan lobby game dan klik tombol **🙋‍♂️ Gabung**.\n` +
         `3. Tunggu Host memulai permainan!`
-      )
       .setFooter({ text: 'Sentinel ToD Game System • Selamat bersenang-senang!' })
+      .setTimestamp();
+  },
+
+  // 41. Cozy Flower Garden Embed
+  gardenEmbed(user, slots, lastWaterAt) {
+    const makeProgressBar = (percent) => {
+      const size = 8;
+      const progress = Math.min(size, Math.floor((percent / 100) * size));
+      const emptyProgress = size - progress;
+      const filledChar = '🟩';
+      const emptyChar = '⬛';
+      return `\`[${filledChar.repeat(progress)}${emptyChar.repeat(emptyProgress)}]\` **${percent}%**`;
+    };
+
+    const formatDuration = (seconds) => {
+      if (seconds <= 0) return 'Matang';
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hrs > 0) return `${hrs}j ${mins}m`;
+      if (mins > 0) return `${mins}m ${secs}d`;
+      return `${secs}d`;
+    };
+
+    const now = Math.floor(Date.now() / 1000);
+    const timeSinceLastWater = now - (lastWaterAt || 0);
+    const cooldownSeconds = config.garden.WATER_COOLDOWN_MS / 1000;
+    const waterReady = timeSinceLastWater >= cooldownSeconds;
+    
+    let waterStatusText = '';
+    if (waterReady) {
+      waterStatusText = '💦 **Ember Air:** 🟢 **Penuh & Siap Menyiram!**';
+    } else {
+      const secondsLeft = Math.ceil(cooldownSeconds - timeSinceLastWater);
+      const minsLeft = Math.floor(secondsLeft / 60);
+      const secsLeft = secondsLeft % 60;
+      waterStatusText = `💦 **Ember Air:** ⏳ Mengisi Ulang (**${minsLeft}m ${secsLeft}s**)`;
+    }
+
+    let desc = `Selamat datang di kebun bunga virtualmu, **${user.username}**! 🌸\n` +
+               `Rawatlah benih tanamanmu hingga mekar penuh, panen bunga segarnya, dan rangkai menjadi buket indah berpita untuk dihadiahkan kepada warga lain!\n\n` +
+               `${waterStatusText}\n\n` +
+               `🏡 **DAFTAR TANAH AKTIF (3 SLOT):**\n` +
+               `──────────────────────────────\n`;
+
+    slots.forEach(slot => {
+      desc += `\n`;
+      if (slot.seed_id) {
+        const pbar = makeProgressBar(slot.growthProgress);
+        const timeText = formatDuration(slot.secondsLeft);
+        
+        let rarityEmoji = '🪵';
+        if (slot.rarity === 'RARE') rarityEmoji = '✨';
+        if (slot.rarity === 'EPIC') rarityEmoji = '👑';
+
+        if (slot.growthProgress >= 100) {
+          desc += `🌺 **SLOT #${slot.slot_index}: ${slot.flowerName}** (Matang!)\n` +
+                  `┊ ${pbar}\n` +
+                  `┊ Status: ${rarityEmoji} **MEKAR SEMPURNA**\n` +
+                  `┊ 👉 *Bunga siap dipanen! klik tombol **Panen** di bawah.*\n`;
+        } else {
+          desc += `🌱 **SLOT #${slot.slot_index}: ${slot.flowerName}**\n` +
+                  `┊ ${pbar} (Sisa: \`${timeText}\`)\n` +
+                  `┊ Status: ${rarityEmoji} **${slot.growthStatus}**\n` +
+                  `┊ Penyiraman: 💦 Sudah disiram **${slot.water_count}x**\n`;
+        }
+      } else {
+        desc += `🟫 **SLOT #${slot.slot_index}: KOSONG**\n` +
+                `┊ *Tanah gembur siap ditanami benih bunga baru!*\n` +
+                `┊ 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
+      }
+      desc += `──────────────────────────────\n`;
+    });
+
+    return new EmbedBuilder()
+      .setColor('#F7C8E0') // Cozy Pastel Pink
+      .setTitle(`🌸 KEBUN BUNGA COZY — ${user.username}`)
+      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setDescription(desc)
+      .setFooter({ text: 'Sentinel Cozy Garden System • Rawat dengan kasih sayang!' })
+      .setTimestamp();
+  },
+
+  // 42. Cozy Flower Garden Shop Embed
+  gardenShopEmbed(user, wallet) {
+    let desc = `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
+               `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
+               `──────────────────────────────\n\n` +
+               `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
+               `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
+               `   • Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` (Common)\n` +
+               `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
+               `   • Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` (Common)\n` +
+               `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
+               `   • Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` (Rare)\n` +
+               `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
+               `   • Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` (Rare)\n` +
+               `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
+               `   • Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` (Epic)\n\n` +
+               `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
+               `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
+               `  • Harga: \`Rp 100\` (Bahan wajib untuk merangkai buket bunga)\n\n` +
+               `──────────────────────────────\n` +
+               `👉 **Cara Membeli:** Ketik \`.toko-kebun beli <nama_benih> <jumlah>\`\n` +
+               `*Contoh:* \`.toko-kebun beli mawar 3\` atau \`.toko-kebun beli wrapping 1\``;
+
+    return new EmbedBuilder()
+      .setColor('#C4D7B2') // Sage Green
+      .setTitle(`🛒 TOKO BENIH KEBUN KOSAN 1A`)
+      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setDescription(desc)
+      .setFooter({ text: 'Sentinel Garden Shop System • Ketik .kebun untuk kembali ke kebun' })
+      .setTimestamp();
+  },
+
+  // 43. Cozy Flower Garden Bouquet Craft Embed
+  bouquetCraftEmbed(user, guildId) {
+    const getQty = (itemId) => {
+      try {
+        const row = db.get(
+          'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+          [user.id, guildId, itemId]
+        );
+        return row ? row.quantity : 0;
+      } catch (e) {
+        return 0;
+      }
+    };
+
+    const qtyRose = getQty('FLOWER_ROSE');
+    const qtyTulip = getQty('FLOWER_TULIP');
+    const qtyLavender = getQty('FLOWER_LAVENDER');
+    const qtySakura = getQty('FLOWER_SAKURA');
+    const qtyOrchid = getQty('FLOWER_ORCHID');
+    const qtyWrapping = getQty('GIFT_WRAPPING');
+
+    let desc = `Halo **${user.username}**, di sini Anda dapat merangkai bunga segar hasil panen menjadi buket bunga indah berpita yang memiliki efek pasif **Daily Claim Buff** melimpah saat dihadiahkan ke warga lain!\n\n` +
+               `🎒 **INVENTORY BAHAN ANDA:**\n` +
+               `• 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
+               `• 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
+               `• 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
+               `• 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
+               `• 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
+               `• 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
+               `📜 **RESEP BUKET BUNGA YANG TERSEDIA:**\n\n` +
+               `1. **💐 Buket Kasih Sayang** (\`love\`)\n` +
+               `   • **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
+               `   • **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+               `2. **💐 Buket Ketenangan** (\`peace\`)\n` +
+               `   • **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
+               `   • **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+               `3. **👑 Buket Legendaris (Imperial)** (\`imperial\`)\n` +
+               `   • **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
+               `   • **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+               `──────────────────────────────\n` +
+               `👉 **Cara Merangkai:** Ketik \`.buket <jenis>\`\n` +
+               `*Contoh:* \`.buket love\``;
+
+    return new EmbedBuilder()
+      .setColor('#D8B4F8') // Lilac Pastel
+      .setTitle(`💐 MEJA MERANGKAI BUKET BUNGA 💐`)
+      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setDescription(desc)
+      .setFooter({ text: 'Sentinel Bouquet Crafting System • Gunakan .gift-buket untuk mengirim' })
+      .setTimestamp();
+  },
+
+  // 44. Cozy Flower Garden Gift Bouquet Embed
+  giftBouquetEmbed(sender, receiver, bouquetName, messageText) {
+    return new EmbedBuilder()
+      .setColor('#F6C6EA') // Sweet Pastel Pink
+      .setTitle(`💝 KADO BUKET BUNGA PENUH KASIH SAYANG 💝`)
+      .setThumbnail(receiver.avatarURL({ dynamic: true }) || null)
+      .setDescription(
+        `### 💐 Ada Kiriman Hadiah Manis Untukmu! 💐\n\n` +
+        `**<@${sender.id}>** baru saja mengirimkan buket bunga yang sangat indah untuk **<@${receiver.id}>**!\n\n` +
+        `📦 **Buket Hadiah:** **${bouquetName}**\n` +
+        `💌 **Pesan Manis:**\n*“ ${messageText} ”*\n\n` +
+        `✨ **Efek Pasif Aktif:**\n` +
+        `**<@${receiver.id}>** mendapatkan tambahan pasif harian koin kado saat mengklaim daily selama **24 jam** ke depan! 🎉`
+      )
+      .setFooter({ text: 'Sebarkan kedamaian dan kasih sayang di Kosan 1A! 🌸' })
       .setTimestamp();
   }
 };

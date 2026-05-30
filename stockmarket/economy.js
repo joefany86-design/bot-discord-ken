@@ -157,7 +157,15 @@ function claimDaily(userId, guildId) {
     roomName = activeRental.name;
   }
 
-  const totalReward = baseReward + streakBonus + roomBonus;
+  // Bonus Garden Buff dari pemberian buket bunga
+  const garden = require('./garden');
+  const activeBuff = garden.getActiveBuff(userId, guildId);
+  let gardenBuffBonus = 0;
+  if (activeBuff) {
+    gardenBuffBonus = activeBuff.amount;
+  }
+
+  const totalReward = baseReward + streakBonus + roomBonus + gardenBuffBonus;
   
   let finalPlayerReward = totalReward;
   let debtPaidDetails = null;
@@ -244,6 +252,7 @@ function claimDaily(userId, guildId) {
     streak: newStreak,
     roomBonus,
     roomName,
+    gardenBuffBonus,
     debtPaidDetails
   };
 }

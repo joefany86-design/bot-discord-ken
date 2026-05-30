@@ -260,5 +260,47 @@ module.exports = {
       PENTHOUSE: 1.5 // 1.5% harian (sebelumnya 3.0%)
     },
     INTEREST_CAP: 20000 // Batas maksimal saldo tabungan yang mendapatkan bunga harian
+  },
+
+  // Konfigurasi Cozy Flower Garden
+  garden: {
+    SYSTEM_ACTIVE: false, // Set to true to release to public. If false, only Owner/Admins can test it!
+    WATER_COOLDOWN_MS: 60 * 60 * 1000, // Cooldown siram: 1 jam
+    WATER_TIME_REDUCTION_SECONDS: 30 * 60, // Siraman memotong 30 menit
+    GIFT_WRAPPING_PRICE: 100, // Kertas kado seharga Rp 100
+    
+    // Spesifikasi Bunga
+    FLOWERS: {
+      ROSE: { id: 'ROSE', name: '🌹 Mawar Merah', seedId: 'SEED_ROSE', flowerId: 'FLOWER_ROSE', seedPrice: 150, sellPrice: 250, growSeconds: 2 * 3600, rarity: 'COMMON' },
+      TULIP: { id: 'TULIP', name: '🌷 Bunga Tulip', seedId: 'SEED_TULIP', flowerId: 'FLOWER_TULIP', seedPrice: 300, sellPrice: 550, growSeconds: 4 * 3600, rarity: 'COMMON' },
+      LAVENDER: { id: 'LAVENDER', name: '🪻 Bunga Lavender', seedId: 'SEED_LAVENDER', flowerId: 'FLOWER_LAVENDER', seedPrice: 500, sellPrice: 950, growSeconds: 6 * 3600, rarity: 'RARE' },
+      SAKURA: { id: 'SAKURA', name: '🌸 Bunga Sakura', seedId: 'SEED_SAKURA', flowerId: 'FLOWER_SAKURA', seedPrice: 1000, sellPrice: 2200, growSeconds: 12 * 3600, rarity: 'RARE' },
+      ORCHID: { id: 'ORCHID', name: '🪻 Anggrek Langka', seedId: 'SEED_ORCHID', flowerId: 'FLOWER_ORCHID', seedPrice: 2500, sellPrice: 6000, growSeconds: 24 * 3600, rarity: 'EPIC' }
+    },
+    
+    // Resep Buket Bunga
+    BOUQUETS: {
+      LOVE: { 
+        id: 'LOVE', 
+        name: '💐 Buket Kasih Sayang (Love Bouquet)', 
+        desc: 'Dibuat dari 3x Mawar Merah + 1x Kertas Kado.', 
+        req: { FLOWER_ROSE: 3, GIFT_WRAPPING: 1 }, 
+        buff: { type: 'daily_bonus', amount: 15, durationSeconds: 24 * 3600 } 
+      },
+      PEACE: { 
+        id: 'PEACE', 
+        name: '💐 Buket Ketenangan (Peace Bouquet)', 
+        desc: 'Dibuat dari 2x Lavender + 2x Tulip + 1x Kertas Kado.', 
+        req: { FLOWER_LAVENDER: 2, FLOWER_TULIP: 2, GIFT_WRAPPING: 1 }, 
+        buff: { type: 'daily_bonus', amount: 35, durationSeconds: 24 * 3600 } 
+      },
+      IMPERIAL: { 
+        id: 'IMPERIAL', 
+        name: '👑 Buket Legendaris (Imperial Bouquet)', 
+        desc: 'Dibuat dari 1x Anggrek Langka + 2x Sakura + 1x Kertas Kado.', 
+        req: { FLOWER_ORCHID: 1, FLOWER_SAKURA: 2, GIFT_WRAPPING: 1 }, 
+        buff: { type: 'daily_bonus', amount: 80, durationSeconds: 24 * 3600 } 
+      }
+    }
   }
 };
