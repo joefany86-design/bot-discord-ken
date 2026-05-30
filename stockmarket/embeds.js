@@ -274,29 +274,32 @@ module.exports = {
       let totalCurrent = 0;
 
       desc += `📈 **Portofolio Saham** (${portfolioItems.length} aset)\n`;
-      desc += `\`\`\`\n`;
 
       portfolioItems.forEach(item => {
-        const sign = item.profitRp >= 0 ? '+' : '';
-        const arrow = item.profitRp > 0 ? '▲' : item.profitRp < 0 ? '▼' : '─';
         totalInvested += item.totalInvested;
         totalCurrent += item.currentValue;
 
-        const ticker = item.ticker.padEnd(7);
-        const shares = `${item.shares} lbr`.padEnd(8);
-        const price = `Rp ${item.currentPrice.toLocaleString('id-ID')}`.padStart(10);
-        const pl = `${sign}${item.profitPercent}%`.padStart(8);
+        const emoji = item.profitRp > 0 ? '🟢' : item.profitRp < 0 ? '🔴' : '⚪';
+        const arrow = item.profitRp > 0 ? '▲' : item.profitRp < 0 ? '▼' : '─';
+        const sign = item.profitRp > 0 ? '+' : '';
+        const plPercent = `${sign}${item.profitPercent}%`;
+        const profitVal = `${sign}Rp ${Math.abs(item.profitRp).toLocaleString('id-ID')}`;
+        const plDetail = item.profitRp !== 0 ? `${plPercent} (${profitVal})` : '0%';
 
-        desc += `${arrow} ${ticker} ${shares} ${price} ${pl}\n`;
+        desc += `┊ ${emoji} **${item.ticker}** · \`${item.shares} lbr\`\n`;
+        desc += `┊    Harga: \`Rp ${item.currentPrice.toLocaleString('id-ID')}\` · PnL: \`${arrow} ${plDetail}\`\n`;
       });
 
       const totalPL = totalCurrent - totalInvested;
       const totalPLPct = totalInvested > 0 ? ((totalPL / totalInvested) * 100).toFixed(1) : '0.0';
-      const plSign = totalPL >= 0 ? '+' : '';
+      const totalPLArrow = totalPL > 0 ? '▲' : totalPL < 0 ? '▼' : '─';
+      const totalPLEmoji = totalPL > 0 ? '🟢' : totalPL < 0 ? '🔴' : '⚪';
 
-      desc += `─────────────────────────────\n`;
-      desc += `  TOTAL  Rp ${totalCurrent.toLocaleString('id-ID').padStart(10)} ${plSign}${totalPLPct}%\n`;
-      desc += `\`\`\`\n\n`;
+      desc += `┊ ──\n`;
+      desc += `┊ ${totalPLEmoji} **Total Valuasi**: \`Rp ${totalCurrent.toLocaleString('id-ID')}\`\n`;
+      const totalPLSign = totalPL > 0 ? '+' : '';
+      const totalPLDetail = totalPL !== 0 ? `${totalPLSign}${totalPLPct}% (${totalPLSign}Rp ${Math.abs(totalPL).toLocaleString('id-ID')})` : '0%';
+      desc += `┊    Estimasi PnL: \`${totalPLArrow} ${totalPLDetail}\`\n\n`;
     } else {
       desc += `📈 **Portofolio Saham** (0 aset)\n`;
       desc += `┊ *Belum punya saham.*\n`;

@@ -491,7 +491,7 @@ function initStockMarket(client) {
             const activeLoan = bank.getActiveLoan(user.id, guildId);
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-            const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables });
+            const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
             await i.reply({ embeds: [profileEmbed], ephemeral: true });
           } else if (i.customId === 'eco_btn_gacha') {
             await executeGachaRoll({
@@ -548,7 +548,7 @@ function initStockMarket(client) {
             const activeLoan = bank.getActiveLoan(user.id, guildId);
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-            await i.reply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables })], ephemeral: true });
+            await i.reply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items)], ephemeral: true });
           } else if (i.customId === 'eco_btn_shop') {
             const wallet2 = economy.getWallet(user.id, guildId);
             const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -4028,7 +4028,7 @@ async function handleEconomyCommands(message, client) {
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
             const bailDebts = { debts, receivables };
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, null, null, bailDebts);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, null, null, bailDebts, porto.items);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_shop') {
             const wallet = economy.getWallet(author.id, guildId);
@@ -4269,7 +4269,7 @@ async function handleEconomyCommands(message, client) {
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
             const bailDebts = { debts, receivables };
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts);
+            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts, porto.items);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             await executeGachaRoll({
