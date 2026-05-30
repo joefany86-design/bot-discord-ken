@@ -97,8 +97,16 @@ function robSolo(userId, targetId, guildId) {
     }
   }
 
+  // Cek apakah korban sudah mengklaim daily hari ini (WIB)
+  const timezoneNow = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(timezoneNow);
+  const victimClaimedDaily = victimWallet.last_active_date === todayStr;
+
   // Kalkulasi Peluang Keberhasilan
   let successRate = config.robbery.SUCCESS_RATE; // Default 40%
+  if (!victimClaimedDaily) {
+    successRate += 25; // Lebih mudah dirampok jika belum ambil daily (+25% peluang sukses)
+  }
 
   // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%
   let lockpickUsed = false;
@@ -178,7 +186,8 @@ function robSolo(userId, targetId, guildId) {
       meatUsed,
       lockpickUsed,
       lockpickBroken,
-      maskUsed
+      maskUsed,
+      victimClaimedDaily
     };
   } else {
     // Gagal merampok: Pelaku didenda Rp 200 (masuk ke korban)
@@ -221,7 +230,8 @@ function robSolo(userId, targetId, guildId) {
       meatUsed,
       lockpickUsed,
       lockpickBroken,
-      soapUsed
+      soapUsed,
+      victimClaimedDaily
     };
   }
 }

@@ -3191,6 +3191,9 @@ async function handleEconomyCommands(message, client) {
         if (res.lockpickUsed) {
           toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
         }
+        if (!res.victimClaimedDaily) {
+          toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (+25% peluang sukses)!*\n';
+        }
 
         if (res.success) {
           if (res.maskUsed) {
