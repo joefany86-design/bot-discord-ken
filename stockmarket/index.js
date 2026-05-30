@@ -2674,12 +2674,49 @@ async function handleGardenCommand(message, client, args, commandName) {
       new ButtonBuilder().setCustomId('garden_btn_craft').setLabel('💐 Rangkai Buket').setStyle(ButtonStyle.Secondary)
     );
 
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('garden_select_plant')
+      .setPlaceholder('🌱 Pilih benih & slot untuk menanam...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_1'),
+        new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_2'),
+        new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_3'),
+        new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_1'),
+        new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_2'),
+        new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_3'),
+        new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_1'),
+        new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_2'),
+        new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_3'),
+        new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_1'),
+        new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_2'),
+        new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_3'),
+        new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_1'),
+        new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_2'),
+        new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_3')
+      );
+
+    const row2 = new ActionRowBuilder().addComponents(selectMenu);
+
     const replyMsg = await message.reply({
       embeds: [embeds.gardenEmbed(author, slots, wallet.last_water_at)],
-      components: [row]
+      components: [row, row2]
     });
 
     const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
+
+    const shopRow1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('garden_buy_rose').setLabel('🌹 Beli Mawar (Rp 150)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('garden_buy_tulip').setLabel('🌷 Beli Tulip (Rp 300)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('garden_buy_lavender').setLabel('🪻 Beli Lavender (Rp 500)').setStyle(ButtonStyle.Success)
+    );
+    const shopRow2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('garden_buy_sakura').setLabel('🌸 Beli Sakura (Rp 1k)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('garden_buy_orchid').setLabel('👑 Beli Anggrek (Rp 2.5k)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('garden_buy_wrapping').setLabel('🎗️ Kertas Kado (Rp 100)').setStyle(ButtonStyle.Primary)
+    );
+    const shopRow3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Secondary)
+    );
 
     collector.on('collect', async i => {
       if (i.user.id !== author.id) {
@@ -2687,7 +2724,37 @@ async function handleGardenCommand(message, client, args, commandName) {
       }
 
       try {
-        if (i.customId === 'garden_btn_water_all') {
+        if (i.isStringSelectMenu() && i.customId === 'garden_select_plant') {
+          const val = i.values[0];
+          const parts = val.split('_');
+          const flowerKey = parts[1];
+          const slotIdx = parseInt(parts[2]);
+
+          try {
+            const res = garden.plantSeed(author.id, guildId, slotIdx, flowerKey);
+            
+            await i.reply({
+              embeds: [embeds.successEmbed(
+                '🌱 Penanaman Berhasil!',
+                `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
+                `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
+              )],
+              flags: 64
+            });
+
+            const updatedSlots = garden.getGardenSlots(author.id, guildId);
+            const updatedWallet = economy.getWallet(author.id, guildId);
+            
+            await replyMsg.edit({
+              embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
+              components: [row, row2]
+            }).catch(() => {});
+          } catch (err) {
+            await i.reply({ content: `❌ Gagal menanam: ${err.message}`, flags: 64 });
+          }
+        } 
+        
+        else if (i.customId === 'garden_btn_water_all') {
           try {
             const res = garden.waterPlant(author.id, guildId, 'all');
             const updatedSlots = garden.getGardenSlots(author.id, guildId);
@@ -2703,7 +2770,7 @@ async function handleGardenCommand(message, client, args, commandName) {
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
-              components: [row]
+              components: [row, row2]
             }).catch(() => {});
           } catch (err) {
             await i.reply({ content: `❌ Gagal menyiram: ${err.message}`, flags: 64 });
@@ -2739,7 +2806,7 @@ async function handleGardenCommand(message, client, args, commandName) {
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
-              components: [row]
+              components: [row, row2]
             }).catch(() => {});
           } catch (err) {
             await i.reply({ content: `❌ Gagal memanen: ${err.message}`, flags: 64 });
@@ -2748,17 +2815,37 @@ async function handleGardenCommand(message, client, args, commandName) {
         
         else if (i.customId === 'garden_btn_shop') {
           const walletShop = economy.getWallet(author.id, guildId);
-          const shopRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Success)
-          );
-
           await i.deferUpdate();
           await replyMsg.edit({
             embeds: [embeds.gardenShopEmbed(author, walletShop)],
-            components: [shopRow]
+            components: [shopRow1, shopRow2, shopRow3]
           }).catch(() => {});
         } 
         
+        else if (i.customId.startsWith('garden_buy_')) {
+          const itemKey = i.customId.replace('garden_buy_', '');
+          try {
+            const res = garden.buySeed(author.id, guildId, itemKey, 1);
+            
+            await i.reply({
+              embeds: [embeds.successEmbed(
+                '🛒 Pembelian Berhasil!',
+                `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
+                `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+              )],
+              flags: 64
+            });
+
+            const walletShop = economy.getWallet(author.id, guildId);
+            await replyMsg.edit({
+              embeds: [embeds.gardenShopEmbed(author, walletShop)],
+              components: [shopRow1, shopRow2, shopRow3]
+            }).catch(() => {});
+          } catch (err) {
+            await i.reply({ content: `❌ Gagal membeli: ${err.message}`, flags: 64 });
+          }
+        }
+
         else if (i.customId === 'garden_btn_craft') {
           const craftRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('garden_craft_love').setLabel('💖 Resep Love').setStyle(ButtonStyle.Primary),
@@ -2781,7 +2868,7 @@ async function handleGardenCommand(message, client, args, commandName) {
           await i.deferUpdate();
           await replyMsg.edit({
             embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
-            components: [row]
+            components: [row, row2]
           }).catch(() => {});
         } 
         
