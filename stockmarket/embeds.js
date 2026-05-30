@@ -307,7 +307,21 @@ module.exports = {
 
   // 1. Embed Saldo / Profile (Portrait UI — Full Description)
   profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null, portfolioItems = []) {
-    const totalWealth = wallet.balance + portfolioValue;
+    // Ambil saldo bank savings secara langsung dari database
+    let bankBalance = 0;
+    try {
+      const savingsRow = db.get(
+        'SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?',
+        [user.id, wallet.guild_id]
+      );
+      if (savingsRow) {
+        bankBalance = savingsRow.balance;
+      }
+    } catch (e) {
+      console.error("Gagal memuat saldo bank untuk profile:", e.message);
+    }
+
+    const totalWealth = wallet.balance + portfolioValue + bankBalance;
 
     // Dynamic accent color
     let accentColor = COLORS.INFO;
@@ -354,6 +368,9 @@ module.exports = {
     // ── RINGKASAN KEUANGAN ──
     desc += `> 💵 **Saldo Dompet**\n`;
     desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
+    desc += `> \n`;
+    desc += `> 🏦 **Saldo Bank**\n`;
+    desc += `> \`Rp ${bankBalance.toLocaleString('id-ID').padStart(12)}\`\n`;
     desc += `> \n`;
     desc += `> 📊 **Nilai Investasi**\n`;
     desc += `> \`Rp ${portfolioValue.toLocaleString('id-ID').padStart(12)}\`\n`;
