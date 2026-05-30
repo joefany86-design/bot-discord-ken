@@ -229,14 +229,25 @@ module.exports = {
       else if (totalProfit < 0) accentColor = 0xED4245;
     }
 
-    // Wealth tier badge
-    const getBadge = (t) => {
-      if (t >= 50000) return '💎 DIAMOND';
-      if (t >= 20000) return '👑 GOLD';
-      if (t >= 10000) return '🥈 SILVER';
-      if (t >= 5000) return '🥉 BRONZE';
-      return '🪵 STARTER';
+    // Helper to center pure ASCII text in a 29-character box
+    const centerText = (text, width = 29) => {
+      const padTotal = width - text.length;
+      if (padTotal <= 0) return text;
+      const padLeft = Math.floor(padTotal / 2);
+      const padRight = padTotal - padLeft;
+      return ' '.repeat(padLeft) + text + ' '.repeat(padRight);
     };
+
+    // Wealth tier badge details
+    const getTierInfo = (t) => {
+      if (t >= 50000) return { name: 'DIAMOND', emoji: '💎' };
+      if (t >= 20000) return { name: 'GOLD', emoji: '👑' };
+      if (t >= 10000) return { name: 'SILVER', emoji: '🥈' };
+      if (t >= 5000) return { name: 'BRONZE', emoji: '🥉' };
+      return { name: 'STARTER', emoji: '🪵' };
+    };
+
+    const tier = getTierInfo(totalWealth);
 
     const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
 
@@ -244,10 +255,11 @@ module.exports = {
     let desc = '';
 
     // ── HEADER ──
+    desc += `💼 **FINANCIAL DASHBOARD** · ${tier.emoji} **${tier.name} MEMBER**\n`;
     desc += `\`\`\`\n`;
     desc += `┌─────────────────────────────┐\n`;
-    desc += `│   💼  FINANCIAL DASHBOARD   │\n`;
-    desc += `│      ${getBadge(totalWealth).padStart(14).padEnd(22)}     │\n`;
+    desc += `│${centerText('FINANCIAL DASHBOARD')}│\n`;
+    desc += `│${centerText(`${tier.name} TIER`)}│\n`;
     desc += `└─────────────────────────────┘\n`;
     desc += `\`\`\`\n`;
 
