@@ -1077,6 +1077,57 @@ function executeExpedition(guildId, participantIds) {
       logs
     };
   } else {
+    // Tentukan penyebab kegagalan dan kambing hitam (pet yang membuat kalah)
+    const failScenarios = [];
+
+    // 1. Skenario: Level paling rendah
+    const minLevel = Math.min(...activePets.map(ap => ap.pet.level));
+    const lowestLevelPets = activePets.filter(ap => ap.pet.level === minLevel);
+    const culpritLevel = lowestLevelPets[Math.floor(Math.random() * lowestLevelPets.length)];
+    failScenarios.push({
+      culprit: culpritLevel,
+      reason: `Pet **${culpritLevel.pet.pet_name}** milik <@${culpritLevel.userId}> yang berlevel paling rendah (Lv. ${culpritLevel.pet.level}) gemetar ketakutan melihat Bos Zona dan bersembunyi di balik semak-semak, membuat barisan tempur hancur!`
+    });
+
+    // 2. Skenario: HP paling rendah (< 60)
+    const lowHpPets = activePets.filter(ap => ap.pet.health < 60);
+    if (lowHpPets.length > 0) {
+      const culpritHp = lowHpPets[Math.floor(Math.random() * lowHpPets.length)];
+      failScenarios.push({
+        culprit: culpritHp,
+        reason: `Pet **${culpritHp.pet.pet_name}** milik <@${culpritHp.userId}> kehabisan nafas dan kelelahan di tengah jalan (HP hanya ${culpritHp.pet.health}%), memperlambat pergerakan seluruh tim!`
+      });
+    }
+
+    // 3. Skenario: Kebahagiaan paling rendah (< 60)
+    const lowHappyPets = activePets.filter(ap => ap.pet.happiness < 60);
+    if (lowHappyPets.length > 0) {
+      const culpritHappy = lowHappyPets[Math.floor(Math.random() * lowHappyPets.length)];
+      failScenarios.push({
+        culprit: culpritHappy,
+        reason: `Pet **${culpritHappy.pet.pet_name}** milik <@${culpritHappy.userId}> sedang bad mood / malas-malasan (Kebahagiaan ${culpritHappy.pet.happiness}%) sehingga tidak fokus menyerang bos!`
+      });
+    }
+
+    // 4. Skenario: Kejadian konyol acak
+    const randomCulprit = activePets[Math.floor(Math.random() * activePets.length)];
+    const funnyAccidents = [
+      `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> tidak sengaja terpeleset kulit pisang saat ingin menerjang bos, membuat formasi tim kacau balau!`,
+      `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> mendadak kebelet pipis di tengah pertarungan sengit, memaksa seluruh tim mundur untuk mencari toilet!`,
+      `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> terdistraksi oleh kupu-kupu warna-warni yang terbang lewat dan malah mengejarnya sambil mengabaikan bos!`,
+      `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> malah asyik memakan ransum perbekalan tim sendirian di belakang hingga kekenyangan dan tertidur pulas!`,
+      `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> salah membaca peta jalan sehingga menuntun tim masuk ke dalam jebakan rawa berlumpur!`
+    ];
+    funnyAccidents.forEach(accident => {
+      failScenarios.push({
+        culprit: randomCulprit,
+        reason: accident
+      });
+    });
+
+    // Pilih salah satu skenario secara acak
+    const selectedScenario = failScenarios[Math.floor(Math.random() * failScenarios.length)];
+
     // Gagal: Pet terluka (-30 HP, -25 Happiness), tapi mendapat +15 XP
     db.transaction(() => {
       activePets.forEach(ap => {
@@ -1113,6 +1164,7 @@ function executeExpedition(guildId, participantIds) {
 
     logs.push(
       `😢 Tim pet dipaksa mundur dari **${zoneName}** oleh bos penjaga yang terlampau kuat!`,
+      `💥 **Penyebab Kegagalan:**\n${selectedScenario.reason}`,
       `🩸 Seluruh pet menderita luka-luka ringan dan stress, tapi membawa pulang sedikit pengalaman tempur.`
     );
 
