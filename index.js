@@ -494,6 +494,14 @@ client.on('interactionCreate', async interaction => {
     return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
   }
 
+  // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
+  if (interaction.channelId === '1510121069783023646') {
+    return interaction.reply({
+      content: '⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#1508417228624887928>!',
+      ephemeral: true
+    });
+  }
+
 
 
   // ── JOIN ──
@@ -583,6 +591,20 @@ client.on('messageCreate', async message => {
   await handleEconomyChat(message);
 
   if (!message.content.startsWith('.')) return;
+
+  // Proteksi Saluran Portal (#🛍️┃shop): Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
+  if (message.channelId === '1510121069783023646') {
+    await message.delete().catch(() => {});
+    const warnMsg = await message.channel.send({
+      content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#1508417228624887928>! Saluran ini khusus untuk **Dashboard Portal**.`
+    }).catch(() => null);
+    if (warnMsg) {
+      setTimeout(() => {
+        warnMsg.delete().catch(() => {});
+      }, 5000);
+    }
+    return;
+  }
 
   // Cek perintah Voice Truth or Dare (Sprint 5)
   const voiceTodHandled = await handleVoiceTodCommand(message, client);
