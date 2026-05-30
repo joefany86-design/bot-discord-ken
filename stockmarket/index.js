@@ -568,6 +568,285 @@ function initStockMarket(client) {
         });
       }
 
+      // ── PORTAL PERMANEN: BANK SENTRAL ──
+      else if (customId === 'eco_btn_open_bank_private_perm') {
+        const getBankDashboardDataPrivate = (targetUserId) => {
+          const wallet = economy.getWallet(targetUserId, guildId);
+          const savings = bank.getSavings(targetUserId, guildId);
+          const activeLoan = bank.getActiveLoan(targetUserId, guildId);
+          const maxLimit = bank.calculateMaxLoanLimit(targetUserId, guildId);
+          
+          const embed = embeds.bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit);
+          
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('bank_btn_deposit').setLabel('📥 Deposit').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('bank_btn_withdraw').setLabel('📤 Tarik').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('bank_btn_loan').setLabel('📜 Pinjam').setStyle(ButtonStyle.Success).setDisabled(!!activeLoan),
+            new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan)
+          );
+          
+          return { embeds: [embed], components: [row] };
+        };
+
+        const initialData = getBankDashboardDataPrivate(user.id);
+        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+        collector.on('collect', async iBank => {
+          if (iBank.user.id !== user.id) return iBank.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
+          
+          try {
+            if (iBank.customId === 'bank_btn_deposit') {
+              const modal = new ModalBuilder()
+                .setCustomId('bank_modal_deposit_perm')
+                .setTitle('🏛️ Deposit Tabungan Bank');
+                
+              const amountInput = new TextInputBuilder()
+                .setCustomId('deposit_amount')
+                .setLabel('Jumlah koin (angka atau "all")')
+                .setPlaceholder('Contoh: 5000')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+                
+              modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+              await iBank.showModal(modal);
+              
+              const submitted = await iBank.awaitModalSubmit({
+                filter: (sub) => sub.customId === 'bank_modal_deposit_perm' && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+              
+              if (submitted) {
+                try {
+                  const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
+                  const successEmb = embeds.bankSuccessEmbed(
+                    'Deposit Tabungan Berhasil!',
+                    `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah disimpan.\n\n` +
+                    `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                    `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  );
+                  await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], ephemeral: true });
+                }
+              }
+            }
+            
+            else if (iBank.customId === 'bank_btn_withdraw') {
+              const modal = new ModalBuilder()
+                .setCustomId('bank_modal_withdraw_perm')
+                .setTitle('🏛️ Penarikan Saldo Bank');
+                
+              const amountInput = new TextInputBuilder()
+                .setCustomId('withdraw_amount')
+                .setLabel('Jumlah koin (angka atau "all")')
+                .setPlaceholder('Contoh: 10000')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+                
+              modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+              await iBank.showModal(modal);
+              
+              const submitted = await iBank.awaitModalSubmit({
+                filter: (sub) => sub.customId === 'bank_modal_withdraw_perm' && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+              
+              if (submitted) {
+                try {
+                  const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
+                  const successEmb = embeds.bankSuccessEmbed(
+                    'Penarikan Saldo Berhasil!',
+                    `Koin Anda sebesar **Rp ${res.amount.toLocaleString('id-ID')}** telah ditarik.\n\n` +
+                    `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                    `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  );
+                  await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], ephemeral: true });
+                }
+              }
+            }
+            
+            else if (iBank.customId === 'bank_btn_loan') {
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('bank_select_tenor_perm')
+                .setPlaceholder('👉 Pilih jangka tempo (Tenor)...')
+                .addOptions(
+                  new StringSelectMenuOptionBuilder().setLabel('1 Hari (Bunga 2%)').setValue('1'),
+                  new StringSelectMenuOptionBuilder().setLabel('3 Hari (Bunga 5%)').setValue('3'),
+                  new StringSelectMenuOptionBuilder().setLabel('7 Hari (Bunga 10%)').setValue('7')
+                );
+                
+              const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
+              const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+              const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+              
+              const askTenorMsg = await iBank.reply({
+                content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
+                components: [tenorRow, cancelRow],
+                ephemeral: true,
+                fetchReply: true
+              });
+              
+              const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
+              
+              tenorCollector.on('collect', async iTenor => {
+                if (iTenor.user.id !== user.id) return;
+                
+                if (iTenor.customId === 'bank_loan_cancel_perm') {
+                  tenorCollector.stop();
+                  await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
+                } else if (iTenor.customId === 'bank_select_tenor_perm') {
+                  tenorCollector.stop();
+                  const selectedTenor = parseInt(iTenor.values[0]);
+                  const maxLimit = bank.calculateMaxLoanLimit(user.id, guildId);
+                  
+                  const modal = new ModalBuilder()
+                    .setCustomId(`bank_modal_loan_${selectedTenor}_perm`)
+                    .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
+                    
+                  const loanInput = new TextInputBuilder()
+                    .setCustomId('loan_amount')
+                    .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
+                    .setPlaceholder('Contoh: 10000')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+                    
+                  modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
+                  await iTenor.showModal(modal);
+                  
+                  await askTenorMsg.delete().catch(() => {});
+                  
+                  const submitted = await iTenor.awaitModalSubmit({
+                    filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}_perm` && sub.user.id === user.id,
+                    time: 60000
+                  }).catch(() => null);
+                  
+                  if (submitted) {
+                    try {
+                      const amountStr = submitted.fields.getTextInputValue('loan_amount');
+                      const res = bank.createLoan(user.id, guildId, amountStr, selectedTenor);
+                      const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
+                      
+                      const successEmb = embeds.bankSuccessEmbed(
+                        'Pinjaman Disetujui!',
+                        `Pinjaman Anda berhasil dicairkan!\n\n` +
+                        `💵 **Pokok:** **Rp ${res.principal.toLocaleString('id-ID')}**\n` +
+                        `📈 **Bunga:** \`${(res.interestRate * 100).toFixed(0)}%\` (Tenor \`${res.tenorDays} Hari\`)\n` +
+                        `💳 **Total Tagihan:** **Rp ${res.totalDue.toLocaleString('id-ID')}**\n` +
+                        `📅 **Jatuh Tempo:** ${dueText}`
+                      );
+                      
+                      await submitted.reply({ embeds: [successEmb], ephemeral: true });
+                      await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                    } catch (err) {
+                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], ephemeral: true });
+                    }
+                  }
+                }
+              });
+            }
+            
+            else if (iBank.customId === 'bank_btn_repay') {
+              try {
+                const res = bank.repayLoan(user.id, guildId);
+                let desc = '';
+                if (res.isFullyPaid) {
+                  desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                         `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                         `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                } else {
+                  desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                         `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                         `⚠️ **Sisa Hutang:** **Rp ${res.remainingPrincipal.toLocaleString('id-ID')}**\n` +
+                         `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                }
+                await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], ephemeral: true });
+                await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+              } catch (err) {
+                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], ephemeral: true });
+              }
+            }
+          } catch (err) {
+            console.error('Error in bank private collector:', err);
+          }
+        });
+
+        collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => {});
+        });
+      }
+
+      // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
+      else if (customId === 'eco_btn_open_bm_private_perm') {
+        const bmEmbed = new EmbedBuilder()
+          .setColor(0x1A1A1A)
+          .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
+          .setDescription(
+            `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
+            `**Daftar Peralatan Tersedia:**\n\n` +
+            `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
+            `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
+            `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
+            `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
+            `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
+            `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
+            `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
+            `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+            `*Klik tombol di bawah untuk membeli barang secara privat.*`
+          )
+          .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+          .setTimestamp();
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('bm_btn_buy_lockpick_perm').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('bm_btn_buy_mask_perm').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('bm_btn_buy_meat_perm').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
+        );
+
+        const privateMsg = await interaction.reply({ embeds: [bmEmbed], components: [row], ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+        collector.on('collect', async i => {
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan tombol!', ephemeral: true });
+
+          let itemId = '';
+          if (i.customId === 'bm_btn_buy_lockpick_perm') itemId = 'lockpick';
+          if (i.customId === 'bm_btn_buy_mask_perm') itemId = 'mask';
+          if (i.customId === 'bm_btn_buy_meat_perm') itemId = 'meat';
+          if (i.customId === 'bm_btn_buy_soap_perm') itemId = 'soap';
+
+          try {
+            const res = bm.buyItem(user.id, guildId, itemId, 1);
+            const successEmb = embeds.successEmbed(
+              'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+              `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+              `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+              `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+            );
+            await i.update({ embeds: [successEmb], components: [] });
+            collector.stop();
+          } catch (err) {
+            await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, ephemeral: true });
+          }
+        });
+
+        collector.on('end', async () => {
+          if (collector.destroyed) return;
+          const disabledRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('bm_btn_buy_lockpick_perm').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary).setDisabled(true),
+            new ButtonBuilder().setCustomId('bm_btn_buy_mask_perm').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary).setDisabled(true),
+            new ButtonBuilder().setCustomId('bm_btn_buy_meat_perm').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
+            new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
+          );
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+        });
+      }
+
       // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
       else if (customId === 'pet_btn_open_pet_private_perm') {
         const getDashboardPanelPrivate = (targetUserId) => {
@@ -5234,6 +5513,7 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
     // Perintah Admin: .setup-portal
     // ═══════════════════════════════════════════════════
     if (commandName === 'setup-portal') {
@@ -5250,11 +5530,12 @@ async function handleEconomyCommands(message, client) {
         .setColor(embeds.COLORS.PURPLE)
         .setTitle('🎭 KOSAN 1A ECONOMY & PET DASHBOARD 📈')
         .setDescription(
-          `Selamat datang di Pusat Kontrol Ekonomi & Peliharaan Server **KOSAN 1A**!\n\n` +
-          `Klik tombol di bawah ini untuk membuka panel secara pribadi (hanya Anda yang dapat melihatnya, tidak merusak tampilan chat channel ini):\n\n` +
-          `🛍️ **Buka Toko Role**: Beli kasta role prestise server atau putar gacha role.\n` +
-          `📈 **Buka Dashboard Saham**: Lihat bursa saham channel teraktif, cek portofolio investasi, dan bertransaksi.\n` +
-          `🐾 **Buka Dashboard Pet**: Kelola, rawat, dan latih peliharaan Tamagotchi Anda.`
+          `Klik tombol di bawah ini untuk membuka panel secara **Pribadi** (Hanya Anda yang dapat melihatnya):\n\n` +
+          `🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
+          `📈 **Bursa Saham** — Investasi saham channel server.\n` +
+          `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
+          `🐾 **Pusat Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
+          `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).`
         )
         .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
         .setTimestamp();
@@ -5262,15 +5543,23 @@ async function handleEconomyCommands(message, client) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('eco_btn_open_shop_private_perm')
-          .setLabel('🛍️ Toko Role')
+          .setLabel('🛍️ Toko')
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId('eco_btn_open_market_private_perm')
-          .setLabel('📈 Bursa Saham')
+          .setLabel('📈 Saham')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
+          .setCustomId('eco_btn_open_bank_private_perm')
+          .setLabel('🏦 Bank')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
           .setCustomId('pet_btn_open_pet_private_perm')
-          .setLabel('🐾 Pusat Pet')
+          .setLabel('🐾 Pet')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_bm_private_perm')
+          .setLabel('🕵️‍♂️ BM')
           .setStyle(ButtonStyle.Secondary)
       );
 
