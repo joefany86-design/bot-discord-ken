@@ -264,7 +264,7 @@ module.exports = {
 
   // Konfigurasi Cozy Flower Garden
   garden: {
-    SYSTEM_ACTIVE: false, // Set to true to release to public. If false, only Owner/Admins can test it!
+    SYSTEM_ACTIVE: true, // Set to true to release to public. If false, only Owner/Admins can test it!
     WATER_COOLDOWN_MS: 60 * 60 * 1000, // Cooldown siram: 1 jam
     WATER_TIME_REDUCTION_SECONDS: 30 * 60, // Siraman memotong 30 menit
     GIFT_WRAPPING_PRICE: 100, // Kertas kado seharga Rp 100

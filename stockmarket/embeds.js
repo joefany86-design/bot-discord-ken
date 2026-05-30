@@ -2673,11 +2673,12 @@ module.exports = {
   gardenEmbed(user, slots, lastWaterAt) {
     const makeProgressBar = (percent) => {
       const size = 8;
-      const progress = Math.min(size, Math.floor((percent / 100) * size));
-      const emptyProgress = size - progress;
+      const pct = Math.max(0, Math.min(100, parseInt(percent) || 0));
+      const progress = Math.max(0, Math.min(size, Math.floor((pct / 100) * size)));
+      const emptyProgress = Math.max(0, size - progress);
       const filledChar = '🟩';
       const emptyChar = '⬛';
-      return `\`[${filledChar.repeat(progress)}${emptyChar.repeat(emptyProgress)}]\` **${percent}%**`;
+      return `\`[${filledChar.repeat(progress)}${emptyChar.repeat(emptyProgress)}]\` **${pct}%**`;
     };
 
     const formatDuration = (seconds) => {
@@ -2743,7 +2744,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor('#F7C8E0') // Cozy Pastel Pink
       .setTitle(`🌸 KEBUN BUNGA COZY — ${user.username}`)
-      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
       .setFooter({ text: 'Sentinel Cozy Garden System • Rawat dengan kasih sayang!' })
       .setTimestamp();
@@ -2775,7 +2776,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor('#C4D7B2') // Sage Green
       .setTitle(`🛒 TOKO BENIH KEBUN KOSAN 1A`)
-      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
       .setFooter({ text: 'Sentinel Garden Shop System • Ketik .kebun untuk kembali ke kebun' })
       .setTimestamp();
@@ -2827,7 +2828,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor('#D8B4F8') // Lilac Pastel
       .setTitle(`💐 MEJA MERANGKAI BUKET BUNGA 💐`)
-      .setThumbnail(user.avatarURL({ dynamic: true }) || null)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
       .setFooter({ text: 'Sentinel Bouquet Crafting System • Gunakan .gift-buket untuk mengirim' })
       .setTimestamp();
@@ -2838,7 +2839,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor('#F6C6EA') // Sweet Pastel Pink
       .setTitle(`💝 KADO BUKET BUNGA PENUH KASIH SAYANG 💝`)
-      .setThumbnail(receiver.avatarURL({ dynamic: true }) || null)
+      .setThumbnail(receiver.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(
         `### 💐 Ada Kiriman Hadiah Manis Untukmu! 💐\n\n` +
         `**<@${sender.id}>** baru saja mengirimkan buket bunga yang sangat indah untuk **<@${receiver.id}>**!\n\n` +
