@@ -105,7 +105,7 @@ function robSolo(userId, targetId, guildId) {
   // Kalkulasi Peluang Keberhasilan
   let successRate = config.robbery.SUCCESS_RATE; // Default 40%
   if (!victimClaimedDaily) {
-    successRate += 25; // Lebih mudah dirampok jika belum ambil daily (+25% peluang sukses)
+    successRate = 80; // Peluang sukses menjadi 80% jika korban belum ambil daily
   }
 
   // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%

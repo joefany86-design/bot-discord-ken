@@ -3192,7 +3192,7 @@ async function handleEconomyCommands(message, client) {
           toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
         }
         if (!res.victimClaimedDaily) {
-          toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (+25% peluang sukses)!*\n';
+          toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (peluang sukses naik menjadi 80%)!*\n';
         }
 
         if (res.success) {
