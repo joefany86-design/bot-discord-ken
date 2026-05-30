@@ -3,6 +3,9 @@ const stocks = require('./stocks');
 const config = require('./config');
 const { EmbedBuilder } = require('discord.js');
 
+// Guard: mencegah setInterval bertumpuk jika initScheduler dipanggil ulang (bot reconnect)
+let voiceEarnInterval = null;
+
 /**
  * Inisialisasi seluruh cron scheduler untuk otomasi bursa saham.
  */
@@ -417,8 +420,14 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
-  // 5. Voice Active Earnings: Memberikan koin keaktifan setiap 1 menit bagi yang berada di Voice Channel
-  setInterval(() => {
+  // 5. Voice Active Earnings: Memberikan koin keaktifan setiap interval bagi yang berada di Voice Channel
+  // Guard: bersihkan interval sebelumnya jika ada (mencegah duplikasi saat reconnect)
+  if (voiceEarnInterval) {
+    clearInterval(voiceEarnInterval);
+    voiceEarnInterval = null;
+    console.log('⚠️ [Scheduler] Voice Earn interval sebelumnya dibersihkan (mencegah duplikasi).');
+  }
+  voiceEarnInterval = setInterval(() => {
     console.log('⏰ [Scheduler] Memproses koin keaktifan Voice Channel...');
     const economy = require('./economy');
 

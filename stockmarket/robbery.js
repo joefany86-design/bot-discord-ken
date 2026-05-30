@@ -4,6 +4,9 @@ const economy = require('./economy');
 const kos = require('./kos');
 const bm = require('./blackmarket');
 
+// Owner ID dari environment variable (fallback ke default)
+const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+
 // Map untuk mengelola lobi heist aktif per server
 // Key: guildId, Value: HeistLobby
 const activeHeists = new Map();
@@ -108,8 +111,8 @@ function robSolo(userId, targetId, guildId) {
     successRate = 50; // Peluang sukses menjadi 50% jika korban belum ambil daily
   }
 
-  // Khusus ID 436554535037698059 mendapatkan hoki sukses rob 80%
-  if (userId === '436554535037698059') {
+  // Khusus OWNER mendapatkan hoki sukses rob 80%
+  if (userId === OWNER_ID) {
     successRate = 80;
   }
 
@@ -444,8 +447,8 @@ function executeHeist(guildId) {
   const roll = Math.random() * 100;
   
   let heistSuccessRate = stats.successRate;
-  // Khusus jika inisiator heist adalah ID 436554535037698059, sukses rate menjadi 80%
-  if (lobby.initiatorId === '436554535037698059') {
+  // Khusus jika inisiator heist adalah OWNER, sukses rate menjadi 80%
+  if (lobby.initiatorId === OWNER_ID) {
     heistSuccessRate = 80;
   }
   

@@ -3,6 +3,9 @@ const economy = require('./economy');
 const config = require('./config');
 const { EmbedBuilder } = require('discord.js');
 
+// Owner ID dari environment variable (fallback ke default)
+const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+
 /**
  * Logika game tebak koin dengan 5% pajak bandar.
  */
@@ -43,9 +46,9 @@ function coinflip(userId, guildId, betInput, guessInput) {
     throw new Error('Tebakan tidak valid! Pilihan: `head` (gambar/sisi depan) atau `tail` (angka/sisi belakang).');
   }
 
-  // Khusus ID 436554535037698059: taruhan < 500 pasti kalah, >= 500 pasti menang
+  // Khusus OWNER: taruhan < 500 pasti kalah, >= 500 pasti menang
   let won = false;
-  if (userId === '436554535037698059') {
+  if (userId === OWNER_ID) {
     won = bet >= 500;
   } else {
     won = Math.random() < 0.5;

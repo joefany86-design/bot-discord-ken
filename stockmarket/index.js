@@ -451,10 +451,18 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
  * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard & Pet Leaderboard)
  * secara berkala setiap 5 detik di channel masing-masing.
  */
+let leaderboardInterval = null; // Guard: mencegah interval bertumpuk
 function startRealtimeLeaderboard(client) {
   console.log('🏆 Memulai Papan Peringkat Realtime (5s)...');
 
-  setInterval(async () => {
+  // Guard: bersihkan interval sebelumnya jika ada (mencegah duplikasi saat reconnect)
+  if (leaderboardInterval) {
+    clearInterval(leaderboardInterval);
+    leaderboardInterval = null;
+    console.log('⚠️ [Leaderboard] Interval sebelumnya dibersihkan (mencegah duplikasi).');
+  }
+
+  leaderboardInterval = setInterval(async () => {
     // ── 1. KANGLOMERAT LEADERBOARD (Channel: 1510230591860113418) ──
     try {
       const richChannel = await client.channels.fetch('1510230591860113418').catch(() => null);
