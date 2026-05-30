@@ -911,9 +911,13 @@ module.exports = {
         `🎲 **Misteri Gacha (Hard Mode):** Ketik \`.gacha-role\` seharga **${formatCurrency(config.gacha.COST || 250)}** per roll!\n` +
         `⚠️ *Peluang menang penuh misteri dan kejutan. Jadilah Dewa Hoki berikutnya!*\n\n` +
         `📊 **Tingkat Peluang Jackpot (Rarity Rates):**\n` +
-        `• 🟢 COMMON: \`70.0%\` | 🔵 RARE: \`22.0%\` | 🟣 EPIC: \`6.8%\`\n` +
-        `• 👑 LEGENDARY: \`1.1%\` | 🌟 MYTHIC: \`0.1%\` *(Jackpot Dewa!)*\n` +
-        `• 🗑️ ZONK: \`???\` *(Dapatkan item sampah kocak)*`
+        `├─ 🟢 COMMON    : \`70.0%\`\n` +
+        `├─ 🔵 RARE      : \`22.0%\`\n` +
+        `├─ 🟣 EPIC      : \`6.8%\`\n` +
+        `├─ 👑 LEGENDARY : \`1.1%\`\n` +
+        `├─ 🌟 MYTHIC    : \`0.1%\` *(Jackpot Dewa!)*\n` +
+        `└─ 🗑️ ZONK      : \`???\` *(Dapatkan item sampah kocak)*\n` +
+        `────────────────────────────────────────`
       );
 
     const TIER_EMOJIS = {
@@ -944,7 +948,7 @@ module.exports = {
             const emoji = TIER_EMOJIS[tierName] || '🟢';
             
             // Format info stok
-            let stockInfo = '`Tanpa Batas`';
+            let stockInfo = '`♾️ Tanpa Batas`';
             if (item.stock !== -1) {
               if (item.stock <= 0) {
                 stockInfo = '🔴 **[ SOLD OUT ]**';
@@ -953,15 +957,18 @@ module.exports = {
               }
             }
 
-            const gachaStatus = item.is_gacha ? ' 🎲 *Gacha Available*' : '';
-            const desc = item.description ? `\n   *“${item.description}”*` : '';
+            const gachaStatus = item.is_gacha ? '🎲 `Tersedia di Gacha`' : '🔒 `Pembelian Langsung Only`';
+            const desc = item.description ? `\n   └─ 💬 *“${item.description}”*` : '';
 
-            content += `🆔 **\`ID: ${item.id}\`** | **${item.role_name}**\n` +
-                       `👉 Harga: **${formatCurrency(item.price)}** | Stok: ${stockInfo}${gachaStatus}${desc}\n\n`;
+            content += `🆔 **\`ID: ${item.id}\`**  |  ${emoji} **${item.role_name}**\n` +
+                       `   ├─ 💵 **Harga** : **${formatCurrency(item.price)}**\n` +
+                       `   ├─ 📦 **Stok**  : ${stockInfo}\n` +
+                       `   ├─ 🎲 **Gacha** : ${gachaStatus}` +
+                       `${desc}\n\n`;
           });
 
           embed.addFields({
-            name: `${TIER_EMOJIS[tierName]} === KLASIFIKASI ${tierName} ===`,
+            name: `${emoji} ═══[ ${tierName} CLASS ]═══ ${emoji}`,
             value: content.trim(),
             inline: false
           });
