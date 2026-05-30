@@ -225,7 +225,7 @@ async function startTodGame(message, client) {
   collector.on('collect', async (interaction) => {
     const currentSession = activeGames.get(guildId);
     if (!currentSession || currentSession !== session) {
-      return interaction.reply({ content: '❌ Sesi lobby ini sudah tidak aktif.', ephemeral: true });
+      return interaction.reply({ content: '❌ Sesi lobby ini sudah tidak aktif.', flags: 64 });
     }
 
     const { customId, user } = interaction;
@@ -235,11 +235,11 @@ async function startTodGame(message, client) {
       const clickerMember = interaction.member;
       const clickerVoiceChannel = clickerMember.voice.channel;
       if (!clickerVoiceChannel || clickerVoiceChannel.id !== session.voiceChannelId) {
-        return interaction.reply({ content: '❌ Kamu harus berada di **Voice Channel** yang sama untuk bergabung!', ephemeral: true });
+        return interaction.reply({ content: '❌ Kamu harus berada di **Voice Channel** yang sama untuk bergabung!', flags: 64 });
       }
 
       if (session.players.some(p => p.id === user.id)) {
-        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar di dalam lobi!', ephemeral: true });
+        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar di dalam lobi!', flags: 64 });
       }
 
       session.players.push(clickerMember);
@@ -252,12 +252,12 @@ async function startTodGame(message, client) {
     // 🚪 Keluar dari Lobi
     else if (customId === 'tod_lobby_leave') {
       if (!session.players.some(p => p.id === user.id)) {
-        return interaction.reply({ content: '❌ Kamu belum bergabung di lobi ini!', ephemeral: true });
+        return interaction.reply({ content: '❌ Kamu belum bergabung di lobi ini!', flags: 64 });
       }
 
       // Host tidak bisa keluar kecuali dia membatalkan lobi
       if (user.id === session.host.id) {
-        return interaction.reply({ content: '👑 Kamu adalah Host! Gunakan tombol **Batal** untuk membubarkan lobi.', ephemeral: true });
+        return interaction.reply({ content: '👑 Kamu adalah Host! Gunakan tombol **Batal** untuk membubarkan lobi.', flags: 64 });
       }
 
       session.players = session.players.filter(p => p.id !== user.id);
@@ -270,7 +270,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_settings') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host (pembuat lobi) atau Admin yang bisa merubah setelan!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya Host (pembuat lobi) atau Admin yang bisa merubah setelan!', flags: 64 });
       }
 
       // Buat menu pilihan setelan yang cantik secara ephemeral
@@ -298,7 +298,7 @@ async function startTodGame(message, client) {
       const settingsMsg = await interaction.reply({
         content: '⚙️ **SETELAN GAME LOBI TRUTH OR DARE**\nSilakan sesuaikan mode dan kategori di bawah ini:',
         components: [row1, row2],
-        ephemeral: true,
+        flags: 64,
         fetchReply: true
       });
 
@@ -310,12 +310,12 @@ async function startTodGame(message, client) {
       settingsCollector.on('collect', async (selInteraction) => {
         const activeSess = activeGames.get(guildId);
         if (!activeSess || activeSess !== session) {
-          return selInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+          return selInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
         }
 
         if (selInteraction.customId === 'tod_settings_mode') {
           session.mode = selInteraction.values[0];
-          await selInteraction.reply({ content: `✅ Mode berhasil diubah ke **${config.modes.LABELS[session.mode]}**!`, ephemeral: true });
+          await selInteraction.reply({ content: `✅ Mode berhasil diubah ke **${config.modes.LABELS[session.mode]}**!`, flags: 64 });
         } else if (selInteraction.customId === 'tod_settings_cat') {
           const targetCat = selInteraction.values[0];
 
@@ -323,12 +323,12 @@ async function startTodGame(message, client) {
           if (targetCat === 'spicy' && config.categories.SPICY_NSFW_ONLY && !textChannel.nsfw) {
             return selInteraction.reply({
               content: '🔞 **Batal!** Kategori **Extreme** hanya diizinkan di Channel bertanda NSFW untuk keamanan.',
-              ephemeral: true
+              flags: 64
             });
           }
 
           session.category = targetCat;
-          await selInteraction.reply({ content: `✅ Kategori berhasil diubah ke **${session.category.toUpperCase()}**!`, ephemeral: true });
+          await selInteraction.reply({ content: `✅ Kategori berhasil diubah ke **${session.category.toUpperCase()}**!`, flags: 64 });
         }
 
         // Perbarui embed lobi utama
@@ -368,7 +368,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_start') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa memulai permainan!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa memulai permainan!', flags: 64 });
       }
 
       // Validasi pemain minimal 2 di Voice Channel
@@ -379,7 +379,7 @@ async function startTodGame(message, client) {
       if (playersActiveInVc.length < 2) {
         return interaction.reply({
           content: '❌ **Gagal memulai!** Harus ada minimal **2 pemain terdaftar yang aktif di Voice Channel** saat ini.',
-          ephemeral: true
+          flags: 64
         });
       }
 
@@ -396,7 +396,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_cancel') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa membatalkan lobi!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa membatalkan lobi!', flags: 64 });
       }
 
       collector.stop();
@@ -598,7 +598,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -606,7 +606,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_method_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', ephemeral: true });
+          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
         }
         collector.stop();
         await announceMatchSummary(client, guildId, `Game diakhiri paksa oleh ${user.username}.`);
@@ -614,7 +614,7 @@ async function startNextTurn(client, guildId) {
       }
 
       if (user.id !== session.challenger.id) {
-        return interaction.reply({ content: '❌ Hanya penanya aktif yang boleh merespon!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya penanya aktif yang boleh merespon!', flags: 64 });
       }
 
       if (customId === 'tod_method_voice') {
@@ -705,7 +705,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -713,7 +713,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_mode3_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', ephemeral: true });
+          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
         }
         collector.stop();
         await announceMatchSummary(client, guildId, `Game diakhiri paksa oleh ${user.username}.`);
@@ -721,7 +721,7 @@ async function startNextTurn(client, guildId) {
       }
 
       if (user.id !== session.victim.id) {
-        return interaction.reply({ content: '❌ Hanya korban yang aktif saat ini yang boleh memilih!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya korban yang aktif saat ini yang boleh memilih!', flags: 64 });
       }
 
       collector.stop();
@@ -821,7 +821,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -830,7 +830,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_method_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', ephemeral: true });
+          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
         }
 
         collector.stop();
@@ -841,7 +841,7 @@ async function startNextTurn(client, guildId) {
       // Hanya penanya aktif atau admin yang boleh memilih metode
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.challenger.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya penanya aktif saat ini yang boleh merespon!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya penanya aktif saat ini yang boleh merespon!', flags: 64 });
       }
 
       collector.stop();
@@ -921,7 +921,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
   collector.on('collect', async (interaction) => {
     const curSess = activeGames.get(guildId);
     if (!curSess || curSess !== session) {
-      return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+      return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
     }
 
     const { customId, user } = interaction;
@@ -931,11 +931,11 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       const clickerMember = interaction.member;
       const vc = clickerMember.voice.channel;
       if (!vc || vc.id !== session.voiceChannelId) {
-        return interaction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', ephemeral: true });
+        return interaction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', flags: 64 });
       }
 
       if (session.players.some(p => p.id === user.id)) {
-        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar sebagai pemain!', ephemeral: true });
+        return interaction.reply({ content: 'ℹ️ Kamu sudah terdaftar sebagai pemain!', flags: 64 });
       }
 
       // Tambahkan ke sistem antrean dinamis
@@ -958,7 +958,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
     if (customId === 'tod_judge_host') {
       const isAdm = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdm) {
-        return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa mengakses panel kontrol!', ephemeral: true });
+        return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa mengakses panel kontrol!', flags: 64 });
       }
 
       const hostRow = new ActionRowBuilder().addComponents(
@@ -969,7 +969,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       const ctrlMsg = await interaction.reply({
         content: '🛠️ **PANEL KONTROL DARURAT HOST**\nSilakan pilih tindakan mitigasi di bawah:',
         components: [hostRow],
-        ephemeral: true,
+        flags: 64,
         fetchReply: true
       });
 
@@ -981,17 +981,17 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       ctrlCollector.on('collect', async (ctrlInteraction) => {
         const activeSess = activeGames.get(guildId);
         if (!activeSess || activeSess !== session) {
-          return ctrlInteraction.reply({ content: '❌ Sesi sudah tidak aktif.', ephemeral: true });
+          return ctrlInteraction.reply({ content: '❌ Sesi sudah tidak aktif.', flags: 64 });
         }
 
         ctrlCollector.stop();
         collector.stop();
 
         if (ctrlInteraction.customId === 'tod_ctrl_skip') {
-          await ctrlInteraction.reply({ content: '✅ Giliran berhasil dilewati oleh Host.', ephemeral: true });
+          await ctrlInteraction.reply({ content: '✅ Giliran berhasil dilewati oleh Host.', flags: 64 });
           await startNextTurn(client, guildId);
         } else if (ctrlInteraction.customId === 'tod_ctrl_stop') {
-          await ctrlInteraction.reply({ content: '✅ Sesi game berhasil dihentikan.', ephemeral: true });
+          await ctrlInteraction.reply({ content: '✅ Sesi game berhasil dihentikan.', flags: 64 });
           await announceMatchSummary(client, guildId, `Game dihentikan paksa oleh Host ${user.username}.`);
         }
       });
@@ -1009,7 +1009,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
 
       if (!isAllowedToJudge) {
         const expectedRole = session.mode === 'mode_3' ? 'Host/Admin' : 'Penanya aktif';
-        return interaction.reply({ content: `❌ Hanya ${expectedRole} yang berhak menilai giliran ini!`, ephemeral: true });
+        return interaction.reply({ content: `❌ Hanya ${expectedRole} yang berhak menilai giliran ini!`, flags: 64 });
       }
 
       collector.stop();
@@ -1099,7 +1099,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       transCollector.on('collect', async (btnInteraction) => {
         const s = activeGames.get(guildId);
         if (!s || s !== session) {
-          return btnInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', ephemeral: true });
+          return btnInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
         }
 
         const btnUser = btnInteraction.user;
@@ -1108,10 +1108,10 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
           const m = btnInteraction.member;
           const vc = m.voice.channel;
           if (!vc || vc.id !== session.voiceChannelId) {
-            return btnInteraction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', ephemeral: true });
+            return btnInteraction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', flags: 64 });
           }
           if (session.players.some(p => p.id === btnUser.id)) {
-            return btnInteraction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', ephemeral: true });
+            return btnInteraction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', flags: 64 });
           }
 
           session.players.push(m);
@@ -1132,7 +1132,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
         if (btnInteraction.customId === 'tod_next_stop') {
           const isAdm = btnInteraction.member.permissions.has('Administrator');
           if (btnUser.id !== session.host.id && !isAdm) {
-            return btnInteraction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', ephemeral: true });
+            return btnInteraction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
           }
 
           if (session.timer) clearTimeout(session.timer);

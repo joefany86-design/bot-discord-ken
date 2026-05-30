@@ -289,7 +289,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
   collector.on('collect', async i => {
     // Tombol hanya bisa di-klik oleh si pemanggil perintah
     if (i.user.id !== user.id) {
-      return i.reply({ content: '❌ Tombol ini hanya dapat digunakan oleh pemanggil perintah asli!', ephemeral: true });
+      return i.reply({ content: '❌ Tombol ini hanya dapat digunakan oleh pemanggil perintah asli!', flags: 64 });
     }
 
     try {
@@ -347,7 +347,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
           .setFooter({ text: 'Sentinel bot • Member Panel' })
           .setTimestamp();
 
-        await i.reply({ embeds: [memberEmbed], ephemeral: true });
+        await i.reply({ embeds: [memberEmbed], flags: 64 });
       } else if (i.customId === 'help_btn_admin') {
         // Pengecekan perizinan admin
         const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -357,7 +357,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
         const isAdmin = memberObj && memberObj.permissions.has('Administrator');
 
         if (!isOwner && !isAdmin && !isGuildOwner) {
-          return i.reply({ content: '❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah panel admin.', ephemeral: true });
+          return i.reply({ content: '❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah panel admin.', flags: 64 });
         }
 
         const adminEmbed = new EmbedBuilder()
@@ -447,7 +447,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
           .setFooter({ text: 'Sentinel bot • Administrator Panel' })
           .setTimestamp();
 
-        await i.reply({ embeds: [adminEmbed], ephemeral: true });
+        await i.reply({ embeds: [adminEmbed], flags: 64 });
       }
     } catch (err) {
       console.error('Error in interactive help button interaction:', err);
@@ -492,14 +492,14 @@ client.on('interactionCreate', async interaction => {
   const { commandName, guildId, member, guild } = interaction;
 
   if (!guildId) {
-    return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', ephemeral: true });
+    return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', flags: 64 });
   }
 
   // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
   if (interaction.channelId === '1510121069783023646') {
     return interaction.reply({
       content: '⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#1508417228624887928>!',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -509,7 +509,7 @@ client.on('interactionCreate', async interaction => {
   if (commandName === 'join') {
     const voiceChannel = member.voice.channel;
     if (!voiceChannel) {
-      return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', ephemeral: true });
+      return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', flags: 64 });
     }
 
     try {
@@ -533,7 +533,7 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({
         content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}**!\n` +
           `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
-        ephemeral: true
+        flags: 64
       });
     } catch (error) {
       console.error('Kesalahan slash join:', error);
@@ -544,7 +544,7 @@ client.on('interactionCreate', async interaction => {
           `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap buka port outbound UDP 50000-65535).\n` +
           `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
           `3️⃣ **Timeout Jaringan** (Discord gateway sedang sibuk, silakan coba lagi atau jalankan restart bot di VPS).`,
-        ephemeral: true
+        flags: 64
       });
     }
   }
@@ -553,22 +553,22 @@ client.on('interactionCreate', async interaction => {
   else if (commandName === 'leave') {
     const hasLock = lockedChannels.has(guildId);
     if (!hasLock && !getVoiceConnection(guildId)) {
-      return interaction.reply({ content: '❌ Bot tidak sedang berada di Voice Channel!', ephemeral: true });
+      return interaction.reply({ content: '❌ Bot tidak sedang berada di Voice Channel!', flags: 64 });
     }
 
     const memberVoiceChannel = member?.voice?.channel;
     const botVoiceChannel = guild.members.me?.voice?.channel;
     if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
-      return interaction.reply({ content: `❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`, ephemeral: true });
+      return interaction.reply({ content: `❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`, flags: 64 });
     }
 
     try {
       lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
       cleanupResources(guildId);
-      await interaction.reply({ content: '👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel!', ephemeral: true });
+      await interaction.reply({ content: '👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel!', flags: 64 });
     } catch (error) {
       console.error('Kesalahan leave:', error);
-      await interaction.reply({ content: '❌ Terjadi kesalahan saat keluar.', ephemeral: true });
+      await interaction.reply({ content: '❌ Terjadi kesalahan saat keluar.', flags: 64 });
     }
   }
 
