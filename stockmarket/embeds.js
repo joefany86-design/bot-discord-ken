@@ -1633,13 +1633,16 @@ module.exports = {
         `🏷️ **Nama Pet:** **${pet.pet_name}** the **${typeName}**\n` +
         `🌟 **Raritas (Realiti):** ${rarityText}\n` +
         `🧬 **Fase:** \`${statusEmoji} (Level ${pet.level})\`\n` +
-        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\`\n\n` +
-        `**📊 STATISTIK UTAMA PET:**\n` +
-        `❤️ HP (Kesehatan) : ${this.renderProgressBar(pet.health, maxHP)} ${isSick ? '⚠️ **[ SAKIT/LEMAH ]**' : ''}\n` +
-        `🍖 Kenyangan     : ${this.renderProgressBar(pet.hunger, 100)}\n` +
-        `💧 Hidrasi       : ${this.renderProgressBar(pet.thirst, 100)}\n` +
-        `⚽ Kebahagiaan   : ${this.renderProgressBar(pet.happiness, 100)}`
+        `✨ **XP:** \`${pet.xp} / ${xpNeeded} XP\``
       );
+
+    // Statistik Utama Pet (Inline Fields memanjang ke kanan)
+    embed.addFields(
+      { name: '❤️ HP (Kesehatan)', value: `${this.renderProgressBar(pet.health, maxHP)} ${isSick ? '\n⚠️ **[ SAKIT/LEMAH ]**' : ''}`, inline: true },
+      { name: '🍖 Kenyangan', value: `${this.renderProgressBar(pet.hunger, 100)}`, inline: true },
+      { name: '💧 Hidrasi', value: `${this.renderProgressBar(pet.thirst, 100)}`, inline: true },
+      { name: '⚽ Kebahagiaan', value: `${this.renderProgressBar(pet.happiness, 100)}`, inline: true }
+    );
 
     // Ketersediaan Supplies Inventory Singkat
     const suppliesText = inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
