@@ -638,6 +638,9 @@ client.on('messageCreate', async message => {
 
   if (!message.content.startsWith('.')) return;
 
+  // Opsi 1: Hapus pesan perintah user (.commands) secara instan agar chat bersih & rapi
+  message.delete().catch(() => {});
+
   // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
   const BLOCKED_CMD_CHANNELS = [
     '1510121069783023646', // #🛍️┃shop (Portal Dashboard)
@@ -646,7 +649,6 @@ client.on('messageCreate', async message => {
     '1422656689710305381'
   ];
   if (BLOCKED_CMD_CHANNELS.includes(message.channelId)) {
-    await message.delete().catch(() => { });
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#1508417228624887928>! Saluran ini tidak mendukung perintah bot.`
     }).catch(() => null);

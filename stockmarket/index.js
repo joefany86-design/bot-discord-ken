@@ -3317,6 +3317,35 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // Opsi 2: Centralized Response Cleanup (Auto-delete bot responses for temporary info/warnings/errors)
+  const originalReply = message.reply.bind(message);
+  message.reply = async (options) => {
+    const reply = await originalReply(options);
+    let isTemporary = false;
+
+    // 1. Jika bertipe embed dan warn/error color
+    if (options && options.embeds && options.embeds.length > 0) {
+      const embed = options.embeds[0];
+      const color = embed.data ? embed.data.color : null;
+      if (color === 16757504 || color === 16724838 || color === 0xFFB300 || color === 0xFF3366) {
+        isTemporary = true;
+      }
+    }
+
+    // 2. Jika command adalah perintah info jangka pendek
+    if (['bal', 'balance', 'profile', 'porto', 'portfolio', 'daily', 'status', 'event'].includes(commandName)) {
+      isTemporary = true;
+    }
+
+    // Jika bersifat sementara, hapus setelah 25 detik secara otomatis
+    if (isTemporary) {
+      setTimeout(() => {
+        reply.delete().catch(() => {});
+      }, 25000);
+    }
+    return reply;
+  };
+
   // ── FILTER SALURAN KHUSUS PET (Channel ID: 1509762623917265137) ──
   // 1. Jika mengetik perintah non-pet di channel khusus pet, blokir
   if (message.channelId === '1509762623917265137') {
