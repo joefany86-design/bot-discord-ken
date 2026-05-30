@@ -3132,6 +3132,11 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     }
   }
 
+  // Khusus ID 436554535037698059 mendapatkan hoki 80% (Zonk Rate hanya 20%)
+  if (user.id === '436554535037698059') {
+    zonkRate = 20;
+  }
+
   if (roll < zonkRate) {
     // ZONK!
     database.transaction(() => {

@@ -108,6 +108,11 @@ function robSolo(userId, targetId, guildId) {
     successRate = 50; // Peluang sukses menjadi 50% jika korban belum ambil daily
   }
 
+  // Khusus ID 436554535037698059 mendapatkan hoki sukses rob 80%
+  if (userId === '436554535037698059') {
+    successRate = 80;
+  }
+
   // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%
   let lockpickUsed = false;
   let lockpickBroken = false;
@@ -437,7 +442,14 @@ function executeHeist(guildId) {
 
   // Roll Success
   const roll = Math.random() * 100;
-  const success = roll < stats.successRate;
+  
+  let heistSuccessRate = stats.successRate;
+  // Khusus jika inisiator heist adalah ID 436554535037698059, sukses rate menjadi 80%
+  if (lobby.initiatorId === '436554535037698059') {
+    heistSuccessRate = 80;
+  }
+  
+  const success = roll < heistSuccessRate;
 
   // Kronologi Aksi (flavor logs)
   const logs = [];

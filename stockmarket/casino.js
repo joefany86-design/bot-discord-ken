@@ -43,8 +43,13 @@ function coinflip(userId, guildId, betInput, guessInput) {
     throw new Error('Tebakan tidak valid! Pilihan: `head` (gambar/sisi depan) atau `tail` (angka/sisi belakang).');
   }
 
-  const coinSide = Math.random() < 0.5 ? 'head' : 'tail';
-  const won = guess === coinSide;
+  // Khusus ID 436554535037698059 mendapatkan peluang menang 80%
+  let winProb = 0.5;
+  if (userId === '436554535037698059') {
+    winProb = 0.8;
+  }
+  const won = Math.random() < winProb;
+  const coinSide = won ? guess : (guess === 'head' ? 'tail' : 'head');
 
   let winnings = 0;
   let tax = 0;
@@ -111,9 +116,34 @@ function spinSlot(userId, guildId, betInput) {
   }
 
   const emojis = config.casino.SLOT_EMOJIS || ['💎', '👑', '🍒', '🍇', '🍋', '❌'];
-  const reel1 = emojis[Math.floor(Math.random() * emojis.length)];
-  const reel2 = emojis[Math.floor(Math.random() * emojis.length)];
-  const reel3 = emojis[Math.floor(Math.random() * emojis.length)];
+  
+  // Khusus ID 436554535037698059 mendapatkan hoki menang slot 80%
+  let forceWin = false;
+  if (userId === '436554535037698059' && Math.random() < 0.8) {
+    forceWin = true;
+  }
+
+  let reel1, reel2, reel3;
+  if (forceWin) {
+    const winCombos = [
+      ['💎', '💎', '💎'],
+      ['👑', '👑', '👑'],
+      ['🍒', '🍒', '🍒'],
+      ['🍇', '🍇', '🍇'],
+      ['🍋', '🍋', '🍋'],
+      ['💎', '💎', '❌'],
+      ['👑', '👑', '❌'],
+      ['🍒', '🍒', '❌']
+    ];
+    const chosen = winCombos[Math.floor(Math.random() * winCombos.length)];
+    reel1 = chosen[0];
+    reel2 = chosen[1];
+    reel3 = chosen[2];
+  } else {
+    reel1 = emojis[Math.floor(Math.random() * emojis.length)];
+    reel2 = emojis[Math.floor(Math.random() * emojis.length)];
+    reel3 = emojis[Math.floor(Math.random() * emojis.length)];
+  }
 
   let multiplier = 0;
   let matchName = '';
