@@ -4678,7 +4678,11 @@ async function handleEconomyCommands(message, client) {
                 const freshData = getBankDashboardData(author.id, guildId);
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
-                await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)] });
+                if (!submitted.replied && !submitted.deferred) {
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)] }).catch(() => {});
+                } else {
+                  console.error('Error updating bank dashboard after deposit:', err);
+                }
               }
             }
           }
@@ -4728,7 +4732,11 @@ async function handleEconomyCommands(message, client) {
                 const freshData = getBankDashboardData(author.id, guildId);
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
-                await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)] });
+                if (!submitted.replied && !submitted.deferred) {
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)] }).catch(() => {});
+                } else {
+                  console.error('Error updating bank dashboard after withdraw:', err);
+                }
               }
             }
           }
@@ -4814,7 +4822,11 @@ async function handleEconomyCommands(message, client) {
                     const freshData = getBankDashboardData(author.id, guildId);
                     await replyMsg.edit(freshData).catch(console.error);
                   } catch (err) {
-                    await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)] });
+                    if (!submitted.replied && !submitted.deferred) {
+                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)] }).catch(() => {});
+                    } else {
+                      console.error('Error updating bank dashboard after loan:', err);
+                    }
                   }
                 }
               }
@@ -4851,7 +4863,11 @@ async function handleEconomyCommands(message, client) {
               const freshData = getBankDashboardData(author.id, guildId);
               await replyMsg.edit(freshData).catch(console.error);
             } catch (err) {
-              await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] });
+              if (!iBank.replied && !iBank.deferred) {
+                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] }).catch(() => {});
+              } else {
+                console.error('Error updating bank dashboard after repayment:', err);
+              }
             }
           }
         } catch (err) {
