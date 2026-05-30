@@ -3032,6 +3032,14 @@ async function handleEconomyCommands(message, client) {
       });
 
       portalCollector.on('collect', async iOpen => {
+        if (iOpen.user.id !== author.id) {
+          return iOpen.reply({ content: '❌ Hanya orang yang memanggil perintah ini yang bisa membuka panel!', ephemeral: true });
+        }
+
+        // Hapus pesan pemicu dan pesan portal agar bersih dari chat publik
+        await portalMsg.delete().catch(() => {});
+        await message.delete().catch(() => {});
+
         const clicker = iOpen.user;
         const activeStocks = stocks.getStocks(guildId);
         const isOpen = stocks.isMarketOpen();
@@ -3322,6 +3330,14 @@ async function handleEconomyCommands(message, client) {
       });
 
       portalCollector.on('collect', async iOpen => {
+        if (iOpen.user.id !== author.id) {
+          return iOpen.reply({ content: '❌ Hanya orang yang memanggil perintah ini yang bisa membuka panel!', ephemeral: true });
+        }
+
+        // Hapus pesan pemicu dan pesan portal agar bersih dari chat publik
+        await portalMsg.delete().catch(() => {});
+        await message.delete().catch(() => {});
+
         const clicker = iOpen.user;
         const wallet = economy.getWallet(clicker.id, guildId);
         const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
