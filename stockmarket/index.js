@@ -456,6 +456,316 @@ function initStockMarket(client) {
 
   // Jalankan scheduler cron-jobs
   scheduler.initScheduler(client);
+
+  // Listener untuk button click global (dashboard/panel permanen)
+  client.on('interactionCreate', async interaction => {
+    if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
+    const { customId, guildId, user } = interaction;
+    if (!guildId) return;
+
+    try {
+      // ── PORTAL PERMANEN: TOKO ROLE ──
+      if (customId === 'eco_btn_open_shop_private_perm') {
+        const wallet = economy.getWallet(user.id, guildId);
+        const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+        const embed = embeds.shopEmbed(items, wallet);
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+        );
+
+        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
+
+        collector.on('collect', async i => {
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
+          
+          if (i.customId === 'eco_btn_profile') {
+            const wallet2 = economy.getWallet(user.id, guildId);
+            const porto = stocks.getPortfolio(user.id, guildId);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const userPet = pet.getPet(user.id, guildId);
+            const activeLoan = bank.getActiveLoan(user.id, guildId);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
+            const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables });
+            await i.reply({ embeds: [profileEmbed], ephemeral: true });
+          } else if (i.customId === 'eco_btn_gacha') {
+            const gachaCost = config.gacha.COST || 250;
+            const wallet2 = economy.getWallet(user.id, guildId);
+            const gachaPromptEmbed = new EmbedBuilder()
+              .setColor(embeds.COLORS.INFO)
+              .setTitle('🎲 Putar Gacha Role!')
+              .setDescription(`Untuk memutar Gacha, silakan ketik \`.gacha-role\` di channel teks publik ini agar semua member dapat melihat animasi rolling dan hasil jackpot Anda secara langsung!\n\n💵 **Saldo Anda:** Rp ${wallet2.balance.toLocaleString('id-ID')}\n💰 **Biaya Roll:** Rp ${gachaCost.toLocaleString('id-ID')}`)
+              .setFooter({ text: 'Ketik .gacha-role di chat!' });
+            await i.reply({ embeds: [gachaPromptEmbed], ephemeral: true });
+          }
+        });
+
+        collector.on('end', async () => {
+          const disabledRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+            new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
+          );
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+        });
+      }
+
+      // ── PORTAL PERMANEN: BURSA SAHAM ──
+      else if (customId === 'eco_btn_open_market_private_perm') {
+        const activeStocks = stocks.getStocks(guildId);
+        const isOpen = stocks.isMarketOpen();
+        const embed = embeds.marketEmbed(activeStocks, isOpen);
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary)
+        );
+        if (activeStocks.length > 0 && isOpen) {
+          row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
+        }
+
+        const privateMsg = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
+
+        collector.on('collect', async i => {
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
+          
+          if (i.customId === 'eco_btn_porto') {
+            const wallet2 = economy.getWallet(user.id, guildId);
+            const porto = stocks.getPortfolio(user.id, guildId);
+            await i.reply({ embeds: [embeds.portfolioEmbed(user, porto, wallet2)], ephemeral: true });
+          } else if (i.customId === 'eco_btn_profile') {
+            const wallet2 = economy.getWallet(user.id, guildId);
+            const porto = stocks.getPortfolio(user.id, guildId);
+            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const userPet = pet.getPet(user.id, guildId);
+            const activeLoan = bank.getActiveLoan(user.id, guildId);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
+            await i.reply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables })], ephemeral: true });
+          } else if (i.customId === 'eco_btn_shop') {
+            const wallet2 = economy.getWallet(user.id, guildId);
+            const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            await i.reply({ embeds: [embeds.shopEmbed(items, wallet2)], ephemeral: true });
+          } else if (i.customId === 'eco_btn_trade') {
+            await sendInteractiveTradePanel(i, activeStocks[0].stock_ticker, user, guildId, client);
+          }
+        });
+
+        collector.on('end', async () => {
+          const disabledRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
+            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
+            new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true)
+          );
+          if (activeStocks.length > 0 && isOpen) {
+            disabledRow.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true));
+          }
+          await privateMsg.edit({ components: [disabledRow] }).catch(() => {});
+        });
+      }
+
+      // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
+      else if (customId === 'pet_btn_open_pet_private_perm') {
+        const getDashboardPanelPrivate = (targetUserId) => {
+          const userPet = pet.getPet(targetUserId, guildId);
+          const inventory = pet.getInventory(targetUserId, guildId);
+          const allPets = pet.getPetsList(targetUserId, guildId);
+          const embed = embeds.petDashboardEmbed(user, userPet, inventory);
+          const rows = [];
+          const canAdoptMore = allPets.length < 3;
+
+          if (!userPet) {
+            rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi Telur Pet').setStyle(ButtonStyle.Success)));
+          } else if (userPet.status === 'EGG') {
+            const now = Math.floor(Date.now() / 1000);
+            const isHatched = userPet.hatch_at <= now;
+            const eggComponents = [new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan').setStyle(ButtonStyle.Success).setDisabled(!isHatched)];
+            if (canAdoptMore) eggComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+            eggComponents.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
+            rows.push(new ActionRowBuilder().addComponents(eggComponents));
+          } else if (userPet.status === 'DEAD') {
+            const deadComponents = [new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Reset Kandang').setStyle(ButtonStyle.Danger)];
+            if (canAdoptMore) deadComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+            rows.push(new ActionRowBuilder().addComponents(deadComponents));
+          } else {
+            rows.push(new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('pet_btn_feed').setLabel('🍗 Makan').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('pet_btn_drink').setLabel('🥤 Minum').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('pet_btn_play').setLabel('⚽ Main').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
+            ));
+            const row2Components = [
+              new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
+              new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
+            ];
+            if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
+            row2Components.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary));
+            rows.push(new ActionRowBuilder().addComponents(row2Components));
+          }
+          if (allPets.length > 1) {
+            const selectMenu = new StringSelectMenuBuilder().setCustomId('pet_select_active').setPlaceholder('🐾 Ganti Peliharaan Aktif...');
+            allPets.forEach(p => {
+              const isCurrent = p.is_active === 1;
+              selectMenu.addOptions({
+                label: `${p.pet_name} the ${p.pet_type} (Lv. ${p.level})`,
+                description: isCurrent ? 'Aktif' : 'Klik untuk mengaktifkan',
+                value: p.pet_name,
+                default: isCurrent
+              });
+            });
+            rows.push(new ActionRowBuilder().addComponents(selectMenu));
+          }
+          return { embeds: [embed], components: rows };
+        };
+
+        const getShopPanelDataPrivate = (targetUserId) => {
+          const wallet2 = economy.getWallet(targetUserId, guildId);
+          const inv = pet.getInventory(targetUserId, guildId);
+          const embed = embeds.petShopEmbed(wallet2, inv);
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('pet_select_shop_item')
+            .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
+              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
+              new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
+              new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
+              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY')
+            );
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+          const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
+          const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+          return { embeds: [embed], components: [selectRow, cancelRow] };
+        };
+
+        const initialData = getDashboardPanelPrivate(user.id);
+        const privateMsg = await interaction.reply({ ...initialData, ephemeral: true, fetchReply: true });
+        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+        collector.on('collect', async iPet => {
+          if (iPet.user.id !== user.id) return iPet.reply({ content: '❌ Tombol ini bukan milik Anda!', ephemeral: true });
+          
+          try {
+            if (iPet.customId === 'pet_btn_refresh') {
+              await iPet.update(getDashboardPanelPrivate(user.id));
+            } else if (iPet.customId === 'pet_btn_reset') {
+              pet.resetPet(user.id, guildId);
+              await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+              collector.stop();
+            } else if (iPet.customId === 'pet_select_active') {
+              pet.switchActivePet(user.id, guildId, iPet.values[0]);
+              await iPet.update(getDashboardPanelPrivate(user.id));
+            } else if (iPet.customId === 'pet_btn_hatch') {
+              const res = pet.getPet(user.id, guildId);
+              if (res && res.status === 'BABY') {
+                await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] });
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              }
+            } else if (iPet.customId === 'pet_btn_feed') {
+              const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
+              await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_drink') {
+              const res = pet.useItem(user.id, guildId, 'WATER', true);
+              await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_play') {
+              const res = pet.playWithPet(user.id, guildId);
+              await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_cure') {
+              const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
+              await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_work') {
+              const res = pet.sendToWork(user.id, guildId);
+              await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_hunt') {
+              const res = pet.sendToHunt(user.id, guildId);
+              await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] });
+              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+            } else if (iPet.customId === 'pet_btn_nav_shop') {
+              await iPet.update(getShopPanelDataPrivate(user.id));
+            } else if (iPet.customId === 'pet_btn_cancel_shop') {
+              await iPet.update(getDashboardPanelPrivate(user.id));
+            } else if (iPet.customId === 'pet_select_shop_item') {
+              const selectedItem = iPet.values[0];
+              try {
+                const res = pet.buyItem(user.id, guildId, selectedItem, 1);
+                const successEmb = embeds.successEmbed(
+                  'Transaksi Belanja Sukses! 🛒',
+                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang dimasukkan ke kandang.\n\nSisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+                );
+                await iPet.reply({ embeds: [successEmb], ephemeral: true });
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+              } catch (err) {
+                await iPet.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], ephemeral: true });
+              }
+            } else if (iPet.customId === 'pet_btn_nav_adopt') {
+              const modal = new ModalBuilder()
+                .setCustomId('pet_modal_adopt_perm')
+                .setTitle('🛎️ Adopsi Telur Pet Tamagotchi');
+
+              const nameInput = new TextInputBuilder()
+                .setCustomId('pet_name')
+                .setLabel('Nama Pet Anda')
+                .setPlaceholder('Contoh: Ciko')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+              const typeInput = new TextInputBuilder()
+                .setCustomId('pet_type')
+                .setLabel('Jenis Pet (Slime / Dragon / Cat / Golem)')
+                .setPlaceholder('Ketik jenis pet pilihan Anda')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+              modal.addComponents(
+                new ActionRowBuilder().addComponents(nameInput),
+                new ActionRowBuilder().addComponents(typeInput)
+              );
+
+              await iPet.showModal(modal);
+
+              const submitted = await iPet.awaitModalSubmit({
+                filter: (sub) => sub.customId === 'pet_modal_adopt_perm' && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const pName = submitted.fields.getTextInputValue('pet_name');
+                  const pType = submitted.fields.getTextInputValue('pet_type');
+                  const res = pet.adoptPet(user.id, guildId, pName, pType);
+                  await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)] });
+                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], ephemeral: true });
+                }
+              }
+            }
+          } catch (err) {
+            await iPet.reply({ content: `❌ Gagal: ${err.message}`, ephemeral: true }).catch(() => {});
+          }
+        });
+
+        collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => {});
+        });
+      }
+    } catch (err) {
+      console.error('Error handling permanent portal click:', err);
+    }
+  });
 }
 
 /**
@@ -4920,6 +5230,51 @@ async function handleEconomyCommands(message, client) {
 
       const adminPanel = require('./adminPanel');
       await adminPanel.handleAdminPanel(message, client);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .setup-portal
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'setup-portal') {
+      const isOwner = author.id === OWNER_ID;
+      const isGuildOwner = message.guild && author.id === message.guild.ownerId;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat menggunakan perintah .setup-portal.')] });
+      }
+
+      await message.delete().catch(() => {});
+
+      const embed = new EmbedBuilder()
+        .setColor(embeds.COLORS.PURPLE)
+        .setTitle('🎭 KOSAN 1A ECONOMY & PET DASHBOARD 📈')
+        .setDescription(
+          `Selamat datang di Pusat Kontrol Ekonomi & Peliharaan Server **KOSAN 1A**!\n\n` +
+          `Klik tombol di bawah ini untuk membuka panel secara pribadi (hanya Anda yang dapat melihatnya, tidak merusak tampilan chat channel ini):\n\n` +
+          `🛍️ **Buka Toko Role**: Beli kasta role prestise server atau putar gacha role.\n` +
+          `📈 **Buka Dashboard Saham**: Lihat bursa saham channel teraktif, cek portofolio investasi, dan bertransaksi.\n` +
+          `🐾 **Buka Dashboard Pet**: Kelola, rawat, dan latih peliharaan Tamagotchi Anda.`
+        )
+        .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
+        .setTimestamp();
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_shop_private_perm')
+          .setLabel('🛍️ Toko Role')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_market_private_perm')
+          .setLabel('📈 Bursa Saham')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('pet_btn_open_pet_private_perm')
+          .setLabel('🐾 Pusat Pet')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      await message.channel.send({ embeds: [embed], components: [row] });
       return true;
     }
 
