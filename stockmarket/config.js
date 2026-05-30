@@ -203,7 +203,7 @@ module.exports = {
     COINFLIP_MAX_BET: 5000,
     
     SLOT_MIN_BET: 20,
-    SLOT_MAX_BET: 1000,
+    SLOT_MAX_BET: 10000,
     
     // Emojis yang digunakan di reel slot
     SLOT_EMOJIS: ['💎', '👑', '🍒', '🍇', '🍋', '❌'],

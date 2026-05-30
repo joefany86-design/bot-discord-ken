@@ -59,7 +59,7 @@ db.prepare('UPDATE wallets SET balance = 100000 WHERE user_id = ? AND guild_id =
 
 // Uji limit
 assert.throws(() => casino.spinSlot(testUserId, guildId, 5), /Taruhan minimal/, "Harus error jika taruhan slot < Rp 20");
-assert.throws(() => casino.spinSlot(testUserId, guildId, 5000), /Taruhan maksimal/, "Harus error jika taruhan slot > Rp 1000");
+assert.throws(() => casino.spinSlot(testUserId, guildId, 50000), /Taruhan maksimal/, "Harus error jika taruhan slot > Rp 10000");
 
 const slotRes = casino.spinSlot(testUserId, guildId, 100);
 console.log(`Slot Reels: [ ${slotRes.reels.join(' | ')} ] - Won: ${slotRes.won} - Match: ${slotRes.matchName || 'Zonk'} - Payout: Rp ${slotRes.payout}`);
