@@ -3850,6 +3850,7 @@ async function handleEconomyCommands(message, client) {
       });
 
       return true;
+    }
   }
 
   // ── COZY FLOWER GARDEN FEATURE GUARD & ROUTING ──
