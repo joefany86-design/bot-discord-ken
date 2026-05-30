@@ -159,70 +159,117 @@ function getRoleColor(roleName, tier) {
   return TIER_COLORS[tier?.toUpperCase()] || '#00FF88';
 }
 
+// Warna Dinamis per Spesies Pet (untuk embed yang lebih hidup)
+const PET_COLORS = {
+  SLIME:  0x00FF88, // Neon Green
+  DRAGON: 0xFF6B35, // Blazing Orange
+  CAT:    0xFF69B4, // Hot Pink
+  GOLEM:  0x8B7355, // Earthen Brown
+  EGG:    0xFFD700, // Golden
+  DEAD:   0x2C2F33  // Dark Grey
+};
+
+// GIF Assets per Species/Stage dari sumber reliable (media.tenor.com & media.giphy.com)
 const PET_ASSETS = {
   // 🥚 Telur menetas — animasi telur bergetar / menetas
   EGG: [
-    'https://media.giphy.com/media/mSuzNvPvE2KFrGpywl/giphy.gif',
-    'https://media.giphy.com/media/l41lGU07rD3fMQxYQ/giphy.gif',
-    'https://media.giphy.com/media/fX8zOAyerYzd3UPtBH/giphy.gif',
-    'https://media.giphy.com/media/3oEdv9R4D62GPrVY4g/giphy.gif'
+    'https://media.tenor.com/Ns7iP4fWsUQAAAAC/egg-easter-egg.gif',
+    'https://media1.tenor.com/m/rI6KDaQGE48AAAAC/potz-content-potz.gif',
+    'https://i.giphy.com/media/mSuzNvPvE2KFrGpywl/giphy.gif',
+    'https://i.giphy.com/media/fX8zOAyerYzd3UPtBH/giphy.gif',
+    'https://i.giphy.com/media/3oEdv9R4D62GPrVY4g/giphy.gif'
   ],
   // 🪦 Pet mati — animasi sedih / RIP
   DEAD: [
-    'https://media.giphy.com/media/ukNqewtLpt81JN7SIS/giphy.gif',
-    'https://media.giphy.com/media/xUPJPn8l1m8odg1Bxm/giphy.gif',
-    'https://media.giphy.com/media/pVGsAWjzvXcZW4ZBTE/giphy.gif',
-    'https://media.giphy.com/media/xThuWhGG79OblPr368/giphy.gif'
+    'https://i.giphy.com/media/ukNqewtLpt81JN7SIS/giphy.gif',
+    'https://i.giphy.com/media/pVGsAWjzvXcZW4ZBTE/giphy.gif',
+    'https://i.giphy.com/media/xThuWhGG79OblPr368/giphy.gif',
+    'https://i.giphy.com/media/xUPJPn8l1m8odg1Bxm/giphy.gif'
   ],
   // 🟢 Slime — animasi slime lucu bergerak-gerak
   SLIME: {
     BABY: [
-      'https://media.giphy.com/media/2s4Z9TMV0oMFQsNpzn/giphy.gif',
-      'https://media.giphy.com/media/YA89yckARWXC6Y6Kx4/giphy.gif',
-      'https://media.giphy.com/media/ZLSJQUIWk47IUJft2s/giphy.gif'
+      'https://media.tenor.com/y596ptM1394AAAAC/slime-pixel-art.gif',
+      'https://media.tenor.com/TVdvv_3wKY8AAAAC/glorp-bouncing-slime.gif',
+      'https://media.tenor.com/bIs7ms2JdRIAAAAC/slime-bouncing.gif',
+      'https://media.tenor.com/OUSsQCqKT-EAAAAC/slime.gif',
+      'https://media.tenor.com/Hw9CvBd8mx4AAAAC/slime-pixel.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif',
-      'https://media.giphy.com/media/3ARYgT5xzZzUhIIvWY/giphy.gif',
-      'https://media.giphy.com/media/Z8ywMJLdE4N2Z6Qlta/giphy.gif'
+      'https://media.tenor.com/mgZBc6GhNlUAAAAC/game-pixel-art.gif',
+      'https://media.tenor.com/GvwoI9f1lyQAAAAC/dragon-dragon-quest.gif',
+      'https://media.tenor.com/1AdjvXKcJjIAAAAC/slime-slime-chamber.gif',
+      'https://media.tenor.com/NGUJV2lqUx0AAAAC/slime-morphing.gif',
+      'https://media.tenor.com/Bfc_sJd7yuEAAAAC/terraria-terraria-mod.gif'
     ]
   },
   // 🔥 Dragon — animasi naga keren bernapas api
   DRAGON: {
     BABY: [
-      'https://media.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
-      'https://media.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
-      'https://media.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif'
+      'https://i.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
+      'https://i.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
+      'https://i.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcTJ5dDN6OGVqeXNkY2tlbnRwb2V6MXVnM2N1N2doczRwd2phZTZ6YiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3vRfcPYG4f9eTi5W/giphy.gif',
+      'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
-      'https://media.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
-      'https://media.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif'
+      'https://i.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
+      'https://i.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
+      'https://i.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnVwNm1keHV1MTY1aGNjdzYxNnFqNmRlaXA1MW1oOGF0c2dwcGw3bSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/IgnSR1lnLxMxq/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYjR3Z21oMzF0Y3I0b3RqcjF5NGRteWk5bDR5OTJ3emk3OXg3ZjY2byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/12PA1eI8FBqEBa/giphy.gif'
     ]
   },
   // 🐱 Cat — animasi kucing menggemaskan
   CAT: {
     BABY: [
-      'https://media.giphy.com/media/gx54W1mSpeYMg/giphy.gif',
-      'https://media.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
-      'https://media.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif'
+      'https://i.giphy.com/media/gx54W1mSpeYMg/giphy.gif',
+      'https://i.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
+      'https://i.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2w2OGRqcWM3NG95d3IxcTl2eWljcWthazg3a3V5Y3pkaThvbzlodSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ND6xkVPaj8tHO/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xjMmIwMWYwdWluaHhxcXRkaWtvdWcxMXJ3YmlmaWJ6NjlnODhyMiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/VbnUQpnihPSQgIXuZv/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
-      'https://media.giphy.com/media/2wicMBKqNZlrW/giphy.gif',
-      'https://media.giphy.com/media/1k1ytCiReJMZWVtjXd/giphy.gif'
+      'https://i.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
+      'https://i.giphy.com/media/2wicMBKqNZlrW/giphy.gif',
+      'https://i.giphy.com/media/1k1ytCiReJMZWVtjXd/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExdXg4aGQ5ZWc0NjBhaGZqcjYxZjVzZG92cW5xMDhxbXlxbnNoMHRwNCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/mlvseq9yvZhba/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGw0aWViZnpyNGlkNndtMGN1cXRvenR3MGo2c2E5Y2h3NDZoMjc1MSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/nR4L10XlJcSeQ/giphy.gif'
     ]
   },
   // 🧱 Golem — animasi golem batu bergerak
   GOLEM: {
     BABY: [
-      'https://media.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
-      'https://media.giphy.com/media/BU327u9UNM2Sk/giphy.gif'
+      'https://i.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
+      'https://i.giphy.com/media/BU327u9UNM2Sk/giphy.gif',
+      'https://media.tenor.com/R4QclJPFD1gAAAAC/16bit-80s.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExaHl0Y3E1OGlwbTdndm1jcDNkYzI4cDhtNWtsN2s2bHdjMG5vMnR3MSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Bm6jG0kRO0f4I/giphy.gif'
     ],
     ADULT: [
-      'https://media.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
-      'https://media.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
-      'https://media.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif'
+      'https://i.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
+      'https://i.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
+      'https://i.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif',
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWJkdnVjbHlydWVwMTN6YXdpMnVjMWRzeW1lYnU0ZnQ2N3IzcTBkYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oKIPftHL9gnnaoiR2/giphy.gif',
+      'https://media.tenor.com/ykpEHGFKYDoAAAAC/elements-solana.gif'
+    ]
+  },
+  // GIF khusus untuk aksi/interaksi tertentu
+  ACTION: {
+    WORK: [
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExemV3NmRjNHo2dHR0Z3RyY2p5YW92YnhxMzJnbmU0YjNpMjhnN2FkaCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/SACoDGYTvVNhZYNb5R/giphy.gif',
+      'https://media.tenor.com/eKcQ9MT2dR8AAAAC/uwu-cute.gif'
+    ],
+    HUNT: [
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGRhajU1ZnJweGIxYnE4YTlxbng4c2V3eThjcXlyOTd3MDE0eXlubCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3ohs7QSgtSfCXs3hcc/giphy.gif'
+    ],
+    PVP: [
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDZtM3lhNGd2ZGQxeG53bXQ2dnRxODFhbHFtMjBjOHJiMGI0cW1hMCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/2zoCbKY7jYAfm/giphy.gif'
+    ],
+    EXPEDITION: [
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHA2ZjExbWE2NTNjNGpuNHVsam1mZGJicHlhbHRhbTIyZmFxZzI3eCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3vR4aFafvy4xRn6E/giphy.gif'
+    ],
+    PLAY: [
+      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3h0YXR6Z2hhMThkeTUycjIwcnRnYmV6YmhtOHY2ZW0yMmk1MHhmeCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/5i7umUqAOYYEw/giphy.gif'
     ]
   }
 };
