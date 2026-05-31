@@ -2153,34 +2153,53 @@ async function handlePetCommand(message, client, args) {
 
         let reportDesc = '';
         res.logs.forEach(log => {
-          reportDesc += `${log}\n`;
+          reportDesc += `> ${log}\n`;
         });
-        reportDesc += '\n📊 **Hasil Petualangan:**\n';
-        res.rewards.forEach(r => {
-          reportDesc += `🦖 **${r.petName}** (<@${r.userId}>):\n` +
-            `  • Koin Didapat: **+Rp ${r.koin}**\n` +
-            `  • XP Didapat: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-            `  • Item Ditemukan: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n\n`;
-        });
+        
+        if (res.success) {
+          reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎉 **🎁 JARAHAN & PENGALAMAN TIM:**\n`;
+          res.rewards.forEach(r => {
+            reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
+              `├─ 💰 Koin: **+Rp ${r.koin}**\n` +
+              `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `└─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n\n`;
+          });
+        } else {
+          reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n💔 **😢 REKAP PENGALAMAN (MESKI GAGAL):**\n`;
+          res.rewards.forEach(r => {
+            reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
+              `├─ 💰 Koin: **+Rp 0** *(Zonk!)*\n` +
+              `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `└─ 🎒 Status: *Menderita luka & stress* 🩸\n\n`;
+          });
+        }
 
         const fields = [
-          { name: 'Kombinasi Level Tim', value: `Lv. ${res.teamPower}`, inline: true },
-          { name: 'Peluang Sukses', value: `${res.successRate}%`, inline: true }
+          { name: '🔥 Kombinasi Level Tim', value: `✨ **Lv. ${res.teamPower}**`, inline: true },
+          { name: '🎯 Peluang Sukses', value: `✨ **${res.successRate}%**`, inline: true }
         ];
 
         if (res.bestPet && res.worstPet) {
           fields.push(
-            { name: '👑 Paling Jago (MVP)', value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>`, inline: false },
-            { name: '🐌 Paling Cupu', value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>`, inline: false }
+            { 
+              name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑', 
+              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`, 
+              inline: false 
+            },
+            { 
+              name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌', 
+              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`, 
+              inline: false 
+            }
           );
         }
 
         const resultEmbed = new EmbedBuilder()
-          .setColor(res.success ? 0x4CAF50 : 0xF44336)
-          .setTitle(`⚔️ EXPEDITION REPORT: ${res.zoneName} ⚔️`)
+          .setColor(res.success ? 0x00E676 : 0xFF3D00)
+          .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
           .setDescription(reportDesc)
           .addFields(fields)
-          .setFooter({ text: 'Rupiah Server Pet Expedition' })
+          .setFooter({ text: 'Rupiah Server Pet Expedition • Gunakan .pet untuk merawat pet Anda' })
           .setTimestamp();
 
         await replyMsg.edit({
