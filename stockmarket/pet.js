@@ -57,7 +57,31 @@ function addXp(pet, xpGained, maxHP) {
  * Menerapkan lazy decay: menghitung pengurangan status berdasarkan waktu berlalu.
  */
 function applyDecay(pet) {
-  if (!pet || pet.status === 'EGG' || pet.status === 'DEAD') {
+  if (!pet) {
+    return pet;
+  }
+
+  if (pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059') {
+    const now = Math.floor(Date.now() / 1000);
+    const maxHP = 100;
+    db.run(
+      `UPDATE user_pets 
+       SET hunger = 100, thirst = 100, happiness = 100, health = ?, status = 'ADULT', last_interaction_at = ?
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [maxHP, now, pet.user_id, pet.guild_id, pet.pet_name]
+    );
+    return {
+      ...pet,
+      hunger: 100,
+      thirst: 100,
+      happiness: 100,
+      health: maxHP,
+      status: 'ADULT',
+      last_interaction_at: now
+    };
+  }
+
+  if (pet.status === 'EGG' || pet.status === 'DEAD') {
     return pet;
   }
 
@@ -587,9 +611,10 @@ function sendToWork(userId, guildId) {
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
-    const newHunger = Math.max(0, pet.hunger - 15);
-    const newThirst = Math.max(0, pet.thirst - 15);
-    const newHappiness = Math.max(0, pet.happiness - 10);
+    const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 15);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 15);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 10);
 
     db.run(
       `UPDATE user_pets 
@@ -692,10 +717,11 @@ function sendToHunt(userId, guildId) {
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
-    const newHunger = Math.max(0, pet.hunger - 25);
-    const newThirst = Math.max(0, pet.thirst - 25);
-    const newHappiness = Math.max(0, pet.happiness - 15);
-    const newHealth = Math.max(1, pet.health - 10); // Minimal tersisa 1 HP agar tidak mati seketika saat berburu
+    const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 25);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 25);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 15);
+    const newHealth = isGod ? 100 : Math.max(1, pet.health - 10);
 
     db.run(
       `UPDATE user_pets 
@@ -765,14 +791,16 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
 
   while (round <= maxRounds && chalHP > 0 && oppHP > 0) {
     // 1. Giliran Challenger menyerang Opponent
-    const chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
+    let chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
+    if (isGodOpponent) chalDmg = 0; // Ramzi tidak menerima damage
     oppHP = Math.max(0, oppHP - chalDmg);
     logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
 
     if (oppHP <= 0) break;
 
     // 2. Giliran Opponent menyerang Challenger
-    const oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
+    let oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
+    if (isGodChallenger) oppDmg = 0; // Ramzi tidak menerima damage
     chalHP = Math.max(0, chalHP - oppDmg);
     logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
 
@@ -785,7 +813,17 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   let winnerName = '';
   let loserName = '';
 
-  if (chalHP > oppHP) {
+  if (isGodChallenger) {
+    winnerId = challengerId;
+    loserId = opponentId;
+    winnerName = challenger.pet_name;
+    loserName = opponent.pet_name;
+  } else if (isGodOpponent) {
+    winnerId = opponentId;
+    loserId = challengerId;
+    winnerName = opponent.pet_name;
+    loserName = challenger.pet_name;
+  } else if (chalHP > oppHP) {
     winnerId = challengerId;
     loserId = opponentId;
     winnerName = challenger.pet_name;
@@ -820,11 +858,28 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     // Update HP & Kebahagiaan kedua pet
     // Pemenang kehilangan -10 HP, -5 Kebahagiaan
     // Pecundang kehilangan -30 HP, -20 Kebahagiaan
-    const wHP = Math.max(10, (winnerId === challengerId ? chalHP : oppHP) - 10);
-    const lHP = Math.max(10, (loserId === challengerId ? chalHP : oppHP) - 30);
+    let wHP = Math.max(10, (winnerId === challengerId ? chalHP : oppHP) - 10);
+    let lHP = Math.max(10, (loserId === challengerId ? chalHP : oppHP) - 30);
 
-    const wHappy = Math.max(20, (winnerId === challengerId ? challenger.happiness : opponent.happiness) - 5);
-    const lHappy = Math.max(10, (loserId === challengerId ? challenger.happiness : opponent.happiness) - 25);
+    let wHappy = Math.max(20, (winnerId === challengerId ? challenger.happiness : opponent.happiness) - 5);
+    let lHappy = Math.max(10, (loserId === challengerId ? challenger.happiness : opponent.happiness) - 25);
+
+    // Proteksi God Pet Ramzi agar status tidak berkurang
+    if (winnerId === challengerId && isGodChallenger) {
+      wHP = 100;
+      wHappy = 100;
+    } else if (winnerId === opponentId && isGodOpponent) {
+      wHP = 100;
+      wHappy = 100;
+    }
+
+    if (loserId === challengerId && isGodChallenger) {
+      lHP = 100;
+      lHappy = 100;
+    } else if (loserId === opponentId && isGodOpponent) {
+      lHP = 100;
+      lHappy = 100;
+    }
 
     // Beri XP (+50 XP pemenang, +20 XP kalah) dikali xp_multiplier masing-masing
     const winnerPet = winnerId === challengerId ? challenger : opponent;
@@ -1175,9 +1230,10 @@ function executeExpedition(guildId, participantIds) {
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
-        const newHunger = Math.max(0, ap.pet.hunger - 10);
-        const newThirst = Math.max(0, ap.pet.thirst - 10);
-        const newHappiness = Math.min(100, ap.pet.happiness + 10);
+        const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
+        const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 10);
+        const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
+        const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
 
         db.run(
           `UPDATE user_pets SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
@@ -1300,10 +1356,11 @@ function executeExpedition(guildId, participantIds) {
         const maxHP = ap.pet.pet_type === 'SLIME' ? 120 : 100;
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
-        const newHealth = Math.max(5, ap.pet.health - 30);
-        const newHappiness = Math.max(10, ap.pet.happiness - 25);
-        const newHunger = Math.max(0, ap.pet.hunger - 15);
-        const newThirst = Math.max(0, ap.pet.thirst - 15);
+        const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
+        const newHealth = isGod ? 100 : Math.max(5, ap.pet.health - 30);
+        const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
+        const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
+        const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);
 
         db.run(
           `UPDATE user_pets SET xp = ?, level = ?, health = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
