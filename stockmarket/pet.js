@@ -1110,6 +1110,40 @@ function executeExpedition(guildId, participantIds) {
   // Kekuatan Tim (Total level pet)
   const teamPower = activePets.reduce((sum, ap) => sum + ap.pet.level, 0);
 
+  // Cari pet paling jago dan paling cupu
+  let bestPet = null;
+  let worstPet = null;
+
+  if (activePets.length > 1) {
+    const getCP = (p) => {
+      let traitBonus = 0;
+      if (['GENIUS', 'WARRIOR', 'MUTANT'].includes(p.trait)) {
+        traitBonus = 250;
+      } else if (p.trait === 'STURDY') {
+        traitBonus = 150;
+      }
+      return (p.level * 120) + p.health + (p.happiness * 1.5) + traitBonus;
+    };
+
+    const sorted = [...activePets].sort((a, b) => {
+      if (b.pet.level !== a.pet.level) {
+        return b.pet.level - a.pet.level;
+      }
+      return getCP(b.pet) - getCP(a.pet);
+    });
+
+    bestPet = {
+      userId: sorted[0].userId,
+      petName: sorted[0].pet.pet_name,
+      level: sorted[0].pet.level
+    };
+    worstPet = {
+      userId: sorted[sorted.length - 1].userId,
+      petName: sorted[sorted.length - 1].pet.pet_name,
+      level: sorted[sorted.length - 1].pet.level
+    };
+  }
+
   // Success Rate = (timPower / difficulty) * 100
   let successRate = Math.round((teamPower / difficulty) * 100);
   if (successRate > 90) successRate = 90;
@@ -1200,7 +1234,9 @@ function executeExpedition(guildId, participantIds) {
       teamPower,
       successRate,
       rewards,
-      logs
+      logs,
+      bestPet,
+      worstPet
     };
   } else {
     // Tentukan penyebab kegagalan dan kambing hitam (pet yang membuat kalah)
@@ -1297,7 +1333,9 @@ function executeExpedition(guildId, participantIds) {
       teamPower,
       successRate,
       rewards,
-      logs
+      logs,
+      bestPet,
+      worstPet
     };
   }
 }

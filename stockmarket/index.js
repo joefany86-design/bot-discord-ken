@@ -2163,14 +2163,23 @@ async function handlePetCommand(message, client, args) {
             `  • Item Ditemukan: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n\n`;
         });
 
+        const fields = [
+          { name: 'Kombinasi Level Tim', value: `Lv. ${res.teamPower}`, inline: true },
+          { name: 'Peluang Sukses', value: `${res.successRate}%`, inline: true }
+        ];
+
+        if (res.bestPet && res.worstPet) {
+          fields.push(
+            { name: '👑 Paling Jago (MVP)', value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>`, inline: false },
+            { name: '🐌 Paling Cupu', value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>`, inline: false }
+          );
+        }
+
         const resultEmbed = new EmbedBuilder()
           .setColor(res.success ? 0x4CAF50 : 0xF44336)
           .setTitle(`⚔️ EXPEDITION REPORT: ${res.zoneName} ⚔️`)
           .setDescription(reportDesc)
-          .addFields(
-            { name: 'Kombinasi Level Tim', value: `Lv. ${res.teamPower}`, inline: true },
-            { name: 'Peluang Sukses', value: `${res.successRate}%`, inline: true }
-          )
+          .addFields(fields)
           .setFooter({ text: 'Rupiah Server Pet Expedition' })
           .setTimestamp();
 
