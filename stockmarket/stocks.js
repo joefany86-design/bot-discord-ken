@@ -126,7 +126,7 @@ function getStocks(guildId) {
  * Member melakukan pembelian (BUY) saham menggunakan koin Rupiah Server.
  */
 function buyStock(userId, guildId, ticker, shares) {
-  if (!isMarketOpen()) {
+  if (!module.exports.isMarketOpen()) {
     throw new Error('❌ Bursa Saham sedang TUTUP! Jam operasional perdagangan: 08:00 - 23:00 WIB.');
   }
 
@@ -153,6 +153,27 @@ function buyStock(userId, guildId, ticker, shares) {
     throw new Error(`❌ Kepemilikan terlampaui! Maksimal saham yang boleh Anda miliki untuk satu channel adalah ${maxSharesHold} lembar. Saat ini Anda memiliki ${currentShares} lembar.`);
   }
 
+  // 0b. Cek batas harian transaksi pembelian (maksimal 10 kali per hari per user)
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const wibTime = new Date(utc + (3600000 * 7));
+  const year = wibTime.getFullYear();
+  const month = String(wibTime.getMonth() + 1).padStart(2, '0');
+  const day = String(wibTime.getDate()).padStart(2, '0');
+  const wibDateStr = `${year}-${month}-${day}`;
+  const todayStartUnix = Math.floor(new Date(`${wibDateStr}T00:00:00+07:00`).getTime() / 1000);
+
+  const buyTxCountRow = db.get(
+    `SELECT COUNT(*) as count FROM transactions 
+     WHERE user_id = ? AND guild_id = ? AND type = 'BUY' AND created_at >= ?`,
+    [userId, guildId, todayStartUnix]
+  );
+  const buyTxCount = buyTxCountRow ? buyTxCountRow.count : 0;
+  const maxBuyLimit = config.market.DAILY_BUY_TRANSACTION_LIMIT || 10;
+  if (buyTxCount >= maxBuyLimit) {
+    throw new Error(`❌ Batas Harian Tercapai! Anda sudah melakukan ${buyTxCount} kali transaksi pembelian hari ini. Batas maksimal adalah ${maxBuyLimit} kali transaksi per hari.`);
+  }
+
   const wallet = economy.getWallet(userId, guildId);
   if (wallet.balance < totalPrice) {
     throw new Error(`❌ Saldo Anda tidak mencukupi! Anda butuh Rp ${totalPrice}, saldo Anda saat ini Rp ${wallet.balance}.`);
@@ -161,6 +182,15 @@ function buyStock(userId, guildId, ticker, shares) {
   db.transaction(() => {
     // 1. Kurangi saldo koin user
     economy.subtractBalance(userId, guildId, totalPrice, 'BUY', stock.channel_id);
+
+    // Update record transaksi terbaru untuk mengisi field shares dan price_per_share
+    db.run(
+      `UPDATE transactions 
+       SET shares = ?, price_per_share = ? 
+       WHERE user_id = ? AND guild_id = ? AND type = 'BUY' AND channel_id = ? 
+       AND id = (SELECT MAX(id) FROM transactions WHERE user_id = ? AND guild_id = ? AND type = 'BUY')`,
+      [shares, stock.current_price, userId, guildId, stock.channel_id, userId, guildId]
+    );
 
     // 2. Update status lembar saham di pasar
     db.run(
@@ -215,8 +245,13 @@ function buyStock(userId, guildId, ticker, shares) {
  * Member melakukan penjualan (SELL) saham dengan pajak transaksi 5%.
  */
 function sellStock(userId, guildId, ticker, shares) {
-  if (!isMarketOpen()) {
+  if (!module.exports.isMarketOpen()) {
     throw new Error('❌ Bursa Saham sedang TUTUP! Jam operasional perdagangan: 08:00 - 23:00 WIB.');
+  }
+
+  const maxSellLimit = config.market.MAX_SHARES_SELL_PER_TRADE || 500;
+  if (shares > maxSellLimit) {
+    throw new Error(`❌ Batas Transaksi Tercapai! Maksimal lembar saham yang dapat dijual dalam satu transaksi adalah ${maxSellLimit} lembar.`);
   }
 
   const stock = getStock(guildId, ticker);
@@ -229,6 +264,38 @@ function sellStock(userId, guildId, ticker, shares) {
 
   if (!portfolio || portfolio.shares < shares) {
     throw new Error(`❌ Portofolio Anda tidak memiliki saham ini sebanyak ${shares} lembar! Anda hanya memiliki ${portfolio ? portfolio.shares : 0} lembar.`);
+  }
+
+  // --- VALIDASI DURASI HOLD MINIMAL 1 HARI (24 JAM) ---
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const lockTimeLimit = nowUnix - (config.market.MIN_HOLD_DURATION_SECONDS || 86400);
+
+  // Ambil total shares yang dibeli dalam 24 jam terakhir
+  const recentBoughtRow = db.get(
+    `SELECT SUM(shares) as total FROM transactions 
+     WHERE user_id = ? AND guild_id = ? AND channel_id = ? AND type = 'BUY' AND created_at > ?`,
+    [userId, guildId, stock.channel_id, lockTimeLimit]
+  );
+  
+  const recentBought = recentBoughtRow ? (recentBoughtRow.total || 0) : 0;
+  const lockedShares = Math.min(portfolio.shares, recentBought);
+  const sellableShares = portfolio.shares - lockedShares;
+
+  if (shares > sellableShares) {
+    const oldestLockedTx = db.get(
+      `SELECT created_at FROM transactions 
+       WHERE user_id = ? AND guild_id = ? AND channel_id = ? AND type = 'BUY' AND created_at > ?
+       ORDER BY created_at ASC LIMIT 1`,
+      [userId, guildId, stock.channel_id, lockTimeLimit]
+    );
+    let timeMsg = '';
+    if (oldestLockedTx) {
+      const remainingTime = (oldestLockedTx.created_at + (config.market.MIN_HOLD_DURATION_SECONDS || 86400)) - nowUnix;
+      const hours = Math.floor(remainingTime / 3600);
+      const minutes = Math.floor((remainingTime % 3600) / 60);
+      timeMsg = ` Sisa waktu hold untuk pembelian terbaru Anda sekitar ${hours} jam ${minutes} menit.`;
+    }
+    throw new Error(`❌ Saham Terkunci! Anda hanya memiliki ${sellableShares} lembar saham yang dapat dijual saat ini (ada ${lockedShares} lembar saham yang baru Anda beli dalam 24 jam terakhir dan masih dikunci).${timeMsg}`);
   }
 
   const rawRevenue = stock.current_price * shares;
@@ -248,6 +315,15 @@ function sellStock(userId, guildId, ticker, shares) {
   db.transaction(() => {
     // 1. Tambahkan saldo koin user
     economy.addBalance(userId, guildId, finalRevenue, 'SELL', stock.channel_id);
+
+    // Update record transaksi terbaru untuk mengisi field shares dan price_per_share
+    db.run(
+      `UPDATE transactions 
+       SET shares = ?, price_per_share = ? 
+       WHERE user_id = ? AND guild_id = ? AND type = 'SELL' AND channel_id = ? 
+       AND id = (SELECT MAX(id) FROM transactions WHERE user_id = ? AND guild_id = ? AND type = 'SELL')`,
+      [shares, stock.current_price, userId, guildId, stock.channel_id, userId, guildId]
+    );
 
     // 2. Kembalikan ketersediaan lembar saham di pasar
     db.run(

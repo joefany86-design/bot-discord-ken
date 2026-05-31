@@ -590,7 +590,11 @@ module.exports = {
       .setTitle(`📈 BURSA SAHAM SERVER — ${isMarketOpen ? '🟢 BUKA' : '🔴 TUTUP'}`)
       .setDescription(
         `Investasikan koin **${config.CURRENCY_NAME}** Anda ke channel server teraktif!\n` +
-        `*Harga saham ter-update otomatis setiap 2 jam berdasarkan keaktifan chat.*\n` +
+        `*Harga saham ter-update otomatis setiap 2 jam berdasarkan keaktifan chat.*\n\n` +
+        `🔒 **Regulasi Perdagangan (Anti-Hoarding):**\n` +
+        `• ⏳ **Hold 24 Jam:** Saham wajib disimpan minimal **24 jam** setelah dibeli sebelum bisa dijual.\n` +
+        `• 📥 **Limit Harian:** Maksimal **10 kali transaksi** beli per hari per user.\n` +
+        `• 📤 **Limit Sekali Jual:** Maksimal **500 lembar** dalam satu transaksi penjualan.\n` +
         `────────────────────────────────────────`
       );
 
@@ -1262,8 +1266,8 @@ module.exports = {
             `> *Investasikan koin Anda ke text channel teraktif! Harga saham berfluktuasi dinamis setiap 2 jam.*\n\n` +
             `📊 **\`.market\`** · **\`.saham\`** — Membuka dashboard bursa saham lengkap & memicu panel transaksi interaktif privat.\n\n` +
             `📉 **\`.stock <ticker>\`** · **\`.chart <ticker>\`** — Melihat detail saham & **Grafik Tren ASCII 2D** (10 pembaruan terakhir) dengan tombol instan Beli, Jual, & Refresh.\n\n` +
-            `📥 **\`.buy <ticker> <jumlah>\`** — Membeli lembar saham (Maks 500 lembar per saham).\n` +
-            `📤 **\`.sell <ticker> <jumlah>\`** — Menjual saham Anda ke bursa (pajak bursa **15%**).\n` +
+            `📥 **\`.buy <ticker> <jumlah>\`** — Membeli lembar saham (Maks 500 lembar per saham & maks 10 kali transaksi/hari).\n` +
+            `📤 **\`.sell <ticker> <jumlah>\`** — Menjual saham Anda ke bursa (pajak bursa **15%**, hold min 24 jam, maks 500 lembar/jual).\n` +
             `📤 **\`.sellall <ticker>\`** — Melikuidasi seluruh lembar saham pada ticker tertentu.\n\n` +
             `💼 **\`.porto\`** · **\`.portfolio\`** — Detail aset investasi, harga beli rata-rata, & profit/loss real-time.\n\n` +
             `💵 **Dividen Mingguan** — Setiap **Minggu malam pukul 21:00 WIB**, dividen otomatis dibagikan ke seluruh pemegang saham berdasarkan keaktifan chat mingguan channel terkait *(Maks rate 9%)*!\n\n` +
