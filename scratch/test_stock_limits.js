@@ -98,6 +98,18 @@ try {
   console.log(`   ✅ SUCCESS: Correctly blocked selling more than 100 shares: ${err.message}`);
 }
 
+// 6. Test holding limit of 100 shares
+console.log("\n📥 6. Testing Max Holding Limit (Max 100 shares)...");
+// Setup user with 95 shares
+db.prepare("UPDATE portfolios SET shares = 95 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
+// Try to buy 10 shares (total will be 105, which exceeds 100)
+try {
+  stocks.buyStock(userId, guildId, ticker, 10);
+  console.log("   ❌ FAILED: Allowed buying shares that exceed 100 shares holding limit!");
+} catch (err) {
+  console.log(`   ✅ SUCCESS: Correctly blocked exceeding holding limit: ${err.message}`);
+}
+
 // Cleanup
 db.prepare("DELETE FROM stocks WHERE guild_id = ?").run(guildId);
 db.prepare("DELETE FROM portfolios WHERE guild_id = ?").run(guildId);

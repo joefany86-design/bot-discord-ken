@@ -33,7 +33,7 @@ Kirim link video favorit Anda tanpa khawatir preview rusak atau diblokir!
 Investasikan koin Anda ke text channel teraktif! Harga saham berfluktuasi dinamis setiap 2 jam berdasarkan keaktifan chat warga di channel tersebut.
 *   👉 **`.market`** atau **`.saham`** : Membuka dashboard bursa saham lengkap dan memicu panel transaksi interaktif privat.
 *   👉 **`.stock <ticker>`** atau **`.chart <ticker>`** : Melihat detail saham dan **Grafik Tren ASCII 2D** (10 pembaruan terakhir) lengkap dengan tombol instan Beli, Jual, dan Segarkan.
-*   👉 **`.buy <ticker> <jumlah>`** : Membeli lembar saham channel (Batas simpan: maks 500 lembar per saham).
+*   👉 **`.buy <ticker> <jumlah>`** : Membeli lembar saham channel (Batas simpan: maks 100 lembar per saham).
 *   👉 **`.sell <ticker> <jumlah>`** : Menjual lembar saham Anda ke bursa (dikenakan pajak bursa normal 15%).
 *   👉 **`.sellall <ticker>`** : Melikuidasi/menjual seluruh lembar saham yang Anda pegang pada ticker terpilih.
 *   👉 **`.porto`** atau **`.portfolio`** : Melihat detail aset investasi, harga beli rata-rata, dan keuntungan/kerugian (Profit/Loss) real-time Anda.

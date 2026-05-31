@@ -173,8 +173,7 @@ function initScheduler(client) {
                     'SELECT shares FROM portfolios WHERE user_id = ? AND guild_id = ? AND channel_id = ?',
                     [userId, guild.id, stockToBuy.channel_id]
                   );
-                  const currentShares = userPortfolio ? userPortfolio.shares : 0;
-                  const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 500;
+                  const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 100;
                   
                   // Sesuaikan dengan quota bursa & hold user
                   sharesToBuy = Math.min(sharesToBuy, stockToBuy.available_shares, maxHold - currentShares);

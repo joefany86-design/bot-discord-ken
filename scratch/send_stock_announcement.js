@@ -38,7 +38,7 @@ client.once('ready', async () => {
       `⚙️ **DAFTAR PERINTAH & INSTRUMEN TRADING:**\n` +
       `📊 **\`.market\`** · **\`.saham\`** — Membuka dashboard bursa saham utama dan meluncurkan panel transaksi interaktif pribadi.\n` +
       `📉 **\`.stock <ticker>\`** · **\`.chart <ticker>\`** — Menampilkan grafik tren harga ASCII 2D (10 update terakhir) lengkap dengan tombol instan Beli, Jual, & Refresh!\n` +
-      `📥 **\`.buy <ticker> <jumlah>\`** — Membeli lembar saham (Maksimal kepemilikan 500 lembar per saham per user).\n` +
+      `📥 **\`.buy <ticker> <jumlah>\`** — Membeli lembar saham (Maksimal kepemilikan 100 lembar per saham per user).\n` +
       `📤 **\`.sell <ticker> <jumlah>\`** — Menjual saham Anda kembali ke bursa (dikenakan pajak bursa standar **15%**).\n` +
       `📤 **\`.sellall <ticker>\`** — Melikuidasi penuh seluruh lembar saham yang Anda miliki pada ticker tertentu.\n` +
       `💼 **\`.porto\`** · **\`.portfolio\`** — Dashboard portofolio Anda: cek harga rata-rata beli, jumlah lembar, dan profit/loss real-time.\n\n` +

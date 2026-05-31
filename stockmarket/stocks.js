@@ -148,7 +148,7 @@ function buyStock(userId, guildId, ticker, shares) {
     [userId, guildId, stock.channel_id]
   );
   const currentShares = portfolio ? portfolio.shares : 0;
-  const maxSharesHold = config.market.MAX_SHARES_HOLD_PER_USER || 500;
+  const maxSharesHold = config.market.MAX_SHARES_HOLD_PER_USER || 100;
   if (currentShares + shares > maxSharesHold) {
     throw new Error(`❌ Kepemilikan terlampaui! Maksimal saham yang boleh Anda miliki untuk satu channel adalah ${maxSharesHold} lembar. Saat ini Anda memiliki ${currentShares} lembar.`);
   }
@@ -249,7 +249,7 @@ function sellStock(userId, guildId, ticker, shares) {
     throw new Error('❌ Bursa Saham sedang TUTUP! Jam operasional perdagangan: 08:00 - 23:00 WIB.');
   }
 
-  const maxSellLimit = config.market.MAX_SHARES_SELL_PER_TRADE || 500;
+  const maxSellLimit = config.market.MAX_SHARES_SELL_PER_TRADE || 100;
   if (shares > maxSellLimit) {
     throw new Error(`❌ Batas Transaksi Tercapai! Maksimal lembar saham yang dapat dijual dalam satu transaksi adalah ${maxSellLimit} lembar.`);
   }

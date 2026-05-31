@@ -80,7 +80,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         `📉 **Sisa Bursa:** ${activeStock.total_shares === 99999999 ? '`Tanpa Batas (♾️)`' : `\`${activeStock.available_shares.toLocaleString('id-ID')} / ${activeStock.total_shares.toLocaleString('id-ID')} lembar\``}\n` +
         `💵 **Saldo Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
         `💼 **Kepemilikan Portofolio:**\n` +
-        `👉 Jumlah Aset: \`${userShares} / 500 lembar\` ${userShares >= 500 ? '⚠️ (Maks)' : ''}\n` +
+        `👉 Jumlah Aset: \`${userShares} / ${config.market.MAX_SHARES_HOLD_PER_USER || 100} lembar\` ${userShares >= (config.market.MAX_SHARES_HOLD_PER_USER || 100) ? '⚠️ (Maks)' : ''}\n` +
         `👉 Rata-rata Beli: \`Rp ${avgBuyPrice.toLocaleString('id-ID')}\`\n` +
         `👉 Nilai Valuasi: \`Rp ${currentValue.toLocaleString('id-ID')}\`\n` +
         `👉 P/L Real-time: ${profitIndicator} **${profitSign}Rp ${profitRp.toLocaleString('id-ID')}** (\`${profitSign}${profitPercent}%\`)`
@@ -88,13 +88,15 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
       .setFooter({ text: 'Pilih aksi Beli (Success) atau Jual (Danger) di bawah ini!' })
       .setTimestamp();
 
+    const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 100;
+
     // BUY row
     const buyRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('trade_buy_1').setLabel('📥 Beli 1').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= 500),
-      new ButtonBuilder().setCustomId('trade_buy_10').setLabel('📥 Beli 10').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 10 || activeStock.available_shares < 10 || userShares + 10 > 500),
-      new ButtonBuilder().setCustomId('trade_buy_50').setLabel('📥 Beli 50').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 50 || activeStock.available_shares < 50 || userShares + 50 > 500),
-      new ButtonBuilder().setCustomId('trade_buy_max').setLabel('📥 Beli Max').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= 500),
-      new ButtonBuilder().setCustomId('trade_buy_custom').setLabel('📥 Custom').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= 500)
+      new ButtonBuilder().setCustomId('trade_buy_1').setLabel('📥 Beli 1').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold),
+      new ButtonBuilder().setCustomId('trade_buy_10').setLabel('📥 Beli 10').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 10 || activeStock.available_shares < 10 || userShares + 10 > maxHold),
+      new ButtonBuilder().setCustomId('trade_buy_50').setLabel('📥 Beli 50').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 50 || activeStock.available_shares < 50 || userShares + 50 > maxHold),
+      new ButtonBuilder().setCustomId('trade_buy_max').setLabel('📥 Beli Max').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold),
+      new ButtonBuilder().setCustomId('trade_buy_custom').setLabel('📥 Custom').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold)
     );
 
     // SELL row
@@ -164,10 +166,10 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
           else if (amountType === '50') shares = 50;
           else if (amountType === 'max') {
             const maxAfford = Math.floor(wallet.balance / stock.current_price);
-            const maxHoldAllowed = (config.market.MAX_SHARES_HOLD_PER_USER || 500) - userShares;
+            const maxHoldAllowed = (config.market.MAX_SHARES_HOLD_PER_USER || 100) - userShares;
             shares = Math.min(maxAfford, stock.available_shares, maxHoldAllowed);
             if (shares <= 0) {
-              return iTrade.reply({ content: '❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan 500 lembar)!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+              return iTrade.reply({ content: `❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan ${config.market.MAX_SHARES_HOLD_PER_USER || 100} lembar)!`, ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
             }
           } else if (amountType === 'custom') {
             const modal = new ModalBuilder()
