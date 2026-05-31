@@ -5,6 +5,7 @@ const stocks = require('./stocks');
 const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const robbery = require('./robbery');
+const bank = require('./bank');
 const { 
   EmbedBuilder, 
   ActionRowBuilder, 
@@ -932,7 +933,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }).catch(() => null);
 
           if (sub) {
-            const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+            const amount = bank.parseAmount(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
@@ -963,7 +964,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }).catch(() => null);
 
           if (sub) {
-            const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+            const amount = bank.parseAmount(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
@@ -998,13 +999,12 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }).catch(() => null);
 
           if (sub) {
-            const amount = parseInt(sub.fields.getTextInputValue('savings_amount'));
+            const amount = bank.parseAmount(sub.fields.getTextInputValue('savings_amount'));
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
             
-            const bankModule = require('./bank');
-            bankModule.getSavings(selectedTargetUserId, guildId);
+            bank.getSavings(selectedTargetUserId, guildId);
 
             database.run(
               'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
@@ -1041,13 +1041,12 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }).catch(() => null);
 
           if (sub) {
-            const amount = parseInt(sub.fields.getTextInputValue('savings_amount'));
+            const amount = bank.parseAmount(sub.fields.getTextInputValue('savings_amount'));
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
 
-            const bankModule = require('./bank');
-            const savings = bankModule.getSavings(selectedTargetUserId, guildId);
+            const savings = bank.getSavings(selectedTargetUserId, guildId);
             const amountToTake = Math.min(savings.balance, amount);
 
             if (amountToTake > 0) {
@@ -1099,7 +1098,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }).catch(() => null);
 
           if (sub) {
-            const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+            const amount = bank.parseAmount(sub.fields.getTextInputValue('coin_amount'));
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }

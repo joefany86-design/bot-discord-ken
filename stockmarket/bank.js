@@ -3,6 +3,37 @@ const economy = require('./economy');
 const config = require('./config');
 
 /**
+ * Utility untuk memparsing nominal koin yang mendukung format shorthand (seperti 15k, 1.5k, 1m, dll)
+ */
+function parseAmount(input) {
+  if (input === undefined || input === null) return 0;
+  if (typeof input === 'number') return Math.floor(input);
+  
+  const cleanInput = String(input).trim().toLowerCase().replace(/,/g, '');
+  if (cleanInput === 'all') return 'all';
+  
+  const match = cleanInput.match(/^([\d.]+)\s*([kmb])?$/);
+  if (!match) {
+    const val = parseInt(cleanInput);
+    return isNaN(val) ? 0 : val;
+  }
+  
+  const value = parseFloat(match[1]);
+  const suffix = match[2];
+  
+  if (!suffix) {
+    return isNaN(value) ? 0 : Math.floor(value);
+  }
+  
+  let multiplier = 1;
+  if (suffix === 'k') multiplier = 1000;
+  else if (suffix === 'm') multiplier = 1000000;
+  else if (suffix === 'b') multiplier = 1000000000;
+  
+  return Math.floor(value * multiplier);
+}
+
+/**
  * Mendapatkan data rekening tabungan (savings) user.
  * Jika belum ada, otomatis mendaftarkan user baru.
  */
@@ -39,10 +70,11 @@ function depositSavings(userId, guildId, amountInput) {
   const wallet = economy.getWallet(userId, guildId);
   let amount = 0;
 
-  if (typeof amountInput === 'string' && amountInput.toLowerCase() === 'all') {
+  const parsed = parseAmount(amountInput);
+  if (parsed === 'all') {
     amount = wallet.balance;
   } else {
-    amount = parseInt(amountInput);
+    amount = parsed;
   }
 
   if (isNaN(amount) || amount <= 0) {
@@ -104,10 +136,11 @@ function withdrawSavings(userId, guildId, amountInput) {
   const savings = getSavings(userId, guildId);
   let amount = 0;
 
-  if (typeof amountInput === 'string' && amountInput.toLowerCase() === 'all') {
+  const parsed = parseAmount(amountInput);
+  if (parsed === 'all') {
     amount = savings.balance;
   } else {
-    amount = parseInt(amountInput);
+    amount = parsed;
   }
 
   if (isNaN(amount) || amount <= 0) {
@@ -360,5 +393,6 @@ module.exports = {
   getActiveLoan,
   calculateMaxLoanLimit,
   createLoan,
-  repayLoan
+  repayLoan,
+  parseAmount
 };
