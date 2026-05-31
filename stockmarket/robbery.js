@@ -472,10 +472,33 @@ function executeHeist(guildId) {
   if (success) {
     logs.push(...actionPoolSuccess);
 
-    const totalPrize = stats.minPrize + Math.floor(Math.random() * (stats.maxPrize - stats.minPrize + 1));
-    const rewardPerPerson = Math.floor(totalPrize / kruCount);
+    let totalStolenFromPlayers = 0;
+    const deductionLogs = [];
+
+    // Ambil tabungan bank player lain di server ini yang saldonya > 0
+    const victims = db.prepare('SELECT user_id, balance FROM bank_savings WHERE guild_id = ? AND balance > 0').all(guildId);
+    const eligibleVictims = victims.filter(v => !participants.includes(v.user_id));
+
+    let totalPrize = 0;
+    let rewardPerPerson = 0;
 
     db.transaction(() => {
+      eligibleVictims.forEach(v => {
+        const pct = 5 + Math.floor(Math.random() * 11); // Potong 5% - 15% dari tabungan bank mereka
+        const amountToDeduct = Math.floor(v.balance * (pct / 100));
+        if (amountToDeduct > 0) {
+          db.prepare('UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?').run(amountToDeduct, v.user_id, guildId);
+          db.prepare('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)')
+            .run(v.user_id, guildId, 'HEIST_VICTIM_LOSS', -amountToDeduct);
+          totalStolenFromPlayers += amountToDeduct;
+          deductionLogs.push({ userId: v.user_id, amount: amountToDeduct });
+        }
+      });
+
+      const basePrize = stats.minPrize + Math.floor(Math.random() * (stats.maxPrize - stats.minPrize + 1));
+      totalPrize = basePrize + totalStolenFromPlayers;
+      rewardPerPerson = Math.floor(totalPrize / kruCount);
+
       participants.forEach(p => {
         economy.addBalance(p, guildId, rewardPerPerson, 'HEIST_SUCCESS');
       });
@@ -506,6 +529,8 @@ function executeHeist(guildId) {
       participants,
       totalReward: totalPrize,
       rewardPerPerson,
+      stolenFromPlayers: totalStolenFromPlayers,
+      deductionLogs,
       logs
     };
   } else {

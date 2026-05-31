@@ -2312,7 +2312,7 @@ module.exports = {
   },
 
   // 32. Heist Result Embed
-  heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours) {
+  heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = []) {
     const embed = new EmbedBuilder()
       .setTitle(success ? '💥 LAPORAN AKHIR: BANK HEIST SUCCESS! 💰' : '🚓 LAPORAN AKHIR: BANK HEIST GAGAL! 👮')
       .setColor(success ? COLORS.SUCCESS : COLORS.ERROR)
@@ -2322,14 +2322,20 @@ module.exports = {
     const logText = logs.map(l => `• ${l}`).join('\n');
 
     if (success) {
-      embed.setDescription(
-        `🚨 **Lokasi:** Central Bank Server\n` +
+      let desc = `🚨 **Lokasi:** Central Bank Server\n` +
         `👥 **Kru Perampok:** ${crewList}\n\n` +
         `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n` +
         `🏆 **HASIL JARAHAN BRANKAS:**\n` +
         `💰 **Total Dirampok:** \`${formatCurrency(totalReward)}\`\n` +
-        `👉 **Setiap Anggota Mendapatkan:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih!)*`
-      );
+        `👉 **Setiap Anggota Mendapatkan:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih!)*`;
+
+      if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
+        const victimList = deductionLogs.map(dl => `• <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
+        desc += `\n\n💸 **DANA NASABAH YANG DIKORBANKAN:**\n${victimList}\n` +
+          `🏦 **Total Disita dari Rekening Nasabah:** \`${formatCurrency(stolenFromPlayers)}\``;
+      }
+
+      embed.setDescription(desc);
     } else {
       embed.setDescription(
         `🚨 **Lokasi:** Central Bank Server\n` +
