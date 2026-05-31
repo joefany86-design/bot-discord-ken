@@ -1132,7 +1132,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
               guild,
               author,
               '💰 Bagi-Bagi Koin Massal',
-              'Administrator membagikan koin secara massal kepada seluruh member terdaftar di server ini.',
+              '💸 Hujan koin dadakan! Admin sedang membagikan koin cuma-cuma ke seluruh warga. Dompet kalian baru saja disuntik dana gratis. Jangan lupa sungkem dan bilang "terima kasih admin ganteng/cantik" ya!',
               '#00FF88',
               [
                 { name: 'Nominal Dibagikan', value: `Rp ${amount.toLocaleString('id-ID')}`, inline: true }
@@ -1234,7 +1234,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
               guild,
               author,
               '💸 Bansos Massal (Kekayaan Terbatas)',
-              'Administrator mendistribusikan bantuan sosial (bansos) koin kepada member dengan kekayaan terbatas.',
+              '🍚 Beras bansos turun! Bantuan sosial dibagikan khusus untuk warga yang total kekayaannya di bawah garis kemiskinan server. Yang dompetnya tebal minggir dulu ya, jangan ikut antre!',
               '#00FF88',
               [
                 { name: 'Batas Kekayaan Maksimal', value: `Rp ${wealthLimit.toLocaleString('id-ID')}`, inline: true },
@@ -1425,7 +1425,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
             guild,
             author,
             '🚨 Reset Cooldown Global Bank Heist',
-            'Cooldown global untuk melakukan perampokan bank server telah direset. Bank Heist kini siap untuk kembali dirampok oleh warga!',
+            '🚓 Sirene polisi mati total! Cooldown perampokan bank server telah direset. Para perampok profesional dan amatir dipersilakan merapatkan barisan, mari rampok bank secara tertib dan kondusif!',
             '#3498db',
             [],
             true
@@ -1439,7 +1439,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
             guild,
             author,
             '🔓 Pembebasan Tahanan Massal',
-            'Seluruh tahanan yang berada di dalam penjara virtual saat ini telah dibebaskan secara massal oleh Administrator!',
+            '🔓 Hari Raya Grasi! Pintu penjara virtual dibobol massal oleh admin. Seluruh warga yang sedang mendekam di sel tahanan kini bebas menghirup udara segar. Ingat, tobat ya dan kurangi kriminalitas!',
             '#3498db',
             [],
             true
@@ -1855,7 +1855,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '📈 Event Bursa: Bull Run!',
-            'Pasar saham sedang mengalami tren naik (Bullish Run) secara masif! Harga saham-saham di bursa melonjak tinggi.',
+            '🐂 BANTENG BURSA MENGAMUK! Pasar saham sedang Bullish parah! Harga semua saham naik meroket tinggi. Buruan borong atau jual aset portofolio kalian sebelum trennya berbalik arah!',
             '#2ECC71',
             []
           );
@@ -1869,7 +1869,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '📉 Event Bursa: Market Crash!',
-            'Pasar saham sedang mengalami kejatuhan (Bearish Crash) secara mendadak! Harga saham-saham di bursa terjun bebas.',
+            'Bearish Crash mendadak! Harga saham terjun bebas ke dasar jurang. Mohon tetap tenang, jangan panik dan tetap pegangan erat-erat!',
             '#FF3366',
             []
           );
@@ -1901,7 +1901,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '📈 Pompa Bursa Global (Max Out)',
-            'Seluruh instrumen saham di bursa server telah dipompa secara instan ke harga maksimal (Rp 10.000)!',
+            '🚀 MANIPULASI PASAR TINGKAT TINGGI! Seluruh saham server langsung dipompa paksa ke harga maksimal Rp 10.000! Investor kelas kakap tersenyum lebar melihat portofolio mereka mendadak hijau royo-royo.',
             '#2ECC71',
             []
           );
@@ -1935,7 +1935,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '📉 Crash Bursa Global (Crash Out)',
-            'Seluruh instrumen saham di bursa server telah didepresiasi secara instan ke harga minimal (Rp 10)!',
+            '💥 BENCANA BURSA SAHAM! Bandar ngambek, harga semua saham dibanting jatuh ke Rp 10! Yang beli di harga pucuk dipersilakan mengheningkan cipta sejenak.',
             '#FF3366',
             []
           );
@@ -1951,7 +1951,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '💰 Event Bursa: Double Earning Hour!',
-            'Event pendapatan ganda untuk bursa saham diaktifkan selama 1 jam ke depan! Dapatkan keuntungan 2x lipat dari aktivitas Anda.',
+            '🪙 JAM PENUH BERKAH! Event pendapatan ganda untuk bursa saham diaktifkan selama 1 jam ke depan! Dapatkan koin 2x lipat lebih banyak dari setiap fluktuasi harga saham.',
             '#FFD700',
             []
           );
@@ -1964,7 +1964,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '💸 Pembagian Dividen Saham Mingguan',
-            'Administrator memicu pembagian dividen saham mingguan secara manual kepada seluruh pemegang saham aktif.',
+            '💰 GAJIAN DIVIDEN TIBA! Koin hasil bagi hasil investasi dibagikan secara manual ke dompet para pemegang saham beruntung. Terima kasih sudah mempercayakan modal Anda pada bursa Kosan 1A!',
             '#9B59B6',
             []
           );
@@ -2027,7 +2027,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
               guild,
               author,
               '➕ Pendaftaran Saham Bursa Baru',
-              'Text channel baru telah berhasil didaftarkan ke dalam instrumen bursa saham server.',
+              '➕ Barang dagangan baru nih bos! Ticker saham baru telah resmi terdaftar di bursa server. Ayo analisa pasarnya dan jadilah orang pertama yang menguasai lembar sahamnya sebelum harganya naik!',
               '#7C4DFF',
               [
                 { name: 'Channel Saham', value: `<#${chId}>`, inline: true },
@@ -2065,7 +2065,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             guild,
             author,
             '🔄 Re-Inisialisasi Bursa Saham',
-            'Bursa saham server telah di-reset total dan dikembalikan ke setelan instrumen default ($GENERAL, $LOUNGE, $SPAM).',
+            '🔄 KEMBALI KE SETELAN PABRIK! Bursa saham di-reset total. Seluruh portofolio saham lama hangus dan instrumen default ($GENERAL, $LOUNGE, $SPAM) kembali dihadirkan. Mulai dari nol lagi ya kawan-kawan!',
             '#7C4DFF',
             []
           );
@@ -2228,12 +2228,22 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const mode = iAbyus.values[0];
         database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🎰 Sukses mengubah mode gacha server menjadi **${mode}**!`, flags: 64 });
+        
+        let gachaDesc = `🎰 Mode gacha dikembalikan ke setelan pabrik (Normal - 75% Zonk). Selamat menguji tingkat kesabaran dan keberuntungan sejati!`;
+        if (mode === 'ABUSE') {
+          gachaDesc = `🎰 ADMIN OVERPOWER! Mode gacha role diubah ke ABUSE (0% Zonk / 100% Win)! Silakan putar gacha role kalian sekarang juga, dijamin menang terus tanpa ampun sampai botnya bangkrut!`;
+        } else if (mode === 'SUPER_EASY') {
+          gachaDesc = `🎰 Mode gacha dipermudah banget (hanya 15% Zonk)! Kesempatan langka memenangkan role impian dengan tingkat hoki maksimal.`;
+        } else if (mode === 'EASY') {
+          gachaDesc = `🎰 Mode gacha dibuat mudah (hanya 40% Zonk)! Tingkat kemenangan dinaikkan, ayo uji keberuntungan gacha Anda!`;
+        }
+
         await sendGlobalEconomyAnnouncement(
           client,
           guild,
           author,
           '🎰 Perubahan Mode Gacha Server',
-          `Administrator mengubah tingkat kesulitan/keberuntungan gacha role server.`,
+          gachaDesc,
           '#00FFFF',
           [
             { name: 'Mode Baru', value: `**${mode}**`, inline: true }
@@ -2246,12 +2256,17 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const mult = parseInt(iAbyus.values[0]);
         database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🪙 Sukses mengubah multiplier koin chat menjadi **${mult}x**!`, flags: 64 });
+        
+        const multDesc = mult > 1 
+          ? `🪙 KERAN DUIT DIBUKA! Multiplier koin obrolan chat warga dinaikkan menjadi **${mult}x** lipat! Silakan spam chat aktif berfaedah sebanyak-banyaknya untuk menimbun pundi-pundi Rupiah!`
+          : `🪙 Jam kerja rodi berakhir. Multiplier koin chat dikembalikan ke normal (1x). Ketik santai saja.`;
+
         await sendGlobalEconomyAnnouncement(
           client,
           guild,
           author,
           '🪙 Perubahan Multiplier Koin Chat',
-          `Administrator mengubah pengali pendapatan koin chat harian warga server.`,
+          multDesc,
           '#00FFFF',
           [
             { name: 'Multiplier Baru', value: `**${mult}x**`, inline: true }
@@ -2314,7 +2329,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
             guild,
             author,
             '⏱️ Pengaturan Durasi Event Bypass',
-            `Administrator mengatur batas waktu durasi aktif untuk event bypass ekonomi global server.`,
+            `⏱️ Waktu terus berjalan! Administrator membatasi durasi event bypass aktif saat ini menjadi **${minutes} menit**. Manfaatkan sisa waktu emas ini sebelum semuanya ditutup!`,
             '#00FFFF',
             [
               { name: 'Durasi Aktif', value: `**${minutes} menit**`, inline: true }
@@ -2335,7 +2350,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           guild,
           author,
           '🛑 Penghentian Event Abuse',
-          `Seluruh event penyalahgunaan/abuse bypass ekonomi global telah dihentikan secara paksa. Semua setelan dikembalikan ke setelan normal.`,
+          '🛑 PESTA RAKYAT SELESAI! Seluruh event abuse gacha role gratis dan multiplier koin chat resmi dihentikan oleh admin. Kembali ke mode hemat dan rajin bekerja!',
           '#00FFFF',
           []
         );
