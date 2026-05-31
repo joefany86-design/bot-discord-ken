@@ -932,12 +932,12 @@ function initStockMarket(client) {
               const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
               const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
 
-              const askTenorMsg = await iBank.reply({
+              await iBank.reply({
                 content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
                 components: [tenorRow, cancelRow],
                 flags: 64
               });
-              await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => { });
+              const askTenorMsg = await iBank.fetchReply();
 
               const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -5285,11 +5285,11 @@ async function handleEconomyCommands(message, client) {
             const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
             const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
 
-            const askTenorMsg = await iBank.reply({
+            await iBank.reply({
               content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang di bawah ini:',
               components: [tenorRow, cancelRow]
             });
-            await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => { });
+            const askTenorMsg = await iBank.fetchReply();
 
             const tenorCollector = askTenorMsg.createMessageComponentCollector({
               time: 60000
