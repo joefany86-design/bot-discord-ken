@@ -65,13 +65,21 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                    `• ID: \`${targetUserId}\`\n`;
 
       const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
+      const wallet = database.get('SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const expCount = wallet ? (wallet.daily_expedition_count || 0) : 0;
+      const expCD = wallet ? (wallet.expedition_cooldown_until || 0) : 0;
+      const nowUnix = Math.floor(Date.now() / 1000);
+      const cdText = expCD > nowUnix ? `<t:${expCD}:R>` : '🟢 Ready';
+
       if (targetPet) {
         targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()})\n` +
                       `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
                       `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
-                      `• Status: **${targetPet.status}**\n`;
+                      `• Status: **${targetPet.status}**\n` +
+                      `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
       } else {
-        targetText += `• Pet: *Tidak ada peliharaan aktif*\n`;
+        targetText += `• Pet: *Tidak ada peliharaan aktif*\n` +
+                      `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
       }
     }
 
@@ -100,6 +108,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setLabel('🐣 Percepat Penetasan Telur Pet')
         .setDescription('Mengatur telur agar siap menetas saat ini juga')
         .setValue('action_hatch_pet'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🛡️ Reset Cooldown Ekspedisi')
+        .setDescription('Mereset batas harian & cooldown ekspedisi pet target')
+        .setValue('action_reset_expedition_cooldown'),
       new StringSelectMenuOptionBuilder()
         .setLabel('🧪 Suntik Custom XP Pet (Modal)')
         .setDescription('Menambahkan jumlah XP tertentu ke Pet target')
@@ -199,6 +211,12 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
           database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
           await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_reset_expedition_cooldown') {
+          database.run('UPDATE wallets SET daily_expedition_count = 0, expedition_cooldown_until = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          await iPet.reply({ content: `🛡️ Sukses mereset batas harian & cooldown ekspedisi pet milik <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
