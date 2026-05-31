@@ -1151,7 +1151,7 @@ function initStockMarket(client) {
                   )
                   .setTimestamp();
 
-                const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64 });
+                const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64, fetchReply: true });
                 const boosterCollector = subPrivateMsg.createMessageComponentCollector({
                   componentType: ComponentType.StringSelect,
                   time: 60000
@@ -2466,7 +2466,7 @@ async function handlePetCommand(message, client, args) {
             )
             .setTimestamp();
 
-          const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64 });
+          const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64, fetchReply: true });
           const boosterCollector = subPrivateMsg.createMessageComponentCollector({
             componentType: ComponentType.StringSelect,
             time: 60000
