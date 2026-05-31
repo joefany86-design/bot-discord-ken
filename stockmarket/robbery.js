@@ -476,7 +476,7 @@ function executeHeist(guildId) {
     const deductionLogs = [];
 
     // Ambil tabungan bank player lain di server ini yang saldonya > 0
-    const victims = db.prepare('SELECT user_id, balance FROM bank_savings WHERE guild_id = ? AND balance > 0').all(guildId);
+    const victims = db.all('SELECT user_id, balance FROM bank_savings WHERE guild_id = ? AND balance > 0', [guildId]);
     const eligibleVictims = victims.filter(v => !participants.includes(v.user_id));
 
     let totalPrize = 0;
@@ -487,9 +487,8 @@ function executeHeist(guildId) {
         const pct = 5 + Math.floor(Math.random() * 11); // Potong 5% - 15% dari tabungan bank mereka
         const amountToDeduct = Math.floor(v.balance * (pct / 100));
         if (amountToDeduct > 0) {
-          db.prepare('UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?').run(amountToDeduct, v.user_id, guildId);
-          db.prepare('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)')
-            .run(v.user_id, guildId, 'HEIST_VICTIM_LOSS', -amountToDeduct);
+          db.run('UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?', [amountToDeduct, v.user_id, guildId]);
+          db.run('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)', [v.user_id, guildId, 'HEIST_VICTIM_LOSS', -amountToDeduct]);
           totalStolenFromPlayers += amountToDeduct;
           deductionLogs.push({ userId: v.user_id, amount: amountToDeduct });
         }
