@@ -386,6 +386,154 @@ function repayLoan(userId, guildId) {
   };
 }
 
+/**
+ * Mentransfer koin antar tabungan bank (savings) dengan pengenaan pajak transfer sesuai level sewa kosan pengirim.
+ */
+function transferSavings(fromUserId, toUserId, guildId, amountInput) {
+  if (fromUserId === toUserId) {
+    throw new Error('Anda tidak bisa mentransfer ke diri sendiri!');
+  }
+
+  const senderSavings = getSavings(fromUserId, guildId);
+  let amount = 0;
+
+  const parsed = parseAmount(amountInput);
+  if (parsed === 'all') {
+    amount = senderSavings.balance;
+  } else {
+    amount = parsed;
+  }
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error('Jumlah transfer harus berupa angka di atas 0 atau ketik "all"!');
+  }
+
+  if (senderSavings.balance < amount) {
+    throw new Error(`Saldo tabungan Anda tidak mencukupi! Saldo tabungan Anda saat ini Rp ${senderSavings.balance.toLocaleString('id-ID')}`);
+  }
+
+  // Ambil data kos pengirim untuk pajak transfer
+  const kos = require('./kos');
+  const activeRental = kos.getActiveRental(fromUserId, guildId);
+  const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
+
+  let taxRatePercent = config.economy.TRANSFER_TAX_PERCENT; // default 10
+  if (activeRental && activeRental.config && activeRental.config.transferTax !== undefined) {
+    taxRatePercent = activeRental.config.transferTax;
+  }
+
+  const tax = Math.floor(amount * (taxRatePercent / 100));
+  const netAmount = amount - tax;
+
+  // Pastikan rekening penerima terdaftar
+  getSavings(toUserId, guildId);
+
+  db.transaction(() => {
+    // Kurangi tabungan pengirim sebesar amount penuh
+    db.run(
+      'UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?',
+      [amount, fromUserId, guildId]
+    );
+
+    // Tambah tabungan penerima sebesar netAmount
+    db.run(
+      'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
+      [netAmount, toUserId, guildId]
+    );
+
+    // Catat transaksi pengirim (TRANSFER_OUT)
+    db.run(
+      'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+      [fromUserId, guildId, 'BANK_TRANSFER_OUT', -amount]
+    );
+
+    // Catat transaksi penerima (TRANSFER_IN)
+    db.run(
+      'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+      [toUserId, guildId, 'BANK_TRANSFER_IN', netAmount]
+    );
+  })();
+
+  return {
+    amount,
+    tax,
+    netAmount,
+    taxRatePercent,
+    roomTier,
+    senderSavingsBalance: getSavings(fromUserId, guildId).balance,
+    receiverSavingsBalance: getSavings(toUserId, guildId).balance
+  };
+}
+
+/**
+ * Melunasi atau mencicil hutang tebusan (bail debt) ke teman dari dompet (wallet).
+ */
+function repayFriendDebt(debtorId, creditorId, guildId, amountInput) {
+  const debt = db.get(
+    'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+    [guildId, debtorId, creditorId]
+  );
+
+  if (!debt || debt.amount <= 0) {
+    throw new Error('Anda tidak memiliki hutang jaminan penjara ke pengguna tersebut!');
+  }
+
+  const wallet = economy.getWallet(debtorId, guildId);
+  if (wallet.balance <= 0) {
+    throw new Error('Dompet Anda kosong! Silakan kumpulkan koin terlebih dahulu.');
+  }
+
+  let amount = 0;
+  const parsed = parseAmount(amountInput);
+  if (parsed === 'all') {
+    amount = Math.min(wallet.balance, debt.amount);
+  } else {
+    amount = parsed;
+  }
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error('Jumlah pembayaran harus berupa angka di atas 0 atau ketik "all"!');
+  }
+
+  if (wallet.balance < amount) {
+    throw new Error(`Saldo dompet tidak mencukupi! Saldo dompet Anda saat ini Rp ${wallet.balance.toLocaleString('id-ID')}`);
+  }
+
+  if (amount > debt.amount) {
+    throw new Error(`Jumlah pembayaran melebihi sisa hutang Anda (Rp ${debt.amount.toLocaleString('id-ID')})!`);
+  }
+
+  const remainingDebt = debt.amount - amount;
+
+  db.transaction(() => {
+    // Kurangi koin dompet pengirim
+    economy.subtractBalance(debtorId, guildId, amount, 'PAY_DEBT');
+
+    // Tambah koin dompet penerima (creditor)
+    economy.addBalance(creditorId, guildId, amount, 'RECEIVE_DEBT_PAYMENT');
+
+    // Update / Hapus debt
+    if (remainingDebt <= 0) {
+      db.run(
+        'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+        [guildId, debtorId, creditorId]
+      );
+    } else {
+      db.run(
+        'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+        [remainingDebt, guildId, debtorId, creditorId]
+      );
+    }
+  })();
+
+  return {
+    amountPaid: amount,
+    remainingDebt,
+    isFullyPaid: remainingDebt <= 0,
+    walletBalance: economy.getWallet(debtorId, guildId).balance
+  };
+}
+
 module.exports = {
   getSavings,
   depositSavings,
@@ -394,5 +542,7 @@ module.exports = {
   calculateMaxLoanLimit,
   createLoan,
   repayLoan,
-  parseAmount
+  parseAmount,
+  transferSavings,
+  repayFriendDebt
 };

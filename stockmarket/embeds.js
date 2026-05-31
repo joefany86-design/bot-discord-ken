@@ -1732,6 +1732,28 @@ module.exports = {
       });
     }
 
+    // ── HUTANG TEBUSAN (BAIL DEBTS) KEPADA TEMAN ──
+    let friendDebtsText = '';
+    try {
+      const debts = db.all(
+        'SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?',
+        [wallet.user_id, wallet.guild_id]
+      );
+      if (debts && debts.length > 0) {
+        friendDebtsText = debts.map(d => `• Mengutang ke <@${d.creditor_id}>: **${formatCurrency(d.amount)}**`).join('\n');
+      }
+    } catch (e) {
+      console.error("Gagal memuat hutang teman di dashboard bank:", e.message);
+    }
+
+    if (friendDebtsText) {
+      embed.addFields({
+        name: '👥 Hutang Teman (Jaminan Penjara)',
+        value: friendDebtsText,
+        inline: false
+      });
+    }
+
     embed.addFields({
       name: '📈 Limit Pinjaman Maksimalmu',
       value: `**${formatCurrency(maxLimit)}**\n*(Limit naik seiring tingginya keaktifan chat & streak harian)*`,

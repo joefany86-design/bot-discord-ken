@@ -798,6 +798,8 @@ function initStockMarket(client) {
           const savings = bank.getSavings(targetUserId, guildId);
           const activeLoan = bank.getActiveLoan(targetUserId, guildId);
           const maxLimit = bank.calculateMaxLoanLimit(targetUserId, guildId);
+          const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [targetUserId, guildId]);
+          const hasFriendDebts = debts && debts.length > 0;
 
           const embed = embeds.bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit);
 
@@ -805,7 +807,8 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('bank_btn_deposit').setLabel('📥 Deposit').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('bank_btn_withdraw').setLabel('📤 Tarik').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId('bank_btn_loan').setLabel('📜 Pinjam').setStyle(ButtonStyle.Success).setDisabled(!!activeLoan),
-            new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan)
+            new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan && !hasFriendDebts),
+            new ButtonBuilder().setCustomId('bank_btn_transfer').setLabel('💸 Transfer').setStyle(ButtonStyle.Primary)
           );
 
           return { embeds: [embed], components: [row] };
@@ -997,23 +1000,268 @@ function initStockMarket(client) {
 
             else if (iBank.customId === 'bank_btn_repay') {
               try {
-                const res = bank.repayLoan(user.id, guildId);
-                let desc = '';
-                if (res.isFullyPaid) {
-                  desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                } else {
-                  desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
-                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                    `⚠️ **Sisa Hutang:** **Rp ${res.remainingPrincipal.toLocaleString('id-ID')}**\n` +
-                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                const activeLoan = bank.getActiveLoan(user.id, guildId);
+                const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+                const hasFriendDebts = debts && debts.length > 0;
+
+                const handleFriendRepayFlowPrivate = async (iSelectRepay) => {
+                  const friendDebts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+                  if (!friendDebts || friendDebts.length === 0) {
+                    return iSelectRepay.reply({ content: '❌ Anda tidak memiliki hutang tebusan ke teman.', flags: 64 });
+                  }
+
+                  const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('bank_repay_friend_menu_perm')
+                    .setPlaceholder('👉 Pilih teman yang ingin Anda bayar...');
+
+                  for (const d of friendDebts) {
+                    let displayName = d.creditor_id;
+                    try {
+                      const member = await iSelectRepay.guild.members.fetch(d.creditor_id).catch(() => null);
+                      if (member) displayName = member.displayName;
+                    } catch (err) {}
+
+                    selectMenu.addOptions(
+                      new StringSelectMenuOptionBuilder()
+                        .setLabel(`👥 ${displayName}`)
+                        .setDescription(`Sisa Hutang: Rp ${d.amount.toLocaleString('id-ID')}`)
+                        .setValue(d.creditor_id)
+                    );
+                  }
+
+                  const cancelBtn = new ButtonBuilder().setCustomId('bank_repay_friend_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                  
+                  const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
+                  const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+                  const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
+                    ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
+                    : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 });
+                  
+                  await iSelectRepay.fetchReply().then(m => { Object.assign(askFriendMsg, m); }).catch(() => {});
+
+                  const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
+
+                  friendCollector.on('collect', async iFriend => {
+                    if (iFriend.user.id !== user.id) return;
+                    friendCollector.stop();
+
+                    if (iFriend.customId === 'bank_repay_friend_cancel_perm') {
+                      await iFriend.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                    } else if (iFriend.customId === 'bank_repay_friend_menu_perm') {
+                      const creditorId = iFriend.values[0];
+                      const specificDebt = database.get('SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?', [guildId, user.id, creditorId]);
+                      if (!specificDebt) {
+                        return iFriend.reply({ content: '❌ Hutang ke user tersebut tidak ditemukan.', flags: 64 });
+                      }
+
+                      const modal = new ModalBuilder()
+                        .setCustomId(`bank_modal_repay_friend_${creditorId}_perm`)
+                        .setTitle('💳 Bayar Hutang Teman');
+
+                      const amountInput = new TextInputBuilder()
+                        .setCustomId('repay_amount')
+                        .setLabel(`Jumlah bayar (Hutang: Rp ${specificDebt.amount.toLocaleString('id-ID')})`)
+                        .setPlaceholder('Contoh: 1000 atau all')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                      modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                      await iFriend.showModal(modal);
+                      await askFriendMsg.delete().catch(() => {});
+
+                      const submitted = await iFriend.awaitModalSubmit({
+                        filter: (sub) => sub.customId === `bank_modal_repay_friend_${creditorId}_perm` && sub.user.id === user.id,
+                        time: 60000
+                      }).catch(() => null);
+
+                      if (submitted) {
+                        try {
+                          const amountStr = submitted.fields.getTextInputValue('repay_amount');
+                          const res = bank.repayFriendDebt(user.id, creditorId, guildId, amountStr);
+
+                          let creditorName = creditorId;
+                          try {
+                            const credMember = await submitted.guild.members.fetch(creditorId).catch(() => null);
+                            if (credMember) creditorName = credMember.displayName;
+                          } catch (err) {}
+
+                          let desc = '';
+                          if (res.isFullyPaid) {
+                            desc = `Selamat! Hutang tebusan Anda kepada **${creditorName}** telah **LUNAS SEPENUHNYA**.\n\n` +
+                              `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                          } else {
+                            desc = `Pembayaran cicilan hutang teman berhasil diproses.\n\n` +
+                              `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                              `⚠️ **Sisa Hutang Ke ${creditorName}:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                          }
+
+                          await submitted.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Hutang Berhasil!', desc)], flags: 64 });
+                          await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                        } catch (err) {
+                          await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
+                        }
+                      }
+                    }
+                  });
+                };
+
+                if (activeLoan && hasFriendDebts) {
+                  // Tampilkan pilihan jenis hutang
+                  const choiceBank = new ButtonBuilder().setCustomId('bank_repay_choice_bank_perm').setLabel('🏛️ Pinjaman Bank').setStyle(ButtonStyle.Primary);
+                  const choiceFriend = new ButtonBuilder().setCustomId('bank_repay_choice_friend_perm').setLabel('👥 Hutang Teman').setStyle(ButtonStyle.Success);
+                  const choiceCancel = new ButtonBuilder().setCustomId('bank_repay_choice_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                  
+                  const askChoiceMsg = await iBank.reply({
+                    content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
+                    components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
+                    flags: 64
+                  });
+                  await iBank.fetchReply().then(m => { Object.assign(askChoiceMsg, m); }).catch(() => {});
+
+                  const choiceCollector = askChoiceMsg.createMessageComponentCollector({ time: 60000 });
+
+                  choiceCollector.on('collect', async iChoice => {
+                    if (iChoice.user.id !== user.id) return;
+                    choiceCollector.stop();
+
+                    if (iChoice.customId === 'bank_repay_choice_cancel_perm') {
+                      await iChoice.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                    } else if (iChoice.customId === 'bank_repay_choice_bank_perm') {
+                      // Jalankan pelunasan bank
+                      try {
+                        const res = bank.repayLoan(user.id, guildId);
+                        let desc = '';
+                        if (res.isFullyPaid) {
+                          desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                            `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                        } else {
+                          desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                            `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                            `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                        }
+                        await iChoice.update({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], content: null, components: [] });
+                        await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                      } catch (err) {
+                        await iChoice.update({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], content: null, components: [] });
+                      }
+                    } else if (iChoice.customId === 'bank_repay_choice_friend_perm') {
+                      // Lanjut ke pemilihan teman
+                      await handleFriendRepayFlowPrivate(iChoice);
+                    }
+                  });
+                } else if (activeLoan) {
+                  // Langsung bayar pinjaman bank
+                  const res = bank.repayLoan(user.id, guildId);
+                  let desc = '';
+                  if (res.isFullyPaid) {
+                    desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                      `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                      `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                  } else {
+                    desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                      `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                      `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                      `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                  }
+                  await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], flags: 64 });
+                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                } else if (hasFriendDebts) {
+                  // Langsung bayar hutang teman
+                  await handleFriendRepayFlowPrivate(iBank);
                 }
-                await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], flags: 64 });
-                await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
               }
+            }
+
+            else if (iBank.customId === 'bank_btn_transfer') {
+              const userSelect = new UserSelectMenuBuilder()
+                .setCustomId('bank_transfer_select_target_perm')
+                .setPlaceholder('👤 Pilih Target Penerima Transfer');
+
+              const rowMenu = new ActionRowBuilder().addComponents(userSelect);
+              const cancelBtn = new ButtonBuilder().setCustomId('bank_transfer_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+              const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+              const askTransferMsg = await iBank.reply({
+                content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
+                components: [rowMenu, rowBtn],
+                flags: 64
+              });
+              await iBank.fetchReply().then(m => { Object.assign(askTransferMsg, m); }).catch(() => {});
+
+              const transferCollector = askTransferMsg.createMessageComponentCollector({ time: 60000 });
+
+              transferCollector.on('collect', async iSelect => {
+                if (iSelect.user.id !== user.id) return;
+                transferCollector.stop();
+
+                if (iSelect.customId === 'bank_transfer_cancel_perm') {
+                  await iSelect.update({ content: '❌ Transfer dibatalkan.', components: [] });
+                } else if (iSelect.customId === 'bank_transfer_select_target_perm') {
+                  const targetUserId = iSelect.values[0];
+                  if (targetUserId === user.id) {
+                    return iSelect.reply({ content: '❌ Anda tidak bisa mentransfer ke diri sendiri!', flags: 64 });
+                  }
+
+                  const modal = new ModalBuilder()
+                    .setCustomId(`bank_modal_transfer_${targetUserId}_perm`)
+                    .setTitle('💸 Transfer Tabungan Bank');
+
+                  const amountInput = new TextInputBuilder()
+                    .setCustomId('transfer_amount')
+                    .setLabel('Jumlah koin (angka atau "all")')
+                    .setPlaceholder('Contoh: 10000')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                  modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                  await iSelect.showModal(modal);
+                  await askTransferMsg.delete().catch(() => {});
+
+                  const submitted = await iSelect.awaitModalSubmit({
+                    filter: (sub) => sub.customId === `bank_modal_transfer_${targetUserId}_perm` && sub.user.id === user.id,
+                    time: 60000
+                  }).catch(() => null);
+
+                  if (submitted) {
+                    try {
+                      const amountStr = submitted.fields.getTextInputValue('transfer_amount');
+                      const res = bank.transferSavings(user.id, targetUserId, guildId, amountStr);
+
+                      let targetName = targetUserId;
+                      try {
+                        const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
+                        if (targetMember) targetName = targetMember.displayName;
+                      } catch (err) {}
+
+                      const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                        res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                          res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+
+                      const successEmb = embeds.bankSuccessEmbed(
+                        'Transfer Tabungan Berhasil!',
+                        `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                        `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                        `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                        `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
+                        `👉 Penerima: **${targetName}** (<@${targetUserId}>)\n\n` +
+                        `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
+                      );
+
+                      await submitted.reply({ embeds: [successEmb], flags: 64 });
+                      await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                    } catch (err) {
+                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)], flags: 64 });
+                    }
+                  }
+                }
+              });
             }
           } catch (err) {
             console.error('Error in bank private collector:', err);
@@ -4860,6 +5108,8 @@ async function handleEconomyCommands(message, client) {
         const savings = bank.getSavings(userId, guildId);
         const activeLoan = bank.getActiveLoan(userId, guildId);
         const maxLimit = bank.calculateMaxLoanLimit(userId, guildId);
+        const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [userId, guildId]);
+        const hasFriendDebts = debts && debts.length > 0;
 
         const embed = embeds.bankDashboardEmbed(author, wallet, savings, activeLoan, maxLimit);
 
@@ -4881,7 +5131,11 @@ async function handleEconomyCommands(message, client) {
             .setCustomId('bank_btn_repay')
             .setLabel('💳 Bayar Utang')
             .setStyle(ButtonStyle.Danger)
-            .setDisabled(!activeLoan)
+            .setDisabled(!activeLoan && !hasFriendDebts),
+          new ButtonBuilder()
+            .setCustomId('bank_btn_transfer')
+            .setLabel('💸 Transfer')
+            .setStyle(ButtonStyle.Primary)
         );
 
         return { embeds: [embed], components: [row] };
@@ -5106,36 +5360,276 @@ async function handleEconomyCommands(message, client) {
 
           else if (iBank.customId === 'bank_btn_repay') {
             try {
-              const res = bank.repayLoan(author.id, guildId);
-              let desc = '';
+              const activeLoan = bank.getActiveLoan(author.id, guildId);
+              const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+              const hasFriendDebts = debts && debts.length > 0;
 
-              if (res.isFullyPaid) {
-                desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                  `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                  `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-              } else {
-                desc = `Pembayaran cicilan berhasil diproses!\n\n` +
-                  `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                  `⚠️ **Sisa Utang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
-                  `💵 **Saldo Dompet Sekarang:** **Rp 0** (Koin lunas cicilan)`;
+              const handleFriendRepayFlow = async (iSelectRepay) => {
+                const friendDebts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
+                if (!friendDebts || friendDebts.length === 0) {
+                  return iSelectRepay.reply({ content: '❌ Anda tidak memiliki hutang tebusan ke teman.', flags: 64 });
+                }
+
+                const selectMenu = new StringSelectMenuBuilder()
+                  .setCustomId('bank_repay_friend_menu')
+                  .setPlaceholder('👉 Pilih teman yang ingin Anda bayar...');
+
+                for (const d of friendDebts) {
+                  let displayName = d.creditor_id;
+                  try {
+                    const member = await iSelectRepay.guild.members.fetch(d.creditor_id).catch(() => null);
+                    if (member) displayName = member.displayName;
+                  } catch (err) {}
+
+                  selectMenu.addOptions(
+                    new StringSelectMenuOptionBuilder()
+                      .setLabel(`👥 ${displayName}`)
+                      .setDescription(`Sisa Hutang: Rp ${d.amount.toLocaleString('id-ID')}`)
+                      .setValue(d.creditor_id)
+                  );
+                }
+
+                const cancelBtn = new ButtonBuilder().setCustomId('bank_repay_friend_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                
+                const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
+                const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+                const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
+                  ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
+                  : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 });
+                
+                await iSelectRepay.fetchReply().then(m => { Object.assign(askFriendMsg, m); }).catch(() => {});
+
+                const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
+
+                friendCollector.on('collect', async iFriend => {
+                  if (iFriend.user.id !== author.id) return;
+                  friendCollector.stop();
+
+                  if (iFriend.customId === 'bank_repay_friend_cancel') {
+                    await iFriend.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                  } else if (iFriend.customId === 'bank_repay_friend_menu') {
+                    const creditorId = iFriend.values[0];
+                    const specificDebt = database.get('SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?', [guildId, author.id, creditorId]);
+                    if (!specificDebt) {
+                      return iFriend.reply({ content: '❌ Hutang ke user tersebut tidak ditemukan.', flags: 64 });
+                    }
+
+                    const modal = new ModalBuilder()
+                      .setCustomId(`bank_modal_repay_friend_${creditorId}`)
+                      .setTitle('💳 Bayar Hutang Teman');
+
+                    const amountInput = new TextInputBuilder()
+                      .setCustomId('repay_amount')
+                      .setLabel(`Jumlah bayar (Hutang: Rp ${specificDebt.amount.toLocaleString('id-ID')})`)
+                      .setPlaceholder('Contoh: 1000 atau all')
+                      .setStyle(TextInputStyle.Short)
+                      .setRequired(true);
+
+                    modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                    await iFriend.showModal(modal);
+                    await askFriendMsg.delete().catch(() => {});
+
+                    const submitted = await iFriend.awaitModalSubmit({
+                      filter: (sub) => sub.customId === `bank_modal_repay_friend_${creditorId}` && sub.user.id === author.id,
+                      time: 60000
+                    }).catch(() => null);
+
+                    if (submitted) {
+                      try {
+                        const amountStr = submitted.fields.getTextInputValue('repay_amount');
+                        const res = bank.repayFriendDebt(author.id, creditorId, guildId, amountStr);
+
+                        let creditorName = creditorId;
+                        try {
+                          const credMember = await submitted.guild.members.fetch(creditorId).catch(() => null);
+                          if (credMember) creditorName = credMember.displayName;
+                        } catch (err) {}
+
+                        let desc = '';
+                        if (res.isFullyPaid) {
+                          desc = `Selamat! Hutang tebusan Anda kepada **${creditorName}** telah **LUNAS SEPENUHNYA**.\n\n` +
+                            `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                        } else {
+                          desc = `Pembayaran cicilan hutang teman berhasil diproses.\n\n` +
+                            `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                            `⚠️ **Sisa Hutang Ke ${creditorName}:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                        }
+
+                        await submitted.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Hutang Berhasil!', desc)] });
+                        const freshData = getBankDashboardData(author.id, guildId);
+                        await replyMsg.edit(freshData).catch(console.error);
+                      } catch (err) {
+                        await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)] });
+                      }
+                    }
+                  }
+                });
+              };
+
+              if (activeLoan && hasFriendDebts) {
+                // Tampilkan pilihan jenis hutang
+                const choiceBank = new ButtonBuilder().setCustomId('bank_repay_choice_bank').setLabel('🏛️ Pinjaman Bank').setStyle(ButtonStyle.Primary);
+                const choiceFriend = new ButtonBuilder().setCustomId('bank_repay_choice_friend').setLabel('👥 Hutang Teman').setStyle(ButtonStyle.Success);
+                const choiceCancel = new ButtonBuilder().setCustomId('bank_repay_choice_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                
+                const askChoiceMsg = await iBank.reply({
+                  content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
+                  components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
+                  flags: 64
+                });
+                await iBank.fetchReply().then(m => { Object.assign(askChoiceMsg, m); }).catch(() => {});
+
+                const choiceCollector = askChoiceMsg.createMessageComponentCollector({ time: 60000 });
+
+                choiceCollector.on('collect', async iChoice => {
+                  if (iChoice.user.id !== author.id) return;
+                  choiceCollector.stop();
+
+                  if (iChoice.customId === 'bank_repay_choice_cancel') {
+                    await iChoice.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                  } else if (iChoice.customId === 'bank_repay_choice_bank') {
+                    // Jalankan pelunasan bank
+                    try {
+                      const res = bank.repayLoan(author.id, guildId);
+                      let desc = '';
+                      if (res.isFullyPaid) {
+                        desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                          `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                          `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                      } else {
+                        desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                          `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                          `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                          `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                      }
+                      await iChoice.update({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], content: null, components: [] });
+                      const freshData = getBankDashboardData(author.id, guildId);
+                      await replyMsg.edit(freshData).catch(console.error);
+                    } catch (err) {
+                      await iChoice.update({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], content: null, components: [] });
+                    }
+                  } else if (iChoice.customId === 'bank_repay_choice_friend') {
+                    // Lanjut ke pemilihan teman
+                    await handleFriendRepayFlow(iChoice);
+                  }
+                });
+              } else if (activeLoan) {
+                // Langsung bayar pinjaman bank
+                const res = bank.repayLoan(author.id, guildId);
+                let desc = '';
+                if (res.isFullyPaid) {
+                  desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                } else {
+                  desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                    `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                    `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                    `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                }
+                await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)] });
+                const freshData = getBankDashboardData(author.id, guildId);
+                await replyMsg.edit(freshData).catch(console.error);
+              } else if (hasFriendDebts) {
+                // Langsung bayar hutang teman
+                await handleFriendRepayFlow(iBank);
               }
-
-              const successEmb = embeds.bankSuccessEmbed(
-                res.isFullyPaid ? 'Pelunasan Pinjaman Sukses!' : 'Pembayaran Cicilan Diproses!',
-                desc
-              );
-
-              await iBank.reply({ embeds: [successEmb] });
-
-              const freshData = getBankDashboardData(author.id, guildId);
-              await replyMsg.edit(freshData).catch(console.error);
             } catch (err) {
               if (!iBank.replied && !iBank.deferred) {
-                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] }).catch(() => { });
+                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)] });
               } else {
-                console.error('Error updating bank dashboard after repayment:', err);
+                console.error(err);
               }
             }
+          }
+
+          else if (iBank.customId === 'bank_btn_transfer') {
+            const userSelect = new UserSelectMenuBuilder()
+              .setCustomId('bank_transfer_select_target')
+              .setPlaceholder('👤 Pilih Target Penerima Transfer');
+
+            const rowMenu = new ActionRowBuilder().addComponents(userSelect);
+            const cancelBtn = new ButtonBuilder().setCustomId('bank_transfer_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+            const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+            const askTransferMsg = await iBank.reply({
+              content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
+              components: [rowMenu, rowBtn],
+              flags: 64
+            });
+            await iBank.fetchReply().then(m => { Object.assign(askTransferMsg, m); }).catch(() => {});
+
+            const transferCollector = askTransferMsg.createMessageComponentCollector({ time: 60000 });
+
+            transferCollector.on('collect', async iSelect => {
+              if (iSelect.user.id !== author.id) return;
+              transferCollector.stop();
+
+              if (iSelect.customId === 'bank_transfer_cancel') {
+                await iSelect.update({ content: '❌ Transfer dibatalkan.', components: [] });
+              } else if (iSelect.customId === 'bank_transfer_select_target') {
+                const targetUserId = iSelect.values[0];
+                if (targetUserId === author.id) {
+                  return iSelect.reply({ content: '❌ Anda tidak bisa mentransfer ke diri sendiri!', flags: 64 });
+                }
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`bank_modal_transfer_${targetUserId}`)
+                  .setTitle('💸 Transfer Tabungan Bank');
+
+                const amountInput = new TextInputBuilder()
+                  .setCustomId('transfer_amount')
+                  .setLabel('Jumlah koin (angka atau "all")')
+                  .setPlaceholder('Contoh: 10000')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                await iSelect.showModal(modal);
+                await askTransferMsg.delete().catch(() => {});
+
+                const submitted = await iSelect.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `bank_modal_transfer_${targetUserId}` && sub.user.id === author.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const amountStr = submitted.fields.getTextInputValue('transfer_amount');
+                    const res = bank.transferSavings(author.id, targetUserId, guildId, amountStr);
+
+                    let targetName = targetUserId;
+                    try {
+                      const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
+                      if (targetMember) targetName = targetMember.displayName;
+                    } catch (err) {}
+
+                    const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                      res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                        res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+
+                    const successEmb = embeds.bankSuccessEmbed(
+                      'Transfer Tabungan Berhasil!',
+                      `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                      `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                      `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                      `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
+                      `👉 Penerima: **${targetName}** (<@${targetUserId}>)\n\n` +
+                      `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
+                    );
+
+                    await submitted.reply({ embeds: [successEmb] });
+                    const freshData = getBankDashboardData(author.id, guildId);
+                    await replyMsg.edit(freshData).catch(console.error);
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)] });
+                  }
+                }
+              }
+            });
           }
         } catch (err) {
           console.error('Error in bank interactive collector:', err);
