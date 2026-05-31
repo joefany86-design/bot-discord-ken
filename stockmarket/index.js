@@ -2014,6 +2014,21 @@ async function handlePetCommand(message, client, args) {
     }
   }
 
+  // ── SUB-PERINTAH: WASH / MANDIIN ──
+  if (subCommand === 'mandiin' || subCommand === 'wash' || subCommand === 'mandi') {
+    try {
+      const res = pet.washPet(author.id, guildId);
+      const successEmb = embeds.successEmbed(
+        'Mandi Parfum Sultan! 🧼✨',
+        `🚿 Anda menggosok tubuh **${res.pet.pet_name}** dengan sabun busa melimpah dan membilasnya sampai wangi semerbak!\n\n` +
+        `🌸 **Hasil:** Kutukan bau busuk hilang total! **${res.pet.pet_name}** sekarang wangi bunga melati dan siap beraktivitas kembali.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memandikan Pet!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: USE / PAKAI ──
   if (subCommand === 'use' || subCommand === 'pakai' || subCommand === 'use-item') {
     const itemId = args[1];
@@ -4054,7 +4069,7 @@ async function handleEconomyCommands(message, client) {
     }
 
     if (shouldBlock) {
-      const jailEmbed = embeds.jailStatusEmbed(author, jailCheck.remaining, jailCheck.bailAmount);
+      const jailEmbed = embeds.jailStatusEmbed(author, jailCheck.remaining, jailCheck.bailAmount, jailCheck.jailType);
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('jail_btn_tebus')
@@ -4537,7 +4552,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.successEmbed('Status Penjara', `🟢 **${targetUser.username}** bebas berkeliaran dan tidak sedang di penjara!`)] });
       }
 
-      const jailEmbed = embeds.jailStatusEmbed(targetUser, jailInfo.remaining, jailInfo.bailAmount);
+      const jailEmbed = embeds.jailStatusEmbed(targetUser, jailInfo.remaining, jailInfo.bailAmount, jailInfo.jailType);
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -5526,9 +5541,67 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     if (commandName === 'portfolio' || commandName === 'porto') {
       const targetUser = message.mentions.users.first() || author;
-      const porto = stocks.getPortfolio(targetUser.id, guildId);
       const wallet = economy.getWallet(targetUser.id, guildId);
+      const now = Math.floor(Date.now() / 1000);
 
+      // Cek apakah target sedang kena prank fake_crash
+      if (wallet.curse_type === 'fake_crash' && wallet.curse_until > now) {
+        const embed = new EmbedBuilder()
+          .setColor(0xE74C3C) // RED
+          .setTitle('⚠️ NOTIFIKASI KEBANGKRUTAN MASSAL ⚠️')
+          .setThumbnail('https://cdn-icons-png.flaticon.com/512/2622/2622649.png')
+          .setDescription(
+            `Waduh! **${targetUser.username}**, seluruh aset portofolio saham Anda disita oleh Otoritas Jasa Keuangan Virtual!\n\n` +
+            `🔴 **Status Aset:** \`DILIKUIDASI TOTAL\`\n` +
+            `💰 **Kerugian Negara:** \`Rp 999.999.999\`\n` +
+            `🚫 **Tuduhan:** \`Dugaan Manipulasi Pasar Saham & Transaksi Koin Palsu\`\n\n` +
+            `*Catatan: Seluruh dividen dibekukan dan lembar saham Anda dilelang kembali ke pasar publik.*`
+          )
+          .setFooter({ text: 'Klik tombol di bawah untuk melakukan klarifikasi & banding segera!' })
+          .setTimestamp();
+
+        const btn = new ButtonBuilder()
+          .setCustomId(`prank_fake_crash_btn_${targetUser.id}`)
+          .setLabel('⚠️ AJUKAN BANDING SEKARANG')
+          .setStyle(ButtonStyle.Danger);
+
+        const row = new ActionRowBuilder().addComponents(btn);
+        const reply = await message.reply({ embeds: [embed], components: [row] });
+
+        const collector = reply.createMessageComponentCollector({
+          time: 60000
+        });
+
+        collector.on('collect', async iBanding => {
+          if (iBanding.user.id !== targetUser.id) {
+            return iBanding.reply({ content: '❌ Tombol ini hanya untuk warga yang bersangkutan!', flags: 64 });
+          }
+
+          // Bersihkan kutukan di database
+          database.run("UPDATE wallets SET curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ?", [targetUser.id, guildId]);
+
+          // Tampilkan portofolio asli
+          const realPorto = stocks.getPortfolio(targetUser.id, guildId);
+          const realWallet = economy.getWallet(targetUser.id, guildId);
+          const realEmbed = embeds.portfolioEmbed(targetUser, realPorto, realWallet);
+
+          const prankEmbed = new EmbedBuilder()
+            .setColor(0x2ECC71) // GREEN
+            .setTitle('😜 KENA PRANK ADMIN! 🎈')
+            .setDescription(
+              `**Hahaha! Tarik napas dalam-dalam sultan...**\n\n` +
+              `Tenang, tidak ada manipulasi pasar kok. Aset portofolio saham Anda yang berharga aman sepenuhnya!\n` +
+              `Jangan lupa berterima kasih kepada Admin yang sudah peduli dengan kesehatan jantung Anda hari ini. 🤣✨`
+            )
+            .setTimestamp();
+
+          await iBanding.update({ embeds: [prankEmbed, realEmbed], components: [] });
+          collector.stop();
+        });
+        return true;
+      }
+
+      const porto = stocks.getPortfolio(targetUser.id, guildId);
       const embed = embeds.portfolioEmbed(targetUser, porto, wallet);
       await message.reply({ embeds: [embed] });
       return true;

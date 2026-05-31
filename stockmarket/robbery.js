@@ -48,7 +48,8 @@ function checkJail(userId, guildId) {
     return {
       jailed: true,
       remaining,
-      bailAmount
+      bailAmount,
+      jailType
     };
   }
   return { jailed: false };

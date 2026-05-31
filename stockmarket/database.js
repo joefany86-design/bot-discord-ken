@@ -535,6 +535,22 @@ function initSchema() {
     console.error("❌ [Database] Gagal melakukan auto-upgrade bursa saham:", e.message);
   }
 
+  // 32. Migrasi dinamis: Tambahkan kolom curse_type dan curse_until di tabel user_pets jika belum ada
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN curse_type TEXT DEFAULT ''");
+    db.exec("ALTER TABLE user_pets ADD COLUMN curse_until INTEGER DEFAULT 0");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 33. Migrasi dinamis: Tambahkan kolom curse_type dan curse_until di tabel wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN curse_type TEXT DEFAULT ''");
+    db.exec("ALTER TABLE wallets ADD COLUMN curse_until INTEGER DEFAULT 0");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

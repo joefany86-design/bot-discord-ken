@@ -569,12 +569,16 @@ function playWithPet(userId, guildId) {
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
   if (pet.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
 
+  const now = Math.floor(Date.now() / 1000);
+  if (pet.curse_type === 'smelly' && pet.curse_until > now) {
+    throw new Error(`🦨 **${pet.pet_name}** menutup hidungnya dan berteriak:\n*"Gak mau! Badan aku bau busuk jigong naga! Mandiin aku dulu pake sabun Sultan (\\.pet mandiin)!"*`);
+  }
+
   if (pet.happiness >= 100) {
     throw new Error('Pet Anda sudah sangat bahagia dan tidak ingin bermain lagi saat ini!');
   }
 
   // Cek cooldown bermain (15 menit)
-  const now = Math.floor(Date.now() / 1000);
   const cooldownDuration = 15 * 60; // 15 Menit
   const nextPlayTime = (pet.last_play_at || 0) + cooldownDuration;
   if (now < nextPlayTime) {
@@ -608,6 +612,11 @@ function sendToWork(userId, guildId) {
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
   if (pet.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
 
+  const now = Math.floor(Date.now() / 1000);
+  if (pet.curse_type === 'smelly' && pet.curse_until > now) {
+    throw new Error(`🦨 **${pet.pet_name}** menutup hidungnya dan berteriak:\n*"Gak mau! Badan aku bau busuk jigong naga! Mandiin aku dulu pake sabun Sultan (\\.pet mandiin)!"*`);
+  }
+
   // Syarat kerja
   if (pet.health < 30) {
     throw new Error('Pet Anda terlalu lelah atau sakit (HP < 30)! Obati dia terlebih dahulu.');
@@ -615,8 +624,6 @@ function sendToWork(userId, guildId) {
   if (pet.hunger < 20 || pet.thirst < 20) {
     throw new Error('Pet Anda terlalu lapar atau haus! Beri makan dan minum sebelum bekerja.');
   }
-
-  const now = Math.floor(Date.now() / 1000);
 
   // Hitung cooldown (Work: 1 Jam)
   let cooldownDuration = 1 * 3600; // 1 Jam
@@ -697,6 +704,11 @@ function sendToHunt(userId, guildId) {
   if (!pet) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
   if (pet.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
+
+  const now = Math.floor(Date.now() / 1000);
+  if (pet.curse_type === 'smelly' && pet.curse_until > now) {
+    throw new Error(`🦨 **${pet.pet_name}** menutup hidungnya dan berteriak:\n*"Gak mau! Badan aku bau busuk jigong naga! Mandiin aku dulu pake sabun Sultan (\\.pet mandiin)!"*`);
+  }
   const isGodPet = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
   if (!isGodPet && pet.status === 'BABY') {
     throw new Error('Pet Anda masih bayi! Dia harus bertumbuh menjadi dewasa (Level >= 10) terlebih dahulu sebelum bisa berburu.');
@@ -709,8 +721,6 @@ function sendToHunt(userId, guildId) {
   if (pet.happiness < 50) {
     throw new Error('Mood pet Anda terlalu buruk untuk berburu (Kebahagiaan < 50)! Ajak bermain.');
   }
-
-  const now = Math.floor(Date.now() / 1000);
   const cooldownDuration = 2 * 3600; // 2 Jam
 
   const nextHuntTime = (pet.last_hunt_at || 0) + cooldownDuration;
@@ -1594,6 +1604,30 @@ function setCustomImage(userId, guildId, imageUrl) {
   return validUrl;
 }
 
+/**
+ * Memandikan pet untuk membersihkan kutukan bau busuk
+ */
+function washPet(userId, guildId) {
+  const pet = getPet(userId, guildId);
+  if (!pet) throw new Error('Anda tidak memiliki peliharaan!');
+  if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
+  if (pet.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
+
+  const now = Math.floor(Date.now() / 1000);
+  if (pet.curse_type !== 'smelly' || pet.curse_until <= now) {
+    throw new Error(`Pet Anda (**${pet.pet_name}**) sudah wangi dan bersih kok! Tidak perlu dimandikan.`);
+  }
+
+  db.run(
+    "UPDATE user_pets SET curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ? AND is_active = 1",
+    [userId, guildId]
+  );
+
+  return {
+    pet: getPet(userId, guildId)
+  };
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1616,5 +1650,6 @@ module.exports = {
   checkExpeditionLimit,
   getPetLeaderboard,
   toggleAutoFeed,
-  setCustomImage
+  setCustomImage,
+  washPet
 };

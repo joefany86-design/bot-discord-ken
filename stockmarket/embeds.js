@@ -2267,21 +2267,43 @@ module.exports = {
   },
 
   // 30. Jail Status Embed (.jail)
-  jailStatusEmbed(user, secondsRemaining, bailAmount) {
+  jailStatusEmbed(user, secondsRemaining, bailAmount, jailType = '') {
     const now = Math.floor(Date.now() / 1000);
     const releaseTime = now + secondsRemaining;
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.ERROR)
-      .setTitle('🚨 STATUS TAHANAN VIRTUAL 👮')
-      .setDescription(
+    
+    let description = '';
+    let color = COLORS.ERROR;
+    let title = '🚨 STATUS TAHANAN VIRTUAL 👮';
+    let thumbnail = 'https://cdn-icons-png.flaticon.com/512/3233/3233481.png';
+    let footerText = 'Klik tombol "🔓 Tebus Jaminan" di bawah atau gunakan .jail untuk bebas!';
+
+    if (jailType === 'troll') {
+      title = '⛓️ SEL VIP KERTAS KENA TROLL ADMIN ⛓️';
+      color = 0x95A5A6; // Greyish
+      thumbnail = 'https://cdn-icons-png.flaticon.com/512/2996/2996172.png';
+      footerText = '😜 Hahaha! Nikmati masa tenang Anda di sel VIP!';
+      description = 
+        `Waduh! **${user.username}**, Anda baru saja dimasukkan ke **Sel VIP Kertas** oleh Admin!\n\n` +
+        `🔒 **Status:** \`KENA PRANK\`\n` +
+        `🛋️ **Fasilitas Sel:** \`Kipas Angin Karatan, Nyamuk Raksasa, Kasur Kardus\`\n` +
+        `⏳ **Bebas Dalam:** <t:${releaseTime}:R>\n` +
+        `💰 **Uang Tebusan Palsu:** \`Gratis\` (Tapi harus nunggu selesai atau dibebaskan Admin!)\n\n` +
+        `*Catatan: Selama dikurung di sel ini, seluruh aktivitas ekonomi Anda dibekukan demi kenyamanan perenungan Anda.*`;
+    } else {
+      description = 
         `Waduh! **${user.username}**, Anda saat ini sedang ditahan di Penjara Virtual Server.\n\n` +
         `🔒 **Status:** \`JAILED\`\n` +
         `⏳ **Bebas Pada:** <t:${releaseTime}:t> (<t:${releaseTime}:R>)\n` +
         `💰 **Uang Jaminan (Bail):** \`${formatCurrency(bailAmount)}\` untuk bebas instan.\n\n` +
-        `*Selama berada di dalam penjara, seluruh aktivitas ekonomi Anda dibekukan (Tidak bisa bekerja, daily, transfer, beli/jual saham, main pet, dll).*`
-      )
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/3233/3233481.png')
-      .setFooter({ text: 'Klik tombol "🔓 Tebus Jaminan" di bawah atau gunakan .jail untuk bebas!' })
+        `*Selama berada di dalam penjara, seluruh aktivitas ekonomi Anda dibekukan (Tidak bisa bekerja, daily, transfer, beli/jual saham, main pet, dll).*`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setTitle(title)
+      .setDescription(description)
+      .setThumbnail(thumbnail)
+      .setFooter({ text: footerText })
       .setTimestamp();
 
     return embed;

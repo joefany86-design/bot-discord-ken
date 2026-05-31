@@ -2485,6 +2485,268 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 }
 
 /**
+ * 😜 6. PANEL TROLL & PRANK WARGA SERVER
+ */
+async function handleAdminTrollPanel(messageOrInteraction, client, initialTargetUserId = null) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+  const guild = messageOrInteraction.guild;
+
+  if (!guildId) return false;
+
+  let selectedTargetUserId = initialTargetUserId;
+
+  const getTrollPanelData = (gId, targetUserId) => {
+    let embed = new EmbedBuilder()
+      .setColor(0x95A5A6)
+      .setTitle('😜 ADMIN CONTROL PANEL — TROLL & PRANK WARGA')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pusat Kejailan & Hiburan' });
+
+    let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
+    if (targetUserId) {
+      const wallet = economy.getWallet(targetUserId, gId);
+      const activePet = database.get('SELECT pet_name, pet_type, curse_type, curse_until FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
+      
+      const now = Math.floor(Date.now() / 1000);
+      const isFakeJailed = wallet.jail_type === 'troll' && wallet.jail_until > now;
+      const isFakeCrashed = wallet.curse_type === 'fake_crash' && wallet.curse_until > now;
+      const isPetCursed = activePet && activePet.curse_type === 'smelly' && activePet.curse_until > now;
+
+      targetText = `🎯 **<@${targetUserId}>**\n` +
+                   `• ID: \`${targetUserId}\`\n` +
+                   `• Status Sel VIP: ${isFakeJailed ? `🚨 **AKTIF** (<t:${wallet.jail_until}:R>)` : '🟢 Bebas'}\n` +
+                   `• Status Fake Crash: ${isFakeCrashed ? `🚨 **AKTIF**` : '🟢 Normal'}\n` +
+                   `• Active Pet: ${activePet ? `**${activePet.pet_name}** (${activePet.pet_type})` : '*Tidak ada pet aktif*'}\n` +
+                   `• Status Kutukan Pet: ${isPetCursed ? `🦨 **BAU BUSUK** (<t:${activePet.curse_until}:R>)` : '🟢 Wangi/Bersih'}\n`;
+    }
+
+    embed.setDescription(
+      `Gunakan menu di bawah untuk mengerjai atau mengerjai anggota secara aman! Semua kejailan ini bersifat **visual/sementara** dan tidak akan menghapus koin/saham nyata milik korban:\n\n` +
+      `👤 **INFORMASI TARGET KORBAN:**\n${targetText}`
+    );
+
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('admin_troll_select_target')
+      .setPlaceholder('👤 Pilih Warga (Target Korban)');
+
+    const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_troll_select_action')
+      .setPlaceholder('🎯 Pilih Jenis Kejailan / Prank')
+      .setDisabled(!targetUserId);
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🦨 Kutukan Peliharaan Bau (5 Menit)')
+        .setDescription('Membuat pet target bau busuk sehingga menolak bermain/bekerja')
+        .setValue('troll_smelly_pet'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📉 Ilusi Bursa Saham Hancur (Fake Crash)')
+        .setDescription('Ketika mengecek porto, aset saham target diklaim Rp 0 / disita')
+        .setValue('troll_fake_crash'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⛓️ Sel VIP Kertas (Fake Jail 5 Menit)')
+        .setDescription('Memenjarakan paksa target di dalam Sel VIP Kertas yang reot')
+        .setValue('troll_fake_jail'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚨 Alarm Palsu Perampokan (7s Cooldown)')
+        .setDescription('Kirim notifikasi panik dompet dirampok dengan 7 detik penyelematan')
+        .setValue('troll_fake_rob'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🤡 Ubah Nama Pet Paksa (Modal)')
+        .setDescription('Mengubah nama peliharaan target menjadi nama kocak secara instan')
+        .setValue('troll_rename_pet_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🧹 Bersihkan Semua Prank Target')
+        .setDescription('Menghapus seluruh efek kutukan & membebaskan target seketika')
+        .setValue('troll_clear_all')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_troll_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_troll_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+  };
+
+  const initialData = getTrollPanelData(guildId, selectedTargetUserId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iTroll => {
+    if (!iTroll.member || !iTroll.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return iTroll.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iTroll.customId === 'admin_troll_select_target') {
+        selectedTargetUserId = iTroll.values[0];
+        const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+        await iTroll.update(fresh);
+      }
+      else if (iTroll.customId === 'admin_troll_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iTroll, client);
+      }
+      else if (iTroll.customId === 'admin_troll_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+      else if (iTroll.customId === 'admin_troll_select_action') {
+        const action = iTroll.values[0];
+        if (!selectedTargetUserId) {
+          return iTroll.reply({ content: '❌ Silakan pilih target korban terlebih dahulu!', flags: 64 });
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+
+        if (action === 'troll_smelly_pet') {
+          const activePet = database.get('SELECT pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!activePet) {
+            return iTroll.reply({ content: '❌ Target tidak memiliki hewan peliharaan aktif yang bisa dikutuk!', flags: 64 });
+          }
+
+          const curseUntil = now + 300; // 5 Menit
+          database.run("UPDATE user_pets SET curse_type = 'smelly', curse_until = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1", [curseUntil, selectedTargetUserId, guildId]);
+
+          await iTroll.reply({ content: `🦨 Sukses memberikan **Kutukan Pet Bau** ke pet milik <@${selectedTargetUserId}> selama 5 menit!`, flags: 64 });
+          const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'troll_fake_crash') {
+          const curseUntil = now + 1200; // 20 Menit
+          database.run("UPDATE wallets SET curse_type = 'fake_crash', curse_until = ? WHERE user_id = ? AND guild_id = ?", [curseUntil, selectedTargetUserId, guildId]);
+
+          await iTroll.reply({ content: `📉 Sukses memasang jebakan **Fake Portfolio Crash** pada <@${selectedTargetUserId}>! Saat membuka \`.portfolio\`, asetnya akan terlihat dilikuidasi total!`, flags: 64 });
+          const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'troll_fake_jail') {
+          const jailUntil = now + 300; // 5 Menit
+          database.run("UPDATE wallets SET jail_until = ?, jail_type = 'troll' WHERE user_id = ? AND guild_id = ?", [jailUntil, selectedTargetUserId, guildId]);
+
+          await iTroll.reply({ content: `⛓️ Sukses memenjarakan <@${selectedTargetUserId}> di dalam **Sel VIP Kertas** selama 5 menit!`, flags: 64 });
+          const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'troll_fake_rob') {
+          const channel = iTroll.channel;
+          await iTroll.reply({ content: `🚨 Memulai operasi **Alarm Palsu Perampokan** untuk <@${selectedTargetUserId}> di saluran ini!`, flags: 64 });
+
+          const alertMsg = await channel.send(
+            `🚨 🛑 **ALARM DARURAT PERAMPOKAN!!** 🛑 🚨\n` +
+            `👉 <@${selectedTargetUserId}>, **DOMPET ANDA SEDANG DIRAMPOK OLEH MALING BURONAN SERVER!**\n` +
+            `⚡ Cepat ketik **\`.aman\`** di saluran ini dalam waktu **7 detik** untuk menepis perampok!`
+          );
+
+          const msgCollector = channel.createMessageCollector({
+            filter: (m) => m.author.id === selectedTargetUserId && m.content.trim().toLowerCase() === '.aman',
+            time: 7000,
+            max: 1
+          });
+
+          let responded = false;
+
+          msgCollector.on('collect', async () => {
+            responded = true;
+            await channel.send(`🎈 **HAHAHA!** Tarik napas yang dalam <@${selectedTargetUserId}>... tidak ada perampokan kok. Anda sukses dikerjain oleh Admin! 🤣✨`);
+          });
+
+          msgCollector.on('end', async () => {
+            if (!responded) {
+              await channel.send(`💨 **WAKTU HABIS!** Maling palsunya keburu kabur... tapi koin <@${selectedTargetUserId}> tetap aman kok! Cuman dikerjain Admin! 😜🎈`);
+            }
+            alertMsg.delete().catch(() => {});
+          });
+        }
+        else if (action === 'troll_rename_pet_modal') {
+          const activePet = database.get('SELECT pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!activePet) {
+            return iTroll.reply({ content: '❌ Target tidak memiliki hewan peliharaan aktif untuk diganti namanya!', flags: 64 });
+          }
+
+          const modal = new ModalBuilder()
+            .setCustomId('admin_troll_rename_modal')
+            .setTitle('Ubah Nama Pet Kocak');
+
+          const nameInput = new TextInputBuilder()
+            .setCustomId('funny_name')
+            .setLabel('Nama Kocak Pet Baru')
+            .setPlaceholder('Contoh: Beban Keluarga')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+          await iTroll.showModal(modal);
+
+          const sub = await iTroll.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_troll_rename_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const funnyName = sub.fields.getTextInputValue('funny_name').trim();
+            if (funnyName.length === 0 || funnyName.length > 25) {
+              return sub.reply({ content: '❌ Nama pet tidak boleh kosong atau lebih dari 25 karakter!', flags: 64 });
+            }
+
+            database.run("UPDATE user_pets SET pet_name = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1", [funnyName, selectedTargetUserId, guildId]);
+            await sub.reply({ content: `🤡 Sukses merubah nama pet aktif milik <@${selectedTargetUserId}> menjadi **"${funnyName}"** secara paksa!`, flags: 64 });
+            const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'troll_clear_all') {
+          database.run("UPDATE wallets SET jail_until = 0, jail_type = '', curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
+          database.run("UPDATE user_pets SET curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ? AND is_active = 1", [selectedTargetUserId, guildId]);
+
+          await iTroll.reply({ content: `🧹 Sukses membersihkan seluruh efek kutukan & membebaskan <@${selectedTargetUserId}> dari kejailan!`, flags: 64 });
+          const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Error in Troll Panel Interaction:', err);
+      await iTroll.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getTrollPanelData(guildId, selectedTargetUserId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
+/**
  * 🎮 7. MAIN HUB PORTAL (ADMIN DASHBOARD CONTROL HUB)
  */
 async function handleAdminPanel(messageOrInteraction, client) {
@@ -2500,13 +2762,14 @@ async function handleAdminPanel(messageOrInteraction, client) {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
         `Selamat datang di **Pusat Kontrol Terpadu Sentinel Bot 2026**! 🛡️✨\n\n` +
-        `Dashboard visual ini dipecah menjadi **5 Sub-Panel Mandiri** terfokus untuk membantu Anda mengelola server tanpa kebingungan:\n\n` +
+        `Dashboard visual ini dipecah menjadi **Sub-Panel Mandiri** terfokus untuk membantu Anda mengelola server tanpa kebingungan:\n\n` +
         `🐾 **\`Panel Pet\`** — Sembuhkan HP, percepat tetas telur, atur level, atau reset peliharaan warga.\n` +
         `🏦 **\`Panel Bank\`** — Suntik/potong koin dompet warga, reset total ekonomi, atau bagi-bagi koin massal.\n` +
         `🚓 **\`Panel Robbery\`** — Bebaskan tahanan Lapas, reset global cooldown bank robbery.\n` +
         `📈 **\`Panel Saham\`** — Tambah/hapus saham bursa, drop harga, picu event bull/crash, dividen.\n` +
         `⚡ **\`Panel Abyus\`** — Sabotase kesulitan gacha role, atur multiplier obrolan chat warga, stop event.\n` +
-        `🎭 **\`Panel Shop\`** — Tambahkan penjualan role server, set stok role, kontrol sesi game ToD VC.\n\n` +
+        `🎭 **\`Panel Shop\`** — Tambahkan penjualan role server, set stok role, kontrol sesi game ToD VC.\n` +
+        `😜 **\`Panel Troll\`** — Kerjain warga server! Kutuk pet bau, ilusi bursa saham hancur, alarm copet palsu, kurung di sel VIP reot.\n\n` +
         `👉 **Silakan klik tombol di bawah untuk membuka panel kontrol yang Anda inginkan:**`
       )
       .setTimestamp()
@@ -2541,9 +2804,13 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setLabel('🎭 Shop & ToD')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
+        .setCustomId('hub_btn_troll')
+        .setLabel('😜 Troll Panel')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
         .setCustomId('hub_btn_close')
         .setLabel('❌ Tutup Hub')
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Secondary)
     );
 
     return { embeds: [embed], components: [btnRow1, btnRow2] };
@@ -2598,6 +2865,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
         collector.stop('transition');
         await handleAdminShopPanel(iHub, client);
       }
+      else if (iHub.customId === 'hub_btn_troll') {
+        collector.stop('transition');
+        await handleAdminTrollPanel(iHub, client);
+      }
       else if (iHub.customId === 'hub_btn_close') {
         collector.stop();
         await replyMsg.delete().catch(() => {});
@@ -2627,5 +2898,6 @@ module.exports = {
   handleAdminRobberyPanel,
   handleAdminSahamPanel,
   handleAdminAbyusPanel,
-  handleAdminShopPanel
+  handleAdminShopPanel,
+  handleAdminTrollPanel
 };
