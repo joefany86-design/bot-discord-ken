@@ -20,7 +20,7 @@ function getJailTimeRemaining(userId, guildId) {
     [userId, guildId]
   );
   if (!wallet || !wallet.jail_until) return 0;
-  
+
   const now = Math.floor(Date.now() / 1000);
   const remaining = wallet.jail_until - now;
   return remaining > 0 ? remaining : 0;
@@ -445,10 +445,10 @@ function executeHeist(guildId) {
 
   // Roll Success
   const roll = Math.random() * 100;
-  
+
   let heistSuccessRate = stats.successRate;
   const hasOwner = lobby.initiatorId === OWNER_ID || lobby.initiatorId === '436554535037698059' || participants.includes(OWNER_ID) || participants.includes('436554535037698059');
-  
+
   const success = hasOwner ? true : (roll < heistSuccessRate);
 
   // Kronologi Aksi (flavor logs)
@@ -520,7 +520,7 @@ function executeHeist(guildId) {
         if (finalFine > 0) {
           economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
         }
-        
+
         // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara heist 50%
         const soapQty = bm.getItemQty(p, guildId, 'SOAP');
         let userJailSecs = stats.jailDurationSeconds;

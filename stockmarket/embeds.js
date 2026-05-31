@@ -28,13 +28,13 @@ function generateSparkline(prices) {
   const max = Math.max(...prices);
   const range = max - min;
   const chars = [' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-  
+
   const spark = prices.map(p => {
     if (range === 0) return chars[4]; // Garis datar jika stabil
     const idx = Math.floor(((p - min) / range) * (chars.length - 1));
     return chars[idx];
   }).join('');
-  
+
   return `\`${spark}\` ( ${prices.map(p => `Rp ${p.toLocaleString('id-ID')}`).join(' ➔ ')} )`;
 }
 
@@ -47,13 +47,13 @@ function getInlineSparkline(prices) {
   const max = Math.max(...prices);
   const range = max - min;
   const chars = [' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-  
+
   const spark = prices.map(p => {
     if (range === 0) return chars[3];
     const idx = Math.floor(((p - min) / range) * (chars.length - 1));
     return chars[idx];
   }).join('');
-  
+
   return `\`[${spark}]\``;
 }
 
@@ -73,7 +73,7 @@ function getMarketProgressBar(available, total, size = 10) {
  */
 function generate2DChart(prices) {
   if (!prices || prices.length < 2) return '`[ ── ]` Belum cukup riwayat harga untuk membuat grafik.';
-  
+
   const height = 5; // Baris grid Y (0 s/d 4)
   const width = prices.length;
   const min = Math.min(...prices);
@@ -161,12 +161,12 @@ function getRoleColor(roleName, tier) {
 
 // Warna Dinamis per Spesies Pet (untuk embed yang lebih hidup)
 const PET_COLORS = {
-  SLIME:  0x00FF88, // Neon Green
+  SLIME: 0x00FF88, // Neon Green
   DRAGON: 0xFF6B35, // Blazing Orange
-  CAT:    0xFF69B4, // Hot Pink
-  GOLEM:  0x8B7355, // Earthen Brown
-  EGG:    0xFFD700, // Golden
-  DEAD:   0x2C2F33  // Dark Grey
+  CAT: 0xFF69B4, // Hot Pink
+  GOLEM: 0x8B7355, // Earthen Brown
+  EGG: 0xFFD700, // Golden
+  DEAD: 0x2C2F33  // Dark Grey
 };
 
 // GIF Assets per Species/Stage dari sumber reliable (media.tenor.com & media.giphy.com)
@@ -276,7 +276,7 @@ const PET_ASSETS = {
 
 function getPetImage(pet) {
   if (!pet) return null;
-  
+
   if (pet.custom_image) {
     return pet.custom_image;
   }
@@ -289,15 +289,15 @@ function getPetImage(pet) {
     const deads = PET_ASSETS.DEAD;
     return deads[Math.floor(Math.random() * deads.length)];
   }
-  
+
   const species = pet.pet_type.toUpperCase();
   const stage = pet.status.toUpperCase();
-  
+
   if (PET_ASSETS[species] && PET_ASSETS[species][stage]) {
     const arr = PET_ASSETS[species][stage];
     return arr[Math.floor(Math.random() * arr.length)];
   }
-  
+
   return null;
 }
 
@@ -546,8 +546,8 @@ module.exports = {
 
     if (result.success) {
       let desc = `Selamat **${user.username}**! Kamu mendapatkan **${formatCurrency(result.reward)}** hari ini.\n\n` +
-                 `💰 Hadiah Dasar: \`${formatCurrency(result.baseReward)}\`\n` +
-                 `🔥 Bonus Streak: \`${formatCurrency(result.streakBonus)}\` (${result.streak} hari)`;
+        `💰 Hadiah Dasar: \`${formatCurrency(result.baseReward)}\`\n` +
+        `🔥 Bonus Streak: \`${formatCurrency(result.streakBonus)}\` (${result.streak} hari)`;
 
       if (result.roomBonus > 0) {
         desc += `\n🛌 Bonus Kamar (${result.roomName}): \`${formatCurrency(result.roomBonus)}\``;
@@ -556,9 +556,9 @@ module.exports = {
       if (result.debtPaidDetails) {
         const { creditorId, paidAmount, remainingDebt } = result.debtPaidDetails;
         desc += `\n\n⚠️ **POTONGAN HUTANG OTOMATIS!**\n` +
-                `Sebesar **${formatCurrency(paidAmount)}** (50% dari hadiah) dipotong secara otomatis untuk mencicil hutang tebusan Anda kepada <@${creditorId}>.\n` +
-                `╰ 💰 Bersih Diterima: **${formatCurrency(result.finalReward)}**\n` +
-                `╰ 🧾 Sisa Hutang Anda: **${remainingDebt > 0 ? formatCurrency(remainingDebt) : '✨ LUNAS!'}**`;
+          `Sebesar **${formatCurrency(paidAmount)}** (50% dari hadiah) dipotong secara otomatis untuk mencicil hutang tebusan Anda kepada <@${creditorId}>.\n` +
+          `╰ 💰 Bersih Diterima: **${formatCurrency(result.finalReward)}**\n` +
+          `╰ 🧾 Sisa Hutang Anda: **${remainingDebt > 0 ? formatCurrency(remainingDebt) : '✨ LUNAS!'}**`;
       }
 
       embed
@@ -571,7 +571,7 @@ module.exports = {
       const hours = Math.floor(result.timeLeftMs / (1000 * 60 * 60));
       const minutes = Math.floor((result.timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((result.timeLeftMs % (1000 * 60)) / 1000);
-      
+
       embed
         .setColor(COLORS.WARN)
         .setTitle('⏳ Kamu Sudah Klaim Hari Ini!')
@@ -599,13 +599,13 @@ module.exports = {
     } else {
       let desc = embed.data.description || '';
       desc += '\n\n';
-      
+
       stocks.forEach((stock, idx) => {
         const diff = stock.current_price - stock.previous_price;
         const pct = stock.previous_price > 0 ? ((diff / stock.previous_price) * 100).toFixed(1) : '0.0';
         const trendEmoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '↔️';
         const trendColor = diff > 0 ? '🟢 +' : diff < 0 ? '🔴 ' : '⚪ ';
-        
+
         // Ambil riwayat harga 5 pembaruan terakhir dari price_history untuk sparkline
         let prices = [];
         try {
@@ -617,7 +617,7 @@ module.exports = {
         } catch (err) {
           console.error(`Gagal mengambil histori harga untuk ${stock.stock_ticker}:`, err);
         }
-        
+
         // Pastikan harga saat ini ada di akhir list histori jika belum tercatat
         if (prices.length === 0 || prices[prices.length - 1] !== stock.current_price) {
           prices.push(stock.current_price);
@@ -631,10 +631,10 @@ module.exports = {
         const soldPct = ((soldCount / stock.total_shares) * 100).toFixed(0);
 
         desc += `🔹 **${stock.stock_ticker}** — <#${stock.channel_id}>\n` +
-                `   ├─ 💵 **Harga** : **${formatCurrency(stock.current_price)}** / lembar\n` +
-                `   ├─ 📊 **Tren**  : ${trendColor}**${pct}%** (${trendEmoji}) ${sparkline}\n` +
-                `   ├─ 📦 **Stok**  : \`${stock.available_shares} / ${stock.total_shares}\` lembar\n` +
-                `   └─ 🛡️ **Pasar** : \`${progressBar}\` *(${soldPct}% Terbeli)*\n\n`;
+          `   ├─ 💵 **Harga** : **${formatCurrency(stock.current_price)}** / lembar\n` +
+          `   ├─ 📊 **Tren**  : ${trendColor}**${pct}%** (${trendEmoji}) ${sparkline}\n` +
+          `   ├─ 📦 **Stok**  : \`${stock.available_shares} / ${stock.total_shares}\` lembar\n` +
+          `   └─ 🛡️ **Pasar** : \`${progressBar}\` *(${soldPct}% Terbeli)*\n\n`;
       });
 
       desc += `────────────────────────────────────────`;
@@ -650,7 +650,7 @@ module.exports = {
     const diff = stock.current_price - stock.previous_price;
     const pct = stock.previous_price > 0 ? ((diff / stock.previous_price) * 100).toFixed(1) : '0.0';
     const trendEmoji = diff > 0 ? '🟢 Naik' : diff < 0 ? '🔴 Turun' : '🟡 Stabil';
-    
+
     // Bikin representasi visual chart 2D dari history harga (maksimal 10)
     let chartVisual = '`[ ── ]` Belum ada riwayat harga.';
     if (priceHistory && priceHistory.length > 0) {
@@ -676,7 +676,7 @@ module.exports = {
   // 4a. Embed Grafik Saham Premium 2D ASCII (.chart $TICKER)
   stockChartEmbed(stock, priceHistory, client) {
     const diff = stock.current_price - stock.previous_price;
-    
+
     // Ambil harga dari histori (maksimal 10)
     let prices = [];
     if (priceHistory && priceHistory.length > 0) {
@@ -684,7 +684,7 @@ module.exports = {
     } else {
       prices = [stock.current_price];
     }
-    
+
     // Hitung performa chart (dari titik terlama ke terbaru)
     let chartPerformanceText = '`0.0%` (Stabil)';
     let chartColor = COLORS.WARN;
@@ -696,14 +696,14 @@ module.exports = {
       const pctSign = chartDiff >= 0 ? '+' : '';
       const trendEmoji = chartDiff > 0 ? '🟢' : chartDiff < 0 ? '🔴' : '🟡';
       chartPerformanceText = `\`${pctSign}${chartPct}%\` (${trendEmoji})`;
-      
+
       chartColor = chartDiff > 0 ? COLORS.SUCCESS : chartDiff < 0 ? COLORS.ERROR : COLORS.WARN;
     } else {
       chartColor = diff > 0 ? COLORS.SUCCESS : diff < 0 ? COLORS.ERROR : COLORS.WARN;
     }
-    
+
     const chartVisual = generate2DChart(prices);
-    
+
     const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
     const highPrice = Math.max(...prices);
     const lowPrice = Math.min(...prices);
@@ -720,11 +720,12 @@ module.exports = {
         { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}**`, inline: true },
         { name: '📈 Performa Grafik', value: chartPerformanceText, inline: true },
         { name: '🏛️ Sisa Bursa', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
-        { name: '📈 Statistik Grafik (Range)', value: 
-          `• Tertinggi (High): \`${formatCurrency(highPrice)}\`\n` +
-          `• Terendah (Low): \`${formatCurrency(lowPrice)}\`\n` +
-          `• Rata-rata (Avg): \`${formatCurrency(Math.round(avgPrice))}\``, 
-          inline: false 
+        {
+          name: '📈 Statistik Grafik (Range)', value:
+            `• Tertinggi (High): \`${formatCurrency(highPrice)}\`\n` +
+            `• Terendah (Low): \`${formatCurrency(lowPrice)}\`\n` +
+            `• Rata-rata (Avg): \`${formatCurrency(Math.round(avgPrice))}\``,
+          inline: false
         }
       )
       .setFooter({ text: 'Gunakan tombol di bawah ini untuk bertransaksi atau menyegarkan grafik!' })
@@ -752,7 +753,7 @@ module.exports = {
         const profitSign = item.profitRp >= 0 ? '+' : '';
         const profitPercentSign = item.profitRp >= 0 ? '📈' : '📉';
         const profitIndicator = item.profitRp >= 0 ? '🟢' : '🔴';
-        
+
         embed.addFields({
           name: `💼 **${item.ticker}** ( #${item.name} )`,
           value:
@@ -823,12 +824,12 @@ module.exports = {
         const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
         const member = client.users.cache.get(user.userId);
         const name = member ? `**${member.username}**` : `<@${user.userId}>`;
-        
+
         ranks += `${medal} ${name}\n` +
-                 `   ├─ 💵 Dompet : \`${formatCurrency(user.balance)}\`\n` +
-                 `   ├─ 📊 Saham  : \`${formatCurrency(user.portfolioValue)}\`\n` +
-                 `   ├─ 🏦 Bank   : \`${formatCurrency(user.bankBalance)}\`\n` +
-                 `   └─ 💎 **Total : \`${formatCurrency(user.totalWealth)}\`**\n\n`;
+          `   ├─ 💵 Dompet : \`${formatCurrency(user.balance)}\`\n` +
+          `   ├─ 📊 Saham  : \`${formatCurrency(user.portfolioValue)}\`\n` +
+          `   ├─ 🏦 Bank   : \`${formatCurrency(user.bankBalance)}\`\n` +
+          `   └─ 💎 **Total : \`${formatCurrency(user.totalWealth)}\`**\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
     }
@@ -864,11 +865,11 @@ module.exports = {
         const member = client.users.cache.get(user.user_id);
         const name = member ? `**${member.username}**` : `<@${user.user_id}>`;
         const klaim = user.last_active_date || 'Belum Pernah';
-        
+
         ranks += `${medal} ${name}\n` +
-                 `   ├─ 💵 Saldo Dompet : \`${formatCurrency(user.balance)}\`\n` +
-                 `   ├─ 📅 Klaim Terakhir: \`${klaim}\`\n` +
-                 `   └─ 🔥 Streak Harian: \`${user.streak_days} hari\`\n\n`;
+          `   ├─ 💵 Saldo Dompet : \`${formatCurrency(user.balance)}\`\n` +
+          `   ├─ 📅 Klaim Terakhir: \`${klaim}\`\n` +
+          `   └─ 🔥 Streak Harian: \`${user.streak_days} hari\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
     }
@@ -946,11 +947,11 @@ module.exports = {
         const traitLabel = p.trait ? ` (🧠 Trait: ${p.trait.toUpperCase()})` : '';
 
         ranks += `${medal} **${p.pet_name}** — *Milik ${ownerName}*\n` +
-                 `   ├─ 🐾 Spesies : ${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}\n` +
-                 `   ├─ 📊 Status  : 🟢 ${p.status.toUpperCase()}\n` +
-                 `   ├─ 🧬 Stats   : ❤️\`${p.health}%\` 🍖\`${p.hunger}%\` 💧\`${p.thirst}%\` ⚽\`${p.happiness}%\`\n` +
-                 `   ├─ 🏆 Kelas   : \`${getTierLabel(p.level)}\`\n` +
-                 `   └─ ${categoryDetail}\n\n`;
+          `   ├─ 🐾 Spesies : ${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}\n` +
+          `   ├─ 📊 Status  : 🟢 ${p.status.toUpperCase()}\n` +
+          `   ├─ 🧬 Stats   : ❤️\`${p.health}%\` 🍖\`${p.hunger}%\` 💧\`${p.thirst}%\` ⚽\`${p.happiness}%\`\n` +
+          `   ├─ 🏆 Kelas   : \`${getTierLabel(p.level)}\`\n` +
+          `   └─ ${categoryDetail}\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
     }
@@ -1067,10 +1068,10 @@ module.exports = {
             const desc = item.description ? `\n   └─ 💬 *“${item.description}”*` : '';
 
             content += `🆔 **\`ID: ${item.id}\`**  |  ${emoji} **${item.role_name}**\n` +
-                       `   ├─ 💵 **Harga** : **${formatCurrency(item.price)}**\n` +
-                       `   ├─ 📦 **Stok**  : ${stockInfo}\n` +
-                       `   ├─ 🎲 **Gacha** : ${gachaStatus}` +
-                       `${desc}\n\n`;
+              `   ├─ 💵 **Harga** : **${formatCurrency(item.price)}**\n` +
+              `   ├─ 📦 **Stok**  : ${stockInfo}\n` +
+              `   ├─ 🎲 **Gacha** : ${gachaStatus}` +
+              `${desc}\n\n`;
           });
 
           embed.addFields({
@@ -1456,7 +1457,7 @@ module.exports = {
   // 17. Status Event Aktif (.event)
   eventStatusEmbed(activeEvent) {
     const embed = new EmbedBuilder();
-    
+
     if (!activeEvent) {
       embed
         .setColor(COLORS.DARK)
@@ -1496,7 +1497,7 @@ module.exports = {
         .setFooter({ text: 'Gunakan .event untuk memantau status terbaru.' })
         .setTimestamp();
     }
-    
+
     return embed;
   },
 
@@ -1542,12 +1543,12 @@ module.exports = {
           let content = '';
           tierItems.forEach(item => {
             const hasRole = member.roles.cache.has(item.role_id);
-            
+
             // Funny Indonesian customized ownership tags
-            const statusEmoji = hasRole 
-              ? '✅ **[DIMILIKI]** (Sultan Mode: **ON** 😎)' 
+            const statusEmoji = hasRole
+              ? '✅ **[DIMILIKI]** (Sultan Mode: **ON** 😎)'
               : '🔒 *Belum dimiliki* (Menanti Hoki Gacha / Rp ' + item.price.toLocaleString('id-ID') + ')';
-            
+
             if (hasRole) ownedCount++;
 
             const desc = item.description ? `\n   *“${item.description}”*` : '';
@@ -1586,7 +1587,7 @@ module.exports = {
 
       embed.addFields({
         name: '📊 RINGKASAN KOLEKSI ROLE PRESTISE',
-        value: 
+        value:
           `🏆 **Progres Koleksi:** \`${ownedCount} / ${totalRoles} Role\` (${percent}%)\n` +
           `✨ **Progress Bar:** [ ${progressBar} ]\n` +
           `🎭 **Kasta Kelayakan:** ${statusRemark}`
@@ -1667,21 +1668,21 @@ module.exports = {
         `Kelola tabungan berbunga dan pinjaman darurat Anda dengan aman dan mudah!`
       )
       .addFields(
-        { 
-          name: '💵 Dompet Utama', 
-          value: `**${formatCurrency(wallet.balance)}**`, 
-          inline: true 
+        {
+          name: '💵 Dompet Utama',
+          value: `**${formatCurrency(wallet.balance)}**`,
+          inline: true
         },
-        { 
-          name: '🏦 Saldo Tabungan', 
-          value: `**${formatCurrency(savings.balance)}**\n*Bunga Hari Ini: +${currentInterest.toFixed(1)}%*`, 
-          inline: true 
+        {
+          name: '🏦 Saldo Tabungan',
+          value: `**${formatCurrency(savings.balance)}**\n*Bunga Hari Ini: +${currentInterest.toFixed(1)}%*`,
+          inline: true
         }
       );
 
     embed.addFields({
       name: `🏢 Status Kamar & Regulasi Bank (${roomName})`,
-      value: 
+      value:
         `📥 Pajak Deposit: \`${depositTax}%\` | 📤 Pajak Penarikan: \`${withdrawTax}%\`\n` +
         `🛡️ Biaya Keamanan Harian: \`${feeConfig.flat > 0 || feeConfig.percent > 0 ? `Rp ${feeConfig.flat} + ${feeConfig.percent}%` : 'Bebas Biaya (Rp 0)'}\` (\`${formatCurrency(securityFeeAmount)}\` malam ini)\n` +
         `📈 Bunga Maksimal Kasta: \`+${maxInterest.toFixed(1)}%\` harian\n` +
@@ -1694,8 +1695,8 @@ module.exports = {
       const isOverdue = activeLoan.status === 'OVERDUE';
       const statusEmoji = isOverdue ? '🔴 OVERDUE (Jatuh Tempo)' : '⏳ ACTIVE (Berjalan)';
       const dueText = `<t:${activeLoan.due_at}:F> (<t:${activeLoan.due_at}:R>)`;
-      
-      let debtDetails = 
+
+      let debtDetails =
         `• Pokok Pinjaman: \`${formatCurrency(activeLoan.principal_amount)}\`\n` +
         `• Tenor Pilihan : \`${activeLoan.tenor_days} Hari\`\n` +
         `• Batas Waktu   : ${dueText}\n` +
@@ -1808,7 +1809,7 @@ module.exports = {
 
       embed.addFields({
         name: `🛌 Hunian Aktif: ${activeRental.name}`,
-        value: 
+        value:
           `> *“${activeRental.config.desc}”*\n\n` +
           `🕒 **Habis Sewa:** ${dueText}\n` +
           `📈 **Efek Passive Buffs:**\n${buffs}`,
@@ -1817,7 +1818,7 @@ module.exports = {
     } else {
       embed.addFields({
         name: '🛌 Hunian Aktif: 🧹 Tidur di Teras Kosan',
-        value: 
+        value:
           `*“Gelar tikar tipis di emperan kosan, ditemani nyamuk komplek dan angin malam yang menusuk tulang.”*\n\n` +
           `⚠️ **Sanksi Sosial:** Kamu tidak mendapatkan bonus daily tambahan apa pun.\n` +
           `👉 *Sewa kamarmu sekarang dengan mengetik \`.kos-sewa\`!*`,
@@ -1864,10 +1865,10 @@ module.exports = {
     const rooms = config.kos.ROOMS;
     Object.keys(rooms).forEach(key => {
       const room = rooms[key];
-      let details = 
+      let details =
         `• Biaya Sewa: **${formatCurrency(room.price)}** / 3 hari\n` +
         `• Bonus Gaji Harian: **+${formatCurrency(room.dailyBonus)}** /hari\n`;
-      
+
       if (room.transferTax !== undefined) {
         details += `• Potongan Pajak Transfer: menjadi **${room.transferTax}%** *(normal 10%)*\n`;
       }
@@ -1963,10 +1964,10 @@ module.exports = {
 
     // Warna aksen per spesies pet
     const SPECIES_COLORS = {
-      SLIME:  0x00E676, // Hijau neon
+      SLIME: 0x00E676, // Hijau neon
       DRAGON: 0xFF5722, // Oranye api
-      CAT:    0xFFB300, // Kuning emas
-      GOLEM:  0x78909C  // Abu-abu batu
+      CAT: 0xFFB300, // Kuning emas
+      GOLEM: 0x78909C  // Abu-abu batu
     };
     const SPECIES_EMOJI = {
       SLIME: '🟢', DRAGON: '🔥', CAT: '🐱', GOLEM: '🧱'
@@ -2045,9 +2046,9 @@ module.exports = {
     let traitLine = '';
     if (pet.trait) {
       const traitName = pet.trait.toUpperCase();
-      if (traitName === 'GENIUS')  { rarityBadge = '🧠 RARE · GENIUS';  traitLine = '`-15% XP cap`'; }
-      else if (traitName === 'STURDY')  { rarityBadge = '🛡️ RARE · STURDY';  traitLine = '`HP decay ÷2`'; }
-      else if (traitName === 'MUTANT')  { rarityBadge = '🧬 RARE · MUTANT';  traitLine = '`+10% work/hunt`'; }
+      if (traitName === 'GENIUS') { rarityBadge = '🧠 RARE · GENIUS'; traitLine = '`-15% XP cap`'; }
+      else if (traitName === 'STURDY') { rarityBadge = '🛡️ RARE · STURDY'; traitLine = '`HP decay ÷2`'; }
+      else if (traitName === 'MUTANT') { rarityBadge = '🧬 RARE · MUTANT'; traitLine = '`+10% work/hunt`'; }
       else if (traitName === 'WARRIOR') { rarityBadge = '⚔️ RARE · WARRIOR'; traitLine = '`+10% ATK`'; }
     }
 
@@ -2083,7 +2084,7 @@ module.exports = {
 
     // Info Cooldown Pekerjaan & Berburu
     const now = Math.floor(Date.now() / 1000);
-    
+
     // Cooldown Work (Work: 1 Jam)
     let workCd = 1 * 3600;
     if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
@@ -2128,7 +2129,7 @@ module.exports = {
       pets.forEach((pet, idx) => {
         const activeLabel = pet.is_active ? '🟢 **AKTIF**' : '⚪ Pasif';
         const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
-        
+
         let statusText = '';
         if (pet.status === 'EGG') {
           statusText = `🥚 Telur (Menetas <t:${pet.hatch_at}:R>)`;
@@ -2233,7 +2234,7 @@ module.exports = {
       const isChalWinner = result.winnerId === challengerUser.id;
       const winnerUser = isChalWinner ? challengerUser : opponentUser;
       const loserUser = isChalWinner ? opponentUser : challengerUser;
-      
+
       embed
         .setColor(0x7C4DFF) // Premium Royal Violet
         .setDescription(
@@ -2542,12 +2543,12 @@ module.exports = {
 
   // 37. Ebyus Control Panel Embed
   ebyusControlPanelEmbed(guild, settings) {
-    const gachaModeText = 
+    const gachaModeText =
       settings.gacha_mode === 'ABUSE' ? '🔴 Abuse Mode (0% Zonk - 100% Win!)' :
-      settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
-      settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
-      
-    const multiplierText = 
+        settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
+          settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
+
+    const multiplierText =
       settings.coin_multiplier > 1 ? `💀 **${settings.coin_multiplier}x Multiplier Active**` : '❌ Nonaktif (1x)';
 
     let durationInfoText = '♾️ **Permanen (Tanpa Batas)**';
@@ -2570,7 +2571,7 @@ module.exports = {
       .addFields(
         {
           name: '🎰 1. MANIPULASI GACHA ROLE (gacha-role)',
-          value: 
+          value:
             `• **Normal Mode:** 75% Zonk / ampas.\n` +
             `• **Easy Mode:** 40% Zonk (Peluang menang naik 2x).\n` +
             `• **Super Easy:** 15% Zonk (Sangat mudah menang kasta role).\n` +
@@ -2597,12 +2598,12 @@ module.exports = {
 
   // 38. Ebyus Broadcast Embed
   ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt) {
-    const gachaDesc = 
+    const gachaDesc =
       mode === 'ABUSE' ? '🔥 **0% ZONK! (100% PASTI MENANG ROLE)**' :
-      mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
-      mode === 'EASY' ? '⚡ **MUDAH (Hanya 40% Zonk)**' : '🟢 Normal (75% Zonk)';
+        mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
+          mode === 'EASY' ? '⚡ **MUDAH (Hanya 40% Zonk)**' : '🟢 Normal (75% Zonk)';
 
-    const coinDesc = 
+    const coinDesc =
       multiplier > 1 ? `🎉 **PELIPATGANDAAN MASIF ${multiplier}X LIPAT KOIN CHAT**` : '🟢 Normal';
 
     let durationText = '';
@@ -2628,10 +2629,10 @@ module.exports = {
 
   // 39. Ebyus Status Embed
   ebyusStatusEmbed(guild, settings) {
-    const gachaModeText = 
+    const gachaModeText =
       settings.gacha_mode === 'ABUSE' ? '🔴 Abuse Mode (0% Zonk)' :
-      settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
-      settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
+        settings.gacha_mode === 'SUPER_EASY' ? '🟠 Super Easy Mode (15% Zonk)' :
+          settings.gacha_mode === 'EASY' ? '🟡 Easy Mode (40% Zonk)' : '🟢 Normal Mode (75% Zonk)';
 
     let durationInfoText = '♾️ **Permanen (Tanpa Batas)**';
     if (settings.expires_at > 0) {
@@ -2701,7 +2702,7 @@ module.exports = {
     const timeSinceLastWater = now - (lastWaterAt || 0);
     const cooldownSeconds = config.garden.WATER_COOLDOWN_MS / 1000;
     const waterReady = timeSinceLastWater >= cooldownSeconds;
-    
+
     let waterStatusText = '';
     if (waterReady) {
       waterStatusText = '💦 **Ember Air:** 🟢 **Penuh & Siap Menyiram!**';
@@ -2713,36 +2714,36 @@ module.exports = {
     }
 
     let desc = `Selamat datang di kebun bunga virtualmu, **${user.username}**! 🌸\n` +
-               `Rawatlah benih tanamanmu hingga mekar penuh, panen bunga segarnya, dan rangkai menjadi buket indah berpita untuk dihadiahkan kepada warga lain!\n\n` +
-               `${waterStatusText}\n\n` +
-               `🏡 **DAFTAR TANAH AKTIF (3 SLOT):**\n` +
-               `──────────────────────────────\n`;
+      `Rawatlah benih tanamanmu hingga mekar penuh, panen bunga segarnya, dan rangkai menjadi buket indah berpita untuk dihadiahkan kepada warga lain!\n\n` +
+      `${waterStatusText}\n\n` +
+      `🏡 **DAFTAR TANAH AKTIF (3 SLOT):**\n` +
+      `──────────────────────────────\n`;
 
     slots.forEach(slot => {
       desc += `\n`;
       if (slot.seed_id) {
         const pbar = makeProgressBar(slot.growthProgress);
         const timeText = formatDuration(slot.secondsLeft);
-        
+
         let rarityEmoji = '🪵';
         if (slot.rarity === 'RARE') rarityEmoji = '✨';
         if (slot.rarity === 'EPIC') rarityEmoji = '👑';
 
         if (slot.growthProgress >= 100) {
           desc += `🌺 **SLOT #${slot.slot_index}: ${slot.flowerName}** (Matang!)\n` +
-                  `┊ ${pbar}\n` +
-                  `┊ Status: ${rarityEmoji} **MEKAR SEMPURNA**\n` +
-                  `┊ 👉 *Bunga siap dipanen! klik tombol **Panen** di bawah.*\n`;
+            `┊ ${pbar}\n` +
+            `┊ Status: ${rarityEmoji} **MEKAR SEMPURNA**\n` +
+            `┊ 👉 *Bunga siap dipanen! klik tombol **Panen** di bawah.*\n`;
         } else {
           desc += `🌱 **SLOT #${slot.slot_index}: ${slot.flowerName}**\n` +
-                  `┊ ${pbar} (Sisa: \`${timeText}\`)\n` +
-                  `┊ Status: ${rarityEmoji} **${slot.growthStatus}**\n` +
-                  `┊ Penyiraman: 💦 Sudah disiram **${slot.water_count}x**\n`;
+            `┊ ${pbar} (Sisa: \`${timeText}\`)\n` +
+            `┊ Status: ${rarityEmoji} **${slot.growthStatus}**\n` +
+            `┊ Penyiraman: 💦 Sudah disiram **${slot.water_count}x**\n`;
         }
       } else {
         desc += `🟫 **SLOT #${slot.slot_index}: KOSONG**\n` +
-                `┊ *Tanah gembur siap ditanami benih bunga baru!*\n` +
-                `┊ 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
+          `┊ *Tanah gembur siap ditanami benih bunga baru!*\n` +
+          `┊ 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
       }
       desc += `──────────────────────────────\n`;
     });
@@ -2759,25 +2760,25 @@ module.exports = {
   // 42. Cozy Flower Garden Shop Embed
   gardenShopEmbed(user, wallet) {
     let desc = `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
-               `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
-               `──────────────────────────────\n\n` +
-               `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
-               `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
-               `   • Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` (Common)\n` +
-               `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
-               `   • Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` (Common)\n` +
-               `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
-               `   • Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` (Rare)\n` +
-               `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
-               `   • Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` (Rare)\n` +
-               `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
-               `   • Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` (Epic)\n\n` +
-               `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
-               `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
-               `  • Harga: \`Rp 100\` (Bahan wajib untuk merangkai buket bunga)\n\n` +
-               `──────────────────────────────\n` +
-               `👉 **Cara Membeli:** Ketik \`.toko-kebun beli <nama_benih> <jumlah>\`\n` +
-               `*Contoh:* \`.toko-kebun beli mawar 3\` atau \`.toko-kebun beli wrapping 1\``;
+      `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
+      `──────────────────────────────\n\n` +
+      `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
+      `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
+      `   • Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` (Common)\n` +
+      `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
+      `   • Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` (Common)\n` +
+      `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
+      `   • Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` (Rare)\n` +
+      `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
+      `   • Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` (Rare)\n` +
+      `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
+      `   • Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` (Epic)\n\n` +
+      `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
+      `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
+      `  • Harga: \`Rp 100\` (Bahan wajib untuk merangkai buket bunga)\n\n` +
+      `──────────────────────────────\n` +
+      `👉 **Cara Membeli:** Ketik \`.toko-kebun beli <nama_benih> <jumlah>\`\n` +
+      `*Contoh:* \`.toko-kebun beli mawar 3\` atau \`.toko-kebun beli wrapping 1\``;
 
     return new EmbedBuilder()
       .setColor('#C4D7B2') // Sage Green
@@ -2810,26 +2811,26 @@ module.exports = {
     const qtyWrapping = getQty('GIFT_WRAPPING');
 
     let desc = `Halo **${user.username}**, di sini Anda dapat merangkai bunga segar hasil panen menjadi buket bunga indah berpita yang memiliki efek pasif **Daily Claim Buff** melimpah saat dihadiahkan ke warga lain!\n\n` +
-               `🎒 **INVENTORY BAHAN ANDA:**\n` +
-               `• 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
-               `• 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
-               `• 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
-               `• 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
-               `• 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
-               `• 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
-               `📜 **RESEP BUKET BUNGA YANG TERSEDIA:**\n\n` +
-               `1. **💐 Buket Kasih Sayang** (\`love\`)\n` +
-               `   • **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
-               `   • **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
-               `2. **💐 Buket Ketenangan** (\`peace\`)\n` +
-               `   • **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
-               `   • **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
-               `3. **👑 Buket Legendaris (Imperial)** (\`imperial\`)\n` +
-               `   • **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
-               `   • **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
-               `──────────────────────────────\n` +
-               `👉 **Cara Merangkai:** Ketik \`.buket <jenis>\`\n` +
-               `*Contoh:* \`.buket love\``;
+      `🎒 **INVENTORY BAHAN ANDA:**\n` +
+      `• 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
+      `• 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
+      `• 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
+      `• 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
+      `• 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
+      `• 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
+      `📜 **RESEP BUKET BUNGA YANG TERSEDIA:**\n\n` +
+      `1. **💐 Buket Kasih Sayang** (\`love\`)\n` +
+      `   • **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `2. **💐 Buket Ketenangan** (\`peace\`)\n` +
+      `   • **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `3. **👑 Buket Legendaris (Imperial)** (\`imperial\`)\n` +
+      `   • **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `──────────────────────────────\n` +
+      `👉 **Cara Merangkai:** Ketik \`.buket <jenis>\`\n` +
+      `*Contoh:* \`.buket love\``;
 
     return new EmbedBuilder()
       .setColor('#D8B4F8') // Lilac Pastel

@@ -473,7 +473,7 @@ function startRealtimeLeaderboard(client) {
 
         const richData = economy.getLeaderboard(guildId, 10);
         await Promise.all(richData.map(async u => {
-          try { await client.users.fetch(u.userId); } catch (e) {}
+          try { await client.users.fetch(u.userId); } catch (e) { }
         }));
         const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
 
@@ -482,9 +482,9 @@ function startRealtimeLeaderboard(client) {
         const payload = { embeds: [richEmbed], components: [] };
 
         if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => {});
+          await leaderboardMsg.edit(payload).catch(() => { });
         } else {
-          await richChannel.send(payload).catch(() => {});
+          await richChannel.send(payload).catch(() => { });
         }
       }
     } catch (err) {
@@ -500,7 +500,7 @@ function startRealtimeLeaderboard(client) {
 
         const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
         await Promise.all(topPets.map(async p => {
-          try { await client.users.fetch(p.user_id); } catch (e) {}
+          try { await client.users.fetch(p.user_id); } catch (e) { }
         }));
         const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
 
@@ -509,9 +509,9 @@ function startRealtimeLeaderboard(client) {
         const payload = { embeds: [petEmbed], components: [] };
 
         if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => {});
+          await leaderboardMsg.edit(payload).catch(() => { });
         } else {
-          await petChannel.send(payload).catch(() => {});
+          await petChannel.send(payload).catch(() => { });
         }
       }
     } catch (err) {
@@ -537,7 +537,7 @@ function startRealtimeLeaderboard(client) {
         const list = database.all(query, [guildId, todayStr]);
 
         await Promise.all(list.map(async u => {
-          try { await client.users.fetch(u.user_id); } catch (e) {}
+          try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
         const dailyEmbed = embeds.dailyLeaderboardEmbed(guildName, list, client);
 
@@ -546,9 +546,9 @@ function startRealtimeLeaderboard(client) {
         const payload = { embeds: [dailyEmbed], components: [] };
 
         if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => {});
+          await leaderboardMsg.edit(payload).catch(() => { });
         } else {
-          await dailyChannel.send(payload).catch(() => {});
+          await dailyChannel.send(payload).catch(() => { });
         }
       }
     } catch (err) {
@@ -745,12 +745,12 @@ function initStockMarket(client) {
               if (submitted) {
                 try {
                   const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
-                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
-                                       res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                                       res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                    res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                      res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
                   const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
-                                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
-                                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
+                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
 
                   const successEmb = embeds.bankSuccessEmbed(
                     'Deposit Tabungan Berhasil!',
@@ -793,12 +793,12 @@ function initStockMarket(client) {
               if (submitted) {
                 try {
                   const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
-                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
-                                       res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                                       res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                    res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                      res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
                   const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
-                                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
-                                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
+                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
 
                   const successEmb = embeds.bankSuccessEmbed(
                     'Penarikan Saldo Berhasil!',
@@ -837,7 +837,7 @@ function initStockMarket(client) {
                 components: [tenorRow, cancelRow],
                 flags: 64
               });
-              await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => {});
+              await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => { });
 
               const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -1105,7 +1105,7 @@ function initStockMarket(client) {
             } else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
               const result = pet.toggleAutoFeed(user.id, guildId);
               const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] , flags: 64 });
+              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_use_booster') {
               try {
@@ -1169,7 +1169,7 @@ function initStockMarket(client) {
                       `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!`
                     );
                     await iBooster.update({ embeds: [successEmb], components: [] });
-                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
                   } catch (err) {
                     await iBooster.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Booster!', err.message)], components: [] });
                   }
@@ -2155,7 +2155,7 @@ async function handlePetCommand(message, client, args) {
         res.logs.forEach(log => {
           reportDesc += `> ${log}\n`;
         });
-        
+
         if (res.success) {
           reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎉 **🎁 JARAHAN & PENGALAMAN TIM:**\n`;
           res.rewards.forEach(r => {
@@ -2181,15 +2181,15 @@ async function handlePetCommand(message, client, args) {
 
         if (res.bestPet && res.worstPet) {
           fields.push(
-            { 
-              name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑', 
-              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`, 
-              inline: false 
+            {
+              name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑',
+              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`,
+              inline: false
             },
-            { 
-              name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌', 
-              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`, 
-              inline: false 
+            {
+              name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌',
+              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`,
+              inline: false
             }
           );
         }
@@ -2437,7 +2437,7 @@ async function handlePetCommand(message, client, args) {
       else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
         const result = pet.toggleAutoFeed(author.id, guildId);
         const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)] , flags: 64 });
+        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)], flags: 64 });
         await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
       }
 
@@ -2503,7 +2503,7 @@ async function handlePetCommand(message, client, args) {
                 `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!`
               );
               await iBooster.update({ embeds: [successEmb], components: [] });
-              await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => {});
+              await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
             } catch (err) {
               await iBooster.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Booster!', err.message)], components: [] });
             }
@@ -2758,7 +2758,7 @@ async function handleGardenCommand(message, client, args, commandName) {
 
     collector.on('collect', async i => {
       if (i.user.id !== author.id) {
-        return await i.reply({ content: '❌ Tombol ini hanya dapat ditekan oleh pemilik kebun!', flags: 64 }).catch(() => {});
+        return await i.reply({ content: '❌ Tombol ini hanya dapat ditekan oleh pemilik kebun!', flags: 64 }).catch(() => { });
       }
 
       try {
@@ -2768,33 +2768,33 @@ async function handleGardenCommand(message, client, args, commandName) {
           const flowerKey = parts[1];
           const slotIdx = parseInt(parts[2]);
 
-          await i.deferReply({ flags: 64 }).catch(() => {});
+          await i.deferReply({ flags: 64 }).catch(() => { });
 
           try {
             const res = garden.plantSeed(author.id, guildId, slotIdx, flowerKey);
-            
+
             await i.editReply({
               embeds: [embeds.successEmbed(
                 '🌱 Penanaman Berhasil!',
                 `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
                 `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
               )]
-            }).catch(() => {});
+            }).catch(() => { });
 
             const updatedSlots = garden.getGardenSlots(author.id, guildId);
             const updatedWallet = economy.getWallet(author.id, guildId);
-            
+
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
               components: [row, row2]
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (err) {
-            await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => {});
+            await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
           }
-        } 
-        
+        }
+
         else if (i.customId === 'garden_btn_water_all') {
-          await i.deferReply({ flags: 64 }).catch(() => {});
+          await i.deferReply({ flags: 64 }).catch(() => { });
           try {
             const res = garden.waterPlant(author.id, guildId, 'all');
             const updatedSlots = garden.getGardenSlots(author.id, guildId);
@@ -2806,25 +2806,25 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
             );
 
-            await i.editReply({ embeds: [successEmb] }).catch(() => {});
+            await i.editReply({ embeds: [successEmb] }).catch(() => { });
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
               components: [row, row2]
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (err) {
-            await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => {});
+            await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => { });
           }
-        } 
-        
+        }
+
         else if (i.customId === 'garden_btn_harvest_all') {
-          await i.deferReply({ flags: 64 }).catch(() => {});
+          await i.deferReply({ flags: 64 }).catch(() => { });
           try {
             const slots = garden.getGardenSlots(author.id, guildId);
             const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
 
             if (harvestable.length === 0) {
-              await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => {});
+              await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => { });
               return;
             }
 
@@ -2844,47 +2844,47 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
             );
 
-            await i.editReply({ embeds: [successEmb] }).catch(() => {});
+            await i.editReply({ embeds: [successEmb] }).catch(() => { });
 
             await replyMsg.edit({
               embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
               components: [row, row2]
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (err) {
-            await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => {});
+            await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => { });
           }
-        } 
-        
+        }
+
         else if (i.customId === 'garden_btn_shop') {
           const walletShop = economy.getWallet(author.id, guildId);
-          await i.deferUpdate().catch(() => {});
+          await i.deferUpdate().catch(() => { });
           await replyMsg.edit({
             embeds: [embeds.gardenShopEmbed(author, walletShop)],
             components: [shopRow1, shopRow2, shopRow3]
-          }).catch(() => {});
-        } 
-        
+          }).catch(() => { });
+        }
+
         else if (i.customId.startsWith('garden_buy_')) {
           const itemKey = i.customId.replace('garden_buy_', '');
-          await i.deferReply({ flags: 64 }).catch(() => {});
+          await i.deferReply({ flags: 64 }).catch(() => { });
           try {
             const res = garden.buySeed(author.id, guildId, itemKey, 1);
-            
+
             await i.editReply({
               embeds: [embeds.successEmbed(
                 '🛒 Pembelian Berhasil!',
                 `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
                 `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
               )]
-            }).catch(() => {});
+            }).catch(() => { });
 
             const walletShop = economy.getWallet(author.id, guildId);
             await replyMsg.edit({
               embeds: [embeds.gardenShopEmbed(author, walletShop)],
               components: [shopRow1, shopRow2, shopRow3]
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (err) {
-            await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => {});
+            await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
           }
         }
 
@@ -2896,27 +2896,27 @@ async function handleGardenCommand(message, client, args, commandName) {
             new ButtonBuilder().setCustomId('garden_btn_back').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
           );
 
-          await i.deferUpdate().catch(() => {});
+          await i.deferUpdate().catch(() => { });
           await replyMsg.edit({
             embeds: [embeds.bouquetCraftEmbed(author, guildId)],
             components: [craftRow]
-          }).catch(() => {});
-        } 
-        
+          }).catch(() => { });
+        }
+
         else if (i.customId === 'garden_btn_back') {
           const updatedSlots = garden.getGardenSlots(author.id, guildId);
           const updatedWallet = economy.getWallet(author.id, guildId);
 
-          await i.deferUpdate().catch(() => {});
+          await i.deferUpdate().catch(() => { });
           await replyMsg.edit({
             embeds: [embeds.gardenEmbed(author, updatedSlots, updatedWallet.last_water_at)],
             components: [row, row2]
-          }).catch(() => {});
-        } 
-        
+          }).catch(() => { });
+        }
+
         else if (i.customId.startsWith('garden_craft_')) {
           const recipe = i.customId.replace('garden_craft_', '');
-          await i.deferReply({ flags: 64 }).catch(() => {});
+          await i.deferReply({ flags: 64 }).catch(() => { });
           try {
             const res = garden.craftBouquet(author.id, guildId, recipe);
             const successEmb = embeds.successEmbed(
@@ -2926,13 +2926,13 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
             );
 
-            await i.editReply({ embeds: [successEmb] }).catch(() => {});
+            await i.editReply({ embeds: [successEmb] }).catch(() => { });
 
             await replyMsg.edit({
               embeds: [embeds.bouquetCraftEmbed(author, guildId)]
-            }).catch(() => {});
+            }).catch(() => { });
           } catch (err) {
-            await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => {});
+            await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => { });
           }
         }
       } catch (err) {
@@ -2946,7 +2946,7 @@ async function handleGardenCommand(message, client, args, commandName) {
       await replyMsg.edit({
         embeds: [embeds.gardenEmbed(author, slotsEnd, walletEnd.last_water_at)],
         components: []
-      }).catch(() => {});
+      }).catch(() => { });
     });
   }
 
@@ -3846,8 +3846,8 @@ async function handleEconomyCommands(message, client) {
   if (adminCommands.includes(commandName)) {
     // 1. Check if user is administrator
     if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      await message.delete().catch(() => {});
-      await author.send('❌ Akses Ditolak! Menu ini dikunci khusus untuk Administrator server.').catch(() => {});
+      await message.delete().catch(() => { });
+      await author.send('❌ Akses Ditolak! Menu ini dikunci khusus untuk Administrator server.').catch(() => { });
       return true;
     }
 
@@ -3857,18 +3857,18 @@ async function handleEconomyCommands(message, client) {
 
     if (targetChannelId) {
       if (message.channelId !== targetChannelId) {
-        await message.delete().catch(() => {});
+        await message.delete().catch(() => { });
         const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin: <#${targetChannelId}>`);
-        setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+        setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
         return true;
       }
     } else {
       // Fallback: check channel name
       const isDefaultAdminChannel = ['panel-admin', 'admin-panel'].includes(message.channel.name?.toLowerCase());
       if (!isDefaultAdminChannel) {
-        await message.delete().catch(() => {});
+        await message.delete().catch(() => { });
         const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin! Silakan buat channel bernama \`#panel-admin\` atau jalankan \`.setup-panel-admin\` terlebih dahulu.`);
-        setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+        setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
         return true;
       }
     }
@@ -4684,12 +4684,12 @@ async function handleEconomyCommands(message, client) {
             if (submitted) {
               try {
                 const res = bank.depositSavings(author.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
-                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
-                                     res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                                     res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                  res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                    res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
                 const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
-                                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
-                                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+                  res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
+                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
 
                 const successEmb = embeds.bankSuccessEmbed(
                   'Deposit Tabungan Berhasil!',
@@ -4707,7 +4707,7 @@ async function handleEconomyCommands(message, client) {
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 if (!submitted.replied && !submitted.deferred) {
-                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)] }).catch(() => {});
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)] }).catch(() => { });
                 } else {
                   console.error('Error updating bank dashboard after deposit:', err);
                 }
@@ -4738,12 +4738,12 @@ async function handleEconomyCommands(message, client) {
             if (submitted) {
               try {
                 const res = bank.withdrawSavings(author.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
-                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' : 
-                                     res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                                     res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                  res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                    res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
                 const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
-                                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
-                                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+                  res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
+                    `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
 
                 const successEmb = embeds.bankSuccessEmbed(
                   'Penarikan Saldo Berhasil!',
@@ -4761,7 +4761,7 @@ async function handleEconomyCommands(message, client) {
                 await replyMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 if (!submitted.replied && !submitted.deferred) {
-                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)] }).catch(() => {});
+                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)] }).catch(() => { });
                 } else {
                   console.error('Error updating bank dashboard after withdraw:', err);
                 }
@@ -4788,7 +4788,7 @@ async function handleEconomyCommands(message, client) {
               content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang di bawah ini:',
               components: [tenorRow, cancelRow]
             });
-            await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => {});
+            await iBank.fetchReply().then(m => { Object.assign(askTenorMsg, m); }).catch(() => { });
 
             const tenorCollector = askTenorMsg.createMessageComponentCollector({
               time: 60000
@@ -4851,7 +4851,7 @@ async function handleEconomyCommands(message, client) {
                     await replyMsg.edit(freshData).catch(console.error);
                   } catch (err) {
                     if (!submitted.replied && !submitted.deferred) {
-                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)] }).catch(() => {});
+                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)] }).catch(() => { });
                     } else {
                       console.error('Error updating bank dashboard after loan:', err);
                     }
@@ -4892,7 +4892,7 @@ async function handleEconomyCommands(message, client) {
               await replyMsg.edit(freshData).catch(console.error);
             } catch (err) {
               if (!iBank.replied && !iBank.deferred) {
-                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] }).catch(() => {});
+                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Gagal Membayar Utang!', err.message)] }).catch(() => { });
               } else {
                 console.error('Error updating bank dashboard after repayment:', err);
               }
@@ -5691,9 +5691,9 @@ async function handleEconomyCommands(message, client) {
       let summaryLine = '```\n';
       summaryLine += `  📊 Ringkasan:  `;
       const summaryParts = [];
-      if (pumped.length > 0)  summaryParts.push(`🚀 ${pumped.length} Pumped`);
+      if (pumped.length > 0) summaryParts.push(`🚀 ${pumped.length} Pumped`);
       if (gainers.length > 0) summaryParts.push(`🟢 ${gainers.length} Naik`);
-      if (losers.length > 0)  summaryParts.push(`🔴 ${losers.length} Turun`);
+      if (losers.length > 0) summaryParts.push(`🔴 ${losers.length} Turun`);
       if (crashed.length > 0) summaryParts.push(`💀 ${crashed.length} Crash`);
       summaryLine += summaryParts.join('  │  ') || '⚪ Stabil';
       summaryLine += '\n```';
@@ -6840,14 +6840,14 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     if (['setup-admin-panel', 'setup-adminpanel', 'setup-panel-admin', 'setup-paneladmin'].includes(commandName)) {
       if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        await message.delete().catch(() => {});
-        await author.send('❌ Akses Ditolak! Hanya Administrator yang dapat menggunakan perintah setup ini.').catch(() => {});
+        await message.delete().catch(() => { });
+        await author.send('❌ Akses Ditolak! Hanya Administrator yang dapat menggunakan perintah setup ini.').catch(() => { });
         return true;
       }
 
       const { ChannelType, PermissionFlagsBits } = require('discord.js');
       const guild = message.guild;
-      
+
       // Look up parent category
       const STAFF_CATEGORY_ID = '1472479634971955221';
       const parentId = guild.channels.cache.has(STAFF_CATEGORY_ID) ? STAFF_CATEGORY_ID : null;
@@ -6871,7 +6871,7 @@ async function handleEconomyCommands(message, client) {
         });
 
         if (parentId) {
-          await adminChannel.lockPermissions().catch(() => {});
+          await adminChannel.lockPermissions().catch(() => { });
         } else {
           // If no staff category, allow Administrator role/permission explicitly
           const adminRoles = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.Administrator));
@@ -6880,7 +6880,7 @@ async function handleEconomyCommands(message, client) {
               ViewChannel: true,
               SendMessages: true,
               EmbedLinks: true
-            }).catch(() => {});
+            }).catch(() => { });
           }
         }
 
