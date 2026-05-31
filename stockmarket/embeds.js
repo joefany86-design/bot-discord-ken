@@ -1170,16 +1170,16 @@ module.exports = {
         );
     } else {
       embed
-        .setColor(COLORS.ERROR)
-        .setTitle(`🎰 GACHA SELESAI... DAN AMSYONG! 🎰`)
+        .setColor(0x7F8C8D) // Premium Slate Grey (Ampas Silver/Grey)
+        .setTitle(`🎰 GACHA ZONK: AMSYONG DEK! 😭 🎰`)
         .setDescription(
-          `**${user.username}** baru saja memutar Gacha seharga **${formatCurrency(price)}**!\n\n` +
-          `❌ **HASIL ROLL (ZONK):**\n` +
-          `**ZONK / AMPAS TOTAL!** Keberuntungan sama sekali belum memihak padamu. 😭\n\n` +
-          `🗑️ **Item Diperoleh:** **${item ? item.name : 'Angin Kosong'}**\n` +
-          `📝 **Lore / Deskripsi:** *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n\n` +
-          `*Jangan berkecil hati! Kumpulkan koin chat dan coba hoki gacha Anda di putaran berikutnya!* 💪\n` +
-          `📉 Sisa saldo Anda: **${formatCurrency(newBalance)}**`
+          `**${user.username}** baru saja memutar mesin Gacha seharga **${formatCurrency(price)}**!\n\n` +
+          `🔮 **HASIL PENYARINGAN:**\n` +
+          `> ❌ **ZONK / AMPAS TOTAL!** Dewi Fortuna sedang tidur siang. 💤\n\n` +
+          `🗑️ **Item Rongsokan:** **${item ? item.name : 'Angin Kosong'}**\n` +
+          `📝 **Lore Barang:** *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n\n` +
+          `*“Tabahkan hatimu, mungkin jodohmu di gacha berikutnya!”* 🐔🔥\n` +
+          `📉 Sisa Saldo Anda: **${formatCurrency(newBalance)}**`
         );
     }
 

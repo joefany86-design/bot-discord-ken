@@ -128,8 +128,8 @@ function robSolo(userId, targetId, guildId) {
       lockpickBroken = true;
     }
   } else {
-    // PENALTY KESULITAN: Jika tidak menggunakan LOCKPICK, peluang dikurangi drastis -25%!
-    successRate -= 25;
+    // PENALTY KESULITAN: Jika tidak menggunakan LOCKPICK, peluang dikurangi drastis -18%!
+    successRate -= 18;
   }
 
   if (activeAlarm) {

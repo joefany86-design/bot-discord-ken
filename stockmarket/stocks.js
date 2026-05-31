@@ -419,15 +419,19 @@ function updateStockPrices(guildId) {
         deltaPercent = 0.50 + (Math.random() * 1.00);
         isPumped = true;
       } else {
-        // Logika normal berbasis keaktifan chat
-        // Baseline activity dianggap 5.0 per 2 jam
-        const baseline = 5.0;
-        if (score === 0) {
-          deltaPercent = -0.05 - (Math.random() * 0.05); // Turun 5% s/d 10%
+        // Logika FULL OTOMATIS (Tidak bergantung pada chat)
+        // Fluktuasi acak yang dinamis layaknya pasar saham nyata
+        const rand = Math.random();
+        if (rand < 0.45) {
+          // 45% peluang turun: -2% s/d -12%
+          deltaPercent = -0.02 - (Math.random() * 0.10);
+        } else if (rand < 0.90) {
+          // 45% peluang naik: +2% s/d +15%
+          deltaPercent = 0.02 + (Math.random() * 0.13);
         } else {
-          const ratio = (score - baseline) / baseline;
-          deltaPercent = ratio * 0.1; // Skala faktor 10%
-          deltaPercent = Math.max(-0.15, Math.min(0.20, deltaPercent));
+          // 10% peluang pergerakan ekstrim (micro-pump / micro-dump harian)
+          const isExtremePump = Math.random() < 0.5;
+          deltaPercent = isExtremePump ? (0.15 + Math.random() * 0.15) : (-0.12 - Math.random() * 0.10);
         }
       }
 

@@ -66,7 +66,7 @@ const EXPEDITION_MAPS = [
 function getXpNeeded(level, trait) {
   const base = level * 100;
   if (trait === 'GENIUS') {
-    return Math.round(base * 0.85); // -15% XP cap
+    return Math.round(base * 0.80); // -20% XP cap (GENIUS leveling bonus!)
   }
   return base;
 }
@@ -140,6 +140,13 @@ function applyDecay(pet) {
   if (pet.pet_type === 'SLIME') {
     hungerDecayRate = 3;
     thirstDecayRate = 4;
+  }
+
+  // Trait STURDY: mengurangi laju decay status sebesar 40% (perkalian 0.60)
+  if (pet.trait === 'STURDY') {
+    hungerDecayRate = Number((hungerDecayRate * 0.60).toFixed(2));
+    thirstDecayRate = Number((thirstDecayRate * 0.60).toFixed(2));
+    happinessDecayRate = Number((happinessDecayRate * 0.60).toFixed(2));
   }
 
   let newHunger = pet.hunger;
@@ -269,8 +276,8 @@ function getPet(userId, guildId) {
   if (pet.status === 'EGG' && pet.hatch_at <= now) {
     let hatchedTrait = pet.trait || '';
     
-    // Jika tidak ada trait (telur toko), ada 15% peluang mendapatkan trait acak
-    if (!hatchedTrait && Math.random() < 0.15) {
+    // Jika tidak ada trait (telur toko), ada 35% peluang mendapatkan trait acak
+    if (!hatchedTrait && Math.random() < 0.35) {
       const traits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
       hatchedTrait = traits[Math.floor(Math.random() * traits.length)];
     }
@@ -648,7 +655,7 @@ function sendToWork(userId, guildId) {
   const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
   if (pet.trait === 'MUTANT') {
-    finalReward = Math.round(finalReward * 1.10); // Mutant: +10% work earnings
+    finalReward = Math.round(finalReward * 1.15); // Mutant: +15% work earnings
   }
 
   // Dampak Kerja: Mengurangi Kenyangan -15, Hidrasi -15, Kebahagiaan -10
@@ -726,7 +733,7 @@ function sendToHunt(userId, guildId) {
   const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
   if (pet.trait === 'MUTANT') {
-    finalReward = Math.round(finalReward * 1.10); // Mutant: +10% hunt earnings
+    finalReward = Math.round(finalReward * 1.15); // Mutant: +15% hunt earnings
   }
 
   // Peluang dapat item langka
@@ -831,10 +838,10 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   const oppBaseAtk = isGodOpponent ? 99999 : opponent.level * 5;
 
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.10; // Warrior: +10% attack
+  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
 
   let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.10; // Warrior: +10% attack
+  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
 
   let round = 1;
   const maxRounds = 5;
@@ -851,6 +858,9 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}**, namun serangan memantul sia-sia! **0 DMG** diberikan. (HP Lawan: 100%)`);
     } else {
       chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
+      if (opponent.trait === 'STURDY') {
+        chalDmg = Math.round(chalDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
+      }
       oppHP = Math.max(0, oppHP - chalDmg);
       logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
     }
@@ -868,6 +878,9 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}**, namun serangan tidak terasa! **0 DMG** diberikan. (HP Anda: 100%)`);
     } else {
       oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
+      if (challenger.trait === 'STURDY') {
+        oppDmg = Math.round(oppDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
+      }
       chalHP = Math.max(0, chalHP - oppDmg);
       logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
     }
@@ -1087,9 +1100,9 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
   // Eksekusi Breeding
   let childType = Math.random() < 0.5 ? challenger.pet_type : partner.pet_type;
   
-  // Tentukan Trait Spesial (30% peluang)
+  // Tentukan Trait Spesial (50% peluang)
   let trait = '';
-  if (Math.random() < 0.30) {
+  if (Math.random() < 0.50) {
     const traits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
     trait = traits[Math.floor(Math.random() * traits.length)];
   }

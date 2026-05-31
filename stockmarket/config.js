@@ -20,15 +20,15 @@ module.exports = {
   economy: {
     MSG_MIN_WORDS: 3,           // Minimal kata agar dapat koin (ditingkatkan untuk mencegah spam koin pendek)
     MSG_MIN_LENGTH: 10,         // Minimal karakter agar dapat koin
-    COOLDOWN_MS: 45 * 1000,     // Cooldown antar pesan diperketat dari 30s -> 45s
+    COOLDOWN_MS: 40 * 1000,     // Cooldown antar pesan diperketat dari 45s -> 40s
 
-    // Poin acak yang didapat per pesan (koin sangat berharga, dikurangi agar susah didapat)
-    MIN_EARN: 1,
-    MAX_EARN: 4,
+    // Poin acak yang didapat per pesan
+    MIN_EARN: 2,
+    MAX_EARN: 5,
 
-    // Daily Claim (dikurangi secara signifikan)
-    DAILY_MIN: 15,
-    DAILY_MAX: 35,
+    // Daily Claim (Peningkatan terkendali)
+    DAILY_MIN: 35,
+    DAILY_MAX: 75,
     DAILY_STREAK_BONUS: 3,      // Bonus per hari streak
     DAILY_STREAK_CAP: 7,        // Maksimal hari streak yang dihitung bonusnya
 
@@ -36,11 +36,11 @@ module.exports = {
     TRADE_TAX_PERCENT: 15,      // Pajak 15% saat menjual saham (mengurangi inflasi)
     TRANSFER_TAX_PERCENT: 10,   // Pajak transfer 10% untuk mencegah eksploitasi multi-akun (alts)
 
-    // Koin Keaktifan Voice Channel (Voice Earnings Diperketat)
+    // Koin Keaktifan Voice Channel (Peningkatan moderat)
     VOICE_EARN_INTERVAL_MS: 5 * 60 * 1000, // Durasi pengecekan keaktifan diperlambat menjadi setiap 5 menit
-    VOICE_EARN_AMOUNT: 1,              // Hanya 1 Rp per 5 menit
+    VOICE_EARN_AMOUNT: 2,              // Hanya 2 Rp per 5 menit
     VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin
-    VOICE_EARN_LIMIT_DAILY: 25,        // Maksimal koin Voice Earn per hari per user diperketat ke Rp 25
+    VOICE_EARN_LIMIT_DAILY: 40,        // Maksimal koin Voice Earn per hari per user diperketat ke Rp 40
   },
 
   // Logika & Aturan Stock Market
@@ -87,15 +87,15 @@ module.exports = {
   gacha: {
     COST: 250,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
     CASHBACK: 100,              // Cashback jika memenangkan role yang sudah dimiliki
-    ZONK_RATE: 75,              // 75% kemungkinan zonk (sangat sulit!)
+    ZONK_RATE: 60,              // 60% kemungkinan zonk (seimbang & menantang!)
 
-    // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
+    // Proporsi pemenang di 40% sisa kesempatan (Total = 100% dari pool kemenangan)
     RATES: {
-      COMMON: 70.0,             // 70% dari pemenang
-      RARE: 22.0,               // 22% dari pemenang
-      EPIC: 6.8,                // 6.8% dari pemenang
+      COMMON: 73.0,             // 73% dari pemenang
+      RARE: 20.0,               // 20% dari pemenang
+      EPIC: 5.6,                // 5.6% dari pemenang
       LEGENDARY: 1.1,           // 1.1% dari pemenang
-      MYTHIC: 0.1               // 0.1% dari pemenang (Jackpot Dewa!)
+      MYTHIC: 0.3               // 0.3% dari pemenang (Jackpot Dewa!)
     },
 
     // Kumpulan item sampah lucu untuk rasa humor ketika Zonk
@@ -185,11 +185,11 @@ module.exports = {
 
   // Konfigurasi Sistem Perampokan (Robbery & Heist)
   robbery: {
-    SUCCESS_RATE: 40,             // Peluang dasar sukses Solo Rob (40%)
-    JAIL_SOLO_SECONDS: 1800,      // Masa hukuman Solo Rob: 30 menit (1800s)
-    JAIL_HEIST_BASE: 3600,        // Masa hukuman Heist: 1 jam (3600s)
-    BAIL_SOLO: 500,               // Uang jaminan Solo Rob: Rp 500
-    BAIL_HEIST: 1000,             // Uang jaminan Heist: Rp 1.000
+    SUCCESS_RATE: 45,             // Peluang dasar sukses Solo Rob (45%)
+    JAIL_SOLO_SECONDS: 900,       // Masa hukuman Solo Rob: 15 menit (900s)
+    JAIL_HEIST_BASE: 1800,        // Masa hukuman Heist: 30 menit (1800s)
+    BAIL_SOLO: 250,               // Uang jaminan Solo Rob: Rp 250
+    BAIL_HEIST: 500,              // Uang jaminan Heist: Rp 500
     PREP_FEE: 200,                // Biaya persiapan Heist per orang
     COOLDOWN_HEIST_SECONDS: 6 * 3600, // Cooldown Heist: 6 jam (21600 detik)
     MIN_ROB_BALANCE_ROBBER: 300,  // Saldo minimal pelaku agar bisa merampok
