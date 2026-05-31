@@ -13,7 +13,7 @@ const client = new Client({
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
   
-  const channelId = '1509770711839805641';
+  const channelId = '1509480324373942272';
   const channel = await client.channels.fetch(channelId).catch(err => {
     console.error("Gagal mengambil channel:", err.message);
     process.exit(1);
