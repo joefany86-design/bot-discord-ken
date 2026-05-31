@@ -50,7 +50,7 @@ let lastError = null;
 
 for (let i = 1; i <= 11; i++) {
   try {
-    stocks.buyStock(userId, guildId, ticker, 10);
+    stocks.buyStock(userId, guildId, ticker, 5);
     buySuccessCount++;
     console.log(`   ✅ Purchase #${i} succeeded.`);
   } catch (err) {
@@ -86,16 +86,16 @@ try {
   console.log(`   ❌ FAILED: Blocked selling old stocks: ${err.message}`);
 }
 
-// 5. Test sell limit of 500 shares per transaction
-console.log("\n📤 5. Testing Sell Limit (Max 500 shares)...");
-// Setup user with 600 old shares in portfolio to test the cap
-db.prepare("UPDATE portfolios SET shares = 600 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
+// 5. Test sell limit of 100 shares per transaction
+console.log("\n📤 5. Testing Sell Limit (Max 100 shares)...");
+// Setup user with 200 old shares in portfolio to test the cap
+db.prepare("UPDATE portfolios SET shares = 200 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
 
 try {
-  stocks.sellStock(userId, guildId, ticker, 550);
-  console.log("   ❌ FAILED: Allowed selling 550 shares (exceeding 500 limit)!");
+  stocks.sellStock(userId, guildId, ticker, 120);
+  console.log("   ❌ FAILED: Allowed selling 120 shares (exceeding 100 limit)!");
 } catch (err) {
-  console.log(`   ✅ SUCCESS: Correctly blocked selling more than 500 shares: ${err.message}`);
+  console.log(`   ✅ SUCCESS: Correctly blocked selling more than 100 shares: ${err.message}`);
 }
 
 // Cleanup

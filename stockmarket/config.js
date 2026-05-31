@@ -59,12 +59,12 @@ module.exports = {
     // Batasan Transaksi
     MIN_SHARES_TRADE: 1,
     MAX_SHARES_PER_TRADE: 100,
-    MAX_SHARES_HOLD_PER_USER: 500,     // Batas maksimal lembar saham per channel yang boleh dimiliki satu user
+    MAX_SHARES_HOLD_PER_USER: 100,     // Batas maksimal lembar saham per channel yang boleh dimiliki satu user
     
     // Regulasi & Batasan Baru (Anti-Penimbunan)
     MIN_HOLD_DURATION_SECONDS: 86400,  // Minimal 1 hari (24 jam) hold sebelum boleh dijual
     DAILY_BUY_TRANSACTION_LIMIT: 10,   // Maksimal 10 kali transaksi pembelian per hari per user
-    MAX_SHARES_SELL_PER_TRADE: 500,    // Maksimal 500 lembar per transaksi penjualan
+    MAX_SHARES_SELL_PER_TRADE: 100,    // Maksimal 100 lembar per transaksi penjualan
     TOTAL_BURSA_SHARES: 500,           // Maksimal total lembar saham beredar per channel di server
 
     // Multiplier Dividen Mingguan
