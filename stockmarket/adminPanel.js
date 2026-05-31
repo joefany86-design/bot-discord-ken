@@ -830,6 +830,14 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
         .setDescription('Memotong paksa koin dompet anggota target')
         .setValue('action_take_coins_modal'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('🏦 Suntik Saldo Bank (Modal)')
+        .setDescription('Menambahkan koin langsung ke tabungan bank anggota target')
+        .setValue('action_give_bank_savings_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏦 Tarik Saldo Bank (Modal)')
+        .setDescription('Menarik/memotong paksa koin dari tabungan bank anggota target')
+        .setValue('action_take_bank_savings_modal'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('🚨 RESET EKONOMI TARGET')
         .setDescription('Mengembalikan saldo dompet, bank, & portfolio target ke 0')
         .setValue('action_reset_economy')
@@ -965,6 +973,95 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
               economy.subtractBalance(selectedTargetUserId, guildId, amountToTake, 'ADMIN_TAKE');
             }
             await sub.reply({ content: `📉 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari dompet <@${selectedTargetUserId}>!`, flags: 64 });
+            const fresh = getBankPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_give_bank_savings_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_bank_give_savings_modal')
+            .setTitle('Suntik Saldo Bank Member');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('savings_amount')
+            .setLabel('Jumlah Saldo Bank (Rupiah)')
+            .setPlaceholder('Contoh: 25000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iBank.showModal(modal);
+
+          const sub = await iBank.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_bank_give_savings_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('savings_amount'));
+            if (isNaN(amount) || amount <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
+            }
+            
+            const bankModule = require('./bank');
+            bankModule.getSavings(selectedTargetUserId, guildId);
+
+            database.run(
+              'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
+              [amount, selectedTargetUserId, guildId]
+            );
+            database.run(
+              'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+              [selectedTargetUserId, guildId, 'ADMIN_BANK_GIVE', amount]
+            );
+
+            await sub.reply({ content: `🏦 Sukses menyuntikkan koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke tabungan bank <@${selectedTargetUserId}>!`, flags: 64 });
+            const fresh = getBankPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_take_bank_savings_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_bank_take_savings_modal')
+            .setTitle('Tarik Saldo Bank Member');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('savings_amount')
+            .setLabel('Jumlah Saldo Bank (Rupiah)')
+            .setPlaceholder('Contoh: 15000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iBank.showModal(modal);
+
+          const sub = await iBank.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_bank_take_savings_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('savings_amount'));
+            if (isNaN(amount) || amount <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
+            }
+
+            const bankModule = require('./bank');
+            const savings = bankModule.getSavings(selectedTargetUserId, guildId);
+            const amountToTake = Math.min(savings.balance, amount);
+
+            if (amountToTake > 0) {
+              database.run(
+                'UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?',
+                [amountToTake, selectedTargetUserId, guildId]
+              );
+              database.run(
+                'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+                [selectedTargetUserId, guildId, 'ADMIN_BANK_TAKE', -amountToTake]
+              );
+            }
+
+            await sub.reply({ content: `🏦 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari tabungan bank <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
