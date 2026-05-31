@@ -47,6 +47,14 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
   const guildId = messageOrInteraction.guildId;
   const guild = messageOrInteraction.guild;
 
+  if (author.id !== '436554535037698059') {
+    if (isInteraction) {
+      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Pet dikunci khusus untuk Owner utama.', flags: 64 });
+    } else {
+      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Pet dikunci khusus untuk Owner utama.' });
+    }
+  }
+
   if (!guildId) return false;
 
   let selectedTargetUserId = initialTargetUserId;
@@ -169,8 +177,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
   });
 
   collector.on('collect', async iPet => {
-    if (!iPet.member || !iPet.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iPet.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    if (iPet.user.id !== '436554535037698059') {
+      return iPet.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama.', flags: 64 });
     }
 
     try {
@@ -2074,6 +2082,9 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
     try {
       if (iHub.customId === 'hub_btn_pet') {
+        if (iHub.user.id !== '436554535037698059') {
+          return iHub.reply({ content: '❌ Akses Ditolak! Panel Admin Pet dikunci khusus untuk Owner utama.', flags: 64 });
+        }
         collector.stop('transition');
         await handleAdminPetPanel(iHub, client);
       }

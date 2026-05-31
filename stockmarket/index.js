@@ -6670,8 +6670,8 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Pet (.admin-pet / .panel-pet)
     // ═══════════════════════════════════════════════════
     if (['admin-pet', 'panel-pet', 'pet-panel'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      if (message.author.id !== '436554535037698059') {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
