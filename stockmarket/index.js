@@ -449,7 +449,7 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
 }
 
 /**
- * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard & Pet Leaderboard)
+ * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard, Pet Leaderboard, & Jail Leaderboard)
  * secara berkala setiap 5 detik di channel masing-masing.
  */
 let leaderboardInterval = null; // Guard: mencegah interval bertumpuk
@@ -553,6 +553,61 @@ function startRealtimeLeaderboard(client) {
       }
     } catch (err) {
       console.error('❌ Error updating realtime daily leaderboard:', err);
+    }
+
+    // ── 4. TOP JAIL LEADERBOARD (Channel: 1510474950698602627) ──
+    try {
+      const jailChannel = await client.channels.fetch('1510474950698602627').catch(() => null);
+      if (jailChannel) {
+        const guildId = jailChannel.guild.id;
+        const guildName = jailChannel.guild.name;
+
+        const topJail = database.all(
+          `SELECT user_id, jail_count FROM wallets 
+           WHERE guild_id = ? AND jail_count > 0 
+           ORDER BY jail_count DESC LIMIT 10`,
+          [guildId]
+        );
+
+        let topJailEmbed;
+        if (topJail.length === 0) {
+          topJailEmbed = embeds.successEmbed(
+            '🕵️‍♂️ PAPAN PERINGKAT: NARAPIDANA PALING SERING DIPENJARA! 🔒',
+            '🟢 **Keamanan Terjamin!** Belum ada warga server yang pernah dijebloskan ke dalam penjara virtual.'
+          );
+        } else {
+          await Promise.all(topJail.map(async row => {
+            try { await client.users.fetch(row.user_id); } catch (e) { }
+          }));
+
+          let desc = 'Berikut adalah daftar 10 warga server yang paling sering tertangkap polisi dan masuk sel penjara virtual:\n\n';
+          for (let i = 0; i < topJail.length; i++) {
+            const row = topJail[i];
+            const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `\`#${i + 1}\` `;
+            desc += `${medal}<@${row.user_id}> — **${row.jail_count} kali** masuk penjara 🔒\n`;
+          }
+
+          topJailEmbed = new EmbedBuilder()
+            .setColor(0xC0392B) // Crimson warning red
+            .setTitle('🕵️‍♂️ PAPAN PERINGKAT: NARAPIDANA PALING SERING DIPENJARA! 🔒')
+            .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
+            .setDescription(desc)
+            .setFooter({ text: `Papan Buronan Server ${guildName} • Total Narapidana: ${topJail.length}`, iconURL: jailChannel.guild.iconURL({ dynamic: true }) || null })
+            .setTimestamp();
+        }
+
+        const messages = await jailChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+        const payload = { embeds: [topJailEmbed], components: [] };
+
+        if (leaderboardMsg) {
+          await leaderboardMsg.edit(payload).catch(() => { });
+        } else {
+          await jailChannel.send(payload).catch(() => { });
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating realtime jail leaderboard:', err);
     }
   }, 5000);
 }
