@@ -916,8 +916,8 @@ module.exports = {
     const getSpeciesName = (type) => {
       const sp = {
         SLIME: 'Slime 🟢',
-        DRAGON: 'Naga / Dragon 🔥',
-        CAT: 'Kucing / Cat 🐱',
+        DRAGON: 'Dragon 🔥',
+        CAT: 'Cat 🐱',
         GOLEM: 'Golem 🧱'
       };
       return sp[type] || type;
@@ -936,22 +936,23 @@ module.exports = {
         let categoryDetail = '';
         if (category === 'pvp') {
           const totalGames = (p.pvp_wins || 0) + (p.pvp_losses || 0);
-          const wr = totalGames > 0 ? (((p.pvp_wins || 0) / totalGames) * 100).toFixed(1) : '0.0';
-          categoryDetail = `🏆 **PVP   : \`${p.pvp_wins || 0} Wins\`** (Lose: \`${p.pvp_losses || 0}\` | WR: \`${wr}%\`)`;
+          const wr = totalGames > 0 ? (((p.pvp_wins || 0) / totalGames) * 100).toFixed(0) : '0';
+          categoryDetail = `🏆 **${p.pvp_wins || 0} Wins** (Lose: \`${p.pvp_losses || 0}\` | WR: \`${wr}%\`)`;
         } else if (category === 'cp') {
-          categoryDetail = `⚡ **CP    : \`${p.cp || 0} CP\`**`;
+          categoryDetail = `⚡ **${p.cp || 0} CP**`;
         } else {
-          categoryDetail = `📈 **Level : \`Lv.${p.level}\`** (XP: \`${p.xp}\`)`;
+          categoryDetail = `📈 **Lv.${p.level}** (XP: \`${p.xp}\`)`;
         }
 
-        const traitLabel = p.trait ? ` (🧠 Trait: ${p.trait.toUpperCase()})` : '';
+        const traitLabel = p.trait ? ` (${p.trait.toUpperCase()})` : '';
+        const hpVal = Math.round(p.health || 0);
+        const hungerVal = Math.round(p.hunger || 0);
+        const thirstVal = Math.round(p.thirst || 0);
+        const happyVal = Math.round(p.happiness || 0);
 
         ranks += `${medal} **${p.pet_name}** — *Milik ${ownerName}*\n` +
-          `   ├─ 🐾 Spesies : ${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}\n` +
-          `   ├─ 📊 Status  : 🟢 ${p.status.toUpperCase()}\n` +
-          `   ├─ 🧬 Stats   : ❤️\`${p.health}%\` 🍖\`${p.hunger}%\` 💧\`${p.thirst}%\` ⚽\`${p.happiness}%\`\n` +
-          `   ├─ 🏆 Kelas   : \`${getTierLabel(p.level)}\`\n` +
-          `   └─ ${categoryDetail}\n\n`;
+          `┗ 🐾 *${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}* • ${categoryDetail}\n` +
+          `┗ 🧬 ❤️\`${hpVal}%\` 🍖\`${hungerVal}%\` 💧\`${thirstVal}%\` ⚽\`${happyVal}%\` • \`${getTierLabel(p.level)}\` • \`🟢 ${p.status.toUpperCase()}\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
     }
