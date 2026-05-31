@@ -910,14 +910,20 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     const lXpGained = Math.round(20 * (loserPet.xp_multiplier || 1.0));
     let { newXp: lXp, newLevel: lLevel } = addXp(loserPet, lXpGained, lMaxHP);
 
+    let lStatus = loserPet.status;
+    if ((winnerId === challengerId && isGodChallenger) || (winnerId === opponentId && isGodOpponent)) {
+      lHP = 0;
+      lStatus = 'DEAD';
+    }
+
     db.run(
       `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_wins = pvp_wins + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]
     );
 
     db.run(
-      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-      [lHP, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId, loserName]
+      `UPDATE user_pets SET health = ?, status = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [lHP, lStatus, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId, loserName]
     );
   })();
 
