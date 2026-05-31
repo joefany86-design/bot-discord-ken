@@ -449,6 +449,41 @@ async function sendStockChartOrDetail(message, ticker, isChartCommand = true, cl
 }
 
 /**
+ * Mengembalikan alasan lucu/unik kenapa seorang user bisa dijebloskan ke penjara.
+ * Menggunakan hash berdasarkan ID pengguna agar alasannya konsisten per player (tidak berubah-ubah setiap 5 detik).
+ */
+function getFunnyArrestReason(userId) {
+  const reasons = [
+    'Maling cilok Mang Oleh pakai sumpit emas',
+    'Nyoba nge-hack NASA pakai kalkulator beras',
+    'Korupsi uang kas RT buat beli gacha pet bintang 5',
+    'Ngerob bank pakai pistol air isi sirup Marjan rasa melon',
+    'Ngepet online tapi lupa matiin lilinnya',
+    'Nyolong sendal jepit masjid premium bermerek Gucci',
+    'Mencoba menyuap polisi pakai struk belanja Indomaret',
+    'Ngerampok bank tapi ketiduran di brankas karena AC-nya dingin',
+    'Kepleset kulit pisang pas kabur dari kejaran anjing pelacak',
+    'Bohong bilang "otw" di Discord padahal baru bangun tidur',
+    'Terciduk pacaran sama NPC kasir Toko Role',
+    'Mencoba menghipnotis pak polisi pakai goyangan TikTok',
+    'Lupa bayar utang bail tapi malah pamer beli Ferrari baru',
+    'Nge-prank pak RT malam-malam pakai kostum hantu botak',
+    'Tertangkap basah nyolong jemuran celana gemes milik tetangga',
+    'Mencuri hati kasir tapi ditolak, akhirnya ditangkap warga sekitar',
+    'Narik rem darurat KRL cuma buat numpang kentut',
+    'Nge-chat admin "P" 100 kali berturut-turut dikira spam teroris',
+    'Nyolong mangkok bakso keliling buat dijadiin helm pet',
+    'Terciduk nilep uang iuran kas kasino buat bayar kost bulanan'
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % reasons.length;
+  return reasons[index];
+}
+
+/**
  * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard, Pet Leaderboard, & Jail Leaderboard)
  * secara berkala setiap 5 detik di channel masing-masing.
  */
@@ -580,19 +615,25 @@ function startRealtimeLeaderboard(client) {
             try { await client.users.fetch(row.user_id); } catch (e) { }
           }));
 
-          let desc = 'Berikut adalah daftar 10 warga server yang paling sering tertangkap polisi dan masuk sel penjara virtual:\n\n';
+          let desc = '🚨 **BURONAN KELAS KAKAP & REKOR SEL TAHANAN** 🔒\n';
+          desc += '`==========================================`\n\n';
           for (let i = 0; i < topJail.length; i++) {
             const row = topJail[i];
-            const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `\`#${i + 1}\` `;
-            desc += `${medal}<@${row.user_id}> — **${row.jail_count} kali** masuk penjara 🔒\n`;
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `\`#${i + 1}\``;
+            const reason = getFunnyArrestReason(row.user_id);
+            desc += `${medal} ┃ <@${row.user_id}>\n`;
+            desc += `┗ 👮 **${row.jail_count}x Masuk Tahanan**\n`;
+            desc += `┗ 💬 *"${reason}"*\n\n`;
           }
+          desc += '`==========================================`\n';
+          desc += '👉 *Selalu patuhi hukum server atau Anda berakhir di daftar ini!*';
 
           topJailEmbed = new EmbedBuilder()
             .setColor(0xC0392B) // Crimson warning red
-            .setTitle('🕵️‍♂️ PAPAN PERINGKAT: NARAPIDANA PALING SERING DIPENJARA! 🔒')
+            .setTitle('🕵️‍♂️ PAPAN BURONAN: NARAPIDANA PALING SERING DIPENJARA! 🔒')
             .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
             .setDescription(desc)
-            .setFooter({ text: `Papan Buronan Server ${guildName} • Total Narapidana: ${topJail.length}`, iconURL: jailChannel.guild.iconURL({ dynamic: true }) || null })
+            .setFooter({ text: `Klasemen Buronan Server ${guildName} • Total Narapidana: ${topJail.length}`, iconURL: jailChannel.guild.iconURL({ dynamic: true }) || null })
             .setTimestamp();
         }
 
@@ -4420,19 +4461,25 @@ async function handleEconomyCommands(message, client) {
           return message.reply({ embeds: [emptyEmbed] });
         }
 
-        let desc = 'Berikut adalah daftar 10 warga server yang paling sering tertangkap polisi dan masuk sel penjara virtual:\n\n';
+        let desc = '🚨 **BURONAN KELAS KAKAP & REKOR SEL TAHANAN** 🔒\n';
+        desc += '`==========================================`\n\n';
         for (let i = 0; i < topJail.length; i++) {
           const row = topJail[i];
-          const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `\`#${i + 1}\` `;
-          desc += `${medal}<@${row.user_id}> — **${row.jail_count} kali** masuk penjara 🔒\n`;
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `\`#${i + 1}\``;
+          const reason = getFunnyArrestReason(row.user_id);
+          desc += `${medal} ┃ <@${row.user_id}>\n`;
+          desc += `┗ 👮 **${row.jail_count}x Masuk Tahanan**\n`;
+          desc += `┗ 💬 *"${reason}"*\n\n`;
         }
+        desc += '`==========================================`\n';
+        desc += '👉 *Selalu patuhi hukum server atau Anda berakhir di daftar ini!*';
 
         const topJailEmbed = new EmbedBuilder()
           .setColor(0xC0392B) // Crimson warning red
-          .setTitle('🕵️‍♂️ PAPAN PERINGKAT: NARAPIDANA PALING SERING DIPENJARA! 🔒')
+          .setTitle('🕵️‍♂️ PAPAN BURONAN: NARAPIDANA PALING SERING DIPENJARA! 🔒')
           .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
           .setDescription(desc)
-          .setFooter({ text: `Papan Buronan Server Kosan • Total Narapidana: ${topJail.length}`, iconURL: message.guild.iconURL({ dynamic: true }) || null })
+          .setFooter({ text: `Klasemen Buronan Server ${message.guild.name} • Total Narapidana: ${topJail.length}`, iconURL: message.guild.iconURL({ dynamic: true }) || null })
           .setTimestamp();
 
         return message.reply({ embeds: [topJailEmbed] });
