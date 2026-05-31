@@ -3928,6 +3928,24 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // ── PROTEKSI AKTIF HEIST DI CHANNEL 1508417228624887928 ──
+  if (message.channelId === '1508417228624887928') {
+    const activeLobby = robbery.activeHeists.get(guildId);
+    if (activeLobby && commandName !== 'heist') {
+      await message.delete().catch(() => {});
+      const warnMsg = await message.channel.send({
+        content: `⚠️ <@${author.id}>, sistem **Bank Heist** saat ini sedang berjalan! Harap tunggu sampai operasi Heist selesai sebelum menggunakan perintah bot lain.`
+      }).catch(() => null);
+
+      if (warnMsg) {
+        setTimeout(() => {
+          warnMsg.delete().catch(() => {});
+        }, 5000);
+      }
+      return true;
+    }
+  }
+
   // ── FILTER SALURAN KHUSUS ADMIN PANEL ──
   const adminCommands = [
     'admin-panel', 'adminpanel', 'panel-admin', 'paneladmin',
