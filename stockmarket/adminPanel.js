@@ -82,9 +82,14 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       const cdText = expCD > nowUnix ? `<t:${expCD}:R>` : '🟢 Ready';
 
       if (targetPet) {
+        const autoFeedLabel = targetPet.auto_feed === 2 ? '👑 VIP (Gratis)' : (targetPet.auto_feed === 1 ? '✅ Aktif (Bayar)' : '❌ Nonaktif');
+        const traitLabel = targetPet.trait ? `**${targetPet.trait}**` : '*Tidak ada*';
+
         targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()})\n` +
                       `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
                       `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
+                      `• Trait: ${traitLabel}\n` +
+                      `• Auto-Feed: ${autoFeedLabel}\n` +
                       `• Status: **${targetPet.status}**\n` +
                       `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
       } else {
@@ -135,6 +140,18 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setDescription('Mengatur level Pet target secara instan')
         .setValue('action_set_level_pet_modal'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('🧬 Modifikasi Trait Pet (Modal)')
+        .setDescription('Mengubah Trait khusus (MUTANT, GENIUS, dll) pet target')
+        .setValue('action_change_trait_pet_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⏳ Reset Cooldown Aktivitas')
+        .setDescription('Reset cooldown Bekerja, Berburu, & Bermain pet target')
+        .setValue('action_reset_activity_cooldowns'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔋 Toggle VIP Auto-Feed')
+        .setDescription('Toggle fitur Auto-Feed Gratis (VIP) untuk pet target')
+        .setValue('action_toggle_vip_autofeed'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('💀 Reset Data Pet Kandang')
         .setDescription('Menghapus total Pet target dari kandang (database)')
         .setValue('action_reset_pet'),
@@ -155,6 +172,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setCustomId('admin_pet_btn_back')
         .setLabel('🔙 Kembali ke Hub')
         .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_pet_btn_audit')
+        .setLabel('🏆 Audit & Leaderboard Pet')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('admin_pet_btn_close')
         .setLabel('❌ Tutup Panel')
@@ -198,6 +219,99 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       else if (iPet.customId === 'admin_pet_btn_close') {
         collector.stop();
         await replyMsg.delete().catch(() => {});
+      }
+      else if (iPet.customId === 'admin_pet_btn_audit') {
+        // Query Top 3 Level
+        const topLevels = database.all(
+          `SELECT pet_name, pet_type, level, user_id 
+           FROM user_pets 
+           WHERE guild_id = ? AND is_active = 1 
+           ORDER BY level DESC, xp DESC 
+           LIMIT 3`, 
+          [guildId]
+        );
+
+        // Query Top 3 PVP wins
+        const topPvp = database.all(
+          `SELECT pet_name, pet_type, pvp_wins, user_id 
+           FROM user_pets 
+           WHERE guild_id = ? AND is_active = 1 
+           ORDER BY pvp_wins DESC 
+           LIMIT 3`, 
+          [guildId]
+        );
+
+        // Query Summary Status
+        const summaryStatus = database.all(
+          `SELECT status, COUNT(*) as count 
+           FROM user_pets 
+           WHERE guild_id = ? 
+           GROUP BY status`, 
+          [guildId]
+        );
+
+        // Query Summary Species
+        const summarySpecies = database.all(
+          `SELECT pet_type, COUNT(*) as count 
+           FROM user_pets 
+           WHERE guild_id = ? 
+           GROUP BY pet_type`, 
+          [guildId]
+        );
+
+        // Build Embed
+        const auditEmbed = new EmbedBuilder()
+          .setColor(0x8E44AD)
+          .setTitle('🏆 AUDIT & LEADERBOARD PET — GLOBAL SERVER')
+          .setThumbnail(client.user.displayAvatarURL())
+          .setTimestamp();
+
+        let lvlText = '';
+        if (topLevels.length === 0) {
+          lvlText = '*Belum ada data pet terdaftar.*';
+        } else {
+          topLevels.forEach((pet, index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+            lvlText += `${medal} **${pet.pet_name}** (${pet.pet_type}) — **Lv.${pet.level}**\n` +
+                       `> Owner: <@${pet.user_id}>\n`;
+          });
+        }
+
+        let pvpText = '';
+        if (topPvp.length === 0) {
+          pvpText = '*Belum ada data pvp pet.*';
+        } else {
+          topPvp.forEach((pet, index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+            pvpText += `${medal} **${pet.pet_name}** (${pet.pet_type}) — **${pet.pvp_wins} Kemenangan**\n` +
+                       `> Owner: <@${pet.user_id}>\n`;
+          });
+        }
+
+        let statusText = '';
+        const statusMap = { 'EGG': '🥚 Telur', 'BABY': '👶 Bayi', 'ADULT': '🦁 Dewasa', 'DEAD': '🪦 Meninggal' };
+        summaryStatus.forEach(row => {
+          const label = statusMap[row.status] || row.status;
+          statusText += `• ${label}: **${row.count} pet**\n`;
+        });
+        if (!statusText) statusText = '*Tidak ada data.*';
+
+        let speciesText = '';
+        const speciesMap = { 'SLIME': '🟢 Slime', 'DRAGON': '🔥 Dragon', 'CAT': '🐱 Cat', 'GOLEM': '🧱 Golem' };
+        summarySpecies.forEach(row => {
+          const label = speciesMap[row.pet_type] || row.pet_type;
+          speciesText += `• ${label}: **${row.count} pet**\n`;
+        });
+        if (!speciesText) speciesText = '*Tidak ada data.*';
+
+        auditEmbed.addFields(
+          { name: '🌟 TOP LEVEL PET', value: lvlText, inline: false },
+          { name: '⚔️ TOP PvP ARENA WINS', value: pvpText, inline: false },
+          { name: '📊 STATUS KANDANG GLOBAL', value: statusText, inline: true },
+          { name: '🧬 DISTRIBUSI SPESIES', value: speciesText, inline: true }
+        );
+
+        return iPet.reply({ embeds: [auditEmbed], flags: 64 });
       }
       else if (iPet.customId === 'admin_pet_select_action') {
         const action = iPet.values[0];
@@ -355,6 +469,82 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
+        }
+        else if (action === 'action_change_trait_pet_modal') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
+          }
+
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_change_trait_modal')
+            .setTitle('Modifikasi Trait Pet');
+
+          const traitInput = new TextInputBuilder()
+            .setCustomId('trait_name')
+            .setLabel('Trait (MUTANT, GENIUS, STURDY, WARRIOR, NONE)')
+            .setPlaceholder('Ketik nama trait atau NONE untuk menghapus')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(traitInput));
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_change_trait_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const rawTrait = sub.fields.getTextInputValue('trait_name').trim().toUpperCase();
+            const validTraits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
+            
+            let finalTrait = '';
+            if (rawTrait !== 'NONE' && validTraits.includes(rawTrait)) {
+              finalTrait = rawTrait;
+            }
+
+            database.run('UPDATE user_pets SET trait = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [finalTrait, selectedTargetUserId, guildId]);
+            
+            const traitMsg = finalTrait ? `menjadi Trait **${finalTrait}**` : 'menjadi **Tanpa Trait** (NONE)';
+            await sub.reply({ content: `🧬 Sukses mengubah trait pet aktif milik <@${selectedTargetUserId}> ${traitMsg}!`, flags: 64 });
+            const fresh = getPetPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_reset_activity_cooldowns') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
+          }
+
+          database.run(
+            `UPDATE user_pets 
+             SET last_work_at = 0, last_hunt_at = 0, last_play_at = 0 
+             WHERE user_id = ? AND guild_id = ? AND is_active = 1`, 
+            [selectedTargetUserId, guildId]
+          );
+
+          await iPet.reply({ content: `⏳ Sukses mereset cooldown Bekerja, Berburu, & Bermain pet aktif milik <@${selectedTargetUserId}> secara instan!`, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_toggle_vip_autofeed') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
+          }
+
+          const newStatus = targetPet.auto_feed === 2 ? 0 : 2;
+          database.run(
+            'UPDATE user_pets SET auto_feed = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+            [newStatus, selectedTargetUserId, guildId]
+          );
+
+          const statusMsg = newStatus === 2 ? '👑 **VIP Gratis (Auto-Feed tanpa biaya)**' : '❌ **Nonaktif**';
+          await iPet.reply({ content: `🔋 Sukses mengubah mode Auto-Feed pet aktif milik <@${selectedTargetUserId}> menjadi ${statusMsg}!`, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'action_give_custom_pet_modal') {
           const modal = new ModalBuilder()

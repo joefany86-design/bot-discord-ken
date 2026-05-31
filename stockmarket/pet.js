@@ -122,16 +122,21 @@ function applyDecay(pet) {
     newThirst = Math.max(0, newThirst - thirstDecayRate);
     newHappiness = Math.max(0, newHappiness - happinessDecayRate);
 
-    if (pet.auto_feed === 1) {
-      if (newHunger <= 50 && balance >= 150) {
-        balance -= 150;
+    if (pet.auto_feed === 1 || pet.auto_feed === 2) {
+      const isVip = pet.auto_feed === 2;
+      if (newHunger <= 50 && (isVip || balance >= 150)) {
+        if (!isVip) {
+          balance -= 150;
+          balanceChanged = true;
+        }
         newHunger = Math.min(100, newHunger + 30);
-        balanceChanged = true;
       }
-      if (newThirst <= 50 && balance >= 100) {
-        balance -= 100;
+      if (newThirst <= 50 && (isVip || balance >= 100)) {
+        if (!isVip) {
+          balance -= 100;
+          balanceChanged = true;
+        }
         newThirst = Math.min(100, newThirst + 35);
-        balanceChanged = true;
       }
     }
 
@@ -144,16 +149,21 @@ function applyDecay(pet) {
     newThirst = Math.max(0, newThirst - (fractionalHour * thirstDecayRate));
     newHappiness = Math.max(0, newHappiness - (fractionalHour * happinessDecayRate));
 
-    if (pet.auto_feed === 1) {
-      if (newHunger <= 50 && balance >= 150) {
-        balance -= 150;
+    if (pet.auto_feed === 1 || pet.auto_feed === 2) {
+      const isVip = pet.auto_feed === 2;
+      if (newHunger <= 50 && (isVip || balance >= 150)) {
+        if (!isVip) {
+          balance -= 150;
+          balanceChanged = true;
+        }
         newHunger = Math.min(100, newHunger + 30);
-        balanceChanged = true;
       }
-      if (newThirst <= 50 && balance >= 100) {
-        balance -= 100;
+      if (newThirst <= 50 && (isVip || balance >= 100)) {
+        if (!isVip) {
+          balance -= 100;
+          balanceChanged = true;
+        }
         newThirst = Math.min(100, newThirst + 35);
-        balanceChanged = true;
       }
     }
 

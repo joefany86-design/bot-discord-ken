@@ -2062,7 +2062,7 @@ module.exports = {
       .setDescription(
         `> 👤 <@${pet.user_id}> · ${statusEmoji} · ${healthStatus}\n` +
         `> 🌟 **${rarityBadge}** ${traitLine ? `· ${traitLine}` : ''}\n` +
-        `> ⚡ **XP Booster:** ${multText} · 🤖 Auto Care: ${pet.auto_feed === 1 ? '🟢 ON' : '🔴 OFF'}\n\n` +
+        `> ⚡ **XP Booster:** ${multText} · 🤖 Auto Care: ${pet.auto_feed === 2 ? '👑 VIP' : (pet.auto_feed === 1 ? '🟢 ON' : '🔴 OFF')}\n\n` +
         `**✨ XP Progress** \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
       )
       .setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet System · Klik tombol di bawah untuk merawat!` });
