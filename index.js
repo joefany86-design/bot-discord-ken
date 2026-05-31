@@ -587,24 +587,30 @@ client.on('messageCreate', async message => {
   // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung (Channel ID: 1509762623917265137)
   if (message.channelId === '1509762623917265137') {
     const activeLobby = client.activeExpeditions;
-    if (activeLobby && activeLobby.has(message.guildId)) {
-      const lobby = activeLobby.get(message.guildId);
-      const isInitiator = message.author.id === lobby.initiatorId;
-      const isOwner = message.author.id === OWNER_ID;
-      const isAdmin = message.member && message.member.permissions.has('Administrator');
+    const guildHasActiveExpedition = activeLobby && Array.from(activeLobby.values()).some(l => l.guildId === message.guildId);
 
-      if (!isInitiator && !isOwner && !isAdmin) {
-        await message.delete().catch(() => {});
-        const warnMsg = await message.channel.send({
-          content: `⚠️ <@${message.author.id}>, silakan tunggu sampai ekspedisi pet selesai sebelum mengobrol di channel ini!`
-        }).catch(() => null);
+    if (guildHasActiveExpedition) {
+      const content = message.content.trim().toLowerCase();
+      if (content.startsWith('.pet')) {
+        // Izinkan hanya .pet expedition (termasuk .pet expedition join, dst.)
+        const isExpedition = content.startsWith('.pet expedition') || content.startsWith('.pet pet-expedition') || content.startsWith('.pet expidition');
+        if (!isExpedition) {
+          const isOwner = message.author.id === OWNER_ID;
+          const isAdmin = message.member && message.member.permissions.has('Administrator');
+          if (!isOwner && !isAdmin) {
+            await message.delete().catch(() => {});
+            const warnMsg = await message.channel.send({
+              content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Anda tidak boleh menggunakan perintah pet lain selain \`.pet expedition\` di channel ini sampai ekspedisi selesai.`
+            }).catch(() => null);
 
-        if (warnMsg) {
-          setTimeout(() => {
-            warnMsg.delete().catch(() => {});
-          }, 5000);
+            if (warnMsg) {
+              setTimeout(() => {
+                warnMsg.delete().catch(() => {});
+              }, 5000);
+            }
+            return;
+          }
         }
-        return;
       }
     }
   }
