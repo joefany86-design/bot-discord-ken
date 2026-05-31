@@ -65,6 +65,7 @@ module.exports = {
     MIN_HOLD_DURATION_SECONDS: 86400,  // Minimal 1 hari (24 jam) hold sebelum boleh dijual
     DAILY_BUY_TRANSACTION_LIMIT: 10,   // Maksimal 10 kali transaksi pembelian per hari per user
     MAX_SHARES_SELL_PER_TRADE: 500,    // Maksimal 500 lembar per transaksi penjualan
+    TOTAL_BURSA_SHARES: 500,           // Maksimal total lembar saham beredar per channel di server
 
     // Multiplier Dividen Mingguan
     WEEKLY_DIVIDEND_BASE_RATE: 0.02, // 2% dari harga saham saat ini

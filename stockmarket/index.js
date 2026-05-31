@@ -6855,7 +6855,7 @@ async function handleEconomyCommands(message, client) {
       database.run(
         `INSERT INTO stocks (channel_id, guild_id, stock_name, stock_ticker, current_price, previous_price, total_shares, available_shares) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [channel.id, guildId, channel.name, ticker, config.market.INITIAL_PRICE, config.market.INITIAL_PRICE, 99999999, 99999999]
+        [channel.id, guildId, channel.name, ticker, config.market.INITIAL_PRICE, config.market.INITIAL_PRICE, config.market.TOTAL_BURSA_SHARES || 500, config.market.TOTAL_BURSA_SHARES || 500]
       );
 
       await message.reply(`✅ Sukses menambahkan saham **${ticker}** untuk channel <#${channel.id}>!`);

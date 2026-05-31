@@ -35,13 +35,13 @@ db.prepare(
 
 db.prepare(
   `INSERT INTO stocks (channel_id, guild_id, stock_name, stock_ticker, current_price, previous_price, total_shares, available_shares) 
-   VALUES (?, ?, 'Test Channel', ?, 100, 100, 99999999, 99999999)`
-).run(channelId, guildId, ticker);
+   VALUES (?, ?, 'Test Channel', ?, 100, 100, ?, ?)`
+).run(channelId, guildId, ticker, config.market.TOTAL_BURSA_SHARES || 500, config.market.TOTAL_BURSA_SHARES || 500);
 
 let stock = stocks.getStock(guildId, ticker);
 let wallet = economy.getWallet(userId, guildId);
 console.log(`   👉 Wallet Balance: Rp ${wallet.balance}`);
-console.log(`   👉 Stock Ticker: ${stock.stock_ticker}, Price: Rp ${stock.current_price}`);
+console.log(`   👉 Stock Ticker: ${stock.stock_ticker}, Price: Rp ${stock.current_price}, Total Bursa Shares: ${stock.total_shares}`);
 
 // 2. Buy stocks 10 times to test transaction limit
 console.log("\n📥 2. Testing Daily Buy Transaction Limit (Max 10)...");

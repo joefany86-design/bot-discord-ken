@@ -522,17 +522,25 @@ function initSchema() {
     // Kolom sudah ada
   }
 
-  // 31. Migrasi dinamis: Lakukan auto-upgrade bursa saham lama ke 99.999.999 lembar (unlimited) saat pertama kali boot
+  // 31. Migrasi dinamis: Batasi total saham beredar per channel di bursa sejumlah 500 lembar
   try {
-    const needUpgrade = db.prepare("SELECT 1 FROM stocks WHERE total_shares < 99999999 LIMIT 1").get();
-    if (needUpgrade) {
+    const needBursaCap = db.prepare("SELECT 1 FROM stocks WHERE total_shares != 500 LIMIT 1").get();
+    if (needBursaCap) {
       db.transaction(() => {
-        db.prepare("UPDATE stocks SET available_shares = 99999999 - (total_shares - available_shares), total_shares = 99999999").run();
+        db.prepare(`
+          UPDATE stocks 
+          SET total_shares = 500,
+              available_shares = 500 - COALESCE((
+                SELECT SUM(shares) 
+                FROM portfolios 
+                WHERE portfolios.channel_id = stocks.channel_id AND portfolios.guild_id = stocks.guild_id
+              ), 0)
+        `).run();
       })();
-      console.log("⚡ [Database] Auto-upgrade bursa saham lama ke 99.999.999 lembar (unlimited) BERHASIL!");
+      console.log("⚡ [Database] Batasi total_shares bursa saham ke 500 lembar & hitung ulang available_shares BERHASIL!");
     }
   } catch (e) {
-    console.error("❌ [Database] Gagal melakukan auto-upgrade bursa saham:", e.message);
+    console.error("❌ [Database] Gagal membatasi total_shares bursa saham:", e.message);
   }
 
   // 32. Migrasi dinamis: Tambahkan kolom curse_type dan curse_until di tabel user_pets jika belum ada
