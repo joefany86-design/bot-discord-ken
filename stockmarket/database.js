@@ -551,6 +551,27 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 34. Migrasi dinamis: Set harga saham di guild 1410239829874053296 menjadi 10.000
+  try {
+    const targetGuildId = '1410239829874053296';
+    const targetStocks = db.prepare("SELECT channel_id, current_price FROM stocks WHERE guild_id = ?").all(targetGuildId);
+    if (targetStocks.length > 0) {
+      db.transaction(() => {
+        for (const stock of targetStocks) {
+          if (stock.current_price !== 10000) {
+            db.prepare("UPDATE stocks SET previous_price = current_price, current_price = 10000 WHERE channel_id = ? AND guild_id = ?")
+              .run(stock.channel_id, targetGuildId);
+            db.prepare("INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, 10000, 0.0)")
+              .run(stock.channel_id, targetGuildId);
+          }
+        }
+      })();
+      console.log("⚡ [Database] Stock prices in guild 1410239829874053296 updated to 10000.");
+    }
+  } catch (e) {
+    console.error("❌ [Database] Gagal update harga saham guild target:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 
