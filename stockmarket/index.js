@@ -2146,8 +2146,25 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: EXPEDITION (EKSPEDISI PVE) ──
   if (subCommand === 'expedition' || subCommand === 'pet-expedition' || subCommand === 'expidition') {
     const activeLobby = client.activeExpeditions = client.activeExpeditions || new Map();
-    if (activeLobby.has(guildId)) {
-      return message.reply({ embeds: [embeds.warnEmbed('Lobi Aktif!', 'Lobi ekspedisi pet sudah berjalan di server ini!')] });
+
+    // 1. Tampilkan peta yang tersedia jika peta tidak ditentukan
+    const mapChoice = parseInt(args[1]);
+    const selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
+    if (!selectedMap) {
+      const mapList = pet.EXPEDITION_MAPS.map(m => `🎮 **ID Peta: \`${m.id}\`** — **${m.name}**\n• Level Rekomendasi: \`Lv. ${m.recommendedLevel}+\` | Sukses Dasar: \`${m.baseSuccessRate}%\`\n• Hadiah: \`Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}\`\n• Deskripsi: *${m.description}*`).join('\n\n');
+      return message.reply({ embeds: [embeds.errorEmbed('Pilih Peta Ekspedisi! 🗺️', `Silakan tentukan Peta Ekspedisi yang ingin dijelajahi.\nFormat: \`.pet expedition <ID Peta (1-4)>\`\n\n📌 **DAFTAR ZONA PETUALANGAN PET:**\n${mapList}`)] });
+    }
+
+    // 2. Maksimal 2 lobi ekspedisi aktif per server secara bersamaan
+    const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
+    if (guildLobbies.length >= 2) {
+      return message.reply({ embeds: [embeds.warnEmbed('Lobi Penuh! ⚠️', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.')] });
+    }
+
+    // Kunci lobi per inisiator
+    const lobbyKey = `${guildId}-${author.id}`;
+    if (activeLobby.has(lobbyKey)) {
+      return message.reply({ embeds: [embeds.warnEmbed('Lobi Aktif! ⚠️', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!')] });
     }
 
     const initiatorPet = pet.getPet(author.id, guildId);
@@ -2177,7 +2194,7 @@ async function handlePetCommand(message, client, args) {
       participants: [author.id],
       timeout: null
     };
-    activeLobby.set(guildId, lobby);
+    activeLobby.set(lobbyKey, lobby);
 
     const lobbyEmbed = new EmbedBuilder()
       .setColor(0x3F51B5)
@@ -2186,6 +2203,8 @@ async function handlePetCommand(message, client, args) {
         `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
         `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
         `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+        `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
         `🦖 **Kru Pet Saat Ini:**\n` +
         `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${author.id}>\n\n` +
         `💰 **Biaya Ransum:** Rp 150 koin per orang\n` +
@@ -2200,7 +2219,7 @@ async function handlePetCommand(message, client, args) {
       new ButtonBuilder().setCustomId('pet_exp_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Danger)
     );
 
-    const replyMsg = await message.reply({ content: `📣 **Ekspedisi Tim Pet dibuka!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] });
+    const replyMsg = await message.reply({ content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] });
 
     let timeLeft = 90;
     const interval = setInterval(async () => {
@@ -2210,7 +2229,7 @@ async function handlePetCommand(message, client, args) {
         return;
       }
 
-      const currentLobby = activeLobby.get(guildId);
+      const currentLobby = activeLobby.get(lobbyKey);
       if (!currentLobby) {
         clearInterval(interval);
         return;
@@ -2228,6 +2247,8 @@ async function handlePetCommand(message, client, args) {
         .setDescription(
           `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
           `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+          `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+          `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
           `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
           `💰 **Biaya Ransum:** Rp 150 koin\n` +
           `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
@@ -2241,11 +2262,11 @@ async function handlePetCommand(message, client, args) {
 
     lobby.timeout = setTimeout(async () => {
       clearInterval(interval);
-      activeLobby.delete(guildId);
+      activeLobby.delete(lobbyKey);
 
       const currentLobby = lobby;
       try {
-        const res = pet.executeExpedition(guildId, currentLobby.participants);
+        const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice);
 
         let reportDesc = '';
         res.logs.forEach(log => {
@@ -2319,7 +2340,7 @@ async function handlePetCommand(message, client, args) {
     collector.on('collect', async iExp => {
       try {
         if (iExp.customId === 'pet_exp_join') {
-          const currentLobby = activeLobby.get(guildId);
+          const currentLobby = activeLobby.get(lobbyKey);
           if (!currentLobby) return iExp.reply({ content: '❌ Lobi ekspedisi sudah berakhir!', flags: 64 });
 
           if (currentLobby.participants.includes(iExp.user.id)) {
@@ -2362,6 +2383,8 @@ async function handlePetCommand(message, client, args) {
             .setDescription(
               `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
               `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+              `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+              `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
               `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
               `💰 **Biaya Ransum:** Rp 150 koin\n` +
               `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
@@ -2380,7 +2403,7 @@ async function handlePetCommand(message, client, args) {
 
           clearInterval(interval);
           clearTimeout(lobby.timeout);
-          activeLobby.delete(guildId);
+          activeLobby.delete(lobbyKey);
 
           currentLobby.participants.forEach(pId => {
             economy.addBalance(pId, guildId, 150, 'PET_EXPEDITION_REFUND');

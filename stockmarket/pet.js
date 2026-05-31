@@ -23,6 +23,46 @@ const PET_SPECIES = {
   GOLEM: { id: 'GOLEM', name: '🧱 Golem', desc: 'Terbuat dari batu kokoh. Sangat rajin bekerja (Cooldown Kerja -20 Menit).' }
 };
 
+// Konfigurasi Peta Ekspedisi Pet (Co-op PVE)
+const EXPEDITION_MAPS = [
+  {
+    id: 1,
+    name: '🌲 Hutan Pemula (Beginner Forest)',
+    recommendedLevel: 1,
+    baseSuccessRate: 85,
+    minPrize: 300,
+    maxPrize: 600,
+    description: 'Hutan rindang bersahabat dengan kelinci liar & jamur kecil.'
+  },
+  {
+    id: 2,
+    name: 'BAT Gua Gelap (Dark Cave)',
+    recommendedLevel: 10,
+    baseSuccessRate: 65,
+    minPrize: 600,
+    maxPrize: 1200,
+    description: 'Lorong gua basah penuh kelelawar penghisap darah & laba-laba raksasa.'
+  },
+  {
+    id: 3,
+    name: 'VOL Lembah Api (Fire Valley)',
+    recommendedLevel: 25,
+    baseSuccessRate: 45,
+    minPrize: 1200,
+    maxPrize: 2200,
+    description: 'Ngarai panas berpijar dengan naga api liar dan golem magma raksasa.'
+  },
+  {
+    id: 4,
+    name: 'CAS Istana Kuno (Ancient Palace)',
+    recommendedLevel: 40,
+    baseSuccessRate: 25,
+    minPrize: 2000,
+    maxPrize: 4000,
+    description: 'Reruntuhan istana misterius yang dijaga oleh iblis kuno bermata satu.'
+  }
+];
+
 function getXpNeeded(level, trait) {
   const base = level * 100;
   if (trait === 'GENIUS') {
@@ -1150,7 +1190,7 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
 /**
  * Simulasi Ekspedisi Pet Kelompok (Co-op PVE)
  */
-function executeExpedition(guildId, participantIds) {
+function executeExpedition(guildId, participantIds, mapId = 1) {
   const activePets = [];
   
   // Ambil pet aktif masing-masing pemain
@@ -1172,29 +1212,14 @@ function executeExpedition(guildId, participantIds) {
     throw new Error(`Pet berikut terlalu lelah/HP kurang dari 40: ${names}.`);
   }
 
-  // Pilih Zona Ekspedisi Dinamis berdasarkan jumlah kru
+  // Pilih Peta Ekspedisi Pilihan (Map selection)
+  const selectedMap = EXPEDITION_MAPS.find(m => m.id === parseInt(mapId)) || EXPEDITION_MAPS[0];
   const kruCount = activePets.length;
-  let zoneName = '';
-  let difficulty = 20;
-  let minReward = 800;
-  let maxReward = 1600;
-
-  if (kruCount === 1) {
-    zoneName = '🌫️ Hutan Kabut (Foggy Woods)';
-    difficulty = 15;
-    minReward = 300;
-    maxReward = 600;
-  } else if (kruCount === 2) {
-    zoneName = '🌋 Goa Naga Api (Volcano Dragon Nest)';
-    difficulty = 40;
-    minReward = 800;
-    maxReward = 1400;
-  } else {
-    zoneName = '🏰 Labirin Kuno Purba (Ancient Labyrinth)';
-    difficulty = 70;
-    minReward = 1800;
-    maxReward = 3000;
-  }
+  
+  const zoneName = selectedMap.name;
+  const recommendedLevel = selectedMap.recommendedLevel;
+  const minReward = selectedMap.minPrize;
+  const maxReward = selectedMap.maxPrize;
 
   // Kekuatan Tim (Total level pet)
   const teamPower = activePets.reduce((sum, ap) => sum + ap.pet.level, 0);
@@ -1233,10 +1258,33 @@ function executeExpedition(guildId, participantIds) {
     };
   }
 
-  // Success Rate = (timPower / difficulty) * 100
-  let successRate = Math.round((teamPower / difficulty) * 100);
+  // Kalkulasi Peluang Sukses berdasarkan level pet, rekomendasi map & denda level rendah
+  let baseSuccessRate = selectedMap.baseSuccessRate;
+  let totalModifications = 0;
+  const lowLevelCulprits = [];
+
+  activePets.forEach(ap => {
+    const levelDiff = ap.pet.level - recommendedLevel;
+    if (levelDiff < 0) {
+      // Penalti kekurangan level: -3% per level kekurangan
+      totalModifications += levelDiff * 3;
+      
+      // Penalti parah jika selisih >= 10 level (banyak peluang gagal jika pet lv rendah gabung level tinggi >= 10)
+      if (-levelDiff >= 10) {
+        totalModifications -= 30; // Flat penalti -30% tambahan
+        lowLevelCulprits.push(ap);
+      }
+    } else {
+      // Bonus kelebihan level: +1% per level kelebihan (maks +15% per pet)
+      totalModifications += Math.min(15, levelDiff * 1);
+    }
+  });
+
+  let successRate = Math.round(baseSuccessRate + totalModifications);
+  
+  // Batasi successRate agar menantang (maks 90%, min 5%)
   if (successRate > 90) successRate = 90;
-  if (successRate < 25) successRate = 25;
+  if (successRate < 5) successRate = 5;
 
   const roll = Math.random() * 100;
   const isSuccess = roll < successRate;
@@ -1331,6 +1379,15 @@ function executeExpedition(guildId, participantIds) {
   } else {
     // Tentukan penyebab kegagalan dan kambing hitam (pet yang membuat kalah)
     const failScenarios = [];
+
+    // 0. Skenario khusus: Pet level kekecilan (selisih >= 10 dari rekomendasi)
+    if (lowLevelCulprits.length > 0) {
+      const culpritLow = lowLevelCulprits[Math.floor(Math.random() * lowLevelCulprits.length)];
+      failScenarios.push({
+        culprit: culpritLow,
+        reason: `Pet **${culpritLow.pet.pet_name}** milik <@${culpritLow.userId}> masih sangat pemula (Lv. ${culpritLow.pet.level} vs Rekomendasi Lv. ${recommendedLevel}) dan langsung pingsan ketakutan melihat Bos ${zoneName}, menyabotase formasi bertarung tim!`
+      });
+    }
 
     // 1. Skenario: Level paling rendah
     const minLevel = Math.min(...activePets.map(ap => ap.pet.level));
@@ -1527,6 +1584,7 @@ function setCustomImage(userId, guildId, imageUrl) {
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
+  EXPEDITION_MAPS,
   getPet,
   adoptPet,
   resetPet,
