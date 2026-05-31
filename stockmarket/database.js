@@ -522,6 +522,19 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 31. Migrasi dinamis: Lakukan auto-upgrade bursa saham lama ke 99.999.999 lembar (unlimited) saat pertama kali boot
+  try {
+    const needUpgrade = db.prepare("SELECT 1 FROM stocks WHERE total_shares < 99999999 LIMIT 1").get();
+    if (needUpgrade) {
+      db.transaction(() => {
+        db.prepare("UPDATE stocks SET available_shares = 99999999 - (total_shares - available_shares), total_shares = 99999999").run();
+      })();
+      console.log("⚡ [Database] Auto-upgrade bursa saham lama ke 99.999.999 lembar (unlimited) BERHASIL!");
+    }
+  } catch (e) {
+    console.error("❌ [Database] Gagal melakukan auto-upgrade bursa saham:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 
