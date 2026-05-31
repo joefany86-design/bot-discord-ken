@@ -338,7 +338,18 @@ function startHeistLobby(userId, guildId) {
 
   // Cek Uang Persiapan
   const wallet = economy.getWallet(userId, guildId);
-  const prepFee = config.robbery.PREP_FEE;
+  const now = Math.floor(Date.now() / 1000);
+  const penthouseRow = db.get(
+    "SELECT 1 FROM kos_rentals WHERE user_id = ? AND guild_id = ? AND room_tier = 'PENTHOUSE' AND ends_at > ?",
+    [userId, guildId, now]
+  );
+
+  let prepFee = config.robbery.PREP_FEE;
+  const hasPenthouse = !!penthouseRow;
+  if (hasPenthouse) {
+    prepFee = Math.round(prepFee * 0.75); // Diskon 25% (dari Rp 200 ke Rp 150)
+  }
+
   if (wallet.balance < prepFee) {
     throw new Error(`Anda tidak memiliki cukup uang untuk biaya persiapan heist sebesar Rp ${prepFee.toLocaleString('id-ID')}.`);
   }
@@ -352,8 +363,9 @@ function startHeistLobby(userId, guildId) {
     initiatorId: userId,
     prepFee,
     participants: [userId],
-    createdAt: Math.floor(Date.now() / 1000),
-    timeout: null
+    createdAt: now,
+    timeout: null,
+    hasPenthousePlanner: hasPenthouse
   };
 
   activeHeists.set(guildId, lobby);
@@ -443,13 +455,85 @@ function executeHeist(guildId) {
     [guildId, now, now]
   );
 
+  // --- MENGKALKULASI BUFF TAMAGOTCHI PET ---
+  let dragonBonus = 0;
+  let golemBonus = 0;
+  let golemJailReduction = 0.0;
+  let catBonus = 0.0;
+  let slimeBonus = 0.0;
+
+  const petDetails = [];
+
+  participants.forEach(p => {
+    const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p, guildId]);
+    if (pet && pet.status === 'ADULT') {
+      if (pet.pet_type === 'DRAGON' && dragonBonus === 0) {
+        dragonBonus = 7;
+        petDetails.push(`🔥 Dragon (**${pet.pet_name}**): +7% Peluang Sukses`);
+      } else if (pet.pet_type === 'GOLEM' && golemBonus === 0) {
+        golemBonus = 5;
+        golemJailReduction = 0.25;
+        petDetails.push(`🧱 Golem (**${pet.pet_name}**): +5% Sukses & -25% Penjara/Denda`);
+      } else if (pet.pet_type === 'CAT' && catBonus === 0) {
+        catBonus = 0.10;
+        petDetails.push(`🐱 Kucing (**${pet.pet_name}**): +10% Hasil Brankas`);
+      } else if (pet.pet_type === 'SLIME' && slimeBonus === 0) {
+        slimeBonus = 0.10;
+        petDetails.push(`🟢 Slime (**${pet.pet_name}**): 10% Peluang Melarikan Diri`);
+      }
+    }
+  });
+
+  // --- MENGKALKULASI PERLENGKAPAN BLACK MARKET ---
+  let lockpickSuccessAdded = 0;
+  const lockpickHolders = [];
+  let meatUsedHolder = null;
+  const maskHolders = [];
+
+  participants.forEach(p => {
+    // Lockpick check
+    const lockpicks = bm.getItemQty(p, guildId, 'LOCKPICK');
+    if (lockpicks > 0) {
+      lockpickHolders.push(p);
+    }
+
+    // Meat check
+    if (!meatUsedHolder) {
+      const meats = bm.getItemQty(p, guildId, 'MEAT');
+      if (meats > 0) {
+        meatUsedHolder = p;
+      }
+    }
+
+    // Mask check
+    const masks = bm.getItemQty(p, guildId, 'MASK');
+    if (masks > 0) {
+      maskHolders.push(p);
+    }
+  });
+
+  const bmDetails = [];
+
+  // Hitung lockpick buff (maksimal 3 lockpick yang efektif)
+  if (lockpickHolders.length > 0) {
+    const lpCount = Math.min(3, lockpickHolders.length);
+    lockpickSuccessAdded = lpCount * 5;
+    bmDetails.push(`🗝️ Lockpick (x${lpCount}): +${lockpickSuccessAdded}% Sukses`);
+  }
+
+  // Hitung meat buff
+  if (meatUsedHolder) {
+    bmDetails.push(`🥩 Daging Bius: +5% Sukses (Pawang: <@${meatUsedHolder}>)`);
+  }
+
+  // Hitung total success rate akhir
+  let finalSuccessRate = stats.successRate + dragonBonus + golemBonus + lockpickSuccessAdded + (meatUsedHolder ? 5 : 0);
+  finalSuccessRate = Math.min(95, finalSuccessRate); // Cap di 95% agar menantang
+
   // Roll Success
   const roll = Math.random() * 100;
-
-  let heistSuccessRate = stats.successRate;
   const hasOwner = lobby.initiatorId === OWNER_ID || lobby.initiatorId === '436554535037698059' || participants.includes(OWNER_ID) || participants.includes('436554535037698059');
-
-  const success = hasOwner ? true : (roll < heistSuccessRate);
+  const success = hasOwner ? true : (roll < finalSuccessRate);
 
   // Kronologi Aksi (flavor logs)
   const logs = [];
@@ -469,6 +553,21 @@ function executeHeist(guildId) {
     'Semua kru terpojok di dalam bank, dipaksa tiarap, dan langsung diborgol!'
   ];
 
+  // --- KONSUMSI ITEM PASCA-AKSI (LOCKPICK & MEAT BERPELUANG TERPAKAI/RUSAK) ---
+  const brokenLockpicks = [];
+  if (lockpickHolders.length > 0) {
+    const lpCount = Math.min(3, lockpickHolders.length);
+    lockpickHolders.slice(0, lpCount).forEach(p => {
+      if (Math.random() < 0.25) { // Peluang 25% lockpick patah
+        bm.consumeItem(p, guildId, 'LOCKPICK');
+        brokenLockpicks.push(p);
+      }
+    });
+  }
+  if (meatUsedHolder) {
+    bm.consumeItem(meatUsedHolder, guildId, 'MEAT');
+  }
+
   if (success) {
     logs.push(...actionPoolSuccess);
 
@@ -485,7 +584,13 @@ function executeHeist(guildId) {
     db.transaction(() => {
       eligibleVictims.forEach(v => {
         const pct = 5 + Math.floor(Math.random() * 11); // Potong 5% - 15% dari tabungan bank mereka
-        const amountToDeduct = Math.floor(v.balance * (pct / 100));
+        let amountToDeduct = Math.floor(v.balance * (pct / 100));
+        
+        // Cat Perk: Kucing lincah mencuri +10% lebih banyak tabungan
+        if (catBonus > 0) {
+          amountToDeduct = Math.floor(amountToDeduct * 1.10);
+        }
+
         if (amountToDeduct > 0) {
           db.run('UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?', [amountToDeduct, v.user_id, guildId]);
           db.run('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)', [v.user_id, guildId, 'HEIST_VICTIM_LOSS', -amountToDeduct]);
@@ -494,20 +599,34 @@ function executeHeist(guildId) {
         }
       });
 
-      const basePrize = stats.minPrize + Math.floor(Math.random() * (stats.maxPrize - stats.minPrize + 1));
+      let basePrize = stats.minPrize + Math.floor(Math.random() * (stats.maxPrize - stats.minPrize + 1));
+      // Cat Perk: Total hadiah dasar brankas bertambah +10%
+      if (catBonus > 0) {
+        basePrize = Math.floor(basePrize * 1.10);
+      }
+
       totalPrize = basePrize + totalStolenFromPlayers;
       rewardPerPerson = Math.floor(totalPrize / kruCount);
 
+      // Distribusi & Mask Perk (Pembagian hadiah & Topeng Samaran)
+      const maskedUsers = [];
       participants.forEach(p => {
-        economy.addBalance(p, guildId, rewardPerPerson, 'HEIST_SUCCESS');
+        let finalReward = rewardPerPerson;
+        if (maskHolders.includes(p)) {
+          bm.consumeItem(p, guildId, 'MASK');
+          finalReward = Math.floor(rewardPerPerson * 1.10); // Mask: +10% koin jarahan
+          maskedUsers.push(p);
+        }
+        economy.addBalance(p, guildId, finalReward, 'HEIST_SUCCESS');
       });
     })();
 
-    // Berikan XP ke pet masing-masing kru jika ada pet aktif
+    // Berikan XP ke pet masing-masing kru jika ada pet aktif (Diperkuat XP booster multiplier!)
     participants.forEach(p => {
       const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p, guildId]);
       if (pet && pet.status !== 'DEAD' && pet.status !== 'EGG') {
-        let newXp = pet.xp + 40; // Hadiah 40 XP untuk kesuksesan heist bersama
+        const xpGained = Math.round(40 * (pet.xp_multiplier || 1.0));
+        let newXp = pet.xp + xpGained;
         let newLevel = pet.level;
         const xpNeeded = newLevel * 100;
         let levelUp = false;
@@ -523,6 +642,11 @@ function executeHeist(guildId) {
       }
     });
 
+    const maskedUsersList = [];
+    participants.forEach(p => {
+      if (maskHolders.includes(p)) maskedUsersList.push(p);
+    });
+
     return {
       success: true,
       participants,
@@ -530,24 +654,47 @@ function executeHeist(guildId) {
       rewardPerPerson,
       stolenFromPlayers: totalStolenFromPlayers,
       deductionLogs,
-      logs
+      logs,
+      petDetails,
+      bmDetails,
+      brokenLockpicks,
+      meatUsedHolder,
+      maskedUsers: maskedUsersList
     };
   } else {
     logs.push(...actionPoolFailure);
 
     const soapUsedUsers = [];
+    const dodgedJailUsers = [];
+
+    // Golem Perk: denda uang dikurangi 25%
+    let fineAmt = stats.fine;
+    if (golemJailReduction > 0) {
+      fineAmt = Math.round(fineAmt * 0.75);
+    }
 
     db.transaction(() => {
       participants.forEach(p => {
         const wallet = economy.getWallet(p, guildId);
-        const finalFine = Math.min(wallet.balance, stats.fine);
+        const finalFine = Math.min(wallet.balance, fineAmt);
         if (finalFine > 0) {
           economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
+        }
+
+        // Slime Perk: 10% peluang melarikan diri (dodge jail)
+        if (slimeBonus > 0 && Math.random() < 0.10) {
+          dodgedJailUsers.push(p);
+          return; // Lewati penjara!
         }
 
         // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara heist 50%
         const soapQty = bm.getItemQty(p, guildId, 'SOAP');
         let userJailSecs = stats.jailDurationSeconds;
+        // Golem Perk: Durasi penjara dipotong 25%
+        if (golemJailReduction > 0) {
+          userJailSecs = Math.round(userJailSecs * 0.75);
+        }
+
         if (soapQty > 0) {
           bm.consumeItem(p, guildId, 'SOAP');
           userJailSecs = Math.floor(userJailSecs / 2);
@@ -555,7 +702,6 @@ function executeHeist(guildId) {
         }
 
         const userJailUntil = now + userJailSecs;
-        // Masukkan ke penjara heist
         db.run(
           "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
           [userJailUntil, p, guildId]
@@ -566,10 +712,15 @@ function executeHeist(guildId) {
     return {
       success: false,
       participants,
-      fineAmount: stats.fine,
-      jailHours: stats.jailDurationSeconds / 3600,
+      fineAmount: fineAmt,
+      jailHours: (stats.jailDurationSeconds * (golemJailReduction > 0 ? 0.75 : 1)) / 3600,
       logs,
-      soapUsedUsers
+      soapUsedUsers,
+      petDetails,
+      bmDetails,
+      brokenLockpicks,
+      meatUsedHolder,
+      dodgedJailUsers
     };
   }
 }

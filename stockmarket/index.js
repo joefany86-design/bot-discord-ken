@@ -4376,7 +4376,8 @@ async function handleEconomyCommands(message, client) {
                 res.fineAmount,
                 res.jailHours,
                 res.stolenFromPlayers,
-                res.deductionLogs
+                res.deductionLogs,
+                res
               );
 
               let contentMsg = `💥 **OPERASI BANK HEIST SELESAI!**`;

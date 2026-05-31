@@ -2313,7 +2313,7 @@ module.exports = {
   },
 
   // 32. Heist Result Embed
-  heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = []) {
+  heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
     const embed = new EmbedBuilder()
       .setTitle(success ? '💥 LAPORAN AKHIR: BANK HEIST SUCCESS! 💰' : '🚓 LAPORAN AKHIR: BANK HEIST GAGAL! 👮')
       .setColor(success ? COLORS.SUCCESS : COLORS.ERROR)
@@ -2322,13 +2322,31 @@ module.exports = {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     const logText = logs.map(l => `• ${l}`).join('\n');
 
+    let desc = `🚨 **Lokasi:** Central Bank Server\n` +
+      `👥 **Kru Perampok:** ${crewList}\n\n`;
+
+    // 1. Tambahkan Detail Pet Synergy jika ada
+    if (extraData.petDetails && extraData.petDetails.length > 0) {
+      desc += `🧬 **SINERGI TAMAGOTCHI PET:**\n` + extraData.petDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+    }
+
+    // 2. Tambahkan Detail Black Market Gear jika ada
+    if (extraData.bmDetails && extraData.bmDetails.length > 0) {
+      desc += `🗝️ **PERLENGKAPAN KRIMINAL:**\n` + extraData.bmDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+    }
+
+    desc += `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n`;
+
     if (success) {
-      let desc = `🚨 **Lokasi:** Central Bank Server\n` +
-        `👥 **Kru Perampok:** ${crewList}\n\n` +
-        `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n` +
-        `🏆 **HASIL JARAHAN BRANKAS:**\n` +
+      desc += `🏆 **HASIL JARAHAN BRANKAS:**\n` +
         `💰 **Total Dirampok:** \`${formatCurrency(totalReward)}\`\n` +
         `👉 **Setiap Anggota Mendapatkan:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih!)*`;
+
+      // Masked users bonus
+      if (extraData.maskedUsers && extraData.maskedUsers.length > 0) {
+        const maskList = extraData.maskedUsers.map(u => `<@${u}>`).join(', ');
+        desc += `\n\n🎭 ${maskList} menggunakan **Topeng Samaran** dan mendapatkan bonus **+10% koin jarahan**!`;
+      }
 
       if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
         const victimList = deductionLogs.map(dl => `• <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
@@ -2338,14 +2356,26 @@ module.exports = {
 
       embed.setDescription(desc);
     } else {
-      embed.setDescription(
-        `🚨 **Lokasi:** Central Bank Server\n` +
-        `👥 **Kru Perampok:** ${crewList}\n\n` +
-        `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n` +
-        `❌ **KONSEKUENSI PENANGKAPAN:**\n` +
+      desc += `❌ **KONSEKUENSI PENANGKAPAN:**\n` +
         `💸 **Denda per Anggota:** \`${formatCurrency(fineAmount)}\` (potong dompet)\n` +
-        `🔒 **Hukuman Penjara:** \`${jailHours} Jam\` di Penjara Virtual!`
-      );
+        `🔒 **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!`;
+
+      // Slime dodge jail users
+      if (extraData.dodgedJailUsers && extraData.dodgedJailUsers.length > 0) {
+        const dodgeList = extraData.dodgedJailUsers.map(u => `<@${u}>`).join(', ');
+        desc += `\n\n🟢 **Dodge Jail!** ${dodgeList} berhasil melarikan diri menggunakan tubuh licin pet **Slime** dan terhindar dari penjara!`;
+      }
+
+      embed.setDescription(desc);
+    }
+
+    // Tampilkan barang kriminal yang hancur jika ada
+    if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
+      const brokenList = extraData.brokenLockpicks.map(u => `<@${u}>`).join(', ');
+      embed.addFields({
+        name: '🛠️ LAPORAN KERUSAKAN ALAT',
+        value: `⚠️ Lockpick milik ${brokenList} patah/rusak saat aksi perampokan!`
+      });
     }
 
     return embed;
