@@ -4348,7 +4348,41 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // Perintah: .jail
     // ═══════════════════════════════════════════════════
-    if (commandName === 'jail') {
+    if (['jail', 'topjail', 'top-jail', 'jailtop', 'jail-top'].includes(commandName)) {
+      if (['topjail', 'top-jail', 'jailtop', 'jail-top'].includes(commandName) || args[0] === 'top' || args[0] === 'leaderboard') {
+        const topJail = database.all(
+          `SELECT user_id, jail_count FROM wallets 
+           WHERE guild_id = ? AND jail_count > 0 
+           ORDER BY jail_count DESC LIMIT 10`,
+          [guildId]
+        );
+
+        if (topJail.length === 0) {
+          const emptyEmbed = embeds.successEmbed(
+            'Papan Peringkat Penjara 👮',
+            '🟢 **Keamanan Terjamin!** Belum ada warga server yang pernah dijebloskan ke dalam penjara virtual.'
+          );
+          return message.reply({ embeds: [emptyEmbed] });
+        }
+
+        let desc = 'Berikut adalah daftar 10 warga server yang paling sering tertangkap polisi dan masuk sel penjara virtual:\n\n';
+        for (let i = 0; i < topJail.length; i++) {
+          const row = topJail[i];
+          const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : `\`#${i + 1}\` `;
+          desc += `${medal}<@${row.user_id}> — **${row.jail_count} kali** masuk penjara 🔒\n`;
+        }
+
+        const topJailEmbed = new EmbedBuilder()
+          .setColor(0xC0392B) // Crimson warning red
+          .setTitle('🕵️‍♂️ PAPAN PERINGKAT: NARAPIDANA PALING SERING DIPENJARA! 🔒')
+          .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
+          .setDescription(desc)
+          .setFooter({ text: `Papan Buronan Server Kosan • Total Narapidana: ${topJail.length}`, iconURL: message.guild.iconURL({ dynamic: true }) || null })
+          .setTimestamp();
+
+        return message.reply({ embeds: [topJailEmbed] });
+      }
+
       const targetUser = message.mentions.users.first() || author;
       const jailInfo = robbery.checkJail(targetUser.id, guildId);
 
