@@ -791,18 +791,36 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
 
   while (round <= maxRounds && chalHP > 0 && oppHP > 0) {
     // 1. Giliran Challenger menyerang Opponent
-    let chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
-    if (isGodOpponent) chalDmg = 0; // Ramzi tidak menerima damage
-    oppHP = Math.max(0, oppHP - chalDmg);
-    logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
+    let chalDmg;
+    if (isGodChallenger) {
+      chalDmg = 999999;
+      oppHP = 0;
+      logs.push(`⚔️ **Ronde ${round} (Serangan):** 🔥 **${challenger.pet_name}** meluncurkan serangan mematikan *Insta-Kill* dan memberikan **${chalDmg} DMG**! (HP Lawan: 0%)`);
+    } else if (isGodOpponent) {
+      chalDmg = 0;
+      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}**, namun serangan memantul sia-sia! **0 DMG** diberikan. (HP Lawan: 100%)`);
+    } else {
+      chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
+      oppHP = Math.max(0, oppHP - chalDmg);
+      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
+    }
 
     if (oppHP <= 0) break;
 
     // 2. Giliran Opponent menyerang Challenger
-    let oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
-    if (isGodChallenger) oppDmg = 0; // Ramzi tidak menerima damage
-    chalHP = Math.max(0, chalHP - oppDmg);
-    logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
+    let oppDmg;
+    if (isGodOpponent) {
+      oppDmg = 999999;
+      chalHP = 0;
+      logs.push(`🛡️ **Ronde ${round} (Balasan):** 🔥 **${opponent.pet_name}** membalas dengan tatapan mematikan *Insta-Kill* sebesar **${oppDmg} DMG**! (HP Anda: 0%)`);
+    } else if (isGodChallenger) {
+      oppDmg = 0;
+      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}**, namun serangan tidak terasa! **0 DMG** diberikan. (HP Anda: 100%)`);
+    } else {
+      oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
+      chalHP = Math.max(0, chalHP - oppDmg);
+      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
+    }
 
     round++;
   }
