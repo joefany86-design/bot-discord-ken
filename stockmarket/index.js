@@ -945,10 +945,9 @@ function initStockMarket(client) {
                 if (iTenor.user.id !== user.id) return;
 
                 if (iTenor.customId === 'bank_loan_cancel_perm') {
-                  tenorCollector.stop();
+                  tenorCollector.stop('cancel');
                   await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
                 } else if (iTenor.customId === 'bank_select_tenor_perm') {
-                  tenorCollector.stop();
                   const selectedTenor = parseInt(iTenor.values[0]);
                   const maxLimit = bank.calculateMaxLoanLimit(user.id, guildId);
 
@@ -966,14 +965,14 @@ function initStockMarket(client) {
                   modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
                   await iTenor.showModal(modal);
 
-                  await askTenorMsg.delete().catch(() => { });
-
                   const submitted = await iTenor.awaitModalSubmit({
                     filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}_perm` && sub.user.id === user.id,
                     time: 60000
                   }).catch(() => null);
 
                   if (submitted) {
+                    tenorCollector.stop('submitted');
+                    await askTenorMsg.delete().catch(() => { });
                     try {
                       const amountStr = submitted.fields.getTextInputValue('loan_amount');
                       const res = bank.createLoan(user.id, guildId, amountStr, selectedTenor);
@@ -993,7 +992,15 @@ function initStockMarket(client) {
                     } catch (err) {
                       await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], flags: 64 });
                     }
+                  } else {
+                    tenorCollector.stop('timeout');
                   }
+                }
+              });
+
+              tenorCollector.on('end', async (collected, reason) => {
+                if (reason !== 'submitted' && reason !== 'cancel') {
+                  await askTenorMsg.delete().catch(() => { });
                 }
               });
             }
@@ -5294,10 +5301,9 @@ async function handleEconomyCommands(message, client) {
               }
 
               if (iTenor.customId === 'bank_loan_cancel') {
-                tenorCollector.stop();
+                tenorCollector.stop('cancel');
                 await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
               } else if (iTenor.customId === 'bank_select_tenor') {
-                tenorCollector.stop();
                 const selectedTenor = parseInt(iTenor.values[0]);
                 const maxLimit = bank.calculateMaxLoanLimit(author.id, guildId);
 
@@ -5315,15 +5321,14 @@ async function handleEconomyCommands(message, client) {
                 modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
                 await iTenor.showModal(modal);
 
-                // Bersihkan pesan pemilihan tenor agar rapi
-                await askTenorMsg.delete().catch(() => { });
-
                 const submitted = await iTenor.awaitModalSubmit({
                   filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}` && sub.user.id === author.id,
                   time: 60000
                 }).catch(() => null);
 
                 if (submitted) {
+                  tenorCollector.stop('submitted');
+                  await askTenorMsg.delete().catch(() => { });
                   try {
                     const amountStr = submitted.fields.getTextInputValue('loan_amount');
                     const res = bank.createLoan(author.id, guildId, amountStr, selectedTenor);
@@ -5350,12 +5355,16 @@ async function handleEconomyCommands(message, client) {
                       console.error('Error updating bank dashboard after loan:', err);
                     }
                   }
+                } else {
+                  tenorCollector.stop('timeout');
                 }
               }
             });
 
-            tenorCollector.on('end', async () => {
-              await askTenorMsg.delete().catch(() => { });
+            tenorCollector.on('end', async (collected, reason) => {
+              if (reason !== 'submitted' && reason !== 'cancel') {
+                await askTenorMsg.delete().catch(() => { });
+              }
             });
           }
 
