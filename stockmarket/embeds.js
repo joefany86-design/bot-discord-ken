@@ -626,15 +626,20 @@ module.exports = {
 
         const sparkline = getInlineSparkline(prices);
         const barSize = 10;
-        const progressBar = getMarketProgressBar(stock.available_shares, stock.total_shares, barSize);
         const soldCount = stock.total_shares - stock.available_shares;
         const soldPct = ((soldCount / stock.total_shares) * 100).toFixed(0);
+        const stockText = stock.total_shares === 99999999 
+          ? '`Tanpa Batas (♾️)`' 
+          : `\`${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')}\` lembar`;
+        const progressBarText = stock.total_shares === 99999999
+          ? '`Tersedia Melimpah ⚡`'
+          : `\`${getMarketProgressBar(stock.available_shares, stock.total_shares, barSize)}\` *(${soldPct}% Terbeli)*`;
 
         desc += `🔹 **${stock.stock_ticker}** — <#${stock.channel_id}>\n` +
           `   ├─ 💵 **Harga** : **${formatCurrency(stock.current_price)}** / lembar\n` +
           `   ├─ 📊 **Tren**  : ${trendColor}**${pct}%** (${trendEmoji}) ${sparkline}\n` +
-          `   ├─ 📦 **Stok**  : \`${stock.available_shares} / ${stock.total_shares}\` lembar\n` +
-          `   └─ 🛡️ **Pasar** : \`${progressBar}\` *(${soldPct}% Terbeli)*\n\n`;
+          `   ├─ 📦 **Stok**  : ${stockText}\n` +
+          `   └─ 🛡️ **Pasar** : ${progressBarText}\n\n`;
       });
 
       desc += `────────────────────────────────────────`;
@@ -665,7 +670,7 @@ module.exports = {
         { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}** /lembar`, inline: true },
         { name: '💵 Harga Sebelumnya', value: `\`${formatCurrency(stock.previous_price)}\``, inline: true },
         { name: '📉 Performa Hari Ini', value: `\`${trendEmoji} (${diff >= 0 ? '+' : ''}${pct}%)\``, inline: true },
-        { name: '🏛️ Stok Pasar', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
+        { name: '🏛️ Stok Pasar', value: stock.total_shares === 99999999 ? '`Tanpa Batas (♾️)`' : `\`${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')} lembar\``, inline: true },
         { name: '🔥 Keaktifan Channel', value: `\`${stock.activity_score.toFixed(1)} poin\``, inline: true },
         { name: '📈 Tren Pergerakan Harga (10 Pembaruan Terakhir)', value: chartVisual, inline: false }
       )
@@ -719,7 +724,7 @@ module.exports = {
         { name: '📊 Sumbu Grafik 2D ASCII', value: chartVisual, inline: false },
         { name: '💰 Harga Saat Ini', value: `**${formatCurrency(stock.current_price)}**`, inline: true },
         { name: '📈 Performa Grafik', value: chartPerformanceText, inline: true },
-        { name: '🏛️ Sisa Bursa', value: `\`${stock.available_shares} / ${stock.total_shares} lembar\``, inline: true },
+        { name: '🏛️ Sisa Bursa', value: stock.total_shares === 99999999 ? '`Tanpa Batas (♾️)`' : `\`${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')} lembar\``, inline: true },
         {
           name: '📈 Statistik Grafik (Range)', value:
             `• Tertinggi (High): \`${formatCurrency(highPrice)}\`\n` +

@@ -1243,7 +1243,8 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           const trendEmoji = s.force_trend.includes('PUMP') ? '🔥' : '💥';
           trendSuffix = ` [${trendEmoji} **${s.force_trend}** sisa ${remainingMinutes}m]`;
         }
-        return `👉 **${s.stock_ticker}** (#${s.stock_name}) — Harga: \`Rp ${s.current_price.toLocaleString('id-ID')}\` | Sisa Bursa: \`${s.available_shares} lbr\`${trendSuffix}`;
+        const bursaSupplyText = s.total_shares === 99999999 ? 'Tanpa Batas (♾️)' : `${s.available_shares.toLocaleString('id-ID')} lbr`;
+        return `👉 **${s.stock_ticker}** (#${s.stock_name}) — Harga: \`Rp ${s.current_price.toLocaleString('id-ID')}\` | Sisa Bursa: \`${bursaSupplyText}\`${trendSuffix}`;
       }).join('\n');
     }
 

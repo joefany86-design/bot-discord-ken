@@ -60,10 +60,11 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
       .setPlaceholder('👉 Pilih Saham untuk Diperdagangkan...');
 
     activeStocks.forEach(s => {
+      const sisaBursa = s.total_shares === 99999999 ? 'Tanpa Batas (♾️)' : `${s.available_shares.toLocaleString('id-ID')} lembar`;
       selectMenu.addOptions(
         new StringSelectMenuOptionBuilder()
           .setLabel(`${s.stock_ticker} - #${s.stock_name}`)
-          .setDescription(`Harga: Rp ${s.current_price.toLocaleString('id-ID')} | Sisa Bursa: ${s.available_shares} lembar`)
+          .setDescription(`Harga: Rp ${s.current_price.toLocaleString('id-ID')} | Sisa: ${sisaBursa}`)
           .setValue(s.stock_ticker)
           .setDefault(s.stock_ticker === currentTicker)
       );
@@ -76,7 +77,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
       .setTitle(`📊 Transaksi Saham: ${activeStock.stock_ticker} — #${activeStock.stock_name}`)
       .setDescription(
         `🏛️ **Harga Saham:** **Rp ${activeStock.current_price.toLocaleString('id-ID')}** per lembar\n` +
-        `📉 **Sisa Bursa:** \`${activeStock.available_shares} / ${activeStock.total_shares} lembar\`\n` +
+        `📉 **Sisa Bursa:** ${activeStock.total_shares === 99999999 ? '`Tanpa Batas (♾️)`' : `\`${activeStock.available_shares.toLocaleString('id-ID')} / ${activeStock.total_shares.toLocaleString('id-ID')} lembar\``}\n` +
         `💵 **Saldo Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
         `💼 **Kepemilikan Portofolio:**\n` +
         `👉 Jumlah Aset: \`${userShares} / 500 lembar\` ${userShares >= 500 ? '⚠️ (Maks)' : ''}\n` +
