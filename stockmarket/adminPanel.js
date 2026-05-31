@@ -854,7 +854,11 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       new StringSelectMenuOptionBuilder()
         .setLabel('💰 Suntik Koin ke Seluruh Member (Massal)')
         .setDescription('Membuka modal input untuk membagikan koin ke semua warga terdaftar')
-        .setValue('global_give_all_coins_modal')
+        .setValue('global_give_all_coins_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💸 Bansos Massal (Kekayaan Terbatas)')
+        .setDescription('Bagi koin kepada seluruh member dengan total kekayaan di bawah limit tertentu')
+        .setValue('global_bansos_wealth_limit')
     );
 
     const globalRow = new ActionRowBuilder().addComponents(globalSelect);
@@ -1104,6 +1108,97 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             }
             database.run('UPDATE wallets SET balance = balance + ?, total_earned = total_earned + ? WHERE guild_id = ?', [amount, amount, guildId]);
             await sub.reply({ content: `💸 Sukses membagikan koin **Rp ${amount.toLocaleString('id-ID')}** kepada seluruh member terdaftar di server ini!`, flags: 64 });
+            const fresh = getBankPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'global_bansos_wealth_limit') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_bank_bansos_modal')
+            .setTitle('Bansos Massal Total Kekayaan');
+
+          const limitInput = new TextInputBuilder()
+            .setCustomId('wealth_limit')
+            .setLabel('Batas Maksimum Kekayaan Warga (Rp)')
+            .setPlaceholder('Contoh: 2000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('bansos_amount')
+            .setLabel('Nominal Koin Bantuan (Rp)')
+            .setPlaceholder('Contoh: 2000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(limitInput),
+            new ActionRowBuilder().addComponents(amountInput)
+          );
+          await iBank.showModal(modal);
+
+          const sub = await iBank.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_bank_bansos_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const wealthLimit = bank.parseAmount(sub.fields.getTextInputValue('wealth_limit'));
+            const bansosAmount = bank.parseAmount(sub.fields.getTextInputValue('bansos_amount'));
+
+            if (isNaN(wealthLimit) || wealthLimit <= 0) {
+              return sub.reply({ content: '❌ Batas maksimum kekayaan harus berupa angka bulat di atas 0!', flags: 64 });
+            }
+            if (isNaN(bansosAmount) || bansosAmount <= 0) {
+              return sub.reply({ content: '❌ Nominal koin bantuan harus berupa angka bulat di atas 0!', flags: 64 });
+            }
+
+            let receiverCount = 0;
+            let totalDistributed = 0;
+
+            database.transaction(() => {
+              const members = database.all(
+                `SELECT w.user_id, 
+                        (w.balance + COALESCE(bs.balance, 0) + COALESCE(pv.portfolio_value, 0)) as total_wealth
+                 FROM wallets w
+                 LEFT JOIN bank_savings bs ON w.user_id = bs.user_id AND w.guild_id = bs.guild_id
+                 LEFT JOIN (
+                   SELECT p.user_id, p.guild_id, SUM(p.shares * s.current_price) as portfolio_value
+                   FROM portfolios p
+                   JOIN stocks s ON p.channel_id = s.channel_id AND p.guild_id = s.guild_id
+                   GROUP BY p.user_id, p.guild_id
+                 ) pv ON w.user_id = pv.user_id AND w.guild_id = pv.guild_id
+                 WHERE w.guild_id = ?`,
+                [guildId]
+              );
+
+              for (const m of members) {
+                if (m.total_wealth < wealthLimit) {
+                  database.run(
+                    'UPDATE wallets SET balance = balance + ?, total_earned = total_earned + ? WHERE user_id = ? AND guild_id = ?',
+                    [bansosAmount, bansosAmount, m.user_id, guildId]
+                  );
+
+                  database.run(
+                    'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+                    [m.user_id, guildId, 'ADMIN_GIVE', bansosAmount]
+                  );
+
+                  receiverCount++;
+                  totalDistributed += bansosAmount;
+                }
+              }
+            })();
+
+            await sub.reply({
+              content: `💸 **DISTRIBUSI BANSOS SELESAI!**\n\n` +
+                       `• Target Penerima : Total Kekayaan < **Rp ${wealthLimit.toLocaleString('id-ID')}**\n` +
+                       `• Nominal Bansos  : **Rp ${bansosAmount.toLocaleString('id-ID')}** per orang\n` +
+                       `• Total Penerima  : **${receiverCount} member**\n` +
+                       `• Total Dana Keluar: **Rp ${totalDistributed.toLocaleString('id-ID')}**`,
+              flags: 64
+            });
+
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
