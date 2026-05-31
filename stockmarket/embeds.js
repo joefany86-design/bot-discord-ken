@@ -2943,6 +2943,29 @@ module.exports = {
       )
       .setFooter({ text: 'Sebarkan kedamaian dan kasih sayang di Kosan 1A! 🌸' })
       .setTimestamp();
+  },
+
+  // 45. Global Action Announcement Embed
+  globalActionAnnouncementEmbed(adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
+    const embed = new EmbedBuilder()
+      .setColor(colorHex || '#7C4DFF')
+      .setTitle(isLaw ? '🚨 PENGUMUMAN REGULASI HUKUM GLOBAL' : '📢 PENGUMUMAN TINDAKAN EKONOMI GLOBAL')
+      .setDescription(
+        `🚨 **Tindakan Regulasi ${isLaw ? 'Hukum/Hukuman' : 'Ekonomi'} Global baru saja dipicu oleh Administrator!**\n\n` +
+        `**Tindakan:** ${actionName}\n` +
+        `**Deskripsi:** ${actionDescription}`
+      )
+      .setAuthor({
+        name: adminUser.username,
+        iconURL: adminUser.displayAvatarURL({ dynamic: true })
+      })
+      .setTimestamp()
+      .setFooter({ text: isLaw ? 'Sistem Hukum & Lapas Kosan 1A • Sentinel Law' : 'Sistem Regulasi Ekonomi Kosan 1A • Sentinel Finance' });
+
+    if (detailsFields && detailsFields.length > 0) {
+      embed.addFields(detailsFields);
+    }
+    return embed;
   }
 };
 

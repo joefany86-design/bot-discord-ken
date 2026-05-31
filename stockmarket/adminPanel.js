@@ -40,6 +40,25 @@ function getOrCreateEbyusSettings(gId) {
 }
 
 /**
+ * Mengirimkan embed pengumuman tindakan global ke channel ID 1509480324373942272.
+ */
+async function sendGlobalEconomyAnnouncement(client, guild, adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
+  const channelId = '1509480324373942272';
+  try {
+    const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+    if (!channel) {
+      console.error(`Gagal mengirim pengumuman ekonomi global: Channel ID ${channelId} tidak ditemukan.`);
+      return;
+    }
+    const embed = embeds.globalActionAnnouncementEmbed(adminUser, actionName, actionDescription, colorHex, detailsFields, isLaw);
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error('Error sending global economy announcement:', err);
+  }
+}
+
+
+/**
  * 🐾 1. PANEL PET & KANDANG (TAMAGOTCHI)
  */
 async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUserId = null) {
@@ -1108,6 +1127,17 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             }
             database.run('UPDATE wallets SET balance = balance + ?, total_earned = total_earned + ? WHERE guild_id = ?', [amount, amount, guildId]);
             await sub.reply({ content: `💸 Sukses membagikan koin **Rp ${amount.toLocaleString('id-ID')}** kepada seluruh member terdaftar di server ini!`, flags: 64 });
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '💰 Bagi-Bagi Koin Massal',
+              'Administrator membagikan koin secara massal kepada seluruh member terdaftar di server ini.',
+              '#00FF88',
+              [
+                { name: 'Nominal Dibagikan', value: `Rp ${amount.toLocaleString('id-ID')}`, inline: true }
+              ]
+            );
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1198,6 +1228,21 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
                        `• Total Dana Keluar: **Rp ${totalDistributed.toLocaleString('id-ID')}**`,
               flags: 64
             });
+
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '💸 Bansos Massal (Kekayaan Terbatas)',
+              'Administrator mendistribusikan bantuan sosial (bansos) koin kepada member dengan kekayaan terbatas.',
+              '#00FF88',
+              [
+                { name: 'Batas Kekayaan Maksimal', value: `Rp ${wealthLimit.toLocaleString('id-ID')}`, inline: true },
+                { name: 'Nominal Bansos per Orang', value: `Rp ${bansosAmount.toLocaleString('id-ID')}`, inline: true },
+                { name: 'Jumlah Penerima', value: `${receiverCount} member`, inline: true },
+                { name: 'Total Dana Terdistribusi', value: `Rp ${totalDistributed.toLocaleString('id-ID')}`, inline: true }
+              ]
+            );
 
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => {});
@@ -1375,10 +1420,30 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
             [guildId]
           );
           await iRob.reply({ content: '🚨 Sukses mereset global cooldown Bank Heist server. Warga dapat melakukan perampokan kembali!', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '🚨 Reset Cooldown Global Bank Heist',
+            'Cooldown global untuk melakukan perampokan bank server telah direset. Bank Heist kini siap untuk kembali dirampok oleh warga!',
+            '#3498db',
+            [],
+            true
+          );
         }
         else if (action === 'global_free_all_jail') {
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
           await iRob.reply({ content: '🔓 Sukses membebaskan seluruh tahanan dari penjara virtual secara massal!', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '🔓 Pembebasan Tahanan Massal',
+            'Seluruh tahanan yang berada di dalam penjara virtual saat ini telah dibebaskan secara massal oleh Administrator!',
+            '#3498db',
+            [],
+            true
+          );
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1785,11 +1850,29 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.BULL_RUN);
           await iSaham.reply({ content: '📈 Event bursa saham **BULL RUN** berhasil dipicu secara instan!', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '📈 Event Bursa: Bull Run!',
+            'Pasar saham sedang mengalami tren naik (Bullish Run) secara masif! Harga saham-saham di bursa melonjak tinggi.',
+            '#2ECC71',
+            []
+          );
         }
         else if (action === 'global_trigger_crash') {
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.MARKET_CRASH);
           await iSaham.reply({ content: '📉 Event bursa saham **MARKET CRASH** berhasil dipicu secara instan!', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '📉 Event Bursa: Market Crash!',
+            'Pasar saham sedang mengalami kejatuhan (Bearish Crash) secara mendadak! Harga saham-saham di bursa terjun bebas.',
+            '#FF3366',
+            []
+          );
         }
         else if (action === 'global_action_pump_all') {
           const activeStocks = database.all('SELECT * FROM stocks WHERE guild_id = ?', [guildId]);
@@ -1813,6 +1896,15 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           })();
 
           await iSaham.reply({ content: '📈 Pompa Pasar Sukses! Seluruh saham server telah dinaikkan ke **Rp 10.000 (Maksimal)** secara instan! 🚀', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '📈 Pompa Bursa Global (Max Out)',
+            'Seluruh instrumen saham di bursa server telah dipompa secara instan ke harga maksimal (Rp 10.000)!',
+            '#2ECC71',
+            []
+          );
           const fresh = getSahamPanelData(guildId, selectedTicker);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1838,6 +1930,15 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           })();
 
           await iSaham.reply({ content: '📉 Banting Pasar Sukses! Seluruh saham server telah diturunkan runtuh ke **Rp 10 (Minimal)** secara instan! 💥', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '📉 Crash Bursa Global (Crash Out)',
+            'Seluruh instrumen saham di bursa server telah didepresiasi secara instan ke harga minimal (Rp 10)!',
+            '#FF3366',
+            []
+          );
           const fresh = getSahamPanelData(guildId, selectedTicker);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1845,10 +1946,28 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.DOUBLE_EARNINGS);
           await iSaham.reply({ content: '💰 Event bursa saham **DOUBLE EARNING HOUR** berhasil dipicu secara instan!', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '💰 Event Bursa: Double Earning Hour!',
+            'Event pendapatan ganda untuk bursa saham diaktifkan selama 1 jam ke depan! Dapatkan keuntungan 2x lipat dari aktivitas Anda.',
+            '#FFD700',
+            []
+          );
         }
         else if (action === 'global_trigger_dividends') {
           const triggerSuccess = scheduler.triggerDividendsWeekly ? scheduler.triggerDividendsWeekly(client, guildId) : false;
           await iSaham.reply({ content: `💸 Pembagian Dividen Saham Mingguan berhasil dipicu secara manual!`, flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '💸 Pembagian Dividen Saham Mingguan',
+            'Administrator memicu pembagian dividen saham mingguan secara manual kepada seluruh pemegang saham aktif.',
+            '#9B59B6',
+            []
+          );
         }
         else if (action === 'bursa_global_add_modal') {
           const modal = new ModalBuilder()
@@ -1903,6 +2022,18 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             );
 
             await sub.reply({ content: `✅ Sukses mendaftarkan channel <#${chId}> sebagai saham **${tickName}** di bursa!`, flags: 64 });
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '➕ Pendaftaran Saham Bursa Baru',
+              'Text channel baru telah berhasil didaftarkan ke dalam instrumen bursa saham server.',
+              '#7C4DFF',
+              [
+                { name: 'Channel Saham', value: `<#${chId}>`, inline: true },
+                { name: 'Ticker Saham', value: `**${tickName}**`, inline: true }
+              ]
+            );
             const fresh = getSahamPanelData(guildId, selectedTicker);
             await replyMsg.edit(fresh).catch(() => {});
           }
@@ -1929,6 +2060,15 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             });
           })();
           await iSaham.reply({ content: '🔄 Sukses mereset total seluruh instrumen bursa saham server kembali ke setelan default.', flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '🔄 Re-Inisialisasi Bursa Saham',
+            'Bursa saham server telah di-reset total dan dikembalikan ke setelan instrumen default ($GENERAL, $LOUNGE, $SPAM).',
+            '#7C4DFF',
+            []
+          );
           const fresh = getSahamPanelData(guildId, selectedTicker);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -2088,6 +2228,17 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const mode = iAbyus.values[0];
         database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🎰 Sukses mengubah mode gacha server menjadi **${mode}**!`, flags: 64 });
+        await sendGlobalEconomyAnnouncement(
+          client,
+          guild,
+          author,
+          '🎰 Perubahan Mode Gacha Server',
+          `Administrator mengubah tingkat kesulitan/keberuntungan gacha role server.`,
+          '#00FFFF',
+          [
+            { name: 'Mode Baru', value: `**${mode}**`, inline: true }
+          ]
+        );
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
@@ -2095,6 +2246,17 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const mult = parseInt(iAbyus.values[0]);
         database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🪙 Sukses mengubah multiplier koin chat menjadi **${mult}x**!`, flags: 64 });
+        await sendGlobalEconomyAnnouncement(
+          client,
+          guild,
+          author,
+          '🪙 Perubahan Multiplier Koin Chat',
+          `Administrator mengubah pengali pendapatan koin chat harian warga server.`,
+          '#00FFFF',
+          [
+            { name: 'Multiplier Baru', value: `**${mult}x**`, inline: true }
+          ]
+        );
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
@@ -2147,6 +2309,17 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           database.run('UPDATE ebyus_settings SET expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
           
           await sub.reply({ content: `⏱️ Sukses memperbarui durasi event bypass menjadi **${minutes} menit** (auto-reset).`, flags: 64 });
+          await sendGlobalEconomyAnnouncement(
+            client,
+            guild,
+            author,
+            '⏱️ Pengaturan Durasi Event Bypass',
+            `Administrator mengatur batas waktu durasi aktif untuk event bypass ekonomi global server.`,
+            '#00FFFF',
+            [
+              { name: 'Durasi Aktif', value: `**${minutes} menit**`, inline: true }
+            ]
+          );
           const fresh = getAbyusPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -2157,6 +2330,15 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           ['NORMAL', 1, nowUnix, iAbyus.user.id, guildId]
         );
         await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL` dan multiplier koin chat kembali ke `1x` (nonaktif).', flags: 64 });
+        await sendGlobalEconomyAnnouncement(
+          client,
+          guild,
+          author,
+          '🛑 Penghentian Event Abuse',
+          `Seluruh event penyalahgunaan/abuse bypass ekonomi global telah dihentikan secara paksa. Semua setelan dikembalikan ke setelan normal.`,
+          '#00FFFF',
+          []
+        );
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
