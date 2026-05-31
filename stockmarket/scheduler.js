@@ -365,26 +365,51 @@ function initScheduler(client) {
       }
 
       if (targetChannel) {
+        const totalPayout = distributions.reduce((sum, d) => sum + d.amount, 0);
+        const uniqueRecipients = new Set(distributions.map(d => d.userId)).size;
+        const topEarner = [...distributions].sort((a, b) => b.amount - a.amount)[0];
+        const topUser = topEarner ? (client.users.cache.get(topEarner.userId)?.username || `<@${topEarner.userId}>`) : '-';
+        const topPayoutText = topEarner ? `👑 **${topUser}** (+Rp ${topEarner.amount.toLocaleString('id-ID')} via **${topEarner.ticker}**)` : '`-`';
+
         let listText = '';
-        distributions.slice(0, 10).forEach((d, idx) => {
+        distributions.slice(0, 10).forEach((d) => {
           const user = client.users.cache.get(d.userId);
           const username = user ? user.username : `<@${d.userId}>`;
-          listText += `💰 **${username}** — Dapat **Rp ${d.amount.toLocaleString('id-ID')}** dari **${d.ticker}** (Rate: \`${d.rate}%\`, Aktif: \`${d.activity}\`)\n`;
+          listText += `> 💰 **${username}** Menerima **Rp ${d.amount.toLocaleString('id-ID')}** dari **${d.ticker}**\n` +
+                      `> ┊ 📈 *Rate:* \`${d.rate}%\` · ⚡ *Skor Aktif:* \`${d.activity}\` · 📦 *Hold:* \`${d.shares} lbr\`\n`;
         });
         if (distributions.length > 10) {
-          listText += `*...dan ${distributions.length - 10} transaksi dividen lainnya!*`;
+          listText += `> *...dan ${distributions.length - 10} transaksi dividen lainnya!*`;
         }
 
         const embed = new EmbedBuilder()
-          .setColor(0x00FF88)
+          .setColor(0x00FF88) // Neon Emerald Green
           .setTitle('💸 DISTRIBUSI DIVIDEN BURSA MINGGUAN! 📈')
           .setDescription(
-            `🎉 **Selamat Hari Minggu Malam!** Pembayaran dividen mingguan dinamis berbasis keaktifan chat warga telah sukses dikirim langsung ke dompet Anda!\n\n` +
-            `Member yang memegang saham channel aktif menerima tingkat keuntungan (rate) dividen yang jauh lebih tinggi! 🔥\n\n` +
-            `👉 **Total Distribusi:** **${distributions.length} transaksi**\n` +
-            `👉 **Rincian Penerima Dividen:**\n${listText || '*Tidak ada transaksi*'}\n\n` +
-            `*Periksa portofolio & saldo terbaru Anda sekarang dengan mengetik \`.porto\` atau \`.bal\`!*`
+            `🎉 **Selamat Hari Minggu Malam!**\n` +
+            `Sistem Bursa Saham telah membagikan dividen mingguan dinamis langsung ke dompet Anda! Dividen dihitung secara proporsional berdasarkan jumlah lembar saham yang di-hold dan keaktifan chat masing-masing channel selama 7 hari terakhir.`
           )
+          .addFields(
+            {
+              name: '📊 Ringkasan Distribusi',
+              value: `├─ 👥 **Total Penerima:** \`${uniqueRecipients} Warga\`\n` +
+                     `├─ 💸 **Total Transaksi:** \`${distributions.length} Transaksi\`\n` +
+                     `├─ 💰 **Dana Cair:** **Rp ${totalPayout.toLocaleString('id-ID')}**\n` +
+                     `└─ 🏆 **Penerima Tertinggi:** ${topPayoutText}`,
+              inline: false
+            },
+            {
+              name: '📋 Rincian Transaksi Teratas',
+              value: listText || '> *Tidak ada transaksi*',
+              inline: false
+            },
+            {
+              name: '💡 Tips Finansial',
+              value: `Hold saham channel teraktif untuk mendapatkan tingkat keuntungan (rate) dividen mingguan yang jauh lebih tinggi! Gunakan \`.porto\` untuk cek portofolio Anda atau \`.bal\` untuk saldo saat ini.`,
+              inline: false
+            }
+          )
+          .setFooter({ text: 'Bursa Saham Kosan 1A • Dividen Mingguan Otomatis' })
           .setTimestamp();
         
         targetChannel.send({ embeds: [embed] }).catch(() => {});

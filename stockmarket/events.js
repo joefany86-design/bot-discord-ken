@@ -125,13 +125,13 @@ function triggerEvent(client, guild, type) {
   try {
     db.run('DELETE FROM active_events WHERE guild_id = ?', [guildId]);
   } catch (err) {
-    console.error(`❌ Gaps hapus active event sebelum trigger di DB:`, err.message);
+    console.error('❌ Gagal hapus active event sebelum trigger di DB:', err.message);
   }
 
   let eventTitle = '';
-  let eventDesc = '';
-  let embedColor = 0x5865F2;
   let effectSummary = '';
+  
+  const embed = new EmbedBuilder().setTimestamp();
 
   // Inisialisasi saham default jika belum ada
   stocks.initDefaultStocks(guild);
@@ -159,10 +159,30 @@ function triggerEvent(client, guild, type) {
       });
     }
 
-    eventTitle = '🚨 EVENT EKONOMI: MARKET CRASH!';
-    eventDesc = '📉 **Kepanikan melanda server!** Krisis finansial global menyebabkan kepanikan massal di lantai bursa.';
-    effectSummary = '⚠️ Semua harga saham anjlok sebesar **-20%** secara instan!\n*Saat yang tepat untuk serok muatan di harga murah?*';
-    embedColor = embeds.COLORS.ERROR; // Red
+    eventTitle = '🚨 EVENT EKONOMI: MARKET CRASH! 📉';
+    effectSummary = '⚠️ Semua harga saham anjlok sebesar -20% secara instan!\n*Saat yang tepat untuk serok muatan di harga murah?*';
+    
+    const crashAnsi = '```ansi\n\u001b[1;31m⚠️ SEMUA HARGA SAHAM ANJLOK -20% INSTAN!\u001b[0m\n```';
+
+    embed.setColor(embeds.COLORS.ERROR)
+      .setTitle(eventTitle)
+      .setDescription(
+        '💥 **KEPANIKAN MASSAL DI LANTAI BURSA!**\n' +
+        'Krisis finansial global mendadak menyerang server Kosan 1A! Sentimen negatif memicu aksi jual panik berantai (panic selling) dari para investor kelas kakap hingga eceran.'
+      )
+      .addFields(
+        {
+          name: '📉 Dampak Kerusakan',
+          value: crashAnsi,
+          inline: false
+        },
+        {
+          name: '💡 Analisis Strategis',
+          value: '🛒 **Saatnya Serok Muatan Murah?**\n' +
+                 'Ini adalah momen emas untuk membeli saham-saham unggulan di harga diskon (**Buy the Dip!**). Siapkan koin Rupiah Anda dan borong stok sebelum pasar pulih!',
+          inline: false
+        }
+      );
 
   } else if (type === EVENT_TYPES.BULL_RUN) {
     // Naikkan harga semua saham aktif sebesar 15%
@@ -187,10 +207,30 @@ function triggerEvent(client, guild, type) {
       });
     }
 
-    eventTitle = '🟢 EVENT EKONOMI: BULL RUN!';
-    eventDesc = '📈 **Optimisme pasar meroket!** Sentimen positif meluap dan gairah investasi sedang membara di seluruh server.';
-    effectSummary = '🚀 Semua harga saham melonjak sebesar **+15%** secara instan!\n*Para holder saham tersenyum lebar melihat portofolio mereka menghijau!*';
-    embedColor = embeds.COLORS.SUCCESS; // Green
+    eventTitle = '🟢 EVENT EKONOMI: BULL RUN! 🚀';
+    effectSummary = '🚀 Semua harga saham melonjak sebesar +15% secara instan!\n*Para holder saham tersenyum lebar melihat portofolio mereka menghijau!*';
+    
+    const bullAnsi = '```ansi\n\u001b[1;32m🚀 SEMUA HARGA SAHAM MELONJAK +15% INSTAN!\u001b[0m\n```';
+
+    embed.setColor(embeds.COLORS.SUCCESS)
+      .setTitle(eventTitle)
+      .setDescription(
+        '📈 **GAIRAH PASAR MEROKET TINGGI!**\n' +
+        'Optimisme investasi sedang meluap hebat di seluruh server Kosan 1A! Suntikan likuiditas asing dan antusiasme warga memicu tren hijau raksasa di lantai bursa.'
+      )
+      .addFields(
+        {
+          name: '📈 Dampak Keuntungan',
+          value: bullAnsi,
+          inline: false
+        },
+        {
+          name: '💡 Analisis Strategis',
+          value: '💰 **Waktunya Ambil Keuntungan?**\n' +
+                 'Para pemegang saham (holders) tersenyum lebar melihat portofolio mereka menghijau royo-royo. Apakah Anda akan melikuidasi profit sekarang atau HODL ke bulan?',
+          inline: false
+        }
+      );
 
   } else if (type === EVENT_TYPES.DOUBLE_EARNING) {
     // Berdurasi 1 jam
@@ -201,13 +241,38 @@ function triggerEvent(client, guild, type) {
         [guildId, EVENT_TYPES.DOUBLE_EARNING, endsAt]
       );
     } catch (err) {
-      console.error(`❌ Gagal menyimpan active_event DOUBLE_EARNING ke DB:`, err.message);
+      console.error('❌ Gagal menyimpan active_event DOUBLE_EARNING ke DB:', err.message);
     }
 
-    eventTitle = '💰 EVENT EKONOMI: DOUBLE EARNING HOUR!';
-    eventDesc = '⚡ **Waktunya panen koin!** Keaktifan mengobrol di seluruh channel text server sedang mendapatkan booster spesial.';
-    effectSummary = `🔥 Selama **1 jam ke depan**, setiap koin **${config.CURRENCY_NAME}** yang kamu dapatkan dari mengirim pesan (chatting) akan bernilai **2 KALI LIPAT**!\n\n🕒 Event berakhir pada: <t:${endsAt}:F> (<t:${endsAt}:R>)`;
-    embedColor = embeds.COLORS.PURPLE; // Purple
+    eventTitle = '💰 EVENT EKONOMI: DOUBLE EARNING HOUR! ⚡';
+    effectSummary = '🔥 Selama 1 jam ke depan, pendapatan chat bernilai 2 KALI LIPAT! Selesai pada: <t:' + endsAt + ':F>';
+    
+    const doubleAnsi = '```ansi\n\u001b[1;36m🔥 2X LIPAT PENDAPATAN DARI SETIAP CHAT!\u001b[0m\n```';
+
+    embed.setColor(embeds.COLORS.PURPLE)
+      .setTitle(eventTitle)
+      .setDescription(
+        '🔥 **BOOSTER ENERGI AKTIVITAS CHAT DIAKTIFKAN!**\n' +
+        'Waktunya memanen koin Rupiah Server! Selama satu jam penuh, keaktifan mengobrol di seluruh channel text server sedang mendapatkan pelipat gandaan berkah.'
+      )
+      .addFields(
+        {
+          name: '⚡ Efek Booster',
+          value: doubleAnsi,
+          inline: false
+        },
+        {
+          name: '🕒 Informasi Waktu',
+          value: '├─ **Durasi Aktif:** `1 Jam Penuh`\n' +
+                 '└─ **Selesai Pada:** <t:' + endsAt + ':F> (<t:' + endsAt + ':R>)',
+          inline: false
+        },
+        {
+          name: '💡 Tips Warga',
+          value: '💬 Segera merapat ke Lounge atau channel obrolan aktif lainnya! Ketik pesan berfaedah Anda sebanyak-banyaknya untuk melipatgandakan tabungan Anda secara instan.',
+          inline: false
+        }
+      );
 
   } else if (type === EVENT_TYPES.BREAKING_NEWS) {
     // 1. Pilih template berita acak
@@ -264,17 +329,50 @@ function triggerEvent(client, guild, type) {
     // Tentukan warna & persentase perubahan teks
     const pctChange = ((newPrice - oldPrice) / oldPrice) * 100;
     const pctSign = pctChange >= 0 ? '+' : '';
-    const pctText = `\`${pctSign}${pctChange.toFixed(1)}%\``;
+    const pctText = '`' + pctSign + pctChange.toFixed(1) + '%`';
     
-    eventTitle = '🚨 BREAKING NEWS: INFO BURSA UTAMA 🚨';
-    eventDesc = `📰 **${news.headline}**\n\n💬 ${news.desc}`;
-    effectSummary = `🎯 **Saham Terpengaruh:** **${selectedStock.stock_ticker}** (#${selectedStock.stock_name})\n` +
-                    `👉 **Perubahan Instan:** ${pctText} (${isPositive ? '📈 NAIK' : '📉 TURUN'})\n` +
-                    `💵 **Harga Lama:** Rp ${oldPrice.toLocaleString('id-ID')} ➔ **Harga Baru:** Rp ${newPrice.toLocaleString('id-ID')}\n\n` +
-                    `*Warga server disarankan memantau pergerakan pasar secara bijak sebelum mengambil keputusan trading!*`;
-                    
-    embedColor = isPositive ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR;
+    eventTitle = '📰 BREAKING NEWS: INFORMASI BURSA UTAMA! 🚨';
+    effectSummary = 'Saham ' + selectedStock.stock_ticker + ' ' + (isPositive ? 'NAIK' : 'TURUN') + ' ' + pctText + ' menjadi Rp ' + newPrice.toLocaleString('id-ID');
+    
+    const escChar = String.fromCharCode(27);
+    const nlChar = String.fromCharCode(10);
+    const trendDirText = isPositive ? '🟢 Naik Signifikan' : '🔴 Turun Tajam';
+    const percentChangeText = isPositive ? '+' + pctChange.toFixed(1) + '%' : pctChange.toFixed(1) + '%';
+    const priceTransitionAnsi = '```ansi' + nlChar + escChar + '[1;30mRp ' + oldPrice.toLocaleString('id-ID') + escChar + '[0m ➔ ' + escChar + '[1;' + (isPositive ? '32m' : '31m') + 'Rp ' + newPrice.toLocaleString('id-ID') + escChar + '[0m' + nlChar + '```';
+
+    embed.setColor(isPositive ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR)
+      .setTitle(eventTitle)
+      .setDescription(
+        '📢 **LAPORAN KHUSUS STASIUN RADAR KOSAN 1A**' + nlChar +
+        'Sebuah peristiwa mengejutkan baru saja terjadi dan memicu kepanikan serta spekulasi intens di kalangan pelaku pasar saham!'
+      )
+      .addFields(
+        {
+          name: '📰 Berita Utama',
+          value: '**' + news.headline + '**' + nlChar + '*“' + news.desc + '”*',
+          inline: false
+        },
+        {
+          name: '🎯 Dampak Saham Spesifik',
+          value: '├─ **Saham Terdampak:** **' + selectedStock.stock_ticker + '** (`#' + selectedStock.stock_name + '`)' + nlChar +
+                 '├─ **Arah Pergerakan:** ' + trendDirText + nlChar +
+                 '└─ **Persentase Perubahan:** `' + percentChangeText + '`',
+          inline: false
+        },
+        {
+          name: '💵 Penyesuaian Harga',
+          value: priceTransitionAnsi,
+          inline: false
+        },
+        {
+          name: '💡 Rekomendasi Trader',
+          value: 'Periksa portofolio Anda terhadap ticker **' + selectedStock.stock_ticker + '** segera! Ambil tindakan sebelum pelaku pasar lain mendominasi antrean beli/jual!',
+          inline: false
+        }
+      );
   }
+
+  embed.setFooter({ text: 'Event Ekonomi Random Server Kosan 1A', iconURL: client.user?.displayAvatarURL() || null });
 
   // Kirim pengumuman ke channel laporan atau system channel
   let targetChannel = null;
@@ -287,17 +385,9 @@ function triggerEvent(client, guild, type) {
     );
   }
 
-  const embed = new EmbedBuilder()
-    .setColor(embedColor)
-    .setTitle(eventTitle)
-    .setDescription(eventDesc)
-    .addFields({ name: '✨ Efek Event', value: effectSummary })
-    .setFooter({ text: 'Event Ekonomi Random Server Kosan 1A' })
-    .setTimestamp();
-
   if (targetChannel) {
     targetChannel.send({ content: '@everyone', embeds: [embed] }).catch(err => {
-      console.error(`❌ Gagal mengirim pengumuman event di guild ${guild.name}:`, err.message);
+      console.error('❌ Gagal mengirim pengumuman event di guild ' + guild.name + ':', err.message);
     });
   }
 
