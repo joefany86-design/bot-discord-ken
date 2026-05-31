@@ -629,6 +629,26 @@ client.on('messageCreate', async message => {
     }
   }
 
+  // Proteksi Saluran Laporan Bursa Saham (Channel ID: 1509480324373942272)
+  if (message.channelId === '1509480324373942272') {
+    const isOwner = message.author.id === OWNER_ID;
+    const isAdmin = message.member && message.member.permissions.has('Administrator');
+
+    if (!isOwner && !isAdmin) {
+      await message.delete().catch(() => {});
+      const warnMsg = await message.channel.send({
+        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk notifikasi saham, laporan harian, dan event bursa saham!`
+      }).catch(() => null);
+
+      if (warnMsg) {
+        setTimeout(() => {
+          warnMsg.delete().catch(() => {});
+        }, 5000);
+      }
+      return;
+    }
+  }
+
   // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
   const processed = await handleLinkMirroring(message, client);
   if (processed) return;
@@ -683,7 +703,8 @@ client.on('messageCreate', async message => {
     '1510121069783023646', // #🛍️┃shop (Portal Dashboard)
     '1422642326798598348',
     '1472428770710261952',
-    '1422656689710305381'
+    '1422656689710305381',
+    '1509480324373942272' // #📉┃bursa-saham (Notifikasi & Laporan Saham)
   ];
   if (BLOCKED_CMD_CHANNELS.includes(message.channelId)) {
     const warnMsg = await message.channel.send({
