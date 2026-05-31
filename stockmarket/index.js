@@ -4198,6 +4198,8 @@ async function handleEconomyCommands(message, client) {
         }
         if (res.lockpickUsed) {
           toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
+        } else {
+          toolText += `❌ *Kamu merampok tanpa menggunakan Linggis (Peluang sukses -25%, denda +Rp 150, & hukuman penjara +50%)!* ⚠️\n`;
         }
         if (!res.victimClaimedDaily) {
           toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (peluang sukses naik menjadi 50%)!*\n';

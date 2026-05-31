@@ -113,10 +113,10 @@ if (res.success) {
     console.log("   ❌ FAILED: Mask item not consumed!");
   }
 } else {
-  console.log(`   👉 Fine per member: Rp ${res.fineAmount} (Expected: Rp 300 - Golem mitigated -25% from stats.fine = 400)`);
-  console.log(`   👉 Jail Hours: ${res.jailHours} jam (Expected: 1.1 jam - Golem mitigated -25% from 1.5 jam)`);
+  console.log(`   👉 Fine per member: Rp ${res.fineAmount} (Expected: Rp 375 - Golem mitigated -25% from stats.fine = 500)`);
+  console.log(`   👉 Jail Hours: ${res.jailHours} jam (Expected: 1.5 jam - Golem mitigated -25% from 2.0 jam)`);
   console.log(`   👉 Dodged jail users:`, res.dodgedJailUsers);
-  if (res.fineAmount === 300) {
+  if (res.fineAmount === 375) {
     console.log("   ✅ SUCCESS: Failure jail/fine mitigation applied correctly!");
   } else {
     console.log("   ❌ FAILED: Fine mitigation did not work!");

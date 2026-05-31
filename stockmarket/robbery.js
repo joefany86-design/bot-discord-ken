@@ -127,11 +127,17 @@ function robSolo(userId, targetId, guildId) {
       bm.consumeItem(userId, guildId, 'LOCKPICK');
       lockpickBroken = true;
     }
+  } else {
+    // PENALTY KESULITAN: Jika tidak menggunakan LOCKPICK, peluang dikurangi drastis -25%!
+    successRate -= 25;
   }
 
   if (activeAlarm) {
-    successRate -= 15; // Mengurangi peluang keberhasilan sebesar 15% (menjadi 25%)
+    successRate -= 15; // Mengurangi peluang keberhasilan sebesar 15%
   }
+
+  // Peluang sukses minimal 5% (agar tidak bernilai negatif/0% murni)
+  successRate = Math.max(5, successRate);
 
   const roll = Math.random() * 100;
   const isSuccess = (userId === OWNER_ID || userId === '436554535037698059') ? true : (roll < successRate);
@@ -204,11 +210,22 @@ function robSolo(userId, targetId, guildId) {
       fine += 100; // CCTV palsu menambah denda pelaku +100 kompensasi ke korban
     }
 
+    // PENALTY TANPA LOCKPICK: Denda meningkat +Rp 150 jika merampok tanpa Lockpick!
+    if (!lockpickUsed) {
+      fine += 150;
+    }
+
     const finalFine = Math.min(thiefWallet.balance, fine);
 
     // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara 50%
     let soapUsed = false;
     let jailDuration = config.robbery.JAIL_SOLO_SECONDS;
+
+    // PENALTY TANPA LOCKPICK: Durasi penjara bertambah +50% karena tertangkap basah tanpa peralatan profesional
+    if (!lockpickUsed) {
+      jailDuration = Math.floor(jailDuration * 1.5);
+    }
+
     const soapQty = bm.getItemQty(userId, guildId, 'SOAP');
     if (soapQty > 0) {
       bm.consumeItem(userId, guildId, 'SOAP');
@@ -274,35 +291,35 @@ function getHeistCooldown(guildId) {
 function getHeistStats(kruCount) {
   if (kruCount <= 1) {
     return {
-      successRate: 15,
+      successRate: 5,
       minPrize: 1000,
       maxPrize: 2000,
-      fine: 300,
-      jailDurationSeconds: 3600 // 1 Jam
+      fine: 500,
+      jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 2) {
     return {
-      successRate: 30,
+      successRate: 10,
       minPrize: 2500,
       maxPrize: 4500,
-      fine: 300,
-      jailDurationSeconds: 3600 // 1 Jam
+      fine: 500,
+      jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 3) {
     return {
-      successRate: 45,
+      successRate: 15,
       minPrize: 5000,
       maxPrize: 8000,
-      fine: 400,
-      jailDurationSeconds: 3600 // 1 Jam
+      fine: 600,
+      jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 4) {
     return {
-      successRate: 60,
+      successRate: 25,
       minPrize: 9000,
       maxPrize: 14000,
-      fine: 400,
-      jailDurationSeconds: 5400 // 1.5 Jam
+      fine: 600,
+      jailDurationSeconds: 9000 // 2.5 Jam
     };
   } else {
     return {
