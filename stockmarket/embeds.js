@@ -2219,13 +2219,15 @@ module.exports = {
 
     if (result.draw) {
       embed
-        .setColor(COLORS.WARN)
+        .setColor(0xFFB300) // Vibrant Gold/Amber
         .setDescription(
-          `🤝 **HASIL PERTANDINGAN: SERI (DRAW) !**\n\n` +
-          `Pertempuran sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berakhir imbang!\n\n` +
-          `• Sisa HP Challenger: \`${result.challengerHP}%\`\n` +
-          `• Sisa HP Opponent: \`${result.opponentHP}%\`\n\n` +
-          `💰 Seluruh taruhan dikembalikan tanpa potongan pajak arena.`
+          `🤝 **HASIL AKHIR ARENA: SEIMBANG (DRAW) !** 🤝\n\n` +
+          `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat alot dan berakhir imbang!\n\n` +
+          `📊 **STATUS HP TERAKHIR:**\n` +
+          `├─ ⚔️ **${result.challengerName}** (Challenger): \`${result.challengerHP}%\` HP\n` +
+          `└─ 🛡️ **${result.opponentName}** (Opponent): \`${result.opponentHP}%\` HP\n\n` +
+          `🪙 **Hasil Taruhan:**\n` +
+          `Seluruh koin taruhan dikembalikan ke masing-masing pihak tanpa potongan pajak arena!`
         );
     } else {
       const isChalWinner = result.winnerId === challengerUser.id;
@@ -2233,12 +2235,16 @@ module.exports = {
       const loserUser = isChalWinner ? opponentUser : challengerUser;
       
       embed
-        .setColor(COLORS.SUCCESS)
+        .setColor(0x7C4DFF) // Premium Royal Violet
         .setDescription(
-          `🏆 **PEMENANG ARENA: ${result.winnerName.toUpperCase()} !**\n\n` +
-          `Selamat kepada **${winnerUser.username}**! Pet kesayangan Anda (**${result.winnerName}**) sukses menumbangkan (**${result.loserName}**) milik **${loserUser.username}**!\n\n` +
-          `💰 **Total Jackpot Hadiah:** **${formatCurrency(result.prizePool)}** *(sudah potong pajak arena 5% - Rp ${result.tax.toLocaleString('id-ID')})*\n` +
-          `📈 XP & Level pet pemenang telah ditambahkan secara otomatis.`
+          `👑 **PEMENANG MUTLAK BATTLE ARENA** 👑\n\n` +
+          `🏆 **${result.winnerName.toUpperCase()}** (milik **${winnerUser.username}**)\n` +
+          `💥 Sukses menumbangkan **${result.loserName}** (milik **${loserUser.username}**)!` +
+          `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `💰 **HADIAH JACKPOT PERTEMPURAN:**\n` +
+          `├─ 🎁 Total Bersih: **${formatCurrency(result.prizePool)}**\n` +
+          `└─ 🏛️ Pajak Arena (5%): **Rp ${result.tax.toLocaleString('id-ID')}** *(Disetorkan ke Kas Server)*\n\n` +
+          `📈 *XP & Level pet pemenang telah ditambahkan secara otomatis.*`
         );
     }
 
