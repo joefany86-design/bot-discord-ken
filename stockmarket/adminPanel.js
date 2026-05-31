@@ -1235,8 +1235,15 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
     
     let bursaList = '*Tidak ada instrumen saham terdaftar di bursa*';
     if (activeStocks.length > 0) {
+      const nowUnix = Math.floor(Date.now() / 1000);
       bursaList = activeStocks.map(s => {
-        return `👉 **${s.stock_ticker}** (#${s.stock_name}) — Harga: \`Rp ${s.current_price.toLocaleString('id-ID')}\` | Sisa Bursa: \`${s.available_shares} lbr\``;
+        let trendSuffix = '';
+        if (s.force_trend && s.force_trend !== 'NONE' && s.force_until > nowUnix) {
+          const remainingMinutes = Math.ceil((s.force_until - nowUnix) / 60);
+          const trendEmoji = s.force_trend.includes('PUMP') ? '🔥' : '💥';
+          trendSuffix = ` [${trendEmoji} **${s.force_trend}** sisa ${remainingMinutes}m]`;
+        }
+        return `👉 **${s.stock_ticker}** (#${s.stock_name}) — Harga: \`Rp ${s.current_price.toLocaleString('id-ID')}\` | Sisa Bursa: \`${s.available_shares} lbr\`${trendSuffix}`;
       }).join('\n');
     }
 
@@ -1279,9 +1286,17 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
     actionSelect.addOptions(
       new StringSelectMenuOptionBuilder()
-        .setLabel('📉 Paksa Turunkan Harga Saham (Drop Modal)')
-        .setDescription('Menurunkan paksa harga saham terpilih sebesar persentase tertentu')
+        .setLabel('📈 Paksa Naikkan Harga (Pump Modal)')
+        .setDescription('Meningkatkan paksa harga saham terpilih sebesar persentase tertentu (1 - 500%)')
+        .setValue('bursa_action_pump_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📉 Paksa Turunkan Harga (Drop Modal)')
+        .setDescription('Menurunkan paksa harga saham terpilih sebesar persentase tertentu (1 - 99%)')
         .setValue('bursa_action_drop_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🧬 Manipulasi Tren Saham (Seharian/Per Jam)')
+        .setDescription('Mengunci tren pergerakan harga saham terpilih (PUMP/DUMP/MAX/MIN) untuk durasi tertentu')
+        .setValue('bursa_action_manipulate_trend_modal'),
       new StringSelectMenuOptionBuilder()
         .setLabel('❌ Hapus Saham dari Bursa')
         .setDescription('Menghapus permanen instrumen saham ini dan membersihkan portofolio warga')
@@ -1303,6 +1318,14 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
         .setLabel('📉 Picu Bursa: Event Market Crash')
         .setDescription('Memicu penurunan drastis harga saham bursa secara masif')
         .setValue('global_trigger_crash'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📈 Pompa Semua Harga Saham (Max Out)')
+        .setDescription('Membuat semua saham bernilai maksimal (Rp 10.000) secara instan')
+        .setValue('global_action_pump_all'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📉 Banting Semua Harga Saham (Crash Out)')
+        .setDescription('Membuat semua saham runtuh ke harga minimal (Rp 10) secara instan')
+        .setValue('global_action_drop_all'),
       new StringSelectMenuOptionBuilder()
         .setLabel('💰 Picu Bursa: Double Earning Hour')
         .setDescription('Memicu event pendapatan ganda bursa instan selama 1 jam')
@@ -1376,7 +1399,55 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           return iSaham.reply({ content: '❌ Silakan pilih ticker saham terlebih dahulu!', flags: 64 });
         }
 
-        if (action === 'bursa_action_drop_modal') {
+        if (action === 'bursa_action_pump_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_saham_pump_modal')
+            .setTitle(`Pump Harga Saham ${selectedTicker}`);
+
+          const pctInput = new TextInputBuilder()
+            .setCustomId('pump_percent')
+            .setLabel('Persentase Kenaikan (1 - 500)')
+            .setPlaceholder('Contoh: 50 untuk naik +50%')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(pctInput));
+          await iSaham.showModal(modal);
+
+          const sub = await iSaham.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_saham_pump_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const percent = parseInt(sub.fields.getTextInputValue('pump_percent'));
+            if (isNaN(percent) || percent < 1 || percent > 500) {
+              return sub.reply({ content: '❌ Nilai harus berupa angka bulat antara 1 hingga 500!', flags: 64 });
+            }
+            const stock = stocks.getStock(guildId, selectedTicker);
+            if (!stock) {
+              return sub.reply({ content: '❌ Saham tidak ditemukan!', flags: 64 });
+            }
+            const oldPrice = stock.current_price;
+            const newPrice = Math.min(config.market.MAX_PRICE, Math.round(oldPrice * (1 + percent / 100)));
+
+            database.transaction(() => {
+              database.run(
+                'UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?',
+                [oldPrice, newPrice, stock.channel_id, guildId]
+              );
+              database.run(
+                'INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)',
+                [stock.channel_id, guildId, newPrice]
+              );
+            })();
+
+            await sub.reply({ content: `📈 Sukses menaikkan harga saham **${selectedTicker}** sebesar **+${percent}%** (Lama: Rp ${oldPrice.toLocaleString('id-ID')} -> Baru: Rp ${newPrice.toLocaleString('id-ID')})!`, flags: 64 });
+            const fresh = getSahamPanelData(guildId, selectedTicker);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'bursa_action_drop_modal') {
           const modal = new ModalBuilder()
             .setCustomId('admin_saham_drop_modal')
             .setTitle(`Drop Harga Saham ${selectedTicker}`);
@@ -1424,6 +1495,82 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             await replyMsg.edit(fresh).catch(() => {});
           }
         }
+        else if (action === 'bursa_action_manipulate_trend_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_saham_trend_modal')
+            .setTitle(`Kunci Tren ${selectedTicker}`);
+
+          const trendInput = new TextInputBuilder()
+            .setCustomId('trend_type')
+            .setLabel('Tren (PUMP / DUMP / PUMP_MAX / DUMP_MIN / NONE)')
+            .setPlaceholder('Ketik jenis tren (contoh: PUMP)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const durationInput = new TextInputBuilder()
+            .setCustomId('trend_duration')
+            .setLabel('Durasi Jam (Contoh: 24 untuk seharian, 1 per jam)')
+            .setPlaceholder('Ketik angka jam (contoh: 24)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(trendInput),
+            new ActionRowBuilder().addComponents(durationInput)
+          );
+          await iSaham.showModal(modal);
+
+          const sub = await iSaham.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_saham_trend_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const trendVal = sub.fields.getTextInputValue('trend_type').trim().toUpperCase();
+            const durationVal = parseFloat(sub.fields.getTextInputValue('trend_duration'));
+
+            const validTrends = ['PUMP', 'DUMP', 'PUMP_MAX', 'DUMP_MIN', 'NONE'];
+            if (!validTrends.includes(trendVal)) {
+              return sub.reply({ content: '❌ Jenis tren tidak valid! Pilih: PUMP, DUMP, PUMP_MAX, DUMP_MIN, atau NONE.', flags: 64 });
+            }
+
+            if (isNaN(durationVal) || durationVal <= 0) {
+              return sub.reply({ content: '❌ Durasi jam tidak valid! Masukkan angka positif (contoh: 24 untuk seharian, 1 untuk 1 jam).', flags: 64 });
+            }
+
+            const stock = stocks.getStock(guildId, selectedTicker);
+            if (!stock) {
+              return sub.reply({ content: '❌ Saham tidak ditemukan!', flags: 64 });
+            }
+
+            const durationSecs = durationVal * 3600;
+            const expiresAt = trendVal === 'NONE' ? 0 : Math.floor(Date.now() / 1000) + durationSecs;
+
+            database.transaction(() => {
+              database.run(
+                "UPDATE stocks SET force_trend = ?, force_until = ? WHERE channel_id = ? AND guild_id = ?",
+                [trendVal, expiresAt, stock.channel_id, guildId]
+              );
+              // Jika MAX/MIN dipicu, perbarui harga langsung demi kepuasan admin instan!
+              if (trendVal === 'PUMP_MAX') {
+                const oldP = stock.current_price;
+                const newP = config.market.MAX_PRICE;
+                database.run('UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?', [oldP, newP, stock.channel_id, guildId]);
+                database.run('INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)', [stock.channel_id, guildId, newP]);
+              } else if (trendVal === 'DUMP_MIN') {
+                const oldP = stock.current_price;
+                const newP = config.market.MIN_PRICE;
+                database.run('UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?', [oldP, newP, stock.channel_id, guildId]);
+                database.run('INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)', [stock.channel_id, guildId, newP]);
+              }
+            })();
+
+            let durationMsg = trendVal === 'NONE' ? 'tren dibersihkan' : `dikunci ke **${trendVal}** selama **${durationVal} jam**`;
+            await sub.reply({ content: `🧬 Saham **${selectedTicker}** berhasil ${durationMsg}!`, flags: 64 });
+            const fresh = getSahamPanelData(guildId, selectedTicker);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
         else if (action === 'bursa_action_remove') {
           const stock = stocks.getStock(guildId, selectedTicker);
           if (!stock) {
@@ -1451,6 +1598,56 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           const events = require('./events');
           events.triggerEvent(client, guild, events.EVENT_TYPES.MARKET_CRASH);
           await iSaham.reply({ content: '📉 Event bursa saham **MARKET CRASH** berhasil dipicu secara instan!', flags: 64 });
+        }
+        else if (action === 'global_action_pump_all') {
+          const activeStocks = database.all('SELECT * FROM stocks WHERE guild_id = ?', [guildId]);
+          if (activeStocks.length === 0) {
+            return iSaham.reply({ content: '❌ Tidak ada saham bursa terdaftar!', flags: 64 });
+          }
+
+          database.transaction(() => {
+            activeStocks.forEach(s => {
+              const oldPrice = s.current_price;
+              const newPrice = config.market.MAX_PRICE;
+              database.run(
+                'UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?',
+                [oldPrice, newPrice, s.channel_id, guildId]
+              );
+              database.run(
+                'INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)',
+                [s.channel_id, guildId, newPrice]
+              );
+            });
+          })();
+
+          await iSaham.reply({ content: '📈 Pompa Pasar Sukses! Seluruh saham server telah dinaikkan ke **Rp 10.000 (Maksimal)** secara instan! 🚀', flags: 64 });
+          const fresh = getSahamPanelData(guildId, selectedTicker);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'global_action_drop_all') {
+          const activeStocks = database.all('SELECT * FROM stocks WHERE guild_id = ?', [guildId]);
+          if (activeStocks.length === 0) {
+            return iSaham.reply({ content: '❌ Tidak ada saham bursa terdaftar!', flags: 64 });
+          }
+
+          database.transaction(() => {
+            activeStocks.forEach(s => {
+              const oldPrice = s.current_price;
+              const newPrice = config.market.MIN_PRICE;
+              database.run(
+                'UPDATE stocks SET previous_price = ?, current_price = ? WHERE channel_id = ? AND guild_id = ?',
+                [oldPrice, newPrice, s.channel_id, guildId]
+              );
+              database.run(
+                'INSERT INTO price_history (channel_id, guild_id, price, activity_score) VALUES (?, ?, ?, 0.0)',
+                [s.channel_id, guildId, newPrice]
+              );
+            });
+          })();
+
+          await iSaham.reply({ content: '📉 Banting Pasar Sukses! Seluruh saham server telah diturunkan runtuh ke **Rp 10 (Minimal)** secara instan! 💥', flags: 64 });
+          const fresh = getSahamPanelData(guildId, selectedTicker);
+          await replyMsg.edit(fresh).catch(() => {});
         }
         else if (action === 'global_trigger_double') {
           const events = require('./events');

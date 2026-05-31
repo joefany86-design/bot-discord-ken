@@ -506,6 +506,22 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel garden_slots:", e.message);
   }
 
+  // 29. Migrasi dinamis: Tambahkan kolom force_trend ke tabel stocks jika belum ada
+  try {
+    db.exec("ALTER TABLE stocks ADD COLUMN force_trend TEXT DEFAULT 'NONE'");
+    console.log("⚡ [Database] Kolom 'force_trend' berhasil diverifikasi/ditambahkan di tabel stocks.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 30. Migrasi dinamis: Tambahkan kolom force_until ke tabel stocks jika belum ada
+  try {
+    db.exec("ALTER TABLE stocks ADD COLUMN force_until INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'force_until' berhasil diverifikasi/ditambahkan di tabel stocks.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

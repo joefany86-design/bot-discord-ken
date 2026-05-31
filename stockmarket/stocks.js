@@ -379,7 +379,38 @@ function updateStockPrices(guildId) {
       let isCrashed = false;
       let isPumped = false;
 
-      if (isCrashEligible && stock.channel_id === highestStock.channel_id) {
+      const nowSecs = Math.floor(Date.now() / 1000);
+      let activeTrend = stock.force_trend || 'NONE';
+      let activeUntil = stock.force_until || 0;
+
+      // Cek apakah durasi manipulasi tren sudah berakhir
+      if (activeTrend !== 'NONE' && nowSecs >= activeUntil) {
+        db.run(
+          "UPDATE stocks SET force_trend = 'NONE', force_until = 0 WHERE channel_id = ? AND guild_id = ?",
+          [stock.channel_id, guildId]
+        );
+        activeTrend = 'NONE';
+      }
+
+      if (activeTrend !== 'NONE') {
+        if (activeTrend === 'PUMP_MAX') {
+          // Pompa langsung ke harga maksimal
+          deltaPercent = 100.0;
+          isPumped = true;
+        } else if (activeTrend === 'DUMP_MIN') {
+          // Banting langsung ke harga minimal
+          deltaPercent = -1.0;
+          isCrashed = true;
+        } else if (activeTrend === 'PUMP') {
+          // Pompa dinamis terus naik: +15% s/d +45%
+          deltaPercent = 0.15 + (Math.random() * 0.30);
+          isPumped = true;
+        } else if (activeTrend === 'DUMP') {
+          // Banting dinamis terus turun: -15% s/d -40%
+          deltaPercent = -0.15 - (Math.random() * 0.25);
+          isCrashed = true;
+        }
+      } else if (isCrashEligible && stock.channel_id === highestStock.channel_id) {
         // Crash / Bubble Burst drastis (-50% s/d -85%)
         deltaPercent = -0.50 - (Math.random() * 0.35);
         isCrashed = true;
