@@ -105,6 +105,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setDescription('Mengisi HP, Kenyangan, Hidrasi & Kebahagiaan Pet menjadi 100%')
         .setValue('action_heal_pet'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('💖 Hidupkan Kembali Pet (Revive)')
+        .setDescription('Menghidupkan kembali pet yang mati (DEAD) dan memulihkan HP/status ke 100%')
+        .setValue('action_revive_pet'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('🐣 Percepat Penetasan Telur Pet')
         .setDescription('Mengatur telur agar siap menetas saat ini juga')
         .setValue('action_hatch_pet'),
@@ -211,6 +215,29 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
           database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
           await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_revive_pet') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
+          }
+          if (targetPet.status !== 'DEAD') {
+            return iPet.reply({ content: `❌ Pet milik <@${selectedTargetUserId}> (**${targetPet.pet_name}**) masih hidup (Status: **${targetPet.status}**)!`, flags: 64 });
+          }
+          const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
+          const newStatus = targetPet.level >= 10 ? 'ADULT' : 'BABY';
+          const now = Math.floor(Date.now() / 1000);
+          
+          database.run(
+            `UPDATE user_pets 
+             SET status = ?, health = ?, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? 
+             WHERE user_id = ? AND guild_id = ? AND is_active = 1`,
+            [newStatus, maxHP, now, selectedTargetUserId, guildId]
+          );
+          
+          await iPet.reply({ content: `💖 Sukses menghidupkan kembali pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>! Status diubah menjadi **${newStatus}** dengan HP & Kebutuhan penuh 100%.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
