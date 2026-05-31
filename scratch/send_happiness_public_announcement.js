@@ -51,61 +51,77 @@ client.once('ready', async () => {
   const imagePath = '/Users/joefany/.gemini/antigravity-ide/brain/a7441e53-d8a3-4acf-983a-048b5c95c537/pet_heist_art_1780240188059.png';
   const file = new AttachmentBuilder(imagePath, { name: 'pet_heist_art.png' });
 
-  // Bangun embed pengumuman resmi premium
+  // Bangun embed pengumuman resmi premium V2
   const embed = new EmbedBuilder()
-    .setColor(0x00E676) // Premium Emerald Green (Keberuntungan & Kemakmuran)
-    .setTitle('🛡️ PEMBARUAN BESAR: PLAYER HAPPINESS & BURSA OTOMATIS AKTIF! 🛡️')
+    .setColor(0x10B981) // Premium Mint Emerald Green
+    .setTitle('🛡️ RELEASE UPDATE: PLAYER HAPPINESS & AUTOMATIC STOCK MARKET 🛡️')
     .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
     .setImage('attachment://pet_heist_art.png')
     .setDescription(
-      `🔔 **PENGUMUMAN RESMI — RELEASE UPDATE PLAYER HAPPINESS & AUTOMATIC STOCK MARKET!** @everyone\n\n` +
-      `*Perhatian bagi seluruh warga Kosan 1A dan petualang! Demi menghadirkan iklim bermain yang lebih seru, menyenangkan, dan bersahabat bagi pemain baru maupun veteran, Dewan Kota Sentinel resmi meluncurkan paket pembaruan keseimbangan game!*\n\n` +
-      `Berikut adalah rincian lengkap pembaruan sistem yang kini telah resmi aktif di server:\n\n` +
-      `══════════════════════════════════════\n\n` +
-      `🪙 **1. PENDAPATAN KOIN CHAT & DAILY NAIK (ECONOMY BOOSTER)**\n` +
-      `Keran ekonomi server dibuka lebih lebar agar warga cepat makmur:\n` +
-      `• **Daily Claim Harian**: Dari hanya Rp 15 - Rp 35 dinaikkan menjadi **` + "`Rp 35 - Rp 75`" + `** per hari!\n` +
-      `• **Chat Earning (Koin per Pesan)**: Dinaikkan menjadi **` + "`Rp 2 - Rp 5`" + `** per pesan chat.\n` +
-      `• **Cooldown Chat**: Dipangkas menjadi **` + "`40 detik`" + `** saja agar obrolan mengalir kencang!\n` +
-      `• **Voice Channel Earning**: Naik menjadi **` + "`Rp 2 per 5 menit`" + `** dengan batas limit harian **` + "`Rp 40`" + `**.\n\n` +
-      `🥷 **2. PENYEIMBANGAN HUKUM PERAMPOKAN (ROBBERY & HEIST REBALANCE)**\n` +
-      `Aksi kriminalitas tetap menantang, tetapi waktu tahanan lapas virtual dipotong agar pemain tidak bosan:\n` +
-      `• **Peluang Sukses Solo Rob**: Dinaikkan dasar menjadi **` + "`45%`" + `** sukses!\n` +
-      `• **Denda Tanpa Linggis (Lockpick)**: Penalti sukses ditekan dari -25% menjadi hanya **` + "`-18%`" + `** (sisa 27% sukses tanpa item, sangat bersahabat!). Dengan item linggis, sukses tetap kokoh di **` + "`60%`" + `**.\n` +
-      `• **Masa Tahanan Lapas Solo**: Dikurangi setengahnya dari 30 menit menjadi hanya **` + "`15 menit`" + `**!\n` +
-      `• **Uang Tebusan Jaminan Bebas (Bail)**: Dipangkas 50% menjadi hanya **` + "`Rp 250`" + `** koin.\n` +
-      `• **Masa Tahanan Heist Bank**: Dipangkas menjadi **` + "`30 menit`" + `** dengan uang tebusan **` + "`Rp 500`" + `**.\n\n` +
-      `🐾 **3. KELANGKAAN TRAIT PET & PASIF BARU (PET TRAIT & BUFF UPGRADE)**\n` +
-      `Menetaskan telur dan kawin pet menjadi momen yang memuaskan:\n` +
-      `• **Peluang Trait Telur Toko (Hatch Egg)**: Naik drastis dari 15% menjadi **` + "`35%`" + `** peluang dapat trait!\n` +
-      `• **Peluang Trait Hasil Breeding (Kawin)**: Naik drastis dari 30% menjadi **` + "`50%`" + `** peluang dapat trait!\n` +
-      `• **Penyempurnaan Buff Trait**:\n` +
-      `  * **MUTANT**: Bonus koin kerja/berburu pet naik menjadi **` + "`+15%`" + `**.\n` +
-      `  * **GENIUS**: Kebutuhan target XP naik level dipangkas menjadi **` + "`-20%`" + `** (cepat level tinggi!).\n` +
-      `  * **WARRIOR**: Bonus serangan duel PvP Arena naik menjadi **` + "`+15%`" + `**.\n` +
-      `  * **STURDY**: *Pasif baru!* Mengurangi laju penurunan status lapar/haus pet sebesar **` + "`40%`" + `** (pet jarang sakit), serta memberikan **` + "`+15% PvP Defense`" + `** di arena duel!\n\n` +
-      `🔮 **4. GACHA ROLE LEBIH RAMAH & KASTA DEWA TETAP LANGKA (PRESTIGE GACHA)**\n` +
-      `Mengurangi kejenuhan gacha zonk dengan menaikkan peluang menang role:\n` +
-      `• **Zonk Rate Gacha**: Diturunkan dari 75% menjadi **` + "`60%`" + `** (peluang menang naik menjadi **` + "`40%`" + `**!).\n` +
-      `• **Kasta Role Tetap Eksklusif**: Common ` + "`73%`" + `, Rare ` + "`20%`" + `, Epic ` + "`5.6%`" + `, Legendary ` + "`1.1%`" + `, Mythic ` + "`0.3%`" + ` (Sangat prestisius!).\n` +
-      `• **Embed Zonk Humoris**: Ditambahkan deskripsi humor rongsokan saat zonk agar player tetap tertawa terhibur.\n\n` +
-      `📈 **5. BURSA SAHAM FULL OTOMATIS & MANDIRI (AUTOMATIC MARKET)**\n` +
-      `Saham kini bergerak dinamis tanpa bergantung lagi keaktifan obrolan di channel:\n` +
-      `• Harga saham bergerak naik/turun otomatis setiap 2 jam sekali mengikuti siklus model bursa saham nyata (45% naik sehat, 45% turun wajar, 10% siklus ekstrem).\n` +
-      `• **Insentif Chat**: Obrolan di channel tetap sangat berharga karena keaktifan chat akan melipatgandakan **Dividen Mingguan** hingga maksimal **` + "`9%`" + `** dari harga saham bagi para pemegang saham channel tersebut!\n\n` +
-      `══════════════════════════════════════\n\n` +
-      `*Ayo klaim daily-mu harian, ajak pet kesayanganmu bekerja/berburu, kumpulkan koin taruhan, beli linggis di Black Market, dan jadilah sultan bursa saham Kosan 1A sekarang juga! 🦖🔥🐾📈🛡️*`
+      `👋 **Halo Warga Kosan 1A & Para Petualang!**\n` +
+      `Dewan Kota Sentinel resmi meluncurkan paket pembaruan keseimbangan game (**Player Happiness & Dynamic Market**) demi menghadirkan iklim bermain yang jauh lebih seru, menguntungkan, dan adiktif bagi kita semua!\n\n` +
+      `*Pembaruan ini telah aktif secara penuh dan instan di seluruh penjuru server! Berikut adalah catatan pembaruan resmi:*`
     )
-    .setFooter({ text: 'Sentinel Bot 2026 • Player Happiness & Stock Market Release', iconURL: channel.guild.iconURL({ dynamic: true }) || null })
+    .addFields(
+      {
+        name: '🪙 1. PENDAPATAN KOIN & DAILY NAIK (ECONOMY BOOSTER)',
+        value: 
+          `💰 **Daily Claim**: \`Rp 15 - Rp 35\` ➔ **\`Rp 35 - Rp 75\`** / hari!\n` +
+          `💬 **Chat Earning**: \`Rp 1 - Rp 4\` ➔ **\`Rp 2 - Rp 5\`** / pesan chat.\n` +
+          `⏱️ **Cooldown Chat**: \`45 detik\` ➔ **\`40 detik\`** (obrolan mengalir deras!).\n` +
+          `🎙️ **Voice Earning**: \`Rp 1 / 5m\` ➔ **\`Rp 2 / 5m\`** (Limit harian: **\`Rp 40\`**).`,
+        inline: false
+      },
+      {
+        name: '🥷 2. PENYEIMBANGAN HUKUM PERAMPOKAN (ROBBERY REBALANCE)',
+        value:
+          `🎯 **Sukses Solo Rob**: Peluang naik dari \`40%\` ➔ **\`45%\`** dasar!\n` +
+          `🏚️ **Tanpa Linggis**: Penalti diperingan dari \`-25%\` ➔ **\`-18%\`** (sisa \`27%\` sukses dasar).\n` +
+          `🛠️ **Dengan Linggis**: Peluang sukses bertambah kokoh hingga **\`60%\`**!\n` +
+          `⛓️ **Tahanan Lapas Solo**: Dipotong dari \`30 menit\` ➔ **\`15 menit\`** saja!\n` +
+          `💸 **Tebusan Jaminan Solo**: \`Rp 500\` ➔ **\`Rp 250\`** koin.\n` +
+          `🌋 **Tahanan & Tebusan Heist**: Kini hanya **\`30 menit\`** dengan tebusan **\`Rp 500\`**!`,
+        inline: false
+      },
+      {
+        name: '🐾 3. KELANGKAAN TRAIT PET & PASIF BARU (TAMAGOTCHI BUFFS)',
+        value:
+          `🥚 **Trait Telur Toko (Hatch)**: Peluang dapat trait naik \`15%\` ➔ **\`35%\`**!\n` +
+          `🧬 **Trait Breeding (Kawin)**: Peluang mewarisi trait naik \`30%\` ➔ **\`50%\`**!\n` +
+          `🦖 **Mutant**: Peningkatan koin kerja/berburu naik \`+10%\` ➔ **\`+15%\`**!\n` +
+          `🧠 **Genius**: Pemotongan target XP naik level diperbesar \`-15%\` ➔ **\`-20%\`**!\n` +
+          `⚔️ **Warrior**: Peningkatan Attack duel PvP naik \`+10%\` ➔ **\`+15%\`**!\n` +
+          `🛡️ **Sturdy (Baru)**: Mengurangi penyusutan status lapar/haus pet sebesar **\`40%\`** (pet jarang sakit/pingsan) & meningkatkan **\`+15% PvP Defense\`**!`,
+        inline: false
+      },
+      {
+        name: '🔮 4. GACHA ROLE LEBIH RAMAH & PRESTISE TERJAGA (PRESTIGE GACHA)',
+        value:
+          `🎰 **Zonk Rate**: Diturunkan drastis dari \`75%\` ➔ **\`60%\`** (Pelahang dapet role **\`40%\`**!).\n` +
+          `👑 **Kasta Dewa Tetap Langka**: Kasta role atas diatur sangat eksklusif:\n` +
+          `   └─ *Common: \`73%\` | Rare: \`20%\` | Epic: \`5.6%\` | Legendary: \`1.1%\` | Mythic: \`0.3%\`*\n` +
+          `🗑️ **Humor Zonk**: Ditambahkan lore deskripsi barang rongsokan kocak saat Zonk agar Anda tetap terhibur!`,
+        inline: false
+      },
+      {
+        name: '📈 5. BURSA SAHAM FULL OTOMATIS & DIVIDEN CHAT (DYNAMIC MARKET)',
+        value:
+          `📊 **Pergerakan Otomatis**: Harga saham kini naik turun otomatis setiap 2 jam mengikuti bursa nyata (45% naik, 45% turun, 10% siklus ekstrem).\n` +
+          `💬 **Dividen Chat**: Keaktifan chat tetap berharga! Semakin ramai channel chat, **Dividen Mingguan** saham channel tersebut dilipatgandakan hingga **\`9%\`** dari harga per lembar bagi para investor pemegang (*hold*) saham!`,
+        inline: false
+      }
+    )
+    .setFooter({ text: 'Sentinel Bot 2026 • Kebahagiaan Warga Kosan 1A', iconURL: channel.guild.iconURL({ dynamic: true }) || null })
     .setTimestamp();
 
   await channel.send({
+    content: '@everyone',
     embeds: [embed],
     files: [file],
     allowedMentions: { parse: ['everyone'] }
   });
 
-  console.log("✅ Public Announcement successfully posted!");
+  console.log("✅ Public Announcement successfully posted with premium fields!");
   process.exit(0);
 });
 
