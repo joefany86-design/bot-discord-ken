@@ -1036,9 +1036,8 @@ function initStockMarket(client) {
 
                   const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
                     ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
-                    : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 });
-                  
-                  await iSelectRepay.fetchReply().then(m => { Object.assign(askFriendMsg, m); }).catch(() => {});
+                    : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
+
 
                   const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -1117,9 +1116,10 @@ function initStockMarket(client) {
                   const askChoiceMsg = await iBank.reply({
                     content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
                     components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
-                    flags: 64
+                    flags: 64,
+                    fetchReply: true
                   });
-                  await iBank.fetchReply().then(m => { Object.assign(askChoiceMsg, m); }).catch(() => {});
+
 
                   const choiceCollector = askChoiceMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -1191,9 +1191,10 @@ function initStockMarket(client) {
               const askTransferMsg = await iBank.reply({
                 content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
                 components: [rowMenu, rowBtn],
-                flags: 64
+                flags: 64,
+                fetchReply: true
               });
-              await iBank.fetchReply().then(m => { Object.assign(askTransferMsg, m); }).catch(() => {});
+
 
               const transferCollector = askTransferMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -5396,9 +5397,8 @@ async function handleEconomyCommands(message, client) {
 
                 const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
                   ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
-                  : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 });
-                
-                await iSelectRepay.fetchReply().then(m => { Object.assign(askFriendMsg, m); }).catch(() => {});
+                  : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
+
 
                 const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -5478,9 +5478,10 @@ async function handleEconomyCommands(message, client) {
                 const askChoiceMsg = await iBank.reply({
                   content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
                   components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
-                  flags: 64
+                  flags: 64,
+                  fetchReply: true
                 });
-                await iBank.fetchReply().then(m => { Object.assign(askChoiceMsg, m); }).catch(() => {});
+
 
                 const choiceCollector = askChoiceMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -5558,9 +5559,10 @@ async function handleEconomyCommands(message, client) {
             const askTransferMsg = await iBank.reply({
               content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
               components: [rowMenu, rowBtn],
-              flags: 64
+              flags: 64,
+              fetchReply: true
             });
-            await iBank.fetchReply().then(m => { Object.assign(askTransferMsg, m); }).catch(() => {});
+
 
             const transferCollector = askTransferMsg.createMessageComponentCollector({ time: 60000 });
 
