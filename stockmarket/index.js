@@ -1787,6 +1787,320 @@ function initStockMarket(client) {
           await privateMsg.edit({ components: [] }).catch(() => { });
         });
       }
+
+      // ── PORTAL PERMANEN: COZY FLOWER GARDEN ──
+      else if (customId === 'eco_btn_open_garden_private_perm') {
+        await interaction.deferReply({ flags: 64 });
+        
+        const getGardenDashboardDataPrivate = (targetUserId) => {
+          const slots = garden.getGardenSlots(targetUserId, guildId);
+          const wallet = economy.getWallet(targetUserId, guildId);
+          const embed = embeds.gardenEmbed(user, slots, wallet.last_water_at);
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_btn_water_all_perm').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_btn_shop_perm').setLabel('🛒 Toko Benih').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('garden_btn_craft_perm').setLabel('💐 Rangkai Buket').setStyle(ButtonStyle.Secondary)
+          );
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('garden_select_plant_perm')
+            .setPlaceholder('🌱 Pilih benih & slot untuk menanam...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_3'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_1'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_2'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_3')
+            );
+
+          const row2 = new ActionRowBuilder().addComponents(selectMenu);
+
+          return { embeds: [embed], components: [row, row2] };
+        };
+
+        const getGardenShopDataPrivate = (targetUserId) => {
+          const walletShop = economy.getWallet(targetUserId, guildId);
+          const embed = embeds.gardenShopEmbed(user, walletShop);
+
+          const shopRow1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_buy_rose_perm').setLabel('🌹 Mawar (Rp 150)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_tulip_perm').setLabel('🌷 Tulip (Rp 300)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_lavender_perm').setLabel('🪻 Lavender (Rp 500)').setStyle(ButtonStyle.Success)
+          );
+          const shopRow2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_buy_sakura_perm').setLabel('🌸 Sakura (Rp 1k)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_orchid_perm').setLabel('👑 Anggrek (Rp 2.5k)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_wrapping_perm').setLabel('🎗️ Kertas Kado (Rp 100)').setStyle(ButtonStyle.Primary)
+          );
+          const shopRow3 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Secondary)
+          );
+
+          return { embeds: [embed], components: [shopRow1, shopRow2, shopRow3] };
+        };
+
+        const getGardenCraftDataPrivate = (targetUserId) => {
+          const craftRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_craft_love_perm').setLabel('💖 Resep Love').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_craft_peace_perm').setLabel('🪻 Resep Peace').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_craft_imperial_perm').setLabel('👑 Resep Imperial').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
+          );
+
+          return { embeds: [embeds.bouquetCraftEmbed(user, guildId)], components: [craftRow] };
+        };
+
+        const initialData = getGardenDashboardDataPrivate(user.id);
+        const privateMsg = await interaction.editReply({ ...initialData });
+        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+        collector.on('collect', async i => {
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+          try {
+            if (i.isStringSelectMenu() && i.customId === 'garden_select_plant_perm') {
+              const val = i.values[0];
+              const parts = val.split('_');
+              const flowerKey = parts[1];
+              const slotIdx = parseInt(parts[2]);
+
+              await i.deferReply({ flags: 64 }).catch(() => { });
+
+              try {
+                const res = garden.plantSeed(user.id, guildId, slotIdx, flowerKey);
+                await i.editReply({
+                  embeds: [embeds.successEmbed(
+                    '🌱 Penanaman Berhasil!',
+                    `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
+                    `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
+                  )]
+                }).catch(() => { });
+
+                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
+              }
+            }
+
+            else if (i.customId === 'garden_btn_water_all_perm') {
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const res = garden.waterPlant(user.id, guildId, 'all');
+                const successEmb = embeds.successEmbed(
+                  '💦 Penyiraman Berhasil!',
+                  `Berhasil menyiram **${res.wateredCount}** tanaman (Slot: **${res.slotsWatered.join(', ')}**).\n` +
+                  `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
+                );
+
+                await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => { });
+              }
+            }
+
+            else if (i.customId === 'garden_btn_harvest_all_perm') {
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const slots = garden.getGardenSlots(user.id, guildId);
+                const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
+
+                if (harvestable.length === 0) {
+                  await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => { });
+                  return;
+                }
+
+                const harvestedNames = [];
+                harvestable.forEach(s => {
+                  const res = garden.harvestPlant(user.id, guildId, s.slot_index);
+                  harvestedNames.push(`Slot #${res.slotIndex}: **${res.flowerName}**`);
+                });
+
+                const successEmb = embeds.successEmbed(
+                  '🧺 Panen Bunga Sukses!',
+                  `Berhasil memanen **${harvestedNames.length}** kuntum bunga segar:\n` +
+                  harvestedNames.map(name => `• ${name}`).join('\n') + `\n\n` +
+                  `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
+                );
+
+                await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => { });
+              }
+            }
+
+            else if (i.customId === 'garden_btn_shop_perm') {
+              await i.deferUpdate().catch(() => { });
+              await privateMsg.edit(getGardenShopDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId.startsWith('garden_buy_') && i.customId.endsWith('_perm')) {
+              const itemKey = i.customId.replace('garden_buy_', '').replace('_perm', '');
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const res = garden.buySeed(user.id, guildId, itemKey, 1);
+                await i.editReply({
+                  embeds: [embeds.successEmbed(
+                    '🛒 Pembelian Berhasil!',
+                    `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
+                    `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  )]
+                }).catch(() => { });
+
+                await privateMsg.edit(getGardenShopDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
+              }
+            }
+
+            else if (i.customId === 'garden_btn_craft_perm') {
+              await i.deferUpdate().catch(() => { });
+              await privateMsg.edit(getGardenCraftDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId === 'garden_btn_back_perm') {
+              await i.deferUpdate().catch(() => { });
+              await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId.startsWith('garden_craft_') && i.customId.endsWith('_perm')) {
+              const recipe = i.customId.replace('garden_craft_', '').replace('_perm', '');
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const res = garden.craftBouquet(user.id, guildId, recipe);
+                const successEmb = embeds.successEmbed(
+                  '💐 Buket Berhasil Dirangkai!',
+                  `Selamat! Anda berhasil merangkai **${res.bouquetName}**.\n\n` +
+                  `*${res.desc}*\n\n` +
+                  `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
+                );
+
+                await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                await privateMsg.edit(getGardenCraftDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => { });
+              }
+            }
+          } catch (err) {
+            console.error("Error in garden private interaction collector:", err);
+          }
+        });
+
+        collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => { });
+        });
+      }
+
+      // ── PORTAL PERMANEN: MISI HARIAN PET ──
+      else if (customId === 'pet_btn_open_quests_private_perm') {
+        await interaction.deferReply({ flags: 64 });
+
+        const getQuestPanelPrivate = (targetUserId) => {
+          const quests = pet.getOrCreateDailyQuests(targetUserId, guildId);
+          
+          const getQuestEmoji = (progress, target) => {
+            return progress >= target ? '✅' : '⏳';
+          };
+
+          const getQuestText = (qType, progress, target) => {
+            let descText = '';
+            switch (qType) {
+              case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
+              case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
+              case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
+              case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
+              case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
+              case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+              default: descText = `Misi Harian`;
+            }
+            return `${descText} (${progress}/${target})`;
+          };
+
+          let descText = `Selesaikan seluruh misi harian pet hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+          
+          descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
+          descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
+          descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
+
+          const allCompleted = 
+            quests.quest_1_progress >= quests.quest_1_target &&
+            quests.quest_2_progress >= quests.quest_2_target &&
+            quests.quest_3_progress >= quests.quest_3_target;
+
+          const row = new ActionRowBuilder();
+
+          if (quests.reward_claimed === 1) {
+            descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
+            row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
+          } else {
+            if (allCompleted) {
+              descText += `✨ **Status:** Semua misi selesai! Klik tombol **Klaim Hadiah** di bawah ini untuk mengambil hadiah harian! 🎁`;
+              row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success));
+            } else {
+              descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
+              row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
+            }
+          }
+
+          row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
+
+          const questEmbed = new EmbedBuilder()
+            .setColor(0x3498DB)
+            .setTitle(`📋 MISI HARIAN PET — ${user.username}`)
+            .setDescription(descText)
+            .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+            .setTimestamp();
+
+          return { embeds: [questEmbed], components: [row] };
+        };
+
+        const privateMsg = await interaction.editReply(getQuestPanelPrivate(user.id));
+        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+        collector.on('collect', async i => {
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+          try {
+            if (i.customId === 'pet_quests_btn_refresh_perm') {
+              await i.update(getQuestPanelPrivate(user.id));
+            } else if (i.customId === 'pet_quests_btn_claim_perm') {
+              try {
+                const res = pet.claimDailyQuestReward(user.id, guildId);
+                const successEmb = embeds.successEmbed(
+                  'Misi Harian Selesai! 🎉🎁',
+                  `Selamat! Anda berhasil menyelesaikan seluruh misi harian pet hari ini!\n\n` +
+                  `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+                  `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
+                );
+                await i.reply({ embeds: [successEmb], flags: 64 });
+                await privateMsg.edit(getQuestPanelPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
+              }
+            }
+          } catch (err) {
+            console.error("Error in quests private interaction collector:", err);
+          }
+        });
+
+        collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => { });
+        });
+      }
+
     } catch (err) {
       console.error('Error handling permanent portal click:', err);
     }
