@@ -1860,16 +1860,21 @@ module.exports = {
 
     // Rincian Fasilitas Kamar
     if (upgrades && upgrades.length > 0) {
-      let upgradesText = '';
-      upgrades.forEach(u => {
-        upgradesText += `• **${u.name}**\n  *Efek: ${u.config.desc}*\n\n`;
-      });
-
-      embed.addFields({
-        name: `🪟 Fasilitas Kamar Terpasang (${upgrades.length})`,
-        value: upgradesText.trim(),
-        inline: false
-      });
+      // Split into chunks of 3 upgrades to avoid Discord 1024 char embed field limit
+      const chunkSize = 3;
+      for (let i = 0; i < upgrades.length; i += chunkSize) {
+        const chunk = upgrades.slice(i, i + chunkSize);
+        let upgradesText = '';
+        chunk.forEach(u => {
+          upgradesText += `• **${u.name}**\n  *Efek: ${u.config?.desc || '-'}*\n\n`;
+        });
+        const isFirst = i === 0;
+        embed.addFields({
+          name: isFirst ? `🪟 Fasilitas Kamar Terpasang (${upgrades.length})` : `🪟 Fasilitas Kamar (lanjutan)`,
+          value: upgradesText.trim(),
+          inline: false
+        });
+      }
     } else {
       embed.addFields({
         name: '🪟 Fasilitas Kamar Terpasang (0)',
