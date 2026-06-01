@@ -373,13 +373,13 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 }
 
 /**
- * Mendapatkan cooldown global heist per guild
+ * Mendapatkan sisa cooldown Heist per user
  */
-function getHeistCooldown(guildId) {
-  const row = db.get('SELECT last_heist_at FROM heist_cooldown WHERE guild_id = ?', [guildId]);
-  if (!row) return 0;
+function getUserHeistCooldown(userId, guildId) {
+  const wallet = economy.getWallet(userId, guildId);
+  const lastHeist = wallet.last_heist_at || 0;
   const now = Math.floor(Date.now() / 1000);
-  const elapsed = now - row.last_heist_at;
+  const elapsed = now - lastHeist;
   const cd = config.robbery.COOLDOWN_HEIST_SECONDS;
   return elapsed < cd ? cd - elapsed : 0;
 }
@@ -435,10 +435,10 @@ function getHeistStats(kruCount) {
  * Memulai lobi heist perampokan bank sentral
  */
 function startHeistLobby(userId, guildId) {
-  // Cek Cooldown Global
-  const cdRemaining = getHeistCooldown(guildId);
+  // Cek Cooldown User
+  const cdRemaining = getUserHeistCooldown(userId, guildId);
   if (cdRemaining > 0) {
-    throw new Error(`Sistem keamanan bank sangat ketat! Mohon tunggu ${Math.ceil(cdRemaining / 60)} menit lagi sebelum melakukan heist baru.`);
+    throw new Error(`Anda masih dicurigai polisi setelah operasi heist sebelumnya! Mohon tunggu **${Math.ceil(cdRemaining / 60)} menit** lagi sebelum memulai heist baru.`);
   }
 
   // Cek apakah ada lobi berjalan
@@ -506,6 +506,12 @@ function joinHeistLobby(userId, guildId) {
     throw new Error(`Anda tidak bisa bergabung karena sedang dipenjara! Sisa waktu: ${Math.ceil(jailInfo.remaining / 60)} menit.`);
   }
 
+  // Cek Cooldown User
+  const cdRemaining = getUserHeistCooldown(userId, guildId);
+  if (cdRemaining > 0) {
+    throw new Error(`Anda masih dicurigai polisi setelah operasi heist sebelumnya! Mohon tunggu **${Math.ceil(cdRemaining / 60)} menit** lagi sebelum bergabung ke heist.`);
+  }
+
   const wallet = economy.getWallet(userId, guildId);
   if (wallet.balance < lobby.prepFee) {
     throw new Error(`Saldo Anda kurang untuk biaya persiapan heist sebesar Rp ${lobby.prepFee.toLocaleString('id-ID')}.`);
@@ -564,12 +570,16 @@ function executeHeist(guildId) {
   const kruCount = participants.length;
   const stats = getHeistStats(kruCount);
 
-  // Set Global Cooldown Guild
+  // Set Cooldown Heist untuk seluruh partisipan
   const now = Math.floor(Date.now() / 1000);
-  db.run(
-    'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = ?',
-    [guildId, now, now]
-  );
+  db.transaction(() => {
+    participants.forEach(p => {
+      db.run(
+        'UPDATE wallets SET last_heist_at = ? WHERE user_id = ? AND guild_id = ?',
+        [now, p, guildId]
+      );
+    });
+  })();
 
   // --- MENGKALKULASI BUFF TAMAGOTCHI PET ---
   let dragonBonus = 0;
@@ -914,7 +924,7 @@ module.exports = {
   getJailType,
   checkJail,
   robSolo,
-  getHeistCooldown,
+  getUserHeistCooldown,
   getHeistStats,
   startHeistLobby,
   joinHeistLobby,

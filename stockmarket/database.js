@@ -661,6 +661,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 41. Migrasi dinamis: Tambahkan kolom last_heist_at ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN last_heist_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'last_heist_at' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 
