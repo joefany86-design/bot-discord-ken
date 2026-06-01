@@ -52,10 +52,15 @@ console.log(`   ✅ Sukses membeli upgrade: "${buyRes.name}" seharga Rp ${buyRes
 if (buyRes.upgradeId !== 'SECURITY') throw new Error("Purchase return ID mismatch!");
 
 console.log("\n👮 3. Testing robbery protection with Penthouse Security...");
-// Rob from protected user - should fail 100% and trigger security failure
+// Rob from protected user - should fail due to security roll reduction and trigger security failure
 // Force non-owner robber ID so success override doesn't trigger
 db.prepare("INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at) VALUES (?, ?, 50000, 50000, 0)").run('ANOTHER_ROBBER', guildId);
+
+const originalMathRandom = Math.random;
+Math.random = () => 0.99; // Force failure roll
 let robRes = robbery.robSolo('ANOTHER_ROBBER', victimId, guildId);
+Math.random = originalMathRandom; // Restore
+
 console.log(`   👉 Hasil Rob: success = ${robRes.success}, caughtBySecurity = ${robRes.caughtBySecurity}, fine = Rp ${robRes.fine}, jail = ${robRes.jailDurationMinutes}m`);
 
 if (robRes.success !== false) throw new Error("Robbery should have failed!");

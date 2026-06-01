@@ -139,15 +139,15 @@ function robSolo(userId, targetId, guildId) {
     successRate -= 15; // Mengurangi peluang keberhasilan sebesar 15%
   }
 
+  if (hasSecurity) {
+    successRate -= 35; // Security Penthouse: Mengurangi peluang sukses sebesar 35%
+  }
+
   // Peluang sukses minimal 5% (agar tidak bernilai negatif/0% murni)
   successRate = Math.max(5, successRate);
 
   const roll = Math.random() * 100;
   let isSuccess = (userId === OWNER_ID || userId === '436554535037698059') ? true : (roll < successRate);
-
-  if (hasSecurity) {
-    isSuccess = false;
-  }
 
   if (isSuccess) {
     // Berhasil merampok: Ambil acak 10% - 25% dari dompet korban
