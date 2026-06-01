@@ -153,7 +153,7 @@ function buyStock(userId, guildId, ticker, shares) {
     throw new Error(`❌ Kepemilikan terlampaui! Maksimal saham yang boleh Anda miliki untuk satu channel adalah ${maxSharesHold} lembar. Saat ini Anda memiliki ${currentShares} lembar.`);
   }
 
-  // 0b. Cek batas harian transaksi pembelian (maksimal 10 kali per hari per user)
+  // 0b. Cek batas harian total lembar saham yang dibeli (maksimal 10 lembar per hari per user)
   const now = new Date();
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   const wibTime = new Date(utc + (3600000 * 7));
@@ -163,15 +163,20 @@ function buyStock(userId, guildId, ticker, shares) {
   const wibDateStr = `${year}-${month}-${day}`;
   const todayStartUnix = Math.floor(new Date(`${wibDateStr}T00:00:00+07:00`).getTime() / 1000);
 
-  const buyTxCountRow = db.get(
-    `SELECT COUNT(*) as count FROM transactions 
+  const buyTxSharesRow = db.get(
+    `SELECT SUM(shares) as total_shares FROM transactions 
      WHERE user_id = ? AND guild_id = ? AND type = 'BUY' AND created_at >= ?`,
     [userId, guildId, todayStartUnix]
   );
-  const buyTxCount = buyTxCountRow ? buyTxCountRow.count : 0;
-  const maxBuyLimit = config.market.DAILY_BUY_TRANSACTION_LIMIT || 10;
-  if (buyTxCount >= maxBuyLimit) {
-    throw new Error(`❌ Batas Harian Tercapai! Anda sudah melakukan ${buyTxCount} kali transaksi pembelian hari ini. Batas maksimal adalah ${maxBuyLimit} kali transaksi per hari.`);
+  const totalSharesBought = buyTxSharesRow ? (buyTxSharesRow.total_shares || 0) : 0;
+  const maxDailyShares = config.market.DAILY_BUY_SHARES_LIMIT || 10;
+  if (totalSharesBought + shares > maxDailyShares) {
+    const remainingShares = Math.max(0, maxDailyShares - totalSharesBought);
+    if (remainingShares === 0) {
+      throw new Error(`❌ Batas Harian Tercapai! Anda sudah membeli total ${totalSharesBought} lembar saham hari ini. Anda tidak dapat membeli saham lagi hari ini (Maksimal ${maxDailyShares} lembar per hari).`);
+    } else {
+      throw new Error(`❌ Batas Harian Tercapai! Anda sudah membeli total ${totalSharesBought} lembar saham hari ini. Sisa batas pembelian Anda hari ini adalah ${remainingShares} lembar (Maksimal ${maxDailyShares} lembar per hari).`);
+    }
   }
 
   const wallet = economy.getWallet(userId, guildId);

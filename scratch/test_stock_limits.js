@@ -43,24 +43,41 @@ let wallet = economy.getWallet(userId, guildId);
 console.log(`   👉 Wallet Balance: Rp ${wallet.balance}`);
 console.log(`   👉 Stock Ticker: ${stock.stock_ticker}, Price: Rp ${stock.current_price}, Total Bursa Shares: ${stock.total_shares}`);
 
-// 2. Buy stocks 10 times to test transaction limit
-console.log("\n📥 2. Testing Daily Buy Transaction Limit (Max 10)...");
+// 2. Buy stocks to test daily shares limit (Max 10 shares total)
+console.log("\n📥 2. Testing Daily Buy Shares Limit (Max 10)...");
 let buySuccessCount = 0;
 let lastError = null;
 
-for (let i = 1; i <= 11; i++) {
-  try {
-    stocks.buyStock(userId, guildId, ticker, 5);
-    buySuccessCount++;
-    console.log(`   ✅ Purchase #${i} succeeded.`);
-  } catch (err) {
-    lastError = err.message;
-    console.log(`   ❌ Purchase #${i} failed: ${err.message}`);
-  }
+// Purchase #1: Buy 5 shares (should succeed)
+try {
+  stocks.buyStock(userId, guildId, ticker, 5);
+  buySuccessCount++;
+  console.log(`   ✅ Purchase #1 (5 shares) succeeded.`);
+} catch (err) {
+  console.log(`   ❌ Purchase #1 (5 shares) failed: ${err.message}`);
 }
 
-if (buySuccessCount === 10 && lastError && lastError.includes("Batas Harian")) {
-  console.log("   ✅ SUCCESS: Daily buy limit of 10 transactions is enforced!");
+// Purchase #2: Buy 5 shares (should succeed)
+try {
+  stocks.buyStock(userId, guildId, ticker, 5);
+  buySuccessCount++;
+  console.log(`   ✅ Purchase #2 (5 shares) succeeded.`);
+} catch (err) {
+  console.log(`   ❌ Purchase #2 (5 shares) failed: ${err.message}`);
+}
+
+// Purchase #3: Buy 1 share (should fail since total is already 10)
+try {
+  stocks.buyStock(userId, guildId, ticker, 1);
+  buySuccessCount++;
+  console.log(`   ✅ Purchase #3 (1 share) succeeded.`);
+} catch (err) {
+  lastError = err.message;
+  console.log(`   ❌ Purchase #3 (1 share) failed correctly: ${err.message}`);
+}
+
+if (buySuccessCount === 2 && lastError && lastError.includes("Batas Harian")) {
+  console.log("   ✅ SUCCESS: Daily buy limit of 10 shares is enforced!");
 } else {
   console.log(`   ❌ FAILED: Enforced purchases: ${buySuccessCount}, Error: ${lastError}`);
 }
@@ -89,7 +106,10 @@ try {
 // 5. Test sell limit of 100 shares per transaction
 console.log("\n📤 5. Testing Sell Limit (Max 100 shares)...");
 // Setup user with 200 old shares in portfolio to test the cap
-db.prepare("UPDATE portfolios SET shares = 200 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
+db.prepare(`
+  INSERT OR REPLACE INTO portfolios (user_id, guild_id, channel_id, shares, avg_buy_price, total_invested)
+  VALUES (?, ?, ?, 200, 100, 20000)
+`).run(userId, guildId, channelId);
 
 try {
   stocks.sellStock(userId, guildId, ticker, 120);
@@ -101,7 +121,10 @@ try {
 // 6. Test holding limit of 100 shares
 console.log("\n📥 6. Testing Max Holding Limit (Max 100 shares)...");
 // Setup user with 95 shares
-db.prepare("UPDATE portfolios SET shares = 95 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
+db.prepare(`
+  INSERT OR REPLACE INTO portfolios (user_id, guild_id, channel_id, shares, avg_buy_price, total_invested)
+  VALUES (?, ?, ?, 95, 100, 9500)
+`).run(userId, guildId, channelId);
 // Try to buy 10 shares (total will be 105, which exceeds 100)
 try {
   stocks.buyStock(userId, guildId, ticker, 10);
