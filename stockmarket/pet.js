@@ -169,10 +169,6 @@ function applyDecay(pet) {
   let hungerOverdueHours = 0;
   let thirstOverdueHours = 0;
 
-  const wallet = db.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [pet.user_id, pet.guild_id]);
-  let balance = wallet ? wallet.balance : 0;
-  let balanceChanged = false;
-
   const hoursToSimulate = Math.floor(elapsedHours);
   const fractionalHour = elapsedHours - hoursToSimulate;
 
@@ -181,20 +177,11 @@ function applyDecay(pet) {
     newThirst = Math.max(0, newThirst - thirstDecayRate);
     newHappiness = Math.max(0, newHappiness - happinessDecayRate);
 
-    if (pet.auto_feed === 1 || pet.auto_feed === 2) {
-      const isVip = pet.auto_feed === 2;
-      if (newHunger <= 50 && (isVip || balance >= 150)) {
-        if (!isVip) {
-          balance -= 150;
-          balanceChanged = true;
-        }
+    if (pet.auto_feed === 2) {
+      if (newHunger <= 50) {
         newHunger = Math.min(100, newHunger + 30);
       }
-      if (newThirst <= 50 && (isVip || balance >= 100)) {
-        if (!isVip) {
-          balance -= 100;
-          balanceChanged = true;
-        }
+      if (newThirst <= 50) {
         newThirst = Math.min(100, newThirst + 35);
       }
     }
@@ -208,30 +195,17 @@ function applyDecay(pet) {
     newThirst = Math.max(0, newThirst - (fractionalHour * thirstDecayRate));
     newHappiness = Math.max(0, newHappiness - (fractionalHour * happinessDecayRate));
 
-    if (pet.auto_feed === 1 || pet.auto_feed === 2) {
-      const isVip = pet.auto_feed === 2;
-      if (newHunger <= 50 && (isVip || balance >= 150)) {
-        if (!isVip) {
-          balance -= 150;
-          balanceChanged = true;
-        }
+    if (pet.auto_feed === 2) {
+      if (newHunger <= 50) {
         newHunger = Math.min(100, newHunger + 30);
       }
-      if (newThirst <= 50 && (isVip || balance >= 100)) {
-        if (!isVip) {
-          balance -= 100;
-          balanceChanged = true;
-        }
+      if (newThirst <= 50) {
         newThirst = Math.min(100, newThirst + 35);
       }
     }
 
     if (newHunger === 0) hungerOverdueHours += fractionalHour;
     if (newThirst === 0) thirstOverdueHours += fractionalHour;
-  }
-
-  if (balanceChanged && wallet) {
-    db.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [balance, pet.user_id, pet.guild_id]);
   }
 
   let hpReduction = Math.floor((hungerOverdueHours * 5) + (thirstOverdueHours * 5));
@@ -1639,30 +1613,6 @@ function getPetLeaderboard(guildId, category = 'level', limit = 10) {
   return pets.map(p => applyDecay(p));
 }
 
-function toggleAutoFeed(userId, guildId) {
-  const pet = getPet(userId, guildId);
-  if (!pet) {
-    throw new Error("Anda belum memiliki pet aktif!");
-  }
-  if (pet.status === 'DEAD') {
-    throw new Error("Pet Anda sudah mati. Silakan adopsi pet baru!");
-  }
-  if (pet.status === 'EGG') {
-    throw new Error("Pet Anda masih berbentuk telur. Tunggu sampai menetas!");
-  }
-
-  const newStatus = pet.auto_feed === 1 ? 0 : 1;
-  db.run(
-    'UPDATE user_pets SET auto_feed = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
-    [newStatus, userId, guildId, pet.pet_name]
-  );
-
-  return {
-    petName: pet.pet_name,
-    autoFeed: newStatus
-  };
-}
-
 /**
  * Mengatur URL gambar custom untuk pet aktif.
  */
@@ -2165,7 +2115,6 @@ module.exports = {
   getXpNeeded,
   checkExpeditionLimit,
   getPetLeaderboard,
-  toggleAutoFeed,
   setCustomImage,
   washPet,
   getOrCreateDailyQuests,

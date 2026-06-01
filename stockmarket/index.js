@@ -1399,10 +1399,6 @@ function initStockMarket(client) {
             rows.push(new ActionRowBuilder().addComponents(row2Components));
 
              const row3Components = [
-              new ButtonBuilder()
-                .setCustomId('pet_btn_toggle_auto_feed')
-                .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
-                .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
               new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
             ];
@@ -1461,11 +1457,6 @@ function initStockMarket(client) {
           try {
             if (iPet.customId === 'pet_btn_refresh') {
               await iPet.update(getDashboardPanelPrivate(user.id));
-            } else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
-              const result = pet.toggleAutoFeed(user.id, guildId);
-              const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-              await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_use_booster') {
               try {
                 const freshPet = pet.getPet(user.id, guildId);
@@ -3342,10 +3333,6 @@ async function handlePetCommand(message, client, args) {
       const row2 = new ActionRowBuilder().addComponents(row2Components);
 
       const row3Components = [
-        new ButtonBuilder()
-          .setCustomId('pet_btn_toggle_auto_feed')
-          .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
-          .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
       ];
@@ -3394,13 +3381,6 @@ async function handlePetCommand(message, client, args) {
       if (iPet.customId === 'pet_btn_refresh') {
         const freshData = getDashboardPanel(author.id, guildId);
         await iPet.update(freshData);
-      }
-
-      else if (iPet.customId === 'pet_btn_toggle_auto_feed') {
-        const result = pet.toggleAutoFeed(author.id, guildId);
-        const statusStr = result.autoFeed === 1 ? 'AKTIF 🟢 (langsung potong saldo)' : 'NONAKTIF 🔴';
-        await iPet.reply({ embeds: [embeds.successEmbed('Auto Care! 🤖', `Fitur Auto Makan & Minum pet **${result.petName}** sekarang **${statusStr}**.`)], flags: 64 });
-        await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
       }
 
       else if (iPet.customId === 'pet_btn_use_booster') {
