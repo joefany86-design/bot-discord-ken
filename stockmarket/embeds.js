@@ -2129,8 +2129,6 @@ module.exports = {
     });
 
     // Info Cooldown Pekerjaan & Berburu
-    const now = Math.floor(Date.now() / 1000);
-
     // Cooldown Work (Work: 1 Jam)
     let workCd = 1 * 3600;
     if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
