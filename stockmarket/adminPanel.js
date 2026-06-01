@@ -3061,6 +3061,8 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `📈 **\`Panel Saham\`** — Tambah/hapus saham bursa, drop harga, picu event bull/crash, dividen.\n` +
         `⚡ **\`Panel Abyus\`** — Sabotase kesulitan gacha role, atur multiplier obrolan chat warga, stop event.\n` +
         `🎭 **\`Panel Shop\`** — Tambahkan penjualan role server, set stok role, kontrol sesi game ToD VC.\n` +
+        `🌱 **\`Panel Garden\`** — Siram instan, percepat mekar bunga 100%, bongkar kebun warga, hadiahkan paket benih.\n` +
+        `📋 **\`Panel Misi Pet\`** — Lihat progress harian, instan selesaikan seluruh misi harian, reset quest acak, kirim paket perawatan.\n` +
         `😜 **\`Panel Troll\`** — Kerjain warga server! Kutuk pet bau, ilusi bursa saham hancur, alarm copet palsu, kurung di sel VIP reot.\n\n` +
         `👉 **Silakan klik tombol di bawah untuk membuka panel kontrol yang Anda inginkan:**`
       )
@@ -3095,6 +3097,14 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setCustomId('hub_btn_shop')
         .setLabel('🎭 Shop & ToD')
         .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('hub_btn_garden')
+        .setLabel('🌱 Garden Panel')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('hub_btn_quests')
+        .setLabel('📋 Misi Panel')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('hub_btn_troll')
         .setLabel('😜 Troll Panel')
@@ -3157,6 +3167,14 @@ async function handleAdminPanel(messageOrInteraction, client) {
         collector.stop('transition');
         await handleAdminShopPanel(iHub, client);
       }
+      else if (iHub.customId === 'hub_btn_garden') {
+        collector.stop('transition');
+        await handleAdminGardenPanel(iHub, client);
+      }
+      else if (iHub.customId === 'hub_btn_quests') {
+        collector.stop('transition');
+        await handleAdminQuestPanel(iHub, client);
+      }
       else if (iHub.customId === 'hub_btn_troll') {
         collector.stop('transition');
         await handleAdminTrollPanel(iHub, client);
@@ -3183,6 +3201,466 @@ async function handleAdminPanel(messageOrInteraction, client) {
   return true;
 }
 
+/**
+ * 🌱 8. SUB-PANEL COZY FLOWER GARDEN
+ */
+async function handleAdminGardenPanel(messageOrInteraction, client, initialTargetUserId = null) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+
+  if (!guildId) return false;
+
+  let selectedTargetUserId = initialTargetUserId;
+
+  const getGardenPanelData = (gId, targetUserId) => {
+    let embed = new EmbedBuilder()
+      .setColor(0x2ECC71)
+      .setTitle('🌱 ADMIN CONTROL PANEL — COZY FLOWER GARDEN')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pengelolaan Kebun & Tanaman' });
+
+    let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
+    if (targetUserId) {
+      targetText = `🎯 **<@${targetUserId}>**\n` +
+                   `• ID: \`${targetUserId}\`\n\n`;
+
+      try {
+        const garden = require('./garden');
+        const slots = garden.getGardenSlots(targetUserId, gId);
+        
+        let slotsText = '';
+        slots.forEach(s => {
+          if (s.seed_id) {
+            const progressEmoji = s.growthProgress >= 100 ? '🟢 Siap Panen' : '⏳ Tumbuh';
+            slotsText += `🔹 **Slot ${s.slot_index}:** **${s.flowerName}** [${s.growthStatus}]\n` +
+                         `  • Progress: \`${s.growthProgress}%\` | Siram: \`${s.water_count}x\`\n` +
+                         `  • Status: ${progressEmoji} (Sisa: \`${s.secondsLeft}s\`)\n`;
+          } else {
+            slotsText += `🔹 **Slot ${s.slot_index}:** *Tanah Kosong*\n`;
+          }
+        });
+        targetText += `🌱 **STATUS KEBUN AKTIF:**\n${slotsText}`;
+      } catch (err) {
+        targetText += `❌ Gagal memuat data kebun: ${err.message}`;
+      }
+    }
+
+    embed.setDescription(
+      `Gunakan menu di bawah untuk memilih target anggota, lalu tentukan tindakan cepat untuk mengelola Cozy Garden mereka:\n\n` +
+      `👤 **INFORMASI TARGET ANGGOTA:**\n${targetText}`
+    );
+
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('admin_garden_select_target')
+      .setPlaceholder('👤 Pilih Target Anggota');
+
+    const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_garden_select_action')
+      .setPlaceholder('🎯 Pilih Tindakan Pengelolaan Garden')
+      .setDisabled(!targetUserId);
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💦 Siram Semua Tanaman & Reset Cooldown')
+        .setDescription('Menambah jumlah siraman tanaman aktif dan mereset cooldown siram wallets target')
+        .setValue('action_instant_water'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚡ Instan Tumbuhkan Bunga (100%)')
+        .setDescription('Memaksa seluruh tanaman aktif target tumbuh mekar 100% siap panen')
+        .setValue('action_instant_grow'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🪓 Bongkar & Bersihkan Kebun')
+        .setDescription('Menghapus seluruh tanaman aktif dan mereset slot kebun menjadi kosong')
+        .setValue('action_reset_garden'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📦 Beri Paket Benih Lengkap (+5)')
+        .setDescription('Mengirimkan masing-masing 5x benih Mawar, Tulip, Lavender, Sakura, Anggrek & Kado')
+        .setValue('action_gift_seeds')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_garden_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_garden_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+  };
+
+  const initialData = getGardenPanelData(guildId, selectedTargetUserId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iGarden => {
+    const isOwner = iGarden.user.id === '436554535037698059';
+    const isAdmin = iGarden.member && iGarden.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iGarden.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iGarden.customId === 'admin_garden_select_target') {
+        selectedTargetUserId = iGarden.values[0];
+        const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+        await iGarden.update(fresh);
+      }
+      else if (iGarden.customId === 'admin_garden_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iGarden, client);
+      }
+      else if (iGarden.customId === 'admin_garden_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+      else if (iGarden.customId === 'admin_garden_select_action') {
+        const action = iGarden.values[0];
+
+        if (action === 'action_instant_water') {
+          database.run(
+            'UPDATE garden_slots SET water_count = water_count + 1, last_watered_at = ? WHERE user_id = ? AND guild_id = ? AND seed_id IS NOT NULL',
+            [Math.floor(Date.now() / 1000), selectedTargetUserId, guildId]
+          );
+          database.run(
+            'UPDATE wallets SET last_water_at = 0 WHERE user_id = ? AND guild_id = ?',
+            [selectedTargetUserId, guildId]
+          );
+          try {
+            const petMod = require('./pet');
+            const activeSlots = database.all('SELECT slot_index FROM garden_slots WHERE user_id = ? AND guild_id = ? AND seed_id IS NOT NULL', [selectedTargetUserId, guildId]);
+            if (activeSlots.length > 0) {
+              petMod.incrementQuestProgress(selectedTargetUserId, guildId, 'WATER', activeSlots.length);
+            }
+          } catch (e) {}
+
+          await iGarden.reply({ content: `✅ Sukses menyiram seluruh tanaman aktif milik <@${selectedTargetUserId}> dan mereset cooldown ember siramnya!`, flags: 64 });
+          const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_instant_grow') {
+          database.run(
+            'UPDATE garden_slots SET planted_at = 1 WHERE user_id = ? AND guild_id = ? AND seed_id IS NOT NULL',
+            [selectedTargetUserId, guildId]
+          );
+          await iGarden.reply({ content: `✅ Seluruh tanaman aktif milik <@${selectedTargetUserId}> telah dipaksa tumbuh mekar 100%!`, flags: 64 });
+          const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_reset_garden') {
+          database.run(
+            'UPDATE garden_slots SET seed_id = NULL, planted_at = 0, last_watered_at = 0, water_count = 0 WHERE user_id = ? AND guild_id = ?',
+            [selectedTargetUserId, guildId]
+          );
+          await iGarden.reply({ content: `✅ Kebun milik <@${selectedTargetUserId}> berhasil direset menjadi tanah kosong!`, flags: 64 });
+          const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_gift_seeds') {
+          const giftItems = ['SEED_ROSE', 'SEED_TULIP', 'SEED_LAVENDER', 'SEED_SAKURA', 'SEED_ORCHID', 'GIFT_WRAPPING'];
+          database.transaction(() => {
+            giftItems.forEach(itemId => {
+              updateAdminInventory(selectedTargetUserId, guildId, itemId, 5);
+            });
+          })();
+          await iGarden.reply({ content: `✅ Paket Benih Lengkap (+5 dari masing-masing benih & kertas kado) sukses dikirim ke inventory <@${selectedTargetUserId}>!`, flags: 64 });
+          const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Error in Garden Panel Interaction:', err);
+      await iGarden.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getGardenPanelData(guildId, selectedTargetUserId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
+/**
+ * 📋 9. SUB-PANEL DAILY QUESTS PET
+ */
+async function handleAdminQuestPanel(messageOrInteraction, client, initialTargetUserId = null) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+
+  if (!guildId) return false;
+
+  let selectedTargetUserId = initialTargetUserId;
+
+  const getQuestPanelData = (gId, targetUserId) => {
+    let embed = new EmbedBuilder()
+      .setColor(0x3498DB)
+      .setTitle('📋 ADMIN CONTROL PANEL — DAILY QUESTS PET')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pengelolaan Misi Harian Pet' });
+
+    let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
+    if (targetUserId) {
+      targetText = `🎯 **<@${targetUserId}>**\n` +
+                   `• ID: \`${targetUserId}\`\n\n`;
+
+      const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+      const questRow = database.get(
+        'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+        [targetUserId, gId, todayStr]
+      );
+
+      if (questRow) {
+        const q1Status = questRow.quest_1_progress >= questRow.quest_1_target ? '🟢 Selesai' : `⏳ \`${questRow.quest_1_progress}/${questRow.quest_1_target}\``;
+        const q2Status = questRow.quest_2_progress >= questRow.quest_2_target ? '🟢 Selesai' : `⏳ \`${questRow.quest_2_progress}/${questRow.quest_2_target}\``;
+        const q3Status = questRow.quest_3_progress >= questRow.quest_3_target ? '🟢 Selesai' : `⏳ \`${questRow.quest_3_progress}/${questRow.quest_3_target}\``;
+        const claimStatus = questRow.reward_claimed === 1 ? '✅ Sudah Klaim Hadiah' : '❌ Belum Klaim Hadiah';
+
+        targetText += `📋 **MISI HARIAN HARI INI (${questRow.quest_date}):**\n` +
+                     `🔹 Misi 1: **${questRow.quest_1_type}** (${q1Status})\n` +
+                     `🔹 Misi 2: **${questRow.quest_2_type}** (${q2Status})\n` +
+                     `🔹 Misi 3: **${questRow.quest_3_type}** (${q3Status})\n\n` +
+                     `🎁 Status Klaim Hadiah Utama: **${claimStatus}**\n`;
+      } else {
+        targetText += `⚠️ **Status:** *Misi harian hari ini belum diinisialisasi oleh user (Akan dibuat otomatis saat user mengetik \`.pet misi\`)*\n`;
+      }
+    }
+
+    embed.setDescription(
+      `Gunakan menu di bawah untuk memilih target anggota, lalu tentukan tindakan cepat untuk mengelola Daily Quests mereka:\n\n` +
+      `👤 **INFORMASI TARGET ANGGOTA:**\n${targetText}`
+    );
+
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('admin_quest_select_target')
+      .setPlaceholder('👤 Pilih Target Anggota');
+
+    const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_quest_select_action')
+      .setPlaceholder('🎯 Pilih Tindakan Misi Harian')
+      .setDisabled(!targetUserId);
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎯 Selesaikan Instan Semua Misi')
+        .setDescription('Mengisi progress 3 misi hari ini menjadi selesai secara instan')
+        .setValue('action_instant_complete'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔄 Reset / Acak Ulang Misi Hari Ini')
+        .setDescription('Menghapus misi hari ini agar warga dapat mengacak ulang misi baru')
+        .setValue('action_reset_quests'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎁 Beri Paket Perawatan Pet Premium')
+        .setDescription('Mengirimkan +5 Daging Premium, Mainan, Obat (Pet Inv) & +5 Linggis, Sabun (User Inv)')
+        .setValue('action_gift_care_package')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_quest_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_quest_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+  };
+
+  const initialData = getQuestPanelData(guildId, selectedTargetUserId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iQuest => {
+    const isOwner = iQuest.user.id === '436554535037698059';
+    const isAdmin = iQuest.member && iQuest.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iQuest.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iQuest.customId === 'admin_quest_select_target') {
+        selectedTargetUserId = iQuest.values[0];
+        const fresh = getQuestPanelData(guildId, selectedTargetUserId);
+        await iQuest.update(fresh);
+      }
+      else if (iQuest.customId === 'admin_quest_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iQuest, client);
+      }
+      else if (iQuest.customId === 'admin_quest_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+      else if (iQuest.customId === 'admin_quest_select_action') {
+        const action = iQuest.values[0];
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
+        if (action === 'action_instant_complete') {
+          const row = database.get(
+            'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+            [selectedTargetUserId, guildId, todayStr]
+          );
+          if (!row) {
+            return iQuest.reply({ content: `❌ Anggota <@${selectedTargetUserId}> belum menginisialisasi misi hari ini! Minta mereka menjalankan \`.pet misi\` terlebih dahulu.`, flags: 64 });
+          }
+
+          database.run(
+            `UPDATE user_daily_quests 
+             SET quest_1_progress = quest_1_target,
+                 quest_2_progress = quest_2_target,
+                 quest_3_progress = quest_3_target
+             WHERE user_id = ? AND guild_id = ? AND quest_date = ?`,
+            [selectedTargetUserId, guildId, todayStr]
+          );
+
+          await iQuest.reply({ content: `✅ Sukses menyelesaikan instan 3 misi harian milik <@${selectedTargetUserId}> untuk hari ini!`, flags: 64 });
+          const fresh = getQuestPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_reset_quests') {
+          database.run(
+            'DELETE FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+            [selectedTargetUserId, guildId, todayStr]
+          );
+          await iQuest.reply({ content: `✅ Sukses menghapus/reset misi harian milik <@${selectedTargetUserId}> hari ini! Mereka dapat mengacak ulang misi baru sekarang.`, flags: 64 });
+          const fresh = getQuestPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_gift_care_package') {
+          database.transaction(() => {
+            // Pet Inventory Items (+5)
+            updateAdminPetInventory(selectedTargetUserId, guildId, 'FOOD_PREMIUM', 5);
+            updateAdminPetInventory(selectedTargetUserId, guildId, 'TOY', 5);
+            updateAdminPetInventory(selectedTargetUserId, guildId, 'MEDICINE', 5);
+
+            // User Inventory Items (+5)
+            updateAdminInventory(selectedTargetUserId, guildId, 'LOCKPICK', 5);
+            updateAdminInventory(selectedTargetUserId, guildId, 'SOAP', 5);
+          })();
+
+          await iQuest.reply({ content: `✅ Sukses mengirimkan Paket Perawatan Pet Premium (+5 Daging Premium, Mainan, Obat di Pet Inventory & +5 Linggis, Sabun di User Inventory) ke <@${selectedTargetUserId}>!`, flags: 64 });
+          const fresh = getQuestPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Error in Quest Panel Interaction:', err);
+      await iQuest.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getQuestPanelData(guildId, selectedTargetUserId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
+function updateAdminInventory(userId, guildId, itemId, quantityChange) {
+  const row = database.get(
+    'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+    [userId, guildId, itemId]
+  );
+  
+  if (!row) {
+    if (quantityChange > 0) {
+      database.run(
+        'INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
+        [userId, guildId, itemId, quantityChange]
+      );
+    }
+  } else {
+    const newQty = Math.max(0, row.quantity + quantityChange);
+    if (newQty === 0) {
+      database.run(
+        'DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [userId, guildId, itemId]
+      );
+    } else {
+      database.run(
+        'UPDATE user_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [newQty, userId, guildId, itemId]
+      );
+    }
+  }
+}
+
+function updateAdminPetInventory(userId, guildId, itemId, quantityChange) {
+  const exist = database.get(
+    'SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+    [userId, guildId, itemId]
+  );
+  if (exist) {
+    const newQty = Math.max(0, exist.quantity + quantityChange);
+    if (newQty === 0) {
+      database.run(
+        'DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [userId, guildId, itemId]
+      );
+    } else {
+      database.run(
+        'UPDATE pet_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [newQty, userId, guildId, itemId]
+      );
+    }
+  } else {
+    if (quantityChange > 0) {
+      database.run(
+        'INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
+        [userId, guildId, itemId, quantityChange]
+      );
+    }
+  }
+}
+
 module.exports = {
   handleAdminPanel,
   handleAdminPetPanel,
@@ -3191,5 +3669,7 @@ module.exports = {
   handleAdminSahamPanel,
   handleAdminAbyusPanel,
   handleAdminShopPanel,
-  handleAdminTrollPanel
+  handleAdminTrollPanel,
+  handleAdminGardenPanel,
+  handleAdminQuestPanel
 };
