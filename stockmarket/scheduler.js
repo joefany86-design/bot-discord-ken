@@ -12,7 +12,7 @@ let voiceEarnInterval = null;
 function initScheduler(client) {
   // 1. Cron Job: Update harga saham setiap 2 jam (08:00 - 22:00 WIB)
   // Menit 0, setiap 2 jam, dari pukul 08:00 s/d 22:00 WIB
-  cron.schedule('0 8-22/2 * * *', () => {
+  cron.schedule('0 8-22/2 * * *', async () => {
     console.log('⏰ [Scheduler] Menjalankan update berkala harga saham...');
     
     // Cek jam operasional
@@ -24,7 +24,7 @@ function initScheduler(client) {
     const database = require('./database');
     const economy = require('./economy');
 
-    client.guilds.cache.forEach(guild => {
+    for (const guild of client.guilds.cache.values()) {
       // Inisialisasi saham jika belum ada
       stocks.initDefaultStocks(guild);
 
@@ -250,7 +250,7 @@ function initScheduler(client) {
       } catch (tradeEngineErr) {
         console.error('❌ Gagal menjalankan Auto-Trading Engine:', tradeEngineErr.message);
       }
-    });
+    }
   }, {
     timezone: 'Asia/Jakarta'
   });
@@ -509,7 +509,7 @@ function initScheduler(client) {
 
   // 6. Cron Job: Sistem Perbankan (Bunga Tabungan & Penagihan Pinjaman Harian)
   // Berjalan setiap hari pada pukul 00:00 WIB (Midnight Jakarta)
-  cron.schedule('0 0 * * *', () => {
+  cron.schedule('0 0 * * *', async () => {
     console.log('⏰ [Scheduler] Menjalankan pemrosesan perbankan harian (Bunga & Penagihan Pinjaman)...');
 
     const database = require('./database');
@@ -517,7 +517,7 @@ function initScheduler(client) {
     const bank = require('./bank');
     const embeds = require('./embeds');
 
-    client.guilds.cache.forEach(guild => {
+    for (const guild of client.guilds.cache.values()) {
       // Tentukan target channel notifikasi
       let targetChannel = null;
       if (config.REPORT_CHANNEL_ID) {
@@ -539,7 +539,7 @@ function initScheduler(client) {
         const activeThresholdTime = nowUnix - 24 * 3600;
         const kos = require('./kos');
 
-        savingsAccounts.forEach(account => {
+        for (const account of savingsAccounts) {
           const userId = account.user_id;
           const activeRental = kos.getActiveRental(userId, guild.id);
           const roomTier = activeRental ? activeRental.room_tier : 'DEFAULT';
@@ -707,7 +707,7 @@ function initScheduler(client) {
               }
             }
           }
-        });
+        }
 
         // ── C. UPDATE DENDA LATE-PENALTY BAGI YANG SUDAH OVERDUE ──
         // (Berjalan bagi pinjaman yang sudah berstatus OVERDUE untuk menambahkan denda harian +5%)
@@ -723,7 +723,7 @@ function initScheduler(client) {
       } catch (err) {
         console.error('❌ Gagal memproses penagihan pinjaman harian:', err.message);
       }
-    });
+    }
   }, {
     timezone: 'Asia/Jakarta'
   });
