@@ -6813,58 +6813,145 @@ async function handleEconomyCommands(message, client) {
                   return iSelect.reply({ content: '❌ Anda tidak bisa mentransfer ke diri sendiri!', flags: 64 });
                 }
 
-                const modal = new ModalBuilder()
-                  .setCustomId(`bank_modal_transfer_${targetUserId}`)
-                  .setTitle('💸 Transfer Tabungan Bank');
+                const typeButtons = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder().setCustomId(`bank_tf_biasa_${targetUserId}`).setLabel('💸 Transfer Biasa').setStyle(ButtonStyle.Primary),
+                  new ButtonBuilder().setCustomId(`bank_tf_bayar_${targetUserId}`).setLabel('📉 Bayar Hutang').setStyle(ButtonStyle.Success),
+                  new ButtonBuilder().setCustomId(`bank_tf_beri_${targetUserId}`).setLabel('📈 Beri Hutang (Pinjamkan)').setStyle(ButtonStyle.Secondary),
+                  new ButtonBuilder().setCustomId('bank_tf_cancel').setLabel('✖️ Batal').setStyle(ButtonStyle.Danger)
+                );
 
-                const amountInput = new TextInputBuilder()
-                  .setCustomId('transfer_amount')
-                  .setLabel('Jumlah koin (angka atau "all")')
-                  .setPlaceholder('Contoh: 10000')
-                  .setStyle(TextInputStyle.Short)
-                  .setRequired(true);
+                await iSelect.update({
+                  content: `👉 **Pilih tipe transfer tabungan ke <@${targetUserId}>:**`,
+                  components: [typeButtons]
+                });
 
-                modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-                await iSelect.showModal(modal);
-                await askTransferMsg.delete().catch(() => {});
-
-                const submitted = await iSelect.awaitModalSubmit({
-                  filter: (sub) => sub.customId === `bank_modal_transfer_${targetUserId}` && sub.user.id === author.id,
+                const typeCollector = askTransferMsg.createMessageComponentCollector({
+                  componentType: ComponentType.Button,
                   time: 60000
-                }).catch(() => null);
+                });
 
-                if (submitted) {
-                  try {
-                    const amountStr = submitted.fields.getTextInputValue('transfer_amount');
-                    const res = bank.transferSavings(author.id, targetUserId, guildId, amountStr);
+                typeCollector.on('collect', async iType => {
+                  if (iType.user.id !== author.id) return;
+                  typeCollector.stop();
 
-                    let targetName = targetUserId;
-                    try {
-                      const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
-                      if (targetMember) targetName = targetMember.displayName;
-                    } catch (err) {}
-
-                    const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
-                      res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                        res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-
-                    const successEmb = embeds.bankSuccessEmbed(
-                      'Transfer Tabungan Berhasil!',
-                      `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
-                      `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
-                      `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                      `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
-                      `👉 Penerima: **${targetName}** (<@${targetUserId}>)\n\n` +
-                      `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
-                    );
-
-                    await submitted.reply({ embeds: [successEmb] });
-                    const freshData = getBankDashboardData(author.id, guildId);
-                    await replyMsg.edit(freshData).catch(console.error);
-                  } catch (err) {
-                    await submitted.reply({ embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)] });
+                  if (iType.customId === 'bank_tf_cancel') {
+                    await iType.update({ content: '❌ Transfer dibatalkan.', components: [] });
+                    return;
                   }
-                }
+
+                  const selectedType = iType.customId.split('_')[2]; // biasa, bayar, beri
+
+                  const modal = new ModalBuilder()
+                    .setCustomId(`bank_modal_tf_${selectedType}_${targetUserId}`)
+                    .setTitle('💸 Transfer Tabungan Bank');
+
+                  const amountInput = new TextInputBuilder()
+                    .setCustomId('transfer_amount')
+                    .setLabel('Jumlah koin (angka atau "all")')
+                    .setPlaceholder('Contoh: 10000')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                  modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                  await iType.showModal(modal);
+                  await askTransferMsg.delete().catch(() => {});
+
+                  const submitted = await iType.awaitModalSubmit({
+                    filter: (sub) => sub.customId === `bank_modal_tf_${selectedType}_${targetUserId}` && sub.user.id === author.id,
+                    time: 60000
+                  }).catch(() => null);
+
+                  if (submitted) {
+                    try {
+                      const amountStr = submitted.fields.getTextInputValue('transfer_amount');
+
+                      if (selectedType === 'bayar') {
+                        const debt = database.get(
+                          'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                          [guildId, author.id, targetUserId]
+                        );
+                        if (!debt || debt.amount <= 0) {
+                          return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', `Anda tidak memiliki hutang jaminan ke <@${targetUserId}>!`)], flags: 64 });
+                        }
+                      }
+
+                      const res = bank.transferSavings(author.id, targetUserId, guildId, amountStr);
+
+                      let targetName = targetUserId;
+                      try {
+                        const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
+                        if (targetMember) targetName = targetMember.displayName;
+                      } catch (err) {}
+
+                      const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                        res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                          res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+
+                      let extraDesc = '';
+                      if (selectedType === 'bayar') {
+                        const debt = database.get(
+                          'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                          [guildId, author.id, targetUserId]
+                        );
+                        const paidAmount = Math.min(res.netAmount, debt.amount);
+                        const remains = debt.amount - paidAmount;
+
+                        database.transaction(() => {
+                          if (remains <= 0) {
+                            database.run(
+                              'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                              [guildId, author.id, targetUserId]
+                            );
+                          } else {
+                            database.run(
+                              'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                              [remains, guildId, author.id, targetUserId]
+                            );
+                          }
+                        })();
+
+                        extraDesc = `\n\n📉 **PEMBAYARAN HUTANG:**\n` +
+                          `• Hutang Awal: **Rp ${debt.amount.toLocaleString('id-ID')}**\n` +
+                          `• Dibayar (dari Net Transfer): **Rp ${paidAmount.toLocaleString('id-ID')}**\n` +
+                          `• Sisa Hutang: ` + (remains > 0 ? `**Rp ${remains.toLocaleString('id-ID')}**` : `✨ **LUNAS!**`);
+                      } else if (selectedType === 'beri') {
+                        database.run(
+                          `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+                           VALUES (?, ?, ?, ?) 
+                           ON CONFLICT(guild_id, debtor_id, creditor_id) 
+                           DO UPDATE SET amount = amount + EXCLUDED.amount`,
+                          [guildId, targetUserId, author.id, res.netAmount]
+                        );
+
+                        const newDebt = database.get(
+                          'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                          [guildId, targetUserId, author.id]
+                        );
+
+                        extraDesc = `\n\n📈 **MEMBERI HUTANG / PINJAMAN:**\n` +
+                          `• Jumlah Pinjaman Baru: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                          `• Total Hutang <@${targetUserId}> ke Anda: **Rp ${newDebt.amount.toLocaleString('id-ID')}**`;
+                      }
+
+                      const successEmb = embeds.bankSuccessEmbed(
+                        'Transfer Tabungan Berhasil!',
+                        `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                        `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                        `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                        `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
+                        `👉 Penerima: **${targetName}** (<@${targetUserId}>)` +
+                        `${extraDesc}\n\n` +
+                        `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
+                      );
+
+                      await submitted.reply({ embeds: [successEmb] });
+                      const freshData = getBankDashboardData(author.id, guildId);
+                      await replyMsg.edit(freshData).catch(console.error);
+                    } catch (err) {
+                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)] });
+                    }
+                  }
+                });
               }
             });
           }
