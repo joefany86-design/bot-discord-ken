@@ -2056,10 +2056,15 @@ module.exports = {
       return embed;
     }
 
-    // ── STATUS SEHAT / SAKIT ──
-    const isSick = pet.status === 'SICK' || pet.health <= 30;
-    const isWeak = pet.health <= 60 && pet.health > 30 && pet.status !== 'SICK';
-    const statusEmoji = pet.status === 'SICK' ? '🤢 Sakit' : (pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi');
+    // ── STATUS SEHAT / SAKIT / INJURED / WEAK ──
+    const now = Math.floor(Date.now() / 1000);
+    const isInjured = pet.curse_type === 'injured' && pet.curse_until > now;
+    const isSick = pet.status === 'SICK' || pet.health <= 30 || isInjured;
+    const isWeak = pet.health <= 60 && pet.health > 30 && pet.status !== 'SICK' && pet.status !== 'WEAK';
+    
+    let statusEmoji = pet.status === 'SICK' ? '🤢 Sakit' : (pet.status === 'WEAK' ? '🤕 Lemas' : (pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi'));
+    if (isInjured) statusEmoji = '🤕 Terluka';
+
     const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : speciesColor;
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
 
@@ -2082,15 +2087,18 @@ module.exports = {
       else if (traitName === 'STURDY') { rarityBadge = '🛡️ RARE · STURDY'; traitLine = '`HP decay ÷2`'; }
       else if (traitName === 'MUTANT') { rarityBadge = '🧬 RARE · MUTANT'; traitLine = '`+10% work/hunt`'; }
       else if (traitName === 'WARRIOR') { rarityBadge = '⚔️ RARE · WARRIOR'; traitLine = '`+10% ATK`'; }
+      else if (traitName === 'FRAGILE') { rarityBadge = '💀 MUTASI · FRAGILE'; traitLine = '`Lapar/haus dmg 2.0x`'; }
+      else if (traitName === 'SURVIVOR') { rarityBadge = '🛡️ RARE · SURVIVOR'; traitLine = '`Kebal kematian lapar (Min 1 HP)`'; }
     }
 
     const multText = (pet.xp_multiplier || 1.0) > 1.0 ? `⚡ **${pet.xp_multiplier}x XP**` : '1x';
-    const healthStatus = pet.status === 'SICK' ? '🤢 Sakit (Overdose)' : (isSick ? '🚨 **KRITIS!**' : (isWeak ? '⚠️ Lemah' : '💚 Sehat'));
+    const healthStatus = pet.status === 'SICK' ? '🤢 Sakit (Overdose)' : (isInjured ? '🤕 Terluka (Luka PvP)' : (pet.status === 'WEAK' ? '⚠️ Lemas (Kelaparan)' : (isSick ? '🚨 **KRITIS!**' : (isWeak ? '⚠️ Lemah' : '💚 Sehat'))));
 
     let accText = '❌ Tidak Ada';
     if (pet.accessory === 'COLLAR_IRON') accText = '🪮 Kalung Besi (Laju Decay -15%)';
     else if (pet.accessory === 'SWORD_TOY') accText = '⚔️ Pedang Mainan (PvP DMG +15%)';
     else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan (PvP DEF +15%)';
+    else if (pet.accessory === 'LUCKY_AMULET') accText = '🔮 Jimat Keberuntungan (Mencegah Kematian 1x)';
 
     embed
       .setColor(statusColor)
@@ -2241,7 +2249,7 @@ module.exports = {
           (item.happiness > 0 ? `\`+${item.happiness} Kebahagiaan\` ` : '') +
           (item.cures ? `\`Mengobati Sakit/Pingsan\` ` : '') +
           (item.multiplier ? `\`Meningkatkan Multiplier XP Pet menjadi ${item.multiplier}x secara permanen\` ` : '') +
-          (item.type === 'ACCESSORY' ? `\`Aksesoris Permanen Pet (Bisa Dipasang)\` ` : '') +
+          (item.type === 'ACCESSORY' ? (item.id === 'LUCKY_AMULET' ? `\`Aksesoris Sekali Pakai (Jimat Pelindung Mati)\` ` : `\`Aksesoris Permanen Pet (Bisa Dipasang)\` `) : '') +
           `\n👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``,
         inline: false
       });

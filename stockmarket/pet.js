@@ -14,6 +14,7 @@ const PET_ITEMS = {
   COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1200, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
   SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
   SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
+  LUCKY_AMULET: { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan', price: 2000, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Jimat pelindung sekali pakai. Menyelamatkan pet dari kematian (jika HP mencapai 0) lalu hancur.' },
   XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
   XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
   XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
@@ -147,6 +148,21 @@ function applyDecay(pet) {
     thirstDecayRate = 4;
   }
 
+  // A. Neglect Multiplier (Pengabaian Beruntun)
+  let neglectDecayMultiplier = 1.0;
+  let neglectHPMultiplier = 1.0;
+  if (elapsedHours > 48) {
+    neglectDecayMultiplier = 2.0;
+    neglectHPMultiplier = 2.0;
+  } else if (elapsedHours > 24) {
+    neglectDecayMultiplier = 1.5;
+    neglectHPMultiplier = 1.0;
+  }
+
+  hungerDecayRate = Number((hungerDecayRate * neglectDecayMultiplier).toFixed(2));
+  thirstDecayRate = Number((thirstDecayRate * neglectDecayMultiplier).toFixed(2));
+  happinessDecayRate = Number((happinessDecayRate * neglectDecayMultiplier).toFixed(2));
+
   // Trait STURDY: mengurangi laju decay status sebesar 40% (perkalian 0.60)
   if (pet.trait === 'STURDY') {
     hungerDecayRate = Number((hungerDecayRate * 0.60).toFixed(2));
@@ -208,23 +224,61 @@ function applyDecay(pet) {
     if (newThirst === 0) thirstOverdueHours += fractionalHour;
   }
 
-  let hpReduction = Math.floor((hungerOverdueHours * 5) + (thirstOverdueHours * 5));
+  // Starvation/Dehydration HP reduction
+  let baseHPLossRate = 5;
+  if (pet.trait === 'FRAGILE') {
+    baseHPLossRate = 10;
+  }
+  let hpReduction = Math.floor((hungerOverdueHours * baseHPLossRate * neglectHPMultiplier) + (thirstOverdueHours * baseHPLossRate * neglectHPMultiplier));
   if (pet.trait === 'STURDY') {
     hpReduction = Math.floor(hpReduction / 2);
   }
   newHealth = Math.max(0, newHealth - hpReduction);
 
+  // Passive HP Loss (SICK / INJURED) & HP Regen (Happiness > 80% and not starving)
+  let passiveHpChange = 0;
+  if (pet.status === 'SICK') {
+    passiveHpChange -= 1; // -1 HP/hour
+  }
+  if (pet.curse_type === 'injured' && pet.curse_until > now) {
+    passiveHpChange -= 2; // -2 HP/hour
+  }
+  // Happiness HP Regen
+  if (passiveHpChange === 0 && newHappiness > 80 && hungerOverdueHours === 0 && thirstOverdueHours === 0) {
+    passiveHpChange += 1; // +1 HP/hour regen
+  }
+
+  if (passiveHpChange !== 0) {
+    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    newHealth = Math.max(0, Math.min(maxHP, newHealth + Math.floor(passiveHpChange * elapsedHours)));
+  }
+
+  // Death Handling, LUCKY_AMULET, and SURVIVOR Trait
   let newStatus = pet.status;
+  let finalAccessory = pet.accessory;
   if (newHealth <= 0) {
-    newStatus = 'DEAD';
-    newHealth = 0;
+    if (pet.trait === 'SURVIVOR') {
+      newHealth = 1;
+      newStatus = 'WEAK';
+    } else if (pet.accessory === 'LUCKY_AMULET') {
+      newHealth = 20;
+      newStatus = pet.level >= 10 ? 'ADULT' : 'BABY';
+      finalAccessory = ''; // Jimat hancur
+    } else {
+      newStatus = 'DEAD';
+      newHealth = 0;
+    }
+  }
+
+  if (newStatus === 'WEAK' && newHealth > 1) {
+    newStatus = pet.level >= 10 ? 'ADULT' : 'BABY';
   }
 
   db.run(
     `UPDATE user_pets 
-     SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?
+     SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?, accessory = ?
      WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, pet.user_id, pet.guild_id, pet.pet_name]
+    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, finalAccessory, pet.user_id, pet.guild_id, pet.pet_name]
   );
 
   return {
@@ -234,7 +288,8 @@ function applyDecay(pet) {
     happiness: newHappiness,
     health: newHealth,
     status: newStatus,
-    last_interaction_at: now
+    last_interaction_at: now,
+    accessory: finalAccessory
   };
 }
 
@@ -579,15 +634,28 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
       }
 
       let newStatus = pet.status;
-      if (item.cures && pet.status === 'SICK') {
+      let finalCurseType = pet.curse_type;
+      let finalCurseUntil = pet.curse_until;
+
+      if (item.cures) {
+        if (pet.status === 'SICK') {
+          newStatus = newLevel >= 10 ? 'ADULT' : 'BABY';
+        }
+        if (pet.curse_type === 'injured') {
+          finalCurseType = '';
+          finalCurseUntil = 0;
+        }
+      }
+
+      if (newStatus === 'WEAK' && newHealth > 1) {
         newStatus = newLevel >= 10 ? 'ADULT' : 'BABY';
       }
 
       db.run(
         `UPDATE user_pets 
-         SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, status = ?, last_interaction_at = ?
+         SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, status = ?, last_interaction_at = ?, curse_type = ?, curse_until = ?
          WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-        [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, newStatus, now, userId, guildId, pet.pet_name]
+        [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, newStatus, now, finalCurseType, finalCurseUntil, userId, guildId, pet.pet_name]
       );
 
       // Hook quest progress for FEED
@@ -663,6 +731,12 @@ function sendToWork(userId, guildId) {
   const now = Math.floor(Date.now() / 1000);
   if (pet.curse_type === 'smelly' && pet.curse_until > now) {
     throw new Error(`🦨 **${pet.pet_name}** menutup hidungnya dan berteriak:\n*"Gak mau! Badan aku bau busuk jigong naga! Mandiin aku dulu pake sabun Sultan (\\.pet mandiin)!"*`);
+  }
+  if (pet.curse_type === 'injured' && pet.curse_until > now) {
+    throw new Error(`🤕 **${pet.pet_name}** terluka parah akibat kekalahan bertarung! Dia terbaring lemas dan membutuhkan Ramuan Kesehatan (.pet pakai medicine) untuk diobati.`);
+  }
+  if (pet.status === 'WEAK') {
+    throw new Error(`🤕 **${pet.pet_name}** sangat lemas kelaparan! Beri dia makan/minum terlebih dahulu.`);
   }
 
   // Syarat kerja
@@ -759,6 +833,12 @@ function sendToHunt(userId, guildId) {
   const now = Math.floor(Date.now() / 1000);
   if (pet.curse_type === 'smelly' && pet.curse_until > now) {
     throw new Error(`🦨 **${pet.pet_name}** menutup hidungnya dan berteriak:\n*"Gak mau! Badan aku bau busuk jigong naga! Mandiin aku dulu pake sabun Sultan (\\.pet mandiin)!"*`);
+  }
+  if (pet.curse_type === 'injured' && pet.curse_until > now) {
+    throw new Error(`🤕 **${pet.pet_name}** terluka parah akibat kekalahan bertarung! Dia terbaring lemas dan membutuhkan Ramuan Kesehatan (.pet pakai medicine) untuk diobati.`);
+  }
+  if (pet.status === 'WEAK') {
+    throw new Error(`🤕 **${pet.pet_name}** sangat lemas kelaparan! Beri dia makan/minum terlebih dahulu.`);
   }
   const isGodPet = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
   if (!isGodPet && pet.status === 'BABY') {
@@ -1051,15 +1131,30 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       lStatus = 'DEAD';
     }
 
+    let finalCurseType = loserPet.curse_type;
+    let finalCurseUntil = loserPet.curse_until;
+    let injuredTriggered = false;
+
+    const isGodLoser = loserPet.pet_name.toLowerCase() === 'ramzi' && loserPet.user_id === '436554535037698059';
+    if (!isGodLoser && lStatus !== 'DEAD' && Math.random() < 0.15) {
+      finalCurseType = 'injured';
+      finalCurseUntil = Math.floor(Date.now() / 1000) + 86400 * 7; // Cedera 7 hari
+      injuredTriggered = true;
+    }
+
     db.run(
       `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_wins = pvp_wins + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]
     );
 
     db.run(
-      `UPDATE user_pets SET health = ?, status = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-      [lHP, lStatus, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), loserId, guildId, loserName]
+      `UPDATE user_pets SET health = ?, status = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ?, curse_type = ?, curse_until = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [lHP, lStatus, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), finalCurseType, finalCurseUntil, loserId, guildId, loserName]
     );
+
+    if (injuredTriggered) {
+      logs.push(`⚠️ **Cedera Tempur!** Pet **${loserName}** terluka parah akibat kekalahan bertarung di PvP Arena dan mengalami status **INJURED** (Kurang 2 HP/jam secara pasif sampai diobati dengan Ramuan Kesehatan).`);
+    }
   })();
 
   return {
@@ -1110,6 +1205,25 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
   }
   if (partner.status !== 'ADULT') {
     throw new Error(`Pet partner **${partner.pet_name}** belum dewasa! Harus bertumbuh hingga Level >= 10.`);
+  }
+
+  if (challenger.curse_type === 'smelly' && challenger.curse_until > now) {
+    throw new Error(`🦨 Pet Anda **${challenger.pet_name}** terlalu bau busuk untuk kawin! Mandikan dia terlebih dahulu.`);
+  }
+  if (partner.curse_type === 'smelly' && partner.curse_until > now) {
+    throw new Error(`🦨 Pet partner **${partner.pet_name}** terlalu bau busuk! Partner harus memandikannya terlebih dahulu.`);
+  }
+  if (challenger.curse_type === 'injured' && challenger.curse_until > now) {
+    throw new Error(`🤕 Pet Anda **${challenger.pet_name}** sedang terluka parah untuk kawin! Sembuhkan dia terlebih dahulu.`);
+  }
+  if (partner.curse_type === 'injured' && partner.curse_until > now) {
+    throw new Error(`🤕 Pet partner **${partner.pet_name}** sedang terluka parah! Sembuhkan dia terlebih dahulu.`);
+  }
+  if (challenger.status === 'WEAK') {
+    throw new Error(`🤕 Pet Anda **${challenger.pet_name}** sedang lemas kelaparan! Beri makan/minum terlebih dahulu.`);
+  }
+  if (partner.status === 'WEAK') {
+    throw new Error(`🤕 Pet partner **${partner.pet_name}** sedang lemas kelaparan!`);
   }
 
   if (challenger.health < 50 || challenger.happiness < 50) {
@@ -1282,6 +1396,16 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
   participantIds.forEach(pId => {
     const p = getPet(pId, guildId);
     if (p && p.status !== 'DEAD' && p.status !== 'EGG') {
+      const now = Math.floor(Date.now() / 1000);
+      if (p.curse_type === 'smelly' && p.curse_until > now) {
+        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang sangat bau busuk! Mandikan dulu sebelum berpetualang.`);
+      }
+      if (p.curse_type === 'injured' && p.curse_until > now) {
+        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang terluka parah! Obati dulu sebelum berpetualang.`);
+      }
+      if (p.status === 'WEAK') {
+        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang lemas kelaparan! Beri makan/minum dulu sebelum berpetualang.`);
+      }
       activePets.push({ userId: pId, pet: p });
     }
   });
@@ -1992,6 +2116,10 @@ function trainPet(userId, guildId) {
   if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
   if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
   if (petObj.status === 'SICK') throw new Error('Pet Anda sedang sakit 🤢! Sembuhkan terlebih dahulu.');
+  if (petObj.status === 'WEAK') throw new Error('Pet Anda sedang lemas kelaparan! Beri makan/minum terlebih dahulu.');
+  if (petObj.curse_type === 'injured' && petObj.curse_until > Math.floor(Date.now() / 1000)) {
+    throw new Error('Pet Anda sedang terluka parah 🤕! Obati dia terlebih dahulu.');
+  }
 
   if (petObj.health < 40) {
     throw new Error('Pet Anda terlalu lemah/lelah (HP < 40) untuk berlatih!');
