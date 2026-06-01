@@ -734,47 +734,168 @@ function initStockMarket(client) {
         const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
         const embed = embeds.shopEmbed(items, wallet);
 
-        const row = new ActionRowBuilder().addComponents(
+        const components = [];
+        const btnRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
         );
+        components.push(btnRow);
 
-        const privateMsg = await interaction.editReply({ embeds: [embed], components: [row] });
-        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
+        if (items.length > 0) {
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('eco_select_buy_role')
+            .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+          const TIER_EMOJIS = {
+            COMMON: '🟢',
+            RARE: '🔵',
+            EPIC: '🟣',
+            LEGENDARY: '👑',
+            MYTHIC: '🌟'
+          };
+
+          const options = items.slice(0, 25).map(item => {
+            const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+            const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+            return new StringSelectMenuOptionBuilder()
+              .setLabel(`${emoji} ${item.role_name}`)
+              .setValue(item.id.toString())
+              .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+          });
+
+          selectMenu.addOptions(options);
+          components.push(new ActionRowBuilder().addComponents(selectMenu));
+        }
+
+        const privateMsg = await interaction.editReply({ embeds: [embed], components });
+        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
 
         collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol/Menu ini bukan milik Anda!', flags: 64 });
 
-          if (i.customId === 'eco_btn_profile') {
-            await i.deferReply({ flags: 64 });
-            const wallet2 = economy.getWallet(user.id, guildId);
-            const porto = stocks.getPortfolio(user.id, guildId);
-            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const userPet = pet.getPet(user.id, guildId);
-            const activeLoan = bank.getActiveLoan(user.id, guildId);
-            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
-            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-            const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
-            await i.editReply({ embeds: [profileEmbed] });
-          } else if (i.customId === 'eco_btn_gacha') {
-            await executeGachaRoll({
-              replyTarget: i,
-              user,
-              guild: i.guild,
-              guildId,
-              client,
-              isInteraction: true,
-              member: i.member
-            });
+          try {
+            if (i.customId === 'eco_btn_profile') {
+              await i.deferReply({ flags: 64 });
+              const wallet2 = economy.getWallet(user.id, guildId);
+              const porto = stocks.getPortfolio(user.id, guildId);
+              const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              const userPet = pet.getPet(user.id, guildId);
+              const activeLoan = bank.getActiveLoan(user.id, guildId);
+              const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+              const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
+              const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
+              await i.editReply({ embeds: [profileEmbed] });
+            } else if (i.customId === 'eco_btn_gacha') {
+              await executeGachaRoll({
+                replyTarget: i,
+                user,
+                guild: i.guild,
+                guildId,
+                client,
+                isInteraction: true,
+                member: i.member
+              });
+              // Perbarui embed utama setelah gacha
+              const wallet2 = economy.getWallet(user.id, guildId);
+              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+              await privateMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+            } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
+              const itemId = parseInt(i.values[0]);
+              await executeRolePurchase({
+                replyTarget: i,
+                user,
+                guild: i.guild,
+                guildId,
+                itemId,
+                isInteraction: true,
+                member: i.member
+              });
+              // Perbarui embed utama setelah pembelian role
+              const wallet2 = economy.getWallet(user.id, guildId);
+              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+              
+              // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
+              const updatedComponents = [];
+              const freshBtnRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+              );
+              updatedComponents.push(freshBtnRow);
+
+              if (items2.length > 0) {
+                const selectMenu = new StringSelectMenuBuilder()
+                  .setCustomId('eco_select_buy_role')
+                  .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+                const TIER_EMOJIS = {
+                  COMMON: '🟢',
+                  RARE: '🔵',
+                  EPIC: '🟣',
+                  LEGENDARY: '👑',
+                  MYTHIC: '🌟'
+                };
+
+                const options = items2.slice(0, 25).map(item => {
+                  const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+                  const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+                  return new StringSelectMenuOptionBuilder()
+                    .setLabel(`${emoji} ${item.role_name}`)
+                    .setValue(item.id.toString())
+                    .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+                });
+
+                selectMenu.addOptions(options);
+                updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+              }
+
+              await privateMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+            }
+          } catch (err) {
+            console.error('Error handling interaction in shop portal:', err);
+            await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', flags: 64 }).catch(() => { });
           }
         });
 
         collector.on('end', async () => {
-          const disabledRow = new ActionRowBuilder().addComponents(
+          const disabledRows = [];
+          const disabledBtnRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
             new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
           );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
+          disabledRows.push(disabledBtnRow);
+
+          // Ambil status terbaru untuk layout penutup yang presisi
+          const freshItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+          if (freshItems.length > 0) {
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('eco_select_buy_role')
+              .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...')
+              .setDisabled(true);
+
+            const TIER_EMOJIS = {
+              COMMON: '🟢',
+              RARE: '🔵',
+              EPIC: '🟣',
+              LEGENDARY: '👑',
+              MYTHIC: '🌟'
+            };
+
+            const options = freshItems.slice(0, 25).map(item => {
+              const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+              const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+              return new StringSelectMenuOptionBuilder()
+                .setLabel(`${emoji} ${item.role_name}`)
+                .setValue(item.id.toString())
+                .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+            });
+
+            selectMenu.addOptions(options);
+            disabledRows.push(new ActionRowBuilder().addComponents(selectMenu));
+          }
+
+          await privateMsg.edit({ components: disabledRows }).catch(() => { });
         });
       }
 
@@ -4986,6 +5107,101 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
 }
 
 /**
+ * Membeli role dari toko secara langsung.
+ * Bisa dipanggil dari text command (.buy-role) maupun select menu interaktif.
+ */
+async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, isInteraction, member }) {
+  const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
+  const isEphemeral = isInteraction && replyTarget.channelId === SHOP_CHANNEL_ID;
+
+  if (!item) {
+    const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role atau ID tersebut tidak terdaftar di toko server ini.');
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  if (item.stock !== -1 && item.stock <= 0) {
+    const emb = embeds.warnEmbed('Stok Habis!', `Role **${item.role_name}** telah habis terjual (Sold Out)!`);
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  const discordRole = guild.roles.cache.get(item.role_id) || await guild.roles.fetch(item.role_id).catch(() => null);
+  if (!discordRole) {
+    const emb = embeds.errorEmbed('Role Tidak Ditemukan!', 'Role ini tidak lagi eksis di server Discord Anda. Silakan hubungi admin!');
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  const memberObj = member || await guild.members.fetch(user.id).catch(() => null);
+  if (!memberObj) {
+    const emb = embeds.errorEmbed('Gagal Memproses!', 'Gagal mengambil data profil anggota Discord Anda.');
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  if (memberObj.roles.cache.has(item.role_id)) {
+    const emb = embeds.warnEmbed('Sudah Memiliki Role!', `Anda sudah memiliki role **${item.role_name}** di server ini!`);
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  const wallet = economy.getWallet(user.id, guildId);
+  if (wallet.balance < item.price) {
+    const emb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  // Mulai penukaran: Tambahkan role dulu ke user
+  try {
+    await memberObj.roles.add(discordRole);
+  } catch (roleErr) {
+    console.error('❌ Gagal menambahkan role ke member:', roleErr.message);
+    const emb = embeds.errorEmbed('Hak Akses Bot Tidak Cukup!', 'Bot gagal menyematkan role ke akun Anda. Pastikan posisi role bot berada di atas role yang ingin dibeli di pengaturan integrasi server Discord!');
+    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    return replyTarget.reply({ embeds: [emb] });
+  }
+
+  // Kurangi koin & stok di database
+  let finalWallet;
+  try {
+    database.transaction(() => {
+      economy.subtractBalance(user.id, guildId, item.price, 'SHOP_BUY', null);
+      if (item.stock !== -1) {
+        database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [item.id, guildId]);
+      }
+    })();
+    finalWallet = economy.getWallet(user.id, guildId);
+  } catch (dbErr) {
+    // Rollback role jika database gagal
+    await memberObj.roles.remove(discordRole).catch(() => { });
+    throw dbErr;
+  }
+
+  const successEmbed = embeds.rolePurchaseSuccessEmbed(user, item.role_name, item.price, finalWallet.balance, item.tier);
+  if (isInteraction) {
+    await replyTarget.reply({ embeds: [successEmbed], flags: 64 });
+  } else {
+    await replyTarget.reply({ embeds: [successEmbed] });
+  }
+
+  // Broadcast Heboh jika tingkat EPIC / LEGENDARY / MYTHIC
+  if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
+    const broadcastEmbed = embeds.broadcastMegaEmbed(user, item.role_name, item.price, item.tier);
+    const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+    if (reportChannel) {
+      await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
+    } else {
+      // Broadcast ke channel tempat user berinteraksi (bila bukan di channel dashboard privat)
+      if (replyTarget.channelId !== SHOP_CHANNEL_ID) {
+        await replyTarget.channel.send({ embeds: [broadcastEmbed] }).catch(() => { });
+      }
+    }
+  }
+}
+
+/**
  * Routing & Handler Perintah Teks dengan awalan titik (.)
  * Mengembalikan true jika perintah dikenali & diproses, false jika bukan perintah modul.
  */
@@ -7079,32 +7295,53 @@ async function handleEconomyCommands(message, client) {
       const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
       const embed = embeds.shopEmbed(items, wallet);
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('eco_btn_profile')
-          .setLabel('💰 Profil & Saldo')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('eco_btn_gacha')
-          .setLabel('🎲 Gacha Role')
-          .setStyle(ButtonStyle.Danger)
+      const components = [];
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
       );
+      components.push(btnRow);
 
-      const shopMsg = await message.reply({ embeds: [embed], components: [row] });
+      if (items.length > 0) {
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('eco_select_buy_role')
+          .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+        const TIER_EMOJIS = {
+          COMMON: '🟢',
+          RARE: '🔵',
+          EPIC: '🟣',
+          LEGENDARY: '👑',
+          MYTHIC: '🌟'
+        };
+
+        const options = items.slice(0, 25).map(item => {
+          const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+          const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+          return new StringSelectMenuOptionBuilder()
+            .setLabel(`${emoji} ${item.role_name}`)
+            .setValue(item.id.toString())
+            .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+        });
+
+        selectMenu.addOptions(options);
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
+      }
+
+      const shopMsg = await message.reply({ embeds: [embed], components });
 
       const collector = shopMsg.createMessageComponentCollector({
-        componentType: ComponentType.Button,
         time: 120000 // 2 menit navigasi
       });
 
       collector.on('collect', async i => {
         if (i.user.id !== author.id) {
-          return i.reply({ content: '❌ Tombol ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', flags: 64 });
+          return i.reply({ content: '❌ Tombol/Menu ini hanya bisa digunakan oleh orang yang memanggil perintah ini!', flags: 64 });
         }
 
         try {
           if (i.customId === 'eco_btn_profile') {
-            const wallet = economy.getWallet(author.id, guildId);
+            const wallet2 = economy.getWallet(author.id, guildId);
             const porto = stocks.getPortfolio(author.id, guildId);
             const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
             const userPet = pet.getPet(author.id, guildId);
@@ -7112,7 +7349,7 @@ async function handleEconomyCommands(message, client) {
             const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [author.id, guildId]);
             const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [author.id, guildId]);
             const bailDebts = { debts, receivables };
-            const profileEmbed = embeds.profileEmbed(author, wallet, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts, porto.items);
+            const profileEmbed = embeds.profileEmbed(author, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts, porto.items);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
             await executeGachaRoll({
@@ -7124,19 +7361,107 @@ async function handleEconomyCommands(message, client) {
               isInteraction: true,
               member: i.member
             });
+            // Perbarui embed utama setelah gacha
+            const wallet2 = economy.getWallet(author.id, guildId);
+            const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+            await shopMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+          } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
+            const itemId = parseInt(i.values[0]);
+            await executeRolePurchase({
+              replyTarget: i,
+              user: author,
+              guild,
+              guildId,
+              itemId,
+              isInteraction: true,
+              member: i.member
+            });
+            // Perbarui embed utama setelah pembelian role
+            const wallet2 = economy.getWallet(author.id, guildId);
+            const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+            const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+            
+            // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
+            const updatedComponents = [];
+            const freshBtnRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+            );
+            updatedComponents.push(freshBtnRow);
+
+            if (items2.length > 0) {
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('eco_select_buy_role')
+                .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+              const TIER_EMOJIS = {
+                COMMON: '🟢',
+                RARE: '🔵',
+                EPIC: '🟣',
+                LEGENDARY: '👑',
+                MYTHIC: '🌟'
+              };
+
+              const options = items2.slice(0, 25).map(item => {
+                const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+                const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+                return new StringSelectMenuOptionBuilder()
+                  .setLabel(`${emoji} ${item.role_name}`)
+                  .setValue(item.id.toString())
+                  .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+              });
+
+              selectMenu.addOptions(options);
+              updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+            }
+
+            await shopMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
           }
         } catch (err) {
-          console.error('Error handling button click in shop:', err);
+          console.error('Error handling interaction in shop text command:', err);
           await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', flags: 64 }).catch(() => { });
         }
       });
 
       collector.on('end', async () => {
-        const disabledRow = new ActionRowBuilder().addComponents(
+        const disabledRows = [];
+        const disabledBtnRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
           new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
         );
-        await shopMsg.edit({ components: [disabledRow] }).catch(() => { });
+        disabledRows.push(disabledBtnRow);
+
+        // Ambil status terbaru untuk layout penutup yang presisi
+        const freshItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+        if (freshItems.length > 0) {
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('eco_select_buy_role')
+            .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...')
+            .setDisabled(true);
+
+          const TIER_EMOJIS = {
+            COMMON: '🟢',
+            RARE: '🔵',
+            EPIC: '🟣',
+            LEGENDARY: '👑',
+            MYTHIC: '🌟'
+          };
+
+          const options = freshItems.slice(0, 25).map(item => {
+            const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+            const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+            return new StringSelectMenuOptionBuilder()
+              .setLabel(`${emoji} ${item.role_name}`)
+              .setValue(item.id.toString())
+              .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+          });
+
+          selectMenu.addOptions(options);
+          disabledRows.push(new ActionRowBuilder().addComponents(selectMenu));
+        }
+
+        await shopMsg.edit({ components: disabledRows }).catch(() => { });
       });
 
       return true;
@@ -7168,67 +7493,18 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item role atau ID tersebut tidak terdaftar di toko server ini.`)] });
       }
 
-      if (item.stock !== -1 && item.stock <= 0) {
-        return message.reply({ embeds: [embeds.warnEmbed('Stok Habis!', `Role **${item.role_name}** telah habis terjual (Sold Out)!`)] });
-      }
+      await executeRolePurchase({
+        replyTarget: message,
+        user: author,
+        guild,
+        guildId,
+        itemId: item.id,
+        isInteraction: false,
+        member: message.member
+      });
 
-      const discordRole = guild.roles.cache.get(item.role_id) || await guild.roles.fetch(item.role_id).catch(() => null);
-      if (!discordRole) {
-        return message.reply({ embeds: [embeds.errorEmbed('Role Tidak Ditemukan!', 'Role ini tidak lagi eksis di server Discord Anda. Silakan hubungi admin!')] });
-      }
-
-      const memberObj = message.member || await guild.members.fetch(author.id).catch(() => null);
-      if (!memberObj) {
-        return message.reply({ embeds: [embeds.errorEmbed('Gagal Memproses!', 'Gagal mengambil data profil anggota Discord Anda.')] });
-      }
-
-      if (memberObj.roles.cache.has(item.role_id)) {
-        return message.reply({ embeds: [embeds.warnEmbed('Sudah Memiliki Role!', `Anda sudah memiliki role **${item.role_name}** di server ini!`)] });
-      }
-
-      const wallet = economy.getWallet(author.id, guildId);
-      if (wallet.balance < item.price) {
-        return message.reply({ embeds: [embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`)] });
-      }
-
-      // Mulai penukaran: Tambahkan role dulu ke user
-      try {
-        await memberObj.roles.add(discordRole);
-      } catch (roleErr) {
-        console.error('❌ Gagal menambahkan role ke member:', roleErr.message);
-        return message.reply({ embeds: [embeds.errorEmbed('Hak Akses Bot Tidak Cukup!', 'Bot gagal menyematkan role ke akun Anda. Pastikan posisi role bot berada di atas role yang ingin dibeli di pengaturan integrasi server Discord!')] });
-      }
-
-      // Kurangi koin & stok di database
-      let finalWallet;
-      try {
-        database.transaction(() => {
-          economy.subtractBalance(author.id, guildId, item.price, 'SHOP_BUY', null);
-          if (item.stock !== -1) {
-            database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [item.id, guildId]);
-          }
-        })();
-        finalWallet = economy.getWallet(author.id, guildId);
-      } catch (dbErr) {
-        // Rollback role jika database gagal
-        await memberObj.roles.remove(discordRole).catch(() => { });
-        throw dbErr;
-      }
-
-      const successEmbed = embeds.rolePurchaseSuccessEmbed(author, item.role_name, item.price, finalWallet.balance, item.tier);
-      await message.reply({ embeds: [successEmbed] });
-
-      // Broadcast Heboh jika tingkat EPIC / LEGENDARY / MYTHIC
+      // Picu suara TTS jika bot tersambung di voice channel & jika tier tinggi
       if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
-        const broadcastEmbed = embeds.broadcastMegaEmbed(author, item.role_name, item.price, item.tier);
-        const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
-        if (reportChannel) {
-          await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
-        } else {
-          await message.channel.send({ embeds: [broadcastEmbed] }).catch(() => { });
-        }
-
-        // Picu suara TTS jika bot tersambung di voice channel
         client.emit('playTtsEvent', {
           guildId,
           text: `Perhatian semuanya! Sultan ${author.username} baru saja membeli role ${item.tier} ${item.role_name}! Mari berikan penghormatan tinggi!`,
