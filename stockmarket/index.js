@@ -655,22 +655,24 @@ function startRealtimeLeaderboard(client) {
       console.error('❌ Error updating realtime jail leaderboard:', err);
     }
 
-    // ── 5. TOP THIEF LEADERBOARD (Dynamic Channel Name matching) ──
+    // ── 5. TOP THIEF LEADERBOARD (Dynamic & ID-based Channel matching) ──
     try {
-      let thiefChannel = null;
-      for (const [_, guild] of client.guilds.cache) {
-        const channels = guild.channels.cache;
-        const found = channels.find(c =>
-          c.type === 0 && ( // GuildText channel type is 0 in discord.js v14
-            c.name.includes('thief-leaderboard') ||
-            c.name.includes('pencuri-leaderboard') ||
-            c.name.includes('top-pencuri') ||
-            c.name.includes('pencuri-terbanyak')
-          )
-        );
-        if (found) {
-          thiefChannel = found;
-          break;
+      let thiefChannel = await client.channels.fetch('1511017876407058463').catch(() => null);
+      if (!thiefChannel) {
+        for (const [_, guild] of client.guilds.cache) {
+          const channels = guild.channels.cache;
+          const found = channels.find(c =>
+            c.type === 0 && ( // GuildText channel type is 0 in discord.js v14
+              c.name.includes('thief-leaderboard') ||
+              c.name.includes('pencuri-leaderboard') ||
+              c.name.includes('top-pencuri') ||
+              c.name.includes('pencuri-terbanyak')
+            )
+          );
+          if (found) {
+            thiefChannel = found;
+            break;
+          }
         }
       }
 
