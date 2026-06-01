@@ -18,7 +18,7 @@ function getWallet(userId, guildId) {
        VALUES (?, ?, ?, ?, ?)`,
       [userId, guildId, 0, 0, 0]
     );
-    
+
     wallet = {
       user_id: userId,
       guild_id: guildId,
@@ -41,11 +41,11 @@ function getWallet(userId, guildId) {
  */
 function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
   if (amount <= 0) return;
-  
+
   db.transaction(() => {
     // Pastikan wallet terdaftar
     getWallet(userId, guildId);
-    
+
     // Update saldo
     db.run(
       `UPDATE wallets 
@@ -53,7 +53,7 @@ function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
        WHERE user_id = ? AND guild_id = ?`,
       [amount, amount, userId, guildId]
     );
-    
+
     // Catat transaksi
     db.run(
       `INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) 
@@ -71,7 +71,7 @@ function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
  */
 function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = null) {
   if (amount <= 0) return;
-  
+
   const wallet = getWallet(userId, guildId);
   if (wallet.balance < amount) {
     throw new Error('Saldo tidak mencukupi!');
@@ -102,10 +102,10 @@ function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = nu
 function claimDaily(userId, guildId) {
   const wallet = getWallet(userId, guildId);
   const now = new Date();
-  
+
   // Format YYYY-MM-DD berdasarkan Zona Waktu WIB (Asia/Jakarta) untuk reset tepat tengah malam WIB
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
-  
+
   if (wallet.last_active_date === todayStr) {
     // Sudah mengklaim hari ini
     // Hitung waktu tersisa sampai tengah malam berikutnya
@@ -113,7 +113,7 @@ function claimDaily(userId, guildId) {
     tomorrow.setDate(now.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
     const msLeft = tomorrow - now;
-    
+
     return {
       success: false,
       timeLeftMs: msLeft
@@ -126,7 +126,7 @@ function claimDaily(userId, guildId) {
     const lastClaimDate = new Date(wallet.last_active_date);
     const diffTime = Math.abs(now - lastClaimDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) {
       // Diklaim keesokan harinya berturut-turut
       newStreak = Math.min(wallet.streak_days + 1, config.economy.DAILY_STREAK_CAP);
@@ -140,7 +140,7 @@ function claimDaily(userId, guildId) {
   const baseReward = Math.floor(
     Math.random() * (config.economy.DAILY_MAX - config.economy.DAILY_MIN + 1)
   ) + config.economy.DAILY_MIN;
-  
+
   // Ambil bonus kamar kos & upgrade kasur
   const kos = require('./kos');
   const activeRental = kos.getActiveRental(userId, guildId);
@@ -166,7 +166,7 @@ function claimDaily(userId, guildId) {
   }
 
   const totalReward = baseReward + streakBonus + roomBonus + gardenBuffBonus;
-  
+
   let finalPlayerReward = totalReward;
   let debtPaidDetails = null;
 
@@ -180,15 +180,15 @@ function claimDaily(userId, guildId) {
     const creditorId = activeDebt.creditor_id;
     // Potong 50% dari total daily reward untuk mencicil hutang teman secara paksa
     const paidAmount = Math.min(Math.floor(totalReward * 0.5), activeDebt.amount);
-    
+
     if (paidAmount > 0) {
       finalPlayerReward = totalReward - paidAmount;
       const remainingDebt = activeDebt.amount - paidAmount;
-      
+
       db.transaction(() => {
         // Tambah koin ke dompet teman (creditor)
         addBalance(creditorId, guildId, paidAmount, 'RECEIVE_DEBT_PAYMENT');
-        
+
         // Kurangi hutang tebusan
         if (remainingDebt <= 0) {
           db.run(
@@ -201,7 +201,7 @@ function claimDaily(userId, guildId) {
             [remainingDebt, guildId, userId, creditorId]
           );
         }
-        
+
         // Catat transaksi pemotongan hutang pada debtor
         db.run(
           'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
@@ -210,7 +210,7 @@ function claimDaily(userId, guildId) {
 
         // Tambah saldo bersih ke dompet pelaku setelah dipotong hutang
         addBalance(userId, guildId, finalPlayerReward, 'DAILY');
-        
+
         // Update streak dan tanggal aktif terakhir
         db.run(
           `UPDATE wallets 
@@ -219,7 +219,7 @@ function claimDaily(userId, guildId) {
           [newStreak, todayStr, userId, guildId]
         );
       })();
-      
+
       debtPaidDetails = {
         creditorId,
         paidAmount,
@@ -232,7 +232,7 @@ function claimDaily(userId, guildId) {
     db.transaction(() => {
       // Tambah saldo penuh jika tidak ada hutang
       addBalance(userId, guildId, totalReward, 'DAILY');
-      
+
       // Update streak dan tanggal aktif terakhir
       db.run(
         `UPDATE wallets 
@@ -263,7 +263,7 @@ function claimDaily(userId, guildId) {
 function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
   if (amount <= 0) throw new Error('Jumlah transfer harus lebih dari 0!');
   if (fromUserId === toUserId) throw new Error('Anda tidak bisa mentransfer ke diri sendiri!');
-  
+
   const senderWallet = getWallet(fromUserId, guildId);
   if (senderWallet.balance < amount) {
     throw new Error('Saldo Anda tidak mencukupi untuk melakukan transfer ini!');
@@ -272,7 +272,7 @@ function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
   // Hitung pajak
   const kos = require('./kos');
   const activeRental = kos.getActiveRental(fromUserId, guildId);
-  
+
   let taxRatePercent = config.economy.TRANSFER_TAX_PERCENT;
   if (activeRental && activeRental.config && activeRental.config.transferTax !== undefined) {
     taxRatePercent = activeRental.config.transferTax;
@@ -294,10 +294,10 @@ function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
   db.transaction(() => {
     // Kurangi dari pengirim (total nominal yang ditransfer)
     subtractBalance(fromUserId, guildId, amount, 'TRANSFER_OUT');
-    
+
     // Tambahkan ke penerima (dikurangi pajak)
     addBalance(toUserId, guildId, amountToReceive, 'TRANSFER_IN');
-    
+
     console.log(`💸 Transfer: ${fromUserId} -> ${toUserId} senilai Rp ${amount} (Penerima dapat Rp ${amountToReceive}, Pajak Rp ${tax} - Rate ${taxRatePercent}%)`);
   })();
 

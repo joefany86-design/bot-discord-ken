@@ -887,6 +887,48 @@ module.exports = {
     return embed.setTimestamp();
   },
 
+  // 7c. Embed Papan Peringkat Top Pencuri (Thief Leaderboard)
+  thiefLeaderboardEmbed(guildName, list, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2C3E50) // Midnight Dark Blue
+      .setTitle(`🕵️‍♂️ PAPAN PERINGKAT: TOP PENCURI KOSAN 1A — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `🚨 **BURONAN KELAS KAKAP & KOMPLOTAN KRIMINAL** 🕵️‍♂️\n` +
+        `*10 pencuri paling sukses berdasarkan akumulasi hasil curian (Solo + Heist).*\n` +
+        `────────────────────────────────────────`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    } else {
+      embed.setThumbnail('https://cdn-icons-png.flaticon.com/512/1864/1864509.png');
+    }
+
+    if (list.length === 0) {
+      embed.addFields({ name: '🕊️ Kota Damai', value: 'Belum ada warga yang berhasil mencuri koin warga lain.' });
+    } else {
+      let ranks = '';
+      list.forEach((user, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        const member = client.users.cache.get(user.user_id);
+        const name = member ? `**${member.username}**` : `<@${user.user_id}>`;
+
+        ranks += `${medal} ${name}\n` +
+          `   ├─ 💸 **Total Jarahan: \`${formatCurrency(user.total_stolen)}\`**\n` +
+          `   ├─ 👤 Solo Rob   : \`${formatCurrency(user.solo_stolen)}\`\n` +
+          `   ├─ 👥 Group Heist: \`${formatCurrency(user.heist_stolen)}\`\n` +
+          `   ├─ 📈 Sukses     : \`${user.success_count} kali\`\n` +
+          `   └─ 👮 Dipenjara   : \`${user.jail_count} kali\`\n\n`;
+      });
+      embed.setDescription(embed.data.description + '\n\n' + ranks + '────────────────────────────────────────');
+    }
+
+    return embed.setTimestamp();
+  },
+
   // 7a. Embed Papan Peringkat Pet (Pet Leaderboard)
   petLeaderboardEmbed(guildName, topPets, category, client) {
     const guild = client.guilds.cache.find(g => g.name === guildName);

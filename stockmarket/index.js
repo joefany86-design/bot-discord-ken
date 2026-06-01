@@ -654,6 +654,49 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime jail leaderboard:', err);
     }
+
+    // ── 5. TOP THIEF LEADERBOARD (Dynamic Channel Name matching) ──
+    try {
+      let thiefChannel = null;
+      for (const [_, guild] of client.guilds.cache) {
+        const channels = guild.channels.cache;
+        const found = channels.find(c =>
+          c.type === 0 && ( // GuildText channel type is 0 in discord.js v14
+            c.name.includes('thief-leaderboard') ||
+            c.name.includes('pencuri-leaderboard') ||
+            c.name.includes('top-pencuri') ||
+            c.name.includes('pencuri-terbanyak')
+          )
+        );
+        if (found) {
+          thiefChannel = found;
+          break;
+        }
+      }
+
+      if (thiefChannel) {
+        const guildId = thiefChannel.guild.id;
+        const guildName = thiefChannel.guild.name;
+
+        const thiefData = economy.getThiefLeaderboard(guildId, 10);
+        await Promise.all(thiefData.map(async u => {
+          try { await client.users.fetch(u.user_id); } catch (e) { }
+        }));
+        const thiefEmbed = embeds.thiefLeaderboardEmbed(guildName, thiefData, client);
+
+        const messages = await thiefChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
+        const payload = { embeds: [thiefEmbed], components: [] };
+
+        if (leaderboardMsg) {
+          await leaderboardMsg.edit(payload).catch(() => { });
+        } else {
+          await thiefChannel.send(payload).catch(() => { });
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error updating realtime thief leaderboard:', err);
+    }
   }, 5000);
 }
 
@@ -5248,6 +5291,15 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [robInfoEmbed] });
       }
 
+      if (firstArg === 'top' || firstArg === 'leaderboard') {
+        const thiefData = economy.getThiefLeaderboard(guildId, 10);
+        await Promise.all(thiefData.map(async u => {
+          try { await client.users.fetch(u.user_id); } catch (e) { }
+        }));
+        const embed = embeds.thiefLeaderboardEmbed(guild.name, thiefData, client);
+        return message.reply({ embeds: [embed] });
+      }
+
       const targetUser = message.mentions.users.first();
       if (!targetUser) {
         return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.rob @user\` untuk merampok seseorang, atau \`.rob anoncemen\` untuk melihat info resiko & benefit.')] });
@@ -6973,6 +7025,19 @@ async function handleEconomyCommands(message, client) {
 
       const porto = stocks.getPortfolio(targetUser.id, guildId);
       const embed = embeds.portfolioEmbed(targetUser, porto, wallet);
+      await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .top-pencuri / .toppencuri / .top-thief / .top-rob
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'top-pencuri' || commandName === 'toppencuri' || commandName === 'top-thief' || commandName === 'top-rob') {
+      const thiefData = economy.getThiefLeaderboard(guildId, 10);
+      await Promise.all(thiefData.map(async u => {
+        try { await client.users.fetch(u.user_id); } catch (e) { }
+      }));
+      const embed = embeds.thiefLeaderboardEmbed(guild.name, thiefData, client);
       await message.reply({ embeds: [embed] });
       return true;
     }
