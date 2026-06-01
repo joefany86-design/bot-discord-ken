@@ -5285,6 +5285,24 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // ── PENGALIHAN PERINTAH LAMA KE PORTAL HUB (.hub) ──
+  const redirectedCommands = ['shop', 'rolemarket', 'market', 'saham', 'bank', 'bm', 'blackmarket', 'kos', 'kosan'];
+  if (redirectedCommands.includes(commandName)) {
+    await message.delete().catch(() => {});
+    const redirectEmb = embeds.warnEmbed(
+      'Perintah Dialihkan! 🌐',
+      `<@${author.id}>, perintah \`.${commandName}\` kini sudah tidak dapat digunakan lagi.\n\n` +
+      `Silakan gunakan perintah **\`.hub\`** (atau **\`.portal\`**) untuk mengakses menu terintegrasi kami (Toko, Pasar Saham, Bank, Black Market, dan Kos-kosan).`
+    );
+    const replyMsg = await message.channel.send({ embeds: [redirectEmb] }).catch(() => null);
+    if (replyMsg) {
+      setTimeout(() => {
+        replyMsg.delete().catch(() => {});
+      }, 10000);
+    }
+    return true;
+  }
+
   // ── PROTEKSI AKTIF HEIST DI CHANNEL 1508417228624887928 ──
   if (message.channelId === '1508417228624887928') {
     const activeLobby = robbery.activeHeists.get(guildId);
