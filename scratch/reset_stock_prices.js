@@ -5,9 +5,10 @@ const fs = require('fs');
 // Load environment variables from .env
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-let dbPath = path.join(__dirname, '../data/economy.db');
-if (!fs.existsSync(dbPath)) {
-  dbPath = process.env.DATABASE_PATH || '/data/db/economy.db';
+let dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../data/economy.db');
+if (process.env.DATABASE_PATH && !fs.existsSync(dbPath)) {
+  console.log(`⚠️ DATABASE_PATH '${process.env.DATABASE_PATH}' tidak ditemukan secara fisik. Melakukan fallback ke database lokal...`);
+  dbPath = path.join(__dirname, '../data/economy.db');
 }
 console.log('Connecting to database at:', dbPath);
 
