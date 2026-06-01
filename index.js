@@ -500,6 +500,42 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
   });
 }
 
+async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, client) {
+  const portalEmbed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
+    .setThumbnail(client.user.displayAvatarURL())
+    .setDescription(
+      `Halo **${user.username}**! Selamat datang di Portal Hub Sentinel.\n` +
+      `Di sini Anda dapat mengakses semua sistem permainan server secara pribadi dan instan tanpa perlu mengetikkan perintah teks. 🌟\n\n` +
+      `👉 **Silakan klik tombol di bawah ini untuk membuka panel kontrol sistem masing-masing:**`
+    )
+    .setFooter({ text: 'Sentinel Active Gamification • Pusat Kontrol Warga' })
+    .setTimestamp();
+
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('eco_btn_open_shop_private_perm').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('eco_btn_open_market_private_perm').setLabel('📈 Bursa Saham').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('eco_btn_open_bank_private_perm').setLabel('🏦 Bank Sentral').setStyle(ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Secondary)
+  );
+
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Pet').setStyle(ButtonStyle.Primary)
+  );
+
+  if (isInteraction) {
+    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2, row3], flags: 64 });
+  } else {
+    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2, row3] });
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // BOT READY EVENT
 // ═══════════════════════════════════════════════════
@@ -611,6 +647,10 @@ client.on('interactionCreate', async interaction => {
   // ── HELP ──
   else if (commandName === 'help') {
     await sendInteractiveHelp(interaction, true, interaction.user, guild, client);
+  }
+  // ── PORTAL HUB DIRECT ──
+  else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
+    await sendPortalHubDirect(interaction, true, interaction.user, guild, client);
   }
 });
 
@@ -1039,6 +1079,10 @@ client.on('messageCreate', async message => {
   // ── .help / .helplow / .menu / .control ──
   else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
     await sendInteractiveHelp(message, false, message.author, guild, client);
+  }
+  // ── .portal / .portalhub / .hub ──
+  else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
+    await sendPortalHubDirect(message, false, message.author, guild, client);
   }
 });
 

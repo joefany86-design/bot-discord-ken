@@ -21,6 +21,10 @@ const commands = [
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Menampilkan daftar perintah bot yang tersedia'),
+
+  new SlashCommandBuilder()
+    .setName('portal')
+    .setDescription('Membuka Pusat Kontrol & Portal Hub Sentinel secara instan'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
