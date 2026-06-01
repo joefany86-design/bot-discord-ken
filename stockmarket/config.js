@@ -47,6 +47,13 @@ module.exports = {
     MAX_ITEM_HOLD_LIMIT: 10,           // Batas maksimal kepemilikan item BM per jenis per user
   },
 
+  // Konfigurasi Lotre Mingguan Server
+  lottery: {
+    TICKET_PRICE: 100,              // Harga per tiket lotre (Rp)
+    BURN_PERCENT: 15,               // % pool yang dibakar saat undian
+    DRAW_CRON: '0 21 * * 0',        // Undian setiap Minggu 21:00 WIB
+  },
+
   // Logika & Aturan Stock Market
   market: {
     UPDATE_INTERVAL_MS: 2 * 60 * 60 * 1000, // Update harga setiap 2 jam
@@ -269,7 +276,15 @@ module.exports = {
       AC: 1.0,      // 1.0% harian (sebelumnya 2.0%)
       PENTHOUSE: 1.5 // 1.5% harian (sebelumnya 3.0%)
     },
-    INTEREST_CAP: 20000 // Batas maksimal saldo tabungan yang mendapatkan bunga harian
+    INTEREST_CAP: 20000, // Batas maksimal saldo tabungan yang mendapatkan bunga harian
+
+    // Pajak Progresif Mingguan (Setiap Senin 00:00 WIB)
+    PROGRESSIVE_TAX_BRACKETS: [
+      { min: 0,      max: 19999,           rate: 0 },     // Bebas pajak
+      { min: 20000,  max: 49999,           rate: 2.5 },   // 2.5% dari total saldo
+      { min: 50000,  max: 99999,           rate: 5.0 },   // 5.0% dari total saldo
+      { min: 100000, max: Number.MAX_SAFE_INTEGER, rate: 10.0 },  // 10.0% dari total saldo (Sultan)
+    ],
   },
 
   // Konfigurasi Cozy Flower Garden

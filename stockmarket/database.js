@@ -587,6 +587,31 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel user_daily_quests:", e.message);
   }
 
+  // 36. Tabel Lotre Mingguan
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS lottery_pool (
+        guild_id TEXT NOT NULL,
+        total_pool INTEGER DEFAULT 0,
+        total_tickets INTEGER DEFAULT 0,
+        week_start TEXT NOT NULL,
+        PRIMARY KEY (guild_id, week_start)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS lottery_tickets (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        ticket_count INTEGER DEFAULT 0,
+        week_start TEXT NOT NULL,
+        PRIMARY KEY (user_id, guild_id, week_start)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'lottery_pool' & 'lottery_tickets' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel lottery:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

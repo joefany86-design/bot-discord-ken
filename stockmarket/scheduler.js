@@ -709,6 +709,154 @@ function initScheduler(client) {
   }, {
     timezone: 'Asia/Jakarta'
   });
+  // 7. Cron Job: Undian Lotre Mingguan (Minggu 21:00 WIB)
+  cron.schedule(config.lottery?.DRAW_CRON || '0 21 * * 0', () => {
+    console.log('🎟️ [Scheduler] Menjalankan undian lotre mingguan...');
+
+    const database = require('./database');
+    const lottery = require('./lottery');
+    const embeds = require('./embeds');
+
+    client.guilds.cache.forEach(guild => {
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
+
+      try {
+        const result = lottery.drawWinner(guild.id);
+
+        if (!result) {
+          console.log(`🎟️ [Lotre] Tidak ada peserta lotre di guild ${guild.name}. Undian di-skip.`);
+          return;
+        }
+
+        console.log(`🎟️ [Lotre] Pemenang di ${guild.name}: ${result.winnerId} mendapat Rp ${result.prizeAmount}. Burn: Rp ${result.burnAmount}`);
+
+        if (targetChannel) {
+          const drawEmbed = new EmbedBuilder()
+            .setColor(0xFFD700)
+            .setTitle('🎟️ 🏆 UNDIAN LOTRE MINGGUAN — PEMENANG TELAH DITENTUKAN!')
+            .setDescription(
+              `🎉 **Selamat kepada pemenang lotre minggu ini!**\n\n` +
+              `👑 **Pemenang:** <@${result.winnerId}>\n` +
+              `🎫 Tiket Pemenang: **${result.winnerTickets} tiket**\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `📊 **Statistik Undian Minggu Ini:**\n` +
+              `┊ 💰 Total Pool: **Rp ${result.totalPool.toLocaleString('id-ID')}**\n` +
+              `┊ 🎫 Total Tiket Terjual: **${result.totalTickets} tiket**\n` +
+              `┊ 👥 Jumlah Peserta: **${result.participantCount} orang**\n` +
+              `┊ 🏆 Hadiah Pemenang (${100 - result.burnPercent}%): **+Rp ${result.prizeAmount.toLocaleString('id-ID')}**\n` +
+              `┊ 🔥 Koin Dibakar (${result.burnPercent}%): **-Rp ${result.burnAmount.toLocaleString('id-ID')}**\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+              `💡 *Beli tiket lotre minggu depan dengan perintah \`.lotre beli <jumlah>\`!*`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Lotre Mingguan Sentinel • Keberuntungan Anda Menanti!' });
+
+          targetChannel.send({ content: `🎉 <@${result.winnerId}> telah memenangkan lotre minggu ini!`, embeds: [drawEmbed] }).catch(err => {
+            console.error('❌ Gagal mengirim pengumuman lotre:', err.message);
+          });
+        }
+      } catch (err) {
+        console.error(`❌ Gagal menjalankan undian lotre di guild ${guild.name}:`, err.message);
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 8. Cron Job: Pajak Progresif Bank Mingguan (Senin 00:00 WIB)
+  cron.schedule('0 0 * * 1', () => {
+    console.log('🏦 [Scheduler] Menjalankan pemungutan pajak progresif bank mingguan...');
+
+    const database = require('./database');
+    const embeds = require('./embeds');
+
+    const brackets = config.bank.PROGRESSIVE_TAX_BRACKETS || [
+      { min: 0, max: 19999, rate: 0 },
+      { min: 20000, max: 49999, rate: 2.5 },
+      { min: 50000, max: 99999, rate: 5.0 },
+      { min: 100000, max: Number.MAX_SAFE_INTEGER, rate: 10.0 },
+    ];
+
+    client.guilds.cache.forEach(guild => {
+      let targetChannel = null;
+      if (config.REPORT_CHANNEL_ID) {
+        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      }
+      if (!targetChannel) {
+        targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+          c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+        );
+      }
+
+      try {
+        // Ambil semua tabungan dengan saldo >= threshold terendah yang kena pajak
+        const minTaxableBalance = brackets.find(b => b.rate > 0)?.min || 20000;
+        const taxableAccounts = database.all(
+          'SELECT * FROM bank_savings WHERE balance >= ? AND guild_id = ?',
+          [minTaxableBalance, guild.id]
+        );
+
+        let totalTaxCollected = 0;
+        let accountsTaxed = 0;
+
+        taxableAccounts.forEach(account => {
+          // Cari bracket yang sesuai
+          const bracket = brackets.find(b => account.balance >= b.min && account.balance <= b.max);
+          if (!bracket || bracket.rate <= 0) return;
+
+          const taxAmount = Math.floor(account.balance * (bracket.rate / 100));
+          if (taxAmount <= 0) return;
+
+          // Potong saldo tabungan
+          database.run(
+            'UPDATE bank_savings SET balance = CASE WHEN balance - ? < 0 THEN 0 ELSE balance - ? END WHERE user_id = ? AND guild_id = ?',
+            [taxAmount, taxAmount, account.user_id, guild.id]
+          );
+
+          totalTaxCollected += taxAmount;
+          accountsTaxed++;
+        });
+
+        console.log(`🏦 [Pajak Progresif] Guild ${guild.name}: ${accountsTaxed} rekening dipajaki, total Rp ${totalTaxCollected} dibakar.`);
+
+        if (accountsTaxed > 0 && targetChannel) {
+          const taxEmbed = new EmbedBuilder()
+            .setColor(0xE74C3C)
+            .setTitle('🏦 📉 PAJAK PROGRESIF MINGGUAN — LAPORAN PEMUNGUTAN')
+            .setDescription(
+              `⚖️ **Bank Sentral Kosan 1A telah melaksanakan pemungutan pajak progresif mingguan.**\n\n` +
+              `📊 **Ringkasan Pemungutan:**\n` +
+              `┊ 👥 Rekening Kena Pajak: **${accountsTaxed} rekening**\n` +
+              `┊ 🔥 Total Koin Dibakar: **-Rp ${totalTaxCollected.toLocaleString('id-ID')}**\n\n` +
+              `📋 **Tarif Pajak Berlaku:**\n` +
+              `┊ Rp 0 - 19.999: **0%** (Bebas Pajak)\n` +
+              `┊ Rp 20.000 - 49.999: **2.5%**\n` +
+              `┊ Rp 50.000 - 99.999: **5.0%**\n` +
+              `┊ ≥ Rp 100.000: **10.0%** (Sultan Tax)\n\n` +
+              `💡 *Tips: Belanjakan tabungan Anda di bursa saham, toko role, atau lotre mingguan untuk menghindari pajak berlebih!*`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Bank Sentral Kosan 1A • Stabilitas Ekonomi Server' });
+
+          targetChannel.send({ embeds: [taxEmbed] }).catch(err => {
+            console.error('❌ Gagal mengirim laporan pajak progresif:', err.message);
+          });
+        }
+      } catch (err) {
+        console.error(`❌ Gagal memproses pajak progresif di guild ${guild.name}:`, err.message);
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
 
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }

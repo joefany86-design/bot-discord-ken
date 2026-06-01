@@ -10,6 +10,7 @@ const pet = require('./pet');
 const robbery = require('./robbery');
 const bm = require('./blackmarket');
 const garden = require('./garden');
+const lottery = require('./lottery');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
@@ -6288,6 +6289,87 @@ async function handleEconomyCommands(message, client) {
       const embed = embeds.dailyClaimEmbed(author, result);
       await message.reply({ embeds: [embed] });
       return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .lottery / .lotre [beli <jumlah>]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'lottery' || commandName === 'lotre') {
+      const subCommand = args[0] ? args[0].toLowerCase() : null;
+
+      if (subCommand === 'buy' || subCommand === 'beli') {
+        const qty = parseInt(args[1]);
+        if (isNaN(qty) || qty <= 0) {
+          return message.reply({
+            embeds: [embeds.warnEmbed('Jumlah Tiket Tidak Valid!', 'Tentukan jumlah tiket yang ingin dibeli.\nContoh: `.lotre beli 5`')]
+          });
+        }
+
+        try {
+          const res = lottery.buyTickets(author.id, guildId, qty);
+          const successEmbed = new EmbedBuilder()
+            .setColor(embeds.COLORS?.SUCCESS || 0x00FF88)
+            .setTitle('🎟️ Pembelian Tiket Lotre Berhasil!')
+            .setDescription(
+              `🎉 **Terima kasih telah berpartisipasi dalam lotre mingguan!**\n\n` +
+              `👤 **Pembeli:** <@${author.id}>\n` +
+              `🎫 Tiket Dibeli: **${res.quantity} tiket**\n` +
+              `💰 Total Biaya: **Rp ${res.totalCost.toLocaleString('id-ID')}**\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `📊 **Status Lotre Anda:**\n` +
+              `┊ 🎫 Total Tiket Anda: **${res.userTotalTickets} tiket**\n` +
+              `┊ 💰 Total Pool Server: **Rp ${res.pool.total_pool.toLocaleString('id-ID')}** (dari **${res.pool.total_tickets} tiket** terjual)\n\n` +
+              `💡 *Undian otomatis dilakukan setiap hari Minggu pukul 21:00 WIB.*`
+            )
+            .setTimestamp();
+          return message.reply({ embeds: [successEmbed] });
+        } catch (err) {
+          return message.reply({
+            embeds: [embeds.errorEmbed('Gagal Membeli Tiket Lotre', err.message)]
+          });
+        }
+      }
+
+      // Tampilkan status lotre saat ini
+      const pool = lottery.getPool(guildId);
+      const userTickets = lottery.getUserTickets(author.id, guildId);
+      const participants = lottery.getParticipants(guildId);
+      const participantCount = participants.length;
+      const ticketPrice = config.lottery?.TICKET_PRICE || 100;
+      const burnPercent = config.lottery?.BURN_PERCENT || 15;
+
+      const winChance = pool.total_tickets > 0 
+        ? ((userTickets / pool.total_tickets) * 100).toFixed(2)
+        : '0.00';
+
+      const lotteryEmbed = new EmbedBuilder()
+        .setColor(0xFFD700)
+        .setTitle('🎟️ 🏆 LOTRE MINGGUAN SENTINEL')
+        .setDescription(
+          `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
+          `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📈 **Status Pool Saat Ini:**\n` +
+          `┊ 💰 Total Pool Hadiah: **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n` +
+          `┊ 🎫 Total Tiket Terjual: **${pool.total_tickets} tiket**\n` +
+          `┊ 👥 Jumlah Peserta: **${participantCount} orang**\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 **Status Anda (<@${author.id}>):**\n` +
+          `┊ 🎫 Jumlah Tiket: **${userTickets} tiket**\n` +
+          `┊ 🎯 Peluang Menang: **${winChance}%**\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `📋 **Informasi Lotre:**\n` +
+          `┊ 🪙 Harga Tiket: **Rp ${ticketPrice.toLocaleString('id-ID')}** per tiket\n` +
+          `┊ 🔥 Koin Dibakar: **${burnPercent}%** dari total pool akan dibakar (dihapus) saat undian untuk stabilitas ekonomi.\n` +
+          `┊ ⏱️ Jadwal Undian: Setiap **Minggu pukul 21:00 WIB**\n\n` +
+          `👉 **Cara Membeli Tiket:**\n` +
+          `Ketik \`.lotre beli <jumlah_tiket>\` atau \`.lottery buy <jumlah_tiket>\`\n` +
+          `*Contoh: \`.lotre beli 5\`*`
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Lotre Mingguan • Semoga Beruntung!' });
+
+      return message.reply({ embeds: [lotteryEmbed] });
     }
 
     // ═══════════════════════════════════════════════════
