@@ -629,6 +629,22 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 38. Migrasi dinamis: Tambahkan tabel pet_item_cooldowns jika belum ada
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS pet_item_cooldowns (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        last_used_at INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, item_id)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'pet_item_cooldowns' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel pet_item_cooldowns:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

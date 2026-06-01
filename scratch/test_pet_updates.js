@@ -87,6 +87,7 @@ if (activePet.xp !== (preTrainXp + 100) % 100) throw new Error("Expected pet XP 
 
 console.log("\n🥤 4. Testing Soda Energy & Overdose Sickness...");
 // Setup pet cooldowns
+db.prepare("DELETE FROM pet_item_cooldowns WHERE guild_id = ?").run(guildId);
 db.prepare("UPDATE user_pets SET last_work_at = 9999999999, last_hunt_at = 9999999999 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
 // Buy and use Soda Energy
 let sodaRes = pet.useSodaEnergy(userId, guildId, true);
@@ -100,6 +101,7 @@ db.prepare("UPDATE user_pets SET soda_today = 2 WHERE user_id = ? AND guild_id =
 let sodaCycles = 0;
 while (activePet.status !== 'SICK' && sodaCycles < 20) {
   sodaCycles++;
+  db.prepare("DELETE FROM pet_item_cooldowns WHERE guild_id = ?").run(guildId);
   db.prepare("UPDATE user_pets SET last_work_at = 9999999999, last_hunt_at = 9999999999 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
   // Add soda to inventory to avoid buying if wallet runs out
   db.prepare("INSERT OR REPLACE INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SODA_ENERGY', 5)").run(userId, guildId);
@@ -129,6 +131,7 @@ try {
 
 // Cure sickness using MEDICINE
 // Ensure they have medicine
+db.prepare("DELETE FROM pet_item_cooldowns WHERE guild_id = ?").run(guildId);
 db.prepare("INSERT OR REPLACE INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'MEDICINE', 1)").run(userId, guildId);
 let cureRes = pet.useItem(userId, guildId, 'MEDICINE', false);
 activePet = cureRes.pet;
@@ -149,6 +152,7 @@ try {
 }
 
 // Buy SOAP_PET (Rp 100)
+db.prepare("DELETE FROM pet_item_cooldowns WHERE guild_id = ?").run(guildId);
 pet.buyItem(userId, guildId, 'SOAP_PET', 1);
 let washRes = pet.washPet(userId, guildId);
 activePet = washRes.pet;

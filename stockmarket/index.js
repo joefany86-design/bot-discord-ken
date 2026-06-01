@@ -1398,12 +1398,12 @@ function initStockMarket(client) {
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
             rows.push(new ActionRowBuilder().addComponents(row2Components));
 
-            const row3Components = [
+             const row3Components = [
               new ButtonBuilder()
                 .setCustomId('pet_btn_toggle_auto_feed')
                 .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
                 .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
-              new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('⚡ Pakai Booster').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
             ];
             rows.push(new ActionRowBuilder().addComponents(row3Components));
@@ -1473,68 +1473,116 @@ function initStockMarket(client) {
                   return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
                 }
                 const inv = pet.getInventory(user.id, guildId);
-                const boosters = inv.filter(item => item.multiplier && item.quantity > 0);
+                const usableItems = inv.filter(item => item.quantity > 0);
 
-                if (boosters.length === 0) {
+                if (usableItems.length === 0) {
                   return iPet.reply({
                     embeds: [embeds.warnEmbed(
-                      'Tidak Ada Booster! ❌',
-                      'Anda tidak memiliki item XP Booster di persediaan pet Anda!\n\n' +
-                      '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk mempercepat kenaikan level pet Anda secara permanen!*'
+                      'Tas Pet Kosong! 🎒',
+                      'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
+                      '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk membeli pakan, obat, soda, sabun, atau booster.*'
                     )],
                     flags: 64
                   });
                 }
 
                 const selectMenu = new StringSelectMenuBuilder()
-                  .setCustomId('pet_select_booster_use')
-                  .setPlaceholder('⚡ Pilih XP Booster yang ingin digunakan...');
+                  .setCustomId('pet_select_item_use')
+                  .setPlaceholder('🎒 Pilih item yang ingin digunakan...');
 
-                boosters.forEach(item => {
+                usableItems.forEach(item => {
+                  let effectDesc = '';
+                  let cooldownDesc = '';
+
+                  if (item.id === 'FOOD_BASIC') {
+                    effectDesc = '+30 Kenyangan';
+                    cooldownDesc = ' · Cooldown: 5m';
+                  } else if (item.id === 'FOOD_PREMIUM') {
+                    effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
+                    cooldownDesc = ' · Cooldown: 15m';
+                  } else if (item.id === 'WATER') {
+                    effectDesc = '+35 Hidrasi';
+                    cooldownDesc = ' · Cooldown: 5m';
+                  } else if (item.id === 'MEDICINE') {
+                    effectDesc = '+50 HP, Sembuhkan Sakit';
+                    cooldownDesc = ' · Cooldown: 10m';
+                  } else if (item.id === 'TOY') {
+                    effectDesc = '+50 Kebahagiaan';
+                    cooldownDesc = ' · Cooldown: 15m';
+                  } else if (item.id === 'SODA_ENERGY') {
+                    effectDesc = 'Reset Cooldown Kerja/Berburu';
+                    cooldownDesc = ' · Cooldown: 30m';
+                  } else if (item.id === 'SOAP_PET') {
+                    effectDesc = 'Mandi Bersih (Hilangkan Bau)';
+                    cooldownDesc = ' · Cooldown: 10m';
+                  } else if (item.multiplier) {
+                    effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
+                    cooldownDesc = ' · Bebas Cooldown';
+                  }
+
                   selectMenu.addOptions(
                     new StringSelectMenuOptionBuilder()
-                      .setLabel(`${item.name} (${item.quantity} pcs)`)
-                      .setDescription(`Aktifkan pengali XP ${item.multiplier}x secara permanen`)
+                      .setLabel(`${item.name} (x${item.quantity})`)
+                      .setDescription(`${effectDesc}${cooldownDesc}`)
                       .setValue(item.id)
                   );
                 });
 
                 const row = new ActionRowBuilder().addComponents(selectMenu);
-                const boosterEmbed = new EmbedBuilder()
-                  .setColor(0x7C4DFF)
-                  .setTitle('⚡ PAKAI XP BOOSTER PET ⚡')
+                const invEmbed = new EmbedBuilder()
+                  .setColor(0x00b0ff)
+                  .setTitle('🎒 INVENTARIS / TAS PET AKTIF 🎒')
                   .setDescription(
-                    `Silakan pilih item XP Booster yang ingin Anda gunakan untuk pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
-                    `📊 **Pengali XP Saat Ini:** **${freshPet.xp_multiplier || 1.0}x**\n\n` +
-                    `*Penggunaan booster akan mengganti pengali XP pet Anda secara permanen dengan nilai yang lebih tinggi.*`
+                    `Silakan pilih item di bawah untuk digunakan pada pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
+                    `*Menggunakan item dari tas langsung memotong kuantitas tanpa perlu auto-buy.*`
                   )
                   .setTimestamp();
 
-                const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64, fetchReply: true });
-                const boosterCollector = subPrivateMsg.createMessageComponentCollector({
+                const subPrivateMsg = await iPet.reply({ embeds: [invEmbed], components: [row], flags: 64, fetchReply: true });
+                const itemCollector = subPrivateMsg.createMessageComponentCollector({
                   componentType: ComponentType.StringSelect,
                   time: 60000
                 });
 
-                boosterCollector.on('collect', async iBooster => {
-                  if (iBooster.user.id !== user.id) return;
-                  const selectedBoosterId = iBooster.values[0];
+                itemCollector.on('collect', async iItemUse => {
+                  if (iItemUse.user.id !== user.id) return;
+                  const selectedItemId = iItemUse.values[0];
 
                   try {
-                    const res = pet.useItem(user.id, guildId, selectedBoosterId, false);
+                    let result;
+                    let detailDesc = '';
+
+                    if (selectedItemId === 'SOAP_PET') {
+                      result = pet.washPet(user.id, guildId);
+                      detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
+                    } else if (selectedItemId === 'SODA_ENERGY') {
+                      result = pet.useSodaEnergy(user.id, guildId, false);
+                      detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
+                        (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
+                        `\n⏱️ *Cooldown: 30 Menit.*`;
+                    } else {
+                      result = pet.useItem(user.id, guildId, selectedItemId, false);
+                      if (result.item.multiplier) {
+                        detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!`;
+                      } else {
+                        const mins = Math.floor(result.item.cooldown / 60);
+                        detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).\n⏱️ *Cooldown: ${mins} Menit.*`;
+                      }
+                    }
+
                     const successEmb = embeds.successEmbed(
-                      'Penggunaan Booster Sukses! ⚡',
-                      `Berhasil mengaktifkan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n\n` +
-                      `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!`
+                      'Penggunaan Item Sukses! ✨',
+                      `Berhasil menggunakan **${pet.PET_ITEMS[selectedItemId].name}** pada pet **${result.pet.pet_name}**!\n\n${detailDesc}`
                     );
-                    await iBooster.update({ embeds: [successEmb], components: [] });
+
+                    await iItemUse.update({ embeds: [successEmb], components: [] });
                     await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
                   } catch (err) {
-                    await iBooster.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Booster!', err.message)], components: [] });
+                    await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
                   }
                 });
               } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Menu Booster!', err.message)], flags: 64 });
+                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Inventaris!', err.message)], flags: 64 });
               }
             } else if (iPet.customId === 'pet_btn_reset') {
               pet.resetPet(user.id, guildId);
@@ -3298,7 +3346,7 @@ async function handlePetCommand(message, client, args) {
           .setCustomId('pet_btn_toggle_auto_feed')
           .setLabel(userPet.auto_feed === 1 ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care: NONAKTIF')
           .setStyle(userPet.auto_feed === 1 ? ButtonStyle.Success : ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('⚡ Pakai Booster').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
       ];
       const row3 = new ActionRowBuilder().addComponents(row3Components);
@@ -3362,68 +3410,116 @@ async function handlePetCommand(message, client, args) {
             return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
           }
           const inv = pet.getInventory(author.id, guildId);
-          const boosters = inv.filter(item => item.multiplier && item.quantity > 0);
+          const usableItems = inv.filter(item => item.quantity > 0);
 
-          if (boosters.length === 0) {
+          if (usableItems.length === 0) {
             return iPet.reply({
               embeds: [embeds.warnEmbed(
-                'Tidak Ada Booster! ❌',
-                'Anda tidak memiliki item XP Booster di persediaan pet Anda!\n\n' +
-                '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk mempercepat kenaikan level pet Anda secara permanen!*'
+                'Tas Pet Kosong! 🎒',
+                'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
+                '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk membeli pakan, obat, soda, sabun, atau booster.*'
               )],
               flags: 64
             });
           }
 
           const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('pet_select_booster_use')
-            .setPlaceholder('⚡ Pilih XP Booster yang ingin digunakan...');
+            .setCustomId('pet_select_item_use')
+            .setPlaceholder('🎒 Pilih item yang ingin digunakan...');
 
-          boosters.forEach(item => {
+          usableItems.forEach(item => {
+            let effectDesc = '';
+            let cooldownDesc = '';
+
+            if (item.id === 'FOOD_BASIC') {
+              effectDesc = '+30 Kenyangan';
+              cooldownDesc = ' · Cooldown: 5m';
+            } else if (item.id === 'FOOD_PREMIUM') {
+              effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
+              cooldownDesc = ' · Cooldown: 15m';
+            } else if (item.id === 'WATER') {
+              effectDesc = '+35 Hidrasi';
+              cooldownDesc = ' · Cooldown: 5m';
+            } else if (item.id === 'MEDICINE') {
+              effectDesc = '+50 HP, Sembuhkan Sakit';
+              cooldownDesc = ' · Cooldown: 10m';
+            } else if (item.id === 'TOY') {
+              effectDesc = '+50 Kebahagiaan';
+              cooldownDesc = ' · Cooldown: 15m';
+            } else if (item.id === 'SODA_ENERGY') {
+              effectDesc = 'Reset Cooldown Kerja/Berburu';
+              cooldownDesc = ' · Cooldown: 30m';
+            } else if (item.id === 'SOAP_PET') {
+              effectDesc = 'Mandi Bersih (Hilangkan Bau)';
+              cooldownDesc = ' · Cooldown: 10m';
+            } else if (item.multiplier) {
+              effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
+              cooldownDesc = ' · Bebas Cooldown';
+            }
+
             selectMenu.addOptions(
               new StringSelectMenuOptionBuilder()
-                .setLabel(`${item.name} (${item.quantity} pcs)`)
-                .setDescription(`Aktifkan pengali XP ${item.multiplier}x secara permanen`)
+                .setLabel(`${item.name} (x${item.quantity})`)
+                .setDescription(`${effectDesc}${cooldownDesc}`)
                 .setValue(item.id)
             );
           });
 
           const row = new ActionRowBuilder().addComponents(selectMenu);
-          const boosterEmbed = new EmbedBuilder()
-            .setColor(0x7C4DFF)
-            .setTitle('⚡ PAKAI XP BOOSTER PET ⚡')
+          const invEmbed = new EmbedBuilder()
+            .setColor(0x00b0ff)
+            .setTitle('🎒 INVENTARIS / TAS PET AKTIF 🎒')
             .setDescription(
-              `Silakan pilih item XP Booster yang ingin Anda gunakan untuk pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
-              `📊 **Pengali XP Saat Ini:** **${freshPet.xp_multiplier || 1.0}x**\n\n` +
-              `*Penggunaan booster akan mengganti pengali XP pet Anda secara permanen dengan nilai yang lebih tinggi.*`
+              `Silakan pilih item di bawah untuk digunakan pada pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
+              `*Menggunakan item dari tas langsung memotong kuantitas tanpa perlu auto-buy.*`
             )
             .setTimestamp();
 
-          const subPrivateMsg = await iPet.reply({ embeds: [boosterEmbed], components: [row], flags: 64, fetchReply: true });
-          const boosterCollector = subPrivateMsg.createMessageComponentCollector({
+          const subPrivateMsg = await iPet.reply({ embeds: [invEmbed], components: [row], flags: 64, fetchReply: true });
+          const itemCollector = subPrivateMsg.createMessageComponentCollector({
             componentType: ComponentType.StringSelect,
             time: 60000
           });
 
-          boosterCollector.on('collect', async iBooster => {
-            if (iBooster.user.id !== author.id) return;
-            const selectedBoosterId = iBooster.values[0];
+          itemCollector.on('collect', async iItemUse => {
+            if (iItemUse.user.id !== author.id) return;
+            const selectedItemId = iItemUse.values[0];
 
             try {
-              const res = pet.useItem(author.id, guildId, selectedBoosterId, false);
+              let result;
+              let detailDesc = '';
+
+              if (selectedItemId === 'SOAP_PET') {
+                result = pet.washPet(author.id, guildId);
+                detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
+              } else if (selectedItemId === 'SODA_ENERGY') {
+                result = pet.useSodaEnergy(author.id, guildId, false);
+                detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
+                  (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
+                  `\n⏱️ *Cooldown: 30 Menit.*`;
+              } else {
+                result = pet.useItem(author.id, guildId, selectedItemId, false);
+                if (result.item.multiplier) {
+                  detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!`;
+                } else {
+                  const mins = Math.floor(result.item.cooldown / 60);
+                  detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).\n⏱️ *Cooldown: ${mins} Menit.*`;
+                }
+              }
+
               const successEmb = embeds.successEmbed(
-                'Penggunaan Booster Sukses! ⚡',
-                `Berhasil mengaktifkan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n\n` +
-                `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!`
+                'Penggunaan Item Sukses! ✨',
+                `Berhasil menggunakan **${pet.PET_ITEMS[selectedItemId].name}** pada pet **${result.pet.pet_name}**!\n\n${detailDesc}`
               );
-              await iBooster.update({ embeds: [successEmb], components: [] });
+
+              await iItemUse.update({ embeds: [successEmb], components: [] });
               await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
             } catch (err) {
-              await iBooster.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Booster!', err.message)], components: [] });
+              await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
             }
           });
         } catch (err) {
-          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Menu Booster!', err.message)], flags: 64 });
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Inventaris!', err.message)], flags: 64 });
         }
       }
 

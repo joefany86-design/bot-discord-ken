@@ -4,20 +4,20 @@ const config = require('./config');
 
 // Konfigurasi Item Kebutuhan Pet
 const PET_ITEMS = {
-  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 150, hunger: 30, thirst: 0, hp: 0, happiness: 0, desc: 'Pakan standar untuk mengisi perut pet.' },
-  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 350, hunger: 70, thirst: 0, hp: 10, happiness: 5, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
-  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 100, hunger: 0, thirst: 35, hp: 0, happiness: 0, desc: 'Air mineral segar untuk hidrasi pet.' },
-  MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
-  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
-  SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 200, hunger: 0, thirst: 10, hp: 0, happiness: 10, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
-  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 100, hunger: 0, thirst: 0, hp: 0, happiness: 5, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
-  COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1200, type: 'ACCESSORY', desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
-  SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
-  SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
-  XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
-  XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
-  XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
-  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 10000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
+  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 150, hunger: 30, thirst: 0, hp: 0, happiness: 0, cooldown: 300, desc: 'Pakan standar untuk mengisi perut pet.' },
+  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 350, hunger: 70, thirst: 0, hp: 10, happiness: 5, cooldown: 900, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
+  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 100, hunger: 0, thirst: 35, hp: 0, happiness: 0, cooldown: 300, desc: 'Air mineral segar untuk hidrasi pet.' },
+  MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, cooldown: 600, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
+  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, cooldown: 900, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
+  SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 200, hunger: 0, thirst: 10, hp: 0, happiness: 10, cooldown: 1800, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
+  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 100, hunger: 0, thirst: 0, hp: 0, happiness: 5, cooldown: 600, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
+  COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1200, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
+  SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
+  SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
+  XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
+  XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
+  XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
+  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 10000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
 };
 
 // Konfigurasi Spesies Pet
@@ -534,6 +534,14 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     throw new Error('Item perawatan tidak valid!');
   }
 
+  // Cek cooldown item
+  const remainingCooldown = getItemCooldown(userId, guildId, item.id);
+  if (remainingCooldown > 0) {
+    const mins = Math.floor(remainingCooldown / 60);
+    const secs = remainingCooldown % 60;
+    throw new Error(`Item **${item.name}** sedang cooldown! Silakan tunggu **${mins} menit ${secs} detik** lagi.`);
+  }
+
   // 1. Cek stok, jika habis gunakan auto-buy jika diizinkan
   let qty = getItemQuantity(userId, guildId, item.id);
   let didAutoBuy = false;
@@ -566,6 +574,11 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
       'UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
       [userId, guildId, item.id]
     );
+
+    // Set cooldown
+    if (item.cooldown > 0) {
+      setItemCooldown(userId, guildId, item.id, item.cooldown);
+    }
 
     const now = Math.floor(Date.now() / 1000);
 
@@ -1702,9 +1715,21 @@ function washPet(userId, guildId) {
     throw new Error('Anda tidak memiliki sabun mandi! Beli Sabun Mandi Pet di toko (.pet buy-item soap_pet) seharga Rp 100.');
   }
 
+  const usedSoapPet = soapPetQty > 0;
+
+  if (usedSoapPet) {
+    const remainingCooldown = getItemCooldown(userId, guildId, 'SOAP_PET');
+    if (remainingCooldown > 0) {
+      const mins = Math.floor(remainingCooldown / 60);
+      const secs = remainingCooldown % 60;
+      throw new Error(`Item **Sabun Mandi Pet** sedang cooldown! Silakan tunggu **${mins} menit ${secs} detik** lagi.`);
+    }
+  }
+
   db.transaction(() => {
-    if (soapPetQty > 0) {
+    if (usedSoapPet) {
       db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, 'SOAP_PET']);
+      setItemCooldown(userId, guildId, 'SOAP_PET', PET_ITEMS.SOAP_PET.cooldown);
     } else {
       db.run('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, 'SOAP']);
     }
@@ -1945,6 +1970,15 @@ function useSodaEnergy(userId, guildId, autoBuy = true) {
   if (petObj.status === 'SICK') throw new Error('Pet Anda sedang sakit 🤢! Sembuhkan terlebih dahulu.');
 
   const item = PET_ITEMS.SODA_ENERGY;
+
+  // Cek cooldown item
+  const remainingCooldown = getItemCooldown(userId, guildId, item.id);
+  if (remainingCooldown > 0) {
+    const mins = Math.floor(remainingCooldown / 60);
+    const secs = remainingCooldown % 60;
+    throw new Error(`Item **${item.name}** sedang cooldown! Silakan tunggu **${mins} menit ${secs} detik** lagi.`);
+  }
+
   let qty = getItemQuantity(userId, guildId, item.id);
   let didAutoBuy = false;
 
@@ -1969,6 +2003,9 @@ function useSodaEnergy(userId, guildId, autoBuy = true) {
       'UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
       [userId, guildId, item.id]
     );
+
+    // Set cooldown
+    setItemCooldown(userId, guildId, item.id, item.cooldown);
 
     const newSodaToday = petObj.soda_today + 1;
     let newStatus = petObj.status;
@@ -2087,6 +2124,26 @@ function revivePet(userId, guildId) {
   };
 }
 
+function getItemCooldown(userId, guildId, itemId) {
+  const row = db.get('SELECT last_used_at FROM pet_item_cooldowns WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, itemId]);
+  if (!row) return 0;
+  const item = PET_ITEMS[itemId.toUpperCase()];
+  if (!item || !item.cooldown) return 0;
+  const now = Math.floor(Date.now() / 1000);
+  const elapsed = now - row.last_used_at;
+  const remaining = item.cooldown - elapsed;
+  return remaining > 0 ? remaining : 0;
+}
+
+function setItemCooldown(userId, guildId, itemId, durationSeconds) {
+  if (!durationSeconds || durationSeconds <= 0) return;
+  const now = Math.floor(Date.now() / 1000);
+  db.run(
+    'INSERT OR REPLACE INTO pet_item_cooldowns (user_id, guild_id, item_id, last_used_at) VALUES (?, ?, ?, ?)',
+    [userId, guildId, itemId, now]
+  );
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -2116,5 +2173,7 @@ module.exports = {
   claimDailyQuestReward,
   revivePet,
   useSodaEnergy,
-  trainPet
+  trainPet,
+  getItemCooldown,
+  setItemCooldown
 };
