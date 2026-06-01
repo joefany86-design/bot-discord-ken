@@ -17,6 +17,9 @@ const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 // ID Channel Portal Shop (#🛍️┃shop) — panel hanya privat di channel ini
 const SHOP_CHANNEL_ID = '1510121069783023646';
 
+// Map untuk mengelola cooldown perintah .bal per user
+const balCooldowns = new Map();
+
 
 /**
  * Meluncurkan panel perdagangan interaktif mandiri untuk saham tertentu.
@@ -6801,6 +6804,23 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .balance / .bal / .profile
     // ═══════════════════════════════════════════════════
     if (commandName === 'balance' || commandName === 'bal' || commandName === 'profile') {
+      const now = Date.now();
+      const lastUsed = balCooldowns.get(author.id) || 0;
+      const cooldownMs = 15000;
+      if (now - lastUsed < cooldownMs) {
+        const remaining = Math.ceil((cooldownMs - (now - lastUsed)) / 1000);
+        const reply = await message.reply({
+          embeds: [embeds.errorEmbed('Cooldown!', `Perintah ini sedang cooldown. Silakan tunggu **${remaining} detik** lagi.`)]
+        });
+        setTimeout(() => {
+          reply.delete().catch(() => {});
+          message.delete().catch(() => {});
+        }, 3000);
+        return true;
+      }
+
+      balCooldowns.set(author.id, now);
+
       const targetUser = message.mentions.users.first() || author;
       const targetMember = message.mentions.members.first() || message.member || await guild.members.fetch(targetUser.id).catch(() => null);
       const wallet = economy.getWallet(targetUser.id, guildId);
@@ -6814,7 +6834,13 @@ async function handleEconomyCommands(message, client) {
       const bailDebts = { debts, receivables };
 
       const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items);
-      await message.reply({ embeds: [embed] });
+      const reply = await message.reply({ embeds: [embed] });
+
+      setTimeout(() => {
+        reply.delete().catch(() => {});
+        message.delete().catch(() => {});
+      }, 15000);
+
       return true;
     }
 
