@@ -40,11 +40,18 @@ function getJailType(userId, guildId) {
 /**
  * Mengecek status penjara user.
  */
-function checkJail(userId, guildId) {
+function checkJail(userId, guildId, member = null) {
   const remaining = getJailTimeRemaining(userId, guildId);
   if (remaining > 0) {
     const jailType = getJailType(userId, guildId);
-    const bailAmount = jailType === 'heist' ? config.robbery.BAIL_HEIST : config.robbery.BAIL_SOLO;
+    let bailAmount = jailType === 'heist' ? config.robbery.BAIL_HEIST : config.robbery.BAIL_SOLO;
+    if (member) {
+      const economy = require('./economy');
+      const gachaTier = economy.getMemberGachaTier(member, guildId);
+      if (gachaTier === 'EPIC') bailAmount = Math.round(bailAmount * 0.85); // -15%
+      else if (gachaTier === 'LEGENDARY') bailAmount = Math.round(bailAmount * 0.75); // -25%
+      else if (gachaTier === 'MYTHIC') bailAmount = Math.round(bailAmount * 0.50); // -50%
+    }
     return {
       jailed: true,
       remaining,
@@ -58,10 +65,10 @@ function checkJail(userId, guildId) {
 /**
  * Solo Robbery: Merampok koin warga secara individu
  */
-function robSolo(userId, targetId, guildId) {
+function robSolo(userId, targetId, guildId, robberMember = null, victimMember = null) {
   // 1. Validasi Pelaku
   const thiefWallet = economy.getWallet(userId, guildId);
-  const thiefJail = checkJail(userId, guildId);
+  const thiefJail = checkJail(userId, guildId, robberMember);
   if (thiefJail.jailed) {
     throw new Error(`Anda tidak bisa merampok karena sedang dipenjara! Sisa waktu: ${Math.ceil(thiefJail.remaining / 60)} menit lagi.`);
   }
@@ -74,12 +81,21 @@ function robSolo(userId, targetId, guildId) {
     throw new Error('Anda tidak bisa merampok diri sendiri, carilah target lain!');
   }
   const victimWallet = economy.getWallet(targetId, guildId);
-  const victimJail = checkJail(targetId, guildId);
+  const victimJail = checkJail(targetId, guildId, victimMember);
   if (victimJail.jailed) {
     throw new Error('Target sedang berada di dalam penjara, tidak bisa dirampok.');
   }
   if (victimWallet.balance < config.robbery.MIN_ROB_BALANCE_VICTIM) {
     throw new Error(`Target terlalu miskin! Saldo minimal korban untuk dirampok adalah Rp ${config.robbery.MIN_ROB_BALANCE_VICTIM}.`);
+  }
+
+  // 2b. Cek Kekebalan Gacha Mythic Korban
+  if (victimMember) {
+    const economy = require('./economy');
+    const victimGachaTier = economy.getMemberGachaTier(victimMember, guildId);
+    if (victimGachaTier === 'MYTHIC') {
+      throw new Error(`❌ Target memiliki perlindungan Gacha Role **MYTHIC**! Mereka kebal total dari perampokan!`);
+    }
   }
 
   // 3. Cek Upgrade Kosan Korban (Defensive Buffs)
@@ -112,6 +128,17 @@ function robSolo(userId, targetId, guildId) {
   let successRate = config.robbery.SUCCESS_RATE; // Default 40%
   if (!victimClaimedDaily) {
     successRate = 50; // Peluang sukses menjadi 50% jika korban belum ambil daily
+  }
+
+  // Gacha Role Bonus Sukses Rob Pelaku
+  if (robberMember) {
+    const economy = require('./economy');
+    const gachaTier = economy.getMemberGachaTier(robberMember, guildId);
+    if (gachaTier === 'COMMON') successRate += 2;
+    else if (gachaTier === 'RARE') successRate += 5;
+    else if (gachaTier === 'EPIC') successRate += 8;
+    else if (gachaTier === 'LEGENDARY') successRate += 15;
+    else if (gachaTier === 'MYTHIC') successRate += 25;
   }
 
   // Khusus OWNER mendapatkan hoki sukses rob 80%
@@ -157,6 +184,21 @@ function robSolo(userId, targetId, guildId) {
     // Jika korban memiliki Gembok, potong 50% jarahan pelaku
     if (hasGembok) {
       amountStolen = Math.floor(amountStolen * 0.5);
+    }
+
+    // Gacha Role Proteksi Korban (Diskon Kehilangan Koin)
+    if (victimMember) {
+      const economy = require('./economy');
+      const victimGachaTier = economy.getMemberGachaTier(victimMember, guildId);
+      if (victimGachaTier === 'RARE') {
+        amountStolen = Math.floor(amountStolen * 0.90); // -10%
+      } else if (victimGachaTier === 'EPIC') {
+        amountStolen = Math.floor(amountStolen * 0.80); // -20%
+      } else if (victimGachaTier === 'LEGENDARY') {
+        amountStolen = Math.floor(amountStolen * 0.65); // -35%
+      } else if (victimGachaTier === 'MYTHIC') {
+        amountStolen = 0; // Kebal total
+      }
     }
 
     if (amountStolen <= 0) amountStolen = 1;
@@ -249,6 +291,15 @@ function robSolo(userId, targetId, guildId) {
     if (lamboQty && lamboQty.quantity > 0) {
       jailDuration = Math.floor(jailDuration * 0.75);
       lamboUsed = true;
+    }
+
+    // Diskon durasi penjara gacha role
+    if (robberMember) {
+      const gachaTier = economy.getMemberGachaTier(robberMember, guildId);
+      if (gachaTier === 'RARE') jailDuration = Math.floor(jailDuration * 0.90);
+      else if (gachaTier === 'EPIC') jailDuration = Math.floor(jailDuration * 0.80);
+      else if (gachaTier === 'LEGENDARY') jailDuration = Math.floor(jailDuration * 0.65);
+      else if (gachaTier === 'MYTHIC') jailDuration = Math.floor(jailDuration * 0.50);
     }
 
     db.transaction(() => {
@@ -753,8 +804,8 @@ function executeHeist(guildId) {
 /**
  * Membayar jaminan penjara
  */
-function payBail(userId, guildId) {
-  const jailInfo = checkJail(userId, guildId);
+function payBail(userId, guildId, member = null) {
+  const jailInfo = checkJail(userId, guildId, member);
   if (!jailInfo.jailed) {
     throw new Error('Anda tidak sedang berada di dalam penjara virtual.');
   }

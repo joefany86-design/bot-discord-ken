@@ -249,7 +249,7 @@ function buyStock(userId, guildId, ticker, shares) {
 /**
  * Member melakukan penjualan (SELL) saham dengan pajak transaksi 5%.
  */
-function sellStock(userId, guildId, ticker, shares) {
+function sellStock(userId, guildId, ticker, shares, member = null) {
   if (!module.exports.isMarketOpen()) {
     throw new Error('❌ Bursa Saham sedang TUTUP! Jam operasional perdagangan: 08:00 - 23:00 WIB.');
   }
@@ -312,6 +312,15 @@ function sellStock(userId, guildId, ticker, shares) {
   let taxRatePercent = config.economy.TRADE_TAX_PERCENT;
   if (activeRental && activeRental.config && activeRental.config.tradeTax !== undefined) {
     taxRatePercent = activeRental.config.tradeTax;
+  }
+
+  // Diskon Pajak Bursa Saham dari Gacha Role
+  if (member) {
+    const gachaTier = economy.getMemberGachaTier(member, guildId);
+    if (gachaTier === 'RARE') taxRatePercent = Math.max(0, taxRatePercent - 1);
+    else if (gachaTier === 'EPIC') taxRatePercent = Math.max(0, taxRatePercent - 3);
+    else if (gachaTier === 'LEGENDARY') taxRatePercent = Math.max(0, taxRatePercent - 5);
+    else if (gachaTier === 'MYTHIC') taxRatePercent = Math.max(0, taxRatePercent - 8);
   }
 
   const tax = Math.floor(rawRevenue * (taxRatePercent / 100));

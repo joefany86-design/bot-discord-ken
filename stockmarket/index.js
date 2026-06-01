@@ -262,7 +262,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
               }
 
               try {
-                const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal);
+                const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal, submitted.member);
                 const successEmb = embeds.transactionSuccessEmbed(author, false, res);
                 await submitted.reply({ embeds: [successEmb], ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
 
@@ -302,7 +302,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
                 });
               }
             } else {
-              const res = stocks.sellStock(author.id, guildId, selectedTicker, shares);
+              const res = stocks.sellStock(author.id, guildId, selectedTicker, shares, iTrade.member);
               const successEmb = embeds.transactionSuccessEmbed(author, false, res);
               await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
 
@@ -1553,7 +1553,7 @@ function initStockMarket(client) {
                       result = pet.washPet(user.id, guildId);
                       detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
                     } else if (selectedItemId === 'SODA_ENERGY') {
-                      result = pet.useSodaEnergy(user.id, guildId, false);
+                      result = pet.useSodaEnergy(user.id, guildId, false, iItemUse.member);
                       detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
                         (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
                         `\n⏱️ *Cooldown: 30 Menit.*`;
@@ -1626,11 +1626,11 @@ function initStockMarket(client) {
               await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_work') {
-              const res = pet.sendToWork(user.id, guildId);
+              const res = pet.sendToWork(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_hunt') {
-              const res = pet.sendToHunt(user.id, guildId);
+              const res = pet.sendToHunt(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_nav_shop') {
@@ -2263,7 +2263,20 @@ async function handleEconomyChat(message) {
     investorBonus = 3;
   }
 
-  let totalEarned = earnedCoins + investorBonus;
+  // 3. Cek Gacha Role Chat Earn Bonus
+  let gachaBonus = 0;
+  try {
+    const tier = economy.getMemberGachaTier(message.member, guildId);
+    if (tier === 'COMMON') gachaBonus = 1;
+    else if (tier === 'RARE') gachaBonus = 2;
+    else if (tier === 'EPIC') gachaBonus = 3;
+    else if (tier === 'LEGENDARY') gachaBonus = 5;
+    else if (tier === 'MYTHIC') gachaBonus = 8;
+  } catch (err) {
+    console.error('Error checking gacha role bonus for chat earn:', err.message);
+  }
+
+  let totalEarned = earnedCoins + investorBonus + gachaBonus;
 
   // 3a. Cek Upgrade Dispenser Air (Peluang 10% double chat earn)
   let dispenserTriggered = false;
@@ -2753,7 +2766,7 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: WORK ──
   if (subCommand === 'work') {
     try {
-      const res = pet.sendToWork(author.id, guildId);
+      const res = pet.sendToWork(author.id, guildId, message.member);
       const successEmb = embeds.successEmbed('Pet Selesai Bekerja! 💼', `**${res.pet.pet_name}** berhasil mengumpulkan upah kerja sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!\n📈 Bonus Level: \`+Rp ${res.levelBonus}\`\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`);
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
@@ -2764,7 +2777,7 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: HUNT ──
   if (subCommand === 'hunt') {
     try {
-      const res = pet.sendToHunt(author.id, guildId);
+      const res = pet.sendToHunt(author.id, guildId, message.member);
       let dropText = '';
       if (res.dropItem) {
         dropText = `\n🎁 **JACKPOT DROP LANGKA:** Menemukan **1x ${res.dropItem.name}** gratis!`;
@@ -2810,7 +2823,7 @@ async function handlePetCommand(message, client, args) {
     }
     try {
       if (itemId === 'SODA_ENERGY' || itemId === 'SODA') {
-        const res = pet.useSodaEnergy(author.id, guildId, false);
+        const res = pet.useSodaEnergy(author.id, guildId, false, message.member);
         const descText = `Berhasil meminumkan **Soda Energi Pet** pada pet **${res.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
           (res.gotSick ? `🤢 **ADUH!** Pet Anda overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${res.pet.hunger}%\` | Hidrasi: \`${res.pet.thirst}%\` | Kebahagiaan: \`${res.pet.happiness}%\`.`);
         return message.reply({ embeds: [embeds.successEmbed('Penggunaan Soda Energi Sukses! 🥤', descText)] });
@@ -3096,7 +3109,16 @@ async function handlePetCommand(message, client, args) {
 
       const currentLobby = lobby;
       try {
-        const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice);
+        const membersMap = {};
+        for (const pId of currentLobby.participants) {
+          try {
+            const member = await message.guild.members.fetch(pId).catch(() => null);
+            if (member) membersMap[pId] = member;
+          } catch (err) {
+            console.error(`Error fetching member ${pId} for expedition:`, err.message);
+          }
+        }
+        const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice, membersMap);
 
         // Hook quest progress for EXPEDITION
         currentLobby.participants.forEach(pId => {
@@ -3480,7 +3502,7 @@ async function handlePetCommand(message, client, args) {
                 result = pet.washPet(author.id, guildId);
                 detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
               } else if (selectedItemId === 'SODA_ENERGY') {
-                result = pet.useSodaEnergy(author.id, guildId, false);
+                result = pet.useSodaEnergy(author.id, guildId, false, iItemUse.member);
                 detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
                   (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
                   `\n⏱️ *Cooldown: 30 Menit.*`;
@@ -3666,7 +3688,7 @@ async function handlePetCommand(message, client, args) {
 
       else if (iPet.customId === 'pet_btn_work') {
         try {
-          const res = pet.sendToWork(author.id, guildId);
+          const res = pet.sendToWork(author.id, guildId, iPet.member);
           const successEmb = embeds.successEmbed('Selesai Bekerja! 💼', `**${res.pet.pet_name}** sukses membawa pulang uang gaji sebesar **Rp ${res.reward.toLocaleString('id-ID')}**!\n📈 Bonus Level: \`+Rp ${res.levelBonus}\`\n📊 Status Baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, Kebahagiaan \`${res.pet.happiness}%\` (+30 XP).`);
           await iPet.reply({ embeds: [successEmb], flags: 64 });
           const freshData = getDashboardPanel(author.id, guildId);
@@ -3678,7 +3700,7 @@ async function handlePetCommand(message, client, args) {
 
       else if (iPet.customId === 'pet_btn_hunt') {
         try {
-          const res = pet.sendToHunt(author.id, guildId);
+          const res = pet.sendToHunt(author.id, guildId, iPet.member);
           let dropText = '';
           if (res.dropItem) {
             dropText = `\n🎁 **DROP LANGKA HOKI:** Menemukan **1x ${res.dropItem.name}** gratis!`;
@@ -5019,7 +5041,7 @@ async function handleEconomyCommands(message, client) {
   // 👮 GUARD PENJARA VIRTUAL (Jail Lock Guard)
   // Menghalangi seluruh perintah ekonomi jika user sedang berada di dalam penjara virtual,
   // kecuali perintah .jail, .heist-admin, .pet-admin, dan .pet jika BUKAN work/hunt/battle.
-  const jailCheck = robbery.checkJail(author.id, guildId);
+  const jailCheck = robbery.checkJail(author.id, guildId, message.member);
   if (jailCheck.jailed) {
     let shouldBlock = false;
     if (commandName === 'pet') {
@@ -5098,7 +5120,7 @@ async function handleEconomyCommands(message, client) {
 
         try {
           if (iJail.customId === 'jail_btn_tebus') {
-            const res = robbery.payBail(author.id, guildId);
+            const res = robbery.payBail(author.id, guildId, message.member);
             const successEmb = embeds.successEmbed(
               'Jaminan Ditebus! 🔓',
               `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
@@ -5231,8 +5253,10 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.rob @user\` untuk merampok seseorang, atau \`.rob anoncemen\` untuk melihat info resiko & benefit.')] });
       }
 
+      const targetMember = message.mentions.members?.first();
+
       try {
-        const res = robbery.robSolo(author.id, targetUser.id, guildId);
+        const res = robbery.robSolo(author.id, targetUser.id, guildId, message.member, targetMember);
 
         let toolText = '';
         if (res.meatUsed) {
@@ -5561,7 +5585,8 @@ async function handleEconomyCommands(message, client) {
       }
 
       const targetUser = message.mentions.users.first() || author;
-      const jailInfo = robbery.checkJail(targetUser.id, guildId);
+      const targetMember = message.mentions.members?.first() || message.member;
+      const jailInfo = robbery.checkJail(targetUser.id, guildId, targetMember);
 
       if (!jailInfo.jailed) {
         return message.reply({ embeds: [embeds.successEmbed('Status Penjara', `🟢 **${targetUser.username}** bebas berkeliaran dan tidak sedang di penjara!`)] });
@@ -5636,7 +5661,7 @@ async function handleEconomyCommands(message, client) {
           }
 
           try {
-            const res = robbery.payBail(targetUser.id, guildId);
+            const res = robbery.payBail(targetUser.id, guildId, targetMember);
             const successEmb = embeds.successEmbed(
               'Jaminan Ditebus! 🔓',
               `Anda telah membayar uang jaminan sebesar **Rp ${res.bailAmount.toLocaleString('id-ID')}** dan bebas dari penjara virtual!\n` +
@@ -6651,7 +6676,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Jumlah Tidak Valid!', 'Nominal transfer harus berupa angka di atas 0.')] });
       }
 
-      const res = economy.transferBalance(author.id, targetUser.id, guildId, amount);
+      const res = economy.transferBalance(author.id, targetUser.id, guildId, amount, message.member);
 
       const embed = new EmbedBuilder()
         .setColor(embeds.COLORS.SUCCESS)
@@ -6828,7 +6853,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Jumlah Harus Valid!', 'Berapa lembar saham yang ingin dijual? Contoh: `.sell $GAME 5`')] });
       }
 
-      const res = stocks.sellStock(author.id, guildId, ticker, shares);
+      const res = stocks.sellStock(author.id, guildId, ticker, shares, message.member);
       const embed = embeds.transactionSuccessEmbed(author, false, res);
       await message.reply({ embeds: [embed] });
 
@@ -6866,7 +6891,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Portofolio Kosong!', `Anda tidak memiliki lembar saham pada ${ticker}.`)] });
       }
 
-      const res = stocks.sellStock(author.id, guildId, ticker, portfolio.shares);
+      const res = stocks.sellStock(author.id, guildId, ticker, portfolio.shares, message.member);
       const embed = embeds.transactionSuccessEmbed(author, false, res);
       await message.reply({ embeds: [embed] });
 

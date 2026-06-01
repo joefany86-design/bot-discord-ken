@@ -260,7 +260,7 @@ function claimDaily(userId, guildId) {
 /**
  * Mentransfer saldo koin ke user lain dengan pengenaan pajak transfer 2%.
  */
-function transferBalance(fromUserId, toUserId, guildId, amount) {
+function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
   if (amount <= 0) throw new Error('Jumlah transfer harus lebih dari 0!');
   if (fromUserId === toUserId) throw new Error('Anda tidak bisa mentransfer ke diri sendiri!');
   
@@ -276,6 +276,15 @@ function transferBalance(fromUserId, toUserId, guildId, amount) {
   let taxRatePercent = config.economy.TRANSFER_TAX_PERCENT;
   if (activeRental && activeRental.config && activeRental.config.transferTax !== undefined) {
     taxRatePercent = activeRental.config.transferTax;
+  }
+
+  // Diskon Pajak Transfer dari Gacha Role
+  if (member) {
+    const gachaTier = getMemberGachaTier(member, guildId);
+    if (gachaTier === 'RARE') taxRatePercent = Math.max(0, taxRatePercent - 1);
+    else if (gachaTier === 'EPIC') taxRatePercent = Math.max(0, taxRatePercent - 2);
+    else if (gachaTier === 'LEGENDARY') taxRatePercent = Math.max(0, taxRatePercent - 3);
+    else if (gachaTier === 'MYTHIC') taxRatePercent = Math.max(0, taxRatePercent - 5);
   }
 
   const taxRate = taxRatePercent / 100;
@@ -353,6 +362,45 @@ function getDailyVoiceEarnings(userId, guildId) {
   return result ? (result.total || 0) : 0;
 }
 
+/**
+ * Mendapatkan tier gacha tertinggi yang dimiliki oleh member Discord.
+ */
+function getMemberGachaTier(member, guildId) {
+  if (!member) return 'NONE';
+
+  try {
+    // Ambil semua role gacha aktif dari database
+    const gachaRoles = db.all(
+      'SELECT role_id, tier FROM shop_items WHERE guild_id = ? AND is_gacha = 1',
+      [guildId]
+    );
+
+    if (gachaRoles.length === 0) return 'NONE';
+
+    // Buat map kecocokan role id yang dimiliki member
+    const ownedTiers = [];
+    gachaRoles.forEach(r => {
+      if (member.roles && member.roles.cache && member.roles.cache.has(r.role_id)) {
+        ownedTiers.push(r.tier.toUpperCase());
+      }
+    });
+
+    if (ownedTiers.length === 0) return 'NONE';
+
+    // Urutan prioritas tier
+    const tierPriority = ['MYTHIC', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'];
+    for (const tier of tierPriority) {
+      if (ownedTiers.includes(tier)) {
+        return tier;
+      }
+    }
+  } catch (err) {
+    console.error('❌ Gagal memeriksa tier gacha member:', err.message);
+  }
+
+  return 'NONE';
+}
+
 module.exports = {
   getWallet,
   addBalance,
@@ -360,5 +408,6 @@ module.exports = {
   claimDaily,
   transferBalance,
   getLeaderboard,
-  getDailyVoiceEarnings
+  getDailyVoiceEarnings,
+  getMemberGachaTier
 };

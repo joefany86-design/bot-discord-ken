@@ -127,16 +127,17 @@ function initScheduler(client) {
         const autoTraders = database.all('SELECT * FROM wallets WHERE guild_id = ? AND auto_trade = 1', [guild.id]);
         const tradeLogs = []; // { type: 'BUY'|'SELL', userId, ticker, shares, price, total, profit, profitPct }
 
-        autoTraders.forEach(trader => {
+        for (const trader of autoTraders) {
           try {
             const userId = trader.user_id;
+            const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
             const portfolio = stocks.getPortfolio(userId, guild.id);
             
             // 1. Cek Profit-Taking (Jual Otomatis jika Untung >= 15%)
             portfolio.items.forEach(item => {
               if (item.shares > 0 && item.profitPercent >= 15.0) {
                 const sharesToSell = item.shares;
-                const sellRes = stocks.sellStock(userId, guild.id, item.ticker, sharesToSell);
+                const sellRes = stocks.sellStock(userId, guild.id, item.ticker, sharesToSell, member);
                 tradeLogs.push({
                   type: 'SELL',
                   userId,
@@ -196,7 +197,7 @@ function initScheduler(client) {
           } catch (traderErr) {
             console.error(`❌ Gagal mengeksekusi Auto-Trade untuk user ${trader.user_id}:`, traderErr.message);
           }
-        });
+        }
 
         // Kirim Laporan Robot Auto-Trading jika ada transaksi otomatis yang dieksekusi
         if (tradeLogs.length > 0 && targetChannel) {
@@ -563,10 +564,27 @@ function initScheduler(client) {
             ? config.bank.INTEREST_RATE_ROOMS[roomTier]
             : config.bank.INTEREST_RATE_ROOMS.DEFAULT;
 
-          const finalInterestPercent = maxRate * mult;
+          // Cek gacha role untuk bonus bunga & interest cap
+          let extraRate = 0;
+          let extraCap = 0;
+          const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+          if (member) {
+            const economy = require('./economy');
+            const gachaTier = economy.getMemberGachaTier(member, guild.id);
+            if (gachaTier === 'EPIC') {
+              extraCap = 5000;
+            } else if (gachaTier === 'LEGENDARY') {
+              extraCap = 15000;
+            } else if (gachaTier === 'MYTHIC') {
+              extraRate = 0.50;
+              extraCap = 30000;
+            }
+          }
+
+          const finalInterestPercent = (maxRate + extraRate) * mult;
           
           // Batas maksimal saldo tabungan yang diperhitungkan untuk bunga harian (INTEREST_CAP)
-          const interestCap = config.bank.INTEREST_CAP || 20000;
+          const interestCap = (config.bank.INTEREST_CAP || 20000) + extraCap;
           const balanceForInterest = Math.min(account.balance, interestCap);
           const interestAmount = Math.floor(balanceForInterest * (finalInterestPercent / 100));
 

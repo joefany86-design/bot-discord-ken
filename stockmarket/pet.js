@@ -722,7 +722,7 @@ function playWithPet(userId, guildId) {
 /**
  * Mengirim pet untuk Bekerja (Work) mencari uang aman (cooldown 2 jam).
  */
-function sendToWork(userId, guildId) {
+function sendToWork(userId, guildId, member = null) {
   const pet = getPet(userId, guildId);
   if (!pet) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
@@ -787,13 +787,36 @@ function sendToWork(userId, guildId) {
     finalReward = Math.round(finalReward * 1.15); // Mutant: +15% work earnings
   }
 
+  // Gacha Role Bonus untuk Pendapatan & XP Pet Work
+  let gachaWorkBonus = 1.0;
+  let gachaXpBonus = 1.0;
+  if (member) {
+    const gachaTier = economy.getMemberGachaTier(member, guildId);
+    if (gachaTier === 'COMMON') {
+      gachaXpBonus = 1.10;
+    } else if (gachaTier === 'RARE') {
+      gachaXpBonus = 1.20;
+    } else if (gachaTier === 'EPIC') {
+      gachaXpBonus = 1.30;
+      gachaWorkBonus = 1.10;
+    } else if (gachaTier === 'LEGENDARY') {
+      gachaXpBonus = 1.50;
+      gachaWorkBonus = 1.20;
+    } else if (gachaTier === 'MYTHIC') {
+      gachaXpBonus = 2.00;
+      gachaWorkBonus = 1.35;
+    }
+  }
+
+  finalReward = Math.round(finalReward * gachaWorkBonus);
+
   // Dampak Kerja: Mengurangi Kenyangan -15, Hidrasi -15, Kebahagiaan -10
   db.transaction(() => {
     // Tambahkan saldo uang bot
     economy.addBalance(userId, guildId, finalReward, 'PET_WORK');
 
-    // Beri XP (+30 XP) dikali xp_multiplier
-    let xpGained = Math.round(30 * (pet.xp_multiplier || 1.0));
+    // Beri XP (+30 XP) dikali xp_multiplier dan gacha bonus
+    let xpGained = Math.round(30 * (pet.xp_multiplier || 1.0) * gachaXpBonus);
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
@@ -824,7 +847,7 @@ function sendToWork(userId, guildId) {
 /**
  * Mengirim pet untuk Berburu (Hunt) ke dalam hutan liar (cooldown 4 jam).
  */
-function sendToHunt(userId, guildId) {
+function sendToHunt(userId, guildId, member = null) {
   const pet = getPet(userId, guildId);
   if (!pet) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (pet.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
@@ -877,6 +900,29 @@ function sendToHunt(userId, guildId) {
     finalReward = Math.round(finalReward * 1.15); // Mutant: +15% hunt earnings
   }
 
+  // Gacha Role Bonus untuk Pendapatan & XP Pet Hunt
+  let gachaHuntBonus = 1.0;
+  let gachaXpBonus = 1.0;
+  if (member) {
+    const gachaTier = economy.getMemberGachaTier(member, guildId);
+    if (gachaTier === 'COMMON') {
+      gachaXpBonus = 1.10;
+    } else if (gachaTier === 'RARE') {
+      gachaXpBonus = 1.20;
+    } else if (gachaTier === 'EPIC') {
+      gachaXpBonus = 1.30;
+      gachaHuntBonus = 1.10;
+    } else if (gachaTier === 'LEGENDARY') {
+      gachaXpBonus = 1.50;
+      gachaHuntBonus = 1.20;
+    } else if (gachaTier === 'MYTHIC') {
+      gachaXpBonus = 2.00;
+      gachaHuntBonus = 1.35;
+    }
+  }
+
+  finalReward = Math.round(finalReward * gachaHuntBonus);
+
   // Peluang dapat item langka
   let dropItem = null;
   let dropProb = 0.05; // 5% default
@@ -910,8 +956,8 @@ function sendToHunt(userId, guildId) {
     // Berikan koin
     economy.addBalance(userId, guildId, finalReward, 'PET_HUNT');
 
-    // Beri XP (+60 XP) dikali xp_multiplier
-    let xpGained = Math.round(60 * (pet.xp_multiplier || 1.0));
+    // Beri XP (+60 XP) dikali xp_multiplier dan gacha bonus
+    let xpGained = Math.round(60 * (pet.xp_multiplier || 1.0) * gachaXpBonus);
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
@@ -1389,7 +1435,7 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
 /**
  * Simulasi Ekspedisi Pet Kelompok (Co-op PVE)
  */
-function executeExpedition(guildId, participantIds, mapId = 1) {
+function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) {
   const activePets = [];
   
   // Ambil pet aktif masing-masing pemain
@@ -1533,7 +1579,14 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
         let isSavedByAmulet = false;
         let isSavedBySurvivor = false;
 
-        if (!isGod && Math.random() < 0.03) {
+        let deathProb = 0.03;
+        if (membersMap && membersMap[ap.userId]) {
+          const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
+          if (gachaTier === 'LEGENDARY') deathProb = 0.01;
+          else if (gachaTier === 'MYTHIC') deathProb = 0.0;
+        }
+
+        if (!isGod && Math.random() < deathProb) {
           deathTriggered = true;
           if (ap.pet.accessory === 'LUCKY_AMULET') {
             isSavedByAmulet = true;
@@ -1711,7 +1764,14 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
         let isSavedByAmulet = false;
         let isSavedBySurvivor = false;
 
-        if (!isGod && Math.random() < 0.03) {
+        let deathProb = 0.03;
+        if (membersMap && membersMap[ap.userId]) {
+          const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
+          if (gachaTier === 'LEGENDARY') deathProb = 0.01;
+          else if (gachaTier === 'MYTHIC') deathProb = 0.0;
+        }
+
+        if (!isGod && Math.random() < deathProb) {
           deathTriggered = true;
           if (ap.pet.accessory === 'LUCKY_AMULET') {
             isSavedByAmulet = true;
@@ -2121,7 +2181,7 @@ function checkAndResetSodaLimit(pet) {
   }
 }
 
-function useSodaEnergy(userId, guildId, autoBuy = true) {
+function useSodaEnergy(userId, guildId, autoBuy = true, member = null) {
   let petObj = getPet(userId, guildId);
   if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan!');
   if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
@@ -2171,7 +2231,16 @@ function useSodaEnergy(userId, guildId, autoBuy = true) {
     let newHealth = petObj.health;
 
     // Jika minum > 2 kali (berarti botol ke-3 dst), ada 35% peluang sakit
-    if (newSodaToday > 2 && Math.random() < 0.35) {
+    let sicknessRate = 0.35;
+    if (member) {
+      const gachaTier = economy.getMemberGachaTier(member, guildId);
+      if (gachaTier === 'RARE') sicknessRate = 0.25;
+      else if (gachaTier === 'EPIC') sicknessRate = 0.15;
+      else if (gachaTier === 'LEGENDARY') sicknessRate = 0.05;
+      else if (gachaTier === 'MYTHIC') sicknessRate = 0.0;
+    }
+
+    if (newSodaToday > 2 && Math.random() < sicknessRate) {
       gotSick = true;
       newStatus = 'SICK';
       newHealth = 5;
