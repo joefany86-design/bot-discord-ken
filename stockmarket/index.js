@@ -2456,11 +2456,11 @@ async function handlePetCommand(message, client, args) {
     }
 
     const wallet = economy.getWallet(author.id, guildId);
-    if (wallet.balance < 150) {
-      return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 150 untuk biaya ransum ekspedisi!`)] });
+    if (wallet.balance < 250) {
+      return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`)] });
     }
 
-    economy.subtractBalance(author.id, guildId, 150, 'PET_EXPEDITION_FEE');
+    economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
 
     const lobby = {
       guildId,
@@ -2481,7 +2481,7 @@ async function handlePetCommand(message, client, args) {
         `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
         `🦖 **Kru Pet Saat Ini:**\n` +
         `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${author.id}>\n\n` +
-        `💰 **Biaya Ransum:** Rp 150 koin per orang\n` +
+        `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
         `⏳ **Waktu Berkumpul:** **90 detik**\n\n` +
         `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
       )
@@ -2636,11 +2636,11 @@ async function handlePetCommand(message, client, args) {
           }
 
           const userWallet = economy.getWallet(iExp.user.id, guildId);
-          if (userWallet.balance < 150) {
-            return iExp.reply({ content: '❌ Saldo Anda kurang untuk membayar biaya ransum Rp 150!', flags: 64 });
+          if (userWallet.balance < 250) {
+            return iExp.reply({ content: '❌ Saldo Anda kurang untuk membayar biaya ransum Rp 250!', flags: 64 });
           }
 
-          economy.subtractBalance(iExp.user.id, guildId, 150, 'PET_EXPEDITION_FEE');
+          economy.subtractBalance(iExp.user.id, guildId, 250, 'PET_EXPEDITION_FEE');
           currentLobby.participants.push(iExp.user.id);
 
           await iExp.reply({ content: '🛡️ Berhasil bergabung dengan tim ekspedisi pet!', flags: 64 });
@@ -2660,7 +2660,7 @@ async function handlePetCommand(message, client, args) {
               `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
               `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
               `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
-              `💰 **Biaya Ransum:** Rp 150 koin\n` +
+              `💰 **Biaya Ransum:** Rp 250 koin\n` +
               `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
               `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
             )
@@ -2680,7 +2680,7 @@ async function handlePetCommand(message, client, args) {
           activeLobby.delete(lobbyKey);
 
           currentLobby.participants.forEach(pId => {
-            economy.addBalance(pId, guildId, 150, 'PET_EXPEDITION_REFUND');
+            economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
           });
 
           await iExp.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.', ephemeral: false });

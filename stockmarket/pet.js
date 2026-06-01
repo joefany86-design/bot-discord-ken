@@ -30,8 +30,8 @@ const EXPEDITION_MAPS = [
     name: '🌲 Hutan Pemula (Beginner Forest)',
     recommendedLevel: 1,
     baseSuccessRate: 85,
-    minPrize: 300,
-    maxPrize: 600,
+    minPrize: 200,
+    maxPrize: 400,
     description: 'Hutan rindang bersahabat dengan kelinci liar & jamur kecil.'
   },
   {
@@ -39,8 +39,8 @@ const EXPEDITION_MAPS = [
     name: 'BAT Gua Gelap (Dark Cave)',
     recommendedLevel: 10,
     baseSuccessRate: 65,
-    minPrize: 600,
-    maxPrize: 1200,
+    minPrize: 400,
+    maxPrize: 800,
     description: 'Lorong gua basah penuh kelelawar penghisap darah & laba-laba raksasa.'
   },
   {
@@ -48,8 +48,8 @@ const EXPEDITION_MAPS = [
     name: 'VOL Lembah Api (Fire Valley)',
     recommendedLevel: 25,
     baseSuccessRate: 45,
-    minPrize: 1200,
-    maxPrize: 2200,
+    minPrize: 800,
+    maxPrize: 1500,
     description: 'Ngarai panas berpijar dengan naga api liar dan golem magma raksasa.'
   },
   {
@@ -57,8 +57,8 @@ const EXPEDITION_MAPS = [
     name: 'CAS Istana Kuno (Ancient Palace)',
     recommendedLevel: 40,
     baseSuccessRate: 25,
-    minPrize: 2000,
-    maxPrize: 4000,
+    minPrize: 1500,
+    maxPrize: 2500,
     description: 'Reruntuhan istana misterius yang dijaga oleh iblis kuno bermata satu.'
   }
 ];
@@ -1173,11 +1173,11 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     if (minutes > 0 || hours > 0) timeStr += `${minutes} menit `;
     timeStr += `${seconds} detik`;
 
-    throw new Error(`Anda sedang dalam masa cooldown ekspedisi pet (3 jam) setelah bermain 10 kali! Harap tunggu **${timeStr}** lagi.`);
+    throw new Error(`Anda sedang dalam masa cooldown ekspedisi pet (4 jam) setelah bermain 6 kali! Harap tunggu **${timeStr}** lagi.`);
   }
 
-  // 2. Jika cooldown sudah terlewati, dan count = 10, reset count ke 0
-  if (currentCount >= 10) {
+  // 2. Jika cooldown sudah terlewati, dan count = 6, reset count ke 0
+  if (currentCount >= 6) {
     currentCount = 0;
     if (!dryRun) {
       db.run(
@@ -1192,9 +1192,9 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     const nextCount = currentCount + 1;
     let nextCooldown = 0;
 
-    // Jika mencapai 10 kali bermain, set cooldown 3 jam
-    if (nextCount >= 10) {
-      nextCooldown = nowUnix + (3 * 3600); // 3 jam dari sekarang
+    // Jika mencapai 6 kali bermain, set cooldown 4 jam
+    if (nextCount >= 6) {
+      nextCooldown = nowUnix + (4 * 3600); // 4 jam dari sekarang
     }
 
     db.run(

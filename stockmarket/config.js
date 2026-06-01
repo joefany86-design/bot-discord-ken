@@ -91,17 +91,17 @@ module.exports = {
 
   // Konfigurasi Sistem Gacha Role Premium (Hard Mode)
   gacha: {
-    COST: 250,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
+    COST: 500,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
     CASHBACK: 100,              // Cashback jika memenangkan role yang sudah dimiliki
-    ZONK_RATE: 60,              // 60% kemungkinan zonk (seimbang & menantang!)
+    ZONK_RATE: 75,              // 75% kemungkinan zonk (seimbang & menantang!)
 
-    // Proporsi pemenang di 40% sisa kesempatan (Total = 100% dari pool kemenangan)
+    // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
     RATES: {
-      COMMON: 73.0,             // 73% dari pemenang
-      RARE: 20.0,               // 20% dari pemenang
-      EPIC: 5.6,                // 5.6% dari pemenang
-      LEGENDARY: 1.1,           // 1.1% dari pemenang
-      MYTHIC: 0.3               // 0.3% dari pemenang (Jackpot Dewa!)
+      COMMON: 81.5,             // 81.5% dari pemenang
+      RARE: 15.0,               // 15% dari pemenang
+      EPIC: 3.0,                // 3% dari pemenang
+      LEGENDARY: 0.5,           // 0.5% dari pemenang
+      MYTHIC: 0.0               // 0% dari pemenang (Jackpot Dewa!)
     },
 
     // Kumpulan item sampah lucu untuk rasa humor ketika Zonk

@@ -324,10 +324,10 @@ function getHeistStats(kruCount) {
     };
   } else {
     return {
-      successRate: 75,
-      minPrize: 15000,
-      maxPrize: 25000,
-      fine: 500,
+      successRate: 45,
+      minPrize: 10000,
+      maxPrize: 16000,
+      fine: 750,
       jailDurationSeconds: 7200 // 2 Jam
     };
   }

@@ -1390,15 +1390,14 @@ module.exports = {
             `╰ ✅ Peluang sukses dasar: **40%** *(dikurangi Alarm korban: -15%)*\n` +
             `╰ ❌ Gagal? Didenda **Rp 200** *(+Rp 100 jika korban punya CCTV)* & dipenjara **30 menit**!\n` +
             `╰ 🛡️ Gembok korban memotong jarahan pelaku hingga **50%**.\n\n` +
-            `🏦 **\`.heist\`** — Rampok Bank Sentral secara multiplayer!\n` +
-            `╰ 👤 1 kru: 15% sukses → Rp 1.000–2.000\n` +
-            `╰ 👥 2 kru: 30% sukses → Rp 2.500–4.500\n` +
-            `╰ 👥👥 3 kru: 45% sukses → Rp 5.000–8.000\n` +
-            `╰ 👥👥👥 4 kru: 60% sukses → Rp 9.000–14.000\n` +
-            `╰ 👥👥👥👥 **5+ kru: 75% sukses → Rp 15.000–25.000** 🔥\n` +
-            `╰ ❌ Gagal heist? **Denda + Penjara 1–2 jam** untuk seluruh kru!\n\n` +
+            `╰ 👤 1 kru: 5% sukses → Rp 1.000–2.000\n` +
+            `╰ 👥 2 kru: 10% sukses → Rp 2.500–4.500\n` +
+            `╰ 👥👥 3 kru: 15% sukses → Rp 5.000–8.000\n` +
+            `╰ 👥👥👥 4 kru: 25% sukses → Rp 9.000–14.000\n` +
+            `╰ 👥👥👥👥 **5+ kru: 45% sukses → Rp 10.000–16.000** 🔥\n` +
+            `╰ ❌ Gagal heist? **Denda Rp 750 + Penjara 2 jam** untuk seluruh kru!\n\n` +
             `🏛️ **\`.jail\`** · **\`.jail @user\`** — Cek status/sisa waktu penjara virtual.\n` +
-            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 500 | Heist Rp 1.000.`,
+            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 250 | Heist Rp 500.`,
           inline: false
         }
       )
@@ -1440,9 +1439,9 @@ module.exports = {
             `╰ Aktifkan \`.autotrade\` — biarkan robot belikan saham murah & jual saat untung!\n` +
             `╰ Tabung koin di \`.bank\` untuk **bunga pasif harian** & lindungi dari perampok.\n\n` +
             `**💥 Fase Akhir — High Risk High Reward:**\n` +
-            `╰ Kumpulkan 5+ kru untuk \`.heist\` (peluang sukses **75%**, rampasan hingga **Rp 25.000**).\n` +
+            `╰ Kumpulkan 5+ kru untuk \`.heist\` (peluang sukses **45%**, rampasan hingga **Rp 16.000**).\n` +
             `╰ Tingkatkan level pet Dragon untuk menang **PvP Arena** dengan taruhan tinggi.\n` +
-            `╰ Putar \`.gacha-role\` saat saldo melimpah — siapa tahu dapat **Mythic 0.1%**! 🌟`,
+            `╰ Putar \`.gacha-role\` saat saldo melimpah — siapa tahu dapat **Legendary 0.5%**! 🌟`,
           inline: false
         }
       )
@@ -2462,13 +2461,13 @@ module.exports = {
         {
           name: '🚨 2. CENTRAL BANK HEIST MULTIPLAYER (.heist)',
           value:
-            `• **Biaya Persiapan:** Rp 100 /orang (Modal awal untuk ikut lobi).\n` +
+            `• **Biaya Persiapan:** Rp 200 /orang (Modal awal untuk ikut lobi).\n` +
             `• **Sistem Kru & Peluang (Skala Tim):**\n` +
-            `  👥 **1 Orang (Solo):** Sukses **15%** | Hadiah **Rp 1.000 - Rp 2.000** | Denda **Rp 300** & Penjara **1 Jam**.\n` +
-            `  👥 **2 Orang:** Sukses **30%** | Hadiah **Rp 2.500 - Rp 4.500** | Denda **Rp 300** & Penjara **1 Jam**.\n` +
-            `  👥 **3 Orang:** Sukses **45%** | Hadiah **Rp 5.000 - Rp 8.000** | Denda **Rp 400** & Penjara **1 Jam**.\n` +
-            `  👥 **4 Orang:** Sukses **60%** | Hadiah **Rp 9.000 - Rp 14.000** | Denda **Rp 400** & Penjara **1.5 Jam**.\n` +
-            `  👥 **5+ Orang:** Sukses **75%** | Hadiah **Rp 15.000 - Rp 25.000** | Denda **Rp 500** & Penjara **2 Jam**.\n` +
+            `  👥 **1 Orang (Solo):** Sukses **5%** | Hadiah **Rp 1.000 - Rp 2.000** | Denda **Rp 500** & Penjara **2 Jam**.\n` +
+            `  👥 **2 Orang:** Sukses **10%** | Hadiah **Rp 2.500 - Rp 4.500** | Denda **Rp 500** & Penjara **2 Jam**.\n` +
+            `  👥 **3 Orang:** Sukses **15%** | Hadiah **Rp 5.000 - Rp 8.000** | Denda **Rp 600** & Penjara **2 Jam**.\n` +
+            `  👥 **4 Orang:** Sukses **25%** | Hadiah **Rp 9.000 - Rp 14.000** | Denda **Rp 600** & Penjara **2.5 Jam**.\n` +
+            `  👥 **5+ Orang:** Sukses **45%** | Hadiah **Rp 10.000 - Rp 16.000** | Denda **Rp 750** & Penjara **2 Jam**.\n` +
             `• **Benefit Tambahan:** Pet aktif seluruh kru mendapatkan **+40 XP** jika berhasil.\n` +
             `• **Resiko Gagal:** Tebus jaminan bebas instan dari penjara Heist seharga **Rp 500** per orang.`,
           inline: false
@@ -2515,7 +2514,7 @@ module.exports = {
             `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 1 jam, Golem 40m).\n` +
             `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 2 jam.\n` +
             `• **PvP Arena (\`.pet pvp @user <taruhan>\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.\n` +
-            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (Tanpa Batas Kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 10 main, CD 3 jam setelahnya, biaya Rp 150).`,
+            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (Tanpa Batas Kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 6 main, CD 4 jam setelahnya, biaya Rp 250).`,
           inline: false
         },
         {
