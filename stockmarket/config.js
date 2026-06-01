@@ -40,7 +40,11 @@ module.exports = {
     VOICE_EARN_INTERVAL_MS: 5 * 60 * 1000, // Durasi pengecekan keaktifan diperlambat menjadi setiap 5 menit
     VOICE_EARN_AMOUNT: 2,              // Hanya 2 Rp per 5 menit
     VOICE_MIN_MEMBERS: 2,              // Minimal orang di dalam voice channel agar dapat koin
-    VOICE_EARN_LIMIT_DAILY: 40,        // Maksimal koin Voice Earn per hari per user diperketat ke Rp 40
+  },
+
+  // Konfigurasi Black Market (Pasar Gelap)
+  blackmarket: {
+    MAX_ITEM_HOLD_LIMIT: 10,           // Batas maksimal kepemilikan item BM per jenis per user
   },
 
   // Logika & Aturan Stock Market

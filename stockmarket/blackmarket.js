@@ -1,5 +1,7 @@
 const db = require('./database');
 const economy = require('./economy');
+const config = require('./config');
+
 
 // Konfigurasi Item Black Market
 const BM_ITEMS = {
@@ -55,6 +57,17 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
   const item = BM_ITEMS[itemKey];
   if (!item) {
     throw new Error('Item tidak ditemukan di pasar gelap!');
+  }
+
+  const currentQty = getItemQty(userId, guildId, item.id);
+  const maxLimit = config.blackmarket.MAX_ITEM_HOLD_LIMIT || 10;
+  if (currentQty + qty > maxLimit) {
+    const remaining = Math.max(0, maxLimit - currentQty);
+    if (remaining === 0) {
+      throw new Error(`❌ Batas Penyimpanan Tercapai! Anda sudah memiliki ${currentQty}x ${item.name}. Anda tidak dapat membeli item ini lagi (Maksimal ${maxLimit} per item).`);
+    } else {
+      throw new Error(`❌ Batas Penyimpanan Tercapai! Anda sudah memiliki ${currentQty}x ${item.name}. Anda hanya dapat membeli maksimal ${remaining}x item ini lagi (Maksimal ${maxLimit} per item).`);
+    }
   }
 
   const wallet = economy.getWallet(userId, guildId);
