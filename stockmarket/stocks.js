@@ -486,12 +486,12 @@ function updateStockPrices(guildId) {
           deltaPercent = -0.15 - (Math.random() * 0.25);
           isCrashed = true;
         }
-      } else if (isCrashEligible && stock.channel_id === highestStock.channel_id) {
-        // Crash / Bubble Burst drastis (-50% s/d -85%)
+      } else if (isCrashEligible && stock.channel_id === highestStock.channel_id && Math.random() < 0.08) {
+        // Crash / Bubble Burst drastis (-50% s/d -85%) (Peluang 8%)
         deltaPercent = -0.50 - (Math.random() * 0.35);
         isCrashed = true;
-      } else if (isPumpEligible && stock.channel_id === lowestStock.channel_id) {
-        // Pump / Bull Run mendadak (+50% s/d +150%)
+      } else if (isPumpEligible && stock.channel_id === lowestStock.channel_id && Math.random() < 0.12) {
+        // Pump / Bull Run mendadak (+50% s/d +150%) (Peluang 12%)
         deltaPercent = 0.50 + (Math.random() * 1.00);
         isPumped = true;
       } else {
