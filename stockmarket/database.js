@@ -612,6 +612,23 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel lottery:", e.message);
   }
 
+  // 37. Migrasi dinamis: Tambahkan kolom baru untuk pet update (soda_today, accessory, last_soda_reset_at)
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN soda_today INTEGER DEFAULT 0");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN accessory TEXT DEFAULT NULL");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN last_soda_reset_at INTEGER DEFAULT 0");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

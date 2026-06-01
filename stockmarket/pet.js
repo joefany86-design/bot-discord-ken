@@ -9,6 +9,11 @@ const PET_ITEMS = {
   WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 100, hunger: 0, thirst: 35, hp: 0, happiness: 0, desc: 'Air mineral segar untuk hidrasi pet.' },
   MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
   TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
+  SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 200, hunger: 0, thirst: 10, hp: 0, happiness: 10, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
+  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 100, hunger: 0, thirst: 0, hp: 0, happiness: 5, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
+  COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1200, type: 'ACCESSORY', desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
+  SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
+  SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
   XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
   XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
   XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
@@ -147,6 +152,13 @@ function applyDecay(pet) {
     hungerDecayRate = Number((hungerDecayRate * 0.60).toFixed(2));
     thirstDecayRate = Number((thirstDecayRate * 0.60).toFixed(2));
     happinessDecayRate = Number((happinessDecayRate * 0.60).toFixed(2));
+  }
+
+  // Aksesoris COLLAR_IRON: mengurangi laju decay status sebesar 15% (perkalian 0.85)
+  if (pet.accessory === 'COLLAR_IRON') {
+    hungerDecayRate = Number((hungerDecayRate * 0.85).toFixed(2));
+    thirstDecayRate = Number((thirstDecayRate * 0.85).toFixed(2));
+    happinessDecayRate = Number((happinessDecayRate * 0.85).toFixed(2));
   }
 
   let newHunger = pet.hunger;
@@ -438,6 +450,42 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
 
   const totalPrice = item.price * qty;
 
+  if (item.type === 'ACCESSORY') {
+    if (qty !== 1) {
+      throw new Error('Anda hanya bisa membeli dan memasang 1 aksesoris pet dalam satu waktu!');
+    }
+
+    const petObj = getPet(userId, guildId);
+    if (!petObj) {
+      throw new Error('Anda tidak memiliki hewan peliharaan aktif untuk memasang aksesoris ini!');
+    }
+    if (petObj.status === 'DEAD') {
+      throw new Error('Pet Anda sudah meninggal! Anda tidak bisa memasangkan aksesoris pada pet yang mati.');
+    }
+    if (petObj.status === 'EGG') {
+      throw new Error('Pet Anda masih berbentuk telur! Tunggu sampai menetas untuk memasang aksesoris.');
+    }
+
+    db.transaction(() => {
+      // Kurangi koin
+      economy.subtractBalance(userId, guildId, totalPrice, 'PET_ACCESSORY_BUY');
+
+      // Pasang ke pet
+      db.run(
+        'UPDATE user_pets SET accessory = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [item.id, userId, guildId, petObj.pet_name]
+      );
+    })();
+
+    return {
+      item,
+      quantity: 1,
+      totalPrice,
+      newInventoryQty: 1,
+      isAccessory: true
+    };
+  }
+
   db.transaction(() => {
     // Kurangi koin
     economy.subtractBalance(userId, guildId, totalPrice, 'PET_SHOP_BUY');
@@ -543,11 +591,16 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
         newHealth = maxHP; // Full HP saat naik level
       }
 
+      let newStatus = pet.status;
+      if (item.cures && pet.status === 'SICK') {
+        newStatus = newLevel >= 10 ? 'ADULT' : 'BABY';
+      }
+
       db.run(
         `UPDATE user_pets 
-         SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, last_interaction_at = ?
+         SET hunger = ?, thirst = ?, happiness = ?, health = ?, xp = ?, level = ?, status = ?, last_interaction_at = ?
          WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-        [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
+        [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, newStatus, now, userId, guildId, pet.pet_name]
       );
 
       // Hook quest progress for FEED
@@ -863,9 +916,11 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
 
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
+  if (challenger.accessory === 'SWORD_TOY') chalAtkMultiplier += 0.15; // Toy Sword: +15% damage
 
   let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
+  if (opponent.accessory === 'SWORD_TOY') oppAtkMultiplier += 0.15; // Toy Sword: +15% damage
 
   let round = 1;
   const maxRounds = 5;
@@ -884,6 +939,9 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
       if (opponent.trait === 'STURDY') {
         chalDmg = Math.round(chalDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
+      }
+      if (opponent.accessory === 'SHIELD_TOY') {
+        chalDmg = Math.round(chalDmg * 0.85); // Toy Shield: -15% incoming damage (15% defense)
       }
       oppHP = Math.max(0, oppHP - chalDmg);
       logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
@@ -904,6 +962,9 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
       if (challenger.trait === 'STURDY') {
         oppDmg = Math.round(oppDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
+      }
+      if (challenger.accessory === 'SHIELD_TOY') {
+        oppDmg = Math.round(oppDmg * 0.85); // Toy Shield: -15% incoming damage (15% defense)
       }
       chalHP = Math.max(0, chalHP - oppDmg);
       logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
@@ -1632,10 +1693,27 @@ function washPet(userId, guildId) {
     throw new Error(`Pet Anda (**${pet.pet_name}**) sudah wangi dan bersih kok! Tidak perlu dimandikan.`);
   }
 
-  db.run(
-    "UPDATE user_pets SET curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ? AND is_active = 1",
-    [userId, guildId]
-  );
+  // Cek kepemilikan sabun
+  const soapPetQty = getItemQuantity(userId, guildId, 'SOAP_PET');
+  const bmSoapRow = db.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, 'SOAP']);
+  const bmSoapQty = bmSoapRow ? bmSoapRow.quantity : 0;
+
+  if (soapPetQty <= 0 && bmSoapQty <= 0) {
+    throw new Error('Anda tidak memiliki sabun mandi! Beli Sabun Mandi Pet di toko (.pet buy-item soap_pet) seharga Rp 100.');
+  }
+
+  db.transaction(() => {
+    if (soapPetQty > 0) {
+      db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, 'SOAP_PET']);
+    } else {
+      db.run('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, 'SOAP']);
+    }
+
+    db.run(
+      "UPDATE user_pets SET curse_type = '', curse_until = 0 WHERE user_id = ? AND guild_id = ? AND is_active = 1",
+      [userId, guildId]
+    );
+  })();
 
   return {
     pet: getPet(userId, guildId)
@@ -1844,6 +1922,171 @@ function claimDailyQuestReward(userId, guildId) {
   };
 }
 
+function checkAndResetSodaLimit(pet) {
+  const now = Math.floor(Date.now() / 1000);
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  const lastResetStr = pet.last_soda_reset_at ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(pet.last_soda_reset_at * 1000)) : '';
+
+  if (todayStr !== lastResetStr) {
+    db.run(
+      'UPDATE user_pets SET soda_today = 0, last_soda_reset_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [now, pet.user_id, pet.guild_id, pet.pet_name]
+    );
+    pet.soda_today = 0;
+    pet.last_soda_reset_at = now;
+  }
+}
+
+function useSodaEnergy(userId, guildId, autoBuy = true) {
+  let petObj = getPet(userId, guildId);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan!');
+  if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
+  if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
+  if (petObj.status === 'SICK') throw new Error('Pet Anda sedang sakit 🤢! Sembuhkan terlebih dahulu.');
+
+  const item = PET_ITEMS.SODA_ENERGY;
+  let qty = getItemQuantity(userId, guildId, item.id);
+  let didAutoBuy = false;
+
+  if (qty <= 0) {
+    if (autoBuy) {
+      buyItem(userId, guildId, item.id, 1);
+      didAutoBuy = true;
+    } else {
+      throw new Error(`Anda tidak memiliki **${item.name}**! Beli dulu di toko pet.`);
+    }
+  }
+
+  // Cek reset limit
+  checkAndResetSodaLimit(petObj);
+
+  let gotSick = false;
+  const now = Math.floor(Date.now() / 1000);
+
+  db.transaction(() => {
+    // Potong kuantitas
+    db.run(
+      'UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+      [userId, guildId, item.id]
+    );
+
+    const newSodaToday = petObj.soda_today + 1;
+    let newStatus = petObj.status;
+    let newHealth = petObj.health;
+
+    // Jika minum > 2 kali (berarti botol ke-3 dst), ada 35% peluang sakit
+    if (newSodaToday > 2 && Math.random() < 0.35) {
+      gotSick = true;
+      newStatus = 'SICK';
+      newHealth = 5;
+    }
+
+    // Reset cooldown work dan hunt, tambah soda_today
+    db.run(
+      `UPDATE user_pets 
+       SET last_work_at = 0, last_hunt_at = 0, soda_today = ?, status = ?, health = ?, last_interaction_at = ?
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newSodaToday, newStatus, newHealth, now, userId, guildId, petObj.pet_name]
+    );
+  })();
+
+  const updatedPet = getPet(userId, guildId);
+  return {
+    pet: updatedPet,
+    item,
+    didAutoBuy,
+    gotSick
+  };
+}
+
+function trainPet(userId, guildId) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan!');
+  if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
+  if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal 🪦.');
+  if (petObj.status === 'SICK') throw new Error('Pet Anda sedang sakit 🤢! Sembuhkan terlebih dahulu.');
+
+  if (petObj.health < 40) {
+    throw new Error('Pet Anda terlalu lemah/lelah (HP < 40) untuk berlatih!');
+  }
+  if (petObj.hunger < 30 || petObj.thirst < 30) {
+    throw new Error('Pet Anda terlalu lapar/haus (Kenyangan/Hidrasi < 30) untuk berlatih!');
+  }
+
+  const fee = 150;
+  const wallet = economy.getWallet(userId, guildId);
+  if (wallet.balance < fee) {
+    throw new Error(`Saldo koin Anda tidak mencukupi untuk biaya latihan sebesar Rp ${fee}!`);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const maxHP = petObj.pet_type === 'SLIME' ? 120 : 100;
+
+  db.transaction(() => {
+    // Kurangi koin
+    economy.subtractBalance(userId, guildId, fee, 'PET_GYM_FEE');
+
+    // Berikan XP (+100 XP) dikali xp_multiplier
+    let xpGained = Math.round(100 * (petObj.xp_multiplier || 1.0));
+    let { newXp, newLevel, levelUp } = addXp(petObj, xpGained, maxHP);
+
+    const newHunger = Math.max(0, petObj.hunger - 30);
+    const newThirst = Math.max(0, petObj.thirst - 30);
+    let newHealth = petObj.health;
+    if (levelUp) {
+      newHealth = maxHP; // Full HP saat naik level
+    }
+
+    db.run(
+      `UPDATE user_pets 
+       SET xp = ?, level = ?, hunger = ?, thirst = ?, health = ?, last_interaction_at = ?
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newXp, newLevel, newHunger, newThirst, newHealth, now, userId, guildId, petObj.pet_name]
+    );
+  })();
+
+  return {
+    pet: getPet(userId, guildId),
+    fee,
+    xpGained: Math.round(100 * (petObj.xp_multiplier || 1.0))
+  };
+}
+
+function revivePet(userId, guildId) {
+  const petObj = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  if (petObj.status !== 'DEAD') {
+    throw new Error(`Pet Anda **"${petObj.pet_name}"** masih hidup sehat walafiat! Tidak perlu dihidupkan kembali.`);
+  }
+
+  const cost = 500 * petObj.level;
+  const wallet = economy.getWallet(userId, guildId);
+  if (wallet.balance < cost) {
+    throw new Error(`Saldo dompet tidak mencukupi! Menghidupkan kembali pet Lv. ${petObj.level} membutuhkan Rp ${cost.toLocaleString('id-ID')} (saldo Anda: Rp ${wallet.balance.toLocaleString('id-ID')}).`);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const newStatus = petObj.level >= 10 ? 'ADULT' : 'BABY';
+
+  db.transaction(() => {
+    // Kurangi koin
+    economy.subtractBalance(userId, guildId, cost, 'PET_REVIVE');
+
+    // Revive pet
+    db.run(
+      `UPDATE user_pets 
+       SET status = ?, health = 50, hunger = 50, thirst = 50, happiness = 50, last_interaction_at = ?
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newStatus, now, userId, guildId, petObj.pet_name]
+    );
+  })();
+
+  return {
+    pet: getPet(userId, guildId),
+    cost
+  };
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1870,5 +2113,8 @@ module.exports = {
   washPet,
   getOrCreateDailyQuests,
   incrementQuestProgress,
-  claimDailyQuestReward
+  claimDailyQuestReward,
+  revivePet,
+  useSodaEnergy,
+  trainPet
 };

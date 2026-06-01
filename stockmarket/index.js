@@ -1373,7 +1373,10 @@ function initStockMarket(client) {
             eggComponents.push(new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
             rows.push(new ActionRowBuilder().addComponents(eggComponents));
           } else if (userPet.status === 'DEAD') {
-            const deadComponents = [new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Reset Kandang').setStyle(ButtonStyle.Danger)];
+            const deadComponents = [
+              new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Reset Kandang').setStyle(ButtonStyle.Danger),
+              new ButtonBuilder().setCustomId('pet_btn_revive').setLabel(`🏥 Dokter Pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`).setStyle(ButtonStyle.Primary)
+            ];
             if (canAdoptMore) deadComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
             rows.push(new ActionRowBuilder().addComponents(deadComponents));
           } else {
@@ -1537,6 +1540,21 @@ function initStockMarket(client) {
               pet.resetPet(user.id, guildId);
               await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
               collector.stop();
+            } else if (iPet.customId === 'pet_btn_revive') {
+              try {
+                const res = pet.revivePet(user.id, guildId);
+                const successEmb = embeds.successEmbed(
+                  'Pet Berhasil Dihidupkan! 🏥✨',
+                  `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                  `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                  `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                  `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+                );
+                await iPet.reply({ embeds: [successEmb], flags: 64 });
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
+              }
             } else if (iPet.customId === 'pet_select_active') {
               pet.switchActivePet(user.id, guildId, iPet.values[0]);
               await iPet.update(getDashboardPanelPrivate(user.id));
@@ -2741,11 +2759,18 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: USE / PAKAI ──
   if (subCommand === 'use' || subCommand === 'pakai' || subCommand === 'use-item') {
-    const itemId = args[1];
+    const itemId = args[1] ? args[1].toUpperCase() : null;
     if (!itemId) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet use <item_id>`\nContoh: `.pet use XP_2X`')] });
     }
     try {
+      if (itemId === 'SODA_ENERGY' || itemId === 'SODA') {
+        const res = pet.useSodaEnergy(author.id, guildId, false);
+        const descText = `Berhasil meminumkan **Soda Energi Pet** pada pet **${res.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
+          (res.gotSick ? `🤢 **ADUH!** Pet Anda overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${res.pet.hunger}%\` | Hidrasi: \`${res.pet.thirst}%\` | Kebahagiaan: \`${res.pet.happiness}%\`.`);
+        return message.reply({ embeds: [embeds.successEmbed('Penggunaan Soda Energi Sukses! 🥤', descText)] });
+      }
+
       const res = pet.useItem(author.id, guildId, itemId, false);
       const successEmb = embeds.successEmbed(
         'Penggunaan Item Sukses! ✨',
@@ -2755,6 +2780,40 @@ async function handlePetCommand(message, client, args) {
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: DOKTER / REVIVE ──
+  if (subCommand === 'dokter' || subCommand === 'revive' || subCommand === 'sembuh') {
+    try {
+      const res = pet.revivePet(author.id, guildId);
+      const successEmb = embeds.successEmbed(
+        'Pet Berhasil Dihidupkan! 🏥✨',
+        `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+        `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+        `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: LATIH / TRAIN ──
+  if (subCommand === 'latih' || subCommand === 'train') {
+    try {
+      const res = pet.trainPet(author.id, guildId);
+      const successEmb = embeds.successEmbed(
+        'Pusat Pelatihan Pet! 🏋️✨',
+        `Pet **${res.pet.pet_name}** telah menyelesaikan sesi latihan keras!\n` +
+        `💰 Biaya Latihan: **Rp ${res.fee}**\n` +
+        `🌟 XP Didapat: **+${res.xpGained} XP**\n` +
+        `📊 Status Baru: Kenyangan \`${res.pet.hunger}%\` | Hidrasi \`${res.pet.thirst}%\` | Level: **${res.pet.level}**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Latihan Gagal!', err.message)] });
     }
   }
 
@@ -3205,7 +3264,8 @@ async function handlePetCommand(message, client, args) {
       rows.push(row);
     } else if (userPet.status === 'DEAD') {
       const deadComponents = [
-        new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Sapu/Reset Kandang').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('pet_btn_reset').setLabel('🧹 Sapu/Reset Kandang').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('pet_btn_revive').setLabel(`🏥 Dokter Pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`).setStyle(ButtonStyle.Primary)
       ];
       if (canAdoptMore) {
         deadComponents.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
@@ -3371,6 +3431,23 @@ async function handlePetCommand(message, client, args) {
         collector.stop();
         pet.resetPet(author.id, guildId);
         await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+      }
+
+      else if (iPet.customId === 'pet_btn_revive') {
+        collector.stop();
+        try {
+          const res = pet.revivePet(author.id, guildId);
+          const successEmb = embeds.successEmbed(
+            'Pet Berhasil Dihidupkan! 🏥✨',
+            `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+            `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+            `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+            `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+          );
+          await iPet.update({ embeds: [successEmb], components: [] });
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
+        }
       }
 
       else if (iPet.customId === 'pet_select_active') {
@@ -4205,6 +4282,11 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
         new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
         new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
         new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet (Rp 200)').setDescription('Reset cooldown Kerja/Berburu').setValue('SODA_ENERGY'),
+        new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Mandi Pet (Rp 100)').setDescription('Menghilangkan bau busuk pet').setValue('SOAP_PET'),
+        new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi (Rp 1.200)').setDescription('Aksesoris: Decay Status -15%').setValue('COLLAR_IRON'),
+        new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DMG +15%').setValue('SWORD_TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DEF +15%').setValue('SHIELD_TOY'),
         new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
         new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
         new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
@@ -4254,7 +4336,8 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
           const res = pet.buyItem(author.id, guildId, selectedItem, 1);
           const successEmb = embeds.successEmbed(
             'Transaksi Belanja Sukses! 🛒',
-            `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang telah dimasukkan ke persediaan pet Anda.\n\n` +
+            `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+            (res.isAccessory ? `🛡️ Aksesoris telah langsung dipasang pada pet aktif Anda!\n\n` : `📦 Barang telah dimasukkan ke persediaan pet Anda.\n\n`) +
             `📉 Sisa dompetmu sekarang adalah **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
           );
           await iShop.update({ embeds: [successEmb], components: [] });

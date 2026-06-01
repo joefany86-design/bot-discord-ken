@@ -2057,9 +2057,9 @@ module.exports = {
     }
 
     // ── STATUS SEHAT / SAKIT ──
-    const isSick = pet.health <= 30;
-    const isWeak = pet.health <= 60 && pet.health > 30;
-    const statusEmoji = pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi';
+    const isSick = pet.status === 'SICK' || pet.health <= 30;
+    const isWeak = pet.health <= 60 && pet.health > 30 && pet.status !== 'SICK';
+    const statusEmoji = pet.status === 'SICK' ? '🤢 Sakit' : (pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi');
     const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : speciesColor;
     const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
 
@@ -2085,13 +2085,19 @@ module.exports = {
     }
 
     const multText = (pet.xp_multiplier || 1.0) > 1.0 ? `⚡ **${pet.xp_multiplier}x XP**` : '1x';
-    const healthStatus = isSick ? '🚨 **KRITIS!**' : isWeak ? '⚠️ Lemah' : '💚 Sehat';
+    const healthStatus = pet.status === 'SICK' ? '🤢 Sakit (Overdose)' : (isSick ? '🚨 **KRITIS!**' : (isWeak ? '⚠️ Lemah' : '💚 Sehat'));
+
+    let accText = '❌ Tidak Ada';
+    if (pet.accessory === 'COLLAR_IRON') accText = '🪮 Kalung Besi (Laju Decay -15%)';
+    else if (pet.accessory === 'SWORD_TOY') accText = '⚔️ Pedang Mainan (PvP DMG +15%)';
+    else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan (PvP DEF +15%)';
 
     embed
       .setColor(statusColor)
       .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
       .setDescription(
         `> 👤 <@${pet.user_id}> · ${statusEmoji} · ${healthStatus}\n` +
+        `> 🛡️ **Aksesoris:** ${accText}\n` +
         `> 🌟 **${rarityBadge}** ${traitLine ? `· ${traitLine}` : ''}\n` +
         `> ⚡ **XP Booster:** ${multText} · 🤖 Auto Care: ${pet.auto_feed === 2 ? '👑 VIP' : (pet.auto_feed === 1 ? '🟢 ON' : '🔴 OFF')}\n\n` +
         `**✨ XP Progress** \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
@@ -2235,6 +2241,7 @@ module.exports = {
           (item.happiness > 0 ? `\`+${item.happiness} Kebahagiaan\` ` : '') +
           (item.cures ? `\`Mengobati Sakit/Pingsan\` ` : '') +
           (item.multiplier ? `\`Meningkatkan Multiplier XP Pet menjadi ${item.multiplier}x secara permanen\` ` : '') +
+          (item.type === 'ACCESSORY' ? `\`Aksesoris Permanen Pet (Bisa Dipasang)\` ` : '') +
           `\n👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``,
         inline: false
       });
