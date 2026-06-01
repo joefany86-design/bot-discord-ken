@@ -5222,13 +5222,25 @@ async function handleEconomyCommands(message, client) {
           if (res.lamboUsed) {
             failText += '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n';
           }
-          const failEmb = embeds.errorEmbed(
-            '🚓 Perampokan Gagal! 👮',
-            failText +
-            `Anda gagal merampok **${targetUser.username}**!\n\n` +
-            `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
-            `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
-          );
+          
+          let failEmb;
+          if (res.caughtBySecurity) {
+            failEmb = embeds.errorEmbed(
+              '👮 TERTANGKAP SECURITY PENTHOUSE! 🚓',
+              failText +
+              `Anda mencoba menyelinap masuk ke **👑 Penthouse** milik **${targetUser.username}**, namun petugas **👮 Security Jaga Penthouse** langsung menangkap basah Anda!\n\n` +
+              `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
+              `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
+            );
+          } else {
+            failEmb = embeds.errorEmbed(
+              '🚓 Perampokan Gagal! 👮',
+              failText +
+              `Anda gagal merampok **${targetUser.username}**!\n\n` +
+              `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
+              `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
+            );
+          }
           await message.reply({ embeds: [failEmb] });
         }
       } catch (err) {

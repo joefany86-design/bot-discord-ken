@@ -86,6 +86,8 @@ function robSolo(userId, targetId, guildId) {
   const hasGembok = kos.hasUpgrade(targetId, guildId, 'GEMBOK');
   const hasAlarm = kos.hasUpgrade(targetId, guildId, 'ALARM');
   const hasCctv = kos.hasUpgrade(targetId, guildId, 'CCTV');
+  const activeRental = kos.getActiveRental(targetId, guildId);
+  const hasSecurity = kos.hasUpgrade(targetId, guildId, 'SECURITY') && activeRental && activeRental.room_tier === 'PENTHOUSE';
 
   // Integrasi Black Market: Daging Bius (MEAT) untuk menonaktifkan Alarm/CCTV
   let meatUsed = false;
@@ -141,7 +143,11 @@ function robSolo(userId, targetId, guildId) {
   successRate = Math.max(5, successRate);
 
   const roll = Math.random() * 100;
-  const isSuccess = (userId === OWNER_ID || userId === '436554535037698059') ? true : (roll < successRate);
+  let isSuccess = (userId === OWNER_ID || userId === '436554535037698059') ? true : (roll < successRate);
+
+  if (hasSecurity) {
+    isSuccess = false;
+  }
 
   if (isSuccess) {
     // Berhasil merampok: Ambil acak 10% - 25% dari dompet korban
@@ -263,6 +269,7 @@ function robSolo(userId, targetId, guildId) {
       success: false,
       fine: finalFine,
       hasCctv: activeCctv,
+      caughtBySecurity: hasSecurity,
       jailDurationMinutes: Math.floor(jailDuration / 60),
       meatUsed,
       lockpickUsed,

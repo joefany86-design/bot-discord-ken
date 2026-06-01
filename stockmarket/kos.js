@@ -126,6 +126,14 @@ function buyUpgrade(userId, guildId, upgradeId) {
     throw new Error(`Anda sudah memiliki fasilitas **${upgradeConfig.name}** di dalam kamar Anda!`);
   }
 
+  // Khusus upgrade Security, harus punya Penthouse aktif
+  if (upgradeId === 'SECURITY') {
+    const activeRental = getActiveRental(userId, guildId);
+    if (!activeRental || activeRental.room_tier !== 'PENTHOUSE') {
+      throw new Error('Upgrade **Security Jaga Penthouse** hanya dapat dibeli jika Anda sedang menyewa kamar **👑 Penthouse Kosan**!');
+    }
+  }
+
   const wallet = economy.getWallet(userId, guildId);
   const price = upgradeConfig.price;
 

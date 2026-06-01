@@ -196,6 +196,12 @@ module.exports = {
         name: '📹 Kamera CCTV Pengawas',
         price: 350,
         desc: 'Merekam tindakan kriminal. Memberikan denda denda tambahan +Rp 100 kompensasi jika pelaku gagal merampok Anda.'
+      },
+      SECURITY: {
+        id: 'SECURITY',
+        name: '👮 Security Jaga Penthouse',
+        price: 750,
+        desc: 'Khusus Penthouse. Aksi perampokan (.rob) ke arah Anda otomatis gagal 100% (pelaku tertangkap basah & langsung masuk penjara)!'
       }
     }
   },
