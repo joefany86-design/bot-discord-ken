@@ -3118,7 +3118,8 @@ async function handlePetCommand(message, client, args) {
             reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
               `├─ 💰 Koin: **+Rp ${r.koin}**\n` +
               `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `└─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n\n`;
+              `├─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
+              `└─ 🎒 Status: ${r.statusText || '*Sehat & Bahagia* ☀️'}\n\n`;
           });
         } else {
           reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n💔 **😢 REKAP PENGALAMAN (MESKI GAGAL):**\n`;
@@ -3126,7 +3127,7 @@ async function handlePetCommand(message, client, args) {
             reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
               `├─ 💰 Koin: **+Rp 0** *(Zonk!)*\n` +
               `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `└─ 🎒 Status: *Menderita luka & stress* 🩸\n\n`;
+              `└─ 🎒 Status: ${r.statusText || '*Menderita luka & stress* 🩸'}\n\n`;
           });
         }
 

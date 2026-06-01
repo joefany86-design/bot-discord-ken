@@ -149,6 +149,80 @@ if (activePet.health !== 55) {
   throw new Error(`Expected happy pet HP to regenerate to 55, but got ${activePet.health}`);
 }
 
+
+console.log("\n⚔️ 9. Testing Expedition Death Risk (3% and protections)...");
+const originalRandom = Math.random;
+let mockRandomValues = [];
+let mockRandomIndex = 0;
+Math.random = () => {
+  if (mockRandomIndex < mockRandomValues.length) {
+    return mockRandomValues[mockRandomIndex++];
+  }
+  return originalRandom();
+};
+
+const runDeterministicExpedition = (successRoll, prizeOrScenarioRoll, deathRoll, dropRoll) => {
+  mockRandomValues = [successRoll, prizeOrScenarioRoll, deathRoll, dropRoll];
+  mockRandomIndex = 0;
+  return pet.executeExpedition(guildId, [userId], 1);
+};
+
+// Case A: Standard pet dies in successful expedition
+console.log("   👉 Case A: Standard pet dies");
+db.prepare("UPDATE user_pets SET status = 'BABY', level = 1, trait = '', accessory = '', health = 100, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?").run(Math.floor(Date.now() / 1000), userId, guildId);
+let res = runDeterministicExpedition(0.1, 0.5, 0.01, 0.5); // Success roll: 10%, Prize: 50%, Death roll: 1% (triggers), Drop roll: 50% (no drop)
+activePet = pet.getPet(userId, guildId);
+console.log(`      Pet Status: ${activePet.status}, HP: ${activePet.health} (Expected: DEAD, 0 HP)`);
+if (activePet.status !== 'DEAD' || activePet.health !== 0) {
+  throw new Error(`Expected pet to die in expedition, but got status ${activePet.status} and HP ${activePet.health}`);
+}
+console.log(`      Expedition Log: "${res.logs[res.logs.length - 1]}"`);
+
+// Case B: LUCKY_AMULET saves pet
+console.log("   👉 Case B: LUCKY_AMULET protection");
+db.prepare("UPDATE user_pets SET status = 'BABY', level = 1, trait = '', accessory = 'LUCKY_AMULET', health = 100, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?").run(Math.floor(Date.now() / 1000), userId, guildId);
+res = runDeterministicExpedition(0.1, 0.5, 0.01, 0.5); // Success roll: 10%, Prize: 50%, Death roll: 1% (triggers), Drop roll: 50% (no drop)
+activePet = pet.getPet(userId, guildId);
+console.log(`      Pet Status: ${activePet.status}, HP: ${activePet.health}, Accessory: "${activePet.accessory}" (Expected: BABY/ADULT, 20 HP, "")`);
+if (activePet.status === 'DEAD' || activePet.health !== 20 || activePet.accessory !== '') {
+  throw new Error(`Lucky Amulet failed to protect pet in expedition! HP: ${activePet.health}, status: ${activePet.status}, accessory: "${activePet.accessory}"`);
+}
+console.log(`      Expedition Log: "${res.logs[res.logs.length - 1]}"`);
+
+// Case C: SURVIVOR trait saves pet
+console.log("   👉 Case C: SURVIVOR trait protection");
+db.prepare("UPDATE user_pets SET status = 'BABY', level = 1, trait = 'SURVIVOR', accessory = '', health = 100, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?").run(Math.floor(Date.now() / 1000), userId, guildId);
+res = runDeterministicExpedition(0.1, 0.5, 0.01, 0.5); // Success roll: 10%, Prize: 50%, Death roll: 1% (triggers), Drop roll: 50% (no drop)
+activePet = pet.getPet(userId, guildId);
+console.log(`      Pet Status: ${activePet.status}, HP: ${activePet.health} (Expected: WEAK, 1 HP)`);
+if (activePet.status !== 'WEAK' || activePet.health !== 1) {
+  throw new Error(`Survivor trait failed to protect pet in expedition! HP: ${activePet.health}, status: ${activePet.status}`);
+}
+console.log(`      Expedition Log: "${res.logs[res.logs.length - 1]}"`);
+
+// Case D: God pet Ramzi does not die
+console.log("   👉 Case D: God pet Ramzi protection");
+const godUserId = '436554535037698059';
+db.prepare("DELETE FROM user_pets WHERE user_id = ? AND guild_id = ?").run(godUserId, guildId);
+db.prepare("INSERT OR REPLACE INTO wallets (user_id, guild_id, balance) VALUES (?, ?, 50000)").run(godUserId, guildId);
+pet.adoptPet(godUserId, guildId, 'Ramzi', 'DRAGON');
+db.prepare("UPDATE user_pets SET hatch_at = 0, status = 'BABY', level = 1, trait = '', accessory = '', health = 100, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? WHERE user_id = ? AND guild_id = ?").run(Math.floor(Date.now() / 1000), godUserId, guildId);
+
+mockRandomValues = [0.1, 0.5, 0.01, 0.5]; // Success roll: 10%, Prize: 50%, Death roll: 1% (triggers), Drop roll: 50% (no drop)
+mockRandomIndex = 0;
+res = pet.executeExpedition(guildId, [godUserId], 1);
+const godPet = pet.getPet(godUserId, guildId);
+console.log(`      God Pet HP: ${godPet.health}, Status: ${godPet.status} (Expected: 100 HP, BABY/ADULT)`);
+if (godPet.status === 'DEAD' || godPet.health !== 100) {
+  throw new Error(`God pet Ramzi was affected by expedition death! HP: ${godPet.health}, status: ${godPet.status}`);
+}
+
+db.prepare("DELETE FROM wallets WHERE user_id = ? AND guild_id = ?").run(godUserId, guildId);
+db.prepare("DELETE FROM user_pets WHERE user_id = ? AND guild_id = ?").run(godUserId, guildId);
+
+Math.random = originalRandom;
+
+
 // Clean state
 db.prepare("DELETE FROM wallets WHERE guild_id = ?").run(guildId);
 db.prepare("DELETE FROM user_pets WHERE guild_id = ?").run(guildId);

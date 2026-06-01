@@ -1526,10 +1526,52 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
         const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
 
+        let finalHealth = ap.pet.health;
+        let finalStatus = ap.pet.status;
+        let finalAccessory = ap.pet.accessory;
+        let deathTriggered = false;
+        let isSavedByAmulet = false;
+        let isSavedBySurvivor = false;
+
+        if (!isGod && Math.random() < 0.03) {
+          deathTriggered = true;
+          if (ap.pet.accessory === 'LUCKY_AMULET') {
+            isSavedByAmulet = true;
+            finalHealth = 20;
+            finalAccessory = '';
+            if (finalStatus === 'WEAK') {
+              finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
+            }
+          } else if (ap.pet.trait === 'SURVIVOR') {
+            isSavedBySurvivor = true;
+            finalHealth = 1;
+            finalStatus = 'WEAK';
+          } else {
+            finalHealth = 0;
+            finalStatus = 'DEAD';
+          }
+        }
+
         db.run(
-          `UPDATE user_pets SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-          [newXp, newLevel, newHunger, newThirst, newHappiness, now, ap.userId, guildId, ap.pet.pet_name]
+          `UPDATE user_pets 
+           SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, accessory = ?, last_interaction_at = ? 
+           WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [newXp, newLevel, newHunger, newThirst, newHappiness, finalHealth, finalStatus, finalAccessory, now, ap.userId, guildId, ap.pet.pet_name]
         );
+
+        let statusText = '';
+        if (deathTriggered) {
+          if (isSavedByAmulet) {
+            statusText = 'Jimat Keberuntungan Hancur! (Selamat) 🛡️';
+            logs.push(`🛡️ **${ap.pet.pet_name}** (<@${ap.userId}>) hampir tewas karena jebakan mematikan, tetapi diselamatkan oleh **Jimat Keberuntungan** yang hancur berkeping-keping!`);
+          } else if (isSavedBySurvivor) {
+            statusText = 'Lemas & Terluka (Bertahan 1 HP) 🩹';
+            logs.push(`❤️ **${ap.pet.pet_name}** (<@${ap.userId}>) menderita luka fatal, tetapi berkat trait **Survivor**, ia bertahan hidup dengan sisa 1 HP!`);
+          } else {
+            statusText = 'MENINGGAL DUNIA (Butuh Dokter) 🪦';
+            logs.push(`💀 **${ap.pet.pet_name}** (<@${ap.userId}>) mengalami kecelakaan fatal di dalam ekspedisi dan **MENINGGAL DUNIA**! Bawa dia ke Dokter Pet (\`.pet dokter\`) untuk menghidupkannya kembali.`);
+          }
+        }
 
         // Peluang 20% mendapat drop item
         let dropText = '';
@@ -1565,7 +1607,8 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
           xpGained: xpGained,
           levelUp,
           newLevel,
-          dropItem: dropText
+          dropItem: dropText,
+          statusText
         });
       });
     })();
@@ -1657,15 +1700,56 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
-        const newHealth = isGod ? 100 : Math.max(5, ap.pet.health - 30);
+        let newHealth = isGod ? 100 : Math.max(5, ap.pet.health - 30);
         const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);
 
+        let finalStatus = ap.pet.status;
+        let finalAccessory = ap.pet.accessory;
+        let deathTriggered = false;
+        let isSavedByAmulet = false;
+        let isSavedBySurvivor = false;
+
+        if (!isGod && Math.random() < 0.03) {
+          deathTriggered = true;
+          if (ap.pet.accessory === 'LUCKY_AMULET') {
+            isSavedByAmulet = true;
+            newHealth = 20;
+            finalAccessory = '';
+            if (finalStatus === 'WEAK') {
+              finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
+            }
+          } else if (ap.pet.trait === 'SURVIVOR') {
+            isSavedBySurvivor = true;
+            newHealth = 1;
+            finalStatus = 'WEAK';
+          } else {
+            newHealth = 0;
+            finalStatus = 'DEAD';
+          }
+        }
+
         db.run(
-          `UPDATE user_pets SET xp = ?, level = ?, health = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-          [newXp, newLevel, newHealth, newHappiness, newHunger, newThirst, now, ap.userId, guildId, ap.pet.pet_name]
+          `UPDATE user_pets 
+           SET xp = ?, level = ?, health = ?, status = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ?, accessory = ? 
+           WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [newXp, newLevel, newHealth, finalStatus, newHappiness, newHunger, newThirst, now, finalAccessory, ap.userId, guildId, ap.pet.pet_name]
         );
+
+        let statusText = '';
+        if (deathTriggered) {
+          if (isSavedByAmulet) {
+            statusText = 'Jimat Keberuntungan Hancur! (Selamat) 🛡️';
+            logs.push(`🛡️ **${ap.pet.pet_name}** (<@${ap.userId}>) hampir tewas, tetapi diselamatkan oleh **Jimat Keberuntungan** yang hancur berkeping-keping!`);
+          } else if (isSavedBySurvivor) {
+            statusText = 'Lemas & Terluka (Bertahan 1 HP) 🩹';
+            logs.push(`❤️ **${ap.pet.pet_name}** (<@${ap.userId}>) mengalami luka mematikan, tetapi berkat trait **Survivor**, ia bertahan hidup dengan sisa 1 HP!`);
+          } else {
+            statusText = 'MENINGGAL DUNIA (Butuh Dokter) 🪦';
+            logs.push(`💀 **${ap.pet.pet_name}** (<@${ap.userId}>) mengalami kecelakaan fatal di dalam ekspedisi dan **MENINGGAL DUNIA**! Bawa dia ke Dokter Pet (\`.pet dokter\`) untuk menghidupkannya kembali.`);
+          }
+        }
 
         rewards.push({
           userId: ap.userId,
@@ -1673,7 +1757,8 @@ function executeExpedition(guildId, participantIds, mapId = 1) {
           koin: 0,
           xpGained: xpGained,
           levelUp,
-          newLevel
+          newLevel,
+          statusText
         });
       });
     })();
