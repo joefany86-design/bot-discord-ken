@@ -1294,7 +1294,8 @@ module.exports = {
             `🎰 **\`.gacha-role\`** — Memutar spin gacha role seharga **Rp 250** per roll!\n` +
             `╰ 🟢 Common \`70%\` · 🔵 Rare \`22%\` · 🟣 Epic \`6.8%\` · 👑 Legendary \`1.1%\` · 🌟 **Mythic \`0.1%\`**\n` +
             `╰ 🗑️ Zonk? Dapet item sampah lucu *(Sandal Swallow Kiri, Batu Kali, Tulang Ayam…)*\n` +
-            `╰ 💰 Duplikat? Cashback **Rp 100** otomatis!\n\n` +
+            `╰ 💰 Duplikat? Cashback **Rp 100** otomatis!\n` +
+            `╰ 💎 **NEW: GACHA ROLE PERKS!** Pemegang role gacha mendapat **benefit pasif permanen** terpadu (XP & Gaji Pet, Pajak Transfer & Saham, Bunga & Limit Bank, Sukses & Proteksi Rob, Potongan Penjara & Bail!)\n\n` +
             `📇 **\`.indexrole\`** · **\`.roleindex\`** — Menampilkan kartu indeks koleksi role Anda, progress bar, & status kelas sosial *(dari "Beban Server" s/d "Maharaja Sultan"!)*.`,
           inline: false
         }
@@ -1312,7 +1313,7 @@ module.exports = {
           value:
             `> *Perbankan canggih berbasis formulir pop-up interaktif Discord!*\n\n` +
             `🏦 **\`.bank\`** — Membuka panel kontrol bank interaktif lengkap.\n\n` +
-            `📥 **Tabungan** — Simpan koin di brankas bank agar aman dari perampok. Tabungan mendapat **bunga pasif s/d +0.75% setiap hari** (Maksimal saldo dihitung bunga Rp 20.000) yang cair otomatis tengah malam!\n\n` +
+            `📥 **Tabungan** — Simpan koin di brankas bank agar aman dari perampok. Tabungan mendapat **bunga pasif harian** (+0.50% bunga khusus Mythic, batas bunga default Rp 20.000, **diperluas hingga Rp 50.000** bagi pemegang Gacha Role!) yang cair otomatis tengah malam!\n\n` +
             `📜 **Pinjaman** — Pinjam koin darurat dengan limit dinamis berdasarkan keaktifan chat & streak harian Anda:\n` +
             `╰ 📅 **Tenor 1 hari** — Bunga 2%\n` +
             `╰ 📅 **Tenor 3 hari** — Bunga 5%\n` +
@@ -1374,8 +1375,10 @@ module.exports = {
           value:
             `📋 **\`.pet\`** — Dashboard status pet (HP, Kenyangan, Hidrasi, Mood).\n` +
             `🛒 **\`.pet shop\`** — Toko item perawatan (Pakan, Air, Obat, Mainan).\n` +
-            `⚒️ **\`.pet work\`** — Kerja: **Rp 150–400** + bonus 5%/level *(CD: 2 jam)*.\n` +
-            `🏹 **\`.pet hunt\`** — Berburu *(Min. Lv 10)*: **Rp 300–800** + item *(CD: 4 jam)*.\n` +
+            `⚒️ **\`.pet work\`** — Kerja: **Rp 150–400** + bonus 5%/level *(CD: 1 jam)*. *(Epic s/d Mythic mendapat bonus gaji s/d +35% & XP s/d +100%)*\n` +
+            `🏹 **\`.pet hunt\`** — Berburu *(Min. Lv 10)*: **Rp 300–800** + item *(CD: 2 jam)*.\n` +
+            `🥤 **\`.pet use SODA\`** — Reset CD kerja/berburu *(CD: 30 menit)*. Minum ke-3+ berisiko 35% sakit (SICK), **bisa dikurangi s/d 0% kebal sakit** dengan Gacha Role!\n` +
+            `🛡️ **\`.pet expedition\`** — Ekspedisi Co-op *(CD: 30 menit)*: Dapatkan hasil hingga **Rp 2.500**. Berisiko **3% pet meninggal dunia (DEAD)**! Bawalah jimat \`LUCKY_AMULET\` (Rp 2.000) atau miliki Gacha Role Legendary/Mythic untuk proteksi!\n` +
             `🎾 **\`.pet play\`** — Bermain gratis: **+25 Happiness, +15 XP**.\n` +
             `⚔️ **\`.pet pvp @user <taruhan>\`** — Duel PvP taruhan koin!\n` +
             `🗑️ **\`.pet reset\`** — Kosongkan kandang untuk adopsi ulang.\n\n` +
@@ -1387,9 +1390,9 @@ module.exports = {
           value:
             `> *High risk, high reward — atau high regret! Pilih wisely!*\n\n` +
             `🔫 **\`.rob @user\`** — Solo robbery! Merampok **10%–25%** koin dompet target.\n` +
-            `╰ ✅ Peluang sukses dasar: **40%** *(dikurangi Alarm korban: -15%)*\n` +
-            `╰ ❌ Gagal? Didenda **Rp 200** *(+Rp 100 jika korban punya CCTV)* & dipenjara **30 menit**!\n` +
-            `╰ 🛡️ Gembok korban memotong jarahan pelaku hingga **50%**.\n\n` +
+            `╰ ✅ Peluang sukses dasar: **40%** *(pelaku Gacha Role dapat bonus s/d +25% sukses)*\n` +
+            `╰ ❌ Gagal? Didenda **Rp 200** *(+Rp 100 jika korban punya CCTV)* & dipenjara *(CD dipotong gacha s/d -50%)*!\n` +
+            `╰ 🛡️ Gembok korban memotong jarahan pelaku 50%. Korban Gacha Role dapat proteksi kehilangan koin (s/d **kebal dirampok 100%** untuk Mythic!)\n\n` +
             `╰ 👤 1 kru: 5% sukses → Rp 1.000–2.000\n` +
             `╰ 👥 2 kru: 10% sukses → Rp 2.500–4.500\n` +
             `╰ 👥👥 3 kru: 15% sukses → Rp 5.000–8.000\n` +
@@ -1397,7 +1400,7 @@ module.exports = {
             `╰ 👥👥👥👥 **5+ kru: 45% sukses → Rp 10.000–16.000** 🔥\n` +
             `╰ ❌ Gagal heist? **Denda Rp 750 + Penjara 2 jam** untuk seluruh kru!\n\n` +
             `🏛️ **\`.jail\`** · **\`.jail @user\`** — Cek status/sisa waktu penjara virtual.\n` +
-            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 250 | Heist Rp 500.`,
+            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 250 | Heist Rp 500 *(Epic s/d Mythic mendapat denda tebus jaminan s/d -50%)*!`,
           inline: false
         }
       )
@@ -1419,7 +1422,15 @@ module.exports = {
           inline: false
         },
         {
-          name: '🔗  ⑪ BYPASS VIDEO LINK (AUTO-PREVIEW)',
+          name: '🎰  ⑪ GAME CASINO (SLOT & LOTRE MINGGUAN)',
+          value:
+            `🎰 **\`.slot [jumlah]\`** — Taruhan Rp 20 - Rp 10.000 untuk memenangkan Jackpot instan! *(75.3% koin taruhan dibakar sistem)*\n\n` +
+            `🎟️ **\`.lotre\`** · **\`.lotre beli [jumlah]\`** — Beli tiket lotre Rp 100/tiket. Diundi setiap Hari Minggu pukul 21:00 WIB. Pemenang membawa pulang 85% koin pool, dan **15% pool koin dibakar selamanya**!\n\n` +
+            `${miniDivider}`,
+          inline: false
+        },
+        {
+          name: '🔗  ⑫ BYPASS VIDEO LINK (AUTO-PREVIEW)',
           value:
             `> *Kirim link video tanpa khawatir preview rusak!*\n\n` +
             `📱 Fitur **otomatis aktif** — Bot mendeteksi link **TikTok**, **Twitter/X**, & **Instagram** yang dikirim di chat, lalu mengirim preview video langsung melalui Webhook Mirroring yang estetik tanpa merusak teks asli Anda!\n\n` +
