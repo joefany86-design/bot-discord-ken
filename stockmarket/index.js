@@ -1450,6 +1450,70 @@ function initStockMarket(client) {
         });
       }
 
+      // ── PORTAL PERMANEN: INVENTORY SAYA ──
+      else if (customId === 'eco_btn_open_inventory_private_perm') {
+        await interaction.deferReply({ flags: 64 });
+        
+        // Fetch all inventory items (quantity > 0)
+        const inv = database.all(
+          'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
+          [user.id, guildId]
+        );
+
+        // Map BM items & Luxury items for display
+        const allItems = {
+          // Black market items
+          LOCKPICK: { name: '🗝️ Linggis / Lockpick', type: 'Black Market' },
+          MASK: { name: '🎭 Topeng Samaran', type: 'Black Market' },
+          MEAT: { name: '🥩 Daging Bius', type: 'Black Market' },
+          SOAP: { name: '🧼 Sabun Licin', type: 'Black Market' },
+          BRANKAS: { name: '🛡️ Brankas Anti-Hacker', type: 'Black Market' },
+          // Luxury items
+          LAMBO: { name: '🏎️ Lamborgini Kosan', type: 'Barang Mewah' },
+          GOLD: { name: '👑 Batangan Emas Murni', type: 'Barang Mewah' },
+          KEY: { name: '🔑 Kunci Emas Penthouse', type: 'Barang Mewah' },
+          ROLEX: { name: '⌚ Jam Tangan Rolek Master', type: 'Barang Mewah' },
+          IPHONE: { name: '📱 iPhone 16 Pro Max', type: 'Barang Mewah' }
+        };
+
+        const bmOwned = [];
+        const luxuryOwned = [];
+
+        inv.forEach(item => {
+          const itemKey = item.item_id.toUpperCase();
+          const info = allItems[itemKey] || { name: item.item_id, type: 'Lainnya' };
+          const line = `• **${info.name}** - **x${item.quantity}**`;
+          
+          if (info.type === 'Black Market') {
+            bmOwned.push(line);
+          } else if (info.type === 'Barang Mewah') {
+            luxuryOwned.push(line);
+          }
+        });
+
+        const embed = new EmbedBuilder()
+          .setColor(0x00FFCC)
+          .setTitle('🎒 INVENTORY SAYA — KANTONG PERALATAN & ASET')
+          .setThumbnail(user.displayAvatarURL())
+          .setTimestamp();
+
+        let desc = `Halo **${user.username}**! Berikut adalah seluruh barang dan aset yang kamu miliki saat ini:\n\n`;
+
+        if (bmOwned.length === 0 && luxuryOwned.length === 0) {
+          desc += `*Kantongmu benar-benar kosong! Silakan kunjungi **🕵️‍♂️ Black Market** di Portal Hub untuk berbelanja peralatan.*`;
+        } else {
+          if (bmOwned.length > 0) {
+            desc += `🖤 **PERALATAN PASAR GELAP (BLACK MARKET):**\n${bmOwned.join('\n')}\n\n`;
+          }
+          if (luxuryOwned.length > 0) {
+            desc += `💎 **BARANG & ASET MEWAH (LUXURY SHOP):**\n${luxuryOwned.join('\n')}\n\n`;
+          }
+        }
+
+        embed.setDescription(desc);
+        await interaction.editReply({ embeds: [embed] });
+      }
+
       // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
       else if (customId === 'eco_btn_open_bm_private_perm') {
         await interaction.deferReply({ flags: 64 });
