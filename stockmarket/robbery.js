@@ -72,6 +72,17 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   if (thiefJail.jailed) {
     throw new Error(`Anda tidak bisa merampok karena sedang dipenjara! Sisa waktu: ${Math.ceil(thiefJail.remaining / 60)} menit lagi.`);
   }
+
+  // Cooldown sukses rob: 10 menit (600 detik)
+  const nowSec = Math.floor(Date.now() / 1000);
+  const lastRob = thiefWallet.last_rob_at || 0;
+  const elapsedRob = nowSec - lastRob;
+  const robCooldownSeconds = 600; // 10 menit
+  if (elapsedRob < robCooldownSeconds) {
+    const remainingMin = Math.ceil((robCooldownSeconds - elapsedRob) / 60);
+    throw new Error(`Kaki Anda lelah setelah aksi sebelumnya! Mohon tunggu **${remainingMin} menit** lagi sebelum merampok kembali.`);
+  }
+
   if (thiefWallet.balance < config.robbery.MIN_ROB_BALANCE_ROBBER) {
     throw new Error(`Anda membutuhkan saldo minimal Rp ${config.robbery.MIN_ROB_BALANCE_ROBBER} untuk membayar denda jika gagal.`);
   }
@@ -125,9 +136,15 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   const victimClaimedDaily = victimWallet.last_active_date === todayStr;
 
   // Kalkulasi Peluang Keberhasilan
-  let successRate = config.robbery.SUCCESS_RATE; // Default 40%
+  let successRate = config.robbery.SUCCESS_RATE; // Default 45%
   if (!victimClaimedDaily) {
     successRate = 50; // Peluang sukses menjadi 50% jika korban belum ambil daily
+  }
+
+  // Wanted Status check: jika korban adalah Wanted, pelaku mendapat bonus +15% sukses rate
+  const isVictimWanted = victimWallet.wanted_until && victimWallet.wanted_until > nowSec;
+  if (isVictimWanted) {
+    successRate += 15;
   }
 
   // Gacha Role Bonus Sukses Rob Pelaku
@@ -214,6 +231,21 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     db.transaction(() => {
       economy.subtractBalance(targetId, guildId, amountStolen, 'ROBBED_BY');
       economy.addBalance(userId, guildId, amountStolen, 'ROB_SUCCESS');
+
+      // Set last_rob_at pelaku untuk cooldown sukses
+      db.run(
+        'UPDATE wallets SET last_rob_at = ? WHERE user_id = ? AND guild_id = ?',
+        [nowSec, userId, guildId]
+      );
+
+      // Cek Wanted Status pelaku (jika jarahan >= Rp 1.500)
+      if (amountStolen >= 1500) {
+        const wantedUntil = nowSec + 7200; // 2 jam status buronan
+        db.run(
+          'UPDATE wallets SET wanted_until = ? WHERE user_id = ? AND guild_id = ?',
+          [wantedUntil, userId, guildId]
+        );
+      }
     })();
 
     // Berikan XP ke pet pelaku jika ada pet yang aktif
@@ -250,10 +282,12 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       lockpickUsed,
       lockpickBroken,
       maskUsed,
-      victimClaimedDaily
+      victimClaimedDaily,
+      isVictimWanted,
+      gotWanted: amountStolen >= 1500
     };
   } else {
-    // Gagal merampok: Pelaku didenda Rp 200 (masuk ke korban)
+    // Gagal merampok: Pelaku didenda Rp 200 (atau lebih)
     let fine = 200;
     if (activeCctv) {
       fine += 100; // CCTV palsu menambah denda pelaku +100 kompensasi ke korban
@@ -302,10 +336,14 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       else if (gachaTier === 'MYTHIC') jailDuration = Math.floor(jailDuration * 0.50);
     }
 
+    const compensation = Math.round(finalFine * 0.75);
+
     db.transaction(() => {
       if (finalFine > 0) {
         economy.subtractBalance(userId, guildId, finalFine, 'ROB_FAILED_FINE');
-        economy.addBalance(targetId, guildId, finalFine, 'ROB_VICTIM_COMPENSATION');
+        if (compensation > 0) {
+          economy.addBalance(targetId, guildId, compensation, 'ROB_VICTIM_COMPENSATION');
+        }
       }
 
       // Penjara pelaku
@@ -319,6 +357,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     return {
       success: false,
       fine: finalFine,
+      compensation,
       hasCctv: activeCctv,
       caughtBySecurity: hasSecurity,
       jailDurationMinutes: Math.floor(jailDuration / 60),
@@ -327,7 +366,8 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       lockpickBroken,
       soapUsed,
       lamboUsed,
-      victimClaimedDaily
+      victimClaimedDaily,
+      isVictimWanted
     };
   }
 }

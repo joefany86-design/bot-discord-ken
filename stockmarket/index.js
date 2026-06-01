@@ -5529,6 +5529,9 @@ async function handleEconomyCommands(message, client) {
         const res = robbery.robSolo(author.id, targetUser.id, guildId, message.member, targetMember);
 
         let toolText = '';
+        if (res.isVictimWanted) {
+          toolText += '🎯 *Target adalah buronan WANTED! Peluang sukses perampokan Anda meningkat +15%!*\n';
+        }
         if (res.meatUsed) {
           toolText += '🥩 *Kamu melempar Daging Bius untuk menidurkan Alarm/CCTV korban!*\n';
         }
@@ -5553,12 +5556,15 @@ async function handleEconomyCommands(message, client) {
                 `⚠️ **Telah Terjadi Pencurian Koin Dompet!**\n\n` +
                 `👤 **Korban**: <@${targetUser.id}>\n` +
                 `👤 **Pelaku**: ${res.maskUsed ? '🎭 *Pencuri Misterius Bertopeng*' : `<@${author.id}>`}\n` +
-                `💸 **Jumlah Terjarah**: \`Rp ${res.amount.toLocaleString('id-ID')}\`\n\n` +
+                `💸 **Jumlah Terjarah**: \`Rp ${res.amount.toLocaleString('id-ID')}\`\n` +
+                (res.gotWanted ? `🚨 **Status**: Pelaku berstatus **WANTED** (Buronan Polisi Virtual) selama 2 jam!\n\n` : '\n') +
                 `🏦 *Segera amankan saldo dompet Anda ke rekening bank (.dep) atau sewa Gembok pintu Kosan untuk mengurangi kerugian dari aksi perampokan berikutnya!*`
               )
               .setTimestamp();
             await logChannel.send({ embeds: [robEmbed] }).catch(() => {});
           }
+
+          const wantedWarning = res.gotWanted ? `\n\n🚨 **WANTED!** Karena mencuri dalam jumlah besar, ${res.maskUsed ? 'pelaku' : 'Anda'} menjadi buronan polisi virtual selama 2 jam!` : '';
 
           if (res.maskUsed) {
             // Hapus pesan pemicu agar nama tidak ketahuan
@@ -5569,7 +5575,8 @@ async function handleEconomyCommands(message, client) {
               toolText +
               `Seorang pencuri bertopeng misterius menyelinap masuk dan merampok **${targetUser.username}**!\n\n` +
               `💸 **Uang Dibawa Kabur:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.\n\n` +
-              `*Identitas perampok tersembunyi berkat Topeng Samaran!*`
+              `*Identitas perampok tersembunyi berkat Topeng Samaran!*` +
+              wantedWarning
             );
             await message.channel.send({ embeds: [maskEmb] });
           } else {
@@ -5577,7 +5584,8 @@ async function handleEconomyCommands(message, client) {
               '💥 Perampokan Berhasil! 💰',
               toolText +
               `Anda berhasil merampok **${targetUser.username}**!\n\n` +
-              `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}`
+              `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}` +
+              wantedWarning
             );
             await message.reply({ embeds: [successEmb] });
           }
@@ -5596,7 +5604,8 @@ async function handleEconomyCommands(message, client) {
               '👮 TERTANGKAP SECURITY PENTHOUSE! 🚓',
               failText +
               `Anda mencoba menyelinap masuk ke **👑 Penthouse** milik **${targetUser.username}**, namun petugas **👮 Security Jaga Penthouse** langsung menangkap basah Anda!\n\n` +
-              `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
+              `💸 **Denda Dibayar:** **Rp ${res.fine.toLocaleString('id-ID')}**\n` +
+              `🎁 **Kompensasi Korban:** **Rp ${res.compensation.toLocaleString('id-ID')}** (75% diterima korban, 25% disita/dibakar sistem)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
               `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
             );
           } else {
@@ -5604,7 +5613,8 @@ async function handleEconomyCommands(message, client) {
               '🚓 Perampokan Gagal! 👮',
               failText +
               `Anda gagal merampok **${targetUser.username}**!\n\n` +
-              `💸 **Denda Kompensasi:** **Rp ${res.fine.toLocaleString('id-ID')}** (diberikan ke korban)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
+              `💸 **Denda Dibayar:** **Rp ${res.fine.toLocaleString('id-ID')}**\n` +
+              `🎁 **Kompensasi Korban:** **Rp ${res.compensation.toLocaleString('id-ID')}** (75% diterima korban, 25% disita/dibakar sistem)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
               `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
             );
           }

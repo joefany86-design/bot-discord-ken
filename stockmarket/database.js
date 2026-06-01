@@ -645,6 +645,22 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel pet_item_cooldowns:", e.message);
   }
 
+  // 39. Migrasi dinamis: Tambahkan kolom last_rob_at ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN last_rob_at INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'last_rob_at' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 40. Migrasi dinamis: Tambahkan kolom wanted_until ke wallets jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN wanted_until INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'wanted_until' berhasil diverifikasi/ditambahkan di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 
