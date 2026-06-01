@@ -393,7 +393,7 @@ function getHeistStats(kruCount) {
       successRate: 5,
       minPrize: 1000,
       maxPrize: 2000,
-      fine: 500,
+      fine: 1000,                // Denda kru 1 dinaikkan dari Rp 500 ke Rp 1.000
       jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 2) {
@@ -401,7 +401,7 @@ function getHeistStats(kruCount) {
       successRate: 10,
       minPrize: 2500,
       maxPrize: 4500,
-      fine: 500,
+      fine: 1500,                // Denda kru 2 dinaikkan dari Rp 500 ke Rp 1.500
       jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 3) {
@@ -409,7 +409,7 @@ function getHeistStats(kruCount) {
       successRate: 15,
       minPrize: 5000,
       maxPrize: 8000,
-      fine: 600,
+      fine: 2000,                // Denda kru 3 dinaikkan dari Rp 600 ke Rp 2.000
       jailDurationSeconds: 7200 // 2 Jam
     };
   } else if (kruCount === 4) {
@@ -417,7 +417,7 @@ function getHeistStats(kruCount) {
       successRate: 25,
       minPrize: 9000,
       maxPrize: 14000,
-      fine: 600,
+      fine: 2500,                // Denda kru 4 dinaikkan dari Rp 600 ke Rp 2.500
       jailDurationSeconds: 9000 // 2.5 Jam
     };
   } else {
@@ -425,7 +425,7 @@ function getHeistStats(kruCount) {
       successRate: 45,
       minPrize: 10000,
       maxPrize: 16000,
-      fine: 750,
+      fine: 3500,                // Denda kru 5+ dinaikkan dari Rp 750 ke Rp 3.500
       jailDurationSeconds: 7200 // 2 Jam
     };
   }
@@ -705,6 +705,18 @@ function executeHeist(guildId) {
         // Cat Perk: Kucing lincah mencuri +10% lebih banyak tabungan
         if (catBonus > 0) {
           amountToDeduct = Math.floor(amountToDeduct * 1.10);
+        }
+
+        // Batasi berdasarkan batas maksimal jarahan per user (default Rp 5.000)
+        const maxDrain = config.robbery.MAX_HEIST_DRAIN_PER_USER || 5000;
+        if (amountToDeduct > maxDrain) {
+          amountToDeduct = maxDrain;
+        }
+
+        // Proteksi Pasif Brankas Anti-Hacker (potong kehilangan saldo sebesar 90%)
+        const brankasQty = bm.getItemQty(v.user_id, guildId, 'BRANKAS');
+        if (brankasQty > 0) {
+          amountToDeduct = Math.floor(amountToDeduct * 0.10);
         }
 
         if (amountToDeduct > 0) {

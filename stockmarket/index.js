@@ -4384,7 +4384,7 @@ async function handleBlackMarketCommand(message, client, args) {
     const qtyInput = args[2] ? parseInt(args[2]) : 1;
 
     if (!itemId) {
-      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.bm buy <lockpick/mask/meat/soap> [jumlah]`')] });
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.bm buy <lockpick/mask/meat/soap/brankas> [jumlah]`')] });
     }
 
     try {
@@ -4433,6 +4433,8 @@ async function handleBlackMarketCommand(message, client, args) {
       `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
       `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
       `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+      `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 1.200**\n` +
+      `*Melindungi saldo bank Anda dari Heist. Memotong kehilangan saldo sebesar 90% (efek pasif permanen).*\n\n` +
       `*Gunakan tombol di bawah untuk membeli barang secara instan, atau gunakan perintah \`.bm buy <item_id> [jumlah]\`.*`
     )
     .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
@@ -4442,7 +4444,8 @@ async function handleBlackMarketCommand(message, client, args) {
     new ButtonBuilder().setCustomId('bm_btn_buy_lockpick').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('bm_btn_buy_mask').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('bm_btn_buy_meat').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('bm_btn_buy_brankas').setLabel('🛡️ Brankas').setStyle(ButtonStyle.Secondary)
   );
 
   const replyMsg = await message.reply({ embeds: [bmEmbed], components: [row] });
@@ -4462,6 +4465,7 @@ async function handleBlackMarketCommand(message, client, args) {
     if (i.customId === 'bm_btn_buy_mask') itemId = 'mask';
     if (i.customId === 'bm_btn_buy_meat') itemId = 'meat';
     if (i.customId === 'bm_btn_buy_soap') itemId = 'soap';
+    if (i.customId === 'bm_btn_buy_brankas') itemId = 'brankas';
 
     try {
       const res = bm.buyItem(author.id, guildId, itemId, 1);
@@ -4484,7 +4488,8 @@ async function handleBlackMarketCommand(message, client, args) {
       new ButtonBuilder().setCustomId('bm_btn_buy_lockpick').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary).setDisabled(true),
       new ButtonBuilder().setCustomId('bm_btn_buy_mask').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary).setDisabled(true),
       new ButtonBuilder().setCustomId('bm_btn_buy_meat').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
-      new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
+      new ButtonBuilder().setCustomId('bm_btn_buy_soap').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId('bm_btn_buy_brankas').setLabel('🛡️ Brankas').setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
     await replyMsg.edit({ components: [disabledRow] }).catch(() => { });
   });

@@ -212,11 +212,12 @@ module.exports = {
     JAIL_SOLO_SECONDS: 900,       // Masa hukuman Solo Rob: 15 menit (900s)
     JAIL_HEIST_BASE: 1800,        // Masa hukuman Heist: 30 menit (1800s)
     BAIL_SOLO: 250,               // Uang jaminan Solo Rob: Rp 250
-    BAIL_HEIST: 500,              // Uang jaminan Heist: Rp 500
+    BAIL_HEIST: 2500,             // Uang jaminan Heist dinaikkan ke Rp 2.500
     PREP_FEE: 200,                // Biaya persiapan Heist per orang
     COOLDOWN_HEIST_SECONDS: 6 * 3600, // Cooldown Heist: 6 jam (21600 detik)
     MIN_ROB_BALANCE_ROBBER: 300,  // Saldo minimal pelaku agar bisa merampok
     MIN_ROB_BALANCE_VICTIM: 500,  // Saldo minimal korban agar bisa dirampok
+    MAX_HEIST_DRAIN_PER_USER: 5000, // Batas maksimal koin terpotong per nasabah per heist
   },
 
   // Konfigurasi Game Kasino (Slot & Coinflip)
