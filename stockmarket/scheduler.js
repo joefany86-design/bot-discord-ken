@@ -612,7 +612,7 @@ function initScheduler(client) {
             totalTaxDrained += Math.abs(netChange);
           }
           accountsCount++;
-        });
+        }
 
         if (accountsCount > 0 && targetChannel) {
           console.log(`🏦 [Bank Scheduler] Pemrosesan harian selesai untuk ${accountsCount} rekening.`);
@@ -707,7 +707,7 @@ function initScheduler(client) {
               }
             }
           }
-        }
+        });
 
         // ── C. UPDATE DENDA LATE-PENALTY BAGI YANG SUDAH OVERDUE ──
         // (Berjalan bagi pinjaman yang sudah berstatus OVERDUE untuk menambahkan denda harian +5%)
