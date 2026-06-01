@@ -401,6 +401,32 @@ function getMemberGachaTier(member, guildId) {
   return 'NONE';
 }
 
+/**
+ * Mendapatkan daftar Top Pencuri di server berdasarkan koin yang berhasil dicuri.
+ */
+function getThiefLeaderboard(guildId, limit = 10) {
+  const query = `
+    SELECT t.user_id, 
+           SUM(CASE WHEN t.type = 'ROB_SUCCESS' THEN t.amount ELSE 0 END) AS solo_stolen,
+           SUM(CASE WHEN t.type = 'HEIST_SUCCESS' THEN t.amount ELSE 0 END) AS heist_stolen,
+           SUM(t.amount) AS total_stolen,
+           COUNT(*) AS success_count,
+           COALESCE(w.jail_count, 0) AS jail_count
+    FROM transactions t
+    LEFT JOIN wallets w ON t.user_id = w.user_id AND t.guild_id = w.guild_id
+    WHERE t.guild_id = ? AND t.type IN ('ROB_SUCCESS', 'HEIST_SUCCESS')
+    GROUP BY t.user_id
+    ORDER BY total_stolen DESC
+    LIMIT ?
+  `;
+  try {
+    return db.all(query, [guildId, limit]);
+  } catch (err) {
+    console.error('❌ Gagal mengambil leaderboard pencuri:', err.message);
+    return [];
+  }
+}
+
 module.exports = {
   getWallet,
   addBalance,
@@ -409,5 +435,6 @@ module.exports = {
   transferBalance,
   getLeaderboard,
   getDailyVoiceEarnings,
-  getMemberGachaTier
+  getMemberGachaTier,
+  getThiefLeaderboard
 };
