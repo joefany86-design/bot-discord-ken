@@ -1625,8 +1625,7 @@ function initStockMarket(client) {
                 !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
                 userPet.level < 10 &&
                 userPet.status !== 'ADULT'
-              ),
-              new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
+              )
             ];
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
             rows.push(new ActionRowBuilder().addComponents(row2Components));
@@ -1710,7 +1709,7 @@ function initStockMarket(client) {
                     embeds: [embeds.warnEmbed(
                       'Tas Pet Kosong! 🎒',
                       'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
-                      '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk membeli pakan, obat, soda, sabun, atau booster.*'
+                      '🛒 *Silakan gunakan tombol **🛍️ Toko Pet** di Portal Hub (.hub) untuk membeli pakan, obat, soda, sabun, atau booster.*'
                     )],
                     flags: 64
                   });
@@ -1932,6 +1931,79 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
+          await privateMsg.edit({ components: [] }).catch(() => { });
+        });
+      }
+
+      // ── PORTAL PERMANEN: TOKO PET ──
+      else if (customId === 'pet_btn_open_shop_private_perm') {
+        await interaction.deferReply({ flags: 64 });
+
+        const getShopPanelDataPrivate = (targetUserId) => {
+          const wallet2 = economy.getWallet(targetUserId, guildId);
+          const inv = pet.getInventory(targetUserId, guildId);
+          const embed = embeds.petShopEmbed(wallet2, inv);
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('pet_select_shop_item_perm')
+            .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
+              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
+              new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
+              new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
+              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
+              new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet (Rp 200)').setDescription('Reset cooldown Kerja/Berburu').setValue('SODA_ENERGY'),
+              new StringSelectMenuOptionBuilder().setLabel('🥤 Sabun Mandi Pet (Rp 100)').setDescription('Menghilangkan bau busuk pet').setValue('SOAP_PET'),
+              new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi (Rp 1.200)').setDescription('Aksesoris: Decay Status -15%').setValue('COLLAR_IRON'),
+              new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DMG +15%').setValue('SWORD_TOY'),
+              new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DEF +15%').setValue('SHIELD_TOY'),
+              new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan (Rp 2.000)').setDescription('Jimat Pelindung Kematian').setValue('LUCKY_AMULET'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
+              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
+            );
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+          const closeBtn = new ButtonBuilder().setCustomId('pet_btn_close_shop_perm').setLabel('✖️ Tutup Toko').setStyle(ButtonStyle.Danger);
+          const closeRow = new ActionRowBuilder().addComponents(closeBtn);
+
+          return { embeds: [embed], components: [selectRow, closeRow] };
+        };
+
+        const initialData = getShopPanelDataPrivate(user.id);
+        const privateMsg = await interaction.editReply({ ...initialData });
+        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+        collector.on('collect', async iShop => {
+          if (iShop.user.id !== user.id) return iShop.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+          try {
+            if (iShop.customId === 'pet_btn_close_shop_perm') {
+              await privateMsg.delete().catch(() => {});
+              collector.stop();
+            } else if (iShop.customId === 'pet_select_shop_item_perm') {
+              const selectedItem = iShop.values[0];
+              try {
+                const res = pet.buyItem(user.id, guildId, selectedItem, 1);
+                const successEmb = embeds.successEmbed(
+                  'Transaksi Belanja Sukses! 🛒',
+                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang dimasukkan ke kandang.\n\nSisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+                );
+                await iShop.reply({ embeds: [successEmb], flags: 64 });
+                await privateMsg.edit(getShopPanelDataPrivate(user.id)).catch(() => {});
+              } catch (err) {
+                await iShop.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+              }
+            }
+          } catch (err) {
+            await iShop.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
+          }
+        });
+
+        collector.on('end', async () => {
+          if (collector.destroyed) return;
           await privateMsg.edit({ components: [] }).catch(() => { });
         });
       }
@@ -8948,47 +9020,37 @@ async function handleEconomyCommands(message, client) {
 
       const embed = new EmbedBuilder()
         .setColor(embeds.COLORS.PURPLE)
-        .setTitle('🎭 KOSAN 1A ECONOMY & PET DASHBOARD 📈')
+        .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
         .setDescription(
           `Klik tombol di bawah ini untuk membuka panel secara **Pribadi** (Hanya Anda yang dapat melihatnya):\n\n` +
           `🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
           `📈 **Bursa Saham** — Investasi saham channel server.\n` +
           `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
-          `🐾 **Pusat Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
           `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).\n` +
-          `🏠 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.`
+          `🎒 **Inventory Saya** — Lihat peralatan & barang mewah.\n\n` +
+          `🐾 **Kandang Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
+          `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
+          `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
+          `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
+          `📋 **Misi Harian Pet** — Selesaikan misi pet untuk koin & barang.`
         )
         .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
         .setTimestamp();
 
       const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_shop_private_perm')
-          .setLabel('🛍️ Toko')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_market_private_perm')
-          .setLabel('📈 Saham')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_bank_private_perm')
-          .setLabel('🏦 Bank')
-          .setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('eco_btn_open_shop_private_perm').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('eco_btn_open_market_private_perm').setLabel('📈 Bursa Saham').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('eco_btn_open_bank_private_perm').setLabel('🏦 Bank Sentral').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('eco_btn_open_bm_private_perm').setLabel('🕵️‍♂️ Black Market').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('eco_btn_open_inventory_private_perm').setLabel('🎒 Inventory Saya').setStyle(ButtonStyle.Success)
       );
 
       const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('pet_btn_open_pet_private_perm')
-          .setLabel('🐾 Pet')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_bm_private_perm')
-          .setLabel('🕵️‍♂️ BM')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_kos_private_perm')
-          .setLabel('🏠 Kosan')
-          .setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Pet').setStyle(ButtonStyle.Primary)
       );
 
       await message.channel.send({ embeds: [embed], components: [row1, row2] });
