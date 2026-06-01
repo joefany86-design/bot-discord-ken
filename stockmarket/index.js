@@ -1943,6 +1943,69 @@ async function handleEconomyChat(message) {
   // Memberikan kontribusi 1.0 poin ke skor aktivitas channel
   stocks.recordChannelActivity(channelId, guildId, 1.0);
 
+  // --- SPATIAL RETENTION: CHAT TREASURE CHEST SPAWNING ---
+  if (guildId) {
+    const channelName = message.channel?.name?.toLowerCase() || '';
+    const isSpecialChannel = 
+      channelName.includes('bot') || 
+      channelName.includes('spam') || 
+      channelName.includes('command') || 
+      channelName.includes('test') || 
+      channelName.includes('staff') || 
+      channelName.includes('log') || 
+      channelName.includes('mod') || 
+      channelName.includes('admin') ||
+      channelName.includes('saham') ||
+      channelName.includes('bursa') ||
+      channelName.includes('leaderboard') ||
+      channelName.includes('expedition') ||
+      channelName.includes('heist') ||
+      channelName.includes('shop') ||
+      ['1510121069783023646', '1422642326798598348', '1472428770710261952', '1422656689710305381', '1509480324373942272', '1510230591860113418', '1510232295448117308', '1510240252458176662', '1509762623917265137'].includes(channelId);
+
+    if (!isSpecialChannel) {
+      const clientObj = message.client;
+      clientObj.messageCounter = clientObj.messageCounter || new Map();
+      clientObj.targetChestMessages = clientObj.targetChestMessages || new Map();
+      clientObj.activeChests = clientObj.activeChests || new Map();
+
+      if (!clientObj.messageCounter.has(guildId)) {
+        clientObj.messageCounter.set(guildId, 0);
+      }
+      if (!clientObj.targetChestMessages.has(guildId)) {
+        const randomTarget = Math.floor(Math.random() * (200 - 100 + 1)) + 100;
+        clientObj.targetChestMessages.set(guildId, randomTarget);
+      }
+
+      const currentCount = clientObj.messageCounter.get(guildId) + 1;
+      clientObj.messageCounter.set(guildId, currentCount);
+      const targetCount = clientObj.targetChestMessages.get(guildId);
+
+      if (currentCount >= targetCount) {
+        // Reset counter & target
+        clientObj.messageCounter.set(guildId, 0);
+        const randomTarget = Math.floor(Math.random() * (200 - 100 + 1)) + 100;
+        clientObj.targetChestMessages.set(guildId, randomTarget);
+
+        const rewardAmount = Math.floor(Math.random() * (250 - 50 + 1)) + 50;
+        clientObj.activeChests.set(channelId, rewardAmount);
+
+        const chestEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('📦 PETI HARTA KARUN CHAT SPAWNED! 📦')
+          .setDescription(
+            `Sebuah peti harta karun misterius terjatuh dari langit obrolan di saluran ini! 🌟\n\n` +
+            `👉 **Pemain pertama yang mengetik \`.claim-peti\` akan membukanya dan membawa pulang koin di dalamnya!**\n\n` +
+            `*Siapa cepat dia dapat! 🏃‍♂️💨*`
+          )
+          .setFooter({ text: 'Sentinel Active Gamification • Harta Karun Obrolan' })
+          .setTimestamp();
+
+        message.channel.send({ embeds: [chestEmbed] }).catch(() => {});
+      }
+    }
+  }
+
   // Debug log keaktifan (opsional)
   // console.log(`💰 [Economy] ${author.tag} dapat Rp ${totalEarned} (${earnedCoins} base + ${investorBonus} bonus investor + double earning) di #${message.channel.name}`);
 }
@@ -2133,6 +2196,80 @@ async function handleKosUpgradeCommand(message, client) {
 async function handlePetCommand(message, client, args) {
   const { guildId, author, guild } = message;
   const subCommand = args[0] ? args[0].toLowerCase() : null;
+
+  // ── SUB-PERINTAH: MISI / QUEST ──
+  if (subCommand === 'misi' || subCommand === 'quest') {
+    const action = args[1] ? args[1].toLowerCase() : null;
+
+    if (action === 'claim' || action === 'klaim') {
+      try {
+        const res = pet.claimDailyQuestReward(author.id, guildId);
+        const successEmb = embeds.successEmbed(
+          'Misi Harian Selesai! 🎉🎁',
+          `Selamat! Anda berhasil menyelesaikan seluruh misi harian pet hari ini!\n\n` +
+          `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+          `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
+        );
+        return message.reply({ embeds: [successEmb] });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)] });
+      }
+    }
+
+    try {
+      const quests = pet.getOrCreateDailyQuests(author.id, guildId);
+      
+      const getQuestEmoji = (progress, target) => {
+        return progress >= target ? '✅' : '⏳';
+      };
+
+      const getQuestText = (qType, progress, target) => {
+        let descText = '';
+        switch (qType) {
+          case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
+          case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
+          case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
+          case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
+          case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
+          case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+          default: descText = `Misi Harian`;
+        }
+        return `${descText} (${progress}/${target})`;
+      };
+
+      let descText = `Selesaikan seluruh misi harian pet hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+      
+      descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
+      descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
+      descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
+
+      if (quests.reward_claimed === 1) {
+        descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
+      } else {
+        const allCompleted = 
+          quests.quest_1_progress >= quests.quest_1_target &&
+          quests.quest_2_progress >= quests.quest_2_target &&
+          quests.quest_3_progress >= quests.quest_3_target;
+        
+        if (allCompleted) {
+          descText += `✨ **Status:** Semua misi selesai! Ketik **\`.pet misi claim\`** sekarang untuk mengambil hadiah harian! 🎁`;
+        } else {
+          descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
+        }
+      }
+
+      const questEmbed = new EmbedBuilder()
+        .setColor(0x3498DB)
+        .setTitle(`📋 MISI HARIAN PET — ${author.username}`)
+        .setDescription(descText)
+        .setThumbnail(author.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+
+      return message.reply({ embeds: [questEmbed] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] });
+    }
+  }
 
   // ── SUB-PERINTAH: ANNOUNCEMENT / INFO ──
   if (subCommand === 'announcement' || subCommand === 'anoncemen' || subCommand === 'info') {
@@ -2541,6 +2678,15 @@ async function handlePetCommand(message, client, args) {
       const currentLobby = lobby;
       try {
         const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice);
+
+        // Hook quest progress for EXPEDITION
+        currentLobby.participants.forEach(pId => {
+          try {
+            pet.incrementQuestProgress(pId, guildId, 'EXPEDITION', 1);
+          } catch (err) {
+            console.error('Error incrementing quest progress for EXPEDITION:', err.message);
+          }
+        });
 
         let reportDesc = '';
         res.logs.forEach(log => {
@@ -4433,6 +4579,38 @@ async function handleEconomyCommands(message, client) {
   // ═══════════════════════════════════════════════════
   // Perintah: .pet (Sistem Pet Tamagotchi Style)
   // ═══════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════
+  // Perintah: .claim-peti
+  // ═══════════════════════════════════════════════════
+  if (commandName === 'claim-peti') {
+    const activeChests = client.activeChests = client.activeChests || new Map();
+    const reward = activeChests.get(message.channelId);
+
+    if (!reward) {
+      return message.reply({ embeds: [embeds.errorEmbed('Tidak Ada Peti! ❌', 'Tidak ada peti harta karun aktif yang bisa diklaim di saluran ini saat ini. Teruslah aktif mengobrol agar peti berikutnya jatuh!')] });
+    }
+
+    // Klaim peti
+    activeChests.delete(message.channelId);
+
+    // Tambah koin ke dompet
+    economy.addBalance(author.id, guildId, reward, 'CLAIM_PETI');
+
+    const claimEmbed = new EmbedBuilder()
+      .setColor(0x00FF00) // Green
+      .setTitle('🎉 PETI HARTA KARUN BERHASIL DIKLAIM! 🎉')
+      .setDescription(
+        `🏆 <@${author.id}> bergerak sangat cepat dan berhasil mengklaim peti harta karun chat!\n\n` +
+        `💰 **Hadiah Didapat:** **Rp ${reward.toLocaleString('id-ID')}**\n\n` +
+        `*Koin telah ditambahkan ke dompet Anda. Teruslah mengobrol aktif di server ini!*`
+      )
+      .setThumbnail(author.displayAvatarURL({ dynamic: true }))
+      .setFooter({ text: 'Sentinel Active Gamification' })
+      .setTimestamp();
+
+    return message.reply({ embeds: [claimEmbed] });
+  }
+
   if (commandName === 'pet') {
     await handlePetCommand(message, client, args);
     return true;

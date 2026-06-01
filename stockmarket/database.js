@@ -580,6 +580,31 @@ function initSchema() {
     console.error("❌ [Database] Gagal update harga saham guild target:", e.message);
   }
 
+  // 35. Tabel Misi Harian Pet
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_daily_quests (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        quest_date TEXT NOT NULL,
+        quest_1_type TEXT NOT NULL,
+        quest_1_progress INTEGER DEFAULT 0,
+        quest_1_target INTEGER NOT NULL,
+        quest_2_type TEXT NOT NULL,
+        quest_2_progress INTEGER DEFAULT 0,
+        quest_2_target INTEGER NOT NULL,
+        quest_3_type TEXT NOT NULL,
+        quest_3_progress INTEGER DEFAULT 0,
+        quest_3_target INTEGER NOT NULL,
+        reward_claimed INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, quest_date)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'user_daily_quests' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel user_daily_quests:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

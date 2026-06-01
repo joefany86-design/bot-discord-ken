@@ -549,6 +549,11 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
          WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
         [newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
       );
+
+      // Hook quest progress for FEED
+      if (item.hunger > 0 || item.thirst > 0) {
+        incrementQuestProgress(userId, guildId, 'FEED', 1);
+      }
     }
   })();
 
@@ -598,6 +603,9 @@ function playWithPet(userId, guildId) {
       `UPDATE user_pets SET happiness = ?, xp = ?, level = ?, last_interaction_at = ?, last_play_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [newHappiness, newXp, newLevel, now, now, userId, guildId, pet.pet_name]
     );
+
+    // Hook quest progress for PLAY
+    incrementQuestProgress(userId, guildId, 'PLAY', 1);
   })();
 
   return getPet(userId, guildId);
@@ -686,6 +694,9 @@ function sendToWork(userId, guildId) {
        WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [now, newHunger, newThirst, newHappiness, newXp, newLevel, now, userId, guildId, pet.pet_name]
     );
+
+    // Hook quest progress for WORK
+    incrementQuestProgress(userId, guildId, 'WORK', 1);
   })();
 
   return {
@@ -796,6 +807,9 @@ function sendToHunt(userId, guildId) {
        WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [now, newHunger, newThirst, newHappiness, newHealth, newXp, newLevel, now, userId, guildId, pet.pet_name]
     );
+
+    // Hook quest progress for HUNT
+    incrementQuestProgress(userId, guildId, 'HUNT', 1);
   })();
 
   return {
@@ -1628,6 +1642,208 @@ function washPet(userId, guildId) {
   };
 }
 
+/**
+ * Mendapatkan atau membuat misi harian pet untuk hari ini.
+ */
+function getOrCreateDailyQuests(userId, guildId) {
+  // Pastikan user memiliki pet aktif
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki hewan peliharaan! Adopsi telur pet terlebih dahulu.');
+  }
+
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
+  let row = db.get(
+    'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+    [userId, guildId, todayStr]
+  );
+
+  if (row) {
+    return row;
+  }
+
+  // Pilih 3 misi harian acak dari 6 jenis misi
+  const QUEST_POOL = [
+    { type: 'WORK', target: 3 },
+    { type: 'HUNT', target: 2 },
+    { type: 'FEED', target: 2 },
+    { type: 'PLAY', target: 2 },
+    { type: 'WATER', target: 2 },
+    { type: 'EXPEDITION', target: 1 }
+  ];
+
+  // Shuffle pool dan ambil 3 item teratas
+  const shuffled = [...QUEST_POOL].sort(() => 0.5 - Math.random());
+  const q1 = shuffled[0];
+  const q2 = shuffled[1];
+  const q3 = shuffled[2];
+
+  db.run(
+    `INSERT INTO user_daily_quests (
+      user_id, guild_id, quest_date,
+      quest_1_type, quest_1_progress, quest_1_target,
+      quest_2_type, quest_2_progress, quest_2_target,
+      quest_3_type, quest_3_progress, quest_3_target,
+      reward_claimed
+    ) VALUES (?, ?, ?, ?, 0, ?, ?, 0, ?, ?, 0, ?, 0)`,
+    [userId, guildId, todayStr, q1.type, q1.target, q2.type, q2.target, q3.type, q3.target]
+  );
+
+  return db.get(
+    'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+    [userId, guildId, todayStr]
+  );
+}
+
+/**
+ * Menambah progres misi harian untuk quest_type tertentu.
+ */
+function incrementQuestProgress(userId, guildId, questType, amount = 1) {
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
+  const row = db.get(
+    'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+    [userId, guildId, todayStr]
+  );
+
+  if (!row || row.reward_claimed === 1) {
+    return; // Misi belum dibuat untuk hari ini, atau hadiah sudah diklaim
+  }
+
+  db.transaction(() => {
+    if (row.quest_1_type === questType && row.quest_1_progress < row.quest_1_target) {
+      const newProgress = Math.min(row.quest_1_target, row.quest_1_progress + amount);
+      db.run(
+        'UPDATE user_daily_quests SET quest_1_progress = ? WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+        [newProgress, userId, guildId, todayStr]
+      );
+    }
+    if (row.quest_2_type === questType && row.quest_2_progress < row.quest_2_target) {
+      const newProgress = Math.min(row.quest_2_target, row.quest_2_progress + amount);
+      db.run(
+        'UPDATE user_daily_quests SET quest_2_progress = ? WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+        [newProgress, userId, guildId, todayStr]
+      );
+    }
+    if (row.quest_3_type === questType && row.quest_3_progress < row.quest_3_target) {
+      const newProgress = Math.min(row.quest_3_target, row.quest_3_progress + amount);
+      db.run(
+        'UPDATE user_daily_quests SET quest_3_progress = ? WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+        [newProgress, userId, guildId, todayStr]
+      );
+    }
+  })();
+}
+
+/**
+ * Mengklaim hadiah misi harian pet jika semua misi hari ini selesai.
+ */
+function claimDailyQuestReward(userId, guildId) {
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
+  const row = db.get(
+    'SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+    [userId, guildId, todayStr]
+  );
+
+  if (!row) {
+    throw new Error('Anda belum memulai misi harian untuk hari ini! Jalankan perintah \\`.pet misi\\` terlebih dahulu.');
+  }
+
+  if (row.reward_claimed === 1) {
+    throw new Error('Anda sudah mengklaim hadiah misi harian hari ini! Silakan kembali lagi besok.');
+  }
+
+  const allCompleted =
+    row.quest_1_progress >= row.quest_1_target &&
+    row.quest_2_progress >= row.quest_2_target &&
+    row.quest_3_progress >= row.quest_3_target;
+
+  if (!allCompleted) {
+    throw new Error('Anda belum menyelesaikan seluruh misi harian pet hari ini! Periksa status dengan \\`.pet misi\\`.');
+  }
+
+  // Cari item drop secara acak
+  const roll = Math.random();
+  let itemId = '';
+  let itemName = '';
+  let isPetItem = true;
+
+  if (roll < 0.25) {
+    itemId = 'FOOD_PREMIUM';
+    itemName = '🥩 Daging Premium';
+    isPetItem = true;
+  } else if (roll < 0.50) {
+    itemId = 'TOY';
+    itemName = '⚽ Bola Karet';
+    isPetItem = true;
+  } else if (roll < 0.75) {
+    itemId = 'MEDICINE';
+    itemName = '💊 Ramuan Kesehatan';
+    isPetItem = true;
+  } else if (roll < 0.90) {
+    itemId = 'LOCKPICK';
+    itemName = '🗝️ Linggis / Lockpick';
+    isPetItem = false;
+  } else {
+    itemId = 'SOAP';
+    itemName = '🧼 Sabun Licin';
+    isPetItem = false;
+  }
+
+  db.transaction(() => {
+    // 1. Berikan koin bonus Rp 150
+    economy.addBalance(userId, guildId, 150, 'DAILY_QUEST');
+
+    // 2. Set status claimed
+    db.run(
+      'UPDATE user_daily_quests SET reward_claimed = 1 WHERE user_id = ? AND guild_id = ? AND quest_date = ?',
+      [userId, guildId, todayStr]
+    );
+
+    // 3. Tambahkan item drop ke inventory
+    if (isPetItem) {
+      const exist = db.get(
+        'SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [userId, guildId, itemId]
+      );
+      if (exist) {
+        db.run(
+          'UPDATE pet_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+          [userId, guildId, itemId]
+        );
+      } else {
+        db.run(
+          'INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1)',
+          [userId, guildId, itemId]
+        );
+      }
+    } else {
+      const exist = db.get(
+        'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [userId, guildId, itemId]
+      );
+      if (exist) {
+        db.run(
+          'UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+          [userId, guildId, itemId]
+        );
+      } else {
+        db.run(
+          'INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1)',
+          [userId, guildId, itemId]
+        );
+      }
+    }
+  })();
+
+  return {
+    rewardAmount: 150,
+    dropItemName: itemName
+  };
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -1651,5 +1867,8 @@ module.exports = {
   getPetLeaderboard,
   toggleAutoFeed,
   setCustomImage,
-  washPet
+  washPet,
+  getOrCreateDailyQuests,
+  incrementQuestProgress,
+  claimDailyQuestReward
 };

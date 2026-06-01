@@ -1,6 +1,7 @@
 const db = require('./database');
 const economy = require('./economy');
 const config = require('./config');
+const pet = require('./pet');
 
 // Inisialisasi tabel garden_buffs secara mandiri saat modul dimuat
 try {
@@ -226,6 +227,13 @@ function waterPlant(userId, guildId, slotIndexInput = null) {
       'UPDATE wallets SET last_water_at = ? WHERE user_id = ? AND guild_id = ?',
       [now, userId, guildId]
     );
+
+    // Update daily quest progress for WATER
+    try {
+      pet.incrementQuestProgress(userId, guildId, 'WATER', targetSlots.length);
+    } catch (err) {
+      console.error('Error incrementing quest progress for WATER:', err.message);
+    }
   })();
 
   return {
