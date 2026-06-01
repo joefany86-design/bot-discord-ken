@@ -2026,8 +2026,8 @@ module.exports = {
     }
 
     if (pet.status === 'EGG') {
-      const now = Math.floor(Date.now() / 1000);
-      const isHatched = pet.hatch_at <= now;
+      const nowEgg = Math.floor(Date.now() / 1000);
+      const isHatched = pet.hatch_at <= nowEgg;
 
       embed
         .setColor(0xFFD700) // Emas — telur istimewa
