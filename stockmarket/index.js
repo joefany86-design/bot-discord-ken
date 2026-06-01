@@ -1218,7 +1218,10 @@ function initStockMarket(client) {
                     : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
 
 
-                  const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
+                  const friendCollector = iSelectRepay.channel.createMessageComponentCollector({
+                    filter: i => i.message.id === askFriendMsg.id,
+                    time: 60000
+                  });
 
                   friendCollector.on('collect', async iFriend => {
                     if (iFriend.user.id !== user.id) return;
@@ -1300,7 +1303,10 @@ function initStockMarket(client) {
                   });
 
 
-                  const choiceCollector = askChoiceMsg.createMessageComponentCollector({ time: 60000 });
+                  const choiceCollector = iBank.channel.createMessageComponentCollector({
+                    filter: i => i.message.id === askChoiceMsg.id,
+                    time: 60000
+                  });
 
                   choiceCollector.on('collect', async iChoice => {
                     if (iChoice.user.id !== user.id) return;
@@ -1375,7 +1381,10 @@ function initStockMarket(client) {
               });
 
 
-              const transferCollector = askTransferMsg.createMessageComponentCollector({ time: 60000 });
+              const transferCollector = iBank.channel.createMessageComponentCollector({
+                filter: i => i.message.id === askTransferMsg.id,
+                time: 60000
+              });
 
               transferCollector.on('collect', async iSelect => {
                 if (iSelect.user.id !== user.id) return;
@@ -1401,7 +1410,8 @@ function initStockMarket(client) {
                     components: [typeButtons]
                   });
 
-                  const typeCollector = askTransferMsg.createMessageComponentCollector({
+                  const typeCollector = iBank.channel.createMessageComponentCollector({
+                    filter: i => i.message.id === askTransferMsg.id,
                     componentType: ComponentType.Button,
                     time: 60000
                   });
@@ -6718,8 +6728,8 @@ async function handleEconomyCommands(message, client) {
                 const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
 
                 const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
-                  ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
-                  : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
+                  ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn] })
+                  : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], fetchReply: true });
 
 
                 const friendCollector = askFriendMsg.createMessageComponentCollector({ time: 60000 });
@@ -6800,7 +6810,6 @@ async function handleEconomyCommands(message, client) {
                 const askChoiceMsg = await iBank.reply({
                   content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
                   components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
-                  flags: 64,
                   fetchReply: true
                 });
 
@@ -6881,7 +6890,6 @@ async function handleEconomyCommands(message, client) {
             const askTransferMsg = await iBank.reply({
               content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
               components: [rowMenu, rowBtn],
-              flags: 64,
               fetchReply: true
             });
 
