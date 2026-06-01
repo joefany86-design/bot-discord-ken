@@ -51,6 +51,25 @@ if (cfRes.won) {
 }
 console.log("✅ Uji 2 Berhasil!\n");
 
+// 3. UJI KASINO: SLOT
+console.log("➡️ Uji 3: Slot Machine");
+// Kembalikan saldo ke 100.000
+db.prepare('UPDATE wallets SET balance = 100000 WHERE user_id = ? AND guild_id = ?').run(testUserId, guildId);
+
+// Uji limit
+assert.throws(() => casino.spinSlot(testUserId, guildId, 5), /Taruhan minimal/, "Harus error jika taruhan slot < Rp 20");
+assert.throws(() => casino.spinSlot(testUserId, guildId, 50000), /Taruhan maksimal/, "Harus error jika taruhan slot > Rp 10000");
+
+const slotRes = casino.spinSlot(testUserId, guildId, 100);
+console.log(`Slot Reels: [ ${slotRes.reels.join(' | ')} ] - Won: ${slotRes.won} - Match: ${slotRes.matchName || 'Zonk'} - Payout: Rp ${slotRes.payout}`);
+if (slotRes.won) {
+  assert.strictEqual(slotRes.newBalance, 100000 - 100 + slotRes.payout, "Saldo harus sesuai payout");
+} else {
+  assert.strictEqual(slotRes.newBalance, 100000 - 100, "Saldo harus berkurang 100");
+}
+console.log("✅ Uji 3 Berhasil!\n");
+
+
 
 
 // 5. UJI PEMBATASAN LEVEL PENDEPATAN PET (PET LEVEL INCOME CAPPING)
@@ -93,6 +112,14 @@ assert.strictEqual(ownerCfLose.won, false, "Owner harus kalah jika taruhan coinf
 // Coinflip di atas/sama dengan 500 (misal 500) -> harus menang
 const ownerCfWin = casino.coinflip(ownerId, guildId, 500, 'head');
 assert.strictEqual(ownerCfWin.won, true, "Owner harus menang jika taruhan coinflip >= 500");
+
+// Slot di bawah 500 (misal 100) -> harus kalah
+const ownerSlotLose = casino.spinSlot(ownerId, guildId, 100);
+assert.strictEqual(ownerSlotLose.won, false, "Owner harus kalah jika taruhan slot < 500");
+
+// Slot di atas/sama dengan 500 (misal 500) -> harus menang
+const ownerSlotWin = casino.spinSlot(ownerId, guildId, 500);
+assert.strictEqual(ownerSlotWin.won, true, "Owner harus menang jika taruhan slot >= 500");
 
 // Bersihkan data owner setelah sukses
 db.prepare('DELETE FROM wallets WHERE user_id = ? AND guild_id = ?').run(ownerId, guildId);

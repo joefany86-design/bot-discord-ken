@@ -4345,6 +4345,83 @@ async function handleCoinflipCommand(message, client, args) {
 }
 
 /**
+ * Handler untuk perintah Slot Machine (.slot / .slots)
+ */
+async function handleSlotCommand(message, client, args) {
+  const { guildId, author } = message;
+  const betInput = args[0];
+
+  if (!betInput) {
+    const errorEmb = embeds.errorEmbed('Format Salah! 🎰', 'Gunakan: `.slot <jumlah/all>`\nContoh: `.slot 100`');
+    return message.reply({ embeds: [errorEmb] });
+  }
+
+  try {
+    const casino = require('./casino');
+    
+    // Cek saldo awal sebelum memulai animasi agar tidak bisa exploit spin gratis
+    const wallet = economy.getWallet(author.id, guildId);
+    let bet = 0;
+    if (typeof betInput === 'string' && betInput.toLowerCase() === 'all') {
+      bet = wallet.balance;
+    } else {
+      bet = parseInt(betInput);
+    }
+    if (isNaN(bet) || bet <= 0) {
+      throw new Error('Jumlah taruhan harus berupa angka di atas 0 atau ketik "all"!');
+    }
+    const minBet = config.casino.SLOT_MIN_BET || 20;
+    const maxBet = config.casino.SLOT_MAX_BET || 1000;
+    if (bet < minBet || bet > maxBet) {
+      throw new Error(`Taruhan harus berada di antara Rp ${minBet.toLocaleString('id-ID')} dan Rp ${maxBet.toLocaleString('id-ID')}!`);
+    }
+    if (wallet.balance < bet) {
+      throw new Error(`Saldo dompet Anda tidak mencukupi! Saldo Anda saat ini Rp ${wallet.balance.toLocaleString('id-ID')}`);
+    }
+
+    // Tampilkan animasi rolling
+    const spinMsg = await message.reply('🎰 **[ GACHA SLOT... ]** Mesin dihidupkan, tuas ditarik... 🪙');
+    
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    await delay(1000);
+    await spinMsg.edit('🎰 `[ SPINNING REELS ] ─── [ 🔄 🔄 🔄 ]` Menyusun simbol...').catch(() => {});
+    await delay(1200);
+    await spinMsg.edit('🎰 `[ STOPPING REEL 1 ] ── [ ⏳ 🔄 🔄 ]` Mengunci kolom pertama...').catch(() => {});
+    await delay(1000);
+    
+    const res = casino.spinSlot(author.id, guildId, betInput);
+
+    if (res.won) {
+      const winEmb = embeds.successEmbed(
+        'Kemenangan Slot! 🎰🎉',
+        `🎰 **REELS:** \`[  ${res.reels[0]}  |  ${res.reels[1]}  |  ${res.reels[2]}  ]\`\n\n` +
+        `🏆 **Hasil:** **${res.matchName}**\n` +
+        `📈 **Multiplier:** \`${res.multiplier}x\`\n` +
+        `💰 **Payout Diterima:** **Rp ${res.payout.toLocaleString('id-ID')}** (Untung bersih: Rp ${(res.payout - res.bet).toLocaleString('id-ID')})\n` +
+        `📉 **Saldo Dompet Baru:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
+      );
+      await spinMsg.edit({ content: '🎰 **[ SLOT SELESAI! ]**', embeds: [winEmb] }).catch(async () => {
+        await message.reply({ embeds: [winEmb] });
+      });
+    } else {
+      const loseEmb = embeds.errorEmbed(
+        'Slot Kalah! ❌',
+        `🎰 **REELS:** \`[  ${res.reels[0]}  |  ${res.reels[1]}  |  ${res.reels[2]}  ]\`\n\n` +
+        `😭 **Hasil:** **ZONK / AMPAS**\n` +
+        `💸 **Taruhan Hilang:** **-Rp ${res.bet.toLocaleString('id-ID')}**\n` +
+        `📉 **Sisa Saldo Dompet:** **Rp ${res.newBalance.toLocaleString('id-ID')}**`
+      );
+      await spinMsg.edit({ content: '🎰 **[ SLOT SELESAI! ]**', embeds: [loseEmb] }).catch(async () => {
+        await message.reply({ embeds: [loseEmb] });
+      });
+    }
+  } catch (err) {
+    const errEmb = embeds.errorEmbed('Slot Machine Gagal!', err.message);
+    return message.reply({ embeds: [errEmb] });
+  }
+}
+
+/**
  * Helper untuk memproses Toko Persediaan Pet
  */
 async function handlePetShopCommand(context, client, isInteraction = false) {
@@ -5111,6 +5188,14 @@ async function handleEconomyCommands(message, client) {
   // ═══════════════════════════════════════════════════
   if (commandName === 'coinflip' || commandName === 'cf') {
     await handleCoinflipCommand(message, client, args);
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Perintah: .slot / .slots (Mesin Slot)
+  // ═══════════════════════════════════════════════════
+  if (commandName === 'slot' || commandName === 'slots') {
+    await handleSlotCommand(message, client, args);
     return true;
   }
   // ═══════════════════════════════════════════════════
