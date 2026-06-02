@@ -48,7 +48,7 @@ client.once('ready', async () => {
         `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
         `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
         `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-        `📋 **Misi Harian Pet** — Selesaikan misi pet untuk koin & barang.`
+        `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.`
       )
       .setImage('attachment://kosan_dashboard_banner.png')
       .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
@@ -67,7 +67,7 @@ client.once('ready', async () => {
       new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Pet').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
     );
 
     await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
