@@ -3324,8 +3324,10 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: IMAGE / SETIMAGE ──
   if (subCommand === 'image' || subCommand === 'setimage') {
     const { PermissionsBitField } = require('discord.js');
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Perintah ini hanya dapat digunakan oleh Administrator server.')] });
+    const isOwner = message.author.id === '436554535037698059';
+    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Perintah ini hanya dapat digunakan oleh Owner utama & Administrator server.')] });
     }
 
     const url = args[1];
@@ -5840,10 +5842,12 @@ async function handleEconomyCommands(message, client) {
   ];
 
   if (adminCommands.includes(commandName)) {
-    // 1. Check if user is administrator
-    if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    // 1. Check if user is administrator or owner
+    const isOwner = author.id === '436554535037698059';
+    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
       await message.delete().catch(() => { });
-      await author.send('❌ Akses Ditolak! Menu ini dikunci khusus untuk Administrator server.').catch(() => { });
+      await author.send('❌ Akses Ditolak! Menu ini dikunci khusus untuk Owner utama & Administrator server.').catch(() => { });
       return true;
     }
 
@@ -5852,7 +5856,7 @@ async function handleEconomyCommands(message, client) {
     const targetChannelId = settings?.admin_panel_channel_id;
 
     if (targetChannelId) {
-      if (message.channelId !== targetChannelId) {
+      if (message.channelId !== targetChannelId && !isOwner) {
         await message.delete().catch(() => { });
         const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin: <#${targetChannelId}>`);
         setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
@@ -5861,7 +5865,7 @@ async function handleEconomyCommands(message, client) {
     } else {
       // Fallback: check channel name
       const isDefaultAdminChannel = ['panel-admin', 'admin-panel'].includes(message.channel.name?.toLowerCase());
-      if (!isDefaultAdminChannel) {
+      if (!isDefaultAdminChannel && !isOwner) {
         await message.delete().catch(() => { });
         const warnMsg = await message.reply(`❌ Perintah admin panel ini hanya dapat dijalankan di channel khusus admin! Silakan buat channel bernama \`#panel-admin\` atau jalankan \`.setup-panel-admin\` terlebih dahulu.`);
         setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
@@ -9324,8 +9328,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .ebyus-gacha <normal|easy|super_easy|abuse> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-gacha') {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Administrator!', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Owner utama & Administrator server!', flags: 64 });
       }
 
       const mode = args[0]?.toUpperCase();
@@ -9379,8 +9385,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .ebyus-coin <off|3|4|5|6|7|8> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-coin') {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Administrator!', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Owner utama & Administrator server!', flags: 64 });
       }
 
       const mulArg = args[0]?.toLowerCase();
@@ -9434,10 +9442,6 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Abyus (.abyus, .admin-abyus, .ebyus, .admin-event, dll)
     // ═══════════════════════════════════════════════════
     if (['ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
-      }
-
       const subArg = args[0]?.toLowerCase();
       if (subArg === 'status') {
         const getOrCreateEbyusSettings = (gId) => {
@@ -9459,6 +9463,12 @@ async function handleEconomyCommands(message, client) {
         const embed = embeds.ebyusStatusEmbed(guild, settings);
         await message.reply({ embeds: [embed] });
         return true;
+      }
+
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9486,8 +9496,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Bank (.admin-bank / .panel-bank)
     // ═══════════════════════════════════════════════════
     if (['admin-bank', 'panel-bank', 'bank-panel'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9500,8 +9512,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Robbery (.admin-rob / .panel-rob / .admin-robbery)
     // ═══════════════════════════════════════════════════
     if (['admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9514,8 +9528,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Saham (.admin-saham / .panel-saham / .admin-bursa)
     // ═══════════════════════════════════════════════════
     if (['admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9528,8 +9544,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Shop & ToD (.admin-shop / .panel-shop / .shop-panel)
     // ═══════════════════════════════════════════════════
     if (['admin-shop', 'panel-shop', 'shop-panel'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9541,8 +9559,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .stop-abyus / .stop-ebyus (Penghentian Darurat Event Abuse)
     // ═══════════════════════════════════════════════════
     if (['stop-abyus', 'stop-ebyus'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const nowUnix = Math.floor(Date.now() / 1000);
@@ -9563,8 +9583,10 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .admin-panel / .adminpanel / .panel-admin / .paneladmin (Dashboard Kontrol Utama)
     // ═══════════════════════════════════════════════════
     if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
 
       const adminPanel = require('./adminPanel');
@@ -9629,9 +9651,11 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .setup-panel-admin / .setup-admin-panel
     // ═══════════════════════════════════════════════════
     if (['setup-admin-panel', 'setup-adminpanel', 'setup-panel-admin', 'setup-paneladmin'].includes(commandName)) {
-      if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
         await message.delete().catch(() => { });
-        await author.send('❌ Akses Ditolak! Hanya Administrator yang dapat menggunakan perintah setup ini.').catch(() => { });
+        await author.send('❌ Akses Ditolak! Hanya Owner utama & Administrator yang dapat menggunakan perintah setup ini.').catch(() => { });
         return true;
       }
 

@@ -860,7 +860,11 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       new StringSelectMenuOptionBuilder()
         .setLabel('🚨 RESET EKONOMI TARGET')
         .setDescription('Mengembalikan saldo dompet, bank, & portfolio target ke 0')
-        .setValue('action_reset_economy')
+        .setValue('action_reset_economy'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💼 Hapus Pinjaman Bank')
+        .setDescription('Menghapus / melunasi semua pinjaman bank milik target')
+        .setValue('action_settle_loan')
     );
 
     const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -911,8 +915,10 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
   });
 
   collector.on('collect', async iBank => {
-    if (!iBank.member || !iBank.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iBank.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iBank.user.id === '436554535037698059';
+    const isAdmin = iBank.member && iBank.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iBank.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
@@ -1092,7 +1098,16 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           database.run('UPDATE wallets SET balance = 0, total_earned = 0, total_invested = 0, streak_days = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('UPDATE bank_savings SET balance = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM portfolios WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          await iBank.reply({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, dan seluruh lembar saham milik <@${selectedTargetUserId}> telah dikembalikan ke 0.`, flags: 64 });
+          database.run('DELETE FROM bank_loans WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          database.run('DELETE FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          database.run('DELETE FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          await iBank.reply({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, seluruh lembar saham, serta pinjaman/utang jaminan milik <@${selectedTargetUserId}> telah dikembalikan ke 0 atau dibersihkan.`, flags: 64 });
+          const fresh = getBankPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'action_settle_loan') {
+          database.run("UPDATE bank_loans SET status = 'PAID', total_due = 0, penalty_accumulated = 0 WHERE user_id = ? AND guild_id = ? AND status IN ('ACTIVE', 'OVERDUE')", [selectedTargetUserId, guildId]);
+          await iBank.reply({ content: `💼 Sukses melunasi/menghapus seluruh pinjaman bank aktif milik <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getBankPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1323,7 +1338,15 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
       new StringSelectMenuOptionBuilder()
         .setLabel('🔓 Bebaskan Paksa dari Lapas')
         .setDescription('Mengeluarkan paksa anggota terpilih dari tahanan virtual saat ini')
-        .setValue('action_free_jail')
+        .setValue('action_free_jail'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚨 Kurung Target ke Lapas (Modal)')
+        .setDescription('Memasukkan paksa target ke penjara virtual dengan durasi menit')
+        .setValue('action_jail_target_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⏱️ Reset Cooldown Kriminal Target')
+        .setDescription('Mereset cooldown mencuri (rob) & merampok bank (heist) target')
+        .setValue('action_reset_cooldown_target')
     );
 
     const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -1374,8 +1397,10 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
   });
 
   collector.on('collect', async iRob => {
-    if (!iRob.member || !iRob.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iRob.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iRob.user.id === '436554535037698059';
+    const isAdmin = iRob.member && iRob.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iRob.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
@@ -1410,6 +1435,64 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
+        else if (action === 'action_jail_target_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_rob_jail_modal')
+            .setTitle('Kurung Target ke Lapas Virtual');
+
+          const durationInput = new TextInputBuilder()
+            .setCustomId('jail_duration')
+            .setLabel('Durasi Penjara (Menit)')
+            .setPlaceholder('Contoh: 15')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const reasonInput = new TextInputBuilder()
+            .setCustomId('jail_reason')
+            .setLabel('Alasan Penjara (Opsional)')
+            .setPlaceholder('Contoh: Mengganggu ketertiban umum / Abuse')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(durationInput),
+            new ActionRowBuilder().addComponents(reasonInput)
+          );
+          await iRob.showModal(modal);
+
+          const sub = await iRob.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_rob_jail_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const minutes = parseInt(sub.fields.getTextInputValue('jail_duration'), 10);
+            if (isNaN(minutes) || minutes <= 0) {
+              return sub.reply({ content: '❌ Durasi harus berupa angka bulat positif di atas 0!', flags: 64 });
+            }
+            const reason = sub.fields.getTextInputValue('jail_reason') || 'Tindakan Disiplin Administrator';
+            const jailUntil = Math.floor(Date.now() / 1000) + (minutes * 60);
+
+            // Update database wallets
+            database.run(
+              'UPDATE wallets SET jail_until = ?, jail_type = ? WHERE user_id = ? AND guild_id = ?',
+              [jailUntil, reason, selectedTargetUserId, guildId]
+            );
+
+            await sub.reply({ content: `🚨 Sukses menjebloskan <@${selectedTargetUserId}> ke Lapas Virtual selama **${minutes} menit** dengan alasan: \`${reason}\`!`, flags: 64 });
+            const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'action_reset_cooldown_target') {
+          database.run(
+            'UPDATE wallets SET last_rob_at = 0, last_heist_at = 0 WHERE user_id = ? AND guild_id = ?',
+            [selectedTargetUserId, guildId]
+          );
+          await iRob.reply({ content: `⏱️ Sukses mereset cooldown kriminal (rob & heist) untuk <@${selectedTargetUserId}>!`, flags: 64 });
+          const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
       }
       else if (iRob.customId === 'admin_rob_select_global') {
         const action = iRob.values[0];
@@ -1417,6 +1500,10 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
         if (action === 'global_reset_heist_cd') {
           database.run(
             'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
+            [guildId]
+          );
+          database.run(
+            'UPDATE wallets SET last_heist_at = 0 WHERE guild_id = ?',
             [guildId]
           );
           await iRob.reply({ content: '🚨 Sukses mereset global cooldown Bank Heist server. Warga dapat melakukan perampokan kembali!', flags: 64 });
@@ -1632,8 +1719,10 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
   });
 
   collector.on('collect', async iSaham => {
-    if (!iSaham.member || !iSaham.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iSaham.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iSaham.user.id === '436554535037698059';
+    const isAdmin = iSaham.member && iSaham.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iSaham.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
@@ -2199,7 +2288,18 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2] };
+    const btnRow3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_free_all')
+        .setLabel('🔓 Bebaskan Semua Tahanan')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_reset_all_cds')
+        .setLabel('⏱️ Reset Semua Cooldown')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2, btnRow3] };
   };
 
   const initialData = getAbyusPanelData(guildId);
@@ -2217,8 +2317,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
   });
 
   collector.on('collect', async iAbyus => {
-    if (!iAbyus.member || !iAbyus.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iAbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iAbyus.user.id === '436554535037698059';
+    const isAdmin = iAbyus.member && iAbyus.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iAbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     const nowUnix = Math.floor(Date.now() / 1000);
@@ -2362,6 +2464,45 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
         await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
       }
+      else if (iAbyus.customId === 'admin_abyus_btn_free_all') {
+        database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
+        await iAbyus.reply({ content: '🔓 Sukses membebaskan seluruh tahanan dari penjara virtual secara massal!', flags: 64 });
+        await sendGlobalEconomyAnnouncement(
+          client,
+          guild,
+          author,
+          '🔓 Pembebasan Tahanan Massal',
+          '🔓 Hari Raya Grasi! Pintu penjara virtual dibobol massal oleh admin. Seluruh warga yang sedang mendekam di sel tahanan kini bebas menghirup udara segar. Ingat, tobat ya dan kurangi kriminalitas!',
+          '#3498db',
+          [],
+          true
+        );
+        const fresh = getAbyusPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => {});
+      }
+      else if (iAbyus.customId === 'admin_abyus_btn_reset_all_cds') {
+        database.run(
+          'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
+          [guildId]
+        );
+        database.run(
+          'UPDATE wallets SET last_heist_at = 0, last_rob_at = 0 WHERE guild_id = ?',
+          [guildId]
+        );
+        await iAbyus.reply({ content: '⏱️ Sukses mereset cooldown global heist, cooldown heist personal, dan cooldown mencuri (rob) seluruh warga server!', flags: 64 });
+        await sendGlobalEconomyAnnouncement(
+          client,
+          guild,
+          author,
+          '⏱️ Reset Cooldown Massal',
+          '⏱️ Pengampunan Cooldown! Admin telah mereset seluruh cooldown kriminal (rob & heist) baik global maupun personal untuk semua warga. Kejahatan bebas dimulai kembali!',
+          '#00FF88',
+          [],
+          true
+        );
+        const fresh = getAbyusPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => {});
+      }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
         collector.stop('transition');
         await handleAdminPanel(iAbyus, client);
@@ -2495,8 +2636,10 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
   });
 
   collector.on('collect', async iShop => {
-    if (!iShop.member || !iShop.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iShop.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iShop.user.id === '436554535037698059';
+    const isAdmin = iShop.member && iShop.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iShop.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
@@ -2889,8 +3032,10 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
   });
 
   collector.on('collect', async iTroll => {
-    if (!iTroll.member || !iTroll.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iTroll.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iTroll.user.id === '436554535037698059';
+    const isAdmin = iTroll.member && iTroll.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iTroll.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
@@ -3133,8 +3278,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
   });
 
   collector.on('collect', async iHub => {
-    if (!iHub.member || !iHub.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-      return iHub.reply({ content: '❌ Akses Ditolak! Tombol ini dikunci khusus untuk Administrator server.', flags: 64 });
+    const isOwner = iHub.user.id === '436554535037698059';
+    const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iHub.reply({ content: '❌ Akses Ditolak! Tombol ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
