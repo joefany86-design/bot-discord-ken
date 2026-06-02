@@ -1944,6 +1944,7 @@ function initStockMarket(client) {
              const row3Components = [
               new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
+              new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade').setStyle(ButtonStyle.Success),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄').setStyle(ButtonStyle.Secondary)
             ];
