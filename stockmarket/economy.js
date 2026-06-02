@@ -324,10 +324,10 @@ function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
 
   db.transaction(() => {
     // Kurangi dari pengirim (total nominal yang ditransfer)
-    subtractBalance(fromUserId, guildId, amount, 'TRANSFER_OUT');
+    subtractBalance(fromUserId, guildId, amount, 'TRANSFER_OUT', toUserId);
 
     // Tambahkan ke penerima (dikurangi pajak)
-    addBalance(toUserId, guildId, amountToReceive, 'TRANSFER_IN');
+    addBalance(toUserId, guildId, amountToReceive, 'TRANSFER_IN', fromUserId);
 
     console.log(`💸 Transfer: ${fromUserId} -> ${toUserId} senilai Rp ${amount} (Penerima dapat Rp ${amountToReceive}, Pajak Rp ${tax} - Rate ${taxRatePercent}%)`);
   })();

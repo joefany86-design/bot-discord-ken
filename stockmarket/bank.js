@@ -471,14 +471,14 @@ function transferSavings(fromUserId, toUserId, guildId, amountInput) {
 
     // Catat transaksi pengirim (TRANSFER_OUT)
     db.run(
-      'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
-      [fromUserId, guildId, 'BANK_TRANSFER_OUT', -amount]
+      'INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) VALUES (?, ?, ?, ?, ?)',
+      [fromUserId, guildId, 'BANK_TRANSFER_OUT', toUserId, -amount]
     );
 
     // Catat transaksi penerima (TRANSFER_IN)
     db.run(
-      'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
-      [toUserId, guildId, 'BANK_TRANSFER_IN', netAmount]
+      'INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) VALUES (?, ?, ?, ?, ?)',
+      [toUserId, guildId, 'BANK_TRANSFER_IN', fromUserId, netAmount]
     );
   })();
 

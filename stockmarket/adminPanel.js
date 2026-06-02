@@ -3207,11 +3207,11 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     // 4. Hitung total halaman log
     const countRow = database.get(`SELECT COUNT(*) as count FROM transactions ${filterSql}`, params);
     const totalCount = countRow ? countRow.count : 0;
-    const maxPage = Math.max(1, Math.ceil(totalCount / 10));
+    const maxPage = Math.max(1, Math.ceil(totalCount / 15));
     const currentPageIndex = Math.min(page, maxPage);
 
     // 5. Ambil data transaksi paginated
-    const limit = 10;
+    const limit = 15;
     const offset = (currentPageIndex - 1) * limit;
     
     let queryParams = [...params, limit, offset];
@@ -3228,7 +3228,17 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
       txs.forEach((tx, idx) => {
         const sign = tx.amount > 0 ? '+' : '';
         const dateStr = `<t:${tx.created_at}:R>`;
-        logText += `${idx + 1 + offset}. ${dateStr} | <@${tx.user_id}> | \`${tx.type}\` | **${sign}Rp ${tx.amount.toLocaleString('id-ID')}**\n`;
+        
+        let txDetails = `<@${tx.user_id}>`;
+        if (tx.channel_id && /^\d{17,20}$/.test(tx.channel_id)) {
+          if (tx.type === 'TRANSFER_OUT' || tx.type === 'BANK_TRANSFER_OUT') {
+            txDetails = `<@${tx.user_id}> ➡️ <@${tx.channel_id}>`;
+          } else if (tx.type === 'TRANSFER_IN' || tx.type === 'BANK_TRANSFER_IN') {
+            txDetails = `<@${tx.channel_id}> ➡️ <@${tx.user_id}>`;
+          }
+        }
+        
+        logText += `${idx + 1 + offset}. ${dateStr} | ${txDetails} | \`${tx.type}\` | **${sign}Rp ${tx.amount.toLocaleString('id-ID')}**\n`;
       });
     }
 
