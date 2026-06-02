@@ -2165,21 +2165,22 @@ module.exports = {
       .setColor(statusColor)
       .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
       .setDescription(
-        `> 👤 <@${pet.user_id}> · ${statusEmoji} · ${healthStatus}\n` +
-        `> 🛡️ **Aksesoris:** ${accText}\n` +
-        `> 🌟 **${rarityBadge}** ${traitLine ? `· ${traitLine}` : ''}\n` +
-        `> 🔋 **Auto Care:** ${autoFeedLabel}\n` +
-        `> ⚡ **XP Booster:** ${multText}\n\n` +
-        `**✨ XP Progress** \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
-      )
-      .setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet System · Klik tombol di bawah untuk merawat!` });
+        `┌──────────────────────────────────────────┐\n` +
+        `  👤 **Pemilik:** <@${pet.user_id}>\n` +
+        `  🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
+        `  🛡️ **Aksesoris:** ${accText}\n` +
+        `  🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `(${traitLine})` : ''}\n` +
+        `  🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n` +
+        `└──────────────────────────────────────────┘\n\n` +
+        `**✨ Progress Level & XP**\n` +
+        `\`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
+      );
 
-    // Statistik Utama Pet (Inline Fields memanjang ke kanan)
+    // Statistik Utama Pet (Inline Fields memanjang ke kanan - 3 kolom pas)
     embed.addFields(
-      { name: '❤️ HP (Kesehatan)', value: `${this.renderProgressBar(pet.health, maxHP)} ${isSick ? '\n⚠️ **[ SAKIT/LEMAH ]**' : ''}`, inline: true },
-      { name: '🍖 Kenyangan', value: `${this.renderProgressBar(pet.hunger, 100)}`, inline: true },
-      { name: '💧 Hidrasi', value: `${this.renderProgressBar(pet.thirst, 100)}`, inline: true },
-      { name: '⚽ Kebahagiaan', value: `${this.renderProgressBar(pet.happiness, 100)}`, inline: true }
+      { name: '❤️ HP & Kesehatan', value: `${this.renderProgressBar(pet.health, maxHP)}${isSick ? '\n⚠️ **[ SAKIT / TERLUKA ]**' : ''}`, inline: true },
+      { name: '🍖 Kebutuhan Fisik', value: `🍗 **Makan:** ${this.renderProgressBar(pet.hunger, 100)}\n💧 **Minum:** ${this.renderProgressBar(pet.thirst, 100)}`, inline: true },
+      { name: '⚽ Status Mental', value: `⚽ **Happy:** ${this.renderProgressBar(pet.happiness, 100)}`, inline: true }
     );
 
     // Hitung statistik tempur
@@ -2224,18 +2225,21 @@ module.exports = {
 
     embed.addFields({
       name: '⚔️ Atribut & Statistik Tempur Pet',
-      value: `• **Darah Maksimal (HP):** \`${maxHP} HP\`\n` +
-             `• **Daya Serang (ATK):** \`${atkDesc}\`\n` +
-             `• **Pertahanan (DEF):** \`${defDesc}\``,
+      value: `> ❤️ **Darah Maksimal (HP) :** \`${maxHP} HP\`\n` +
+             `> ⚔️ **Daya Serang (ATK)  :** \`${atkDesc}\`\n` +
+             `> 🛡️ **Pertahanan (DEF)   :** \`${defDesc}\``,
       inline: false
     });
 
     // Ketersediaan Supplies Inventory Singkat (hanya menampilkan barang yang dimiliki)
     const ownedSupplies = inventory.filter(item => item.quantity > 0);
-    const suppliesText = ownedSupplies.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
+    const suppliesText = ownedSupplies.length > 0 
+      ? ownedSupplies.map(item => `> 📦 **${item.name}**  ➔  \`${item.quantity} pcs\``).join('\n')
+      : `> 📭 *Persediaan kosong. Ketik \`.pet shop\` untuk membeli.*`;
+      
     embed.addFields({
       name: '🎒 Persediaan Barang Pet (Supplies)',
-      value: suppliesText || '*Kosong (Gunakan `.pet shop` untuk membeli)*',
+      value: suppliesText,
       inline: false
     });
 
@@ -2260,13 +2264,19 @@ module.exports = {
     const canPlay = now >= nextPlay;
     const playStatus = canPlay ? '🟢 **Siap bermain!**' : `⏳ Cooldown s/d <t:${nextPlay}:t> (<t:${nextPlay}:R>)`;
 
+    const cooldownsText = 
+      `> 💼 **Pekerjaan (.pet work) :**\n>  ${workStatus}\n` +
+      `> 🏹 **Perburuan (.pet hunt) :**\n>  ${huntStatus}\n` +
+      `> ⚽ **Bermain (.pet play)    :**\n>  ${playStatus}\n` +
+      `> 🛡️ **Ekspedisi (.pet expedition) :**\n>  🟢 **Siap Berangkat!** *(Maks 10x, CD 3 jam setelahnya)*`;
+
     embed.addFields({
       name: '⏱️ Status Cooldown & Aktivitas',
-      value: `💼 **Bekerja (.pet work) :** ${workStatus}\n🏹 **Berburu (.pet hunt) :** ${huntStatus}\n⚽ **Bermain (.pet play) :** ${playStatus}\n🛡️ **Ekspedisi (.pet expedition) :** Aktif (Maks 10 main, CD 3 jam setelahnya)`,
+      value: cooldownsText,
       inline: false
     });
 
-    embed.setFooter({ text: 'Klik tombol di bawah ini untuk merawat pet Anda secara instan!' });
+    embed.setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet System · Klik tombol di bawah untuk merawat!` });
     return embed;
   },
 
