@@ -2467,7 +2467,7 @@ function initStockMarket(client) {
                   )]
                 }).catch(() => { });
 
-                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
               }
@@ -2484,7 +2484,7 @@ function initStockMarket(client) {
                 );
 
                 await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => { });
               }
@@ -2515,15 +2515,14 @@ function initStockMarket(client) {
                 );
 
                 await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => { });
               }
             }
 
             else if (i.customId === 'garden_btn_shop_perm') {
-              await i.deferUpdate().catch(() => { });
-              await privateMsg.edit(getGardenShopDataPrivate(user.id)).catch(() => { });
+              await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
             }
 
             else if (i.customId.startsWith('garden_buy_') && i.customId.endsWith('_perm')) {
@@ -2539,20 +2538,18 @@ function initStockMarket(client) {
                   )]
                 }).catch(() => { });
 
-                await privateMsg.edit(getGardenShopDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenShopDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
               }
             }
 
             else if (i.customId === 'garden_btn_craft_perm') {
-              await i.deferUpdate().catch(() => { });
-              await privateMsg.edit(getGardenCraftDataPrivate(user.id)).catch(() => { });
+              await i.update(getGardenCraftDataPrivate(user.id)).catch(() => { });
             }
 
             else if (i.customId === 'garden_btn_back_perm') {
-              await i.deferUpdate().catch(() => { });
-              await privateMsg.edit(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              await i.update(getGardenDashboardDataPrivate(user.id)).catch(() => { });
             }
 
             else if (i.customId.startsWith('garden_craft_') && i.customId.endsWith('_perm')) {
@@ -2568,7 +2565,7 @@ function initStockMarket(client) {
                 );
 
                 await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await privateMsg.edit(getGardenCraftDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenCraftDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => { });
               }
@@ -2579,7 +2576,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => { });
+          await interaction.editReply({ components: [] }).catch(() => { });
         });
       }
 
