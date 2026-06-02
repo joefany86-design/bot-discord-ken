@@ -5416,8 +5416,6 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
     const wallet = economy.getWallet(author.id, guildId);
     const tickets = pet.getGachaTickets(author.id, guildId);
     const allPets = pet.getPetsList(author.id, guildId);
-    const slotsLeft = 3 - allPets.length;
-
     const embed = new EmbedBuilder()
       .setColor(0xFFD700)
       .setTitle('🎰 GACHA PET — MESIN NASIB PELIHARAAN 🎰')
@@ -5425,7 +5423,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         `Putar mesin gacha untuk mendapatkan pet langka & legendaris!\n\n` +
         `💰 **Saldo Koin:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n` +
         `🎫 **Tiket Gacha:** **${tickets} tiket**\n` +
-        `🏠 **Slot Kandang:** **${slotsLeft}/3 tersisa**\n\n` +
+        `🏠 **Jumlah Peliharaan:** **${allPets.length} pet**\n\n` +
         `📊 **Rate Kelangkaan:**\n` +
         `> ⚪ **COMMON** — 65% *(Cat, Golem, Slime)*\n` +
         `> 🟢 **RARE** — 25% *(Cat, Golem, Slime, Dragon)*\n` +
@@ -5473,7 +5471,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
   const handleSingleResult = async (replyMsg, collector, pull, author, guildId) => {
     const resultEmbed = buildResultEmbed(pull);
     const allPets = pet.getPetsList(author.id, guildId);
-    const canSave = allPets.length < 3;
+    const canSave = true;
 
     const resultRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('gacha_btn_save').setLabel('💾 Simpan ke Kandang').setStyle(ButtonStyle.Success).setDisabled(!canSave),
@@ -5557,49 +5555,34 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           .setDescription(
             `${listText}\n\n` +
             `⭐ **Pet Terbaik:** ${best.species.name} — **${best.rarity}**\n\n` +
-            `*Pilih pet yang ingin disimpan ke kandang di bawah (maks 3 slot). Pet yang tidak dipilih akan otomatis di-recycle (+Rp 1.000 / pet).*`
+            `*Pilih pet yang ingin disimpan ke kandang di bawah (maks 5 pet sekali input). Pet yang tidak dipilih akan otomatis di-recycle (+Rp 1.000 / pet).*`
           )
           .setTimestamp();
 
         // Buat select menu untuk pilih pet yang mau disimpan
-        const allPets = pet.getPetsList(author.id, guildId);
-        const slotsLeft = 3 - allPets.length;
+        const selectOptions = results.map((r, i) => {
+          const emoji = { COMMON: '⚪', RARE: '🟢', EPIC: '🟣', LEGENDARY: '🟡' }[r.rarity];
+          return new StringSelectMenuOptionBuilder()
+            .setLabel(`#${i + 1} ${r.species.name.replace(/^[^\s]+\s/, '')} (${r.rarity})`)
+            .setDescription(`HP:${r.baseHP} ATK:${r.baseAtk} DEF:${r.baseDef}% ${r.trait ? 'Trait: ' + r.trait : ''}`)
+            .setValue(`gacha10_save_${i}`)
+            .setEmoji(emoji);
+        });
 
-        if (slotsLeft > 0) {
-          const selectOptions = results.map((r, i) => {
-            const emoji = { COMMON: '⚪', RARE: '🟢', EPIC: '🟣', LEGENDARY: '🟡' }[r.rarity];
-            return new StringSelectMenuOptionBuilder()
-              .setLabel(`#${i + 1} ${r.species.name.replace(/^[^\s]+\s/, '')} (${r.rarity})`)
-              .setDescription(`HP:${r.baseHP} ATK:${r.baseAtk} DEF:${r.baseDef}% ${r.trait ? 'Trait: ' + r.trait : ''}`)
-              .setValue(`gacha10_save_${i}`)
-              .setEmoji(emoji);
-          });
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('gacha10_select_save')
+          .setPlaceholder('💾 Pilih pet untuk disimpan (maks 5)...')
+          .setMinValues(0)
+          .setMaxValues(Math.min(5, results.length))
+          .addOptions(selectOptions);
 
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('gacha10_select_save')
-            .setPlaceholder(`💾 Pilih pet untuk disimpan (maks ${slotsLeft})...`)
-            .setMinValues(0)
-            .setMaxValues(Math.min(slotsLeft, results.length))
-            .addOptions(selectOptions);
+        const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+        const btnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('gacha10_recycle_all').setLabel('♻️ Recycle Semua (+Rp 10.000)').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+        );
 
-          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-          const btnRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('gacha10_recycle_all').setLabel('♻️ Recycle Semua (+Rp 10.000)').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
-          );
-
-          await replyMsg.edit({ embeds: [summaryEmbed], components: [selectRow, btnRow] });
-        } else {
-          // Kandang penuh, otomatis recycle semua
-          const totalRecycle = results.length * 1000;
-          economy.addBalance(author.id, guildId, totalRecycle, 'PET_GACHA_RECYCLE_ALL');
-          const fullEmbed = summaryEmbed.setFooter({ text: `♻️ Kandang penuh! Semua 10 pet otomatis di-recycle. +Rp ${totalRecycle.toLocaleString('id-ID')} diterima.` });
-          const btnRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
-          );
-          pendingPulls = null;
-          await replyMsg.edit({ embeds: [fullEmbed], components: [btnRow] });
-        }
+        await replyMsg.edit({ embeds: [summaryEmbed], components: [selectRow, btnRow] });
       }
 
       // ── TOMBOL GACHA TIKET ──

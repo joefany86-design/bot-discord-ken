@@ -465,12 +465,9 @@ function adoptPet(userId, guildId, petName, petType) {
     throw new Error('Nama pet maksimal 25 karakter!');
   }
 
-  // Hitung jumlah pet yang sudah dimiliki
+  // Hitung jumlah pet yang sudah dimiliki (tetap dihitung untuk menentukan isActive)
   const petsCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
   const petsCount = petsCountRow ? petsCountRow.count : 0;
-  if (petsCount >= 3) {
-    throw new Error('Anda sudah mencapai batas maksimal **3 peliharaan**! Hapus salah satu pet terlebih dahulu.');
-  }
 
   // Cek apakah ada pet dengan nama yang sama (case-insensitive)
   const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [userId, guildId, sanitizedName.toLowerCase()]);
@@ -1390,12 +1387,9 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
     throw new Error(`Pet partner sedang lelah. Bisa kawin lagi dalam **${hours} jam**.`);
   }
 
-  // Cek Kandang / Slot Pet Pemohon (Maksimal 3 pet)
+  // Cek Kandang / Slot Pet Pemohon
   const chalCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [challengerId, guildId]);
   const chalCount = chalCountRow ? chalCountRow.count : 0;
-  if (chalCount >= 3) {
-    throw new Error('Kandang Anda sudah penuh (maksimal 3 peliharaan)! Hapus atau reset pet terlebih dahulu.');
-  }
 
   if (!newPetName || newPetName.trim().length === 0) {
     throw new Error('Harap tentukan nama untuk bayi pet baru Anda!');
@@ -2682,12 +2676,9 @@ function saveGachaPet(userId, guildId, pullResult, petName) {
     throw new Error('Nama pet maksimal 25 karakter!');
   }
 
-  // Cek slot kandang (max 3)
+  // Cek slot kandang
   const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
   const count    = countRow ? countRow.count : 0;
-  if (count >= 3) {
-    throw new Error('Kandang penuh (maksimal **3 peliharaan**)! Recycle atau reset pet lama terlebih dahulu.');
-  }
 
   // Cek nama duplikat
   const nameExists = db.get(

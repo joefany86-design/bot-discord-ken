@@ -719,12 +719,9 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                 return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
               }
 
-              // Validasi Slot
+              // Validasi Slot (tetap dihitung untuk menentukan isActive)
               const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
               const count = countRow ? countRow.count : 0;
-              if (count >= 3) {
-                return sub.reply({ content: '❌ Anggota terpilih sudah memiliki batas maksimal **3 pet**!', flags: 64 });
-              }
 
               // Cek Duplikat Nama
               const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedTargetUserId, guildId, sanitizedName.toLowerCase()]);
