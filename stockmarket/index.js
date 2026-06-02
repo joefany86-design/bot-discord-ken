@@ -2089,9 +2089,9 @@ function initStockMarket(client) {
                   '🔋 AUTO CARE DIAKTIFKAN! 🔋',
                   `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
                   `**Ketentuan Perawatan Otomatis:**\n` +
-                  `• 🍖 Kelaparan $\\le$ 50% $\\rightarrow$ Kenyangan $+30$\n` +
-                  `• 💧 Kehausan $\\le$ 50% $\\rightarrow$ Hidrasi $+35$\n\n` +
-                  `*Fitur ini menjaga pet Anda secara otomatis tanpa memotong saldo koin atau menggunakan item setelah diaktifkan!*`
+                  `• 🍖 Kelaparan $\le$ 50% $\rightarrow$ Kenyangan $+30$ (Potong Rp 150)\n` +
+                  `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
+                  `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
                 );
                 await iPet.reply({ embeds: [successEmb], flags: 64 });
                 await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
@@ -3258,9 +3258,9 @@ async function handlePetCommand(message, client, args) {
         '🔋 AUTO CARE DIAKTIFKAN! 🔋',
         `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
         `**Ketentuan Perawatan Otomatis:**\n` +
-        `• 🍖 Kelaparan $\\le$ 50% $\\rightarrow$ Kenyangan $+30$\n` +
-        `• 💧 Kehausan $\\le$ 50% $\\rightarrow$ Hidrasi $+35$\n\n` +
-        `*Fitur ini menjaga pet Anda secara otomatis tanpa memotong saldo koin atau menggunakan item setelah diaktifkan!*`
+        `• 🍖 Kelaparan $\le$ 50% $\rightarrow$ Kenyangan $+30$ (Potong Rp 150)\n` +
+        `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
+        `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
       );
       return message.reply({ embeds: [successEmb] });
     } catch (err) {

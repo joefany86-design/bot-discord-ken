@@ -102,7 +102,9 @@ function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = nu
   if (amount <= 0) return;
 
   const wallet = getWallet(userId, guildId);
-  if (wallet.balance < amount) {
+  // Bulatkan saldo untuk menghindari masalah presisi desimal mengambang (float)
+  const currentBalance = Math.round(wallet.balance);
+  if (currentBalance < amount) {
     throw new Error('Saldo tidak mencukupi!');
   }
 
