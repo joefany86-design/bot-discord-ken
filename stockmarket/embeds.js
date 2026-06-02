@@ -2242,17 +2242,7 @@ module.exports = {
       inline: false
     });
 
-    // Ketersediaan Supplies Inventory Singkat (hanya menampilkan barang yang dimiliki)
-    const ownedSupplies = inventory.filter(item => item.quantity > 0);
-    const suppliesText = ownedSupplies.length > 0 
-      ? ownedSupplies.map(item => `> ${item.name}  ➔  \`${item.quantity} pcs\``).join('\n')
-      : `> 📭 *Persediaan kosong. Ketik \`.pet shop\` untuk membeli.*`;
-      
-    embed.addFields({
-      name: '🎒 Persediaan Barang Pet (Supplies)',
-      value: suppliesText,
-      inline: false
-    });
+
 
     // Info Cooldown Pekerjaan & Berburu
     // Cooldown Work (Work: 1 Jam)
