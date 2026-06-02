@@ -1126,18 +1126,37 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   let oppHP = opponent.health;
 
   // Hitung stats tempur awal
-  // Base Attack = Level * 5
-  // Dragon Perk: +15% Attack
-  const chalBaseAtk = isGodChallenger ? 99999 : challenger.level * 5;
-  const oppBaseAtk = isGodOpponent ? 99999 : opponent.level * 5;
+  // Base Attack = Species Base ATK + Level * 5
+  const chalSpecies = GACHA_SPECIES[challenger.pet_type];
+  const chalSpecBaseAtk = chalSpecies ? (chalSpecies.baseAtk || 10) : 10;
+  const chalBaseAtk = isGodChallenger ? 99999 : (chalSpecBaseAtk + challenger.level * 5);
+
+  const oppSpecies = GACHA_SPECIES[opponent.pet_type];
+  const oppSpecBaseAtk = oppSpecies ? (oppSpecies.baseAtk || 10) : 10;
+  const oppBaseAtk = isGodOpponent ? 99999 : (oppSpecBaseAtk + opponent.level * 5);
 
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
+  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack
   if (challenger.accessory === 'SWORD_TOY') chalAtkMultiplier += 0.15; // Toy Sword: +15% damage
+  chalAtkMultiplier += (challenger.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
 
   let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack (up from +10%)
+  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack
   if (opponent.accessory === 'SWORD_TOY') oppAtkMultiplier += 0.15; // Toy Sword: +15% damage
+  oppAtkMultiplier += (opponent.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
+
+  // Kalkulasi Reduksi Damage (Defense)
+  const chalSpecBaseDef = chalSpecies ? (chalSpecies.baseDef || 0) : 0;
+  let chalDefMult = 1.0;
+  if (challenger.trait === 'STURDY') chalDefMult *= 0.85; // Sturdy: -15% damage
+  if (challenger.accessory === 'SHIELD_TOY') chalDefMult *= 0.85; // Toy Shield: -15% damage
+  const chalDamageTakenMult = (1.0 - (chalSpecBaseDef / 100)) * chalDefMult * (1.0 - (challenger.base_def_bonus_pct || 0.0));
+
+  const oppSpecBaseDef = oppSpecies ? (oppSpecies.baseDef || 0) : 0;
+  let oppDefMult = 1.0;
+  if (opponent.trait === 'STURDY') oppDefMult *= 0.85; // Sturdy: -15% damage
+  if (opponent.accessory === 'SHIELD_TOY') oppDefMult *= 0.85; // Toy Shield: -15% damage
+  const oppDamageTakenMult = (1.0 - (oppSpecBaseDef / 100)) * oppDefMult * (1.0 - (opponent.base_def_bonus_pct || 0.0));
 
   let round = 1;
   const maxRounds = 5;
@@ -1154,12 +1173,7 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}**, namun serangan memantul sia-sia! **0 DMG** diberikan. (HP Lawan: 100%)`);
     } else {
       chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
-      if (opponent.trait === 'STURDY') {
-        chalDmg = Math.round(chalDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
-      }
-      if (opponent.accessory === 'SHIELD_TOY') {
-        chalDmg = Math.round(chalDmg * 0.85); // Toy Shield: -15% incoming damage (15% defense)
-      }
+      chalDmg = Math.round(chalDmg * oppDamageTakenMult);
       oppHP = Math.max(0, oppHP - chalDmg);
       logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
     }
@@ -1177,12 +1191,7 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
       logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}**, namun serangan tidak terasa! **0 DMG** diberikan. (HP Anda: 100%)`);
     } else {
       oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
-      if (challenger.trait === 'STURDY') {
-        oppDmg = Math.round(oppDmg * 0.85); // Sturdy: -15% incoming damage (15% defense)
-      }
-      if (challenger.accessory === 'SHIELD_TOY') {
-        oppDmg = Math.round(oppDmg * 0.85); // Toy Shield: -15% incoming damage (15% defense)
-      }
+      oppDmg = Math.round(oppDmg * chalDamageTakenMult);
       chalHP = Math.max(0, chalHP - oppDmg);
       logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
     }
