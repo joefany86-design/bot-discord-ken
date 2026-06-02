@@ -1944,7 +1944,6 @@ function initStockMarket(client) {
              const row3Components = [
               new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
-              new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade').setStyle(ButtonStyle.Success),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄').setStyle(ButtonStyle.Secondary)
             ];
@@ -4237,9 +4236,8 @@ async function handlePetCommand(message, client, args) {
       ];
       const row3 = new ActionRowBuilder().addComponents(row3Components);
 
-      // Row 4: Gacha, Upgrade, Recycle
+      // Row 4: Upgrade, Recycle
       const row4Components = [
-        new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade Bintang').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('pet_btn_recycle').setLabel('♻️ Recycle Pet').setStyle(ButtonStyle.Danger)
       ];
