@@ -5550,6 +5550,124 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
 }
 
 /**
+ * Memulai pengajuan tebusan teman (hutang) interaktif yang membutuhkan persetujuan dari tahanan (debtor).
+ */
+async function handleBailFriendProposal(iJail, debtorUser, creditorUser, bailAmount, originalMessage, parentCollector) {
+  const clickerId = creditorUser.id;
+  const targetUserId = debtorUser.id;
+  const guildId = iJail.guildId;
+
+  // 1. Defer the clicker's interaction ephemerally
+  await iJail.deferReply({ flags: 64 }).catch(() => { });
+
+  // 2. Validate clicker's balance
+  const walletClicker = economy.getWallet(clickerId, guildId);
+  if (walletClicker.balance < bailAmount) {
+    return iJail.editReply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}` }).catch(() => { });
+  }
+
+  // 3. Inform clicker that proposal was sent
+  await iJail.editReply({ content: `✅ Pengajuan tebusan telah dikirimkan ke <@${targetUserId}>. Menunggu konfirmasi...` }).catch(() => { });
+
+  // 4. Send public proposal in the channel
+  const proposalEmbed = embeds.successEmbed(
+    '🤝 PENAWARAN TEBUSAN JAMINAN',
+    `**<@${clickerId}>** menawarkan diri untuk menebus **<@${targetUserId}>** dari penjara virtual seharga **Rp ${bailAmount.toLocaleString('id-ID')}**!\n\n` +
+    `⚠️ **Syarat & Ketentuan:**\n` +
+    `Jika **<@${targetUserId}>** menerima tebusan ini, ia akan segera **Bebas dari Penjara** namun akan otomatis memiliki **Hutang sebesar Rp ${bailAmount.toLocaleString('id-ID')}** kepada **<@${clickerId}>**.\n\n` +
+    `*Apakah Anda bersedia ditebus?*`
+  ).setColor(embeds.COLORS.PRIMARY || '#3498DB');
+
+  const proposalRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`bail_accept_${targetUserId}_${clickerId}`).setLabel('✅ Terima Tebusan').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`bail_reject_${targetUserId}_${clickerId}`).setLabel('❌ Tolak Tebusan').setStyle(ButtonStyle.Danger)
+  );
+
+  const proposalMsg = await iJail.channel.send({
+    content: `🔔 **NOTIFIKASI TEBUSAN:** <@${targetUserId}>, Anda mendapat tawaran bebas dari <@${clickerId}>!`,
+    embeds: [proposalEmbed],
+    components: [proposalRow]
+  });
+
+  const proposalCollector = proposalMsg.createMessageComponentCollector({ time: 120000 }); // 2 mins
+
+  proposalCollector.on('collect', async iProp => {
+    if (iProp.user.id !== targetUserId) {
+      return iProp.reply({ content: '❌ Hanya tahanan yang bersangkutan yang dapat merespon!', flags: 64 }).catch(() => { });
+    }
+
+    try {
+      if (iProp.customId.startsWith('bail_accept_')) {
+        await iProp.deferUpdate().catch(() => { });
+
+        // Double check balance of creditor
+        const freshWalletClicker = economy.getWallet(clickerId, guildId);
+        if (freshWalletClicker.balance < bailAmount) {
+          proposalCollector.stop('insufficient_funds');
+          return;
+        }
+
+        // Double check if debtor is still jailed
+        const freshJailCheck = robbery.checkJail(targetUserId, guildId, iProp.member);
+        if (!freshJailCheck.jailed) {
+          proposalCollector.stop('already_free');
+          return;
+        }
+
+        // Execute transactions
+        economy.subtractBalance(clickerId, guildId, bailAmount, 'BAIL_FRIEND');
+        database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [targetUserId, guildId]);
+        database.run(
+          `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+           VALUES (?, ?, ?, ?) 
+           ON CONFLICT(guild_id, debtor_id, creditor_id) 
+           DO UPDATE SET amount = amount + EXCLUDED.amount`,
+          [guildId, targetUserId, clickerId, bailAmount]
+        );
+
+        const acceptedEmbed = embeds.successEmbed(
+          'Tebusan Diterima! 🤝🔓',
+          `🎉 **<@${targetUserId}>** telah menerima tebusan dari **<@${clickerId}>**!\n\n` +
+          `🔓 **Status:** Bebas seketika dari penjara virtual.\n` +
+          `💸 **Hutang Baru:** **Rp ${bailAmount.toLocaleString('id-ID')}** terdaftar kepada **<@${clickerId}>**.\n\n` +
+          `💡 *<@${targetUserId}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${creditorUser.username} [jumlah]\`.*`
+        );
+
+        await proposalMsg.edit({ embeds: [acceptedEmbed], components: [] }).catch(() => { });
+        // Disable buttons on the original jail message
+        await originalMessage.edit({ components: [] }).catch(() => { });
+        if (parentCollector) parentCollector.stop();
+        proposalCollector.stop('accepted');
+      } else if (iProp.customId.startsWith('bail_reject_')) {
+        await iProp.deferUpdate().catch(() => { });
+        const rejectedEmbed = embeds.errorEmbed(
+          'Tebusan Ditolak! ❌',
+          `**<@${targetUserId}>** menolak tawaran tebusan dari **<@${clickerId}>** dan memilih untuk menjalani masa tahanannya.`
+        );
+        await proposalMsg.edit({ embeds: [rejectedEmbed], components: [] }).catch(() => { });
+        proposalCollector.stop('rejected');
+      }
+    } catch (err) {
+      console.error('Error in bail proposal collection:', err);
+    }
+  });
+
+  proposalCollector.on('end', async (collected, reason) => {
+    if (reason === 'accepted' || reason === 'rejected') return;
+
+    let timeoutDesc = `Tawaran tebusan dari **<@${clickerId}>** telah kedaluwarsa karena tidak ada respon dari **<@${targetUserId}>**.`;
+    if (reason === 'insufficient_funds') {
+      timeoutDesc = `Tawaran tebusan batal karena saldo **<@${clickerId}>** tidak mencukupi saat tebusan diterima.`;
+    } else if (reason === 'already_free') {
+      timeoutDesc = `Tawaran tebusan batal karena **<@${targetUserId}>** sudah bebas dari penjara.`;
+    }
+
+    const timeoutEmbed = embeds.warnEmbed('Tebusan Batal / Kedaluwarsa ⌛', timeoutDesc);
+    await proposalMsg.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => { });
+  });
+}
+
+/**
  * Routing & Handler Perintah Teks dengan awalan titik (.)
  * Mengembalikan true jika perintah dikenali & diproses, false jika bukan perintah modul.
  */
@@ -5706,38 +5824,7 @@ async function handleEconomyCommands(message, client) {
             return iJail.reply({ content: '❌ Anda tidak bisa menebus diri sendiri melalui tombol ini! Gunakan tombol Tebus Sendiri.', flags: 64 });
           }
 
-          try {
-            const clickerId = iJail.user.id;
-            const walletClicker = economy.getWallet(clickerId, guildId);
-            if (walletClicker.balance < jailCheck.bailAmount) {
-              return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, flags: 64 });
-            }
-
-            // Potong dompet penebus
-            economy.subtractBalance(clickerId, guildId, jailCheck.bailAmount, 'BAIL_FRIEND');
-            // Bebaskan tahanan
-            database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [author.id, guildId]);
-            // Catat hutang
-            database.run(
-              `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
-               VALUES (?, ?, ?, ?) 
-               ON CONFLICT(guild_id, debtor_id, creditor_id) 
-               DO UPDATE SET amount = amount + EXCLUDED.amount`,
-              [guildId, author.id, clickerId, jailCheck.bailAmount]
-            );
-
-            const successEmb = embeds.successEmbed(
-              'Teman Ditebus! 🤝🔓',
-              `**<@${clickerId}>** telah menebus **<@${author.id}>** dari penjara virtual seharga **Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}**!\n\n` +
-              `👤 **<@${author.id}>** sekarang bebas berkeliaran dan berhutang **Rp ${jailCheck.bailAmount.toLocaleString('id-ID')}** kepada **<@${clickerId}>**!\n` +
-              `💡 *<@${author.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
-            );
-            await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => { });
-            collector.stop();
-          } catch (err) {
-            await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, flags: 64 });
-          }
+          await handleBailFriendProposal(iJail, author, iJail.user, jailCheck.bailAmount, replyMsg, collector);
           return;
         }
 
@@ -6255,38 +6342,7 @@ async function handleEconomyCommands(message, client) {
             return iJail.reply({ content: '❌ Anda tidak bisa menebus diri sendiri melalui tombol ini! Gunakan tombol Tebus Sendiri.', flags: 64 });
           }
 
-          try {
-            const clickerId = iJail.user.id;
-            const walletClicker = economy.getWallet(clickerId, guildId);
-            if (walletClicker.balance < jailInfo.bailAmount) {
-              return iJail.reply({ content: `❌ Saldo Anda tidak mencukupi untuk menebus teman! Anda butuh Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}, saldo Anda Rp ${walletClicker.balance.toLocaleString('id-ID')}`, flags: 64 });
-            }
-
-            // Potong dompet penebus
-            economy.subtractBalance(clickerId, guildId, jailInfo.bailAmount, 'BAIL_FRIEND');
-            // Bebaskan tahanan
-            database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [targetUser.id, guildId]);
-            // Catat hutang
-            database.run(
-              `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
-               VALUES (?, ?, ?, ?) 
-               ON CONFLICT(guild_id, debtor_id, creditor_id) 
-               DO UPDATE SET amount = amount + EXCLUDED.amount`,
-              [guildId, targetUser.id, clickerId, jailInfo.bailAmount]
-            );
-
-            const successEmb = embeds.successEmbed(
-              'Teman Ditebus! 🤝🔓',
-              `**<@${clickerId}>** telah menebus **<@${targetUser.id}>** dari penjara virtual seharga **Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}**!\n\n` +
-              `👤 **<@${targetUser.id}>** sekarang bebas berkeliaran dan berhutang **Rp ${jailInfo.bailAmount.toLocaleString('id-ID')}** kepada **<@${clickerId}>**!\n` +
-              `💡 *<@${targetUser.id}> dapat membayar hutang ini dengan mengetik \`.bayar-hutang @${iJail.user.username} [jumlah]\`.*`
-            );
-            await iJail.reply({ embeds: [successEmb] });
-            await replyMsg.edit({ components: [] }).catch(() => { });
-            collector.stop();
-          } catch (err) {
-            await iJail.reply({ content: `❌ Gagal menebus jaminan: ${err.message}`, flags: 64 });
-          }
+          await handleBailFriendProposal(iJail, targetUser, iJail.user, jailInfo.bailAmount, replyMsg, collector);
           return;
         }
 
