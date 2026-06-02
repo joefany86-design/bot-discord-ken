@@ -3866,8 +3866,7 @@ async function handlePetCommand(message, client, args) {
 
       const row2Components = [
         new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT'),
-        new ButtonBuilder().setCustomId('pet_btn_nav_shop').setLabel('🎒 Toko Pet').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(userPet.level < 10 && userPet.status !== 'ADULT')
       ];
 
       if (canAdoptMore) {
@@ -3941,7 +3940,7 @@ async function handlePetCommand(message, client, args) {
               embeds: [embeds.warnEmbed(
                 'Tas Pet Kosong! 🎒',
                 'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
-                '🛒 *Beli di **🎒 Toko Pet** terlebih dahulu untuk membeli pakan, obat, soda, sabun, atau booster.*'
+                '🛒 *Silakan gunakan tombol **🛍️ Toko Pet** di Portal Hub (.hub) untuk membeli pakan, obat, soda, sabun, atau booster.*'
               )],
               flags: 64
             });
@@ -4229,9 +4228,7 @@ async function handlePetCommand(message, client, args) {
         }
       }
 
-      else if (iPet.customId === 'pet_btn_nav_shop') {
-        await handlePetShopCommand(iPet, client, true);
-      }
+
     } catch (err) {
       console.error('Error in pet dashboard collector:', err);
     }
