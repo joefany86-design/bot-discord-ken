@@ -2229,16 +2229,16 @@ module.exports = {
     const finalDefReduction = Math.round((1 - defMult) * 100);
     let defDesc = finalDefReduction > 0 
       ? `\`-${finalDefReduction}% DMG\` diterima` 
-      : '❌ Tidak Ada Reduksi DMG';
+      : '❌ Tidak Ada';
     if (defModifiers.length > 0) {
       defDesc += `\n>    *(Bonus: ${defModifiers.join(' + ')})*`;
     }
 
     embed.addFields({
       name: '⚔️ Atribut & Statistik Tempur Pet',
-      value: `> ❤️ **Darah Maksimal (HP) :** \`${maxHP} HP\`\n` +
-             `> ⚔️ **Daya Serang (ATK)  :** ${atkDesc}\n` +
-             `> 🛡️ **Pertahanan (DEF)   :** ${defDesc}`,
+      value: `> ❤️ **HP**  : \`${maxHP} HP\`\n` +
+             `> ⚔️ **ATK** : ${atkDesc}\n` +
+             `> 🛡️ **DEF** : ${defDesc}`,
       inline: false
     });
 
