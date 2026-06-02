@@ -36,48 +36,38 @@ client.once('ready', async () => {
     console.log('🎨 Membuat embed portal premium...');
     const embed = new EmbedBuilder()
       .setColor('#7C4DFF') // Vibrant Royal Purple
-      .setTitle('🎭 KOSAN 1A ECONOMY & PET DASHBOARD 📈')
+      .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
       .setDescription(
-        `Klik tombol di bawah ini untuk membuka panel secara **Pribadi** (Hanya Anda yang dapat melihatnya):\n\n` +
+        `Klik tombol di bawah ini untuk membuka panel secara **Pribadi/Private** (Hanya Anda yang dapat melihatnya):\n\n` +
         `🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
         `📈 **Bursa Saham** — Investasi saham channel server.\n` +
         `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
-        `🐾 **Pusat Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
-        `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).\n` +
-        `🏠 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.`
+        `🕵️‍♂️ **Black Market** — Beli perlengkapan aksi kriminal (rob).\n` +
+        `🎒 **Inventory Saya** — Lihat peralatan & barang mewah.\n\n` +
+        `🐾 **Kandang Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
+        `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
+        `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
+        `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
+        `📋 **Misi Harian Pet** — Selesaikan misi pet untuk koin & barang.`
       )
       .setImage('attachment://kosan_dashboard_banner.png')
       .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
       .setTimestamp();
 
     const row1 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('eco_btn_open_shop_private_perm')
-        .setLabel('🛍️ Toko')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('eco_btn_open_market_private_perm')
-        .setLabel('📈 Saham')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('eco_btn_open_bank_private_perm')
-        .setLabel('🏦 Bank')
-        .setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('eco_btn_open_shop_private_perm').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('eco_btn_open_market_private_perm').setLabel('📈 Bursa Saham').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('eco_btn_open_bank_private_perm').setLabel('🏦 Bank Sentral').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('eco_btn_open_bm_private_perm').setLabel('🕵️‍♂️ Black Market').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('eco_btn_open_inventory_private_perm').setLabel('🎒 Inventory Saya').setStyle(ButtonStyle.Success)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('pet_btn_open_pet_private_perm')
-        .setLabel('🐾 Pet')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('eco_btn_open_bm_private_perm')
-        .setLabel('🕵️‍♂️ BM')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('eco_btn_open_kos_private_perm')
-        .setLabel('🏠 Kosan')
-        .setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Pet').setStyle(ButtonStyle.Primary)
     );
 
     await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
