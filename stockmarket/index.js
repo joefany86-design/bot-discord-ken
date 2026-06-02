@@ -5772,17 +5772,6 @@ async function handleEconomyCommands(message, client) {
   // ── COZY FLOWER GARDEN FEATURE GUARD & ROUTING ──
   const gardenCommands = ['kebun', 'garden', 'toko-kebun', 'gardenshop', 'tanam', 'siram', 'panen', 'jual-bunga', 'buket', 'gift-buket'];
   if (gardenCommands.includes(commandName)) {
-    const isOwner = author.id === OWNER_ID;
-    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!isOwner && !isAdmin) {
-      const errEmb = embeds.errorEmbed(
-        'Akses Ditolak!',
-        'Fitur Cozy Flower Garden (`.kebun`) dikunci khusus untuk Administrator server.'
-      );
-      await autoReply({ embeds: [errEmb] });
-      return true;
-    }
-
     await handleGardenCommand(message, client, args, commandName);
     return true; // Berhasil ditangani
   }
