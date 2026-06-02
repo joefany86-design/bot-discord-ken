@@ -2857,7 +2857,7 @@ function initStockMarket(client) {
         });
       }
 
-      // ── PORTAL PERMANEN: MISI HARIAN KOS A1 ──
+      // ── PORTAL PERMANEN: MISI HARIAN KOSAN 1A ──
       else if (customId === 'pet_btn_open_quests_private_perm') {
         await interaction.deferReply({ flags: 64 });
 
@@ -2884,7 +2884,7 @@ function initStockMarket(client) {
             return `${descText} (${progress}/${target})`;
           };
 
-          let descText = `Selesaikan seluruh misi harian Kos A1 hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
           
           descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
           descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
@@ -2914,7 +2914,7 @@ function initStockMarket(client) {
 
           const questEmbed = new EmbedBuilder()
             .setColor(0x3498DB)
-            .setTitle(`📋 MISI HARIAN KOS A1 — ${user.username}`)
+            .setTitle(`📋 MISI HARIAN KOSAN 1A — ${user.username}`)
             .setDescription(descText)
             .setThumbnail(user.displayAvatarURL({ dynamic: true }))
             .setTimestamp();
@@ -2935,8 +2935,8 @@ function initStockMarket(client) {
               try {
                 const res = pet.claimDailyQuestReward(user.id, guildId);
                 const successEmb = embeds.successEmbed(
-                  'Misi Harian Kos A1 Selesai! 🎉🎁',
-                  `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kos A1 hari ini!\n\n` +
+                  'Misi Harian Kosan 1A Selesai! 🎉🎁',
+                  `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
                   `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
                   `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
                 );
@@ -3387,8 +3387,8 @@ async function handlePetCommand(message, client, args) {
       try {
         const res = pet.claimDailyQuestReward(author.id, guildId);
         const successEmb = embeds.successEmbed(
-          'Misi Harian Kos A1 Selesai! 🎉🎁',
-          `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kos A1 hari ini!\n\n` +
+          'Misi Harian Kosan 1A Selesai! 🎉🎁',
+          `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
           `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
           `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
         );
@@ -3421,7 +3421,7 @@ async function handlePetCommand(message, client, args) {
         return `${descText} (${progress}/${target})`;
       };
 
-      let descText = `Selesaikan seluruh misi harian Kos A1 hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+      let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
       
       descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
       descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
@@ -3444,14 +3444,14 @@ async function handlePetCommand(message, client, args) {
 
       const questEmbed = new EmbedBuilder()
         .setColor(0x3498DB)
-        .setTitle(`📋 MISI HARIAN KOS A1 — ${author.username}`)
+        .setTitle(`📋 MISI HARIAN KOSAN 1A — ${author.username}`)
         .setDescription(descText)
         .setThumbnail(author.displayAvatarURL({ dynamic: true }))
         .setTimestamp();
 
       return message.reply({ embeds: [questEmbed] });
     } catch (err) {
-      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian Kos A1!', err.message)] });
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian Kosan 1A!', err.message)] });
     }
   }
 
@@ -9832,7 +9832,7 @@ async function handleEconomyCommands(message, client) {
           `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
           `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
           `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-          `📋 **Misi Harian Kos A1** — Selesaikan misi harian untuk koin & barang.`
+          `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.`
         )
         .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
         .setTimestamp();
@@ -9850,7 +9850,7 @@ async function handleEconomyCommands(message, client) {
         new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kos A1').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
       );
 
       await message.channel.send({ embeds: [embed], components: [row1, row2] });

@@ -3827,7 +3827,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
       .setTitle('📋 ADMIN CONTROL PANEL — DAILY QUESTS PET')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
-      .setFooter({ text: 'Sentinel Admin • Pengelolaan Misi Harian Kos A1' });
+      .setFooter({ text: 'Sentinel Admin • Pengelolaan Misi Harian Kosan 1A' });
 
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
     if (targetUserId) {

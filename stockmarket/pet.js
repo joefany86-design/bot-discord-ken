@@ -1992,7 +1992,7 @@ function washPet(userId, guildId) {
 }
 
 /**
- * Mendapatkan atau membuat misi harian Kos A1 untuk hari ini.
+ * Mendapatkan atau membuat misi harian Kosan 1A untuk hari ini.
  */
 function getOrCreateDailyQuests(userId, guildId) {
   // Pastikan user memiliki pet aktif
@@ -2088,7 +2088,7 @@ function incrementQuestProgress(userId, guildId, questType, amount = 1) {
 }
 
 /**
- * Mengklaim hadiah misi harian Kos A1 jika semua misi hari ini selesai.
+ * Mengklaim hadiah misi harian Kosan 1A jika semua misi hari ini selesai.
  */
 function claimDailyQuestReward(userId, guildId) {
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
@@ -2112,7 +2112,7 @@ function claimDailyQuestReward(userId, guildId) {
     row.quest_3_progress >= row.quest_3_target;
 
   if (!allCompleted) {
-    throw new Error('Anda belum menyelesaikan seluruh misi harian Kos A1 hari ini! Periksa status dengan \\`.pet misi\\`.');
+    throw new Error('Anda belum menyelesaikan seluruh misi harian Kosan 1A hari ini! Periksa status dengan \\`.pet misi\\`.');
   }
 
   // Cari item drop secara acak
