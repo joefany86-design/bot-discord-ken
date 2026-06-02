@@ -5431,15 +5431,15 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         `> 🟢 **RARE** — 25% *(Cat, Golem, Slime, Dragon)*\n` +
         `> 🟣 **EPIC** — 8% *(Phoenix, Turtle)*\n` +
         `> 🟡 **LEGENDARY** — 2% *(Leviathan, Behemoth, Archdragon)*\n\n` +
-        `💎 **Harga:** Rp 3.500 / pull | Rp 30.000 / 10x pull\n` +
+        `💎 **Harga:** Rp 1.000 / pull | Rp 10.000 / 10x pull\n` +
         `🎫 **Tiket Gacha:** 1 tiket = 1 pull gratis`
       )
       .setFooter({ text: 'Pet gacha langsung dewasa (ADULT) tanpa telur!' })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('gacha_btn_1x').setLabel('🎰 Gacha 1x (Rp 3.500)').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('gacha_btn_10x').setLabel('🎰 Gacha 10x (Rp 30.000)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('gacha_btn_1x').setLabel('🎰 Gacha 1x (Rp 1.000)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('gacha_btn_10x').setLabel('🎰 Gacha 10x (Rp 10.000)').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('gacha_btn_ticket').setLabel(`🎫 Gunakan Tiket (${tickets})`).setStyle(ButtonStyle.Secondary).setDisabled(tickets < 1)
     );
 

@@ -63,8 +63,8 @@ const GACHA_TRAIT_EPIC   = ['SURVIVOR'];
 const GACHA_TRAIT_LEGENDARY = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
 
 const GACHA_PRICES = {
-  SINGLE:  3500,
-  MULTI10: 30000,
+  SINGLE:  1000,
+  MULTI10: 10000,
 };
 
 // ═══════════════════════════════════════════════

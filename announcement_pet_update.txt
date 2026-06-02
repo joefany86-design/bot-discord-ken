@@ -1,0 +1,39 @@
+📢 **PEMBERITAHUAN FITUR BARU: SISTEM GACHA & UPGRADE BINTANG PET (TAMAGOTCHI) 🐾✨**
+════════════════════════════════════════════════════════════════════════════════════
+Halo Warga Kosan 1A! 🏠✨
+Kandang peliharaan kita kini semakin canggih dan menantang! Hari ini kami resmi meluncurkan pembaruan besar **Sistem Gacha Pet & Upgrade Bintang** untuk Sentinel Bot. Sekarang Anda bisa mengoleksi pet langka legendaris, mendaur ulang pet duplikat, dan berevolusi hingga Bintang 5 untuk memperkuat statistik tempur mereka! ⚔️🔥
+
+Berikut rincian fitur-fitur baru yang bisa langsung Anda nikmati:
+
+🐾 1. SISTEM GACHA PET (`.pet gacha`)
+Dapatkan pet impianmu secara instan tanpa masa telur! Gacha pet langsung melahirkan pet dewasa (**ADULT**) dengan species dan keunikan acak.
+*   🪙 **Harga Gacha**: Rp 1.000 untuk 1x Pull | Rp 10.000 untuk 10x Pull sekaligus!
+*   🎫 **Tiket Gacha (`TICKET_GACHA`)**: Gunakan 1 tiket untuk 1x pull gratis!
+*   📊 **Persentase Drop Rate (Rarity)**:
+    *   🟢 **COMMON** (65%): Cat, Golem, Slime.
+    *   🟢 **RARE** (25%): Cat, Golem, Slime, Dragon.
+    *   🟣 **EPIC** (8%): Phoenix, Turtle.
+    *   🟡 **LEGENDARY** (2%): Leviathan, Behemoth, Archdragon.
+*   📺 **Fitur Simpan/Daur Ulang**: Setelah gacha, Anda bisa memilih untuk mengklaim pet baru ke kandang Anda (maksimal slot kandang tetap 3 pet) atau langsung mendaur ulangnya menjadi koin Rupiah.
+
+🌟 2. UPGRADE & EVOLUSI BINTANG PET (`.pet upgrade`)
+Tingkatkan kekuatan bertarung pet Anda dengan menaikkan tingkat bintangnya (**Bintang 1 s/d Bintang 5**).
+*   🧬 **Mekanik Evolusi**: Korbankan pet duplikat dengan spesies yang sama (tidak peduli level atau rarity duplikat tersebut) sebagai tumbal evolusi.
+*   🔥 **Buff Statistik Tempur (Combat Stats)**: Setiap kali bintang pet naik, pet akan mendapatkan peningkatan stats permanen:
+    *   ❤️ **HP Maksimal**: +15% per tingkat bintang
+    *   ⚔️ **ATK (Attack)**: +15% per tingkat bintang
+    *   🛡️ **DEF (Defense)**: +15% per tingkat bintang
+*   ⭐ Pet dengan Bintang 5 akan memiliki statistik tempur **+60% lebih kuat** dibanding pet bintang 1! Sangat berguna untuk mode PvP & Ekspedisi di masa mendatang!
+
+♻️ 3. DAUR ULANG PET (`.pet recycle <nama_pet>`)
+Kandang sudah penuh dengan pet common yang tidak terpakai? Jangan khawatir!
+*   👉 Gunakan perintah **`.pet recycle`** (atau lewat tombol menu) untuk mendaur ulang pet Anda. Setiap pet yang didaur ulang akan dikonversi menjadi **Rp 1.000** langsung ke dompet Anda!
+
+🚪 4. AKSES CEPAT & NAVIGASI TOMBOL BARU
+Fitur ini telah diintegrasikan secara penuh di berbagai panel menu agar Anda tidak perlu mengetik perintah panjang:
+*   🟢 **Dashboard Utama (`.pet`)**: Row tombol baru ditambahkan di bagian bawah dashboard pet Anda untuk akses instan ke menu Gacha, Upgrade, dan Recycle.
+*   🟢 **Portal Utama (`.hub`)**: Tombol Gacha Pet kini tersedia di Baris ke-3 menu Hub utama.
+*   🟢 **Kandang Pet (`.hub` -> Kandang)**: Tombol Gacha & Upgrade disematkan langsung di dalam panel manajemen kandang pet privat.
+
+════════════════════════════════════════════════════════════════════════════════════
+*Yuk, ketik `.pet` atau buka `.hub` sekarang, lalu masuk ke kandang pet Anda dan mulailah berburu pet legendaris impianmu! Semoga beruntung di putaran Gacha pertamamu! 🍀🦖💎✨*
