@@ -2191,6 +2191,9 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
   if (!guildId) return false;
 
+  let includeFreeAll = false;
+  let includeResetCds = false;
+
   const getAbyusPanelData = (gId) => {
     const settings = getOrCreateEbyusSettings(gId);
     
@@ -2207,7 +2210,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       `📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkan)**'}\n` +
       `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
       `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
-      `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}`
+      `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
+      `⚙️ **OPSI PENGAKTIFAN TAMBAHAN (DIKIRIM SAAT BROADCAST):**\n` +
+      `• Bebaskan Semua Tahanan: ${includeFreeAll ? '🟢 **Ya (Aktif)**' : '⚪ **Tidak (Nonaktif)**'}\n` +
+      `• Reset Semua Cooldown: ${includeResetCds ? '🟢 **Ya (Aktif)**' : '⚪ **Tidak (Nonaktif)**'}`
     );
 
     const gachaSelect = new StringSelectMenuBuilder()
@@ -2291,13 +2297,13 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
     const btnRow3 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_free_all')
-        .setLabel('🔓 Bebaskan Semua Tahanan')
-        .setStyle(ButtonStyle.Success),
+        .setCustomId('admin_abyus_btn_toggle_free')
+        .setLabel(`🔓 Bebaskan Tahanan: ${includeFreeAll ? '✅ ON' : '⚪ OFF'}`)
+        .setStyle(includeFreeAll ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_reset_all_cds')
-        .setLabel('⏱️ Reset Semua Cooldown')
-        .setStyle(ButtonStyle.Primary)
+        .setCustomId('admin_abyus_btn_toggle_reset')
+        .setLabel(`⏱️ Reset Cooldowns: ${includeResetCds ? '✅ ON' : '⚪ OFF'}`)
+        .setStyle(includeResetCds ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2, btnRow3] };
@@ -2342,9 +2348,24 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_btn_broadcast') {
+        // Execute supplementary actions if toggled
+        if (includeFreeAll) {
+          database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
+        }
+        if (includeResetCds) {
+          database.run(
+            'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
+            [guildId]
+          );
+          database.run(
+            'UPDATE wallets SET last_heist_at = 0, last_rob_at = 0 WHERE guild_id = ?',
+            [guildId]
+          );
+        }
+
         database.run('UPDATE ebyus_settings SET is_active = 1 WHERE guild_id = ?', [guildId]);
         const settings = getOrCreateEbyusSettings(guildId);
-        const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at);
+        const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at, includeFreeAll, includeResetCds);
         
         let targetChannel = guild.channels.cache.get('1422642326798598348');
         if (!targetChannel) {
@@ -2361,6 +2382,11 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         } else {
           await iAbyus.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', flags: 64 });
         }
+
+        // Reset toggles after broadcasting
+        includeFreeAll = false;
+        includeResetCds = false;
+
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
@@ -2420,42 +2446,15 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
         await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
       }
-      else if (iAbyus.customId === 'admin_abyus_btn_free_all') {
-        database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
-        await iAbyus.reply({ content: '🔓 Sukses membebaskan seluruh tahanan dari penjara virtual secara massal!', flags: 64 });
-        await sendGlobalEconomyAnnouncement(
-          client,
-          guild,
-          author,
-          '🔓 Pembebasan Tahanan Massal',
-          '🔓 Hari Raya Grasi! Pintu penjara virtual dibobol massal oleh admin. Seluruh warga yang sedang mendekam di sel tahanan kini bebas menghirup udara segar. Ingat, tobat ya dan kurangi kriminalitas!',
-          '#3498db',
-          [],
-          true
-        );
+      else if (iAbyus.customId === 'admin_abyus_btn_toggle_free') {
+        includeFreeAll = !includeFreeAll;
+        await iAbyus.reply({ content: `🔓 Opsi Bebaskan Semua Tahanan saat broadcast sekarang: **${includeFreeAll ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
-      else if (iAbyus.customId === 'admin_abyus_btn_reset_all_cds') {
-        database.run(
-          'INSERT INTO heist_cooldown (guild_id, last_heist_at) VALUES (?, 0) ON CONFLICT(guild_id) DO UPDATE SET last_heist_at = 0',
-          [guildId]
-        );
-        database.run(
-          'UPDATE wallets SET last_heist_at = 0, last_rob_at = 0 WHERE guild_id = ?',
-          [guildId]
-        );
-        await iAbyus.reply({ content: '⏱️ Sukses mereset cooldown global heist, cooldown heist personal, dan cooldown mencuri (rob) seluruh warga server!', flags: 64 });
-        await sendGlobalEconomyAnnouncement(
-          client,
-          guild,
-          author,
-          '⏱️ Reset Cooldown Massal',
-          '⏱️ Pengampunan Cooldown! Admin telah mereset seluruh cooldown kriminal (rob & heist) baik global maupun personal untuk semua warga. Kejahatan bebas dimulai kembali!',
-          '#00FF88',
-          [],
-          true
-        );
+      else if (iAbyus.customId === 'admin_abyus_btn_toggle_reset') {
+        includeResetCds = !includeResetCds;
+        await iAbyus.reply({ content: `⏱️ Opsi Reset Semua Cooldown saat broadcast sekarang: **${includeResetCds ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
