@@ -533,21 +533,14 @@ function startRealtimeLeaderboard(client) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
     }
 
-    // ── 2. TOP PET EKSPEDISI & PVP LEADERBOARD (Channel: 1510232295448117308) ──
+    // ── 2. TOP PET EKSPEDISI LEADERBOARD (Channel: 1510232295448117308) ──
     try {
       const petChannel = await client.channels.fetch('1510232295448117308').catch(() => null);
       if (petChannel) {
         const guildId = petChannel.guild.id;
         const guildName = petChannel.guild.name;
 
-        // ── 2a. TOP PVP ARENA ──
-        const topPvp = pet.getPetLeaderboard(guildId, 'pvp', 10);
-        await Promise.all(topPvp.map(async p => {
-          try { await client.users.fetch(p.user_id); } catch (e) { }
-        }));
-        const pvpEmbed = embeds.petLeaderboardEmbed(guildName, topPvp, 'pvp', client);
-
-        // ── 2b. TOP EXPEDITION EARNERS ──
+        // ── TOP EXPEDITION EARNERS ──
         const topExpedition = database.all(
           `SELECT t.user_id, SUM(t.amount) as total_earned, COUNT(t.id) as total_runs,
                   p.pet_name, p.pet_type, p.level, p.trait, p.status
@@ -599,7 +592,7 @@ function startRealtimeLeaderboard(client) {
 
         const messages = await petChannel.messages.fetch({ limit: 50 }).catch(() => null);
         const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
-        const payload = { embeds: [pvpEmbed, expEmbed], components: [] };
+        const payload = { embeds: [expEmbed], components: [] };
 
         if (botMessages.length > 0) {
           await botMessages[0].edit(payload).catch(() => { });
@@ -612,7 +605,7 @@ function startRealtimeLeaderboard(client) {
         }
       }
     } catch (err) {
-      console.error('❌ Error updating realtime pet expedition & pvp leaderboard:', err);
+      console.error('❌ Error updating realtime pet expedition leaderboard:', err);
     }
 
     // ── 3. DAILY LEADERBOARD (Channel: 1510240252458176662) ──
