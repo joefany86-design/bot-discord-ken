@@ -2568,7 +2568,7 @@ function initStockMarket(client) {
 
         const getGardenSellDataPrivate = (targetUserId) => {
           const inv = database.all(
-            'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE "FLOWER_%" AND quantity > 0',
+            `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
             [targetUserId, guildId]
           );
 
@@ -2612,7 +2612,7 @@ function initStockMarket(client) {
 
         const getGardenGiftDataPrivate = (targetUserId, recId = null) => {
           const inv = database.all(
-            'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE "BOUQUET_%" AND quantity > 0',
+            `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'BOUQUET_%' AND quantity > 0`,
             [targetUserId, guildId]
           );
 
