@@ -2204,6 +2204,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     embed.setDescription(
       `Sabotase persentase kemenangan gacha role, atur multiplier obrolan chat warga, set batas waktu auto-reset event, atau lakukan penghentian darurat:\n\n` +
       `📊 **STATUS BYPASS & EKONOMI SERVER:**\n` +
+      `📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkan)**'}\n` +
       `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
       `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
       `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}`
@@ -2328,56 +2329,20 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     try {
       if (iAbyus.customId === 'admin_abyus_select_gacha') {
         const mode = iAbyus.values[0];
-        database.run('UPDATE ebyus_settings SET gacha_mode = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
-        await iAbyus.reply({ content: `🎰 Sukses mengubah mode gacha server menjadi **${mode}**!`, flags: 64 });
-        
-        let gachaDesc = `🎰 Mode gacha dikembalikan ke setelan pabrik (Normal - 75% Zonk). Selamat menguji tingkat kesabaran dan keberuntungan sejati!`;
-        if (mode === 'ABUSE') {
-          gachaDesc = `🎰 ADMIN OVERPOWER! Mode gacha role diubah ke ABUSE (0% Zonk / 100% Win)! Silakan putar gacha role kalian sekarang juga, dijamin menang terus tanpa ampun sampai botnya bangkrut!`;
-        } else if (mode === 'SUPER_EASY') {
-          gachaDesc = `🎰 Mode gacha dipermudah banget (hanya 15% Zonk)! Kesempatan langka memenangkan role impian dengan tingkat hoki maksimal.`;
-        } else if (mode === 'EASY') {
-          gachaDesc = `🎰 Mode gacha dibuat mudah (hanya 40% Zonk)! Tingkat kemenangan dinaikkan, ayo uji keberuntungan gacha Anda!`;
-        }
-
-        await sendGlobalEconomyAnnouncement(
-          client,
-          guild,
-          author,
-          '🎰 Perubahan Mode Gacha Server',
-          gachaDesc,
-          '#00FFFF',
-          [
-            { name: 'Mode Baru', value: `**${mode}**`, inline: true }
-          ]
-        );
+        database.run('UPDATE ebyus_settings SET gacha_mode = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
+        await iAbyus.reply({ content: `🎰 Sukses menyetel mode gacha ke **${mode}** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_select_multiplier') {
         const mult = parseInt(iAbyus.values[0]);
-        database.run('UPDATE ebyus_settings SET coin_multiplier = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
-        await iAbyus.reply({ content: `🪙 Sukses mengubah multiplier koin chat menjadi **${mult}x**!`, flags: 64 });
-        
-        const multDesc = mult > 1 
-          ? `🪙 KERAN DUIT DIBUKA! Multiplier koin obrolan chat warga dinaikkan menjadi **${mult}x** lipat! Silakan spam chat aktif berfaedah sebanyak-banyaknya untuk menimbun pundi-pundi Rupiah!`
-          : `🪙 Jam kerja rodi berakhir. Multiplier koin chat dikembalikan ke normal (1x). Ketik santai saja.`;
-
-        await sendGlobalEconomyAnnouncement(
-          client,
-          guild,
-          author,
-          '🪙 Perubahan Multiplier Koin Chat',
-          multDesc,
-          '#00FFFF',
-          [
-            { name: 'Multiplier Baru', value: `**${mult}x**`, inline: true }
-          ]
-        );
+        database.run('UPDATE ebyus_settings SET coin_multiplier = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
+        await iAbyus.reply({ content: `🪙 Sukses menyetel multiplier koin chat ke **${mult}x** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_btn_broadcast') {
+        database.run('UPDATE ebyus_settings SET is_active = 1 WHERE guild_id = ?', [guildId]);
         const settings = getOrCreateEbyusSettings(guildId);
         const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at);
         
@@ -2392,10 +2357,12 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
         if (targetChannel) {
           await targetChannel.send({ content: '@everyone 🚨 **EVENT ABUSE AKTIF!** 🚨', embeds: [broadcastEmb] });
-          await iAbyus.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}>!`, flags: 64 });
+          await iAbyus.reply({ content: `✅ Sukses menyiarkan pengumuman Ebyus ke channel <#${targetChannel.id}> dan mengaktifkan event!`, flags: 64 });
         } else {
           await iAbyus.reply({ content: '❌ Gagal menemukan channel untuk menyiarkan pengumuman!', flags: 64 });
         }
+        const fresh = getAbyusPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_btn_duration') {
         const modal = new ModalBuilder()
@@ -2423,30 +2390,19 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
             return sub.reply({ content: '❌ Durasi harus berupa angka di atas 0!', flags: 64 });
           }
           const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
-          database.run('UPDATE ebyus_settings SET expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
+          database.run('UPDATE ebyus_settings SET expires_at = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
           
-          await sub.reply({ content: `⏱️ Sukses memperbarui durasi event bypass menjadi **${minutes} menit** (auto-reset).`, flags: 64 });
-          await sendGlobalEconomyAnnouncement(
-            client,
-            guild,
-            author,
-            '⏱️ Pengaturan Durasi Event Bypass',
-            `⏱️ Waktu terus berjalan! Administrator membatasi durasi event bypass aktif saat ini menjadi **${minutes} menit**. Manfaatkan sisa waktu emas ini sebelum semuanya ditutup!`,
-            '#00FFFF',
-            [
-              { name: 'Durasi Aktif', value: `**${minutes} menit**`, inline: true }
-            ]
-          );
+          await sub.reply({ content: `⏱️ Sukses menyetel durasi event bypass menjadi **${minutes} menit** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => {});
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_stop_abyus') {
         database.run(
-          'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+          'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
           ['NORMAL', 1, nowUnix, iAbyus.user.id, guildId]
         );
-        await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL` dan multiplier koin chat kembali ke `1x` (nonaktif).', flags: 64 });
+        await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL`, multiplier koin chat kembali ke `1x` (nonaktif), dan status event dimatikan.', flags: 64 });
         await sendGlobalEconomyAnnouncement(
           client,
           guild,

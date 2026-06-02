@@ -2883,12 +2883,12 @@ async function handleEconomyChat(message) {
   }
 
   // 3c. Cek Admin Abuse (Ebyus) Coin Multiplier (3x s/d 8x)
-  const ebyus = database.get('SELECT coin_multiplier, expires_at FROM ebyus_settings WHERE guild_id = ?', [guildId]);
-  if (ebyus && ebyus.coin_multiplier > 1) {
+  const ebyus = database.get('SELECT coin_multiplier, expires_at, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (ebyus && ebyus.is_active === 1 && ebyus.coin_multiplier > 1) {
     const nowUnix = Math.floor(Date.now() / 1000);
     if (ebyus.expires_at > 0 && nowUnix > ebyus.expires_at) {
       // Expired! Reset to 1 in DB
-      database.run('UPDATE ebyus_settings SET coin_multiplier = 1, expires_at = 0 WHERE guild_id = ?', [guildId]);
+      database.run('UPDATE ebyus_settings SET coin_multiplier = 1, expires_at = 0, is_active = 0 WHERE guild_id = ?', [guildId]);
     } else {
       totalEarned *= ebyus.coin_multiplier;
     }
@@ -5415,11 +5415,11 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   const roll = Math.random() * 100;
   let zonkRate = config.gacha.ZONK_RATE !== undefined ? config.gacha.ZONK_RATE : 75;
 
-  const ebyus = database.get('SELECT gacha_mode, expires_at FROM ebyus_settings WHERE guild_id = ?', [guildId]);
-  if (ebyus) {
+  const ebyus = database.get('SELECT gacha_mode, expires_at, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (ebyus && ebyus.is_active === 1) {
     const nowUnix = Math.floor(Date.now() / 1000);
     if (ebyus.expires_at > 0 && nowUnix > ebyus.expires_at) {
-      database.run('UPDATE ebyus_settings SET gacha_mode = "NORMAL", expires_at = 0 WHERE guild_id = ?', [guildId]);
+      database.run('UPDATE ebyus_settings SET gacha_mode = "NORMAL", expires_at = 0, is_active = 0 WHERE guild_id = ?', [guildId]);
     } else {
       if (ebyus.gacha_mode === 'EASY') zonkRate = 40;
       else if (ebyus.gacha_mode === 'SUPER_EASY') zonkRate = 15;
@@ -9365,7 +9365,7 @@ async function handleEconomyCommands(message, client) {
       const nowUnix = Math.floor(Date.now() / 1000);
       const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
       database.run(
-        'UPDATE ebyus_settings SET gacha_mode = ?, expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        'UPDATE ebyus_settings SET gacha_mode = ?, expires_at = ?, is_active = 1, updated_at = ?, updated_by = ? WHERE guild_id = ?',
         [mode, expiresAt, nowUnix, author.id, guildId]
       );
 
@@ -9427,7 +9427,7 @@ async function handleEconomyCommands(message, client) {
       const nowUnix = Math.floor(Date.now() / 1000);
       const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
       database.run(
-        'UPDATE ebyus_settings SET coin_multiplier = ?, expires_at = ?, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        'UPDATE ebyus_settings SET coin_multiplier = ?, expires_at = ?, is_active = 1, updated_at = ?, updated_by = ? WHERE guild_id = ?',
         [multiplier, expiresAt, nowUnix, author.id, guildId]
       );
 
@@ -9567,7 +9567,7 @@ async function handleEconomyCommands(message, client) {
 
       const nowUnix = Math.floor(Date.now() / 1000);
       database.run(
-        'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
+        'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
         ['NORMAL', 1, nowUnix, message.author.id, guildId]
       );
 

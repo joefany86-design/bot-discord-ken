@@ -274,9 +274,18 @@ function initSchema() {
       coin_multiplier INTEGER DEFAULT 1,
       updated_at INTEGER DEFAULT 0,
       updated_by TEXT,
-      expires_at INTEGER DEFAULT 0
+      expires_at INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 0
     )
   `);
+
+  // Migrasi dinamis: Tambahkan kolom is_active ke ebyus_settings jika belum ada
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN is_active INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'is_active' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
 
   // Migrasi dinamis: Tambahkan kolom expires_at ke ebyus_settings jika belum ada
   try {
