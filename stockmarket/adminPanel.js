@@ -3139,6 +3139,253 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 }
 
 /**
+ * 📊 8. SUB-PANEL FINANCIAL AUDIT & LEDGER (ARUS KAS)
+ */
+async function handleAdminLedgerPanel(messageOrInteraction, client) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+  const guild = messageOrInteraction.guild;
+
+  if (!guildId) return false;
+
+  let selectedTargetUserId = null;
+  let selectedTypeFilter = 'ALL';
+  let currentPage = 1;
+
+  const getLedgerPanelData = (gId, targetUserId, typeFilter, page) => {
+    // 1. Hitung total sirkulasi koin global
+    const walletsSum = database.get('SELECT SUM(balance) as total FROM wallets WHERE guild_id = ?', [gId]);
+    const savingsSum = database.get('SELECT SUM(balance) as total FROM bank_savings WHERE guild_id = ?', [gId]);
+    const totalWallets = walletsSum ? (walletsSum.total || 0) : 0;
+    const totalSavings = savingsSum ? (savingsSum.total || 0) : 0;
+    const totalCirculation = totalWallets + totalSavings;
+
+    // 2. Hitung sirkulasi harian (24 jam terakhir)
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const dayAgoUnix = nowUnix - 86400;
+
+    const inflowSum = database.get(
+      'SELECT SUM(amount) as total FROM transactions WHERE guild_id = ? AND amount > 0 AND created_at > ?',
+      [gId, dayAgoUnix]
+    );
+    const outflowSum = database.get(
+      'SELECT SUM(amount) as total FROM transactions WHERE guild_id = ? AND amount < 0 AND created_at > ?',
+      [gId, dayAgoUnix]
+    );
+    const totalInflow = inflowSum ? (inflowSum.total || 0) : 0;
+    const totalOutflow = Math.abs(outflowSum ? (outflowSum.total || 0) : 0);
+    const netGrowth = totalInflow - totalOutflow;
+
+    // 3. Bangun query filter untuk log detail
+    let filterSql = ' WHERE guild_id = ?';
+    let params = [gId];
+
+    if (targetUserId) {
+      filterSql += ' AND user_id = ?';
+      params.push(targetUserId);
+    }
+
+    if (typeFilter && typeFilter !== 'ALL') {
+      if (typeFilter === 'ADMIN_ACTIONS') {
+        filterSql += " AND type LIKE 'ADMIN_%'";
+      } else if (typeFilter === 'CASINO_JUDI') {
+        filterSql += " AND type IN ('CASINO_BET', 'CASINO_LOST', 'CASINO_WON', 'SLOT_BET', 'SLOT_WON', 'LOTTERY_BUY', 'LOTTERY_WON')";
+      } else if (typeFilter === 'ROB_HEIST') {
+        filterSql += " AND type IN ('ROB_SUCCESS', 'ROB_LOST', 'HEIST_REWARD', 'HEIST_VICTIM_LOSS')";
+      } else if (typeFilter === 'CLAIMS_REWARDS') {
+        filterSql += " AND type IN ('DAILY_CLAIM', 'WEEKLY_CLAIM', 'VC_ACTIVE_REWARD', 'CHAT_EARN', 'WORK_EARN')";
+      } else if (typeFilter === 'PET_PVE') {
+        filterSql += " AND type LIKE 'PET_%'";
+      } else if (typeFilter === 'MARKET_SAHAM') {
+        filterSql += " AND type LIKE 'STOCK_%'";
+      }
+    }
+
+    // 4. Hitung total halaman log
+    const countRow = database.get(`SELECT COUNT(*) as count FROM transactions ${filterSql}`, params);
+    const totalCount = countRow ? countRow.count : 0;
+    const maxPage = Math.max(1, Math.ceil(totalCount / 10));
+    const currentPageIndex = Math.min(page, maxPage);
+
+    // 5. Ambil data transaksi paginated
+    const limit = 10;
+    const offset = (currentPageIndex - 1) * limit;
+    
+    let queryParams = [...params, limit, offset];
+    const txs = database.all(
+      `SELECT * FROM transactions ${filterSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      queryParams
+    );
+
+    // Build description embed
+    let logText = '';
+    if (txs.length === 0) {
+      logText = '*Tidak ada data transaksi yang ditemukan sesuai filter.*';
+    } else {
+      txs.forEach((tx, idx) => {
+        const sign = tx.amount > 0 ? '+' : '';
+        const dateStr = `<t:${tx.created_at}:R>`;
+        logText += `${idx + 1 + offset}. ${dateStr} | <@${tx.user_id}> | \`${tx.type}\` | **${sign}Rp ${tx.amount.toLocaleString('id-ID')}**\n`;
+      });
+    }
+
+    let filterDesc = '';
+    if (targetUserId) filterDesc += `• Target: <@${targetUserId}>\n`;
+    if (typeFilter !== 'ALL') filterDesc += `• Filter Kategori: \`${typeFilter}\`\n`;
+
+    let embed = new EmbedBuilder()
+      .setColor(0x10B981) // Emerald Green
+      .setTitle('📊 AUDIT LEDGER & ALIRAN DANA SERVER')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setDescription(
+        `Selamat datang di **Dashboard Audit Finansial Sentinel**! 🛡️💼\n` +
+        `Gunakan panel ini untuk melacak perputaran koin, inflasi harian, dan mutasi dana warga:\n\n` +
+        `💰 **ESTIMASI SIRKULASI UANG GLOBAL:**\n` +
+        `• Total Saldo Dompet Warga: \`Rp ${totalWallets.toLocaleString('id-ID')}\`\n` +
+        `• Total Tabungan Bank Warga: \`Rp ${totalSavings.toLocaleString('id-ID')}\`\n` +
+        `• **Total Sirkulasi Koin (M2)**: 🪙 **Rp ${totalCirculation.toLocaleString('id-ID')}**\n\n` +
+        `📈 **ARUS KAS HARIAN (24 JAM TERAKHIR):**\n` +
+        `• 📥 Total Uang Masuk (Inflow): \`+Rp ${totalInflow.toLocaleString('id-ID')}\`\n` +
+        `• 📤 Total Uang Keluar (Outflow): \`-Rp ${totalOutflow.toLocaleString('id-ID')}\`\n` +
+        `• ⚖️ **Pertumbuhan Bersih (Net Growth)**: **Rp ${netGrowth.toLocaleString('id-ID')}**\n\n` +
+        (filterDesc ? `🔍 **FILTER AKTIF:**\n${filterDesc}\n` : '') +
+        `📑 **LOG MUTASI TRANSAKSI TERBARU (Hlm. ${currentPageIndex}/${maxPage}):**\n${logText}`
+      )
+      .setTimestamp()
+      .setFooter({ text: `Sentinel Audit • Total ${totalCount} Transaksi` });
+
+    // Dropdown User Select
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('admin_ledger_select_target')
+      .setPlaceholder('👤 Filter Berdasarkan Anggota');
+
+    const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+    // Dropdown Category Select
+    const categorySelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_ledger_select_type')
+      .setPlaceholder('🎯 Filter Berdasarkan Kategori');
+
+    categorySelect.addOptions(
+      new StringSelectMenuOptionBuilder().setLabel('🔍 Semua Kategori').setValue('ALL').setDefault(typeFilter === 'ALL'),
+      new StringSelectMenuOptionBuilder().setLabel('🛠️ Tindakan Admin (Suntik/Tarik)').setValue('ADMIN_ACTIONS').setDefault(typeFilter === 'ADMIN_ACTIONS'),
+      new StringSelectMenuOptionBuilder().setLabel('🎲 Judi & Kasino').setValue('CASINO_JUDI').setDefault(typeFilter === 'CASINO_JUDI'),
+      new StringSelectMenuOptionBuilder().setLabel('🚓 Kriminalitas (Rob/Heist)').setValue('ROB_HEIST').setDefault(typeFilter === 'ROB_HEIST'),
+      new StringSelectMenuOptionBuilder().setLabel('🎁 Klaim & Hadiah Harian').setValue('CLAIMS_REWARDS').setDefault(typeFilter === 'CLAIMS_REWARDS'),
+      new StringSelectMenuOptionBuilder().setLabel('🐾 Ekspedisi & Perawatan Pet').setValue('PET_PVE').setDefault(typeFilter === 'PET_PVE'),
+      new StringSelectMenuOptionBuilder().setLabel('📈 Bursa Saham & Trading').setValue('MARKET_SAHAM').setDefault(typeFilter === 'MARKET_SAHAM')
+    );
+
+    const categoryRow = new ActionRowBuilder().addComponents(categorySelect);
+
+    // Buttons
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_ledger_btn_prev')
+        .setLabel('◀️ Prev')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(currentPageIndex <= 1),
+      new ButtonBuilder()
+        .setCustomId('admin_ledger_btn_refresh')
+        .setLabel('🔄 Refresh')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_ledger_btn_next')
+        .setLabel('Next ▶️')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(currentPageIndex >= maxPage)
+    );
+
+    const navRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_ledger_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_ledger_btn_close')
+        .setLabel('❌ Tutup Audit')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [userRow, categoryRow, btnRow, navRow] };
+  };
+
+  const initialData = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iLedger => {
+    const isOwner = iLedger.user.id === '436554535037698059';
+    const isAdmin = iLedger.member && iLedger.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iLedger.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iLedger.customId === 'admin_ledger_select_target') {
+        selectedTargetUserId = iLedger.values[0];
+        currentPage = 1; // Reset to page 1 on filter change
+        const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+        await iLedger.update(fresh);
+      }
+      else if (iLedger.customId === 'admin_ledger_select_type') {
+        selectedTypeFilter = iLedger.values[0];
+        currentPage = 1; // Reset to page 1 on filter change
+        const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+        await iLedger.update(fresh);
+      }
+      else if (iLedger.customId === 'admin_ledger_btn_prev') {
+        if (currentPage > 1) currentPage--;
+        const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+        await iLedger.update(fresh);
+      }
+      else if (iLedger.customId === 'admin_ledger_btn_next') {
+        currentPage++;
+        const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+        await iLedger.update(fresh);
+      }
+      else if (iLedger.customId === 'admin_ledger_btn_refresh') {
+        const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+        await iLedger.update(fresh);
+      }
+      else if (iLedger.customId === 'admin_ledger_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iLedger, client);
+      }
+      else if (iLedger.customId === 'admin_ledger_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+    } catch (err) {
+      console.error('Error in Ledger Panel Interaction:', err);
+      await iLedger.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
+/**
  * 🎮 7. MAIN HUB PORTAL (ADMIN DASHBOARD CONTROL HUB)
  */
 async function handleAdminPanel(messageOrInteraction, client) {
@@ -3163,7 +3410,8 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `🎭 **\`Panel Shop\`** — Tambahkan penjualan role server, set stok role, kontrol sesi game ToD VC.\n` +
         `🌱 **\`Panel Garden\`** — Siram instan, percepat mekar bunga 100%, bongkar kebun warga, hadiahkan paket benih.\n` +
         `📋 **\`Panel Misi Pet\`** — Lihat progress harian, instan selesaikan seluruh misi harian, reset quest acak, kirim paket perawatan.\n` +
-        `😜 **\`Panel Troll\`** — Kerjain warga server! Kutuk pet bau, ilusi bursa saham hancur, alarm copet palsu, kurung di sel VIP reot.\n\n` +
+        `😜 **\`Panel Troll\`** — Kerjain warga server! Kutuk pet bau, ilusi bursa saham hancur, alarm copet palsu, kurung di sel VIP reot.\n` +
+        `📊 **\`Audit Keuangan\`** — Log keluar masuk koin global/target, statistik sirkulasi total, sisa tabungan bank warga.\n\n` +
         `👉 **Silakan klik tombol di bawah untuk membuka panel kontrol yang Anda inginkan:**`
       )
       .setTimestamp()
@@ -3208,14 +3456,21 @@ async function handleAdminPanel(messageOrInteraction, client) {
       new ButtonBuilder()
         .setCustomId('hub_btn_troll')
         .setLabel('😜 Troll Panel')
-        .setStyle(ButtonStyle.Danger),
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const btnRow3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('hub_btn_ledger')
+        .setLabel('📊 Audit Ledger')
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('hub_btn_close')
         .setLabel('❌ Tutup Hub')
         .setStyle(ButtonStyle.Secondary)
     );
 
-    return { embeds: [embed], components: [btnRow1, btnRow2] };
+    return { embeds: [embed], components: [btnRow1, btnRow2, btnRow3] };
   };
 
   const initialData = getHubPanelData();
@@ -3280,6 +3535,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
       else if (iHub.customId === 'hub_btn_troll') {
         collector.stop('transition');
         await handleAdminTrollPanel(iHub, client);
+      }
+      else if (iHub.customId === 'hub_btn_ledger') {
+        collector.stop('transition');
+        await handleAdminLedgerPanel(iHub, client);
       }
       else if (iHub.customId === 'hub_btn_close') {
         collector.stop();
