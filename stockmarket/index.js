@@ -533,31 +533,86 @@ function startRealtimeLeaderboard(client) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
     }
 
-    // ── 2. TOP PET LEADERBOARD (Channel: 1510232295448117308) ──
+    // ── 2. TOP PET EKSPEDISI & PVP LEADERBOARD (Channel: 1510232295448117308) ──
     try {
       const petChannel = await client.channels.fetch('1510232295448117308').catch(() => null);
       if (petChannel) {
         const guildId = petChannel.guild.id;
         const guildName = petChannel.guild.name;
 
-        const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
-        await Promise.all(topPets.map(async p => {
+        // ── 2a. TOP PVP ARENA ──
+        const topPvp = pet.getPetLeaderboard(guildId, 'pvp', 10);
+        await Promise.all(topPvp.map(async p => {
           try { await client.users.fetch(p.user_id); } catch (e) { }
         }));
-        const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
+        const pvpEmbed = embeds.petLeaderboardEmbed(guildName, topPvp, 'pvp', client);
+
+        // ── 2b. TOP EXPEDITION EARNERS ──
+        const topExpedition = database.all(
+          `SELECT t.user_id, SUM(t.amount) as total_earned, COUNT(t.id) as total_runs,
+                  p.pet_name, p.pet_type, p.level, p.trait, p.status
+           FROM transactions t
+           LEFT JOIN user_pets p ON t.user_id = p.user_id AND t.guild_id = p.guild_id AND p.is_active = 1
+           WHERE t.guild_id = ? AND t.type = 'PET_EXPEDITION_REWARD'
+           GROUP BY t.user_id
+           ORDER BY total_earned DESC
+           LIMIT 10`,
+          [guildId]
+        );
+
+        await Promise.all(topExpedition.map(async u => {
+          try { await client.users.fetch(u.user_id); } catch (e) { }
+        }));
+
+        // Build Expedition Embed
+        const guild = client.guilds.cache.get(guildId);
+        const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+        const expEmbed = new EmbedBuilder()
+          .setColor(0xD4AF37) // Imperial Gold
+          .setTitle(`🗺️ PAPAN PERINGKAT EKSPEDISI PET — ${guildName.toUpperCase()}`)
+          .setTimestamp();
+
+        if (iconUrl) expEmbed.setThumbnail(iconUrl);
+
+        if (topExpedition.length === 0) {
+          expEmbed.setDescription('🚫 Belum ada data ekspedisi pet di server ini.');
+        } else {
+          let ranks = `🏕️ **TOP PENJELAJAH PET TERKAYA** 🏕️\n` +
+            `*10 penjelajah pet yang paling banyak meraup koin dari misi ekspedisi.*\n` +
+            `────────────────────────────────────────\n\n`;
+
+          topExpedition.forEach((u, idx) => {
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+            const owner = client.users.cache.get(u.user_id);
+            const ownerName = owner ? owner.username : u.user_id;
+            const petInfo = u.pet_name ? `🐾 *${u.pet_name} the ${u.pet_type}* (Lv.${u.level})` : '🐾 *Tidak ada pet aktif*';
+
+            ranks += `${medal} **${ownerName}**\n` +
+              `┗ ${petInfo}\n` +
+              `┗ 💰 Total Koin: **Rp ${u.total_earned.toLocaleString('id-ID')}** • 🗺️ Misi: **${u.total_runs}x**\n\n`;
+          });
+
+          ranks += '────────────────────────────────────────';
+          expEmbed.setDescription(ranks);
+        }
+        expEmbed.setFooter({ text: 'Ikuti ekspedisi pet bersama teman! Ketik .pet expedition' });
 
         const messages = await petChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-        const payload = { embeds: [petEmbed], components: [] };
+        const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
+        const payload = { embeds: [pvpEmbed, expEmbed], components: [] };
 
-        if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => { });
+        if (botMessages.length > 0) {
+          await botMessages[0].edit(payload).catch(() => { });
+          // Hapus pesan bot lama lainnya jika ada
+          for (let i = 1; i < botMessages.length; i++) {
+            await botMessages[i].delete().catch(() => { });
+          }
         } else {
           await petChannel.send(payload).catch(() => { });
         }
       }
     } catch (err) {
-      console.error('❌ Error updating realtime pet leaderboard:', err);
+      console.error('❌ Error updating realtime pet expedition & pvp leaderboard:', err);
     }
 
     // ── 3. DAILY LEADERBOARD (Channel: 1510240252458176662) ──
@@ -3214,7 +3269,7 @@ async function handlePetCommand(message, client, args) {
   if (subCommand === 'top' || subCommand === 'leaderboard') {
     const embed = embeds.warnEmbed(
       'Papan Peringkat Pet Dinonaktifkan! ❌',
-      'Perintah `.pet top` manual sudah tidak digunakan lagi.\n\n👉 Silakan lihat papan peringkat realtime terbaru di channel: <#1510232295448117308>!'
+      'Perintah `.pet top` manual sudah tidak digunakan lagi.\n\n👉 Silakan lihat papan peringkat **PVP Arena & Ekspedisi Pet** realtime terbaru di channel: <#1510232295448117308>!'
     );
     return message.reply({ embeds: [embed] });
   }
