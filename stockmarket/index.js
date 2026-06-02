@@ -1842,8 +1842,13 @@ function initStockMarket(client) {
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
             rows.push(new ActionRowBuilder().addComponents(row2Components));
 
+             const isAutoFeedActive = userPet.auto_feed === 1 || userPet.auto_feed === 2;
+             const autoFeedLabel = isAutoFeedActive ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care (Rp 5.000)';
+             const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
+
              const row3Components = [
               new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
             ];
             rows.push(new ActionRowBuilder().addComponents(row3Components));
@@ -2077,6 +2082,22 @@ function initStockMarket(client) {
               const res = pet.sendToHunt(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+            } else if (iPet.customId === 'pet_btn_autocare') {
+              try {
+                const res = pet.unlockAutoCare(user.id, guildId);
+                const successEmb = embeds.successEmbed(
+                  '🔋 AUTO CARE DIAKTIFKAN! 🔋',
+                  `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
+                  `**Ketentuan Perawatan Otomatis:**\n` +
+                  `• 🍖 Kelaparan $\\le$ 50% $\\rightarrow$ Kenyangan $+30$\n` +
+                  `• 💧 Kehausan $\\le$ 50% $\\rightarrow$ Hidrasi $+35$\n\n` +
+                  `*Fitur ini menjaga pet Anda secara otomatis tanpa memotong saldo koin atau menggunakan item setelah diaktifkan!*`
+                );
+                await iPet.reply({ embeds: [successEmb], flags: 64 });
+                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
+              }
             } else if (iPet.customId === 'pet_btn_nav_shop') {
               await iPet.update(getShopPanelDataPrivate(user.id));
             } else if (iPet.customId === 'pet_btn_cancel_shop') {
@@ -3229,6 +3250,24 @@ async function handlePetCommand(message, client, args) {
     }
   }
 
+  // ── SUB-PERINTAH: AUTO CARE ──
+  if (subCommand === 'auto-care' || subCommand === 'autocare') {
+    try {
+      const res = pet.unlockAutoCare(author.id, guildId);
+      const successEmb = embeds.successEmbed(
+        '🔋 AUTO CARE DIAKTIFKAN! 🔋',
+        `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
+        `**Ketentuan Perawatan Otomatis:**\n` +
+        `• 🍖 Kelaparan $\\le$ 50% $\\rightarrow$ Kenyangan $+30$\n` +
+        `• 💧 Kehausan $\\le$ 50% $\\rightarrow$ Hidrasi $+35$\n\n` +
+        `*Fitur ini menjaga pet Anda secara otomatis tanpa memotong saldo koin atau menggunakan item setelah diaktifkan!*`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: SHOP ──
   if (subCommand === 'shop') {
     return handlePetShopCommand(message, client);
@@ -3874,8 +3913,13 @@ async function handlePetCommand(message, client, args) {
 
       const row2 = new ActionRowBuilder().addComponents(row2Components);
 
+      const isAutoFeedActive = userPet.auto_feed === 1 || userPet.auto_feed === 2;
+      const autoFeedLabel = isAutoFeedActive ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care (Rp 5.000)';
+      const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
+
       const row3Components = [
         new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
         new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
       ];
       const row3 = new ActionRowBuilder().addComponents(row3Components);
@@ -4224,6 +4268,25 @@ async function handlePetCommand(message, client, args) {
           await replyMsg.edit(freshData).catch(console.error);
         } catch (err) {
           await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Berburu!', err.message)], flags: 64 });
+        }
+      }
+
+      else if (iPet.customId === 'pet_btn_autocare') {
+        try {
+          const res = pet.unlockAutoCare(author.id, guildId);
+          const successEmb = embeds.successEmbed(
+            '🔋 AUTO CARE DIAKTIFKAN! 🔋',
+            `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
+            `**Ketentuan Perawatan Otomatis:**\n` +
+            `• 🍖 Kelaparan $\\le$ 50% $\\rightarrow$ Kenyangan $+30$\n` +
+            `• 💧 Kehausan $\\le$ 50% $\\rightarrow$ Hidrasi $+35$\n\n` +
+            `*Fitur ini menjaga pet Anda secara otomatis tanpa memotong saldo koin atau menggunakan item setelah diaktifkan!*`
+          );
+          await iPet.reply({ embeds: [successEmb], flags: 64 });
+          const freshData = getDashboardPanel(author.id, guildId);
+          await replyMsg.edit(freshData).catch(console.error);
+        } catch (err) {
+          await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
         }
       }
 

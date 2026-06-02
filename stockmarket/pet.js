@@ -177,6 +177,11 @@ function applyDecay(pet) {
     happinessDecayRate = Number((happinessDecayRate * 0.85).toFixed(2));
   }
 
+  let wallet = null;
+  if (pet.auto_feed === 1) {
+    wallet = economy.getWallet(pet.user_id, pet.guild_id);
+  }
+
   let newHunger = pet.hunger;
   let newThirst = pet.thirst;
   let newHappiness = pet.happiness;
@@ -200,6 +205,17 @@ function applyDecay(pet) {
       if (newThirst <= 50) {
         newThirst = Math.min(100, newThirst + 35);
       }
+    } else if (pet.auto_feed === 1 && wallet) {
+      if (newHunger <= 50 && wallet.balance >= 150) {
+        economy.subtractBalance(pet.user_id, pet.guild_id, 150, 'PET_AUTO_FEED_FOOD');
+        wallet.balance -= 150;
+        newHunger = Math.min(100, newHunger + 30);
+      }
+      if (newThirst <= 50 && wallet.balance >= 100) {
+        economy.subtractBalance(pet.user_id, pet.guild_id, 100, 'PET_AUTO_FEED_WATER');
+        wallet.balance -= 100;
+        newThirst = Math.min(100, newThirst + 35);
+      }
     }
 
     if (newHunger === 0) hungerOverdueHours += 1;
@@ -216,6 +232,17 @@ function applyDecay(pet) {
         newHunger = Math.min(100, newHunger + 30);
       }
       if (newThirst <= 50) {
+        newThirst = Math.min(100, newThirst + 35);
+      }
+    } else if (pet.auto_feed === 1 && wallet) {
+      if (newHunger <= 50 && wallet.balance >= 150) {
+        economy.subtractBalance(pet.user_id, pet.guild_id, 150, 'PET_AUTO_FEED_FOOD');
+        wallet.balance -= 150;
+        newHunger = Math.min(100, newHunger + 30);
+      }
+      if (newThirst <= 50 && wallet.balance >= 100) {
+        economy.subtractBalance(pet.user_id, pet.guild_id, 100, 'PET_AUTO_FEED_WATER');
+        wallet.balance -= 100;
         newThirst = Math.min(100, newThirst + 35);
       }
     }
@@ -2376,6 +2403,63 @@ function setItemCooldown(userId, guildId, itemId, durationSeconds) {
   );
 }
 
+function unlockAutoCare(userId, guildId) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  }
+  if (petObj.status === 'EGG') {
+    throw new Error('Pet Anda masih berupa telur! Tunggu sampai menetas untuk membuka Auto Care.');
+  }
+  if (petObj.status === 'DEAD') {
+    throw new Error('Pet Anda telah mati! Bersihkan kandang terlebih dahulu.');
+  }
+  if (petObj.auto_feed === 1 || petObj.auto_feed === 2) {
+    throw new Error('Fitur Auto Care sudah aktif pada peliharaan ini!');
+  }
+
+  const cost = 5000;
+  economy.subtractBalance(userId, guildId, cost, 'PET_AUTOCARE_UNLOCK');
+
+  db.run(
+    'UPDATE user_pets SET auto_feed = 1 WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+    [userId, guildId]
+  );
+
+  return {
+    petName: petObj.pet_name,
+    autoFeed: 1
+  };
+}
+
+function toggleAutoFeed(userId, guildId) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  }
+  if (petObj.status === 'EGG') {
+    throw new Error('Pet Anda masih berupa telur! Tunggu sampai menetas.');
+  }
+  if (petObj.status === 'DEAD') {
+    throw new Error('Pet Anda telah mati! Bersihkan kandang terlebih dahulu.');
+  }
+  
+  // Toggle between 0 and 1. If 2 (VIP), throw error.
+  if (petObj.auto_feed === 2) {
+    throw new Error('Pet Anda memiliki fitur VIP Auto Care Gratis! Tidak perlu dinonaktifkan.');
+  }
+  
+  const nextStatus = petObj.auto_feed === 1 ? 0 : 1;
+  db.run(
+    'UPDATE user_pets SET auto_feed = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+    [nextStatus, userId, guildId]
+  );
+  return {
+    petName: petObj.pet_name,
+    autoFeed: nextStatus
+  };
+}
+
 module.exports = {
   PET_ITEMS,
   PET_SPECIES,
@@ -2406,5 +2490,7 @@ module.exports = {
   useSodaEnergy,
   trainPet,
   getItemCooldown,
-  setItemCooldown
+  setItemCooldown,
+  unlockAutoCare,
+  toggleAutoFeed
 };

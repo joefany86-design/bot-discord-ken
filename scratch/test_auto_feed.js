@@ -45,7 +45,7 @@ async function runTests() {
   // 12 jam -> hunger reduction = 48, thirst reduction = 60
   // HP decay: hungerOverdue = 0, thirstOverdue = 0 (karena belum menyentuh 0)
   // Dengan auto-feed AKTIF:
-  // Saat mensimulasikan per jam, ketika hunger/thirst <= 50, saldo terpotong dan hunger/thirst ditambah.
+  // Auto Care memulihkan status pet secara otomatis dengan memotong saldo koin dompet per jam.
   console.log('\n⏳ 4. Mensimulasikan berlalunya waktu (12 Jam) dengan Auto Care AKTIF...');
   db.run("UPDATE user_pets SET last_interaction_at = ?, hunger = 60, thirst = 60 WHERE user_id = ? AND guild_id = ?", [now - (12 * 3600), userId, guildId]);
   
@@ -53,23 +53,55 @@ async function runTests() {
   activePet = pet.getPet(userId, guildId);
   const currentWallet = economy.getWallet(userId, guildId);
   console.log(`   👉 Status Setelah 12 Jam - Hunger: ${activePet.hunger}%, Thirst: ${activePet.thirst}%, HP: ${activePet.health}%`);
-  console.log(`   👉 Sisa Saldo Dompet: Rp ${currentWallet.balance} (Mulai dari 3500)`);
+  console.log(`   👉 Sisa Saldo Dompet: Rp ${currentWallet.balance} (Harus berkurang Rp 500 menjadi 3000)`);
   
-  // Mari kita verifikasi pembelian makanan & air otomatis
-  // Hunger mulai dari 60.
-  // Jam 1: hunger 56, thirst 55
-  // Jam 2: hunger 52, thirst 50 -> thirst <= 50 -> beli AIR (-100, thirst +35 = 85)
-  // Jam 3: hunger 48 -> hunger <= 50 -> beli PAKAN (-150, hunger +30 = 78), thirst 80
-  // ...
-  // Selama saldo mencukupi, HP tidak boleh berkurang.
-  if (currentWallet.balance < 3500 && activePet.health === 100) {
-    console.log('   ✅ VERIFIKASI SELESAI: Saldo berkurang otomatis untuk pakan/minum, dan HP pet tetap terjaga 100%!');
+  if (currentWallet.balance === 3000 && activePet.health === 100 && activePet.hunger > 50 && activePet.thirst > 50) {
+    console.log('   ✅ VERIFIKASI SELESAI: Auto-feed memulihkan status pet secara otomatis dan memotong Rp 500 koin!');
   } else {
-    console.error('   ❌ VERIFIKASI GAGAL: Auto-feed tidak berjalan atau HP berkurang!');
+    console.error('   ❌ VERIFIKASI GAGAL: Auto-feed tidak berjalan atau HP berkurang atau pemotongan koin salah!');
   }
 
-  // Uji Kasus: Saldo Habis
-  console.log('\n💸 5. Menguji ketika saldo habis...');
+  // Menguji Fitur unlockAutoCare (Rp 5.000)
+  console.log('\n💎 5. Menguji fungsi unlockAutoCare()...');
+  
+  // 5a. Nonaktifkan kembali untuk pengetesan pembelian
+  db.run("UPDATE user_pets SET auto_feed = 0 WHERE user_id = ? AND guild_id = ?", [userId, guildId]);
+  
+  // 5b. Kurangi saldo ke Rp 2.000 (tidak cukup)
+  db.run("UPDATE wallets SET balance = 2000 WHERE user_id = ? AND guild_id = ?", [userId, guildId]);
+  try {
+    pet.unlockAutoCare(userId, guildId);
+    console.error('   ❌ GAGAL: Berhasil membeli Auto Care meskipun koin kurang!');
+  } catch (err) {
+    console.log(`   ✅ BERHASIL: Gagal membeli Auto Care saat saldo kurang. Pesan error: "${err.message}"`);
+  }
+
+  // 5c. Set saldo ke Rp 6.000 (cukup)
+  db.run("UPDATE wallets SET balance = 6000 WHERE user_id = ? AND guild_id = ?", [userId, guildId]);
+  try {
+    const res = pet.unlockAutoCare(userId, guildId);
+    const afterWallet = economy.getWallet(userId, guildId);
+    const afterPet = pet.getPet(userId, guildId);
+    
+    if (afterWallet.balance === 1000 && afterPet.auto_feed === 1) {
+      console.log(`   ✅ BERHASIL: Sukses membuka Auto Care untuk pet "${res.petName}". Saldo berkurang Rp 5.000 (Sisa: Rp ${afterWallet.balance}), status auto_feed = 1.`);
+    } else {
+      console.error(`   ❌ GAGAL: Saldo salah atau status auto_feed tidak berubah! Saldo: ${afterWallet.balance}, auto_feed: ${afterPet.auto_feed}`);
+    }
+  } catch (err) {
+    console.error('   ❌ GAGAL: Terjadi error saat mencoba membeli Auto Care dengan koin cukup:', err.message);
+  }
+
+  // 5d. Pembelian ganda (harus gagal karena sudah aktif)
+  try {
+    pet.unlockAutoCare(userId, guildId);
+    console.error('   ❌ GAGAL: Pembelian ganda berhasil!');
+  } catch (err) {
+    console.log(`   ✅ BERHASIL: Pembelian ganda ditolak. Pesan error: "${err.message}"`);
+  }
+
+  // 6. Uji Kasus: Saldo Habis saat Auto Care aktif
+  console.log('\n💸 6. Menguji ketika saldo habis...');
   db.run("UPDATE wallets SET balance = 0 WHERE user_id = ? AND guild_id = ?", [userId, guildId]);
   db.run("UPDATE user_pets SET last_interaction_at = ?, hunger = 20, thirst = 20, health = 100 WHERE user_id = ? AND guild_id = ?", [now - (20 * 3600), userId, guildId]);
   
@@ -85,7 +117,7 @@ async function runTests() {
   // Bersihkan tabel test
   db.run('DELETE FROM user_pets WHERE guild_id = ?', [guildId]);
   db.run('DELETE FROM wallets WHERE guild_id = ?', [guildId]);
-  console.log('\n🧹 6. Data pengujian berhasil dibersihkan.');
+  console.log('\n🧹 7. Data pengujian berhasil dibersihkan.');
 }
 
 runTests();

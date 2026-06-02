@@ -371,6 +371,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.pet play\`** - Bermain bersama pet untuk memulihkan kebahagiaan & XP.`,
             `👉 **\`.pet pvp @user <taruhan>\`** - Duel Arena PvP antar pet memperebutkan koin taruhan.`,
             `👉 **\`.pet reset\`** - Mengosongkan kandang untuk mengadopsi pet baru.`,
+            `👉 **\`.pet auto-care\`** - Buka perawatan pet otomatis (makan/minum gratis saat lapar/haus) seharga **Rp 5.000**.`,
             `\n💥 **PERAMPOKAN BERISIKO TINGGI (ROB & HEIST):**`,
             `👉 **\`.rob @user\`** - Mencuri sebagian koin target secara solo (sukses rate 40%). Gagal masuk penjara!`,
             `👉 **\`.heist\`** / **\`.heist start\`** - Mengajak kru merampok Bank Server secara multiplayer.`,

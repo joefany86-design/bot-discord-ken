@@ -2158,6 +2158,8 @@ module.exports = {
     else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan (PvP DEF +15%)';
     else if (pet.accessory === 'LUCKY_AMULET') accText = '🔮 Jimat Keberuntungan (Mencegah Kematian 1x)';
 
+    const autoFeedLabel = pet.auto_feed === 2 ? '👑 VIP (Gratis)' : (pet.auto_feed === 1 ? '✅ Aktif (Berbayar)' : '❌ Nonaktif');
+
     embed
       .setColor(statusColor)
       .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
@@ -2165,6 +2167,7 @@ module.exports = {
         `> 👤 <@${pet.user_id}> · ${statusEmoji} · ${healthStatus}\n` +
         `> 🛡️ **Aksesoris:** ${accText}\n` +
         `> 🌟 **${rarityBadge}** ${traitLine ? `· ${traitLine}` : ''}\n` +
+        `> 🔋 **Auto Care:** ${autoFeedLabel}\n` +
         `> ⚡ **XP Booster:** ${multText}\n\n` +
         `**✨ XP Progress** \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
       )
