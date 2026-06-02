@@ -2132,7 +2132,7 @@ module.exports = {
 
     // XP Progress bar teks
     const xpRatio = Math.min(1, pet.xp / (xpNeeded || 1));
-    const xpBarLen = 12;
+    const xpBarLen = 10;
     const xpFilled = Math.round(xpRatio * xpBarLen);
     const xpBar = '█'.repeat(xpFilled) + '░'.repeat(xpBarLen - xpFilled);
     const xpPct = Math.round(xpRatio * 100);
@@ -2165,13 +2165,14 @@ module.exports = {
       .setColor(statusColor)
       .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
       .setDescription(
-        `👤 **Pemilik:** <@${pet.user_id}>\n` +
-        `🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
-        `🛡️ **Aksesoris:** ${accText}\n` +
-        `🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `· ${traitLine}` : ''}\n` +
-        `🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n\n` +
-        `**✨ Progress Level & XP**\n` +
-        `\`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
+        `> 👤 **Pemilik:** <@${pet.user_id}>\n` +
+        `> 🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
+        `> 🛡️ **Aksesoris:** ${accText}\n` +
+        `> 🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `· ${traitLine}` : ''}\n` +
+        `> 🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n` +
+        `> \n` +
+        `> **✨ Progress Level & XP**\n` +
+        `> \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
       );
 
     // Statistik Utama Pet (Ditata vertikal agar tidak wrap jelek di HP)
