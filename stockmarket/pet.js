@@ -97,6 +97,16 @@ function renderStars(n) {
   return '⭐'.repeat(Math.max(1, Math.min(5, n || 1)));
 }
 
+// Dapatkan Max HP dinamis berdasarkan spesies dan bintang
+function getMaxHP(pet) {
+  if (!pet) return 100;
+  const speciesInfo = GACHA_SPECIES[pet.pet_type];
+  const baseHP = speciesInfo ? (speciesInfo.baseHP || 100) : (pet.pet_type === 'SLIME' ? 120 : 100);
+  const starLevel = pet.star_level || 1;
+  const hpBonus = (starLevel - 1) * 15;
+  return baseHP + hpBonus;
+}
+
 
 
 // Konfigurasi Peta Ekspedisi Pet (Co-op PVE)
@@ -346,7 +356,7 @@ function applyDecay(pet) {
   }
 
   if (passiveHpChange !== 0) {
-    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    const maxHP = getMaxHP(pet);
     newHealth = Math.max(0, Math.min(maxHP, newHealth + Math.floor(passiveHpChange * elapsedHours)));
   }
 
@@ -678,8 +688,8 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     }
   }
 
-  // 2. Validasi status spesifik dengan batas HP dinamis (Slime memiliki max HP 120)
-  const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+  // 2. Validasi status spesifik dengan batas HP dinamis
+  const maxHP = getMaxHP(pet);
   if (!item.multiplier && item.cures && pet.health >= maxHP) {
     throw new Error('Pet Anda dalam kondisi sangat sehat, tidak memerlukan obat-obatan!');
   }
@@ -798,7 +808,7 @@ function playWithPet(userId, guildId) {
   db.transaction(() => {
     let newHappiness = Math.min(100, pet.happiness + 25);
     let xpGained = Math.round(15 * (pet.xp_multiplier || 1.0));
-    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     db.run(
@@ -911,7 +921,7 @@ function sendToWork(userId, guildId, member = null) {
 
     // Beri XP (+30 XP) dikali xp_multiplier dan gacha bonus
     let xpGained = Math.round(30 * (pet.xp_multiplier || 1.0) * gachaXpBonus);
-    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
@@ -1052,7 +1062,7 @@ function sendToHunt(userId, guildId, member = null) {
 
     // Beri XP (+60 XP) dikali xp_multiplier dan gacha bonus
     let xpGained = Math.round(60 * (pet.xp_multiplier || 1.0) * gachaXpBonus);
-    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
@@ -1256,12 +1266,12 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
 
     // Beri XP (+50 XP pemenang, +20 XP kalah) dikali xp_multiplier masing-masing
     const winnerPet = winnerId === challengerId ? challenger : opponent;
-    const wMaxHP = winnerPet.pet_type === 'SLIME' ? 120 : 100;
+    const wMaxHP = getMaxHP(winnerPet);
     const wXpGained = Math.round(50 * (winnerPet.xp_multiplier || 1.0));
     let { newXp: wXp, newLevel: wLevel } = addXp(winnerPet, wXpGained, wMaxHP);
 
     const loserPet = loserId === challengerId ? challenger : opponent;
-    const lMaxHP = loserPet.pet_type === 'SLIME' ? 120 : 100;
+    const lMaxHP = getMaxHP(loserPet);
     const lXpGained = Math.round(20 * (loserPet.xp_multiplier || 1.0));
     let { newXp: lXp, newLevel: lLevel } = addXp(loserPet, lXpGained, lMaxHP);
 
@@ -1654,7 +1664,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
 
         // Berikan XP (+200 XP dasar) dikali xp_multiplier
         let xpGained = Math.round(200 * (ap.pet.xp_multiplier || 1.0));
-        const maxHP = ap.pet.pet_type === 'SLIME' ? 120 : 100;
+        const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
@@ -1840,7 +1850,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
         checkExpeditionLimit(ap.userId, guildId, false);
 
         let xpGained = Math.round(60 * (ap.pet.xp_multiplier || 1.0));
-        const maxHP = ap.pet.pet_type === 'SLIME' ? 120 : 100;
+        const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
@@ -2382,7 +2392,7 @@ function trainPet(userId, guildId) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const maxHP = petObj.pet_type === 'SLIME' ? 120 : 100;
+  const maxHP = getMaxHP(petObj);
 
   db.transaction(() => {
     // Kurangi koin
@@ -2894,6 +2904,7 @@ module.exports = {
   STAR_UPGRADE_REQ,
   getStarBonuses,
   renderStars,
+  getMaxHP,
   // Core
   getPet,
   adoptPet,

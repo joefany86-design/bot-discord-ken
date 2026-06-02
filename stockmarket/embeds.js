@@ -2053,20 +2053,20 @@ module.exports = {
         .setTimestamp();
     }
 
-    // Warna aksen per spesies pet
-    const SPECIES_COLORS = {
-      SLIME: 0x00E676, // Hijau neon
-      DRAGON: 0xFF5722, // Oranye api
-      CAT: 0xFFB300, // Kuning emas
-      GOLEM: 0x78909C  // Abu-abu batu
-    };
-    const SPECIES_EMOJI = {
-      SLIME: '🟢', DRAGON: '🔥', CAT: '🐱', GOLEM: '🧱'
-    };
+    const { GACHA_SPECIES, renderStars, getMaxHP } = require('./pet');
+    const speciesInfo = GACHA_SPECIES[pet.pet_type];
+    const petRarity = (pet.gacha_rarity || (speciesInfo ? speciesInfo.rarity : 'COMMON')).toUpperCase();
 
-    const typeName = pet.pet_type.charAt(0) + pet.pet_type.slice(1).toLowerCase();
-    const speciesColor = SPECIES_COLORS[pet.pet_type] || COLORS.INFO;
-    const speciesEmoji = SPECIES_EMOJI[pet.pet_type] || '🐾';
+    // Warna aksen per kasta raritas pet
+    const RARITY_COLORS = {
+      COMMON: 0x78909C,
+      RARE: 0x2ECC71,
+      EPIC: 0x9B59B6,
+      LEGENDARY: 0xF1C40F
+    };
+    const speciesColor = RARITY_COLORS[petRarity] || COLORS.INFO;
+    const speciesEmoji = (speciesInfo && speciesInfo.name) ? speciesInfo.name.split(' ')[0] : '🐾';
+    const typeName = speciesInfo ? speciesInfo.name.replace(/^\S+\s+/, '') : (pet.pet_type.charAt(0) + pet.pet_type.slice(1).toLowerCase());
 
     // Ambil GIF animasi sesuai spesies & fase
     const petImg = getPetImage(pet);
@@ -2125,9 +2125,8 @@ module.exports = {
     if (isInjured) statusEmoji = '🤕 Terluka';
 
     const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : speciesColor;
-    const maxHP = pet.pet_type === 'SLIME' ? 120 : 100;
+    const maxHP = getMaxHP(pet);
 
-    const { getXpNeeded } = require('./pet');
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
     // XP Progress bar teks
@@ -2137,17 +2136,35 @@ module.exports = {
     const xpBar = '█'.repeat(xpFilled) + '░'.repeat(xpBarLen - xpFilled);
     const xpPct = Math.round(xpRatio * 100);
 
-    // Rarity & Trait
-    let rarityBadge = '⚪ COMMON';
-    let traitLine = '';
-    if (pet.trait) {
-      const traitName = pet.trait.toUpperCase();
-      if (traitName === 'GENIUS') { rarityBadge = '🧠 RARE · GENIUS'; traitLine = '`-15% XP cap`'; }
-      else if (traitName === 'STURDY') { rarityBadge = '🛡️ RARE · STURDY'; traitLine = '`HP decay ÷2`'; }
-      else if (traitName === 'MUTANT') { rarityBadge = '🧬 RARE · MUTANT'; traitLine = '`+10% work/hunt`'; }
-      else if (traitName === 'WARRIOR') { rarityBadge = '⚔️ RARE · WARRIOR'; traitLine = '`+10% ATK`'; }
-      else if (traitName === 'FRAGILE') { rarityBadge = '💀 MUTASI · FRAGILE'; traitLine = '`Lapar/haus dmg 2.0x`'; }
-      else if (traitName === 'SURVIVOR') { rarityBadge = '🛡️ RARE · SURVIVOR'; traitLine = '`Kebal kematian lapar (Min 1 HP)`'; }
+    // Rarity display mapping with emojis
+    const RARITY_DISPLAY = {
+      COMMON: '⚪ COMMON',
+      UNCOMMON: '🟢 UNCOMMON',
+      RARE: '🔵 RARE',
+      EPIC: '🟣 EPIC',
+      LEGENDARY: '🟡 LEGENDARY'
+    };
+    const rarityLabel = RARITY_DISPLAY[petRarity] || `✨ ${petRarity}`;
+    const starString = renderStars(pet.star_level || 1);
+
+    // Get Trait details
+    let traitText = '';
+    const traitList = [];
+    if (pet.trait) traitList.push(pet.trait.toUpperCase());
+    if (pet.gacha_trait2) traitList.push(pet.gacha_trait2.toUpperCase());
+    
+    if (traitList.length > 0) {
+      traitText = traitList.map(t => {
+        if (t === 'GENIUS') return '🧠 GENIUS (-15% XP cap)';
+        if (t === 'STURDY') return '🛡️ STURDY (HP decay ÷2)';
+        if (t === 'MUTANT') return '🧬 MUTANT (+10% work/hunt)';
+        if (t === 'WARRIOR') return '⚔️ WARRIOR (+10% ATK)';
+        if (t === 'FRAGILE') return '💀 FRAGILE (Lapar/haus dmg 2.0x)';
+        if (t === 'SURVIVOR') return '🛡️ SURVIVOR (Kebal mati lapar/haus)';
+        return t;
+      }).join(' + ');
+    } else {
+      traitText = '❌ Tidak Ada';
     }
 
     const multText = (pet.xp_multiplier || 1.0) > 1.0 ? `⚡ **${pet.xp_multiplier}x XP**` : '1x';
@@ -2163,12 +2180,14 @@ module.exports = {
 
     embed
       .setColor(statusColor)
-      .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
+      .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName} ${starString}`)
       .setDescription(
         `> 👤 **Pemilik:** <@${pet.user_id}>\n` +
         `> 🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
+        `> ⭐ **Bintang:** ${starString} (Lv. ${pet.star_level || 1})\n` +
+        `> 🌟 **Raritas Pet:** ${rarityLabel}\n` +
+        `> 🧬 **Trait Bawaan:** ${traitText}\n` +
         `> 🛡️ **Aksesoris:** ${accText}\n` +
-        `> 🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `· ${traitLine}` : ''}\n` +
         `> 🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n` +
         `> \n` +
         `> **✨ Progress Level & XP**\n` +
@@ -2284,36 +2303,39 @@ module.exports = {
 
   // 27b. List of Pets (.pet list)
   petListEmbed(user, pets) {
+    const { GACHA_SPECIES, renderStars } = require('./pet');
     const embed = new EmbedBuilder()
       .setColor(COLORS.INFO)
       .setTitle(`🐾 DAFTAR HEWAN PELIHARAAN — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-      .setDescription('Berikut adalah daftar seluruh peliharaan yang Anda miliki di server ini (Maksimal 3):');
+      .setDescription('Berikut adalah daftar seluruh peliharaan yang Anda miliki di server ini:');
 
     if (!pets || pets.length === 0) {
-      embed.setDescription('*Anda belum memiliki hewan peliharaan. Adopsi telur seharga Rp 1.500 dengan ketik `.pet buy <nama> <spesies>`!*');
+      embed.setDescription('*Anda belum memiliki hewan peliharaan. Dapatkan peliharaan Anda dengan bermain Gacha pet!*');
     } else {
       pets.forEach((pet, idx) => {
         const activeLabel = pet.is_active ? '🟢 **AKTIF**' : '⚪ Pasif';
-        const typeLabel = pet.pet_type === 'SLIME' ? '🟢 Slime' : pet.pet_type === 'DRAGON' ? '🔥 Dragon' : pet.pet_type === 'CAT' ? '🐱 Kucing' : '🧱 Golem';
+        
+        const speciesInfo = GACHA_SPECIES[pet.pet_type];
+        const typeLabel = speciesInfo ? speciesInfo.name : pet.pet_type;
 
         let statusText = '';
         if (pet.status === 'EGG') {
           statusText = `🥚 Telur (Menetas <t:${pet.hatch_at}:R>)`;
         } else if (pet.status === 'DEAD') {
-          statusText = `🪦 Meninggal Dunia (Reset dengan \`.pet reset\`)`;
+          statusText = `🪦 Meninggal Dunia (Revive dengan \`.pet revive\`)`;
         } else {
-          let rarityText = '⚪ COMMON';
+          const petRarity = (pet.gacha_rarity || (speciesInfo ? speciesInfo.rarity : 'COMMON')).toUpperCase();
+          const starText = renderStars(pet.star_level || 1);
+          
           let traitDesc = '';
           if (pet.trait) {
-            rarityText = '✨ RARE';
-            const traitName = pet.trait.toUpperCase();
-            if (traitName === 'GENIUS') traitDesc = ' | 🧠 Genius';
-            else if (traitName === 'STURDY') traitDesc = ' | 🛡️ Sturdy';
-            else if (traitName === 'MUTANT') traitDesc = ' | 🧬 Mutant';
-            else if (traitName === 'WARRIOR') traitDesc = ' | ⚔️ Warrior';
+            traitDesc = ` | Trait: ${pet.trait}`;
+            if (pet.gacha_trait2) {
+              traitDesc += ` + ${pet.gacha_trait2}`;
+            }
           }
-          statusText = `Raritas: **${rarityText}** | Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
+          statusText = `Raritas: **${petRarity}** ${starText} | Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
         }
 
         embed.addFields({
@@ -2324,12 +2346,7 @@ module.exports = {
       });
     }
 
-    if (pets.length < 3) {
-      embed.setFooter({ text: `Ketik .pet buy <nama> <spesies> untuk mengadopsi peliharaan berikutnya! (${pets.length}/3)` });
-    } else {
-      embed.setFooter({ text: 'Slot peliharaan Anda sudah penuh (3/3).' });
-    }
-
+    embed.setFooter({ text: `Total Peliharaan Anda: ${pets.length} pet • Kelola pet aktif Anda via .pet switch` });
     return embed;
   },
 

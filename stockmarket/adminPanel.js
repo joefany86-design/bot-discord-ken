@@ -366,7 +366,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (!targetPet) {
             return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
-          const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
+          const petModule = require('./pet');
+          const maxHP = petModule.getMaxHP(targetPet);
           database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
           await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
@@ -380,7 +381,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (targetPet.status !== 'DEAD') {
             return iPet.reply({ content: `❌ Pet milik <@${selectedTargetUserId}> (**${targetPet.pet_name}**) masih hidup (Status: **${targetPet.status}**)!`, flags: 64 });
           }
-          const maxHP = targetPet.pet_type === 'SLIME' ? 120 : 100;
+          const petModule = require('./pet');
+          const maxHP = petModule.getMaxHP(targetPet);
           const newStatus = targetPet.level >= 10 ? 'ADULT' : 'BABY';
           const now = Math.floor(Date.now() / 1000);
           
