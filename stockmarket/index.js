@@ -4480,28 +4480,33 @@ async function handlePetCommand(message, client, args) {
           .setTitle('♻️ DAUR ULANG PET ♻️')
           .setDescription('Pilih pet yang ingin didaur ulang. Pet akan dihapus permanen dan Anda menerima **Rp 1.000** sebagai kompensasi.\n\n⚠️ **Aksi ini tidak bisa dibatalkan!**')
           .setTimestamp();
-        await iPet.reply({
+        const subPrivateMsg = await iPet.reply({
           embeds: [recycleEmbed],
           components: [new ActionRowBuilder().addComponents(selectMenu)],
           flags: 64,
           fetchReply: true
         });
-      }
 
-      // ── SELECT RECYCLE PET ──
-      else if (iPet.customId === 'pet_select_recycle') {
-        const targetPetName = iPet.values[0];
-        try {
-          const res = pet.recyclePet(author.id, guildId, targetPetName);
-          await iPet.update({
-            embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
-            components: []
-          });
-          // Refresh dashboard
-          await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => {});
-        } catch (err) {
-          await iPet.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
-        }
+        const recycleCollector = subPrivateMsg.createMessageComponentCollector({
+          componentType: ComponentType.StringSelect,
+          time: 60000
+        });
+
+        recycleCollector.on('collect', async iRecycle => {
+          if (iRecycle.user.id !== author.id) return;
+          const targetPetName = iRecycle.values[0];
+          try {
+            const res = pet.recyclePet(author.id, guildId, targetPetName);
+            await iRecycle.update({
+              embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
+              components: []
+            });
+            // Refresh dashboard
+            await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => {});
+          } catch (err) {
+            await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
+          }
+        });
       }
 
       else if (iPet.customId === 'pet_btn_nav_adopt') {
