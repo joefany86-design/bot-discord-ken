@@ -1942,9 +1942,11 @@ function initStockMarket(client) {
              const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
 
              const row3Components = [
-              new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
-              new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
+              new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄').setStyle(ButtonStyle.Secondary)
             ];
             rows.push(new ActionRowBuilder().addComponents(row3Components));
           }
@@ -2193,6 +2195,14 @@ function initStockMarket(client) {
               } catch (err) {
                 await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
               }
+            } else if (iPet.customId === 'pet_btn_gacha') {
+              // Redirect ke panel gacha (ephemeral reply)
+              await iPet.deferReply({ flags: 64 });
+              await handlePetGachaPanel(iPet, client, true);
+            } else if (iPet.customId === 'pet_btn_upgrade') {
+              // Redirect ke panel upgrade (ephemeral reply)
+              await iPet.deferReply({ flags: 64 });
+              await handlePetUpgradePanel(iPet, client, true);
             } else if (iPet.customId === 'pet_btn_nav_shop') {
               await iPet.update(getShopPanelDataPrivate(user.id));
             } else if (iPet.customId === 'pet_btn_cancel_shop') {
@@ -2855,6 +2865,18 @@ function initStockMarket(client) {
         collector.on('end', async () => {
           await interaction.editReply({ components: [] }).catch(() => { });
         });
+      }
+
+      // ── PORTAL PERMANEN: GACHA PET ──
+      else if (customId === 'pet_btn_gacha_hub') {
+        await interaction.deferReply({ flags: 64 });
+        await handlePetGachaPanel(interaction, client, true);
+      }
+
+      // ── PORTAL PERMANEN: UPGRADE BINTANG PET ──
+      else if (customId === 'pet_btn_upgrade_hub') {
+        await interaction.deferReply({ flags: 64 });
+        await handlePetUpgradePanel(interaction, client, true);
       }
 
       // ── PORTAL PERMANEN: MISI HARIAN KOSAN 1A ──
@@ -3531,6 +3553,37 @@ async function handlePetCommand(message, client, args) {
     return handlePetShopCommand(message, client);
   }
 
+  // ── SUB-PERINTAH: GACHA ──
+  if (subCommand === 'gacha') {
+    return handlePetGachaPanel(message, client);
+  }
+
+  // ── SUB-PERINTAH: UPGRADE / EVOLUSI ──
+  if (subCommand === 'upgrade' || subCommand === 'evolve' || subCommand === 'evolusi') {
+    return handlePetUpgradePanel(message, client);
+  }
+
+  // ── SUB-PERINTAH: RECYCLE ──
+  if (subCommand === 'recycle' || subCommand === 'daur-ulang') {
+    const targetName = args.slice(1).join(' ');
+    if (!targetName) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet recycle <nama_pet>`\nContoh: `.pet recycle Ciko`')] });
+    }
+    try {
+      const res = pet.recyclePet(author.id, guildId, targetName);
+      const successEmb = embeds.successEmbed(
+        'Daur Ulang Pet Berhasil! ♻️',
+        `Pet **${res.petName}** telah didaur ulang.\n` +
+        `💰 **Kompensasi Diterima:** **Rp ${res.reward.toLocaleString('id-ID')}**\n\n` +
+        `📉 Sisa dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Daur Ulang Gagal!', err.message)] });
+    }
+  }
+
+
   // ── SUB-PERINTAH: IMAGE / SETIMAGE ──
   if (subCommand === 'image' || subCommand === 'setimage') {
     const { PermissionsBitField } = require('discord.js');
@@ -4184,7 +4237,15 @@ async function handlePetCommand(message, client, args) {
       ];
       const row3 = new ActionRowBuilder().addComponents(row3Components);
 
-      rows.push(row1, row2, row3);
+      // Row 4: Gacha, Upgrade, Recycle
+      const row4Components = [
+        new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade Bintang').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('pet_btn_recycle').setLabel('♻️ Recycle Pet').setStyle(ButtonStyle.Danger)
+      ];
+      const row4 = new ActionRowBuilder().addComponents(row4Components);
+
+      rows.push(row1, row2, row3, row4);
     }
 
     // Tambahkan Select Menu jika memiliki lebih dari 1 pet
@@ -4380,6 +4441,67 @@ async function handlePetCommand(message, client, args) {
           await iPet.update(freshData);
         } catch (err) {
           await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Ganti Pet!', err.message)], flags: 64 });
+        }
+      }
+
+      // ── TOMBOL GACHA PET ──
+      else if (iPet.customId === 'pet_btn_gacha') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+        return handlePetGachaPanel(message, client, false);
+      }
+
+      // ── TOMBOL UPGRADE BINTANG ──
+      else if (iPet.customId === 'pet_btn_upgrade') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+        return handlePetUpgradePanel(message, client, false);
+      }
+
+      // ── TOMBOL RECYCLE PET ──
+      else if (iPet.customId === 'pet_btn_recycle') {
+        // Tampilkan select menu untuk pilih pet yang mau di-recycle
+        const allPetsFresh = pet.getPetsList(author.id, guildId);
+        if (allPetsFresh.length === 0) {
+          return iPet.reply({ content: '❌ Anda tidak memiliki pet!', flags: 64 });
+        }
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('pet_select_recycle')
+          .setPlaceholder('♻️ Pilih pet yang ingin didaur ulang...');
+        allPetsFresh.forEach(p => {
+          const star = pet.renderStars(p.star_level || 1);
+          selectMenu.addOptions(new StringSelectMenuOptionBuilder()
+            .setLabel(`${p.pet_name} the ${p.pet_type} (${star}, Lv.${p.level})`)
+            .setDescription(`Recycle → +Rp 1.000`)
+            .setValue(p.pet_name)
+          );
+        });
+        const recycleEmbed = new EmbedBuilder()
+          .setColor(0xFF5252)
+          .setTitle('♻️ DAUR ULANG PET ♻️')
+          .setDescription('Pilih pet yang ingin didaur ulang. Pet akan dihapus permanen dan Anda menerima **Rp 1.000** sebagai kompensasi.\n\n⚠️ **Aksi ini tidak bisa dibatalkan!**')
+          .setTimestamp();
+        await iPet.reply({
+          embeds: [recycleEmbed],
+          components: [new ActionRowBuilder().addComponents(selectMenu)],
+          flags: 64,
+          fetchReply: true
+        });
+      }
+
+      // ── SELECT RECYCLE PET ──
+      else if (iPet.customId === 'pet_select_recycle') {
+        const targetPetName = iPet.values[0];
+        try {
+          const res = pet.recyclePet(author.id, guildId, targetPetName);
+          await iPet.update({
+            embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
+            components: []
+          });
+          // Refresh dashboard
+          await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => {});
+        } catch (err) {
+          await iPet.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
         }
       }
 
@@ -5282,6 +5404,633 @@ async function handleSlotCommand(message, client, args) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// HANDLER: PANEL GACHA PET (.pet gacha)
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePetGachaPanel(context, client, isInteraction = false) {
+  const guildId = context.guildId;
+  const author = isInteraction ? context.user : context.author;
+
+  const buildGachaMainEmbed = () => {
+    const wallet = economy.getWallet(author.id, guildId);
+    const tickets = pet.getGachaTickets(author.id, guildId);
+    const allPets = pet.getPetsList(author.id, guildId);
+    const slotsLeft = 3 - allPets.length;
+
+    const embed = new EmbedBuilder()
+      .setColor(0xFFD700)
+      .setTitle('🎰 GACHA PET — MESIN NASIB PELIHARAAN 🎰')
+      .setDescription(
+        `Putar mesin gacha untuk mendapatkan pet langka & legendaris!\n\n` +
+        `💰 **Saldo Koin:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n` +
+        `🎫 **Tiket Gacha:** **${tickets} tiket**\n` +
+        `🏠 **Slot Kandang:** **${slotsLeft}/3 tersisa**\n\n` +
+        `📊 **Rate Kelangkaan:**\n` +
+        `> ⚪ **COMMON** — 65% *(Cat, Golem, Slime)*\n` +
+        `> 🟢 **RARE** — 25% *(Cat, Golem, Slime, Dragon)*\n` +
+        `> 🟣 **EPIC** — 8% *(Phoenix, Turtle)*\n` +
+        `> 🟡 **LEGENDARY** — 2% *(Leviathan, Behemoth, Archdragon)*\n\n` +
+        `💎 **Harga:** Rp 3.500 / pull | Rp 30.000 / 10x pull\n` +
+        `🎫 **Tiket Gacha:** 1 tiket = 1 pull gratis`
+      )
+      .setFooter({ text: 'Pet gacha langsung dewasa (ADULT) tanpa telur!' })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('gacha_btn_1x').setLabel('🎰 Gacha 1x (Rp 3.500)').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('gacha_btn_10x').setLabel('🎰 Gacha 10x (Rp 30.000)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('gacha_btn_ticket').setLabel(`🎫 Gunakan Tiket (${tickets})`).setStyle(ButtonStyle.Secondary).setDisabled(tickets < 1)
+    );
+
+    return { embeds: [embed], components: [row] };
+  };
+
+  const buildResultEmbed = (pull, index = null) => {
+    const rarityColors = { COMMON: 0x95A5A6, RARE: 0x2ECC71, EPIC: 0x9B59B6, LEGENDARY: 0xF1C40F };
+    const rarityEmojis = { COMMON: '⚪', RARE: '🟢', EPIC: '🟣', LEGENDARY: '🟡' };
+
+    let traitText = pull.trait ? `**${pull.trait}**` : '*Tidak ada*';
+    if (pull.trait2) traitText += ` + **${pull.trait2}**`;
+    let elementText = pull.element ? `**${pull.element}**` : '*Tidak ada*';
+
+    const prefix = index !== null ? `**#${index + 1}** ` : '';
+
+    return new EmbedBuilder()
+      .setColor(rarityColors[pull.rarity] || 0xFFFFFF)
+      .setTitle(`${prefix}${rarityEmojis[pull.rarity]} ${pull.species.name} — ${pull.rarity}`)
+      .setDescription(
+        `*${pull.species.desc}*\n\n` +
+        `❤️ **Base HP:** ${pull.baseHP}\n` +
+        `⚔️ **Base ATK:** ${pull.baseAtk}\n` +
+        `🛡️ **Base DEF:** ${pull.baseDef}%\n` +
+        `🌀 **Elemen:** ${elementText}\n` +
+        `🧠 **Trait:** ${traitText}` +
+        (pull.workBuff > 0 ? `\n🔑 **Buff Kerja/Berburu:** +${Math.round(pull.workBuff * 100)}%` : '')
+      );
+  };
+
+  const handleSingleResult = async (replyMsg, collector, pull, author, guildId) => {
+    const resultEmbed = buildResultEmbed(pull);
+    const allPets = pet.getPetsList(author.id, guildId);
+    const canSave = allPets.length < 3;
+
+    const resultRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('gacha_btn_save').setLabel('💾 Simpan ke Kandang').setStyle(ButtonStyle.Success).setDisabled(!canSave),
+      new ButtonBuilder().setCustomId('gacha_btn_recycle_result').setLabel('♻️ Recycle (+Rp 1.000)').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+    );
+
+    await replyMsg.edit({ embeds: [resultEmbed], components: [resultRow] });
+    return pull;
+  };
+
+  let replyMsg;
+  if (isInteraction) {
+    replyMsg = await context.editReply(buildGachaMainEmbed());
+  } else {
+    replyMsg = await context.reply(buildGachaMainEmbed());
+  }
+
+  let pendingPull = null; // Menyimpan satu hasil pull yang belum disimpan
+  let pendingPulls = null; // Menyimpan 10 hasil pull yang belum disimpan
+
+  const collector = replyMsg.createMessageComponentCollector({ time: 180000 });
+
+  collector.on('collect', async iGacha => {
+    if (iGacha.user.id !== author.id) {
+      return iGacha.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+    }
+
+    try {
+      // ── TOMBOL GACHA 1X ──
+      if (iGacha.customId === 'gacha_btn_1x') {
+        await iGacha.deferUpdate();
+
+        // Animasi loading
+        const loadingEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('🎰 MEMUTAR MESIN GACHA... 🌟')
+          .setDescription('✨ Kristal nasib berputar mencari peliharaan baru...\n\n> 🔮 *Menentukan kelangkaan...*\n> 🐾 *Memilih spesies...*\n> 🧬 *Mengacak trait...*')
+          .setTimestamp();
+        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+
+        // Roll setelah 2 detik animasi
+        await new Promise(r => setTimeout(r, 2000));
+
+        const results = pet.rollGacha(author.id, guildId, 'COIN_1');
+        pendingPull = results[0];
+        pendingPulls = null;
+        await handleSingleResult(replyMsg, collector, pendingPull, author, guildId);
+      }
+
+      // ── TOMBOL GACHA 10X ──
+      else if (iGacha.customId === 'gacha_btn_10x') {
+        await iGacha.deferUpdate();
+
+        const loadingEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('🎰 GACHA 10X MEGA PULL! 🌟🌟🌟')
+          .setDescription('✨ Kristal nasib meledak! 10 peliharaan sedang ditarik sekaligus...\n\n> 🔮 *10 roda berputar bersamaan...*')
+          .setTimestamp();
+        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+
+        await new Promise(r => setTimeout(r, 3000));
+
+        const results = pet.rollGacha(author.id, guildId, 'COIN_10');
+        pendingPulls = results;
+        pendingPull = null;
+
+        // Ringkasan semua 10 pull
+        const rarityOrder = { LEGENDARY: 0, EPIC: 1, RARE: 2, COMMON: 3 };
+        const sorted = [...results].sort((a, b) => (rarityOrder[a.rarity] ?? 99) - (rarityOrder[b.rarity] ?? 99));
+        const best = sorted[0];
+
+        let listText = results.map((r, i) => {
+          const emoji = { COMMON: '⚪', RARE: '🟢', EPIC: '🟣', LEGENDARY: '🟡' }[r.rarity];
+          return `\`#${i + 1}\` ${emoji} **${r.species.name.replace(/^[^\s]+\s/, '')}** — ${r.rarity}${r.trait ? ` (${r.trait})` : ''}`;
+        }).join('\n');
+
+        const summaryEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('🎰 HASIL GACHA 10X MEGA PULL! 🎰')
+          .setDescription(
+            `${listText}\n\n` +
+            `⭐ **Pet Terbaik:** ${best.species.name} — **${best.rarity}**\n\n` +
+            `*Pilih pet yang ingin disimpan ke kandang di bawah (maks 3 slot). Pet yang tidak dipilih akan otomatis di-recycle (+Rp 1.000 / pet).*`
+          )
+          .setTimestamp();
+
+        // Buat select menu untuk pilih pet yang mau disimpan
+        const allPets = pet.getPetsList(author.id, guildId);
+        const slotsLeft = 3 - allPets.length;
+
+        if (slotsLeft > 0) {
+          const selectOptions = results.map((r, i) => {
+            const emoji = { COMMON: '⚪', RARE: '🟢', EPIC: '🟣', LEGENDARY: '🟡' }[r.rarity];
+            return new StringSelectMenuOptionBuilder()
+              .setLabel(`#${i + 1} ${r.species.name.replace(/^[^\s]+\s/, '')} (${r.rarity})`)
+              .setDescription(`HP:${r.baseHP} ATK:${r.baseAtk} DEF:${r.baseDef}% ${r.trait ? 'Trait: ' + r.trait : ''}`)
+              .setValue(`gacha10_save_${i}`)
+              .setEmoji(emoji);
+          });
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('gacha10_select_save')
+            .setPlaceholder(`💾 Pilih pet untuk disimpan (maks ${slotsLeft})...`)
+            .setMinValues(0)
+            .setMaxValues(Math.min(slotsLeft, results.length))
+            .addOptions(selectOptions);
+
+          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+          const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('gacha10_recycle_all').setLabel('♻️ Recycle Semua (+Rp 10.000)').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+          );
+
+          await replyMsg.edit({ embeds: [summaryEmbed], components: [selectRow, btnRow] });
+        } else {
+          // Kandang penuh, otomatis recycle semua
+          const totalRecycle = results.length * 1000;
+          economy.addBalance(author.id, guildId, totalRecycle, 'PET_GACHA_RECYCLE_ALL');
+          const fullEmbed = summaryEmbed.setFooter({ text: `♻️ Kandang penuh! Semua 10 pet otomatis di-recycle. +Rp ${totalRecycle.toLocaleString('id-ID')} diterima.` });
+          const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+          );
+          pendingPulls = null;
+          await replyMsg.edit({ embeds: [fullEmbed], components: [btnRow] });
+        }
+      }
+
+      // ── TOMBOL GACHA TIKET ──
+      else if (iGacha.customId === 'gacha_btn_ticket') {
+        await iGacha.deferUpdate();
+
+        const loadingEmbed = new EmbedBuilder()
+          .setColor(0x00BCD4)
+          .setTitle('🎫 MENGGUNAKAN TIKET GACHA... 🌟')
+          .setDescription('✨ Tiket gacha menyala dan mesin mulai berputar...')
+          .setTimestamp();
+        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        const results = pet.rollGacha(author.id, guildId, 'TICKET');
+        pendingPull = results[0];
+        pendingPulls = null;
+        await handleSingleResult(replyMsg, collector, pendingPull, author, guildId);
+      }
+
+      // ── TOMBOL SIMPAN 1 PULL ──
+      else if (iGacha.customId === 'gacha_btn_save') {
+        if (!pendingPull) {
+          return iGacha.reply({ content: '❌ Tidak ada pet gacha yang menunggu untuk disimpan!', flags: 64 });
+        }
+
+        // Tampilkan modal untuk input nama
+        const modal = new ModalBuilder()
+          .setCustomId('gacha_modal_name')
+          .setTitle('💾 Beri Nama Pet Gacha');
+
+        const nameInput = new TextInputBuilder()
+          .setCustomId('gacha_pet_name')
+          .setLabel('Nama Pet Anda')
+          .setPlaceholder('Contoh: Phoenix-chan')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(25);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+        await iGacha.showModal(modal);
+
+        const submitted = await iGacha.awaitModalSubmit({
+          filter: (sub) => sub.customId === 'gacha_modal_name' && sub.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (submitted) {
+          try {
+            const petName = submitted.fields.getTextInputValue('gacha_pet_name');
+            const saved = pet.saveGachaPet(author.id, guildId, pendingPull, petName);
+            pendingPull = null;
+            await submitted.reply({
+              embeds: [embeds.successEmbed(
+                'Pet Gacha Disimpan! 💾🐾',
+                `Pet **${saved.pet_name}** the **${saved.pet_type}** berhasil disimpan ke kandang!\n` +
+                `🌟 Rarity: **${saved.gacha_rarity}**\n` +
+                `🧠 Trait: **${saved.trait || 'Tidak ada'}**${saved.gacha_trait2 ? ` + **${saved.gacha_trait2}**` : ''}\n\n` +
+                `Ketik \`.pet\` untuk melihat kandang.`
+              )],
+              flags: 64
+            });
+            await replyMsg.edit(buildGachaMainEmbed());
+          } catch (err) {
+            await submitted.reply({ embeds: [embeds.errorEmbed('Gagal Menyimpan!', err.message)], flags: 64 });
+          }
+        }
+      }
+
+      // ── TOMBOL RECYCLE 1 PULL ──
+      else if (iGacha.customId === 'gacha_btn_recycle_result') {
+        if (!pendingPull) {
+          return iGacha.reply({ content: '❌ Tidak ada pet gacha yang bisa di-recycle!', flags: 64 });
+        }
+        economy.addBalance(author.id, guildId, 1000, 'PET_GACHA_RECYCLE');
+        const recycledSpecies = pendingPull.species.name;
+        pendingPull = null;
+        await iGacha.reply({
+          embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet ${recycledSpecies} telah didaur ulang.\n💰 **+Rp 1.000** telah ditambahkan ke dompet Anda.`)],
+          flags: 64
+        });
+        await replyMsg.edit(buildGachaMainEmbed());
+      }
+
+      // ── TOMBOL SELECT 10X SAVE ──
+      else if (iGacha.customId === 'gacha10_select_save') {
+        if (!pendingPulls || pendingPulls.length === 0) {
+          return iGacha.reply({ content: '❌ Tidak ada data pull 10x yang tersimpan!', flags: 64 });
+        }
+
+        const selectedIndices = iGacha.values.map(v => parseInt(v.replace('gacha10_save_', '')));
+
+        // Tampilkan modal input nama untuk semua pet yang dipilih
+        const modal = new ModalBuilder()
+          .setCustomId('gacha10_modal_names')
+          .setTitle(`💾 Beri Nama ${selectedIndices.length} Pet Gacha`);
+
+        selectedIndices.forEach((idx, i) => {
+          const p = pendingPulls[idx];
+          const specName = p.species.name.replace(/^[^\s]+\s/, '');
+          const input = new TextInputBuilder()
+            .setCustomId(`gacha10_name_${idx}`)
+            .setLabel(`Nama untuk #${idx + 1} ${specName} (${p.rarity})`)
+            .setPlaceholder(`Contoh: ${specName}-${idx + 1}`)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMaxLength(25);
+          modal.addComponents(new ActionRowBuilder().addComponents(input));
+        });
+
+        await iGacha.showModal(modal);
+
+        const submitted = await iGacha.awaitModalSubmit({
+          filter: (sub) => sub.customId === 'gacha10_modal_names' && sub.user.id === author.id,
+          time: 120000
+        }).catch(() => null);
+
+        if (submitted) {
+          try {
+            const savedNames = [];
+            for (const idx of selectedIndices) {
+              const petName = submitted.fields.getTextInputValue(`gacha10_name_${idx}`);
+              const p = pendingPulls[idx];
+              pet.saveGachaPet(author.id, guildId, p, petName);
+              savedNames.push(`**${petName}** (${p.rarity})`);
+            }
+
+            // Recycle sisanya
+            const recycledCount = pendingPulls.length - selectedIndices.length;
+            if (recycledCount > 0) {
+              economy.addBalance(author.id, guildId, recycledCount * 1000, 'PET_GACHA_RECYCLE_MULTI');
+            }
+
+            pendingPulls = null;
+            await submitted.reply({
+              embeds: [embeds.successEmbed(
+                'Pet Gacha 10x Diproses! 🎰✨',
+                `💾 **Pet Disimpan:**\n${savedNames.join('\n')}\n\n` +
+                (recycledCount > 0 ? `♻️ **Pet Di-recycle:** ${recycledCount} pet → **+Rp ${(recycledCount * 1000).toLocaleString('id-ID')}**` : '')
+              )],
+              flags: 64
+            });
+            await replyMsg.edit(buildGachaMainEmbed());
+          } catch (err) {
+            await submitted.reply({ embeds: [embeds.errorEmbed('Gagal Memproses!', err.message)], flags: 64 });
+          }
+        }
+      }
+
+      // ── TOMBOL RECYCLE ALL 10X ──
+      else if (iGacha.customId === 'gacha10_recycle_all') {
+        if (!pendingPulls || pendingPulls.length === 0) {
+          return iGacha.reply({ content: '❌ Tidak ada data pull 10x!', flags: 64 });
+        }
+        const totalRecycle = pendingPulls.length * 1000;
+        economy.addBalance(author.id, guildId, totalRecycle, 'PET_GACHA_RECYCLE_ALL');
+        pendingPulls = null;
+        await iGacha.reply({
+          embeds: [embeds.successEmbed('Recycle 10x Berhasil! ♻️', `Semua 10 pet telah didaur ulang.\n💰 **+Rp ${totalRecycle.toLocaleString('id-ID')}** telah ditambahkan ke dompet Anda.`)],
+          flags: 64
+        });
+        await replyMsg.edit(buildGachaMainEmbed());
+      }
+
+      // ── TOMBOL KEMBALI ──
+      else if (iGacha.customId === 'gacha_btn_back') {
+        pendingPull = null;
+        pendingPulls = null;
+        await iGacha.update(buildGachaMainEmbed());
+      }
+
+    } catch (err) {
+      if (!iGacha.replied && !iGacha.deferred) {
+        await iGacha.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+      } else {
+        await iGacha.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+    }
+  });
+
+  collector.on('end', async () => {
+    await replyMsg.edit({ components: [] }).catch(() => {});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HANDLER: PANEL UPGRADE BINTANG PET (.pet upgrade)
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePetUpgradePanel(context, client, isInteraction = false) {
+  const guildId = context.guildId;
+  const author = isInteraction ? context.user : context.author;
+
+  const allPets = pet.getPetsList(author.id, guildId);
+  if (allPets.length === 0) {
+    const noEmbed = embeds.warnEmbed('Tidak Ada Pet!', 'Anda belum memiliki peliharaan. Ketik `.pet buy <nama> <jenis>` atau gunakan `.pet gacha` terlebih dahulu!');
+    if (isInteraction) return context.editReply({ embeds: [noEmbed] });
+    return context.reply({ embeds: [noEmbed] });
+  }
+
+  const buildUpgradeMainEmbed = () => {
+    const wallet = economy.getWallet(author.id, guildId);
+    const freshPets = pet.getPetsList(author.id, guildId);
+
+    let petListText = freshPets.map(p => {
+      const star = pet.renderStars(p.star_level || 1);
+      const bonuses = pet.getStarBonuses(p.star_level || 1);
+      const req = pet.getUpgradeRequirements(p);
+      const maxText = req ? `→ ${star}⭐ (Rp ${req.coinCost.toLocaleString('id-ID')})` : '**MAX ⭐5**';
+      return `🐾 **${p.pet_name}** the ${p.pet_type} — ${star} (Lv.${p.level})\n` +
+        `> ❤️ HP+${bonuses.hpBonus} | ⚔️ ATK+${Math.round(bonuses.atkBonusPct * 100)}% | 🛡️ DEF+${Math.round(bonuses.defBonusPct * 100)}% ${maxText}`;
+    }).join('\n\n');
+
+    const embed = new EmbedBuilder()
+      .setColor(0xE91E63)
+      .setTitle('✨ LAB UPGRADE & EVOLUSI PET ✨')
+      .setDescription(
+        `Tingkatkan bintang pet Anda dengan mengorbankan pet duplikat berspesies sama!\n\n` +
+        `💰 **Saldo:** Rp ${wallet.balance.toLocaleString('id-ID')}\n\n` +
+        `📋 **Daftar Pet Anda:**\n${petListText}\n\n` +
+        `**Tabel Biaya Upgrade:**\n` +
+        `> ⭐1→⭐2: 1 tumbal (≥⭐1), Rp 2.500\n` +
+        `> ⭐2→⭐3: 1 tumbal (≥⭐2), Rp 5.000\n` +
+        `> ⭐3→⭐4: 2 tumbal (≥⭐2), Rp 10.000\n` +
+        `> ⭐4→⭐5: 2 tumbal (≥⭐3), Rp 20.000`
+      )
+      .setFooter({ text: 'Pilih pet yang ingin di-upgrade bintangnya.' })
+      .setTimestamp();
+
+    // Select menu pilih pet
+    const selectOptions = freshPets.map(p => {
+      const star = pet.renderStars(p.star_level || 1);
+      const req = pet.getUpgradeRequirements(p);
+      return new StringSelectMenuOptionBuilder()
+        .setLabel(`${p.pet_name} the ${p.pet_type} (${star})`)
+        .setDescription(req ? `Ke ⭐${req.nextStar} — Rp ${req.coinCost.toLocaleString('id-ID')}` : 'Sudah MAX ⭐5')
+        .setValue(p.pet_name);
+    });
+
+    const selectRow = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('upgrade_select_pet')
+        .setPlaceholder('🐾 Pilih pet untuk di-upgrade...')
+        .addOptions(selectOptions)
+    );
+
+    return { embeds: [embed], components: [selectRow] };
+  };
+
+  let replyMsg;
+  if (isInteraction) {
+    replyMsg = await context.editReply(buildUpgradeMainEmbed());
+  } else {
+    replyMsg = await context.reply(buildUpgradeMainEmbed());
+  }
+
+  let selectedMainPet = null;
+  let selectedSacrifices = [];
+
+  const collector = replyMsg.createMessageComponentCollector({ time: 180000 });
+
+  collector.on('collect', async iUpgrade => {
+    if (iUpgrade.user.id !== author.id) {
+      return iUpgrade.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+    }
+
+    try {
+      // ── PILIH PET UTAMA ──
+      if (iUpgrade.customId === 'upgrade_select_pet') {
+        const petName = iUpgrade.values[0];
+        const mainPet = pet.getPetsList(author.id, guildId).find(p => p.pet_name === petName);
+        if (!mainPet) {
+          return iUpgrade.reply({ content: '❌ Pet tidak ditemukan!', flags: 64 });
+        }
+
+        const req = pet.getUpgradeRequirements(mainPet);
+        if (!req) {
+          return iUpgrade.reply({
+            embeds: [embeds.warnEmbed('Sudah Maksimal! ⭐', `Pet **${mainPet.pet_name}** sudah berada di bintang tertinggi (**⭐5**)!`)],
+            flags: 64
+          });
+        }
+
+        selectedMainPet = mainPet;
+        selectedSacrifices = [];
+
+        // Cari pet tumbal yang eligible
+        const sacrificeList = pet.getPetSacrificeList(author.id, guildId, mainPet.pet_type, req.minStarDup, mainPet.pet_name);
+
+        if (sacrificeList.length < req.dupCount) {
+          return iUpgrade.reply({
+            embeds: [embeds.warnEmbed(
+              'Tumbal Tidak Cukup! ❌',
+              `Upgrade **${mainPet.pet_name}** dari ⭐${req.currentStar} ke ⭐${req.nextStar} membutuhkan **${req.dupCount} pet tumbal** (spesies **${mainPet.pet_type}**, min ⭐${req.minStarDup}).\n\n` +
+              `Anda hanya memiliki **${sacrificeList.length}** pet yang memenuhi syarat. Dapatkan pet duplikat dari gacha!`
+            )],
+            flags: 64
+          });
+        }
+
+        // Hitung stat baru
+        const currentBonuses = pet.getStarBonuses(req.currentStar);
+        const newBonuses = pet.getStarBonuses(req.nextStar);
+        const baseHP = mainPet.pet_type === 'SLIME' ? 120 : (mainPet.gacha_rarity === 'LEGENDARY' ? 150 : 100);
+
+        const wallet = economy.getWallet(author.id, guildId);
+        const hasEnoughCoins = wallet.balance >= req.coinCost;
+
+        const previewEmbed = new EmbedBuilder()
+          .setColor(0xE91E63)
+          .setTitle(`✨ UPGRADE: ${mainPet.pet_name} — ⭐${req.currentStar} → ⭐${req.nextStar}`)
+          .setDescription(
+            `📊 **Perbandingan Statistik:**\n` +
+            `> ❤️ Max HP: ${baseHP + currentBonuses.hpBonus} → **${baseHP + newBonuses.hpBonus}** (+${newBonuses.hpBonus - currentBonuses.hpBonus})\n` +
+            `> ⚔️ ATK Bonus: +${Math.round(currentBonuses.atkBonusPct * 100)}% → **+${Math.round(newBonuses.atkBonusPct * 100)}%**\n` +
+            `> 🛡️ DEF Bonus: +${Math.round(currentBonuses.defBonusPct * 100)}% → **+${Math.round(newBonuses.defBonusPct * 100)}%**\n` +
+            `> ⏳ CD Reduksi: -${Math.round(currentBonuses.cdReduction * 100)}% → **-${Math.round(newBonuses.cdReduction * 100)}%**\n\n` +
+            `💎 **Biaya Upgrade:**\n` +
+            `> 💰 Koin: Rp ${req.coinCost.toLocaleString('id-ID')} ${hasEnoughCoins ? '✅' : '❌ (Kurang!)'}\n` +
+            `> 🐾 Pet Tumbal: ${req.dupCount}x ${mainPet.pet_type} (min ⭐${req.minStarDup})\n\n` +
+            `*Pilih pet tumbal yang akan dikorbankan:*`
+          )
+          .setTimestamp();
+
+        // Select menu tumbal
+        const sacrificeOptions = sacrificeList.map(s => {
+          const star = pet.renderStars(s.star_level || 1);
+          return new StringSelectMenuOptionBuilder()
+            .setLabel(`${s.pet_name} the ${s.pet_type} (${star}, Lv.${s.level})`)
+            .setDescription(`Bintang: ⭐${s.star_level || 1}`)
+            .setValue(s.pet_name);
+        });
+
+        const sacrificeSelect = new StringSelectMenuBuilder()
+          .setCustomId('upgrade_select_sacrifice')
+          .setPlaceholder(`🩸 Pilih ${req.dupCount} pet tumbal...`)
+          .setMinValues(req.dupCount)
+          .setMaxValues(req.dupCount)
+          .addOptions(sacrificeOptions);
+
+        const selectRow = new ActionRowBuilder().addComponents(sacrificeSelect);
+        const btnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('upgrade_btn_cancel').setLabel('❌ Batalkan').setStyle(ButtonStyle.Secondary)
+        );
+
+        await iUpgrade.update({ embeds: [previewEmbed], components: [selectRow, btnRow] });
+      }
+
+      // ── PILIH TUMBAL ──
+      else if (iUpgrade.customId === 'upgrade_select_sacrifice') {
+        selectedSacrifices = iUpgrade.values;
+
+        if (!selectedMainPet) {
+          return iUpgrade.reply({ content: '❌ Pilih pet utama terlebih dahulu!', flags: 64 });
+        }
+
+        const req = pet.getUpgradeRequirements(selectedMainPet);
+        const sacrificeText = selectedSacrifices.map(n => `🩸 **${n}**`).join('\n');
+
+        const confirmEmbed = new EmbedBuilder()
+          .setColor(0xFF5252)
+          .setTitle('⚠️ KONFIRMASI UPGRADE BINTANG ⚠️')
+          .setDescription(
+            `Anda akan mengupgrade **${selectedMainPet.pet_name}** dari **⭐${req.currentStar}** ke **⭐${req.nextStar}**.\n\n` +
+            `🩸 **Pet yang akan DIKORBANKAN (dihapus permanen):**\n${sacrificeText}\n\n` +
+            `💰 **Biaya Koin:** Rp ${req.coinCost.toLocaleString('id-ID')}\n\n` +
+            `⚠️ **Peringatan:** Aksi ini tidak bisa dibatalkan! Pet tumbal akan dihapus permanen.`
+          )
+          .setTimestamp();
+
+        const confirmRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('upgrade_btn_confirm').setLabel('⚡ Jalankan Evolusi!').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('upgrade_btn_cancel').setLabel('❌ Batalkan').setStyle(ButtonStyle.Secondary)
+        );
+
+        await iUpgrade.update({ embeds: [confirmEmbed], components: [confirmRow] });
+      }
+
+      // ── KONFIRMASI UPGRADE ──
+      else if (iUpgrade.customId === 'upgrade_btn_confirm') {
+        if (!selectedMainPet || selectedSacrifices.length === 0) {
+          return iUpgrade.reply({ content: '❌ Data tidak lengkap! Silakan ulangi proses.', flags: 64 });
+        }
+
+        await iUpgrade.deferUpdate();
+
+        const result = pet.upgradePetStar(author.id, guildId, selectedMainPet.pet_name, selectedSacrifices);
+
+        const successEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('🌟 EVOLUSI BERHASIL! 🌟')
+          .setDescription(
+            `Pet **${result.pet.pet_name}** telah berevolusi!\n\n` +
+            `⭐ **Bintang:** ${pet.renderStars(result.newStar)}\n` +
+            `❤️ **Max HP:** +${result.newBonuses.hpBonus}\n` +
+            `⚔️ **ATK Bonus:** +${Math.round(result.newBonuses.atkBonusPct * 100)}%\n` +
+            `🛡️ **DEF Bonus:** +${Math.round(result.newBonuses.defBonusPct * 100)}%\n` +
+            `⏳ **CD Reduksi:** -${Math.round(result.newBonuses.cdReduction * 100)}%\n\n` +
+            `🩸 **Pet Dikorbankan:** ${result.sacrificed.join(', ')}\n` +
+            `💰 **Koin Terpakai:** Rp ${result.coinCost.toLocaleString('id-ID')}`
+          )
+          .setTimestamp();
+
+        selectedMainPet = null;
+        selectedSacrifices = [];
+        await replyMsg.edit({ embeds: [successEmbed], components: [] });
+        collector.stop();
+      }
+
+      // ── BATALKAN ──
+      else if (iUpgrade.customId === 'upgrade_btn_cancel') {
+        selectedMainPet = null;
+        selectedSacrifices = [];
+        await iUpgrade.update(buildUpgradeMainEmbed());
+      }
+
+    } catch (err) {
+      if (!iUpgrade.replied && !iUpgrade.deferred) {
+        await iUpgrade.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+      } else {
+        await iUpgrade.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+    }
+  });
+
+  collector.on('end', async () => {
+    await replyMsg.edit({ components: [] }).catch(() => {});
+  });
+}
+
 /**
  * Helper untuk memproses Toko Persediaan Pet
  */
@@ -5561,8 +6310,45 @@ async function handlePetAdminCommand(message, client, args) {
       return message.reply('❌ Tidak ada lobi ekspedisi pet yang aktif di server ini saat ini.');
     }
   }
+  // ── ADMIN: ADD-TICKET (Tambah Tiket Gacha) ──
+  if (subCommand === 'add-ticket') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin add-ticket @user <jumlah>`');
+    }
+    const qty = parseInt(args[2]);
+    if (isNaN(qty) || qty <= 0) {
+      return message.reply('❌ Jumlah tiket harus angka positif! Gunakan: `.pet-admin add-ticket @user <jumlah>`');
+    }
+    try {
+      const newTotal = pet.addGachaTickets(target.id, guildId, qty);
+      return message.reply(`✅ Berhasil menambahkan **${qty} Tiket Gacha** ke <@${target.id}>! Total tiket sekarang: **${newTotal} tiket**.`);
+    } catch (err) {
+      return message.reply(`❌ Gagal menambahkan tiket: ${err.message}`);
+    }
+  }
 
-  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`');
+  // ── ADMIN: FORCE-STAR (Paksa Set Bintang Pet) ──
+  if (subCommand === 'force-star') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin force-star @user <nama_pet> <bintang>`');
+    }
+    const petName = args[2];
+    const starLevel = parseInt(args[3]);
+    if (!petName || isNaN(starLevel) || starLevel < 1 || starLevel > 5) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin force-star @user <nama_pet> <1-5>`');
+    }
+    try {
+      const updated = pet.forceSetStar(target.id, guildId, petName, starLevel);
+      return message.reply(
+        `✅ Bintang pet **${updated.pet_name}** milik <@${target.id}> berhasil diubah ke **${pet.renderStars(updated.star_level)}** (⭐${updated.star_level})!\n` +
+        `📊 Bonus: HP+${updated.base_hp_bonus} | ATK+${Math.round((updated.base_atk_bonus_pct || 0) * 100)}% | DEF+${Math.round((updated.base_def_bonus_pct || 0) * 100)}%`
+      );
+    } catch (err) {
+      return message.reply(`❌ Gagal mengubah bintang: ${err.message}`);
+    }
+  }
+
+  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`, `add-ticket`, `force-star`');
 }
 
 /**
@@ -9853,7 +10639,12 @@ async function handleEconomyCommands(message, client) {
         new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
       );
 
-      await message.channel.send({ embeds: [embed], components: [row1, row2] });
+      const row3 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success)
+      );
+
+      await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
       return true;
     }
 

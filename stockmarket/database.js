@@ -678,6 +678,64 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 42. Migrasi dinamis: Sistem Upgrade Bintang Pet — star_level & bonus stats
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN star_level INTEGER DEFAULT 1");
+    console.log("⚡ [Database] Kolom 'star_level' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN base_hp_bonus INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'base_hp_bonus' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN base_atk_bonus_pct REAL DEFAULT 0.0");
+    console.log("⚡ [Database] Kolom 'base_atk_bonus_pct' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN base_def_bonus_pct REAL DEFAULT 0.0");
+    console.log("⚡ [Database] Kolom 'base_def_bonus_pct' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 43. Migrasi dinamis: Kolom gacha_source untuk melacak asal pet (SHOP/GACHA)
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN gacha_source TEXT DEFAULT 'SHOP'");
+    console.log("⚡ [Database] Kolom 'gacha_source' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 44. Migrasi dinamis: Kolom gacha_rarity untuk menyimpan rarity pet gacha
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN gacha_rarity TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'gacha_rarity' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 45. Migrasi dinamis: Kolom gacha_element untuk elemen pet gacha (FIRE, EARTH, WATER, DRAGON)
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN gacha_element TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'gacha_element' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
+  // 46. Migrasi dinamis: Kolom gacha_trait2 untuk trait kedua (khusus Legendary punya 2 trait)
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN gacha_trait2 TEXT DEFAULT ''");
+    console.log("⚡ [Database] Kolom 'gacha_trait2' berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

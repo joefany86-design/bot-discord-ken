@@ -23,11 +23,81 @@ const PET_ITEMS = {
 
 // Konfigurasi Spesies Pet
 const PET_SPECIES = {
-  SLIME: { id: 'SLIME', name: '🟢 Slime', desc: 'Sangat kenyal dan memiliki vitalitas tinggi. (+20 Max HP / Tahan Lapar)' },
+  SLIME:  { id: 'SLIME',  name: '🟢 Slime',       desc: 'Sangat kenyal dan memiliki vitalitas tinggi. (+20 Max HP / Tahan Lapar)' },
   DRAGON: { id: 'DRAGON', name: '🔥 Naga / Dragon', desc: 'Makhluk legendaris bernapas api. Sangat tangguh di PvP Arena (+15% Attack).' },
-  CAT: { id: 'CAT', name: '🐱 Kucing / Cat', desc: 'Lincah dan menggemaskan. Peluang mendapat item langka saat Hunt meningkat (+5%).' },
-  GOLEM: { id: 'GOLEM', name: '🧱 Golem', desc: 'Terbuat dari batu kokoh. Sangat rajin bekerja (Cooldown Kerja -20 Menit).' }
+  CAT:    { id: 'CAT',    name: '🐱 Kucing / Cat',  desc: 'Lincah dan menggemaskan. Peluang mendapat item langka saat Hunt meningkat (+5%).' },
+  GOLEM:  { id: 'GOLEM',  name: '🧱 Golem',         desc: 'Terbuat dari batu kokoh. Sangat rajin bekerja (Cooldown Kerja -20 Menit).' }
 };
+
+// ═══════════════════════════════════════════════
+// KONFIGURASI SISTEM GACHA PET
+// ═══════════════════════════════════════════════
+
+const GACHA_RATES = {
+  COMMON:    0.65,
+  RARE:      0.25,
+  EPIC:      0.08,
+  LEGENDARY: 0.02,
+};
+
+const GACHA_SPECIES = {
+  // ⚪ Common — spesies standar tanpa trait bawaan
+  CAT:        { id: 'CAT',        name: '🐱 Kucing',     rarity: 'COMMON',    emoji: '⚪', baseHP: 100, baseAtk: 10, baseDef: 0, element: '',      workBuff: 0,    desc: 'Kucing lincah yang gemar berburu.' },
+  GOLEM:      { id: 'GOLEM',      name: '🧱 Golem',      rarity: 'COMMON',    emoji: '⚪', baseHP: 100, baseAtk: 10, baseDef: 0, element: '',      workBuff: 0,    desc: 'Golem batu pekerja keras.' },
+  SLIME:      { id: 'SLIME',      name: '🟢 Slime',      rarity: 'COMMON',    emoji: '⚪', baseHP: 120, baseAtk: 8,  baseDef: 0, element: '',      workBuff: 0,    desc: 'Slime kenyal dengan vitalitas tinggi.' },
+  // 🟢 Rare — trait diaktifkan otomatis; DRAGON hanya 5% dari pool Rare
+  // (CAT, GOLEM, SLIME bisa juga Rare, bedanya ada trait)
+  DRAGON:     { id: 'DRAGON',     name: '🔥 Naga',       rarity: 'RARE',      emoji: '🟢', baseHP: 100, baseAtk: 15, baseDef: 0, element: 'FIRE',  workBuff: 0,    desc: 'Naga api legendaris berbisa (+15% ATK).' },
+  // 🟣 Epic — spesies khusus bertipe elemen
+  PHOENIX:    { id: 'PHOENIX',    name: '🦅 Phoenix',    rarity: 'EPIC',      emoji: '🟣', baseHP: 100, baseAtk: 20, baseDef: 0, element: 'FIRE',  workBuff: 0,    desc: 'Burung api abadi. Elemen Kebakaran (+20% ATK).' },
+  TURTLE:     { id: 'TURTLE',     name: '🐢 Kura-Kura',  rarity: 'EPIC',      emoji: '🟣', baseHP: 120, baseAtk: 10, baseDef: 20, element: 'EARTH', workBuff: 0,   desc: 'Kura-kura bumi yang sangat tangguh (+20% HP & DEF).' },
+  // 🟡 Legendary — buff super +25% kerja & hunt, 150 base HP, 2 trait acak
+  LEVIATHAN:  { id: 'LEVIATHAN',  name: '🌊 Leviathan',  rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'WATER', workBuff: 0.25, desc: 'Naga lautan kuno. Menguasai ombak samudera.' },
+  BEHEMOTH:   { id: 'BEHEMOTH',   name: '🦏 Behemoth',   rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'EARTH', workBuff: 0.25, desc: 'Monster bumi tak terkalahkan. Kekuatan tiada batas.' },
+  ARCHDRAGON: { id: 'ARCHDRAGON', name: '🐉 Archdragon', rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'DRAGON',workBuff: 0.25, desc: 'Naga purba tertua. Penguasa langit dan bumi.' },
+};
+
+const GACHA_TRAITS_ALL   = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+const GACHA_TRAIT_RARE   = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+const GACHA_TRAIT_EPIC   = ['SURVIVOR'];
+const GACHA_TRAIT_LEGENDARY = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
+
+const GACHA_PRICES = {
+  SINGLE:  3500,
+  MULTI10: 30000,
+};
+
+// ═══════════════════════════════════════════════
+// KONFIGURASI UPGRADE BINTANG PET (STAR FUSION)
+// ═══════════════════════════════════════════════
+
+// Format: { dupCount, minStarDup, coinCost }
+const STAR_UPGRADE_REQ = {
+  1: { dupCount: 1, minStarDup: 1, coinCost: 2500  }, // ⭐1 → ⭐2
+  2: { dupCount: 1, minStarDup: 2, coinCost: 5000  }, // ⭐2 → ⭐3
+  3: { dupCount: 2, minStarDup: 2, coinCost: 10000 }, // ⭐3 → ⭐4
+  4: { dupCount: 2, minStarDup: 3, coinCost: 20000 }, // ⭐4 → ⭐5
+};
+
+// Bonus per bintang relatif dari bintang 1 (base)
+function getStarBonuses(starLevel) {
+  const s = Math.max(1, Math.min(5, starLevel || 1));
+  const starsAboveBase = s - 1; // 0 untuk ⭐1
+  return {
+    hpBonus:     starsAboveBase * 15,          // +15 HP per bintang
+    atkBonusPct: starsAboveBase * 0.25,        // +25% ATK per bintang
+    defBonusPct: starsAboveBase * 0.05,        // +5% DEF (reduksi DMG) per bintang
+    cdReduction: starsAboveBase * 0.10,        // -10% cooldown per bintang
+    stars:       s
+  };
+}
+
+// String visual bintang ⭐
+function renderStars(n) {
+  return '⭐'.repeat(Math.max(1, Math.min(5, n || 1)));
+}
+
+
 
 // Konfigurasi Peta Ekspedisi Pet (Co-op PVE)
 const EXPEDITION_MAPS = [
@@ -2462,10 +2532,378 @@ function toggleAutoFeed(userId, guildId) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SISTEM GACHA PET
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Mengambil jumlah TICKET_GACHA yang dimiliki user.
+ */
+function getGachaTickets(userId, guildId) {
+  const row = db.get(
+    "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'",
+    [userId, guildId]
+  );
+  return row ? (row.quantity || 0) : 0;
+}
+
+/**
+ * Menambah TICKET_GACHA ke inventori user (digunakan admin).
+ */
+function addGachaTickets(userId, guildId, qty) {
+  const q = Math.max(1, parseInt(qty) || 1);
+  economy.getWallet(userId, guildId); // pastikan wallet terdaftar
+  const exist = db.get(
+    "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'",
+    [userId, guildId]
+  );
+  if (exist) {
+    db.run(
+      "UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'",
+      [q, userId, guildId]
+    );
+  } else {
+    db.run(
+      "INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TICKET_GACHA', ?)",
+      [userId, guildId, q]
+    );
+  }
+  return getGachaTickets(userId, guildId);
+}
+
+/**
+ * Melakukan satu tarikan gacha dan mengembalikan data pet (belum disimpan ke DB).
+ * method: 'COIN_1' | 'COIN_10' | 'TICKET'
+ * Mengembalikan array hasil (1 item untuk COIN_1/TICKET, 10 untuk COIN_10).
+ */
+function rollGacha(userId, guildId, method = 'COIN_1') {
+  // Validasi & potong biaya
+  const wallet = economy.getWallet(userId, guildId);
+  if (method === 'COIN_1') {
+    if (wallet.balance < GACHA_PRICES.SINGLE) {
+      throw new Error(`Saldo koin Anda tidak cukup! Dibutuhkan **Rp ${GACHA_PRICES.SINGLE.toLocaleString('id-ID')}**, saldo Anda **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
+    }
+    economy.subtractBalance(userId, guildId, GACHA_PRICES.SINGLE, 'PET_GACHA_1X');
+  } else if (method === 'COIN_10') {
+    if (wallet.balance < GACHA_PRICES.MULTI10) {
+      throw new Error(`Saldo koin Anda tidak cukup! Dibutuhkan **Rp ${GACHA_PRICES.MULTI10.toLocaleString('id-ID')}**, saldo Anda **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
+    }
+    economy.subtractBalance(userId, guildId, GACHA_PRICES.MULTI10, 'PET_GACHA_10X');
+  } else if (method === 'TICKET') {
+    const tickets = getGachaTickets(userId, guildId);
+    if (tickets < 1) {
+      throw new Error('Anda tidak memiliki **Tiket Gacha**! Dapatkan tiket dari ekspedisi, daily quest, atau menang PvP.');
+    }
+    db.run(
+      "UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'",
+      [userId, guildId]
+    );
+  } else {
+    throw new Error('Metode gacha tidak valid!');
+  }
+
+  const count = method === 'COIN_10' ? 10 : 1;
+  const results = [];
+
+  for (let i = 0; i < count; i++) {
+    results.push(_rollOnce());
+  }
+
+  return results;
+}
+
+/**
+ * Internal: satu tarikan gacha, menentukan rarity → spesies → trait.
+ */
+function _rollOnce() {
+  const rand = Math.random();
+  let rarity;
+  if      (rand < GACHA_RATES.LEGENDARY) rarity = 'LEGENDARY';
+  else if (rand < GACHA_RATES.LEGENDARY + GACHA_RATES.EPIC) rarity = 'EPIC';
+  else if (rand < GACHA_RATES.LEGENDARY + GACHA_RATES.EPIC + GACHA_RATES.RARE) rarity = 'RARE';
+  else    rarity = 'COMMON';
+
+  // Pilih spesies berdasarkan rarity
+  let speciesPool;
+  let trait  = '';
+  let trait2 = '';
+
+  if (rarity === 'COMMON') {
+    speciesPool = ['CAT', 'GOLEM', 'SLIME'];
+    // Tidak ada trait untuk common
+  } else if (rarity === 'RARE') {
+    // Dragon hanya 5% dari pool Rare (20% dari 25% total = 5%); sisanya CAT/GOLEM/SLIME
+    const dragonRoll = Math.random();
+    if (dragonRoll < 0.20) {
+      speciesPool = ['DRAGON'];
+    } else {
+      speciesPool = ['CAT', 'GOLEM', 'SLIME'];
+    }
+    trait = GACHA_TRAIT_RARE[Math.floor(Math.random() * GACHA_TRAIT_RARE.length)];
+  } else if (rarity === 'EPIC') {
+    speciesPool = ['PHOENIX', 'TURTLE'];
+    trait = GACHA_TRAIT_EPIC[0]; // SURVIVOR
+  } else { // LEGENDARY
+    speciesPool = ['LEVIATHAN', 'BEHEMOTH', 'ARCHDRAGON'];
+    // 2 trait acak unik
+    const shuffled = [...GACHA_TRAIT_LEGENDARY].sort(() => Math.random() - 0.5);
+    trait  = shuffled[0];
+    trait2 = shuffled[1];
+  }
+
+  const speciesId = speciesPool[Math.floor(Math.random() * speciesPool.length)];
+  const species   = GACHA_SPECIES[speciesId];
+
+  return {
+    speciesId,
+    species,
+    rarity,
+    trait,
+    trait2,
+    baseHP:  species.baseHP,
+    baseAtk: species.baseAtk,
+    baseDef: species.baseDef,
+    element: species.element,
+    workBuff: species.workBuff,
+  };
+}
+
+/**
+ * Menyimpan satu hasil gacha ke database (user harus memiliki slot kandang tersisa).
+ * petName: nama yang diberikan user.
+ */
+function saveGachaPet(userId, guildId, pullResult, petName) {
+  // Sanitasi nama
+  const sanitizedName = petName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+  if (!sanitizedName || sanitizedName.length === 0) {
+    throw new Error('Nama pet tidak valid!');
+  }
+  if (sanitizedName.length > 25) {
+    throw new Error('Nama pet maksimal 25 karakter!');
+  }
+
+  // Cek slot kandang (max 3)
+  const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  const count    = countRow ? countRow.count : 0;
+  if (count >= 3) {
+    throw new Error('Kandang penuh (maksimal **3 peliharaan**)! Recycle atau reset pet lama terlebih dahulu.');
+  }
+
+  // Cek nama duplikat
+  const nameExists = db.get(
+    'SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+    [userId, guildId, sanitizedName.toLowerCase()]
+  );
+  if (nameExists) {
+    throw new Error(`Anda sudah memiliki peliharaan bernama **"${sanitizedName}"**! Pilih nama lain.`);
+  }
+
+  const now      = Math.floor(Date.now() / 1000);
+  const isActive = count === 0 ? 1 : 0;
+  const hp       = pullResult.rarity === 'LEGENDARY' ? 150 : (pullResult.baseHP || 100);
+
+  db.run(
+    `INSERT INTO user_pets 
+     (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness,
+      last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, gacha_trait2, star_level)
+     VALUES (?, ?, ?, ?, 'ADULT', 1, 0, ?, 100, 100, 100, ?, 0, ?, ?, ?, 'GACHA', ?, ?, ?, 1)`,
+    [userId, guildId, sanitizedName, pullResult.speciesId, hp, now, now, isActive,
+     pullResult.trait, pullResult.rarity, pullResult.element, pullResult.trait2]
+  );
+
+  return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sanitizedName]);
+}
+
+/**
+ * Mendaur ulang (menghapus) pet milik user dan memberikan Rp 1.000 ganti rugi.
+ * petName: nama pet yang ingin direcycle.
+ */
+function recyclePet(userId, guildId, petName) {
+  const petRow = db.get(
+    'SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+    [userId, guildId, petName.trim().toLowerCase()]
+  );
+  if (!petRow) {
+    throw new Error(`Pet dengan nama **"${petName}"** tidak ditemukan di kandang Anda!`);
+  }
+
+  const recycleReward = 1000;
+
+  db.transaction(() => {
+    db.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petRow.pet_name]);
+    economy.addBalance(userId, guildId, recycleReward, 'PET_RECYCLE');
+
+    // Jika pet yang direcycle adalah pet aktif, aktifkan pet lain
+    if (petRow.is_active === 1) {
+      const next = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [userId, guildId]);
+      if (next) {
+        db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, next.pet_name]);
+      }
+    }
+  })();
+
+  return { petName: petRow.pet_name, reward: recycleReward };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SISTEM UPGRADE BINTANG PET (STAR FUSION)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Mengambil persyaratan upgrade bintang untuk pet saat ini.
+ */
+function getUpgradeRequirements(petRow) {
+  const currentStar = petRow.star_level || 1;
+  if (currentStar >= 5) {
+    return null; // Sudah max bintang
+  }
+  const req = STAR_UPGRADE_REQ[currentStar];
+  return {
+    currentStar,
+    nextStar:    currentStar + 1,
+    dupCount:    req.dupCount,
+    minStarDup:  req.minStarDup,
+    coinCost:    req.coinCost,
+  };
+}
+
+/**
+ * Mendapatkan daftar pet yang bisa dijadikan tumbal untuk upgrade.
+ * Mencari pet dengan spesies sama, bukan pet utama, dan memenuhi syarat min bintang.
+ */
+function getPetSacrificeList(userId, guildId, petType, minStarDup, excludeName) {
+  const pets = db.all(
+    `SELECT * FROM user_pets 
+     WHERE user_id = ? AND guild_id = ? AND pet_type = ? AND LOWER(pet_name) != LOWER(?)
+       AND (star_level IS NULL OR star_level >= ?)`,
+    [userId, guildId, petType, excludeName, minStarDup]
+  );
+  return pets;
+}
+
+/**
+ * Melaksanakan upgrade bintang pet.
+ * sacrificeNames: array nama pet yang dikorbankan (1 atau 2 nama).
+ */
+function upgradePetStar(userId, guildId, mainPetName, sacrificeNames) {
+  // Ambil pet utama
+  const mainPet = db.get(
+    'SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+    [userId, guildId, mainPetName.trim().toLowerCase()]
+  );
+  if (!mainPet) {
+    throw new Error(`Pet **"${mainPetName}"** tidak ditemukan di kandang Anda!`);
+  }
+
+  const req = getUpgradeRequirements(mainPet);
+  if (!req) {
+    throw new Error(`Pet **${mainPet.pet_name}** sudah berada di bintang tertinggi (**⭐5**)!`);
+  }
+
+  if (!Array.isArray(sacrificeNames) || sacrificeNames.length < req.dupCount) {
+    throw new Error(`Upgrade ini membutuhkan **${req.dupCount} pet tumbal**!`);
+  }
+
+  // Validasi setiap pet tumbal
+  const sacrificePets = [];
+  for (const sName of sacrificeNames.slice(0, req.dupCount)) {
+    if (sName.toLowerCase() === mainPet.pet_name.toLowerCase()) {
+      throw new Error('Anda tidak bisa mengorbankan pet utama yang ingin ditingkatkan!');
+    }
+    const sp = db.get(
+      'SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+      [userId, guildId, sName.trim().toLowerCase()]
+    );
+    if (!sp) {
+      throw new Error(`Pet tumbal **"${sName}"** tidak ditemukan di kandang Anda!`);
+    }
+    if (sp.pet_type !== mainPet.pet_type) {
+      throw new Error(`Pet tumbal **${sp.pet_name}** harus berspesies sama (**${mainPet.pet_type}**)!`);
+    }
+    const spStar = sp.star_level || 1;
+    if (spStar < req.minStarDup) {
+      throw new Error(`Pet tumbal **${sp.pet_name}** harus memiliki minimal **⭐${req.minStarDup}** bintang!`);
+    }
+    sacrificePets.push(sp);
+  }
+
+  // Cek saldo koin
+  const wallet = economy.getWallet(userId, guildId);
+  if (wallet.balance < req.coinCost) {
+    throw new Error(`Saldo koin tidak cukup! Dibutuhkan **Rp ${req.coinCost.toLocaleString('id-ID')}**, saldo Anda **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
+  }
+
+  // Hitung bonus stats baru
+  const newStar    = req.nextStar;
+  const newBonuses = getStarBonuses(newStar);
+  const baseMaxHP  = mainPet.pet_type === 'SLIME' ? 120 : (mainPet.gacha_rarity === 'LEGENDARY' ? 150 : 100);
+  const newMaxHP   = baseMaxHP + newBonuses.hpBonus;
+
+  db.transaction(() => {
+    // Kurangi koin
+    economy.subtractBalance(userId, guildId, req.coinCost, 'PET_STAR_UPGRADE');
+
+    // Hapus pet tumbal
+    for (const sp of sacrificePets) {
+      db.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sp.pet_name]);
+    }
+
+    // Upgrade bintang pet utama
+    db.run(
+      `UPDATE user_pets 
+       SET star_level = ?, base_hp_bonus = ?, base_atk_bonus_pct = ?, base_def_bonus_pct = ?,
+           health = MIN(health, ?)
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [newStar, newBonuses.hpBonus, newBonuses.atkBonusPct, newBonuses.defBonusPct,
+       newMaxHP, userId, guildId, mainPet.pet_name]
+    );
+  })();
+
+  const updatedPet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, mainPet.pet_name]);
+  return {
+    pet:         updatedPet,
+    newStar,
+    newBonuses,
+    coinCost:    req.coinCost,
+    sacrificed:  sacrificePets.map(s => s.pet_name),
+  };
+}
+
+/**
+ * Admin: paksa set bintang pet secara langsung.
+ */
+function forceSetStar(userId, guildId, petName, starLevel) {
+  const star = Math.max(1, Math.min(5, parseInt(starLevel) || 1));
+  const petRow = db.get(
+    'SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+    [userId, guildId, petName.trim().toLowerCase()]
+  );
+  if (!petRow) {
+    throw new Error(`Pet **"${petName}"** tidak ditemukan!`);
+  }
+  const bonuses = getStarBonuses(star);
+  db.run(
+    `UPDATE user_pets SET star_level = ?, base_hp_bonus = ?, base_atk_bonus_pct = ?, base_def_bonus_pct = ?
+     WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+    [star, bonuses.hpBonus, bonuses.atkBonusPct, bonuses.defBonusPct, userId, guildId, petRow.pet_name]
+  );
+  return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petRow.pet_name]);
+}
+
+
 module.exports = {
+  // Config & utils
   PET_ITEMS,
+
   PET_SPECIES,
   EXPEDITION_MAPS,
+  GACHA_SPECIES,
+  GACHA_RATES,
+  GACHA_PRICES,
+  STAR_UPGRADE_REQ,
+  getStarBonuses,
+  renderStars,
+  // Core
   getPet,
   adoptPet,
   resetPet,
@@ -2494,5 +2932,17 @@ module.exports = {
   getItemCooldown,
   setItemCooldown,
   unlockAutoCare,
-  toggleAutoFeed
+  toggleAutoFeed,
+  // Gacha
+  rollGacha,
+  saveGachaPet,
+  recyclePet,
+  getGachaTickets,
+  addGachaTickets,
+  // Upgrade Bintang
+  upgradePetStar,
+  getUpgradeRequirements,
+  getPetSacrificeList,
+  forceSetStar,
 };
+
