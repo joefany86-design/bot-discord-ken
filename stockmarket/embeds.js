@@ -2182,11 +2182,60 @@ module.exports = {
       { name: '⚽ Kebahagiaan', value: `${this.renderProgressBar(pet.happiness, 100)}`, inline: true }
     );
 
-    // Ketersediaan Supplies Inventory Singkat
-    const suppliesText = inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
+    // Hitung statistik tempur
+    const baseAtk = pet.level * 5;
+    let atkMult = 1.0;
+    const atkModifiers = [];
+    if (pet.pet_type === 'DRAGON') {
+      atkMult += 0.15;
+      atkModifiers.push('Naga (+15%)');
+    }
+    if (pet.trait === 'WARRIOR') {
+      atkMult += 0.15;
+      atkModifiers.push('Warrior (+15%)');
+    }
+    if (pet.accessory === 'SWORD_TOY') {
+      atkMult += 0.15;
+      atkModifiers.push('Pedang Mainan (+15%)');
+    }
+    const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
+    const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
+    
+    let atkDesc = `${baseAtk} ATK`;
+    if (atkModifiers.length > 0) {
+      atkDesc += ` (${atkModifiers.join(' + ')})`;
+    }
+    atkDesc += ` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
+
+    let defMult = 1.0;
+    const defModifiers = [];
+    if (pet.trait === 'STURDY') {
+      defMult *= 0.85;
+      defModifiers.push('Sturdy (-15%)');
+    }
+    if (pet.accessory === 'SHIELD_TOY') {
+      defMult *= 0.85;
+      defModifiers.push('Tameng Mainan (-15%)');
+    }
+    const finalDefReduction = Math.round((1 - defMult) * 100);
+    const defDesc = finalDefReduction > 0 
+      ? `🛡️ **-${finalDefReduction}% DMG** diterima (${defModifiers.join(' + ')})` 
+      : '❌ Tidak Ada Reduksi DMG';
+
+    embed.addFields({
+      name: '⚔️ Atribut & Statistik Tempur Pet',
+      value: `• **Darah Maksimal (HP):** \`${maxHP} HP\`\n` +
+             `• **Daya Serang (ATK):** \`${atkDesc}\`\n` +
+             `• **Pertahanan (DEF):** \`${defDesc}\``,
+      inline: false
+    });
+
+    // Ketersediaan Supplies Inventory Singkat (hanya menampilkan barang yang dimiliki)
+    const ownedSupplies = inventory.filter(item => item.quantity > 0);
+    const suppliesText = ownedSupplies.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
     embed.addFields({
       name: '🎒 Persediaan Barang Pet (Supplies)',
-      value: suppliesText || '*Kosong*',
+      value: suppliesText || '*Kosong (Gunakan `.pet shop` untuk membeli)*',
       inline: false
     });
 
