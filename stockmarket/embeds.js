@@ -2165,23 +2165,32 @@ module.exports = {
       .setColor(statusColor)
       .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName}`)
       .setDescription(
-        `┌──────────────────────────────────────────┐\n` +
-        `  👤 **Pemilik:** <@${pet.user_id}>\n` +
-        `  🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
-        `  🛡️ **Aksesoris:** ${accText}\n` +
-        `  🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `(${traitLine})` : ''}\n` +
-        `  🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n` +
-        `└──────────────────────────────────────────┘\n\n` +
+        `👤 **Pemilik:** <@${pet.user_id}>\n` +
+        `🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
+        `🛡️ **Aksesoris:** ${accText}\n` +
+        `🌟 **Rarity & Trait:** ${rarityBadge} ${traitLine ? `· ${traitLine}` : ''}\n` +
+        `🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n\n` +
         `**✨ Progress Level & XP**\n` +
         `\`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
       );
 
-    // Statistik Utama Pet (Inline Fields memanjang ke kanan - 3 kolom pas)
-    embed.addFields(
-      { name: '❤️ HP & Kesehatan', value: `${this.renderProgressBar(pet.health, maxHP)}${isSick ? '\n⚠️ **[ SAKIT / TERLUKA ]**' : ''}`, inline: true },
-      { name: '🍖 Kebutuhan Fisik', value: `🍗 **Makan:** ${this.renderProgressBar(pet.hunger, 100)}\n💧 **Minum:** ${this.renderProgressBar(pet.thirst, 100)}`, inline: true },
-      { name: '⚽ Status Mental', value: `⚽ **Happy:** ${this.renderProgressBar(pet.happiness, 100)}`, inline: true }
-    );
+    // Statistik Utama Pet (Ditata vertikal agar tidak wrap jelek di HP)
+    const barHP = this.renderProgressBar(pet.health, maxHP);
+    const barHunger = this.renderProgressBar(pet.hunger, 100);
+    const barThirst = this.renderProgressBar(pet.thirst, 100);
+    const barHappiness = this.renderProgressBar(pet.happiness, 100);
+
+    const conditionsText = 
+      `> ❤️ **Kesehatan (HP) :** ${barHP}${isSick ? ' ⚠️ **[SAKIT/TERLUKA]**' : ''}\n` +
+      `> 🍖 **Kenyangan (Makan):** ${barHunger}\n` +
+      `> 💧 **Hidrasi (Minum)  :** ${barThirst}\n` +
+      `> ⚽ **Mental (Happy)   :** ${barHappiness}`;
+
+    embed.addFields({
+      name: '📊 Kondisi & Status Utama Pet',
+      value: conditionsText,
+      inline: false
+    });
 
     // Hitung statistik tempur
     const baseAtk = pet.level * 5;
@@ -2189,52 +2198,54 @@ module.exports = {
     const atkModifiers = [];
     if (pet.pet_type === 'DRAGON') {
       atkMult += 0.15;
-      atkModifiers.push('Naga (+15%)');
+      atkModifiers.push('Naga +15%');
     }
     if (pet.trait === 'WARRIOR') {
       atkMult += 0.15;
-      atkModifiers.push('Warrior (+15%)');
+      atkModifiers.push('Warrior +15%');
     }
     if (pet.accessory === 'SWORD_TOY') {
       atkMult += 0.15;
-      atkModifiers.push('Pedang Mainan (+15%)');
+      atkModifiers.push('Pedang Mainan +15%');
     }
     const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
     const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
     
-    let atkDesc = `${baseAtk} ATK`;
+    let atkDesc = `\`${Math.round(baseAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
     if (atkModifiers.length > 0) {
-      atkDesc += ` (${atkModifiers.join(' + ')})`;
+      atkDesc += `\n>    *(Bonus: ${atkModifiers.join(' + ')})*`;
     }
-    atkDesc += ` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
 
     let defMult = 1.0;
     const defModifiers = [];
     if (pet.trait === 'STURDY') {
       defMult *= 0.85;
-      defModifiers.push('Sturdy (-15%)');
+      defModifiers.push('Sturdy -15%');
     }
     if (pet.accessory === 'SHIELD_TOY') {
       defMult *= 0.85;
-      defModifiers.push('Tameng Mainan (-15%)');
+      defModifiers.push('Tameng Mainan -15%');
     }
     const finalDefReduction = Math.round((1 - defMult) * 100);
-    const defDesc = finalDefReduction > 0 
-      ? `🛡️ **-${finalDefReduction}% DMG** diterima (${defModifiers.join(' + ')})` 
+    let defDesc = finalDefReduction > 0 
+      ? `\`-${finalDefReduction}% DMG\` diterima` 
       : '❌ Tidak Ada Reduksi DMG';
+    if (defModifiers.length > 0) {
+      defDesc += `\n>    *(Bonus: ${defModifiers.join(' + ')})*`;
+    }
 
     embed.addFields({
       name: '⚔️ Atribut & Statistik Tempur Pet',
       value: `> ❤️ **Darah Maksimal (HP) :** \`${maxHP} HP\`\n` +
-             `> ⚔️ **Daya Serang (ATK)  :** \`${atkDesc}\`\n` +
-             `> 🛡️ **Pertahanan (DEF)   :** \`${defDesc}\``,
+             `> ⚔️ **Daya Serang (ATK)  :** ${atkDesc}\n` +
+             `> 🛡️ **Pertahanan (DEF)   :** ${defDesc}`,
       inline: false
     });
 
     // Ketersediaan Supplies Inventory Singkat (hanya menampilkan barang yang dimiliki)
     const ownedSupplies = inventory.filter(item => item.quantity > 0);
     const suppliesText = ownedSupplies.length > 0 
-      ? ownedSupplies.map(item => `> 📦 **${item.name}**  ➔  \`${item.quantity} pcs\``).join('\n')
+      ? ownedSupplies.map(item => `> ${item.name}  ➔  \`${item.quantity} pcs\``).join('\n')
       : `> 📭 *Persediaan kosong. Ketik \`.pet shop\` untuk membeli.*`;
       
     embed.addFields({
@@ -2249,26 +2260,26 @@ module.exports = {
     if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
     const nextWork = pet.last_work_at + workCd;
     const canWork = now >= nextWork;
-    const workStatus = canWork ? '🟢 **Siap bekerja!**' : `⏳ Cooldown s/d <t:${nextWork}:t> (<t:${nextWork}:R>)`;
+    const workCdText = canWork ? '🟢 **Siap!**' : `⏳ <t:${nextWork}:R> (<t:${nextWork}:t>)`;
 
     // Cooldown Hunt (Hunt: 2 Jam, Fase adult saja)
-    let huntStatus = '🔒 Terkunci (Hanya untuk pet dewasa level 10+)';
+    let huntCdText = '🔒 Lvl 10+ / Dewasa';
     if (pet.level >= 10 || pet.status === 'ADULT') {
       const nextHunt = pet.last_hunt_at + (2 * 3600);
       const canHunt = now >= nextHunt;
-      huntStatus = canHunt ? '🟢 **Siap berburu!**' : `⏳ Cooldown s/d <t:${nextHunt}:t> (<t:${nextHunt}:R>)`;
+      huntCdText = canHunt ? '🟢 **Siap!**' : `⏳ <t:${nextHunt}:R> (<t:${nextHunt}:t>)`;
     }
 
     // Cooldown Play
     const nextPlay = (pet.last_play_at || 0) + (15 * 60);
     const canPlay = now >= nextPlay;
-    const playStatus = canPlay ? '🟢 **Siap bermain!**' : `⏳ Cooldown s/d <t:${nextPlay}:t> (<t:${nextPlay}:R>)`;
+    const playCdText = canPlay ? '🟢 **Siap!**' : `⏳ <t:${nextPlay}:R> (<t:${nextPlay}:t>)`;
 
     const cooldownsText = 
-      `> 💼 **Pekerjaan (.pet work) :**\n>  ${workStatus}\n` +
-      `> 🏹 **Perburuan (.pet hunt) :**\n>  ${huntStatus}\n` +
-      `> ⚽ **Bermain (.pet play)    :**\n>  ${playStatus}\n` +
-      `> 🛡️ **Ekspedisi (.pet expedition) :**\n>  🟢 **Siap Berangkat!** *(Maks 10x, CD 3 jam setelahnya)*`;
+      `> 💼 **Bekerja (.pet work) :** ${workCdText}\n` +
+      `> 🏹 **Perburuan (.pet hunt) :** ${huntCdText}\n` +
+      `> ⚽ **Bermain (.pet play)    :** ${playCdText}\n` +
+      `> 🛡️ **Ekspedisi             :** 🟢 **Siap!** *(CD 3 jam setelahnya)*`;
 
     embed.addFields({
       name: '⏱️ Status Cooldown & Aktivitas',
@@ -2337,7 +2348,7 @@ module.exports = {
     const percent = Math.min(100, Math.round((value / max) * 100));
     const filled = Math.min(totalBars, Math.round((value / max) * totalBars));
     const empty = totalBars - filled;
-    const barStr = '🟩'.repeat(filled) + '🟥'.repeat(empty);
+    const barStr = '█'.repeat(filled) + '░'.repeat(empty);
     if (max === 100) {
       return `\`[${barStr}]\` **${value}%**`;
     }
