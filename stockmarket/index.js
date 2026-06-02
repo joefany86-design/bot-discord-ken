@@ -2489,16 +2489,23 @@ function initStockMarket(client) {
       else if (customId === 'eco_btn_open_garden_private_perm') {
         await interaction.deferReply({ flags: 64 });
         
+        let selectedRecipientId = null;
+
         const getGardenDashboardDataPrivate = (targetUserId) => {
           const slots = garden.getGardenSlots(targetUserId, guildId);
           const wallet = economy.getWallet(targetUserId, guildId);
           const embed = embeds.gardenEmbed(user, slots, wallet.last_water_at);
 
-          const row = new ActionRowBuilder().addComponents(
+          const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('garden_btn_water_all_perm').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('garden_btn_shop_perm').setLabel('🛒 Toko Benih').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId('garden_btn_craft_perm').setLabel('💐 Rangkai Buket').setStyle(ButtonStyle.Secondary)
+          );
+
+          const row_buttons_2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_btn_sell_menu_perm').setLabel('💰 Jual Bunga').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_btn_gift_menu_perm').setLabel('🎁 Kirim Kado').setStyle(ButtonStyle.Primary)
           );
 
           const selectMenu = new StringSelectMenuBuilder()
@@ -2524,7 +2531,7 @@ function initStockMarket(client) {
 
           const row2 = new ActionRowBuilder().addComponents(selectMenu);
 
-          return { embeds: [embed], components: [row, row2] };
+          return { embeds: [embed], components: [row1, row_buttons_2, row2] };
         };
 
         const getGardenShopDataPrivate = (targetUserId) => {
@@ -2559,9 +2566,106 @@ function initStockMarket(client) {
           return { embeds: [embeds.bouquetCraftEmbed(user, guildId)], components: [craftRow] };
         };
 
+        const getGardenSellDataPrivate = (targetUserId) => {
+          const inv = database.all(
+            'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE "FLOWER_%" AND quantity > 0',
+            [targetUserId, guildId]
+          );
+
+          const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
+          inv.forEach(item => {
+            const key = item.item_id.replace('FLOWER_', '').toUpperCase();
+            if (stock[key] !== undefined) {
+              stock[key] = item.quantity;
+            }
+          });
+
+          const embed = new EmbedBuilder()
+            .setColor(0x10B981)
+            .setTitle('💰 PASAR JUAL BUNGA KEBUN')
+            .setThumbnail(user.displayAvatarURL())
+            .setDescription(
+              `Di sini Anda dapat menjual bunga hasil panen Anda secara instan untuk mendapatkan koin:\n\n` +
+              `🌹 **Mawar Merah**: Punya: \`${stock.ROSE} kuntum\` · Harga: **Rp 250** / kuntum\n` +
+              `🌷 **Bunga Tulip**: Punya: \`${stock.TULIP} kuntum\` · Harga: **Rp 550** / kuntum\n` +
+              `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 950** / kuntum\n` +
+              `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 2.200** / kuntum\n` +
+              `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 6.000** / kuntum\n\n` +
+              `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki.*`
+            )
+            .setTimestamp();
+
+          const sellRow1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_sell_rose_all_perm').setLabel('🌹 Jual Mawar (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ROSE <= 0),
+            new ButtonBuilder().setCustomId('garden_sell_tulip_all_perm').setLabel('🌷 Jual Tulip (All)').setStyle(ButtonStyle.Success).setDisabled(stock.TULIP <= 0),
+            new ButtonBuilder().setCustomId('garden_sell_lavender_all_perm').setLabel('🪻 Jual Lavender (All)').setStyle(ButtonStyle.Success).setDisabled(stock.LAVENDER <= 0)
+          );
+
+          const sellRow2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_sell_sakura_all_perm').setLabel('🌸 Jual Sakura (All)').setStyle(ButtonStyle.Success).setDisabled(stock.SAKURA <= 0),
+            new ButtonBuilder().setCustomId('garden_sell_orchid_all_perm').setLabel('👑 Jual Anggrek (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ORCHID <= 0),
+            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
+          );
+
+          return { embeds: [embed], components: [sellRow1, sellRow2] };
+        };
+
+        const getGardenGiftDataPrivate = (targetUserId, recId = null) => {
+          const inv = database.all(
+            'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE "BOUQUET_%" AND quantity > 0',
+            [targetUserId, guildId]
+          );
+
+          const stock = { LOVE: 0, PEACE: 0, IMPERIAL: 0 };
+          inv.forEach(item => {
+            const key = item.item_id.replace('BOUQUET_', '').toUpperCase();
+            if (stock[key] !== undefined) {
+              stock[key] = item.quantity;
+            }
+          });
+
+          const recipientText = recId ? `🎯 **Penerima Terpilih**: <@${recId}>\n*Silakan pilih jenis buket di bawah untuk mengirim kado.*` : '❌ **Belum ada penerima terpilih**.\n*Silakan pilih penerima menggunakan menu dropdown anggota di bawah.*';
+
+          const embed = new EmbedBuilder()
+            .setColor(0xD4AF37)
+            .setTitle('🎁 KIRIM KADO BUKET BUNGA')
+            .setThumbnail(user.displayAvatarURL())
+            .setDescription(
+              `Kirimkan buket kado bunga indah kepada warga lain untuk memberikan mereka **Daily Passive Buff** (+koin klaim harian):\n\n` +
+              `💖 **Buket Kasih Sayang**: Punya: \`${stock.LOVE} buket\` (Buff: +Rp 15 / daily)\n` +
+              `🪻 **Buket Ketenangan**: Punya: \`${stock.PEACE} buket\` (Buff: +Rp 35 / daily)\n` +
+              `👑 **Buket Legendaris**: Punya: \`${stock.IMPERIAL} buket\` (Buff: +Rp 80 / daily)\n\n` +
+              `${recipientText}`
+            )
+            .setTimestamp();
+
+          const userSelect = new UserSelectMenuBuilder()
+            .setCustomId('garden_gift_select_user_perm')
+            .setPlaceholder('👥 1. Pilih Warga Penerima Kado');
+
+          const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+          const bouquetSelect = new StringSelectMenuBuilder()
+            .setCustomId('garden_gift_select_bouquet_perm')
+            .setPlaceholder('💐 2. Pilih Buket yang Ingin Dikirim')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('💐 Buket Kasih Sayang (Love)').setValue('LOVE'),
+              new StringSelectMenuOptionBuilder().setLabel('💐 Buket Ketenangan (Peace)').setValue('PEACE'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Buket Legendaris (Imperial)').setValue('IMPERIAL')
+            );
+
+          const bouquetRow = new ActionRowBuilder().addComponents(bouquetSelect);
+
+          const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
+          );
+
+          return { embeds: [embed], components: [userRow, bouquetRow, btnRow] };
+        };
+
         const initialData = getGardenDashboardDataPrivate(user.id);
         const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+        const collector = privateMsg.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
           if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
@@ -2588,6 +2692,34 @@ function initStockMarket(client) {
                 await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
+              }
+            }
+
+            else if (i.isUserSelectMenu() && i.customId === 'garden_gift_select_user_perm') {
+              selectedRecipientId = i.values[0];
+              await i.update(getGardenGiftDataPrivate(user.id, selectedRecipientId)).catch(() => { });
+            }
+
+            else if (i.isStringSelectMenu() && i.customId === 'garden_gift_select_bouquet_perm') {
+              const bouquetKey = i.values[0];
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                if (!selectedRecipientId) {
+                  throw new Error('Silakan tentukan warga penerima kado terlebih dahulu!');
+                }
+                const res = garden.giftBouquet(user.id, selectedRecipientId, guildId, bouquetKey);
+                const successEmb = embeds.successEmbed(
+                  '🎁 Kirim Kado Buket Sukses!',
+                  `Anda berhasil mengirimkan **${res.bouquetName}** kepada <@${selectedRecipientId}>!\n\n` +
+                  `✉️ *Pesan Kado: "${res.messageText}"*\n\n` +
+                  `✨ Penerima mendapatkan **Daily Passive Buff** (+Rp ${res.buffAmount} koin) untuk klaim harian (.daily) mereka selama ${res.durationHours} jam!`
+                );
+                
+                selectedRecipientId = null; // reset
+                await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal mengirim kado: ${err.message}` }).catch(() => { });
               }
             }
 
@@ -2641,6 +2773,33 @@ function initStockMarket(client) {
 
             else if (i.customId === 'garden_btn_shop_perm') {
               await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId === 'garden_btn_sell_menu_perm') {
+              await i.update(getGardenSellDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId === 'garden_btn_gift_menu_perm') {
+              selectedRecipientId = null;
+              await i.update(getGardenGiftDataPrivate(user.id)).catch(() => { });
+            }
+
+            else if (i.customId.startsWith('garden_sell_') && i.customId.endsWith('_all_perm')) {
+              const flowerKey = i.customId.replace('garden_sell_', '').replace('_all_perm', '');
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const res = garden.sellFlowers(user.id, guildId, flowerKey, 'all');
+                const successEmb = embeds.successEmbed(
+                  '💰 Penjualan Bunga Sukses!',
+                  `Anda berhasil menjual seluruh (**${res.quantitySold} kuntum**) bunga **${res.flowerName}** Anda!\n\n` +
+                  `🪙 Uang didapat: **+Rp ${res.earnings.toLocaleString('id-ID')}**\n` +
+                  `💸 Sisa dompet Anda: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                );
+                await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal menjual bunga: ${err.message}` }).catch(() => { });
+              }
             }
 
             else if (i.customId.startsWith('garden_buy_') && i.customId.endsWith('_perm')) {
