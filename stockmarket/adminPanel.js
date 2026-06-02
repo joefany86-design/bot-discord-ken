@@ -3199,6 +3199,8 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
         filterSql += " AND type LIKE 'PET_%'";
       } else if (typeFilter === 'MARKET_SAHAM') {
         filterSql += " AND type LIKE 'STOCK_%'";
+      } else if (typeFilter === 'BANK_TRANSACTIONS') {
+        filterSql += " AND type IN ('BANK_DEPOSIT', 'BANK_WITHDRAW', 'BANK_TRANSFER_IN', 'BANK_TRANSFER_OUT', 'LOAN_TAKE', 'LOAN_REPAY', 'LOAN_AUTO_DEBIT', 'ADMIN_BANK_GIVE', 'ADMIN_BANK_TAKE')";
       }
     }
 
@@ -3269,6 +3271,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
 
     categorySelect.addOptions(
       new StringSelectMenuOptionBuilder().setLabel('🔍 Semua Kategori').setValue('ALL').setDefault(typeFilter === 'ALL'),
+      new StringSelectMenuOptionBuilder().setLabel('🏦 Transaksi Perbankan (Dep/Wd/Pinjam)').setValue('BANK_TRANSACTIONS').setDefault(typeFilter === 'BANK_TRANSACTIONS'),
       new StringSelectMenuOptionBuilder().setLabel('🛠️ Tindakan Admin (Suntik/Tarik)').setValue('ADMIN_ACTIONS').setDefault(typeFilter === 'ADMIN_ACTIONS'),
       new StringSelectMenuOptionBuilder().setLabel('🎲 Judi & Kasino').setValue('CASINO_JUDI').setDefault(typeFilter === 'CASINO_JUDI'),
       new StringSelectMenuOptionBuilder().setLabel('🚓 Kriminalitas (Rob/Heist)').setValue('ROB_HEIST').setDefault(typeFilter === 'ROB_HEIST'),
