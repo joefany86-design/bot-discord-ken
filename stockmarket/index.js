@@ -3564,10 +3564,10 @@ async function handlePetCommand(message, client, args) {
   }
 
   // ── SUB-PERINTAH: RECYCLE ──
-  if (subCommand === 'recycle' || subCommand === 'daur-ulang') {
+  if (subCommand === 'recycle' || subCommand === 'daur-ulang' || subCommand === 'daurulang' || subCommand === 'ricekel' || subCommand === 'rycycle' || subCommand === 'rycekel' || subCommand === 'recekel') {
     const targetName = args.slice(1).join(' ');
     if (!targetName) {
-      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet recycle <nama_pet>`\nContoh: `.pet recycle Ciko`')] });
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet recycle <nama_pet>`\nContoh: `.pet recycle Ciko` atau `.pet ricekel Ciko`')] });
     }
     try {
       const res = pet.recyclePet(author.id, guildId, targetName);
