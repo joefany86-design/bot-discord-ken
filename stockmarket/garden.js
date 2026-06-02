@@ -325,6 +325,13 @@ function sellFlowers(userId, guildId, flowerKeyInput, quantityInput) {
     
     // Tambah koin Rupiah ke dompet
     economy.addBalance(userId, guildId, totalEarnings, 'FLOWER_SELL');
+
+    // Update daily quest progress for SELL_FLOWER
+    try {
+      pet.incrementQuestProgress(userId, guildId, 'SELL_FLOWER', 1);
+    } catch (err) {
+      console.error('Error incrementing quest progress for SELL_FLOWER:', err.message);
+    }
   })();
 
   return {
@@ -480,6 +487,13 @@ function giftBouquet(fromUserId, toUserId, guildId, bouquetKeyInput, messageText
       'INSERT INTO garden_buffs (user_id, guild_id, buff_type, amount, ends_at) VALUES (?, ?, ?, ?, ?)',
       [toUserId, guildId, 'daily_bonus', bouquetConf.buff.amount, buffEndsAt]
     );
+
+    // Update daily quest progress for GIFT_BOUQUET
+    try {
+      pet.incrementQuestProgress(fromUserId, guildId, 'GIFT_BOUQUET', 1);
+    } catch (err) {
+      console.error('Error incrementing quest progress for GIFT_BOUQUET:', err.message);
+    }
   })();
 
   return {

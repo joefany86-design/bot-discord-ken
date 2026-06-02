@@ -2877,6 +2877,8 @@ function initStockMarket(client) {
               case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
               case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
               case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+              case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
+              case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
               default: descText = `Misi Harian`;
             }
             return `${descText} (${progress}/${target})`;
@@ -3412,6 +3414,8 @@ async function handlePetCommand(message, client, args) {
           case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
           case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
           case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+          case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
+          case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
           default: descText = `Misi Harian`;
         }
         return `${descText} (${progress}/${target})`;

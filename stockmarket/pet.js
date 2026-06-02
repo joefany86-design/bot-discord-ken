@@ -2019,7 +2019,9 @@ function getOrCreateDailyQuests(userId, guildId) {
     { type: 'FEED', target: 2 },
     { type: 'PLAY', target: 2 },
     { type: 'WATER', target: 2 },
-    { type: 'EXPEDITION', target: 1 }
+    { type: 'EXPEDITION', target: 1 },
+    { type: 'SELL_FLOWER', target: 2 },
+    { type: 'GIFT_BOUQUET', target: 1 }
   ];
 
   // Shuffle pool dan ambil 3 item teratas
