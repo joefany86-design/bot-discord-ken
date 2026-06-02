@@ -2053,7 +2053,7 @@ module.exports = {
         .setTimestamp();
     }
 
-    const { GACHA_SPECIES, renderStars, getMaxHP } = require('./pet');
+    const { GACHA_SPECIES, renderStars, getMaxHP, getXpNeeded } = require('./pet');
     const speciesInfo = GACHA_SPECIES[pet.pet_type];
     const petRarity = (pet.gacha_rarity || (speciesInfo ? speciesInfo.rarity : 'COMMON')).toUpperCase();
 
