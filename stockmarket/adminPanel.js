@@ -3246,6 +3246,35 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     if (targetUserId) filterDesc += `• Target: <@${targetUserId}>\n`;
     if (typeFilter !== 'ALL') filterDesc += `• Filter Kategori: \`${typeFilter}\`\n`;
 
+    let userAuditText = '';
+    if (targetUserId) {
+      const userWalletRow = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const userSavingsRow = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const userWallet = userWalletRow ? userWalletRow.balance : 0;
+      const userSavings = userSavingsRow ? userSavingsRow.balance : 0;
+
+      const userInflowRow = database.get(
+        'SELECT SUM(amount) as total FROM transactions WHERE guild_id = ? AND user_id = ? AND amount > 0 AND created_at > ?',
+        [gId, targetUserId, dayAgoUnix]
+      );
+      const userOutflowRow = database.get(
+        'SELECT SUM(amount) as total FROM transactions WHERE guild_id = ? AND user_id = ? AND amount < 0 AND created_at > ?',
+        [gId, targetUserId, dayAgoUnix]
+      );
+      const userInflow = userInflowRow ? (userInflowRow.total || 0) : 0;
+      const userOutflow = Math.abs(userOutflowRow ? (userOutflowRow.total || 0) : 0);
+      const userNet = userInflow - userOutflow;
+      const userNetSign = userNet >= 0 ? '+' : '';
+
+      userAuditText = `👤 **HASIL AUDIT ANGGOTA (<@${targetUserId}>):**\n` +
+                      `• Saldo Dompet: \`Rp ${userWallet.toLocaleString('id-ID')}\`\n` +
+                      `• Tabungan Bank: \`Rp ${userSavings.toLocaleString('id-ID')}\`\n` +
+                      `• Total Kekayaan Cair: **Rp ${(userWallet + userSavings).toLocaleString('id-ID')}**\n` +
+                      `• 📥 Pendapatan (24j terakhir): \`+Rp ${userInflow.toLocaleString('id-ID')}\`\n` +
+                      `• 📤 Pengeluaran (24j terakhir): \`-Rp ${userOutflow.toLocaleString('id-ID')}\`\n` +
+                      `• ⚖️ Aliran Bersih (Net Change): **${userNetSign}Rp ${userNet.toLocaleString('id-ID')}**\n\n`;
+    }
+
     let embed = new EmbedBuilder()
       .setColor(0x10B981) // Emerald Green
       .setTitle('📊 AUDIT LEDGER & ALIRAN DANA SERVER')
@@ -3253,6 +3282,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
       .setDescription(
         `Selamat datang di **Dashboard Audit Finansial Sentinel**! 🛡️💼\n` +
         `Gunakan panel ini untuk melacak perputaran koin, inflasi harian, dan mutasi dana warga:\n\n` +
+        userAuditText +
         `💰 **ESTIMASI SIRKULASI UANG GLOBAL:**\n` +
         `• Total Saldo Dompet Warga: \`Rp ${totalWallets.toLocaleString('id-ID')}\`\n` +
         `• Total Tabungan Bank Warga: \`Rp ${totalSavings.toLocaleString('id-ID')}\`\n` +
