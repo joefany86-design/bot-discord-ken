@@ -1640,8 +1640,10 @@ function initStockMarket(client) {
 
                         // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
                         try {
-                          const embed = embeds.bankTransferNotificationEmbed(user, targetUserId, res.netAmount, selectedType === 'bayar');
-                          await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
+                          if (submitted.channelId !== '1510121069783023646') {
+                            const embed = embeds.bankTransferNotificationEmbed(user, targetUserId, res.netAmount, selectedType === 'bayar');
+                            await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
+                          }
                         } catch (err) {
                           console.error('Gagal mengirim notifikasi transfer ke channel:', err);
                         }
@@ -7302,8 +7304,10 @@ async function handleEconomyCommands(message, client) {
 
                       // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
                       try {
-                        const embed = embeds.bankTransferNotificationEmbed(author, targetUserId, res.netAmount, selectedType === 'bayar');
-                        await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
+                        if (submitted.channelId !== '1510121069783023646') {
+                          const embed = embeds.bankTransferNotificationEmbed(author, targetUserId, res.netAmount, selectedType === 'bayar');
+                          await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
+                        }
                       } catch (err) {
                         console.error('Gagal mengirim notifikasi transfer ke channel:', err);
                       }
