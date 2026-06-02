@@ -5412,6 +5412,14 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
   const guildId = context.guildId;
   const author = isInteraction ? context.user : context.author;
 
+  const editGachaMessage = async (payload) => {
+    if (isInteraction) {
+      return await context.editReply(payload);
+    } else {
+      return await replyMsg.edit(payload);
+    }
+  };
+
   const buildGachaMainEmbed = () => {
     const wallet = economy.getWallet(author.id, guildId);
     const tickets = pet.getGachaTickets(author.id, guildId);
@@ -5479,7 +5487,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
       new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
     );
 
-    await replyMsg.edit({ embeds: [resultEmbed], components: [resultRow] });
+    await editGachaMessage({ embeds: [resultEmbed], components: [resultRow] });
     return pull;
   };
 
@@ -5511,7 +5519,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           .setTitle('🎰 MEMUTAR MESIN GACHA... 🌟')
           .setDescription('✨ Kristal nasib berputar mencari peliharaan baru...\n\n> 🔮 *Menentukan kelangkaan...*\n> 🐾 *Memilih spesies...*\n> 🧬 *Mengacak trait...*')
           .setTimestamp();
-        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+        await editGachaMessage({ embeds: [loadingEmbed], components: [] });
 
         // Roll setelah 2 detik animasi
         await new Promise(r => setTimeout(r, 2000));
@@ -5531,7 +5539,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           .setTitle('🎰 GACHA 10X MEGA PULL! 🌟🌟🌟')
           .setDescription('✨ Kristal nasib meledak! 10 peliharaan sedang ditarik sekaligus...\n\n> 🔮 *10 roda berputar bersamaan...*')
           .setTimestamp();
-        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+        await editGachaMessage({ embeds: [loadingEmbed], components: [] });
 
         await new Promise(r => setTimeout(r, 3000));
 
@@ -5582,7 +5590,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
         );
 
-        await replyMsg.edit({ embeds: [summaryEmbed], components: [selectRow, btnRow] });
+        await editGachaMessage({ embeds: [summaryEmbed], components: [selectRow, btnRow] });
       }
 
       // ── TOMBOL GACHA TIKET ──
@@ -5594,7 +5602,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           .setTitle('🎫 MENGGUNAKAN TIKET GACHA... 🌟')
           .setDescription('✨ Tiket gacha menyala dan mesin mulai berputar...')
           .setTimestamp();
-        await replyMsg.edit({ embeds: [loadingEmbed], components: [] });
+        await editGachaMessage({ embeds: [loadingEmbed], components: [] });
 
         await new Promise(r => setTimeout(r, 2000));
 
@@ -5646,7 +5654,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
               )],
               flags: 64
             });
-            await replyMsg.edit(buildGachaMainEmbed());
+            await editGachaMessage(buildGachaMainEmbed());
           } catch (err) {
             await submitted.reply({ embeds: [embeds.errorEmbed('Gagal Menyimpan!', err.message)], flags: 64 });
           }
@@ -5665,7 +5673,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet ${recycledSpecies} telah didaur ulang.\n💰 **+Rp 1.000** telah ditambahkan ke dompet Anda.`)],
           flags: 64
         });
-        await replyMsg.edit(buildGachaMainEmbed());
+        await editGachaMessage(buildGachaMainEmbed());
       }
 
       // ── TOMBOL SELECT 10X SAVE ──
@@ -5726,7 +5734,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
               )],
               flags: 64
             });
-            await replyMsg.edit(buildGachaMainEmbed());
+            await editGachaMessage(buildGachaMainEmbed());
           } catch (err) {
             await submitted.reply({ embeds: [embeds.errorEmbed('Gagal Memproses!', err.message)], flags: 64 });
           }
@@ -5745,7 +5753,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           embeds: [embeds.successEmbed('Recycle 10x Berhasil! ♻️', `Semua 10 pet telah didaur ulang.\n💰 **+Rp ${totalRecycle.toLocaleString('id-ID')}** telah ditambahkan ke dompet Anda.`)],
           flags: 64
         });
-        await replyMsg.edit(buildGachaMainEmbed());
+        await editGachaMessage(buildGachaMainEmbed());
       }
 
       // ── TOMBOL KEMBALI ──
@@ -5765,7 +5773,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
   });
 
   collector.on('end', async () => {
-    await replyMsg.edit({ components: [] }).catch(() => {});
+    await editGachaMessage({ components: [] }).catch(() => {});
   });
 }
 
@@ -5776,6 +5784,14 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 async function handlePetUpgradePanel(context, client, isInteraction = false) {
   const guildId = context.guildId;
   const author = isInteraction ? context.user : context.author;
+
+  const editUpgradeMessage = async (payload) => {
+    if (isInteraction) {
+      return await context.editReply(payload);
+    } else {
+      return await replyMsg.edit(payload);
+    }
+  };
 
   const allPets = pet.getPetsList(author.id, guildId);
   if (allPets.length === 0) {
@@ -5989,7 +6005,7 @@ async function handlePetUpgradePanel(context, client, isInteraction = false) {
 
         selectedMainPet = null;
         selectedSacrifices = [];
-        await replyMsg.edit({ embeds: [successEmbed], components: [] });
+        await editUpgradeMessage({ embeds: [successEmbed], components: [] });
         collector.stop();
       }
 
@@ -6010,7 +6026,7 @@ async function handlePetUpgradePanel(context, client, isInteraction = false) {
   });
 
   collector.on('end', async () => {
-    await replyMsg.edit({ components: [] }).catch(() => {});
+    await editUpgradeMessage({ components: [] }).catch(() => {});
   });
 }
 
