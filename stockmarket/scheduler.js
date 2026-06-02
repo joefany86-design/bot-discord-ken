@@ -107,7 +107,7 @@ function initScheduler(client) {
         summaryLine += '\n```';
 
         const reportEmbed = new EmbedBuilder()
-          .setColor(0x00FF88)
+          .setColor(0x10B981) // Velvet Emerald Green
           .setTitle(`📈  LAPORAN PERGERAKAN SAHAM  ─  ${guild.name}`)
           .setDescription(
             `${summaryLine}\n` +
@@ -289,7 +289,7 @@ function initScheduler(client) {
       const leaderboard = economy.getLeaderboard(guild.id, 3);
 
       const embed = new EmbedBuilder()
-        .setColor(0x1E1F22)
+        .setColor(0x1E1F22) // Dark Onyx
         .setTitle(`📋 LAPORAN HARIAN BURSA SAHAM — ${guild.name}`)
         .setDescription(
           `🔔 **Bursa saham resmi ditutup untuk hari ini!**\n` +
@@ -384,7 +384,7 @@ function initScheduler(client) {
         }
 
         const embed = new EmbedBuilder()
-          .setColor(0x00FF88) // Neon Emerald Green
+          .setColor(0x10B981) // Velvet Emerald Green
           .setTitle('💸 DISTRIBUSI DIVIDEN BURSA MINGGUAN! 📈')
           .setDescription(
             `🎉 **Selamat Hari Minggu Malam!**\n` +
@@ -618,7 +618,7 @@ function initScheduler(client) {
           console.log(`🏦 [Bank Scheduler] Pemrosesan harian selesai untuk ${accountsCount} rekening.`);
           
           const bankReportEmbed = new EmbedBuilder()
-            .setColor(0x00A2E8)
+            .setColor(0xD4AF37) // Imperial Gold
             .setTitle(`🏦 LAPORAN KINERJA PERBANKAN HARIAN — ${guild.name}`)
             .setDescription(
               `🔔 **Tengah malam telah tiba! Sistem Bank Kosan 1A telah memproses seluruh tabungan warga:**\n\n` +
@@ -670,7 +670,7 @@ function initScheduler(client) {
 
               if (targetChannel) {
                 const autoDebitEmbed = new EmbedBuilder()
-                  .setColor(0x00FF88)
+                  .setColor(0x10B981) // Velvet Emerald Green
                   .setTitle(`🏛️ AUTO-DEBET LUNAS OTOMATIS — ${guild.name}`)
                   .setDescription(
                     `Tagihan pinjaman berjangka tempo milik <@${userId}> telah jatuh tempo.\n\n` +
@@ -758,7 +758,7 @@ function initScheduler(client) {
 
         if (targetChannel) {
           const drawEmbed = new EmbedBuilder()
-            .setColor(0xFFD700)
+            .setColor(0xD4AF37) // Imperial Gold
             .setTitle('🎟️ 🏆 UNDIAN LOTRE MINGGUAN — PEMENANG TELAH DITENTUKAN!')
             .setDescription(
               `🎉 **Selamat kepada pemenang lotre minggu ini!**\n\n` +
@@ -847,7 +847,7 @@ function initScheduler(client) {
 
         if (accountsTaxed > 0 && targetChannel) {
           const taxEmbed = new EmbedBuilder()
-            .setColor(0xE74C3C)
+            .setColor(0xFF3366) // Crimson Rose
             .setTitle('🏦 📉 PAJAK PROGRESIF MINGGUAN — LAPORAN PEMUNGUTAN')
             .setDescription(
               `⚖️ **Bank Sentral Kosan 1A telah melaksanakan pemungutan pajak progresif mingguan.**\n\n` +

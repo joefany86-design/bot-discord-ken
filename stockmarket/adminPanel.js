@@ -83,7 +83,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
   const getPetPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0x9B59B6)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🐾 ADMIN CONTROL PANEL — PET TAMAGOTCHI')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -281,7 +281,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
         // Build Embed
         const auditEmbed = new EmbedBuilder()
-          .setColor(0x8E44AD)
+          .setColor(0x7C4DFF) // Royal Violet
           .setTitle('🏆 AUDIT & LEADERBOARD PET — GLOBAL SERVER')
           .setThumbnail(client.user.displayAvatarURL())
           .setTimestamp();
@@ -798,7 +798,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
 
   const getBankPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0xFFD700)
+      .setColor(0xD4AF37) // Imperial Gold
       .setTitle('🏦 ADMIN CONTROL PANEL — BANK & FINANSIAL')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -1282,7 +1282,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
   const getRobberyPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0xE74C3C)
+      .setColor(0xFF3366) // Crimson Rose
       .setTitle('🚓 ADMIN CONTROL PANEL — HUKUM & LAPAS VIRTUAL')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -1481,7 +1481,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
   const getSahamPanelData = (gId, ticker) => {
     let embed = new EmbedBuilder()
-      .setColor(0x2ECC71)
+      .setColor(0x10B981) // Velvet Emerald Green
       .setTitle('📈 ADMIN CONTROL PANEL — BURSA SAHAM & EVENT PASAR')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -2106,7 +2106,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     const settings = getOrCreateEbyusSettings(gId);
     
     let embed = new EmbedBuilder()
-      .setColor(0x00FFFF)
+      .setColor(0x00E5FF) // Celestial Ice Blue
       .setTitle('⚡ ADMIN CONTROL PANEL — BYPASS & EVENT ABYUS')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -2401,7 +2401,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
   const getShopPanelData = (gId) => {
     let embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🎭 ADMIN CONTROL PANEL — TOKO ROLE & GAME ToD')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -2791,7 +2791,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 
   const getTrollPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0x95A5A6)
+      .setColor(0x8A95A5) // Platinum Slate Gray
       .setTitle('😜 ADMIN CONTROL PANEL — TROLL & PRANK WARGA')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -3049,7 +3049,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
   const getHubPanelData = () => {
     let embed = new EmbedBuilder()
-      .setColor(0x2F3136)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🎮 PUSAT KONTROL ADMINISTRATOR — SENTINEL')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
@@ -3215,7 +3215,7 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
 
   const getGardenPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0x2ECC71)
+      .setColor(0x10B981) // Velvet Emerald Green
       .setTitle('🌱 ADMIN CONTROL PANEL — COZY FLOWER GARDEN')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()
@@ -3419,7 +3419,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
 
   const getQuestPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
-      .setColor(0x3498DB)
+      .setColor(0x00E5FF) // Celestial Ice Blue
       .setTitle('📋 ADMIN CONTROL PANEL — DAILY QUESTS PET')
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp()

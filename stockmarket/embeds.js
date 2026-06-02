@@ -4,12 +4,13 @@ const db = require('./database');
 
 // Palette Warna Premium (HSL tailored / vibrant)
 const COLORS = {
-  INFO: 0x5865F2,     // Blurple Discord
-  SUCCESS: 0x00FF88,  // Neon Emerald Green
-  ERROR: 0xFF3366,    // Neon Hot Pink
-  WARN: 0xFFB300,     // Gold Amber
-  DARK: 0x1E1F22,     // Premium Grey-Dark
-  PURPLE: 0x7C4DFF    // Deep Purple
+  INFO: 0x7C4DFF,     // Royal Violet (Vibrant Indigo)
+  SUCCESS: 0x10B981,  // Velvet Emerald Green
+  ERROR: 0xFF3366,    // Crimson Rose / Ruby Velvet
+  WARN: 0xD4AF37,     // Imperial Gold
+  DARK: 0x1E1F22,     // Dark Onyx
+  PURPLE: 0x7C4DFF,   // Royal Violet
+  ICE: 0x00E5FF       // Celestial Ice Blue
 };
 
 /**
@@ -132,15 +133,15 @@ function generate2DChart(prices) {
  */
 function getRoleColor(roleName, tier) {
   const ROLE_COLORS = {
-    '🥉 Common Prestige': '#979c9f',
-    '🥈 Rare Elite': '#3498db',
-    '🔮 Primordial': '#70a1ff',
-    '🥇 Epic Champion': '#5f27cd',
-    '👑 Legendary Overlord': '#9b59b6',
-    '🌟 Zenith': '#e84393',
-    '🌟 Mythic Immortal': '#ff4757',
-    '✨ Aethelgard': '#e67e22',
-    '👑 The Sovereign': '#f1c40f'
+    '🥉 Common Prestige': '#8A95A5', // Slate Gray
+    '🥈 Rare Elite': '#00A8FF',      // Celestial Blue
+    '🔮 Primordial': '#74b9ff',      // Ice Blue Light
+    '🥇 Epic Champion': '#6C5CE7',   // Velvet Violet
+    '👑 Legendary Overlord': '#8E44AD', // Amethyst Purple
+    '🌟 Zenith': '#fd79a8',          // Zenith Rose Pink
+    '🌟 Mythic Immortal': '#FF3366', // Crimson Ruby
+    '✨ Aethelgard': '#D4AF37',      // Imperial Gold
+    '👑 The Sovereign': '#D4AF37'    // Sovereign Gold
   };
 
   const cleanName = roleName ? roleName.trim() : '';
@@ -150,23 +151,23 @@ function getRoleColor(roleName, tier) {
 
   // Fallback berdasarkan Tier jika kustom role di luar default
   const TIER_COLORS = {
-    COMMON: '#979c9f',
-    RARE: '#3498db',
-    EPIC: '#5f27cd',
-    LEGENDARY: '#9b59b6',
-    MYTHIC: '#ff4757'
+    COMMON: '#8A95A5',
+    RARE: '#00A8FF',
+    EPIC: '#6C5CE7',
+    LEGENDARY: '#8E44AD',
+    MYTHIC: '#FF3366'
   };
-  return TIER_COLORS[tier?.toUpperCase()] || '#00FF88';
+  return TIER_COLORS[tier?.toUpperCase()] || '#10B981';
 }
 
 // Warna Dinamis per Spesies Pet (untuk embed yang lebih hidup)
 const PET_COLORS = {
-  SLIME: 0x00FF88, // Neon Green
+  SLIME: 0x10B981, // Velvet Emerald
   DRAGON: 0xFF6B35, // Blazing Orange
   CAT: 0xFF69B4, // Hot Pink
   GOLEM: 0x8B7355, // Earthen Brown
-  EGG: 0xFFD700, // Golden
-  DEAD: 0x2C2F33  // Dark Grey
+  EGG: 0xD4AF37, // Imperial Gold
+  DEAD: 0x1E1F22  // Dark Onyx
 };
 
 // GIF Assets per Species/Stage dari sumber reliable (media.tenor.com & media.giphy.com)
@@ -814,7 +815,7 @@ module.exports = {
     const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
 
     const embed = new EmbedBuilder()
-      .setColor(0xFFD700) // Premium Gold Color!
+      .setColor(0xD4AF37) // Imperial Gold
       .setTitle(`🏆 PAPAN PERINGKAT ORANG TERKAYA — ${guildName.toUpperCase()}`)
       .setDescription(
         `👑 **KONGLEMERAT RUPIAH SERVER KOSAN 1A** 👑\n` +
@@ -893,7 +894,7 @@ module.exports = {
     const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
 
     const embed = new EmbedBuilder()
-      .setColor(0x2C3E50) // Midnight Dark Blue
+      .setColor(0x1E1F22) // Dark Onyx
       .setTitle(`🕵️‍♂️ PAPAN PERINGKAT: TOP PENCURI KOSAN 1A — ${guildName.toUpperCase()}`)
       .setDescription(
         `🚨 **BURONAN KELAS KAKAP & KOMPLOTAN KRIMINAL** 🕵️‍♂️\n` +
@@ -945,7 +946,7 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF88) // Neon Emerald Green
+      .setColor(0x10B981) // Velvet Emerald Green
       .setTitle(`🏆 PAPAN PERINGKAT PET TERHEBAT — ${guildName.toUpperCase()}`)
       .setDescription(
         `🦁 **TAMAGOTCHI PET HALL OF FAME** 🦁\n` +
@@ -1222,7 +1223,7 @@ module.exports = {
         );
     } else {
       embed
-        .setColor(0x7F8C8D) // Premium Slate Grey (Ampas Silver/Grey)
+        .setColor(0x8A95A5) // Platinum Slate Gray
         .setTitle(`🎰 GACHA ZONK: AMSYONG DEK! 😭 🎰`)
         .setDescription(
           `**${user.username}** baru saja memutar mesin Gacha seharga **${formatCurrency(price)}**!\n\n` +
@@ -1248,7 +1249,7 @@ module.exports = {
     // EMBED 1: HERO HEADER — SELAMAT DATANG
     // ══════════════════════════════════════════════════
     const heroEmbed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('📢  ENSIKLOPEDIA LENGKAP PERINTAH & FITUR SENTINEL BOT 2026  📢')
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
@@ -1265,7 +1266,7 @@ module.exports = {
     // EMBED 2: VOICE & TTS + EKONOMI PASIF
     // ══════════════════════════════════════════════════
     const voiceEcoEmbed = new EmbedBuilder()
-      .setColor(0x00D2FF)
+      .setColor(0x00E5FF) // Celestial Ice
       .addFields(
         {
           name: '🎙️  ① KEAMANAN VOICE CHANNEL & GOOGLE TEXT-TO-SPEECH',
@@ -1301,7 +1302,7 @@ module.exports = {
     // EMBED 3: BURSA SAHAM + AUTO-TRADING + TOKO ROLE
     // ══════════════════════════════════════════════════
     const stocksEmbed = new EmbedBuilder()
-      .setColor(0x00FF88)
+      .setColor(0x10B981) // Velvet Emerald Green
       .addFields(
         {
           name: '📈  ③ BURSA SAHAM KOSAN INTERAKTIF',
@@ -1398,7 +1399,7 @@ module.exports = {
     // EMBED 5: PET + ROB/HEIST
     // ══════════════════════════════════════════════════
     const petRobEmbed = new EmbedBuilder()
-      .setColor(0xFFB300)
+      .setColor(0xD4AF37) // Imperial Gold
       .addFields(
         {
           name: '🐾  ⑧ SISTEM PET VIRTUAL — SPESIES & ADOPSI',
@@ -2088,7 +2089,7 @@ module.exports = {
       const isHatched = pet.hatch_at <= nowEgg;
 
       embed
-        .setColor(0xFFD700) // Emas — telur istimewa
+        .setColor(0xD4AF37) // Imperial Gold
         .setTitle(`🥚 TELUR MONSTER: ${pet.pet_name}`)
         .setDescription(
           `> ${isHatched ? '✅ **Telur sudah siap menetas!**' : `⏳ Menetas <t:${pet.hatch_at}:R>`}\n\n` +
@@ -2102,7 +2103,7 @@ module.exports = {
 
     if (pet.status === 'DEAD') {
       embed
-        .setColor(0x424242) // Abu gelap — suasana duka
+        .setColor(0x1E1F22) // Dark Ony
         .setTitle(`🪦 IN MEMORIAM: ${pet.pet_name}`)
         .setDescription(
           `> 😭 **Pet Anda telah meninggal dunia.**\n\n` +
@@ -2326,7 +2327,7 @@ module.exports = {
 
     if (result.draw) {
       embed
-        .setColor(0xFFB300) // Vibrant Gold/Amber
+        .setColor(0xD4AF37) // Imperial Gold
         .setDescription(
           `🤝 **HASIL AKHIR ARENA: SEIMBANG (DRAW) !** 🤝\n\n` +
           `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat alot dan berakhir imbang!\n\n` +

@@ -238,7 +238,7 @@ function cleanupResources(guildId) {
 async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, client) {
   // 1. Bangun embed kontrol panel utama
   const mainEmbed = new EmbedBuilder()
-    .setColor(0x5865F2)
+    .setColor(0x7C4DFF) // Royal Violet
     .setTitle('🎮 PUSAT KONTROL SENTINEL BOT')
     .setThumbnail(client.user.displayAvatarURL())
     .setDescription(
@@ -301,7 +301,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
     try {
       if (i.customId === 'help_btn_portal') {
         const portalEmbed = new EmbedBuilder()
-          .setColor(0x5865F2)
+          .setColor(0x7C4DFF) // Royal Violet
           .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription(
@@ -333,7 +333,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 
       if (i.customId === 'help_btn_member') {
         const memberEmbed = new EmbedBuilder()
-          .setColor(0x00FF88)
+          .setColor(0x10B981) // Velvet Emerald Green
           .setTitle('👤 PANEL KONTROL MEMBER — SENTINEL')
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription([
@@ -400,7 +400,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
         }
 
         const adminEmbed = new EmbedBuilder()
-          .setColor(0xFF3366)
+          .setColor(0x7C4DFF) // Royal Violet
           .setTitle('🛡️ PANEL KONTROL ADMINISTRATOR — SENTINEL')
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription(`Halo **${user.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola perekonomian, bursa saham, toko, serta game:`)
@@ -505,7 +505,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 
 async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, client) {
   const portalEmbed = new EmbedBuilder()
-    .setColor(0x5865F2)
+    .setColor(0x7C4DFF) // Royal Violet
     .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
     .setThumbnail(client.user.displayAvatarURL())
     .setDescription(
@@ -848,7 +848,7 @@ client.on('messageCreate', async message => {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — SENTINEL')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(`Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:`)
@@ -962,7 +962,7 @@ client.on('messageCreate', async message => {
       speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
 
       const embed = new EmbedBuilder()
-        .setColor(0x00FF88)
+        .setColor(0x10B981) // Velvet Emerald Green
         .setTitle('🔒 Saluran Terkunci & Bergabung!')
         .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` +
           `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.`)
@@ -1028,7 +1028,7 @@ client.on('messageCreate', async message => {
       cleanupResources(guildId);
 
       const embed = new EmbedBuilder()
-        .setColor(0xFF3366)
+        .setColor(0xFF3366) // Crimson Rose
         .setTitle('👋 Keluar dari Voice Channel')
         .setDescription(`Kunci saluran pada **${botVoiceChannel?.name || 'Voice Channel'}** telah dilepas dan bot berhasil keluar secara bersih.`)
         .setTimestamp();
@@ -1056,7 +1056,7 @@ client.on('messageCreate', async message => {
     const connectionState = connection ? 'Tersambung (Ready)' : 'Terputus';
 
     const embed = new EmbedBuilder()
-      .setColor(0x00D2FF)
+      .setColor(0x00E5FF) // Celestial Ice Blue
       .setTitle('📊 Status Realtime & Statistik Bot')
       .setThumbnail(client.user.displayAvatarURL())
       .addFields(

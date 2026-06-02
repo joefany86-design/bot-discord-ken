@@ -101,7 +101,7 @@ async function updateLobbyEmbed(interaction, session) {
   };
 
   const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
+    .setColor(0x00E5FF) // Celestial Ice Blue
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
     .setDescription([
       'Sesi game Truth or Dare baru saja dibuka! Ayo bergabung untuk menguji keberanian dan kejujuran kalian.',
@@ -131,7 +131,7 @@ async function startTodGame(message, client) {
   const cooldown = getCooldownRemaining(member.id);
   if (cooldown > 0) {
     const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setDescription(`⏳ **Cooldown!** Kamu bisa memulai game ToD lagi dalam **${cooldown} detik**.`);
     return message.reply({ embeds: [embed] });
   }
@@ -139,7 +139,7 @@ async function startTodGame(message, client) {
   // 2. Cek apakah ada game berjalan di server ini
   if (activeGames.has(guildId)) {
     const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setDescription(`⚠️ **Game Sedang Berjalan!** Ada sesi Truth or Dare yang sedang aktif di server ini.`);
     return message.reply({ embeds: [embed] });
   }
@@ -148,7 +148,7 @@ async function startTodGame(message, client) {
   const voiceChannel = member.voice.channel;
   if (!voiceChannel) {
     const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setDescription(`🔇 **Batal!** Kamu harus masuk ke **Voice Channel** terlebih dahulu untuk bermain.`);
     return message.reply({ embeds: [embed] });
   }
@@ -157,7 +157,7 @@ async function startTodGame(message, client) {
   const botVoiceChannel = message.guild.members.me?.voice?.channel;
   if (!botVoiceChannel || botVoiceChannel.id !== voiceChannel.id) {
     const embed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setDescription(`🎙️ **Bot Belum Terhubung!** Pastikan bot bergabung di Voice Channel yang sama.\nKetik \`.joinlow\` atau \`/join\` terlebih dahulu.`);
     return message.reply({ embeds: [embed] });
   }
@@ -194,7 +194,7 @@ async function startTodGame(message, client) {
 
   // 6. Buat Embed Lobby
   const embed = new EmbedBuilder()
-    .setColor(0x00D2FF)
+    .setColor(0x00E5FF) // Celestial Ice Blue
     .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
     .setDescription([
       'Sesi game Truth or Dare baru saja dibuka! Ayo bergabung untuk menguji keberanian dan kejujuran kalian.',
@@ -345,7 +345,7 @@ async function startTodGame(message, client) {
         };
 
         const updatedLobbyEmbed = new EmbedBuilder()
-          .setColor(0x00D2FF)
+          .setColor(0x00E5FF) // Celestial Ice Blue
           .setTitle('🎤 TRUTH OR DARE: GAME LOBBY')
           .setDescription([
             'Sesi game Truth or Dare baru saja dibuka! Ayo bergabung untuk menguji keberanian dan kejujuran kalian.',
@@ -403,7 +403,7 @@ async function startTodGame(message, client) {
       cleanSession(guildId);
 
       const cancelEmbed = EmbedBuilder.from(embed)
-        .setColor(0x555555)
+        .setColor(0x8A95A5) // Platinum Slate Gray
         .setDescription(`🛑 Game lobi dibatalkan oleh Host ${interaction.user}.`);
 
       await interaction.update({ embeds: [cancelEmbed], components: [] });
@@ -431,7 +431,7 @@ async function startHotseatTransition(client, guildId) {
   if (activePlayers.length < 2) {
     cleanSession(guildId);
     const endEmbed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setTitle('🏁 Game Truth or Dare Selesai!')
       .setDescription('👥 **Game Berakhir!** Jumlah pemain aktif di Voice Channel kurang dari 2 orang.');
     await session.textChannel.send({ embeds: [endEmbed] });
@@ -469,7 +469,7 @@ async function startHotseatTransition(client, guildId) {
     session.challenger = chosenChallenger;
 
     transEmbed = new EmbedBuilder()
-      .setColor(0x00FF88)
+      .setColor(0x10B981) // Velvet Emerald Green
       .setTitle('⚔️ GILIRAN 1 VS 1 TERPILIH!')
       .setDescription([
         `🗣️ **Penanya:** ${chosenChallenger}`,
@@ -479,14 +479,14 @@ async function startHotseatTransition(client, guildId) {
       .setTimestamp();
 
     // Umumkan via TTS
-    audio.speak(client, guildId, `Giliran satu lawan satu! ${chosenChallenger.displayName} sebagai penanya, dan ${chosenVictim.displayName} sebagai penjawab. Bersiaplah.`).catch(() => {});
+    audio.speak(client, guildId, `Giliran satu lawan satu! ${chosenChallenger.displayName} sebagai penanya, and ${chosenVictim.displayName} sebagai penjawab. Bersiaplah.`).catch(() => {});
 
   } else if (session.mode === 'mode_3') {
     // Mode 3: Bot TTS Bertanya
     session.challenger = null; // Bot
 
     transEmbed = new EmbedBuilder()
-      .setColor(0xFF00FF)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🤖 GILIRAN BOT TTS BERTANYA!')
       .setDescription([
         `🎯 **Target Menjawab:** ${chosenVictim}`,
@@ -506,7 +506,7 @@ async function startHotseatTransition(client, guildId) {
     session.hotseatChallengersQueue = challengers.map(p => p.id);
 
     transEmbed = new EmbedBuilder()
-      .setColor(0xFF3366)
+      .setColor(0xFF3366) // Crimson Rose
       .setTitle('🔥 KORBAN HOT SEAT BARU TERPILIH!')
       .setDescription([
         `👑 **${chosenVictim}** sekarang berada di **Hot Seat**!`,
@@ -572,7 +572,7 @@ async function startNextTurn(client, guildId) {
     session.state = 'waiting_for_method_selection';
 
     const turnEmbed = new EmbedBuilder()
-      .setColor(0x00FF88)
+      .setColor(0x10B981) // Velvet Emerald Green
       .setTitle('⚔️ Giliran 1 vs 1 — Saling Tanya')
       .setDescription([
         `🗣️ **Penanya:** ${session.challenger}`,
@@ -678,7 +678,7 @@ async function startNextTurn(client, guildId) {
     audio.askTruthOrDareTTS(client, guildId, victim.displayName).catch(() => {});
 
     const turnEmbed = new EmbedBuilder()
-      .setColor(0xFF00FF)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🤖 Giliran Bot TTS Bertanya!')
       .setDescription([
         `🎯 **Target Menjawab:** ${victim}`,
@@ -791,7 +791,7 @@ async function startNextTurn(client, guildId) {
 
     // Embed Pemilihan Metode Tantangan
     const turnEmbed = new EmbedBuilder()
-      .setColor(0x9933FF)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🎤 Truth or Dare — Hot Seat')
       .setDescription([
         `🔥 **Korban (Hot Seat):** ${victim}`,
@@ -889,7 +889,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
   session.state = 'waiting_for_judgment';
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF88)
+    .setColor(0x10B981) // Velvet Emerald Green
     .setTitle('⚖️ JAWAB & PENILAIAN TANTANGAN')
     .setDescription([
       `🔥 **Korban:** ${session.victim}`,
@@ -1040,7 +1040,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
         }
 
         transactionEmbed = EmbedBuilder.from(embed)
-          .setColor(0x00FF88)
+          .setColor(0x10B981) // Velvet Emerald Green
           .setDescription([
             `🎉 **${session.victim} Berhasil!** Dinilai sukses oleh ${session.mode === 'mode_3' ? 'Host' : session.challenger}`,
             `\n💵 **TRANSAKSI ROL EKONOMI:**`,
@@ -1062,7 +1062,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
         }
 
         transactionEmbed = EmbedBuilder.from(embed)
-          .setColor(0xFF3366)
+          .setColor(0xFF3366) // Crimson Rose
           .setDescription([
             `❌ **${session.victim} Menyerah!** Tantangan gagal atau dilewati.`,
             `\n💵 **TRANSAKSI ROL EKONOMI:**`,
@@ -1202,7 +1202,7 @@ async function announceMatchSummary(client, guildId, reason) {
   const formatUser = (userId) => (userId ? `<@${userId}>` : '*Tidak ada*');
 
   const summaryEmbed = new EmbedBuilder()
-    .setColor(0xFF0055)
+    .setColor(0xD4AF37) // Imperial Gold
     .setTitle('🏁 TRUTH OR DARE: MATCH REKAPITULASI')
     .setDescription([
       `Game telah dihentikan secara profesional.`,
@@ -1243,7 +1243,7 @@ async function sendTodLeaderboard(message, client) {
   };
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFAA00)
+    .setColor(0xD4AF37) // Imperial Gold
     .setTitle('🏆 PAPAN PRESTASI TRUTH OR DARE (ToD) 🏆')
     .setDescription('Berikut adalah daftar rekor pemain ToD terhebat dan ter-penakut di server ini secara kumulatif:')
     .addFields([
@@ -1261,7 +1261,7 @@ async function sendUserStats(message, userId) {
   const stats = database.getUserStats(userId);
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FFBB)
+    .setColor(0x00E5FF) // Celestial Ice Blue
     .setTitle('📊 PROFIL Realtime Truth or Dare')
     .setDescription(`Menampilkan data statistik bermain ToD kumulatif untuk <@${userId}>:`)
     .addFields([
@@ -1348,7 +1348,7 @@ async function handleVoiceTodCommand(message, client) {
     const targetChannel = message.mentions.channels.first() || message.channel;
 
     const embed = new EmbedBuilder()
-      .setColor(0x9933FF)
+      .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🎤 TRUTH OR DARE GAME MULTIPLAYER — LAUNCHED 🎤')
       .setDescription([
         'Kami dengan bangga meluncurkan fitur game interaktif baru di server ini: **Truth or Dare (ToD) Ultimate Hot Seat**!',
