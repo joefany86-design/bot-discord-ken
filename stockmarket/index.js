@@ -1723,7 +1723,13 @@ function initStockMarket(client) {
           [user.id, guildId]
         );
 
-        // Map BM items & Luxury items for display
+        // Fetch all pet inventory items (quantity > 0)
+        const petInv = database.all(
+          'SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
+          [user.id, guildId]
+        );
+
+        // Map BM items, Luxury items, Garden items, & Pet items for display
         const allItems = {
           // Black market items
           LOCKPICK: { name: '🗝️ Linggis / Lockpick', type: 'Black Market' },
@@ -1736,11 +1742,35 @@ function initStockMarket(client) {
           GOLD: { name: '👑 Batangan Emas Murni', type: 'Barang Mewah' },
           KEY: { name: '🔑 Kunci Emas Penthouse', type: 'Barang Mewah' },
           ROLEX: { name: '⌚ Jam Tangan Rolek Master', type: 'Barang Mewah' },
-          IPHONE: { name: '📱 iPhone 16 Pro Max', type: 'Barang Mewah' }
+          IPHONE: { name: '📱 iPhone 16 Pro Max', type: 'Barang Mewah' },
+          // Garden items
+          SEED_ROSE: { name: '🌱 Benih Mawar Merah', type: 'Perkebunan' },
+          SEED_TULIP: { name: '🌱 Benih Bunga Tulip', type: 'Perkebunan' },
+          SEED_LAVENDER: { name: '🌱 Benih Bunga Lavender', type: 'Perkebunan' },
+          SEED_SAKURA: { name: '🌱 Benih Bunga Sakura', type: 'Perkebunan' },
+          SEED_ORCHID: { name: '🌱 Benih Anggrek Langka', type: 'Perkebunan' },
+          FLOWER_ROSE: { name: '🌹 Mawar Merah (Panen)', type: 'Perkebunan' },
+          FLOWER_TULIP: { name: '🌷 Bunga Tulip (Panen)', type: 'Perkebunan' },
+          FLOWER_LAVENDER: { name: '🪻 Bunga Lavender (Panen)', type: 'Perkebunan' },
+          FLOWER_SAKURA: { name: '🌸 Bunga Sakura (Panen)', type: 'Perkebunan' },
+          FLOWER_ORCHID: { name: '🪻 Anggrek Langka (Panen)', type: 'Perkebunan' },
+          BOUQUET_LOVE: { name: '💐 Buket Kasih Sayang', type: 'Perkebunan' },
+          BOUQUET_PEACE: { name: '💐 Buket Ketenangan', type: 'Perkebunan' },
+          BOUQUET_IMPERIAL: { name: '👑 Buket Legendaris', type: 'Perkebunan' },
+          GIFT_WRAPPING: { name: '🎗️ Kertas Kado Premium', type: 'Perkebunan' },
+          // Pet items
+          FOOD_BASIC: { name: '🍗 Pakan Pet Biasa', type: 'Peliharaan (Pet)' },
+          WATER: { name: '💧 Air Bersih Pet', type: 'Peliharaan (Pet)' },
+          MEDICINE: { name: '💊 Obat Pet (Medicine)', type: 'Peliharaan (Pet)' },
+          GIFT_BOX: { name: '🎁 Kotak Hadiah Pet', type: 'Peliharaan (Pet)' },
+          LUCKY_AMULET: { name: '🍀 Jimat Hoki (Lucky Amulet)', type: 'Peliharaan (Pet)' },
+          COLLAR_IRON: { name: '⛓️ Kalung Besi (Collar Iron)', type: 'Peliharaan (Pet)' }
         };
 
         const bmOwned = [];
         const luxuryOwned = [];
+        const gardenOwned = [];
+        const petOwned = [];
 
         inv.forEach(item => {
           const itemKey = item.item_id.toUpperCase();
@@ -1751,7 +1781,18 @@ function initStockMarket(client) {
             bmOwned.push(line);
           } else if (info.type === 'Barang Mewah') {
             luxuryOwned.push(line);
+          } else if (info.type === 'Perkebunan') {
+            gardenOwned.push(line);
+          } else {
+            gardenOwned.push(line);
           }
+        });
+
+        petInv.forEach(item => {
+          const itemKey = item.item_id.toUpperCase();
+          const info = allItems[itemKey] || { name: item.item_id, type: 'Peliharaan (Pet)' };
+          const line = `• **${info.name}** - **x${item.quantity}**`;
+          petOwned.push(line);
         });
 
         const embed = new EmbedBuilder()
@@ -1762,14 +1803,20 @@ function initStockMarket(client) {
 
         let desc = `Halo **${user.username}**! Berikut adalah seluruh barang dan aset yang kamu miliki saat ini:\n\n`;
 
-        if (bmOwned.length === 0 && luxuryOwned.length === 0) {
-          desc += `*Kantongmu benar-benar kosong! Silakan kunjungi **🕵️‍♂️ Black Market** di Portal Hub untuk berbelanja peralatan.*`;
+        if (bmOwned.length === 0 && luxuryOwned.length === 0 && gardenOwned.length === 0 && petOwned.length === 0) {
+          desc += `*Kantongmu benar-benar kosong! Silakan kunjungi **toko kebun / pasar gelap / toko pet** untuk membeli peralatan.*`;
         } else {
           if (bmOwned.length > 0) {
             desc += `🖤 **PERALATAN PASAR GELAP (BLACK MARKET):**\n${bmOwned.join('\n')}\n\n`;
           }
           if (luxuryOwned.length > 0) {
             desc += `💎 **BARANG & ASET MEWAH (LUXURY SHOP):**\n${luxuryOwned.join('\n')}\n\n`;
+          }
+          if (gardenOwned.length > 0) {
+            desc += `🌱 **PERALATAN & HASIL KEBUN (COZY GARDEN):**\n${gardenOwned.join('\n')}\n\n`;
+          }
+          if (petOwned.length > 0) {
+            desc += `🐾 **PERSEDIAAN & AKSESORIS HEWAN (PET SHOP):**\n${petOwned.join('\n')}\n\n`;
           }
         }
 
