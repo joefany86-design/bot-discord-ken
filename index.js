@@ -63,6 +63,8 @@ const client = new Client({
   ]
 });
 
+global.client = client;
+
 // ═══════════════════════════════════════════════════
 // KONFIGURASI PEMUTAR MUSIK LOKAL, TTS & STATE MAPS
 // ═══════════════════════════════════════════════════
@@ -546,6 +548,16 @@ client.once('clientReady', () => {
   console.log(`══════════════════════════════════════`);
 
   client.user.setActivity('🎙️ .join & /join | Sentinel Bot', { type: 2 });
+
+  // Cache seluruh member di guild target agar status bot bisa dideteksi secara akurat
+  const targetGuild = client.guilds.cache.get('1410239829874053296');
+  if (targetGuild) {
+    targetGuild.members.fetch().then(() => {
+      console.log('✅ Berhasil mencache seluruh member guild 1410239829874053296');
+    }).catch(err => {
+      console.error('❌ Gagal mencache member guild:', err.message);
+    });
+  }
 
   // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
   initGreetings(client);

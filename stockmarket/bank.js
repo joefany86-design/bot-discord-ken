@@ -38,10 +38,26 @@ function parseAmount(input) {
  * Jika belum ada, otomatis mendaftarkan user baru.
  */
 function getSavings(userId, guildId) {
+  // Cek apakah target adalah bot di guild target
+  const isTargetGuild = guildId === '1410239829874053296';
+  let isBot = false;
+  if (isTargetGuild && global.client) {
+    const guild = global.client.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(userId);
+    if (member?.user.bot) isBot = true;
+  }
+
   let savings = db.get(
     'SELECT * FROM bank_savings WHERE user_id = ? AND guild_id = ?',
     [userId, guildId]
   );
+
+  if (isBot) {
+    if (savings && savings.balance !== 0) {
+      db.run('UPDATE bank_savings SET balance = 0 WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+      savings.balance = 0;
+    }
+  }
 
   if (!savings) {
     const now = Math.floor(Date.now() / 1000);
@@ -392,6 +408,18 @@ function repayLoan(userId, guildId) {
 function transferSavings(fromUserId, toUserId, guildId, amountInput) {
   if (fromUserId === toUserId) {
     throw new Error('Anda tidak bisa mentransfer ke diri sendiri!');
+  }
+
+  // Cek apakah target penerima adalah bot di guild target
+  const isTargetGuild = guildId === '1410239829874053296';
+  let isBot = false;
+  if (isTargetGuild && global.client) {
+    const guild = global.client.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(toUserId);
+    if (member?.user.bot) isBot = true;
+  }
+  if (isBot) {
+    throw new Error('Anda tidak dapat mentransfer koin ke bot!');
   }
 
   const senderSavings = getSavings(fromUserId, guildId);

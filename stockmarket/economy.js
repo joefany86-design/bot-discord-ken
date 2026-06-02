@@ -6,10 +6,27 @@ const config = require('./config');
  * Jika belum ada, otomatis mendaftarkan user baru ke database.
  */
 function getWallet(userId, guildId) {
+  // Cek apakah target adalah bot di guild target
+  const isTargetGuild = guildId === '1410239829874053296';
+  let isBot = false;
+  if (isTargetGuild && global.client) {
+    const guild = global.client.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(userId);
+    if (member?.user.bot) isBot = true;
+  }
+
   let wallet = db.get(
     'SELECT * FROM wallets WHERE user_id = ? AND guild_id = ?',
     [userId, guildId]
   );
+
+  if (isBot) {
+    if (wallet && (wallet.balance !== 0 || wallet.total_invested !== 0)) {
+      db.run('UPDATE wallets SET balance = 0, total_invested = 0 WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+      wallet.balance = 0;
+      wallet.total_invested = 0;
+    }
+  }
 
   if (!wallet) {
     const now = Math.floor(Date.now() / 1000);
@@ -41,6 +58,18 @@ function getWallet(userId, guildId) {
  */
 function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
   if (amount <= 0) return;
+
+  // Cek apakah target adalah bot di guild target
+  const isTargetGuild = guildId === '1410239829874053296';
+  let isBot = false;
+  if (isTargetGuild && global.client) {
+    const guild = global.client.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(userId);
+    if (member?.user.bot) isBot = true;
+  }
+  if (isBot) {
+    return getWallet(userId, guildId);
+  }
 
   db.transaction(() => {
     // Pastikan wallet terdaftar

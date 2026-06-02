@@ -5966,6 +5966,9 @@ async function handleEconomyCommands(message, client) {
       if (!targetUser) {
         return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.rob @user\` untuk merampok seseorang, atau \`.rob anoncemen\` untuk melihat info resiko & benefit.')] });
       }
+      if (targetUser.bot) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', 'Anda tidak dapat merampok bot!')] });
+      }
 
       const targetMember = message.mentions.members?.first();
 
@@ -7587,6 +7590,9 @@ async function handleEconomyCommands(message, client) {
 
       if (!targetUser) {
         return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Harap sebutkan user penerima transfer.\nContoh: `.transfer @John 500`')] });
+      }
+      if (targetUser.bot) {
+        return message.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', 'Anda tidak dapat mentransfer koin ke bot!')] });
       }
       if (isNaN(amount) || amount <= 0) {
         return message.reply({ embeds: [embeds.warnEmbed('Jumlah Tidak Valid!', 'Nominal transfer harus berupa angka di atas 0.')] });

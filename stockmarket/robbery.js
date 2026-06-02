@@ -91,6 +91,21 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   if (userId === targetId) {
     throw new Error('Anda tidak bisa merampok diri sendiri, carilah target lain!');
   }
+
+  // Cek apakah target adalah bot di guild target
+  const isTargetGuild = guildId === '1410239829874053296';
+  let isBot = false;
+  if (isTargetGuild && global.client) {
+    const guild = global.client.guilds.cache.get(guildId);
+    const member = guild?.members.cache.get(targetId);
+    if (member?.user.bot) isBot = true;
+  } else if (victimMember?.user?.bot) {
+    isBot = true;
+  }
+  if (isBot) {
+    throw new Error('Target adalah bot! Anda tidak bisa merampok bot.');
+  }
+
   const victimWallet = economy.getWallet(targetId, guildId);
   const victimJail = checkJail(targetId, guildId, victimMember);
   if (victimJail.jailed) {
