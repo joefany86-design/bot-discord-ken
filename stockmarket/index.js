@@ -1640,13 +1640,8 @@ function initStockMarket(client) {
 
                         // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
                         try {
-                          let notifText = '';
-                          if (selectedType === 'bayar') {
-                            notifText = `🔔 **NOTIFIKASI BANK:** <@${targetUserId}>, Anda menerima pembayaran hutang sebesar **Rp ${res.netAmount.toLocaleString('id-ID')}** (bersih masuk tabungan bank) dari <@${user.id}>!`;
-                          } else {
-                            notifText = `🔔 **NOTIFIKASI BANK:** <@${targetUserId}>, Anda menerima transfer tabungan bank sebesar **Rp ${res.netAmount.toLocaleString('id-ID')}** (bersih masuk tabungan bank) dari <@${user.id}>!`;
-                          }
-                          await submitted.channel.send({ content: notifText });
+                          const embed = embeds.bankTransferNotificationEmbed(user, targetUserId, res.netAmount, selectedType === 'bayar');
+                          await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
                         } catch (err) {
                           console.error('Gagal mengirim notifikasi transfer ke channel:', err);
                         }
@@ -7268,13 +7263,8 @@ async function handleEconomyCommands(message, client) {
 
                       // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
                       try {
-                        let notifText = '';
-                        if (selectedType === 'bayar') {
-                          notifText = `🔔 **NOTIFIKASI BANK:** <@${targetUserId}>, Anda menerima pembayaran hutang sebesar **Rp ${res.netAmount.toLocaleString('id-ID')}** (bersih masuk tabungan bank) dari <@${author.id}>!`;
-                        } else {
-                          notifText = `🔔 **NOTIFIKASI BANK:** <@${targetUserId}>, Anda menerima transfer tabungan bank sebesar **Rp ${res.netAmount.toLocaleString('id-ID')}** (bersih masuk tabungan bank) dari <@${author.id}>!`;
-                        }
-                        await submitted.channel.send({ content: notifText });
+                        const embed = embeds.bankTransferNotificationEmbed(author, targetUserId, res.netAmount, selectedType === 'bayar');
+                        await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
                       } catch (err) {
                         console.error('Gagal mengirim notifikasi transfer ke channel:', err);
                       }

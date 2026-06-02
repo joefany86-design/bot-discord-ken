@@ -3041,6 +3041,38 @@ module.exports = {
       embed.addFields(detailsFields);
     }
     return embed;
+  },
+
+  // 46. Embed Notifikasi Transfer Bank
+  bankTransferNotificationEmbed(senderUser, targetUserId, amount, isPayDebt) {
+    const senderMention = `<@${senderUser.id}>`;
+    const targetMention = `<@${targetUserId}>`;
+    const transactionType = isPayDebt ? 'Pembayaran Hutang' : 'Transfer Tabungan';
+    const transactionEmoji = isPayDebt ? '🤝' : '💸';
+    const amountStr = `Rp ${amount.toLocaleString('id-ID')}`;
+
+    return new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setAuthor({
+        name: 'CENTRAL BANK KOSAN 1A',
+        iconURL: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png'
+      })
+      .setTitle(`🔔 Notifikasi Transaksi Bank`)
+      .setThumbnail(senderUser.displayAvatarURL({ dynamic: true, size: 256 }))
+      .setDescription(
+        `Halo ${targetMention}, Anda telah menerima kiriman dana ke rekening tabungan bank Anda!\n\n` +
+        `\`\`\`\n` +
+        `┌──────────────────────────────────────┐\n` +
+        `│        DETAIL TRANSAKSI MASUK        │\n` +
+        `└──────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `👤 **Pengirim:** ${senderMention}\n` +
+        `📥 **Jumlah Bersih:** **${amountStr}**\n` +
+        `📂 **Kategori:** \`${transactionType}\` ${transactionEmoji}\n\n` +
+        `*Catatan: Koin sudah bersih dipotong pajak transfer/sistem dan telah ditambahkan secara otomatis ke saldo tabungan bank Anda.*`
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Banking System • Keamanan & Kepercayaan' });
   }
 };
 
