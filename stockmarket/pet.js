@@ -2236,7 +2236,10 @@ function claimDailyQuestReward(userId, guildId) {
       [userId, guildId, todayStr]
     );
 
-    // 3. Tambahkan item drop ke inventory
+    // 3. Berikan Tiket Gacha Pet Gratis
+    addGachaTickets(userId, guildId, 1);
+
+    // 4. Tambahkan item drop ke inventory
     if (isPetItem) {
       const exist = db.get(
         'SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
@@ -2274,7 +2277,8 @@ function claimDailyQuestReward(userId, guildId) {
 
   return {
     rewardAmount: 150,
-    dropItemName: itemName
+    dropItemName: itemName,
+    gachaTicketBonus: 1
   };
 }
 

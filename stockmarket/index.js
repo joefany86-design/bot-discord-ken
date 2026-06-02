@@ -2906,7 +2906,7 @@ function initStockMarket(client) {
             return `${descText} (${progress}/${target})`;
           };
 
-          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
           
           descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
           descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
@@ -2960,6 +2960,7 @@ function initStockMarket(client) {
                   'Misi Harian Kosan 1A Selesai! 🎉🎁',
                   `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
                   `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+                  `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
                   `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
                 );
                 await i.reply({ embeds: [successEmb], flags: 64 });
@@ -3412,6 +3413,7 @@ async function handlePetCommand(message, client, args) {
           'Misi Harian Kosan 1A Selesai! 🎉🎁',
           `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
           `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+          `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
           `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
         );
         return message.reply({ embeds: [successEmb] });
@@ -3443,7 +3445,7 @@ async function handlePetCommand(message, client, args) {
         return `${descText} (${progress}/${target})`;
       };
 
-      let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150** dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+      let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
       
       descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
       descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
