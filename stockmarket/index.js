@@ -5304,7 +5304,7 @@ async function handlePetAdminCommand(message, client, args) {
     if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
 
     database.run(
-      'UPDATE user_pets SET health = CASE WHEN pet_type = "SLIME" THEN 120 ELSE 100 END, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = "DEAD" THEN "BABY" ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+      "UPDATE user_pets SET health = CASE WHEN pet_type = 'SLIME' THEN 120 ELSE 100 END, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = 'DEAD' THEN 'BABY' ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1",
       [target.id, guildId]
     );
 
@@ -5419,7 +5419,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (ebyus && ebyus.is_active === 1) {
     const nowUnix = Math.floor(Date.now() / 1000);
     if (ebyus.expires_at > 0 && nowUnix > ebyus.expires_at) {
-      database.run('UPDATE ebyus_settings SET gacha_mode = "NORMAL", expires_at = 0, is_active = 0 WHERE guild_id = ?', [guildId]);
+      database.run("UPDATE ebyus_settings SET gacha_mode = 'NORMAL', expires_at = 0, is_active = 0 WHERE guild_id = ?", [guildId]);
     } else {
       if (ebyus.gacha_mode === 'EASY') zonkRate = 40;
       else if (ebyus.gacha_mode === 'SUPER_EASY') zonkRate = 15;
