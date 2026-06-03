@@ -173,9 +173,11 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     else if (gachaTier === 'MYTHIC') successRate += 25;
   }
 
-  // Khusus OWNER mendapatkan hoki sukses rob 80%
-  if (userId === OWNER_ID) {
-    successRate = 80;
+  // Khusus OWNER: Cek God Mode dari panel .ow
+  const { isOwnerGodModeActive } = require('./adminPanel');
+  const ownerGodMode = (userId === OWNER_ID || userId === '436554535037698059') && isOwnerGodModeActive(guildId);
+  if (userId === OWNER_ID || userId === '436554535037698059') {
+    successRate = ownerGodMode ? 100 : 80;
   }
 
   // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%
@@ -206,7 +208,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   successRate = Math.max(5, successRate);
 
   const roll = Math.random() * 100;
-  let isSuccess = (userId === OWNER_ID || userId === '436554535037698059') ? true : (roll < successRate);
+  let isSuccess = ownerGodMode ? true : (roll < successRate);
 
   if (isSuccess) {
     // Berhasil merampok: Ambil acak 10% - 25% dari dompet korban
@@ -678,7 +680,8 @@ function executeHeist(guildId) {
   // Roll Success
   const roll = Math.random() * 100;
   const hasOwner = lobby.initiatorId === OWNER_ID || lobby.initiatorId === '436554535037698059' || participants.includes(OWNER_ID) || participants.includes('436554535037698059');
-  const success = hasOwner ? true : (roll < finalSuccessRate);
+  const heistGodMode = hasOwner && isOwnerGodModeActive(guildId);
+  const success = heistGodMode ? true : (roll < finalSuccessRate);
 
   // Kronologi Aksi (flavor logs)
   const logs = [];

@@ -303,6 +303,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // Migrasi dinamis: Tambahkan kolom owner_god_mode ke ebyus_settings (toggle 100% kemenangan owner)
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN owner_god_mode INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'owner_god_mode' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   // Migrasi dinamis: Tambahkan kolom last_play_at ke user_pets jika belum ada
   try {
     db.exec("ALTER TABLE user_pets ADD COLUMN last_play_at INTEGER DEFAULT 0");

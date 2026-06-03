@@ -7258,9 +7258,14 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     }
   }
 
-  // Khusus ID 436554535037698059 mendapatkan hoki 80% (Zonk Rate hanya 20%)
+  // Khusus Owner: Cek God Mode dari panel .ow
   if (user.id === '436554535037698059') {
-    zonkRate = 20;
+    const { isOwnerGodModeActive } = require('./adminPanel');
+    if (isOwnerGodModeActive(guildId)) {
+      zonkRate = 0; // God Mode ON: 100% selalu menang
+    } else {
+      zonkRate = 20; // Mode Normal: Zonk rate 20% (hoki default owner)
+    }
   }
 
   if (roll < zonkRate) {

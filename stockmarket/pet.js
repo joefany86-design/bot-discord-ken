@@ -1856,7 +1856,15 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   }
 
   const roll = Math.random() * 100;
-  const isSuccess = roll < successRate;
+  // Cek God Mode Owner: jika Owner ikut ekspedisi dan God Mode ON, selalu sukses
+  let ownerExpGodMode = false;
+  if (participantIds.includes('436554535037698059')) {
+    try {
+      const { isOwnerGodModeActive } = require('./adminPanel');
+      ownerExpGodMode = isOwnerGodModeActive(guildId);
+    } catch (e) {}
+  }
+  const isSuccess = ownerExpGodMode ? true : (roll < successRate);
 
   const rewards = [];
   const now = Math.floor(Date.now() / 1000);
@@ -1895,7 +1903,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
-        const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
+        const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059') || (ap.userId === '436554535037698059' && ownerExpGodMode);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 10);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
         const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
@@ -2075,7 +2083,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
-        const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
+        const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059') || (ap.userId === '436554535037698059' && ownerExpGodMode);
         const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);

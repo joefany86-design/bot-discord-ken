@@ -41,6 +41,23 @@ function getOrCreateEbyusSettings(gId) {
 }
 
 /**
+ * Cek apakah Owner God Mode aktif (100% kemenangan untuk owner).
+ */
+function isOwnerGodModeActive(gId) {
+  const settings = getOrCreateEbyusSettings(gId);
+  return settings.owner_god_mode === 1;
+}
+
+/**
+ * Toggle Owner God Mode ON/OFF.
+ */
+function toggleOwnerGodMode(gId, active) {
+  getOrCreateEbyusSettings(gId);
+  database.run('UPDATE ebyus_settings SET owner_god_mode = ? WHERE guild_id = ?', [active ? 1 : 0, gId]);
+  return active;
+}
+
+/**
  * Mengirimkan embed pengumuman tindakan global ke channel ID 1509480324373942272.
  */
 async function sendGlobalEconomyAnnouncement(client, guild, adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
@@ -3697,73 +3714,192 @@ async function handleAdminPanel(messageOrInteraction, client) {
     return { embeds: [embed], components: [selectRow, btnRow] };
   };
 
+  // ── Helper: Generate Owner-Exclusive Panel Data ──
+  const getOwnerPanelData = (guildId) => {
+    const godModeActive = isOwnerGodModeActive(guildId);
+    const statusIcon = godModeActive ? '🟢' : '🔴';
+    const statusText = godModeActive ? 'AKTIF' : 'NONAKTIF';
+
+    const ownerEmbed = new EmbedBuilder()
+      .setColor(godModeActive ? 0x00E676 : 0x7C4DFF)
+      .setTitle('👑 OWNER CONTROL CENTER — SENTINEL')
+      .setDescription(
+        `Selamat datang di **Panel Kontrol Rahasia Owner**.\n` +
+        `Fitur ini hanya tersedia untuk Owner utama.\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ **GOD MODE (100% KEMENANGAN)**\n` +
+        `Status: ${statusIcon} **${statusText}**\n\n` +
+        `Jika diaktifkan, Owner mendapatkan:\n` +
+        `• 🎰 Gacha — Zonk Rate **0%** (selalu menang)\n` +
+        `• 🔪 Robbery — Sukses rate **100%**\n` +
+        `• 🏦 Heist — Selalu berhasil jika Owner ikut\n` +
+        `• ⚔️ Ekspedisi Pet — Sukses rate **+50%** bonus\n` +
+        `• 🐾 Pet — Kebal kematian & efek negatif\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      )
+      .setFooter({ text: 'Owner Control Center • Sentinel 2026' })
+      .setTimestamp();
+
+    const toggleRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ow_godmode_on')
+        .setLabel('⚡ Aktifkan God Mode')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(godModeActive),
+      new ButtonBuilder()
+        .setCustomId('ow_godmode_off')
+        .setLabel('🔒 Nonaktifkan God Mode')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!godModeActive),
+      new ButtonBuilder()
+        .setCustomId('ow_godmode_normal')
+        .setLabel('🔄 Mode Normal')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!godModeActive)
+    );
+
+    const navRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ow_open_hub')
+        .setLabel('🛡️ Buka Admin Hub')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('ow_refresh')
+        .setLabel('🔄 Segarkan')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('ow_close')
+        .setLabel('❌ Tutup')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [ownerEmbed], components: [toggleRow, navRow] };
+  };
+
   const initialData = getHubPanelData();
   let replyMsg;
 
-  if (isInteraction) {
-    if (messageOrInteraction.customId === 'eco_btn_open_admin_panel_private') {
-      await messageOrInteraction.reply({ ...initialData, flags: 64 });
-      replyMsg = await messageOrInteraction.fetchReply();
-    } else {
-      await messageOrInteraction.update(initialData);
-      replyMsg = messageOrInteraction.message;
-    }
+  // Jika dibuka via .ow (tombol privat owner), tampilkan Owner Panel khusus
+  const isOwnerPrivate = isInteraction && messageOrInteraction.customId === 'eco_btn_open_admin_panel_private';
+
+  if (isOwnerPrivate) {
+    const ownerData = getOwnerPanelData(messageOrInteraction.guildId);
+    await messageOrInteraction.reply({ ...ownerData, flags: 64 });
+    replyMsg = await messageOrInteraction.fetchReply();
+
+    // Buat collector khusus untuk Owner Panel
+    const ownerCollector = replyMsg.createMessageComponentCollector({ time: 300000 });
+
+    ownerCollector.on('collect', async iOw => {
+      if (iOw.user.id !== '436554535037698059') {
+        return iOw.reply({ content: '❌ Akses Ditolak! Panel ini hanya untuk Owner utama.', flags: 64 });
+      }
+
+      try {
+        const guildId = iOw.guildId;
+
+        if (iOw.customId === 'ow_godmode_on') {
+          toggleOwnerGodMode(guildId, true);
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_godmode_off' || iOw.customId === 'ow_godmode_normal') {
+          toggleOwnerGodMode(guildId, false);
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_open_hub') {
+          // Transisi ke Hub Panel biasa
+          ownerCollector.stop('transition_hub');
+          await iOw.update(initialData);
+          replyMsg = iOw.message;
+          setupHubCollector();
+        } else if (iOw.customId === 'ow_refresh') {
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_close') {
+          ownerCollector.stop();
+          await replyMsg.delete().catch(() => {});
+        }
+      } catch (err) {
+        console.error('Error in Owner Panel Interaction:', err);
+        await iOw.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+    });
+
+    ownerCollector.on('end', async (collected, reason) => {
+      if (reason === 'transition_hub') return;
+      try {
+        const fresh = getOwnerPanelData(messageOrInteraction.guildId);
+        fresh.components = [];
+        await replyMsg.edit(fresh).catch(() => {});
+      } catch (e) {}
+    });
+
+    return true;
+  } else if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
   } else {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  // ── Fungsi untuk setup Hub Collector (dipanggil dari flow normal atau transisi dari Owner Panel) ──
+  function setupHubCollector() {
+    const collector = replyMsg.createMessageComponentCollector({
+      time: 300000
+    });
 
-  collector.on('collect', async iHub => {
-    const isOwner = iHub.user.id === '436554535037698059';
-    const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!isOwner && !isAdmin) {
-      return iHub.reply({ content: '❌ Akses Ditolak! Tombol/menu ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
-    }
-
-    try {
-      if (iHub.customId === 'admin_hub_select_panel') {
-        const val = iHub.values[0];
-        collector.stop('transition');
-        
-        if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
-        else if (val === 'panel_bank') await handleAdminBankPanel(iHub, client);
-        else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
-        else if (val === 'panel_saham') await handleAdminSahamPanel(iHub, client);
-        else if (val === 'panel_abyus') await handleAdminAbyusPanel(iHub, client);
-        else if (val === 'panel_shop') await handleAdminShopPanel(iHub, client);
-        else if (val === 'panel_garden') await handleAdminGardenPanel(iHub, client);
-        else if (val === 'panel_quests') await handleAdminQuestPanel(iHub, client);
-        else if (val === 'panel_troll') await handleAdminTrollPanel(iHub, client);
-        else if (val === 'panel_warga') await handleAdminWargaPanel(iHub, client);
-        else if (val === 'panel_gift') await handleAdminGiftPanel(iHub, client);
-        else if (val === 'panel_ledger') await handleAdminLedgerPanel(iHub, client);
+    collector.on('collect', async iHub => {
+      const isOwner = iHub.user.id === '436554535037698059';
+      const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return iHub.reply({ content: '❌ Akses Ditolak! Tombol/menu ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
       }
-      else if (iHub.customId === 'hub_btn_refresh') {
-        await iHub.deferUpdate();
+
+      try {
+        if (iHub.customId === 'admin_hub_select_panel') {
+          const val = iHub.values[0];
+          collector.stop('transition');
+          
+          if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
+          else if (val === 'panel_bank') await handleAdminBankPanel(iHub, client);
+          else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
+          else if (val === 'panel_saham') await handleAdminSahamPanel(iHub, client);
+          else if (val === 'panel_abyus') await handleAdminAbyusPanel(iHub, client);
+          else if (val === 'panel_shop') await handleAdminShopPanel(iHub, client);
+          else if (val === 'panel_garden') await handleAdminGardenPanel(iHub, client);
+          else if (val === 'panel_quests') await handleAdminQuestPanel(iHub, client);
+          else if (val === 'panel_troll') await handleAdminTrollPanel(iHub, client);
+          else if (val === 'panel_warga') await handleAdminWargaPanel(iHub, client);
+          else if (val === 'panel_gift') await handleAdminGiftPanel(iHub, client);
+          else if (val === 'panel_ledger') await handleAdminLedgerPanel(iHub, client);
+        }
+        else if (iHub.customId === 'hub_btn_refresh') {
+          await iHub.deferUpdate();
+          const fresh = getHubPanelData();
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (iHub.customId === 'hub_btn_close') {
+          collector.stop();
+          await replyMsg.delete().catch(() => {});
+        }
+      } catch (err) {
+        console.error('Error in Hub Panel Interaction:', err);
+        await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+    });
+
+    collector.on('end', async (collected, reason) => {
+      if (reason === 'transition') return;
+      try {
         const fresh = getHubPanelData();
+        fresh.components = [];
         await replyMsg.edit(fresh).catch(() => {});
-      }
-      else if (iHub.customId === 'hub_btn_close') {
-        collector.stop();
-        await replyMsg.delete().catch(() => {});
-      }
-    } catch (err) {
-      console.error('Error in Hub Panel Interaction:', err);
-      await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
-    }
-  });
+      } catch (e) {}
+    });
+  }
 
-  collector.on('end', async (collected, reason) => {
-    if (reason === 'transition') return;
-    try {
-      const fresh = getHubPanelData();
-      fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
-  });
+  // Setup hub collector untuk flow non-owner-private
+  setupHubCollector();
 
   return true;
 }
@@ -5211,5 +5347,6 @@ module.exports = {
   handleAdminGardenPanel,
   handleAdminQuestPanel,
   handleAdminWargaPanel,
-  handleAdminGiftPanel
+  handleAdminGiftPanel,
+  isOwnerGodModeActive
 };
