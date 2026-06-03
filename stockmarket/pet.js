@@ -63,9 +63,11 @@ const GACHA_TRAIT_EPIC   = ['SURVIVOR'];
 const GACHA_TRAIT_LEGENDARY = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
 
 const GACHA_PRICES = {
-  SINGLE:  1200,
-  MULTI10: 12000,
+  SINGLE:  1500,
+  MULTI10: 15000,
 };
+
+const RECYCLE_REWARD = 800;
 
 // ═══════════════════════════════════════════════
 // KONFIGURASI UPGRADE BINTANG PET (STAR FUSION)
@@ -2871,7 +2873,7 @@ function recyclePet(userId, guildId, petName) {
     throw new Error(`Pet dengan nama **"${petName}"** tidak ditemukan di kandang Anda!`);
   }
 
-  const recycleReward = 1000;
+  const recycleReward = RECYCLE_REWARD;
 
   db.transaction(() => {
     db.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petRow.pet_name]);
@@ -3044,6 +3046,7 @@ module.exports = {
   GACHA_SPECIES,
   GACHA_RATES,
   GACHA_PRICES,
+  RECYCLE_REWARD,
   STAR_UPGRADE_REQ,
   getStarBonuses,
   renderStars,
@@ -3081,6 +3084,7 @@ module.exports = {
   toggleAutoFeed,
   // Gacha
   rollGacha,
+  _rollOnce,
   saveGachaPet,
   recyclePet,
   getGachaTickets,

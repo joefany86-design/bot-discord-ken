@@ -18,8 +18,19 @@ const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 const SHOP_CHANNEL_ID = '1510121069783023646';
 
 // Map untuk mengelola cooldown perintah .bal per user
-const balCooldowns = new Map();
-
+// Helper to build pet shop options dynamically from pet.PET_ITEMS
+function getPetShopSelectOptions() {
+  return Object.keys(pet.PET_ITEMS).map(key => {
+    const item = pet.PET_ITEMS[key];
+    const label = `${item.name} (Rp ${item.price.toLocaleString('id-ID')})`;
+    const rawDesc = item.desc || '';
+    const desc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
+    return new StringSelectMenuOptionBuilder()
+      .setLabel(label)
+      .setDescription(desc)
+      .setValue(item.id);
+  });
+}
 
 /**
  * Meluncurkan panel perdagangan interaktif mandiri untuk saham tertentu.
@@ -1974,23 +1985,7 @@ function initStockMarket(client) {
           const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('pet_select_shop_item')
             .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
-              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
-              new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
-              new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
-              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet (Rp 200)').setDescription('Reset cooldown Kerja/Berburu').setValue('SODA_ENERGY'),
-              new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Mandi Pet (Rp 100)').setDescription('Menghilangkan bau busuk pet').setValue('SOAP_PET'),
-              new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi (Rp 1.200)').setDescription('Aksesoris: Decay Status -15%').setValue('COLLAR_IRON'),
-              new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DMG +15%').setValue('SWORD_TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DEF +15%').setValue('SHIELD_TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan (Rp 2.000)').setDescription('Jimat Pelindung Kematian').setValue('LUCKY_AMULET'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
-            );
+            .addOptions(getPetShopSelectOptions());
 
           const selectRow = new ActionRowBuilder().addComponents(selectMenu);
           const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
@@ -2285,23 +2280,7 @@ function initStockMarket(client) {
           const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('pet_select_shop_item_perm')
             .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
-              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
-              new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
-              new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
-              new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet (Rp 200)').setDescription('Reset cooldown Kerja/Berburu').setValue('SODA_ENERGY'),
-              new StringSelectMenuOptionBuilder().setLabel('🥤 Sabun Mandi Pet (Rp 100)').setDescription('Menghilangkan bau busuk pet').setValue('SOAP_PET'),
-              new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi (Rp 1.200)').setDescription('Aksesoris: Decay Status -15%').setValue('COLLAR_IRON'),
-              new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DMG +15%').setValue('SWORD_TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DEF +15%').setValue('SHIELD_TOY'),
-              new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan (Rp 2.000)').setDescription('Jimat Pelindung Kematian').setValue('LUCKY_AMULET'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
-              new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
-            );
+            .addOptions(getPetShopSelectOptions());
 
           const selectRow = new ActionRowBuilder().addComponents(selectMenu);
           const closeBtn = new ButtonBuilder().setCustomId('pet_btn_close_shop_perm').setLabel('✖️ Tutup Toko').setStyle(ButtonStyle.Danger);
@@ -5866,15 +5845,15 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         `> 🟢 **RARE** — 25% *(Cat, Golem, Slime, Dragon)*\n` +
         `> 🟣 **EPIC** — 8% *(Phoenix, Turtle)*\n` +
         `> 🟡 **LEGENDARY** — 2% *(Leviathan, Behemoth, Archdragon)*\n\n` +
-        `💎 **Harga:** Rp 1.000 / pull | Rp 10.000 / 10x pull\n` +
+        `💎 **Harga:** Rp ${pet.GACHA_PRICES.SINGLE.toLocaleString('id-ID')} / pull | Rp ${pet.GACHA_PRICES.MULTI10.toLocaleString('id-ID')} / 10x pull\n` +
         `🎫 **Tiket Gacha:** 1 tiket = 1 pull gratis`
       )
       .setFooter({ text: 'Pet gacha langsung dewasa (ADULT) tanpa telur!' })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('gacha_btn_1x').setLabel('🎰 Gacha 1x (Rp 1.000)').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('gacha_btn_10x').setLabel('🎰 Gacha 10x (Rp 10.000)').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('gacha_btn_1x').setLabel(`🎰 Gacha 1x (Rp ${pet.GACHA_PRICES.SINGLE.toLocaleString('id-ID')})`).setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('gacha_btn_10x').setLabel(`🎰 Gacha 10x (Rp ${pet.GACHA_PRICES.MULTI10.toLocaleString('id-ID')})`).setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('gacha_btn_ticket').setLabel(`🎫 Gunakan Tiket (${tickets})`).setStyle(ButtonStyle.Secondary).setDisabled(tickets < 1)
     );
 
@@ -5912,7 +5891,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
     const resultRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('gacha_btn_save').setLabel('💾 Simpan ke Kandang').setStyle(ButtonStyle.Success).setDisabled(!canSave),
-      new ButtonBuilder().setCustomId('gacha_btn_recycle_result').setLabel('♻️ Recycle (+Rp 1.000)').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('gacha_btn_recycle_result').setLabel(`♻️ Recycle (+Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')})`).setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
     );
 
@@ -5992,7 +5971,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
           .setDescription(
             `${listText}\n\n` +
             `⭐ **Pet Terbaik:** ${best.species.name} — **${best.rarity}**\n\n` +
-            `*Pilih pet yang ingin disimpan ke kandang di bawah (maks 5 pet sekali input). Pet yang tidak dipilih akan otomatis di-recycle (+Rp 1.000 / pet).*`
+            `*Pilih pet yang ingin disimpan ke kandang di bawah (maks 5 pet sekali input). Pet yang tidak dipilih akan otomatis di-recycle (+Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')} / pet).*`
           )
           .setTimestamp();
 
@@ -6015,7 +5994,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
         const selectRow = new ActionRowBuilder().addComponents(selectMenu);
         const btnRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('gacha10_recycle_all').setLabel('♻️ Recycle Semua (+Rp 10.000)').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('gacha10_recycle_all').setLabel(`♻️ Recycle Semua (+Rp ${(10 * pet.RECYCLE_REWARD).toLocaleString('id-ID')})`).setStyle(ButtonStyle.Danger),
           new ButtonBuilder().setCustomId('gacha_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
         );
 
@@ -6095,11 +6074,11 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         if (!pendingPull) {
           return iGacha.reply({ content: '❌ Tidak ada pet gacha yang bisa di-recycle!', flags: 64 });
         }
-        economy.addBalance(author.id, guildId, 1000, 'PET_GACHA_RECYCLE');
+        economy.addBalance(author.id, guildId, pet.RECYCLE_REWARD, 'PET_GACHA_RECYCLE');
         const recycledSpecies = pendingPull.species.name;
         pendingPull = null;
         await iGacha.reply({
-          embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet ${recycledSpecies} telah didaur ulang.\n💰 **+Rp 1.000** telah ditambahkan ke dompet Anda.`)],
+          embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet ${recycledSpecies} telah didaur ulang.\n💰 **+Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}** telah ditambahkan ke dompet Anda.`)],
           flags: 64
         });
         await editGachaMessage(buildGachaMainEmbed());
@@ -6151,7 +6130,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
             // Recycle sisanya
             const recycledCount = pendingPulls.length - selectedIndices.length;
             if (recycledCount > 0) {
-              economy.addBalance(author.id, guildId, recycledCount * 1000, 'PET_GACHA_RECYCLE_MULTI');
+              economy.addBalance(author.id, guildId, recycledCount * pet.RECYCLE_REWARD, 'PET_GACHA_RECYCLE_MULTI');
             }
 
             pendingPulls = null;
@@ -6159,7 +6138,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
               embeds: [embeds.successEmbed(
                 'Pet Gacha 10x Diproses! 🎰✨',
                 `💾 **Pet Disimpan:**\n${savedNames.join('\n')}\n\n` +
-                (recycledCount > 0 ? `♻️ **Pet Di-recycle:** ${recycledCount} pet → **+Rp ${(recycledCount * 1000).toLocaleString('id-ID')}**` : '')
+                (recycledCount > 0 ? `♻️ **Pet Di-recycle:** ${recycledCount} pet → **+Rp ${(recycledCount * pet.RECYCLE_REWARD).toLocaleString('id-ID')}**` : '')
               )],
               flags: 64
             });
@@ -6175,7 +6154,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         if (!pendingPulls || pendingPulls.length === 0) {
           return iGacha.reply({ content: '❌ Tidak ada data pull 10x!', flags: 64 });
         }
-        const totalRecycle = pendingPulls.length * 1000;
+        const totalRecycle = pendingPulls.length * pet.RECYCLE_REWARD;
         economy.addBalance(author.id, guildId, totalRecycle, 'PET_GACHA_RECYCLE_ALL');
         pendingPulls = null;
         await iGacha.reply({
@@ -6474,23 +6453,7 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('pet_select_shop_item')
       .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-      .addOptions(
-        new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa (Rp 150)').setDescription('+30 Kenyangan').setValue('FOOD_BASIC'),
-        new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium (Rp 350)').setDescription('+70 Kenyangan & +10 HP').setValue('FOOD_PREMIUM'),
-        new StringSelectMenuOptionBuilder().setLabel('🥤 Air Bersih (Rp 100)').setDescription('+35 Hidrasi').setValue('WATER'),
-        new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan (Rp 500)').setDescription('+50 HP & Menyembuhkan Sakit').setValue('MEDICINE'),
-        new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet (Rp 250)').setDescription('+50 Kebahagiaan').setValue('TOY'),
-        new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet (Rp 200)').setDescription('Reset cooldown Kerja/Berburu').setValue('SODA_ENERGY'),
-        new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Mandi Pet (Rp 100)').setDescription('Menghilangkan bau busuk pet').setValue('SOAP_PET'),
-        new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi (Rp 1.200)').setDescription('Aksesoris: Decay Status -15%').setValue('COLLAR_IRON'),
-        new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DMG +15%').setValue('SWORD_TOY'),
-        new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (Rp 1.500)').setDescription('Aksesoris: PvP DEF +15%').setValue('SHIELD_TOY'),
-        new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan (Rp 2.000)').setDescription('Jimat Pelindung Kematian').setValue('LUCKY_AMULET'),
-        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x (Rp 2.500)').setDescription('XP Pet 2x Permanen').setValue('XP_2X'),
-        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x (Rp 5.000)').setDescription('XP Pet 4x Permanen').setValue('XP_4X'),
-        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x (Rp 7.500)').setDescription('XP Pet 6x Permanen').setValue('XP_6X'),
-        new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x (Rp 10.000)').setDescription('XP Pet 8x Permanen').setValue('XP_8X')
-      );
+      .addOptions(getPetShopSelectOptions());
 
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
     const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
