@@ -328,7 +328,14 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
           new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
         );
 
-        await i.reply({ embeds: [portalEmbed], components: [row1, row2], flags: 64 });
+        const row3 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('pet_btn_expedition_hub').setLabel('🗺️ Ekspedisi Pet').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
+        );
+
+        await i.reply({ embeds: [portalEmbed], components: [row1, row2, row3], flags: 64 });
       }
 
       if (i.customId === 'help_btn_member') {
@@ -532,10 +539,17 @@ async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, clie
     new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
   );
 
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('pet_btn_expedition_hub').setLabel('🗺️ Ekspedisi Pet').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
+  );
+
   if (isInteraction) {
-    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2], flags: 64 });
+    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2, row3], flags: 64 });
   } else {
-    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2] });
+    await replyTarget.reply({ embeds: [portalEmbed], components: [row1, row2, row3] });
   }
 }
 

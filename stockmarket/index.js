@@ -11587,7 +11587,11 @@ async function handleEconomyCommands(message, client) {
           `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
           `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
           `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-          `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.`
+          `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.\n\n` +
+          `🎰 **Gacha Pet** — Dapatkan pet acak (Common s/d Mythic).\n` +
+          `✨ **Upgrade Bintang** — Gabungkan pet duplikat untuk memperkuat status.\n` +
+          `🗺️ **Ekspedisi Pet** — Lobi co-op PVE melawan boss untuk koin.\n` +
+          `🎟️ **Lotre Mingguan** — Beli tiket lotre mingguan berhadiah pool besar.`
         )
         .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
         .setTimestamp();
