@@ -921,8 +921,10 @@ module.exports = {
         const crownEmoji = idx === 0 ? ' 👑' : '';
 
         ranks += `${medal} ${name}${crownEmoji}\n` +
-          `┊ 💵 Dompet \`${formatCurrency(user.balance)}\` · 📊 Saham \`${formatCurrency(user.portfolioValue)}\` · 🏦 Bank \`${formatCurrency(user.bankBalance)}\`\n` +
-          `┊ 💎 **Total Aset : ${formatCurrency(user.totalWealth)}**\n\n`;
+          `┊ 💵 Dompet: \`${formatCurrency(user.balance)}\`\n` +
+          `┊ 📊 Saham : \`${formatCurrency(user.portfolioValue)}\`\n` +
+          `┊ 🏦 Bank  : \`${formatCurrency(user.bankBalance)}\`\n` +
+          `└─ 💎 **Aset  : ${formatCurrency(user.totalWealth)}**\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
@@ -964,7 +966,9 @@ module.exports = {
         const klaim = user.last_active_date || 'Belum Pernah';
 
         ranks += `${medal} ${name} 🔓\n` +
-          `┊ 💵 Saldo \`${formatCurrency(user.balance)}\` · 📅 Klaim \`${klaim}\` · 🔥 Streak \`${user.streak_days}hari\`\n\n`;
+          `┊ 💵 Saldo  : \`${formatCurrency(user.balance)}\`\n` +
+          `┊ 📅 Terakhir: \`${klaim}\`\n` +
+          `└─ 🔥 Streak  : \`${user.streak_days} Hari\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
@@ -1008,13 +1012,58 @@ module.exports = {
         const topMark = idx === 0 ? ' 🔥' : '';
 
         ranks += `${medal} ${name}${topMark}\n` +
-          `┊ 💸 **Jarahan** \`${formatCurrency(user.total_stolen)}\` · 👤 Solo \`${formatCurrency(user.solo_stolen)}\` · 👥 Heist \`${formatCurrency(user.heist_stolen)}\`\n` +
-          `┊ ✅ Sukses \`${user.success_count}x\` · 👮 Penjara \`${user.jail_count}x\`\n\n`;
+          `┊ 💸 **Jarahan**: \`${formatCurrency(user.total_stolen)}\` (Solo: \`${formatCurrency(user.solo_stolen)}\`)\n` +
+          `┊ 👥 Heist  : \`${formatCurrency(user.heist_stolen)}\`\n` +
+          `└─ ✅ Sukses : \`${user.success_count}x\` · 👮 Penjara: \`${user.jail_count}x\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
     return embed.setFooter({ text: '🕵️ Rupiah Server Criminal Records' }).setTimestamp();
+  },
+
+  // 7d. Embed Papan Peringkat Ekspedisi Pet (Top Expedition Earners)
+  petExpeditionLeaderboardEmbed(guildName, topExpedition, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.GOLD) // Imperial Gold
+      .setTitle(`🗺️ EXPEDITION LEADERBOARD — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `\`\`\`\n` +
+        `┌───────────────────────────┐\n` +
+        `│  🗺️ TOP PENJELAJAH PET 🗺️ │\n` +
+        `│    Pet Expedition 2026    │\n` +
+        `└───────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `> *10 penjelajah pet yang paling banyak meraup koin dari misi ekspedisi.*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    }
+
+    if (topExpedition.length === 0) {
+      embed.addFields({ name: '🚫 Kosong', value: '> *Belum ada data ekspedisi pet di server ini.*' });
+    } else {
+      let ranks = '';
+      topExpedition.forEach((u, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        const owner = client.users.cache.get(u.user_id);
+        const ownerName = owner ? `**${owner.username}**` : `<@${u.user_id}>`;
+        const petInfo = u.pet_name ? `🐾 **${u.pet_name}** the *${u.pet_type}* (\`Lv.${u.level}\`)` : '🐾 *Tidak ada pet aktif*';
+
+        ranks += `${medal} ${ownerName}\n` +
+          `┊ ${petInfo}\n` +
+          `┊ 💰 Koin: \`Rp ${u.total_earned.toLocaleString('id-ID')}\`\n` +
+          `└─ 🗺️ Misi: \`${u.total_runs}x\` selesai\n\n`;
+      });
+      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+
+    return embed.setFooter({ text: 'Ikuti ekspedisi pet bersama teman! Ketik .pet expedition' }).setTimestamp();
   },
 
   // 7a. Embed Papan Peringkat Pet (Pet Leaderboard)

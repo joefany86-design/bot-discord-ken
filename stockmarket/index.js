@@ -569,37 +569,7 @@ function startRealtimeLeaderboard(client) {
         }));
 
         // Build Expedition Embed
-        const guild = client.guilds.cache.get(guildId);
-        const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
-        const expEmbed = new EmbedBuilder()
-          .setColor(0xD4AF37) // Imperial Gold
-          .setTitle(`🗺️ PAPAN PERINGKAT EKSPEDISI PET — ${guildName.toUpperCase()}`)
-          .setTimestamp();
-
-        if (iconUrl) expEmbed.setThumbnail(iconUrl);
-
-        if (topExpedition.length === 0) {
-          expEmbed.setDescription('🚫 Belum ada data ekspedisi pet di server ini.');
-        } else {
-          let ranks = `🏕️ **TOP PENJELAJAH PET TERKAYA** 🏕️\n` +
-            `*10 penjelajah pet yang paling banyak meraup koin dari misi ekspedisi.*\n` +
-            `────────────────────────────────────────\n\n`;
-
-          topExpedition.forEach((u, idx) => {
-            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
-            const owner = client.users.cache.get(u.user_id);
-            const ownerName = owner ? owner.username : u.user_id;
-            const petInfo = u.pet_name ? `🐾 *${u.pet_name} the ${u.pet_type}* (Lv.${u.level})` : '🐾 *Tidak ada pet aktif*';
-
-            ranks += `${medal} **${ownerName}**\n` +
-              `┗ ${petInfo}\n` +
-              `┗ 💰 Total Koin: **Rp ${u.total_earned.toLocaleString('id-ID')}** • 🗺️ Misi: **${u.total_runs}x**\n\n`;
-          });
-
-          ranks += '────────────────────────────────────────';
-          expEmbed.setDescription(ranks);
-        }
-        expEmbed.setFooter({ text: 'Ikuti ekspedisi pet bersama teman! Ketik .pet expedition' });
+        const expEmbed = embeds.petExpeditionLeaderboardEmbed(guildName, topExpedition, client);
 
         const messages = await petChannel.messages.fetch({ limit: 50 }).catch(() => null);
         const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
