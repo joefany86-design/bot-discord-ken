@@ -4904,25 +4904,13 @@ async function handlePetCommand(message, client, args) {
 
       const row2 = new ActionRowBuilder().addComponents(row2Components);
 
-      const isAutoFeedActive = userPet.auto_feed === 1 || userPet.auto_feed === 2;
-      const autoFeedLabel = isAutoFeedActive ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care (Rp 5.000)';
-      const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
-
       const row3Components = [
         new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris Pet').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
         new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Refresh').setStyle(ButtonStyle.Secondary)
       ];
       const row3 = new ActionRowBuilder().addComponents(row3Components);
 
-      // Row 4: Upgrade, Recycle
-      const row4Components = [
-        new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade Bintang').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('pet_btn_recycle').setLabel('♻️ Recycle Pet').setStyle(ButtonStyle.Danger)
-      ];
-      const row4 = new ActionRowBuilder().addComponents(row4Components);
-
-      rows.push(row1, row2, row3, row4);
+      rows.push(row1, row2, row3);
     }
 
     // Tambahkan Select Menu jika memiliki lebih dari 1 pet
