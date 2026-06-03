@@ -736,6 +736,21 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 47. Tabel bot_blacklist untuk memblokir akses user dari bot
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS bot_blacklist (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now')),
+        PRIMARY KEY (user_id, guild_id)
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'bot_blacklist' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel bot_blacklist:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

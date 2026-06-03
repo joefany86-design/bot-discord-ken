@@ -7453,6 +7453,18 @@ async function handleEconomyCommands(message, client) {
   const { guildId, author, guild } = message;
   if (!guildId) return false;
 
+  // ── CEK BLACKLIST BOT (Kecuali Owner & Administrator) ──
+  const isOwner = author.id === '436554535037698059';
+  const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+  if (!isOwner && !isAdmin) {
+    const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
+    if (isBlacklisted) {
+      const warnMsg = await message.reply('❌ Akses Ditolak! Anda telah di-blacklist oleh Admin/Owner dan tidak dapat menggunakan perintah bot ini.');
+      setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+      return true;
+    }
+  }
+
   // ── PENGALIHAN PERINTAH LAMA KE PORTAL HUB (.hub) ──
   const redirectedCommands = ['shop', 'rolemarket', 'market', 'saham', 'bank', 'bm', 'blackmarket', 'kos', 'kosan'];
   if (redirectedCommands.includes(commandName)) {
@@ -7497,6 +7509,7 @@ async function handleEconomyCommands(message, client) {
     'admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel',
     'admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel',
     'admin-shop', 'panel-shop', 'shop-panel',
+    'admin-warga', 'adminwarga', 'panel-warga', 'panelwarga',
     'ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'
   ];
 
@@ -11211,6 +11224,22 @@ async function handleEconomyCommands(message, client) {
 
       const adminPanel = require('./adminPanel');
       await adminPanel.handleAdminShopPanel(message, client);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: Panel Warga (.admin-warga / .panel-warga)
+    // ═══════════════════════════════════════════════════
+    if (['admin-warga', 'adminwarga', 'panel-warga', 'panelwarga'].includes(commandName)) {
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      }
+
+      const adminPanel = require('./adminPanel');
+      const targetUser = message.mentions.users.first() || (args[0] ? { id: args[0] } : null);
+      await adminPanel.handleAdminWargaPanel(message, client, targetUser?.id);
       return true;
     }
 

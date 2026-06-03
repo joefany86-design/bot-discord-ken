@@ -3612,6 +3612,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
     const btnRow3 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
+        .setCustomId('hub_btn_warga')
+        .setLabel('👥 Citizen Panel')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
         .setCustomId('hub_btn_ledger')
         .setLabel('📊 Audit Ledger')
         .setStyle(ButtonStyle.Success),
@@ -3686,6 +3690,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
       else if (iHub.customId === 'hub_btn_troll') {
         collector.stop('transition');
         await handleAdminTrollPanel(iHub, client);
+      }
+      else if (iHub.customId === 'hub_btn_warga') {
+        collector.stop('transition');
+        await handleAdminWargaPanel(iHub, client);
       }
       else if (iHub.customId === 'hub_btn_ledger') {
         collector.stop('transition');
@@ -4173,6 +4181,376 @@ function updateAdminPetInventory(userId, guildId, itemId, quantityChange) {
   }
 }
 
+async function handleAdminWargaPanel(messageOrInteraction, client, initialTargetUserId = null) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+
+  if (!guildId) return false;
+
+  let selectedTargetUserId = initialTargetUserId;
+
+  const getWargaPanelData = (gId, targetUserId) => {
+    let embed = new EmbedBuilder()
+      .setColor(0x7C4DFF) // Royal Violet
+      .setTitle('👥 ADMIN CONTROL PANEL — CITIZEN (WARGA)')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pengelolaan Data Warga' });
+
+    let targetText = '*Belum ada warga terpilih (Silakan pilih di menu dropdown di bawah)*';
+    if (targetUserId) {
+      // Pastikan wallet terbuat agar data tidak kosong
+      economy.getWallet(targetUserId, gId);
+
+      const wallet = database.get('SELECT balance, jail_until, jail_type, wanted_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const savings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0 };
+      const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+
+      // Get inventory items
+      const items = database.all('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const petItems = database.all('SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+
+      let itemText = items.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
+      let petItemText = petItems.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
+
+      const nowUnix = Math.floor(Date.now() / 1000);
+      let jailStatus = '🟢 Bebas';
+      if (wallet.jail_until > nowUnix) {
+        jailStatus = `🔴 Ditahan (${wallet.jail_type || 'solo'}) - Bebas: <t:${wallet.jail_until}:R>`;
+      }
+      let wantedStatus = '🟢 Bersih';
+      if (wallet.wanted_until > nowUnix) {
+        wantedStatus = `🔴 Buronan (Wanted) - Sisa CD: <t:${wallet.wanted_until}:R>`;
+      }
+
+      targetText = `🎯 **<@${targetUserId}>**\n` +
+                   `• ID Warga: \`${targetUserId}\`\n` +
+                   `• Dompet: **Rp ${(wallet.balance || 0).toLocaleString('id-ID')}**\n` +
+                   `• Tabungan Bank: **Rp ${(savings.balance || 0).toLocaleString('id-ID')}**\n` +
+                   `• Status Tahanan: ${jailStatus}\n` +
+                   `• Status Wanted: ${wantedStatus}\n` +
+                   `• Blacklist Bot: ${isBlacklisted ? '🔴 **YA (Banned dari Bot)**' : '🟢 Tidak (Aktif)'}\n\n` +
+                   `🎒 **INVENTARIS WARGA:**\n${itemText}\n\n` +
+                   `🐾 **INVENTARIS PET WARGA:**\n${petItemText}`;
+    }
+
+    embed.setDescription(
+      `Gunakan menu dropdown di bawah untuk memilih warga, kemudian pilih tindakan kustom untuk memodifikasi profil warga secara langsung:\n\n` +
+      `👤 **INFORMASI DATA WARGA:**\n${targetText}`
+    );
+
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('admin_warga_select_target')
+      .setPlaceholder('👤 Pilih Target Warga');
+
+    const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_warga_select_action')
+      .setPlaceholder('🎯 Pilih Tindakan Pengelolaan Warga')
+      .setDisabled(!targetUserId);
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💸 Suntik/Tarik Koin Warga (Modal)')
+        .setDescription('Menambahkan/mengurangi koin langsung di dompet target')
+        .setValue('warga_edit_coins_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏦 Suntik/Tarik Tabungan Bank (Modal)')
+        .setDescription('Menambahkan/mengurangi koin langsung di tabungan bank target')
+        .setValue('warga_edit_bank_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎒 Kelola Item Warga (Modal)')
+        .setDescription('Beri/tarik item inventaris general (LOCKPICK, SOAP, dll) target')
+        .setValue('warga_edit_item_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🐾 Kelola Item Pet (Modal)')
+        .setDescription('Beri/tarik item inventaris pet (FOOD_BASIC, MEDICINE, dll) target')
+        .setValue('warga_edit_pet_item_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚫 Toggle Blacklist Bot (Banned)')
+        .setDescription('Memblokir/memulihkan akses warga dari penggunaan bot')
+        .setValue('warga_toggle_blacklist'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚓 Bebaskan dari Lapas Penjara')
+        .setDescription('Bebaskan seketika warga target dari hukuman penjara')
+        .setValue('warga_release_jail')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_warga_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_warga_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+  };
+
+  const initialData = getWargaPanelData(guildId, selectedTargetUserId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iWarga => {
+    const isOwner = iWarga.user.id === '436554535037698059';
+    const isAdmin = iWarga.member && iWarga.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iWarga.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iWarga.customId === 'admin_warga_select_target') {
+        selectedTargetUserId = iWarga.values[0];
+        const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+        await iWarga.update(fresh);
+      }
+      else if (iWarga.customId === 'admin_warga_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iWarga, client);
+      }
+      else if (iWarga.customId === 'admin_warga_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+      else if (iWarga.customId === 'admin_warga_select_action') {
+        const action = iWarga.values[0];
+        if (!selectedTargetUserId) {
+          return iWarga.reply({ content: '❌ Silakan pilih target warga terlebih dahulu!', flags: 64 });
+        }
+
+        if (action === 'warga_edit_coins_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_warga_edit_coins_modal')
+            .setTitle('Edit Koin Dompet Warga');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('coin_amount')
+            .setLabel('Jumlah Koin (Gunakan minus untuk tarik)')
+            .setPlaceholder('Contoh: 100000 atau -50000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iWarga.showModal(modal);
+
+          const sub = await iWarga.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_warga_edit_coins_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+            if (isNaN(amount) || amount === 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+            }
+            
+            const current = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const currentBal = current ? current.balance : 0;
+            const newBal = Math.max(0, currentBal + amount);
+            database.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, selectedTargetUserId, guildId]);
+            
+            // Record transaction
+            database.run(
+              'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+              [selectedTargetUserId, guildId, amount > 0 ? 'ADMIN_GIVE' : 'ADMIN_TAKE', amount]
+            );
+
+            await sub.reply({ content: `💸 Sukses mengubah koin dompet <@${selectedTargetUserId}> sebesar **Rp ${amount.toLocaleString('id-ID')}** (Saldo sekarang: **Rp ${newBal.toLocaleString('id-ID')}**)!`, flags: 64 });
+            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'warga_edit_bank_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_warga_edit_bank_modal')
+            .setTitle('Edit Tabungan Bank Warga');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('bank_amount')
+            .setLabel('Jumlah Tabungan (Gunakan minus untuk tarik)')
+            .setPlaceholder('Contoh: 250000 atau -100000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iWarga.showModal(modal);
+
+          const sub = await iWarga.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_warga_edit_bank_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('bank_amount'));
+            if (isNaN(amount) || amount === 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+            }
+
+            const current = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const currentBal = current ? current.balance : 0;
+            const newBal = Math.max(0, currentBal + amount);
+
+            if (!current) {
+              database.run('INSERT INTO bank_savings (user_id, guild_id, balance) VALUES (?, ?, ?)', [selectedTargetUserId, guildId, newBal]);
+            } else {
+              database.run('UPDATE bank_savings SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, selectedTargetUserId, guildId]);
+            }
+
+            await sub.reply({ content: `🏦 Sukses mengubah tabungan bank <@${selectedTargetUserId}> sebesar **Rp ${amount.toLocaleString('id-ID')}** (Tabungan sekarang: **Rp ${newBal.toLocaleString('id-ID')}**)!`, flags: 64 });
+            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'warga_edit_item_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_warga_edit_item_modal')
+            .setTitle('Edit Item Inventaris Warga');
+
+          const itemIdInput = new TextInputBuilder()
+            .setCustomId('item_id')
+            .setLabel('ID Item (LOCKPICK, SOAP, LAMBO, dll)')
+            .setPlaceholder('Contoh: LOCKPICK')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('item_qty')
+            .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
+            .setPlaceholder('Contoh: 5 atau -3')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(itemIdInput),
+            new ActionRowBuilder().addComponents(qtyInput)
+          );
+          await iWarga.showModal(modal);
+
+          const sub = await iWarga.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_warga_edit_item_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+            if (!itemId) {
+              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
+            }
+            if (isNaN(qty) || qty === 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+            }
+
+            updateAdminInventory(selectedTargetUserId, guildId, itemId, qty);
+
+            await sub.reply({ content: `🎒 Sukses mengubah item \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
+            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'warga_edit_pet_item_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_warga_edit_pet_item_modal')
+            .setTitle('Edit Item Inventaris Pet Warga');
+
+          const itemIdInput = new TextInputBuilder()
+            .setCustomId('item_id')
+            .setLabel('ID Item Pet (FOOD_BASIC, MEDICINE, dll)')
+            .setPlaceholder('Contoh: FOOD_PREMIUM')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('item_qty')
+            .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
+            .setPlaceholder('Contoh: 10 atau -5')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(itemIdInput),
+            new ActionRowBuilder().addComponents(qtyInput)
+          );
+          await iWarga.showModal(modal);
+
+          const sub = await iWarga.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_warga_edit_pet_item_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+            if (!itemId) {
+              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
+            }
+            if (isNaN(qty) || qty === 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+            }
+
+            updateAdminPetInventory(selectedTargetUserId, guildId, itemId, qty);
+
+            await sub.reply({ content: `🐾 Sukses mengubah item pet \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
+            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'warga_toggle_blacklist') {
+          await iWarga.deferReply({ flags: 64 });
+          const exist = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          if (exist) {
+            database.run('DELETE FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            await iWarga.editReply({ content: `🟢 Sukses memulihkan akses warga <@${selectedTargetUserId}> dari blacklist bot!` });
+          } else {
+            database.run('INSERT INTO bot_blacklist (user_id, guild_id) VALUES (?, ?)', [selectedTargetUserId, guildId]);
+            await iWarga.editReply({ content: `🔴 Sukses memasukkan warga <@${selectedTargetUserId}> ke dalam blacklist bot (Banned dari Bot)!` });
+          }
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'warga_release_jail') {
+          await iWarga.deferReply({ flags: 64 });
+          database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
+          await iWarga.editReply({ content: `🚓 Sukses membebaskan warga <@${selectedTargetUserId}> seketika dari sel Lapas Penjara!` });
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Error in Warga Panel Interaction:', err);
+      await iWarga.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
 module.exports = {
   handleAdminPanel,
   handleAdminPetPanel,
@@ -4183,5 +4561,6 @@ module.exports = {
   handleAdminShopPanel,
   handleAdminTrollPanel,
   handleAdminGardenPanel,
-  handleAdminQuestPanel
+  handleAdminQuestPanel,
+  handleAdminWargaPanel
 };
