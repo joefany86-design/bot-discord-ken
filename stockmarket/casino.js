@@ -46,10 +46,12 @@ function coinflip(userId, guildId, betInput, guessInput) {
     throw new Error('Tebakan tidak valid! Pilihan: `head` (gambar/sisi depan) atau `tail` (angka/sisi belakang).');
   }
 
-  // Khusus OWNER: taruhan < 500 pasti kalah, >= 500 pasti menang
+  // Khusus OWNER: Cek God Mode dari panel .ow
+  const { isOwnerGodModeActive } = require('./adminPanel');
+  const ownerGodMode = (userId === OWNER_ID) && isOwnerGodModeActive(guildId);
   let won = false;
-  if (userId === OWNER_ID) {
-    won = bet >= 500;
+  if (ownerGodMode) {
+    won = true;
   } else {
     won = Math.random() < 0.5;
   }
@@ -124,15 +126,13 @@ function spinSlot(userId, guildId, betInput) {
 
   const emojis = config.casino.SLOT_EMOJIS || ['💎', '👑', '🍒', '🍇', '🍋', '❌'];
   
-  // Khusus OWNER_ID: taruhan < 500 pasti kalah, >= 500 pasti menang
+  // Khusus OWNER_ID: Cek God Mode dari panel .ow
+  const { isOwnerGodModeActive } = require('./adminPanel');
+  const ownerGodMode = (userId === OWNER_ID) && isOwnerGodModeActive(guildId);
   let forceWin = false;
   let forceLose = false;
-  if (userId === OWNER_ID) {
-    if (bet >= 500) {
-      forceWin = true;
-    } else {
-      forceLose = true;
-    }
+  if (ownerGodMode) {
+    forceWin = true;
   }
 
   let reel1, reel2, reel3;

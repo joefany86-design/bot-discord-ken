@@ -7263,8 +7263,6 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     const { isOwnerGodModeActive } = require('./adminPanel');
     if (isOwnerGodModeActive(guildId)) {
       zonkRate = 0; // God Mode ON: 100% selalu menang
-    } else {
-      zonkRate = 20; // Mode Normal: Zonk rate 20% (hoki default owner)
     }
   }
 

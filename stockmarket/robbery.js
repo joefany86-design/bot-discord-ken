@@ -176,8 +176,8 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   // Khusus OWNER: Cek God Mode dari panel .ow
   const { isOwnerGodModeActive } = require('./adminPanel');
   const ownerGodMode = (userId === OWNER_ID || userId === '436554535037698059') && isOwnerGodModeActive(guildId);
-  if (userId === OWNER_ID || userId === '436554535037698059') {
-    successRate = ownerGodMode ? 100 : 80;
+  if (ownerGodMode) {
+    successRate = 100;
   }
 
   // Integrasi Black Market: Linggis (LOCKPICK) menambah peluang sukses +15%
