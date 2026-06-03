@@ -9135,6 +9135,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // Perintah: .balance / .bal / .profile
     // ═══════════════════════════════════════════════════
+    // Perintah: .balance / .bal / .profile
     if (commandName === 'balance' || commandName === 'bal' || commandName === 'profile') {
       const now = Date.now();
       const lastUsed = balCooldowns.get(author.id) || 0;
@@ -9155,6 +9156,7 @@ async function handleEconomyCommands(message, client) {
 
       const targetUser = message.mentions.users.first() || author;
       const targetMember = message.mentions.members.first() || message.member || await guild.members.fetch(targetUser.id).catch(() => null);
+      
       const wallet = economy.getWallet(targetUser.id, guildId);
       const porto = stocks.getPortfolio(targetUser.id, guildId);
       const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -9165,13 +9167,162 @@ async function handleEconomyCommands(message, client) {
       const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
       const bailDebts = { debts, receivables };
 
-      const embed = embeds.profileEmbed(targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items);
-      const reply = await message.reply({ embeds: [embed] });
+      // Query extra data
+      const kosRental = database.get('SELECT room_tier, ends_at FROM kos_rentals WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+      const kosUpgrades = database.all('SELECT upgrade_id FROM kos_upgrades WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+      const gardenSlots = database.all('SELECT slot_index, seed_id, planted_at, last_watered_at, water_count FROM garden_slots WHERE user_id = ? AND guild_id = ? ORDER BY slot_index ASC', [targetUser.id, guildId]);
+      
+      const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+      const dailyQuest = database.get('SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?', [targetUser.id, guildId, todayStr]);
+      
+      const lotteryTickets = lottery.getUserTickets(targetUser.id, guildId);
+      const lotteryPool = lottery.getPool(guildId);
 
-      setTimeout(() => {
-        reply.delete().catch(() => {});
-        message.delete().catch(() => {});
-      }, 15000);
+      const extraData = {
+        kosRental,
+        kosUpgrades,
+        gardenSlots,
+        dailyQuest,
+        lotteryTickets,
+        lotteryPool,
+        wantedUntil: wallet.wanted_until || 0,
+        curseUntil: wallet.curse_until || 0,
+        curseType: wallet.curse_type || ''
+      };
+
+      const buildProfileButtons = (activeTab, disabled = false) => {
+        return new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('bal_btn_dashboard')
+            .setLabel('🏠 Dashboard')
+            .setStyle(activeTab === 'dashboard' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled),
+          new ButtonBuilder()
+            .setCustomId('bal_btn_assets')
+            .setLabel('📈 Aset & Saham')
+            .setStyle(activeTab === 'assets' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled),
+          new ButtonBuilder()
+            .setCustomId('bal_btn_pet')
+            .setLabel('🐾 Pet & PvP')
+            .setStyle(activeTab === 'pet' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled),
+          new ButtonBuilder()
+            .setCustomId('bal_btn_property')
+            .setLabel('🏠 Hunian & Kebun')
+            .setStyle(activeTab === 'property' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled),
+          new ButtonBuilder()
+            .setCustomId('bal_btn_quests')
+            .setLabel('🎯 Misi & Lotre')
+            .setStyle(activeTab === 'quests' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled)
+        );
+      };
+
+      const buildCloseButton = (disabled = false) => {
+        return new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('bal_btn_close')
+            .setLabel('✖️ Tutup Profil')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(disabled)
+        );
+      };
+
+      let currentTab = 'dashboard';
+      const initialEmbed = embeds.profileEmbed(
+        targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items, extraData, currentTab
+      );
+
+      const replyMsg = await message.reply({
+        embeds: [initialEmbed],
+        components: [buildProfileButtons(currentTab), buildCloseButton()]
+      });
+
+      const collector = replyMsg.createMessageComponentCollector({
+        time: 60000 // 60 detik masa interaksi aktif
+      });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) {
+          return i.reply({ content: '❌ Hanya pemanggil asli perintah ini yang dapat mengganti tab profil!', flags: 64 });
+        }
+
+        if (i.customId === 'bal_btn_close') {
+          collector.stop('closed');
+          return;
+        }
+
+        const tabMap = {
+          bal_btn_dashboard: 'dashboard',
+          bal_btn_assets: 'assets',
+          bal_btn_pet: 'pet',
+          bal_btn_property: 'property',
+          bal_btn_quests: 'quests'
+        };
+
+        const nextTab = tabMap[i.customId];
+        if (nextTab) {
+          currentTab = nextTab;
+
+          // Ambil ulang data fresh agar sinkron secara realtime
+          const freshWallet = economy.getWallet(targetUser.id, guildId);
+          const freshPorto = stocks.getPortfolio(targetUser.id, guildId);
+          const freshUserPet = pet.getPet(targetUser.id, guildId);
+          const freshActiveLoan = bank.getActiveLoan(targetUser.id, guildId);
+
+          const freshDebts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+          const freshReceivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+          const freshBailDebts = { debts: freshDebts, receivables: freshReceivables };
+
+          const freshKosRental = database.get('SELECT room_tier, ends_at FROM kos_rentals WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+          const freshKosUpgrades = database.all('SELECT upgrade_id FROM kos_upgrades WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
+          const freshGardenSlots = database.all('SELECT slot_index, seed_id, planted_at, last_watered_at, water_count FROM garden_slots WHERE user_id = ? AND guild_id = ? ORDER BY slot_index ASC', [targetUser.id, guildId]);
+          const freshDailyQuest = database.get('SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?', [targetUser.id, guildId, todayStr]);
+          const freshLotteryTickets = lottery.getUserTickets(targetUser.id, guildId);
+          const freshLotteryPool = lottery.getPool(guildId);
+
+          const freshExtraData = {
+            kosRental: freshKosRental,
+            kosUpgrades: freshKosUpgrades,
+            gardenSlots: freshGardenSlots,
+            dailyQuest: freshDailyQuest,
+            lotteryTickets: freshLotteryTickets,
+            lotteryPool: freshLotteryPool,
+            wantedUntil: freshWallet.wanted_until || 0,
+            curseUntil: freshWallet.curse_until || 0,
+            curseType: freshWallet.curse_type || ''
+          };
+
+          const nextEmbed = embeds.profileEmbed(
+            targetUser, freshWallet, freshPorto.totalPortfolioValue, targetMember, shopItems, freshUserPet, freshActiveLoan, freshBailDebts, freshPorto.items, freshExtraData, currentTab
+          );
+
+          await i.update({
+            embeds: [nextEmbed],
+            components: [buildProfileButtons(currentTab), buildCloseButton()]
+          }).catch(console.error);
+        }
+      });
+
+      collector.on('end', async (collected, reason) => {
+        if (reason === 'closed') {
+          await replyMsg.delete().catch(() => {});
+          await message.delete().catch(() => {});
+        } else {
+          // Nonaktifkan tombol secara elegan setelah timeout
+          await replyMsg.edit({
+            components: [buildProfileButtons(currentTab, true), buildCloseButton(true)]
+          }).catch(() => {});
+
+          // Hapus pesan 15 detik kemudian
+          setTimeout(() => {
+            replyMsg.delete().catch(() => {});
+            message.delete().catch(() => {});
+          }, 15000);
+        }
+      });
 
       return true;
     }
