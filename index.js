@@ -645,26 +645,20 @@ client.on('messageCreate', async message => {
 
     if (guildHasActiveExpedition) {
       const content = message.content.trim().toLowerCase();
-      if (content.startsWith('.pet')) {
-        // Izinkan hanya .pet expedition (termasuk .pet expedition join, dst.)
-        const isExpedition = content.startsWith('.pet expedition') || content.startsWith('.pet pet-expedition') || content.startsWith('.pet expidition');
-        if (!isExpedition) {
-          const isOwner = message.author.id === OWNER_ID;
-          const isAdmin = message.member && message.member.permissions.has('Administrator');
-          if (!isOwner && !isAdmin) {
-            await message.delete().catch(() => {});
-            const warnMsg = await message.channel.send({
-              content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Anda tidak boleh menggunakan perintah pet lain selain \`.pet expedition\` di channel ini sampai ekspedisi selesai.`
-            }).catch(() => null);
+      // Izinkan hanya .pet expedition (termasuk .pet expedition join, dst.)
+      const isExpedition = content.startsWith('.pet expedition') || content.startsWith('.pet pet-expedition') || content.startsWith('.pet expidition');
+      if (!isExpedition) {
+        await message.delete().catch(() => {});
+        const warnMsg = await message.channel.send({
+          content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Anda tidak boleh mengirim pesan atau perintah lain di channel ini selain \`.pet expedition\` sampai ekspedisi selesai.`
+        }).catch(() => null);
 
-            if (warnMsg) {
-              setTimeout(() => {
-                warnMsg.delete().catch(() => {});
-              }, 5000);
-            }
-            return;
-          }
+        if (warnMsg) {
+          setTimeout(() => {
+            warnMsg.delete().catch(() => {});
+          }, 5000);
         }
+        return;
       }
     }
   }
