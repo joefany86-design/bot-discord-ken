@@ -212,14 +212,14 @@ const PET_ASSETS = {
       'https://i.giphy.com/media/Pyp923TIC4Iq4/giphy.gif',
       'https://i.giphy.com/media/Xb2Bw5hUU56XsudVF8/giphy.gif',
       'https://i.giphy.com/media/AHMPR6ASCvZY17KsdB/giphy.gif',
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcTJ5dDN6OGVqeXNkY2tlbnRwb2V6MXVnM2N1N2doczRwd2phZTZ6YiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3vRfcPYG4f9eTi5W/giphy.gif',
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/bagon.gif',
       'https://i.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif'
     ],
     ADULT: [
       'https://i.giphy.com/media/JMqM0nNT3AXS8xuiIZ/giphy.gif',
       'https://i.giphy.com/media/TjjLhpZU4roPz4SkW5/giphy.gif',
       'https://i.giphy.com/media/RlfsTNtMxGhb4T7P07/giphy.gif',
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZnVwNm1keHV1MTY1aGNjdzYxNnFqNmRlaXA1MW1oOGF0c2dwcGw3bSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/IgnSR1lnLxMxq/giphy.gif',
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/charizard.gif',
       'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExYjR3Z21oMzF0Y3I0b3RqcjF5NGRteWk5bDR5OTJ3emk3OXg3ZjY2byZlcD12MV9naWZzX3NlYXJjaCZjdD1n/12PA1eI8FBqEBa/giphy.gif'
     ]
   },
@@ -230,7 +230,7 @@ const PET_ASSETS = {
       'https://i.giphy.com/media/MSemvqMIRY3jMcvpd2/giphy.gif',
       'https://i.giphy.com/media/VCP6Kpf6guFm4nnF04/giphy.gif',
       'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2w2OGRqcWM3NG95d3IxcTl2eWljcWthazg3a3V5Y3pkaThvbzlodSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ND6xkVPaj8tHO/giphy.gif',
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExd2xjMmIwMWYwdWluaHhxcXRkaWtvdWcxMXJ3YmlmaWJ6NjlnODhyMiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/VbnUQpnihPSQgIXuZv/giphy.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/meowth.gif'
     ],
     ADULT: [
       'https://i.giphy.com/media/U6Xgx1pCLMPFaO0Uw3/giphy.gif',
@@ -246,78 +246,78 @@ const PET_ASSETS = {
       'https://i.giphy.com/media/3s4pjpA8Vb7lTy73Nn/giphy.gif',
       'https://i.giphy.com/media/BU327u9UNM2Sk/giphy.gif',
       'https://media.tenor.com/R4QclJPFD1gAAAAC/16bit-80s.gif',
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExaHl0Y3E1OGlwbTdndm1jcDNkYzI4cDhtNWtsN2s2bHdjMG5vMnR3MSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Bm6jG0kRO0f4I/giphy.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/geodude.gif'
     ],
     ADULT: [
       'https://i.giphy.com/media/7ueLs2fU5c8QeeYHKg/giphy.gif',
       'https://i.giphy.com/media/4YHLDTS2yKKZpnZ9WN/giphy.gif',
       'https://i.giphy.com/media/Ss6CM89p5n3yBYfQ0P/giphy.gif',
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWJkdnVjbHlydWVwMTN6YXdpMnVjMWRzeW1lYnU0ZnQ2N3IzcTBkYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3oKIPftHL9gnnaoiR2/giphy.gif',
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/golem.gif',
       'https://media.tenor.com/ykpEHGFKYDoAAAAC/elements-solana.gif'
     ]
   },
   // 🦅 Phoenix — burung api abadi
   PHOENIX: {
     BABY: [
-      'https://media.tenor.com/C5J51yY6a84AAAAC/phoenix-pixel.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/moltres.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/S-K-W6Q4uLwAAAAC/phoenix-rising.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/ho-oh.gif'
     ]
   },
   // 🐢 Kura-Kura — kura-kura bumi kokoh
   TURTLE: {
     BABY: [
-      'https://media.tenor.com/L12s1TzKkKwAAAAC/turtle-pixel.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/squirtle.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/xJd1Msz1_9gAAAAd/torterra-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/torterra.gif'
     ]
   },
   // 🌊 Leviathan — naga lautan kuno
   LEVIATHAN: {
     BABY: [
-      'https://media.tenor.com/rWbNEX8h8_wAAAAC/dratini-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/dratini.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/zWzHq_oYJmQAAAAC/gyarados-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/gyarados.gif'
     ]
   },
   // 🦏 Behemoth — monster bumi tangguh
   BEHEMOTH: {
     BABY: [
-      'https://media.tenor.com/kS9Zf619_pUAAAAC/phanpy-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/phanpy.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/B94K3pW17oMAAAAC/groudon-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/groudon.gif'
     ]
   },
   // 🐉 Archdragon — naga purba kosmik
   ARCHDRAGON: {
     BABY: [
-      'https://media.tenor.com/97y4s_WlJ3IAAAAC/cute-dragon-flying.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/gible.gif'
     ],
     ADULT: [
-      'https://media.tenor.com/YwO-23gD5oIAAAAC/rayquaza-pokemon.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/rayquaza.gif'
     ]
   },
   // GIF khusus untuk aksi/interaksi tertentu
   ACTION: {
     WORK: [
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExemV3NmRjNHo2dHR0Z3RyY2p5YW92YnhxMzJnbmU0YjNpMjhnN2FkaCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/SACoDGYTvVNhZYNb5R/giphy.gif',
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/machop.gif',
       'https://media.tenor.com/eKcQ9MT2dR8AAAAC/uwu-cute.gif'
     ],
     HUNT: [
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGRhajU1ZnJweGIxYnE4YTlxbng4c2V3eThjcXlyOTd3MDE0eXlubCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3ohs7QSgtSfCXs3hcc/giphy.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/scyther.gif'
     ],
     PVP: [
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDZtM3lhNGd2ZGQxeG53bXQ2dnRxODFhbHFtMjBjOHJiMGI0cW1hMCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/2zoCbKY7jYAfm/giphy.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/lucario.gif'
     ],
     EXPEDITION: [
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHA2ZjExbWE2NTNjNGpuNHVsam1mZGJicHlhbHRhbTIyZmFxZzI3eCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/l3vR4aFafvy4xRn6E/giphy.gif'
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/arcanine.gif'
     ],
     PLAY: [
-      'https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExb3h0YXR6Z2hhMThkeTUycjIwcnRnYmV6YmhtOHY2ZW0yMmk1MHhmeCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/5i7umUqAOYYEw/giphy.gif'
+      'https://i.giphy.com/media/5i7umUqAOYYEw/giphy.gif'
     ]
   }
 };
