@@ -4166,17 +4166,28 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
   return true;
 }
 
+const PET_ITEM_IDS = [
+  'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
+  'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
+  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+];
+
 function updateAdminInventory(userId, guildId, itemId, quantityChange) {
+  const upperId = itemId.toUpperCase().trim();
+  if (PET_ITEM_IDS.includes(upperId)) {
+    return updateAdminPetInventory(userId, guildId, upperId, quantityChange);
+  }
+
   const row = database.get(
     'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-    [userId, guildId, itemId]
+    [userId, guildId, upperId]
   );
   
   if (!row) {
     if (quantityChange > 0) {
       database.run(
         'INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
-        [userId, guildId, itemId, quantityChange]
+        [userId, guildId, upperId, quantityChange]
       );
     }
   } else {
@@ -4184,40 +4195,45 @@ function updateAdminInventory(userId, guildId, itemId, quantityChange) {
     if (newQty === 0) {
       database.run(
         'DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-        [userId, guildId, itemId]
+        [userId, guildId, upperId]
       );
     } else {
       database.run(
         'UPDATE user_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-        [newQty, userId, guildId, itemId]
+        [newQty, userId, guildId, upperId]
       );
     }
   }
 }
 
 function updateAdminPetInventory(userId, guildId, itemId, quantityChange) {
+  const upperId = itemId.toUpperCase().trim();
+  if (!PET_ITEM_IDS.includes(upperId)) {
+    return updateAdminInventory(userId, guildId, upperId, quantityChange);
+  }
+
   const exist = database.get(
     'SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-    [userId, guildId, itemId]
+    [userId, guildId, upperId]
   );
   if (exist) {
     const newQty = Math.max(0, exist.quantity + quantityChange);
     if (newQty === 0) {
       database.run(
         'DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-        [userId, guildId, itemId]
+        [userId, guildId, upperId]
       );
     } else {
       database.run(
         'UPDATE pet_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
-        [newQty, userId, guildId, itemId]
+        [newQty, userId, guildId, upperId]
       );
     }
   } else {
     if (quantityChange > 0) {
       database.run(
         'INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
-        [userId, guildId, itemId, quantityChange]
+        [userId, guildId, upperId, quantityChange]
       );
     }
   }
