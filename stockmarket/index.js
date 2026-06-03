@@ -7510,6 +7510,7 @@ async function handleEconomyCommands(message, client) {
     'admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel',
     'admin-shop', 'panel-shop', 'shop-panel',
     'admin-warga', 'adminwarga', 'panel-warga', 'panelwarga',
+    'admin-gift', 'panel-gift', 'gift-panel', 'giftpanel',
     'ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'
   ];
 
@@ -11240,6 +11241,21 @@ async function handleEconomyCommands(message, client) {
       const adminPanel = require('./adminPanel');
       const targetUser = message.mentions.users.first() || (args[0] ? { id: args[0] } : null);
       await adminPanel.handleAdminWargaPanel(message, client, targetUser?.id);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: Panel Gift & Event (.admin-gift / .panel-gift / .gift-panel)
+    // ═══════════════════════════════════════════════════
+    if (['admin-gift', 'panel-gift', 'gift-panel', 'giftpanel'].includes(commandName)) {
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      }
+
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminGiftPanel(message, client);
       return true;
     }
 

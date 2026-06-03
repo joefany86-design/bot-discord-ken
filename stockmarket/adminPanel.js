@@ -6,6 +6,7 @@ const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const robbery = require('./robbery');
 const bank = require('./bank');
+const lottery = require('./lottery');
 const { 
   EmbedBuilder, 
   ActionRowBuilder, 
@@ -810,6 +811,9 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (!targetPet) {
             return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif untuk direset!', flags: 64 });
           }
+
+          const confirmed = await askConfirmation(iPet, author.id, `RESET / HAPUS data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}>`);
+          if (!confirmed) return;
           
           database.transaction(() => {
             database.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, targetPet.pet_name]);
@@ -825,7 +829,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             }
           })();
           
-          await iPet.reply({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, flags: 64 });
+          await iPet.followUp({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -1203,13 +1207,16 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           }
         }
         else if (action === 'action_reset_economy') {
+          const confirmed = await askConfirmation(iBank, author.id, `RESET TOTAL EKONOMI (dompet, bank, saham, pinjaman, utang) milik <@${selectedTargetUserId}>`);
+          if (!confirmed) return;
+
           database.run('UPDATE wallets SET balance = 0, total_earned = 0, total_invested = 0, streak_days = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('UPDATE bank_savings SET balance = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM portfolios WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM bank_loans WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           database.run('DELETE FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          await iBank.reply({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, seluruh lembar saham, serta pinjaman/utang jaminan milik <@${selectedTargetUserId}> telah dikembalikan ke 0 atau dibersihkan.`, flags: 64 });
+          await iBank.followUp({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, seluruh lembar saham, serta pinjaman/utang jaminan milik <@${selectedTargetUserId}> telah dikembalikan ke 0 atau dibersihkan.`, flags: 64 });
           const fresh = getBankPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
         }
@@ -2077,6 +2084,9 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             return iSaham.reply({ content: '❌ Tidak ada saham bursa terdaftar!', flags: 64 });
           }
 
+          const confirmed = await askConfirmation(iSaham, author.id, "POMPA SEMUA HARGA SAHAM bursa ke Rp 10.000 (Maksimal)");
+          if (!confirmed) return;
+
           database.transaction(() => {
             activeStocks.forEach(s => {
               const oldPrice = s.current_price;
@@ -2092,7 +2102,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             });
           })();
 
-          await iSaham.reply({ content: '📈 Pompa Pasar Sukses! Seluruh saham server telah dinaikkan ke **Rp 10.000 (Maksimal)** secara instan! 🚀', flags: 64 });
+          await iSaham.followUp({ content: '📈 Pompa Pasar Sukses! Seluruh saham server telah dinaikkan ke **Rp 10.000 (Maksimal)** secara instan! 🚀', flags: 64 });
           await sendGlobalEconomyAnnouncement(
             client,
             guild,
@@ -2111,6 +2121,9 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             return iSaham.reply({ content: '❌ Tidak ada saham bursa terdaftar!', flags: 64 });
           }
 
+          const confirmed = await askConfirmation(iSaham, author.id, "BANTING/HANCURKAN SEMUA HARGA SAHAM bursa ke Rp 10 (Minimal)");
+          if (!confirmed) return;
+
           database.transaction(() => {
             activeStocks.forEach(s => {
               const oldPrice = s.current_price;
@@ -2126,7 +2139,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             });
           })();
 
-          await iSaham.reply({ content: '📉 Banting Pasar Sukses! Seluruh saham server telah diturunkan runtuh ke **Rp 10 (Minimal)** secara instan! 💥', flags: 64 });
+          await iSaham.followUp({ content: '📉 Banting Pasar Sukses! Seluruh saham server telah diturunkan runtuh ke **Rp 10 (Minimal)** secara instan! 💥', flags: 64 });
           await sendGlobalEconomyAnnouncement(
             client,
             guild,
@@ -3616,6 +3629,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setLabel('👥 Citizen Panel')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
+        .setCustomId('hub_btn_gift')
+        .setLabel('🎁 Gift & Event')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
         .setCustomId('hub_btn_ledger')
         .setLabel('📊 Audit Ledger')
         .setStyle(ButtonStyle.Success),
@@ -3694,6 +3711,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
       else if (iHub.customId === 'hub_btn_warga') {
         collector.stop('transition');
         await handleAdminWargaPanel(iHub, client);
+      }
+      else if (iHub.customId === 'hub_btn_gift') {
+        collector.stop('transition');
+        await handleAdminGiftPanel(iHub, client);
       }
       else if (iHub.customId === 'hub_btn_ledger') {
         collector.stop('transition');
@@ -4513,14 +4534,18 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
           }
         }
         else if (action === 'warga_toggle_blacklist') {
-          await iWarga.deferReply({ flags: 64 });
           const exist = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-          if (exist) {
+          const modeStr = exist ? 'Hapus dari Blacklist (Unban)' : 'Masukkan ke Blacklist (Banned dari Bot)';
+          const confirmed = await askConfirmation(iWarga, author.id, `${modeStr} untuk warga <@${selectedTargetUserId}>`);
+          if (!confirmed) return;
+
+          const freshExist = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+          if (freshExist) {
             database.run('DELETE FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-            await iWarga.editReply({ content: `🟢 Sukses memulihkan akses warga <@${selectedTargetUserId}> dari blacklist bot!` });
+            await iWarga.followUp({ content: `🟢 Sukses memulihkan akses warga <@${selectedTargetUserId}> dari blacklist bot!`, flags: 64 });
           } else {
             database.run('INSERT INTO bot_blacklist (user_id, guild_id) VALUES (?, ?)', [selectedTargetUserId, guildId]);
-            await iWarga.editReply({ content: `🔴 Sukses memasukkan warga <@${selectedTargetUserId}> ke dalam blacklist bot (Banned dari Bot)!` });
+            await iWarga.followUp({ content: `🔴 Sukses memasukkan warga <@${selectedTargetUserId}> ke dalam blacklist bot (Banned dari Bot)!`, flags: 64 });
           }
           const fresh = getWargaPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => {});
@@ -4551,6 +4576,448 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
   return true;
 }
 
+async function askConfirmation(interaction, authorId, actionDescription) {
+  const confirmEmbed = new EmbedBuilder()
+    .setColor(0xFF3366) // Crimson Rose
+    .setTitle('⚠️ KONFIRMASI TINDAKAN KRITIS')
+    .setDescription(`Apakah Anda yakin ingin melakukan tindakan ini?\n\n**Tindakan:** ${actionDescription}`);
+
+  const confirmRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('admin_confirm_yes')
+      .setLabel('Ya, Lakukan!')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('admin_confirm_no')
+      .setLabel('Batal')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const confirmMsg = await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], flags: 64, fetchReply: true });
+  
+  const confirmSub = await confirmMsg.awaitMessageComponent({
+    filter: (btn) => ['admin_confirm_yes', 'admin_confirm_no'].includes(btn.customId) && btn.user.id === authorId,
+    time: 30000
+  }).catch(() => null);
+
+  if (confirmSub) {
+    if (confirmSub.customId === 'admin_confirm_yes') {
+      await confirmSub.deferUpdate().catch(() => {});
+      await confirmMsg.delete().catch(() => {});
+      return true;
+    } else {
+      await confirmSub.deferUpdate().catch(() => {});
+      await confirmMsg.delete().catch(() => {});
+      await confirmSub.followUp({ content: '❌ Tindakan dibatalkan.', flags: 64 }).catch(() => {});
+      return false;
+    }
+  } else {
+    await confirmMsg.delete().catch(() => {});
+    await interaction.followUp({ content: '❌ Waktu konfirmasi habis. Tindakan dibatalkan.', flags: 64 }).catch(() => {});
+    return false;
+  }
+}
+
+async function handleAdminGiftPanel(messageOrInteraction, client) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+  const guild = messageOrInteraction.guild;
+
+  if (!guildId) return false;
+
+  const getGiftPanelData = (gId) => {
+    let embed = new EmbedBuilder()
+      .setColor(0x7C4DFF) // Royal Violet
+      .setTitle('🎁 ADMIN CONTROL PANEL — HADIAH MASSAL & LOTRE')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pembagian Hadiah & Event Lotre' });
+
+    // 1. Ambil status event aktif
+    const activeEvent = database.get('SELECT event_type, ends_at FROM active_events WHERE guild_id = ?', [gId]);
+    const nowUnix = Math.floor(Date.now() / 1000);
+    let eventText = '⚪ Tidak ada event aktif';
+    if (activeEvent && activeEvent.ends_at > nowUnix) {
+      eventText = `🔴 **${activeEvent.event_type}** (Sisa: <t:${activeEvent.ends_at}:R>)`;
+    }
+
+    // 2. Ambil status event ebyus (sabotase)
+    const ebyusSettings = getOrCreateEbyusSettings(gId);
+    let ebyusText = '⚪ Tidak ada';
+    if (ebyusSettings.is_active === 1) {
+      const expiresText = ebyusSettings.expires_at > 0 ? `<t:${ebyusSettings.expires_at}:R>` : '`Permanen (Manual)`';
+      ebyusText = `🔴 **ABUSE MODE (Gacha ${ebyusSettings.gacha_mode} & Multiplier ${ebyusSettings.coin_multiplier}x)** (Sisa: ${expiresText})`;
+    }
+
+    // 3. Ambil statistik lotre mingguan
+    const pool = lottery.getPool(gId);
+    const participants = lottery.getParticipants(gId);
+    const ticketPrice = config.lottery?.TICKET_PRICE || 100;
+    const lotteryText = `• Total Jackpot Pool: **Rp ${(pool.total_pool || 0).toLocaleString('id-ID')}**\n` +
+                        `• Total Tiket Terjual: **${pool.total_tickets || 0} tiket** (@ Rp ${ticketPrice.toLocaleString('id-ID')}/tiket)\n` +
+                        `• Jumlah Peserta: **${participants.length} orang**\n` +
+                        `• Periode Minggu Ini: \`${pool.week_start || lottery.getCurrentWeekStart()}\``;
+
+    embed.setDescription(
+      `Gunakan panel ini untuk membagikan item massal ke seluruh warga server, menyuntik koin jackpot lotre, atau memicu undian pemenang lotre secara instan:\n\n` +
+      `📢 **STATUS EVENT SAAT INI:**\n` +
+      `• Event Makro: ${eventText}\n` +
+      `• Event Sabotase: ${ebyusText}\n\n` +
+      `🎟️ **STATISTIK LOTRE MINGGUAN:**\n${lotteryText}`
+    );
+
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_gift_select_action')
+      .setPlaceholder('🎯 Pilih Tindakan Event & Hadiah');
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎁 Bagi-bagi Item Massal (Modal)')
+        .setDescription('Membagikan item inventaris general (seperti LOCKPICK/SOAP) ke semua warga')
+        .setValue('gift_all_items_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🐾 Bagi-bagi Item Pet Massal (Modal)')
+        .setDescription('Membagikan item pet (seperti FOOD_PREMIUM/MEDICINE) ke semua pemilik pet aktif')
+        .setValue('gift_all_pet_items_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💰 Suntik Jackpot Lotre (Modal)')
+        .setDescription('Menambahkan koin sponsor langsung ke total jackpot pool lotre minggu ini')
+        .setValue('lottery_inject_pool_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎫 Undi Pemenang Lotre Instan')
+        .setDescription('Memicu penarikan pemenang lotre saat ini juga secara live')
+        .setValue('lottery_instant_draw'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚨 Reset Pool Tiket Lotre')
+        .setDescription('Mereset total jackpot pool dan menghapus seluruh tiket lotre terjual minggu ini')
+        .setValue('lottery_reset_pool')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_gift_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_gift_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [actionRow, btnRow] };
+  };
+
+  const initialData = getGiftPanelData(guildId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 300000
+  });
+
+  collector.on('collect', async iGift => {
+    const isOwner = iGift.user.id === '436554535037698059';
+    const isAdmin = iGift.member && iGift.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iGift.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iGift.customId === 'admin_gift_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iGift, client);
+      }
+      else if (iGift.customId === 'admin_gift_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => {});
+      }
+      else if (iGift.customId === 'admin_gift_select_action') {
+        const action = iGift.values[0];
+
+        if (action === 'gift_all_items_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_gift_all_items_modal')
+            .setTitle('Bagi-bagi Item Massal');
+
+          const itemIdInput = new TextInputBuilder()
+            .setCustomId('item_id')
+            .setLabel('ID Item (LOCKPICK, SOAP, LAMBO, dll)')
+            .setPlaceholder('Contoh: LOCKPICK')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('item_qty')
+            .setLabel('Jumlah per Warga')
+            .setPlaceholder('Contoh: 5')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(itemIdInput),
+            new ActionRowBuilder().addComponents(qtyInput)
+          );
+          await iGift.showModal(modal);
+
+          const sub = await iGift.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_gift_all_items_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+            if (!itemId) {
+              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
+            }
+            if (isNaN(qty) || qty <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat positif!', flags: 64 });
+            }
+
+            await sub.deferReply({ flags: 64 });
+
+            // Ambil semua user terdaftar di guild
+            const users = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+            if (users.length === 0) {
+              return sub.editReply({ content: '❌ Tidak ada warga terdaftar di database server ini!' });
+            }
+
+            database.transaction(() => {
+              users.forEach(u => {
+                updateAdminInventory(u.user_id, guildId, itemId, qty);
+              });
+            })();
+
+            await sub.editReply({ content: `🎁 Sukses membagikan item \`${itemId}\` sebanyak **${qty} pcs** ke seluruh warga terdaftar (**${users.length} orang**)! 🎉` });
+            
+            // Post announcement
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🎁 Sinterklas Admin Hadir!',
+              `🎉 **BAGI-BAGI ITEM MASSAL!**\nAdmin <@${author.id}> telah membagikan item **${itemId}** sebanyak **${qty} pcs** secara gratis ke kantong inventaris seluruh warga server! Periksa tas Anda dengan perintah \`.tas\` sekarang!`,
+              '#8E44AD',
+              []
+            );
+
+            const fresh = getGiftPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'gift_all_pet_items_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_gift_all_pet_items_modal')
+            .setTitle('Bagi-bagi Item Pet Massal');
+
+          const itemIdInput = new TextInputBuilder()
+            .setCustomId('item_id')
+            .setLabel('ID Item Pet (FOOD_BASIC, MEDICINE, dll)')
+            .setPlaceholder('Contoh: FOOD_PREMIUM')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('item_qty')
+            .setLabel('Jumlah per Pemilik Pet')
+            .setPlaceholder('Contoh: 10')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(itemIdInput),
+            new ActionRowBuilder().addComponents(qtyInput)
+          );
+          await iGift.showModal(modal);
+
+          const sub = await iGift.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_gift_all_pet_items_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+            if (!itemId) {
+              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
+            }
+            if (isNaN(qty) || qty <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat positif!', flags: 64 });
+            }
+
+            await sub.deferReply({ flags: 64 });
+
+            // Ambil semua pemilik pet aktif di guild
+            const petOwners = database.all('SELECT DISTINCT user_id FROM user_pets WHERE guild_id = ? AND is_active = 1', [guildId]);
+            if (petOwners.length === 0) {
+              return sub.editReply({ content: '❌ Tidak ada warga yang memiliki peliharaan aktif saat ini!' });
+            }
+
+            database.transaction(() => {
+              petOwners.forEach(po => {
+                updateAdminPetInventory(po.user_id, guildId, itemId, qty);
+              });
+            })();
+
+            await sub.editReply({ content: `🐾 Sukses membagikan item pet \`${itemId}\` sebanyak **${qty} pcs** ke seluruh pemilik pet aktif (**${petOwners.length} orang**)! 🎉` });
+            
+            // Post announcement
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🐾 Hadiah untuk Peliharaan Warga!',
+              `🎉 **BAGI-BAGI MAKANAN/OBAT PET MASSAL!**\nAdmin <@${author.id}> telah membagikan item pet **${itemId}** sebanyak **${qty} pcs** secara gratis ke seluruh warga yang memiliki peliharaan aktif! Periksa kandang Anda dengan perintah \`.pet\`!`,
+              '#2980B9',
+              []
+            );
+
+            const fresh = getGiftPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'lottery_inject_pool_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_lottery_inject_pool_modal')
+            .setTitle('Suntik Jackpot Lotre');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('inject_amount')
+            .setLabel('Jumlah Koin Sponsor (Rupiah)')
+            .setPlaceholder('Contoh: 100000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iGift.showModal(modal);
+
+          const sub = await iGift.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_lottery_inject_pool_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('inject_amount'));
+            if (isNaN(amount) || amount <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat positif!', flags: 64 });
+            }
+
+            const weekStart = lottery.getCurrentWeekStart();
+            database.run(
+              'INSERT INTO lottery_pool (guild_id, total_pool, total_tickets, week_start) VALUES (?, ?, 0, ?) ' +
+              'ON CONFLICT(guild_id, week_start) DO UPDATE SET total_pool = total_pool + ?',
+              [guildId, amount, weekStart, amount]
+            );
+
+            await sub.reply({ content: `💰 Sukses menyuntikkan dana sponsor sebesar **Rp ${amount.toLocaleString('id-ID')}** langsung ke pool lotre minggu ini!`, flags: 64 });
+
+            // Post announcement
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🎫 Jackpot Lotre Disponsori!',
+              `📢 **JACKPOT LOTRE BERTAMBAH!**\nAdmin <@${author.id}> telah mensponsori koin tambahan sebesar **Rp ${amount.toLocaleString('id-ID')}** ke dalam pool jackpot lotre minggu ini!\n*Ayo beli tiket Anda sekarang dengan mengetik \`.lotre beli\` untuk kesempatan menang koin Sultan!*`,
+              '#F1C40F',
+              []
+            );
+
+            const fresh = getGiftPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'lottery_instant_draw') {
+          // Double Confirmation
+          const confirmed = await askConfirmation(iGift, author.id, "MENGUNDI PEMENANG LOTRE MINGGU INI secara instan (live draw premature)");
+          if (!confirmed) return;
+
+          const drawRes = lottery.drawWinner(guildId);
+          if (!drawRes) {
+            return iGift.followUp({ content: '❌ Gagal mengundi! Tidak ada peserta yang membeli tiket lotre minggu ini.', flags: 64 });
+          }
+
+          // Broadcast announcement
+          const drawEmbed = new EmbedBuilder()
+            .setColor(0xD4AF37) // Imperial Gold
+            .setTitle('🎟️ 🏆 UNDIAN LOTRE MINGGUAN — PEMENANG INSTAN / LIVE DRAW!')
+            .setDescription(
+              `🎉 **Selamat kepada pemenang lotre minggu ini!**\n\n` +
+              `👑 **Pemenang:** <@${drawRes.winnerId}>\n` +
+              `🎫 Tiket Pemenang: **${drawRes.winnerTickets} tiket**\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `📊 **Statistik Undian Minggu Ini:**\n` +
+              `┊ 💰 Total Pool: **Rp ${drawRes.totalPool.toLocaleString('id-ID')}**\n` +
+              `┊ 🎫 Total Tiket Terjual: **${drawRes.totalTickets} tiket**\n` +
+              `┊ 👥 Jumlah Peserta: **${drawRes.participantCount} orang**\n` +
+              `┊ 🏆 Hadiah Pemenang (${100 - drawRes.burnPercent}%): **+Rp ${drawRes.prizeAmount.toLocaleString('id-ID')}**\n` +
+              `┊ 🔥 Koin Dibakar (${drawRes.burnPercent}%): **-Rp ${drawRes.burnAmount.toLocaleString('id-ID')}**\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+              `💡 *Beli tiket lotre periode baru dengan perintah \`.lotre beli <jumlah>\`!*`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Live Lottery Sentinel • Keberuntungan Anda Menanti!' });
+
+          let targetChannel = null;
+          if (config.REPORT_CHANNEL_ID) {
+            targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+          }
+          if (!targetChannel) {
+            targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
+              c => c.name.includes('general') || c.name.includes('chat') || c.name.includes('bot')
+            );
+          }
+
+          if (targetChannel) {
+            await targetChannel.send({ content: `@everyone 🎉 <@${drawRes.winnerId}> telah memenangkan lotre minggu ini!`, embeds: [drawEmbed] }).catch(() => {});
+          }
+
+          await iGift.followUp({ content: `🏆 Sukses mengundi lotre secara instan! Pemenang: <@${drawRes.winnerId}> (Hadiah: Rp ${drawRes.prizeAmount.toLocaleString('id-ID')}). Pengumuman dikirim ke <#${targetChannel?.id}>.`, flags: 64 });
+          
+          const fresh = getGiftPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+        else if (action === 'lottery_reset_pool') {
+          // Double Confirmation
+          const confirmed = await askConfirmation(iGift, author.id, "RESET TOTAL POOL & HAPUS SEMUA TIKET LOTRE terjual minggu ini");
+          if (!confirmed) return;
+
+          const weekStart = lottery.getCurrentWeekStart();
+          database.run('DELETE FROM lottery_pool WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+          database.run('DELETE FROM lottery_tickets WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+
+          await iGift.followUp({ content: '🚨 **RESET LOTRE SUKSES!** Total pool dikembalikan ke 0 dan seluruh tiket lotre warga minggu ini telah dihapus permanen.', flags: 64 });
+
+          const fresh = getGiftPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Error in Gift Panel Interaction:', err);
+      await iGift.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getGiftPanelData(guildId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => {});
+    } catch (e) {}
+  });
+
+  return true;
+}
+
 module.exports = {
   handleAdminPanel,
   handleAdminPetPanel,
@@ -4562,5 +5029,6 @@ module.exports = {
   handleAdminTrollPanel,
   handleAdminGardenPanel,
   handleAdminQuestPanel,
-  handleAdminWargaPanel
+  handleAdminWargaPanel,
+  handleAdminGiftPanel
 };
