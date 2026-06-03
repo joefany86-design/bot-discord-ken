@@ -434,14 +434,16 @@ module.exports = {
     let luxuryBadges = '';
     try {
       const luxuryItems = db.all(
-        "SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id IN ('LAMBO', 'GOLD', 'ROLEX') AND quantity > 0",
+        "SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id IN ('LAMBO', 'GOLD', 'KEY', 'ROLEX', 'IPHONE') AND quantity > 0",
         [user.id, wallet.guild_id]
       );
       if (luxuryItems && luxuryItems.length > 0) {
         luxuryItems.forEach(item => {
           if (item.item_id === 'LAMBO') luxuryBadges += '🏎️ `[ SULTAN LAMBO ]` ';
           if (item.item_id === 'GOLD') luxuryBadges += '👑 `[ EMAS BATANGAN ]` ';
+          if (item.item_id === 'KEY') luxuryBadges += '🔑 `[ PENTHOUSE KEY ]` ';
           if (item.item_id === 'ROLEX') luxuryBadges += '⌚ `[ ROLEX OWNER ]` ';
+          if (item.item_id === 'IPHONE') luxuryBadges += '📱 `[ IPHONE 16 PM ]` ';
         });
       }
     } catch (e) {
