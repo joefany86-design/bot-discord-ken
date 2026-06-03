@@ -331,7 +331,6 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
         const row3 = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('pet_btn_expedition_hub').setLabel('🗺️ Ekspedisi Pet').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
         );
 
@@ -542,7 +541,6 @@ async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, clie
   const row3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('pet_btn_expedition_hub').setLabel('🗺️ Ekspedisi Pet').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
   );
 
