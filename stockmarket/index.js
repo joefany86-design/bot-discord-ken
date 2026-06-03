@@ -7928,25 +7928,6 @@ async function handleEconomyCommands(message, client) {
         }
 
         if (res.success) {
-          // Kirim notifikasi otomatis ke log channel 1510466643103449088
-          const logChannel = await client.channels.fetch('1510466643103449088').catch(() => null);
-          if (logChannel) {
-            const robEmbed = new EmbedBuilder()
-              .setColor(0xC0392B) // High emergency dark red
-              .setTitle('🚨 LAPORAN TINDAK KRIMINAL: PENCURIAN DOMPET! 💸')
-              .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
-              .setDescription(
-                `⚠️ **Telah Terjadi Pencurian Koin Dompet!**\n\n` +
-                `👤 **Korban**: <@${targetUser.id}>\n` +
-                `👤 **Pelaku**: ${res.maskUsed ? '🎭 *Pencuri Misterius Bertopeng*' : `<@${author.id}>`}\n` +
-                `💸 **Jumlah Terjarah**: \`Rp ${res.amount.toLocaleString('id-ID')}\`\n` +
-                (res.gotWanted ? `🚨 **Status**: Pelaku berstatus **WANTED** (Buronan Polisi Virtual) selama 2 jam!\n\n` : '\n') +
-                `🏦 *Segera amankan saldo dompet Anda ke rekening bank (.dep) atau sewa Gembok pintu Kosan untuk mengurangi kerugian dari aksi perampokan berikutnya!*`
-              )
-              .setTimestamp();
-            await logChannel.send({ embeds: [robEmbed] }).catch(() => {});
-          }
-
           const wantedWarning = res.gotWanted ? `\n\n🚨 **WANTED!** Karena mencuri dalam jumlah besar, ${res.maskUsed ? 'pelaku' : 'Anda'} menjadi buronan polisi virtual selama 2 jam!` : '';
 
           if (res.maskUsed) {
@@ -7988,25 +7969,6 @@ async function handleEconomyCommands(message, client) {
               .setTimestamp();
             
             await message.reply({ embeds: [zapEmbed] });
-
-            // Kirim notifikasi log otomatis ke log channel kriminal 1510466643103449088
-            const logChannel = await client.channels.fetch('1510466643103449088').catch(() => null);
-            if (logChannel) {
-              const logZapEmbed = new EmbedBuilder()
-                .setColor(0xE74C3C)
-                .setTitle('⚡ LAPORAN HUKUMAN KERAJAAN: KUALAT MERAMPOK SULTAN! ⚡')
-                .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
-                .setDescription(
-                  `⚠️ **Hukuman Langsung dari Langit!**\n\n` +
-                  `👤 **Pelaku**: <@${author.id}>\n` +
-                  `👤 **Target**: <@${targetUser.id}> (Sultan/Owner)\n` +
-                  `💸 **Denda Disita**: \`Rp ${res.fine.toLocaleString('id-ID')}\`\n` +
-                  `🔒 **Hukuman**: **Penjara Kerajaan selama ${res.jailDurationMinutes} menit**!\n\n` +
-                  `*Jangan pernah mencoba mengusik kekayaan sang Sultan jika tidak ingin tersambar petir kerajaan!*`
-                )
-                .setTimestamp();
-              await logChannel.send({ embeds: [logZapEmbed] }).catch(() => {});
-            }
             return true;
           }
 
@@ -8124,27 +8086,7 @@ async function handleEconomyCommands(message, client) {
 
               const res = robbery.executeHeist(guildId);
 
-              // Kirim notifikasi otomatis ke log channel 1510466643103449088
-              if (res.success && res.deductionLogs && res.deductionLogs.length > 0) {
-                // 1. Kirim ke log channel 1510466643103449088
-                const logChannel = await client.channels.fetch('1510466643103449088').catch(() => null);
-                if (logChannel) {
-                  const victimList = res.deductionLogs.map(victim => `• <@${victim.userId}>: -\`Rp ${victim.amount.toLocaleString('id-ID')}\``).join('\n');
-                  const channelHeistEmbed = new EmbedBuilder()
-                    .setColor(0xC0392B)
-                    .setTitle('🚨 NOTIFIKASI KEAMANAN: TABUNGAN BANK NASABAH DIJARAH! 🏦')
-                    .setThumbnail('https://cdn-icons-png.flaticon.com/512/5974/5974637.png')
-                    .setDescription(
-                      `⚠️ **Central Bank Telah Dibobol Komplotan Perampok!**\n` +
-                      `Sistem keamanan bank terganggu dan saldo tabungan nasabah berikut telah terjarah secara paksa:\n\n` +
-                      `${victimList}\n\n` +
-                      `🏦 **Total Akumulasi Dana Nasabah yang Hilang**: \`Rp ${res.stolenFromPlayers.toLocaleString('id-ID')}\`\n\n` +
-                      `👉 *Segera putar dana Anda atau bergabunglah menjadi kru perampok untuk merebut kembali koin Anda dari bank!*`
-                    )
-                    .setTimestamp();
-                  await logChannel.send({ embeds: [channelHeistEmbed] }).catch(() => {});
-                }
-              }
+              // Notifikasi log kriminal ditiadakan atas permintaan pemilik server
 
               const resultEmbed = embeds.heistResultEmbed(
                 guild,
