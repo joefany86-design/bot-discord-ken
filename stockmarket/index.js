@@ -18,6 +18,7 @@ const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 const SHOP_CHANNEL_ID = '1510121069783023646';
 
 // Map untuk mengelola cooldown perintah .bal per user
+const balCooldowns = new Map();
 // Helper to build pet shop options dynamically from pet.PET_ITEMS
 function getPetShopSelectOptions() {
   return Object.keys(pet.PET_ITEMS).map(key => {
