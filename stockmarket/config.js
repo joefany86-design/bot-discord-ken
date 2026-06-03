@@ -16,6 +16,20 @@ module.exports = {
   // ID Channel khusus untuk Laporan Harian & Pengumuman Bursa Saham
   REPORT_CHANNEL_ID: process.env.REPORT_CHANNEL_ID || '1509480324373942272',
 
+  // ID Channel khusus Perbankan Server (Midnight Processing, Bunga, Pajak Progresif)
+  BANK_REPORT_CHANNEL_ID: process.env.BANK_REPORT_CHANNEL_ID || process.env.REPORT_CHANNEL_ID || '1509480324373942272',
+
+  // ID Channel khusus Pencairan Gaji Harian Otomatis
+  DAILY_CLAIM_CHANNEL_ID: process.env.DAILY_CLAIM_CHANNEL_ID || process.env.REPORT_CHANNEL_ID || '1509480324373942272',
+
+  // ID Channel khusus Pengumuman Server & Event Penting (Lotre, Dividen, Event Bursa)
+  ANNOUNCEMENT_CHANNEL_ID: process.env.ANNOUNCEMENT_CHANNEL_ID || process.env.REPORT_CHANNEL_ID || '1509480324373942272',
+
+  // ID Channel untuk Realtime Leaderboards (Kanglomerat, Top Pet, Daily Active)
+  LEADERBOARD_RICH_CHANNEL_ID: process.env.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
+  LEADERBOARD_PET_CHANNEL_ID: process.env.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
+  LEADERBOARD_DAILY_CHANNEL_ID: process.env.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662',
+
   // Sistem Earning Poin (Rupiah Server)
   economy: {
     MSG_MIN_WORDS: 3,           // Minimal kata agar dapat koin (ditingkatkan untuk mencegah spam koin pendek)

@@ -1,5 +1,6 @@
 // Muat environment variables SEBELUM semua require agar .env tersedia di seluruh modul
 require('dotenv').config();
+const config = require('./stockmarket/config');
 
 const sodium = require('libsodium-wrappers');
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
@@ -665,8 +666,13 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Papan Peringkat Realtime (Channel ID: 1510230591860113418 / 1510232295448117308 / 1510240252458176662)
-  if (message.channelId === '1510230591860113418' || message.channelId === '1510232295448117308' || message.channelId === '1510240252458176662') {
+  // Proteksi Saluran Papan Peringkat Realtime
+  const LEADERBOARD_CHANNELS = [
+    config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
+    config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
+    config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662'
+  ];
+  if (LEADERBOARD_CHANNELS.includes(message.channelId)) {
     const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
 
@@ -685,15 +691,21 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Laporan Bursa Saham (Channel ID: 1509480324373942272)
-  if (message.channelId === '1509480324373942272') {
+  // Proteksi Saluran Laporan / Log / Pengumuman Otomatis
+  const REPORT_AND_LOG_CHANNELS = [
+    config.REPORT_CHANNEL_ID || '1509480324373942272',
+    config.BANK_REPORT_CHANNEL_ID,
+    config.DAILY_CLAIM_CHANNEL_ID,
+    config.ANNOUNCEMENT_CHANNEL_ID
+  ].filter(id => id && id !== '1422642326798598348' && id !== '1508417228624887928' && id !== '1510121069783023646');
+  if (REPORT_AND_LOG_CHANNELS.includes(message.channelId)) {
     const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
 
     if (!isOwner && !isAdmin) {
       await message.delete().catch(() => {});
       const warnMsg = await message.channel.send({
-        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk notifikasi saham, laporan harian, dan event bursa saham!`
+        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk pengumuman, laporan harian, dan notifikasi otomatis!`
       }).catch(() => null);
 
       if (warnMsg) {
@@ -757,11 +769,17 @@ client.on('messageCreate', async message => {
   // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
   const BLOCKED_CMD_CHANNELS = [
     '1510121069783023646', // #🛍️┃shop (Portal Dashboard)
-    '1422642326798598348',
+    '1422642326798598348', // 💬┃living-room
     '1472428770710261952',
     '1422656689710305381',
-    '1509480324373942272' // #📉┃bursa-saham (Notifikasi & Laporan Saham)
-  ];
+    config.REPORT_CHANNEL_ID || '1509480324373942272',
+    config.BANK_REPORT_CHANNEL_ID,
+    config.DAILY_CLAIM_CHANNEL_ID,
+    config.ANNOUNCEMENT_CHANNEL_ID,
+    config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
+    config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
+    config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662'
+  ].filter(id => id && id !== '1508417228624887928');
   if (BLOCKED_CMD_CHANNELS.includes(message.channelId)) {
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#1508417228624887928>! Saluran ini tidak mendukung perintah bot.`

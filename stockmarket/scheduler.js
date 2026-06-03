@@ -354,10 +354,11 @@ function initScheduler(client) {
 
       console.log(`💸 [Scheduler] Dividen berhasil didistribusikan ke ${distributions.length} investor di server ${guild.name}.`);
 
-      // Cari channel utama untuk posting notifikasi dividen (prioritaskan REPORT_CHANNEL_ID jika diset)
+      // Cari channel utama untuk posting notifikasi dividen (prioritaskan ANNOUNCEMENT_CHANNEL_ID jika diset)
       let targetChannel = null;
-      if (config.REPORT_CHANNEL_ID) {
-        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      const targetChanId = config.ANNOUNCEMENT_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+      if (targetChanId) {
+        targetChannel = guild.channels.cache.get(targetChanId);
       }
       if (!targetChannel) {
         targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
@@ -518,10 +519,11 @@ function initScheduler(client) {
     const embeds = require('./embeds');
 
     for (const guild of client.guilds.cache.values()) {
-      // Tentukan target channel notifikasi
+      // Tentukan target channel notifikasi perbankan
       let targetChannel = null;
-      if (config.REPORT_CHANNEL_ID) {
-        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      const targetChanId = config.BANK_REPORT_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+      if (targetChanId) {
+        targetChannel = guild.channels.cache.get(targetChanId);
       }
       if (!targetChannel) {
         targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
@@ -736,9 +738,11 @@ function initScheduler(client) {
     const embeds = require('./embeds');
 
     client.guilds.cache.forEach(guild => {
+      // Tentukan target channel pengumuman lotre
       let targetChannel = null;
-      if (config.REPORT_CHANNEL_ID) {
-        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      const targetChanId = config.ANNOUNCEMENT_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+      if (targetChanId) {
+        targetChannel = guild.channels.cache.get(targetChanId);
       }
       if (!targetChannel) {
         targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(
@@ -804,9 +808,11 @@ function initScheduler(client) {
     ];
 
     client.guilds.cache.forEach(guild => {
+      // Tentukan target channel pajak progresif
       let targetChannel = null;
-      if (config.REPORT_CHANNEL_ID) {
-        targetChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+      const targetChanId = config.BANK_REPORT_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+      if (targetChanId) {
+        targetChannel = guild.channels.cache.get(targetChanId);
       }
       if (!targetChannel) {
         targetChannel = guild.systemChannel || Array.from(guild.channels.cache.values()).find(

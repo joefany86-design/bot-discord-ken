@@ -517,10 +517,28 @@ function startRealtimeLeaderboard(client) {
     console.log('⚠️ [Leaderboard] Interval sebelumnya dibersihkan (mencegah duplikasi).');
   }
 
-  leaderboardInterval = setInterval(async () => {
-    // ── 1. KANGLOMERAT LEADERBOARD (Channel: 1510230591860113418) ──
+  async function updateLeaderboardMsg(channel, embed, keyword) {
     try {
-      const richChannel = await client.channels.fetch('1510230591860113418').catch(() => null);
+      const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
+      let matchMsg = botMessages.find(m => m.embeds[0] && m.embeds[0].title && m.embeds[0].title.toLowerCase().includes(keyword.toLowerCase()));
+      const payload = { embeds: [embed], components: [] };
+      if (matchMsg) {
+        await matchMsg.edit(payload).catch(() => {});
+        return matchMsg;
+      } else {
+        return await channel.send(payload).catch(() => null);
+      }
+    } catch (e) {
+      console.error(`Error updating leaderboard message for keyword ${keyword}:`, e.message);
+    }
+  }
+
+  leaderboardInterval = setInterval(async () => {
+    // ── 1. KANGLOMERAT LEADERBOARD ──
+    try {
+      const richChanId = config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418';
+      const richChannel = await client.channels.fetch(richChanId).catch(() => null);
       if (richChannel) {
         const guildId = richChannel.guild.id;
         const guildName = richChannel.guild.name;
@@ -530,24 +548,16 @@ function startRealtimeLeaderboard(client) {
           try { await client.users.fetch(u.userId); } catch (e) { }
         }));
         const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
-
-        const messages = await richChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-        const payload = { embeds: [richEmbed], components: [] };
-
-        if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => { });
-        } else {
-          await richChannel.send(payload).catch(() => { });
-        }
+        await updateLeaderboardMsg(richChannel, richEmbed, 'WEALTH');
       }
     } catch (err) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
     }
 
-    // ── 2. TOP PET EKSPEDISI LEADERBOARD (Channel: 1510232295448117308) ──
+    // ── 2. TOP PET EKSPEDISI LEADERBOARD ──
     try {
-      const petChannel = await client.channels.fetch('1510232295448117308').catch(() => null);
+      const petChanId = config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308';
+      const petChannel = await client.channels.fetch(petChanId).catch(() => null);
       if (petChannel) {
         const guildId = petChannel.guild.id;
         const guildName = petChannel.guild.name;
@@ -571,28 +581,16 @@ function startRealtimeLeaderboard(client) {
 
         // Build Expedition Embed
         const expEmbed = embeds.petExpeditionLeaderboardEmbed(guildName, topExpedition, client);
-
-        const messages = await petChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
-        const payload = { embeds: [expEmbed], components: [] };
-
-        if (botMessages.length > 0) {
-          await botMessages[0].edit(payload).catch(() => { });
-          // Hapus pesan bot lama lainnya jika ada
-          for (let i = 1; i < botMessages.length; i++) {
-            await botMessages[i].delete().catch(() => { });
-          }
-        } else {
-          await petChannel.send(payload).catch(() => { });
-        }
+        await updateLeaderboardMsg(petChannel, expEmbed, 'EXPEDITION');
       }
     } catch (err) {
       console.error('❌ Error updating realtime pet expedition leaderboard:', err);
     }
 
-    // ── 3. DAILY LEADERBOARD (Channel: 1510240252458176662) ──
+    // ── 3. DAILY LEADERBOARD ──
     try {
-      const dailyChannel = await client.channels.fetch('1510240252458176662').catch(() => null);
+      const dailyChanId = config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662';
+      const dailyChannel = await client.channels.fetch(dailyChanId).catch(() => null);
       if (dailyChannel) {
         const guildId = dailyChannel.guild.id;
         const guildName = dailyChannel.guild.name;
@@ -612,16 +610,7 @@ function startRealtimeLeaderboard(client) {
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
         const dailyEmbed = embeds.dailyLeaderboardEmbed(guildName, list, client);
-
-        const messages = await dailyChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-        const payload = { embeds: [dailyEmbed], components: [] };
-
-        if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => { });
-        } else {
-          await dailyChannel.send(payload).catch(() => { });
-        }
+        await updateLeaderboardMsg(dailyChannel, dailyEmbed, 'TARGET ROB');
       }
     } catch (err) {
       console.error('❌ Error updating realtime daily leaderboard:', err);
@@ -674,15 +663,7 @@ function startRealtimeLeaderboard(client) {
             .setTimestamp();
         }
 
-        const messages = await jailChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-        const payload = { embeds: [topJailEmbed], components: [] };
-
-        if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => { });
-        } else {
-          await jailChannel.send(payload).catch(() => { });
-        }
+        await updateLeaderboardMsg(jailChannel, topJailEmbed, 'NARAPIDANA');
       }
     } catch (err) {
       console.error('❌ Error updating realtime jail leaderboard:', err);
@@ -718,16 +699,7 @@ function startRealtimeLeaderboard(client) {
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
         const thiefEmbed = embeds.thiefLeaderboardEmbed(guildName, thiefData, client);
-
-        const messages = await thiefChannel.messages.fetch({ limit: 50 }).catch(() => null);
-        let leaderboardMsg = messages ? messages.find(m => m.author.id === client.user.id) : null;
-        const payload = { embeds: [thiefEmbed], components: [] };
-
-        if (leaderboardMsg) {
-          await leaderboardMsg.edit(payload).catch(() => { });
-        } else {
-          await thiefChannel.send(payload).catch(() => { });
-        }
+        await updateLeaderboardMsg(thiefChannel, thiefEmbed, 'PENCURI');
       }
     } catch (err) {
       console.error('❌ Error updating realtime thief leaderboard:', err);
@@ -3463,11 +3435,12 @@ async function handleEconomyChat(message) {
           .setTimestamp();
 
         let targetChannel = null;
-        if (config.REPORT_CHANNEL_ID) {
-          targetChannel = message.guild.channels.cache.get(config.REPORT_CHANNEL_ID);
+        const dailyClaimChanId = config.DAILY_CLAIM_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+        if (dailyClaimChanId) {
+          targetChannel = message.guild.channels.cache.get(dailyClaimChanId);
           if (!targetChannel) {
             try {
-              targetChannel = await message.guild.channels.fetch(config.REPORT_CHANNEL_ID);
+              targetChannel = await message.guild.channels.fetch(dailyClaimChanId);
             } catch (e) {
               // Silent fail for fetch, proceed to fallback
             }
