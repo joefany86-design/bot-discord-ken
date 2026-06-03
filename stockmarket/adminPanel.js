@@ -258,9 +258,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iPet => {
     const isOwner = iPet.user.id === '436554535037698059';
@@ -1056,9 +1054,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iBank => {
     const isOwner = iBank.user.id === '436554535037698059';
@@ -1541,9 +1537,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iRob => {
     const isOwner = iRob.user.id === '436554535037698059';
@@ -1863,9 +1857,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iSaham => {
     const isOwner = iSaham.user.id === '436554535037698059';
@@ -2474,9 +2466,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iAbyus => {
     const isOwner = iAbyus.user.id === '436554535037698059';
@@ -2743,9 +2733,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iShop => {
     const isOwner = iShop.user.id === '436554535037698059';
@@ -3139,9 +3127,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iTroll => {
     const isOwner = iTroll.user.id === '436554535037698059';
@@ -3521,9 +3507,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iLedger => {
     const isOwner = iLedger.user.id === '436554535037698059';
@@ -3589,10 +3573,14 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
  * 🎮 7. MAIN HUB PORTAL (ADMIN DASHBOARD CONTROL HUB)
  */
 async function handleAdminPanel(messageOrInteraction, client) {
-  const isInteraction = !messageOrInteraction.author;
-  const guildId = messageOrInteraction.guildId;
+  const isInteraction = messageOrInteraction.isInteraction && messageOrInteraction.isInteraction();
+  const isChannel = typeof messageOrInteraction.send === 'function';
+  const guildId = messageOrInteraction.guildId || (isChannel ? messageOrInteraction.guild?.id : null);
 
   if (!guildId) return false;
+
+  const settings = database.get('SELECT admin_panel_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isPermanentChannel = settings && settings.admin_panel_channel_id === (messageOrInteraction.channelId || messageOrInteraction.id);
 
   const getHubPanelData = () => {
     // Live Stats calculation
@@ -3614,10 +3602,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
       const totalSavingsRow = database.get('SELECT SUM(balance) as total FROM bank_savings WHERE guild_id = ?', [guildId]);
       totalCoins = (totalCoinsRow ? (totalCoinsRow.total || 0) : 0) + (totalSavingsRow ? (totalSavingsRow.total || 0) : 0);
 
-      const settings = getOrCreateEbyusSettings(guildId);
-      multiplier = settings.coin_multiplier || 1;
-      gachaMode = settings.gacha_mode || 'NORMAL';
-      isActiveEvent = settings.is_active === 1;
+      const settingsRow = getOrCreateEbyusSettings(guildId);
+      multiplier = settingsRow.coin_multiplier || 1;
+      gachaMode = settingsRow.gacha_mode || 'NORMAL';
+      isActiveEvent = settingsRow.is_active === 1;
     } catch (e) {
       console.error('Error calculating hub stats:', e);
     }
@@ -3719,16 +3707,21 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
-    const btnRow = new ActionRowBuilder().addComponents(
+    const btnComponents = [
       new ButtonBuilder()
         .setCustomId('hub_btn_refresh')
         .setLabel('🔄 Segarkan Hub')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_close')
-        .setLabel('❌ Tutup Hub')
-        .setStyle(ButtonStyle.Danger)
-    );
+        .setStyle(ButtonStyle.Secondary)
+    ];
+    if (!isPermanentChannel) {
+      btnComponents.push(
+        new ButtonBuilder()
+          .setCustomId('hub_btn_close')
+          .setLabel('❌ Tutup Hub')
+          .setStyle(ButtonStyle.Danger)
+      );
+    }
+    const btnRow = new ActionRowBuilder().addComponents(btnComponents);
 
     return { embeds: [embed], components: [selectRow, btnRow] };
   };
@@ -3830,7 +3823,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.fetchReply();
 
     // Buat collector khusus untuk Owner Panel
-    const ownerCollector = replyMsg.createMessageComponentCollector({ time: 300000 });
+    const ownerCollector = replyMsg.createMessageComponentCollector();
 
     ownerCollector.on('collect', async iOw => {
       if (iOw.user.id !== '436554535037698059') {
@@ -3888,15 +3881,15 @@ async function handleAdminPanel(messageOrInteraction, client) {
   } else if (isInteraction) {
     await messageOrInteraction.update(initialData);
     replyMsg = messageOrInteraction.message;
+  } else if (isChannel) {
+    replyMsg = await messageOrInteraction.send(initialData);
   } else {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
   // ── Fungsi untuk setup Hub Collector (dipanggil dari flow normal atau transisi dari Owner Panel) ──
   function setupHubCollector() {
-    const collector = replyMsg.createMessageComponentCollector({
-      time: 300000
-    });
+    const collector = replyMsg.createMessageComponentCollector();
 
     collector.on('collect', async iHub => {
       const isOwner = iHub.user.id === '436554535037698059';
@@ -4061,9 +4054,7 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iGarden => {
     const isOwner = iGarden.user.id === '436554535037698059';
@@ -4262,9 +4253,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iQuest => {
     const isOwner = iQuest.user.id === '436554535037698059';
@@ -4553,9 +4542,7 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iWarga => {
     const isOwner = iWarga.user.id === '436554535037698059';
@@ -4961,9 +4948,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector({
-    time: 300000
-  });
+  const collector = replyMsg.createMessageComponentCollector();
 
   collector.on('collect', async iGift => {
     const isOwner = iGift.user.id === '436554535037698059';

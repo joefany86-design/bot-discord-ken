@@ -11645,39 +11645,49 @@ async function handleEconomyCommands(message, client) {
       const parentId = guild.channels.cache.has(STAFF_CATEGORY_ID) ? STAFF_CATEGORY_ID : null;
 
       try {
-        // Create the channel
-        const adminChannel = await guild.channels.create({
-          name: '🛡️┃panel-admin',
-          type: ChannelType.GuildText,
-          parent: parentId,
-          permissionOverwrites: [
-            {
-              id: guild.roles.everyone.id,
-              deny: [PermissionFlagsBits.ViewChannel]
-            },
-            {
-              id: client.user.id,
-              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ManageMessages]
-            }
-          ]
-        });
+        // Look up existing channel
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guild.id]);
+        let adminChannel = settings?.admin_panel_channel_id ? guild.channels.cache.get(settings.admin_panel_channel_id) : null;
 
-        if (parentId) {
-          await adminChannel.lockPermissions().catch(() => { });
-        } else {
-          // If no staff category, allow Administrator role/permission explicitly
-          const adminRoles = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.Administrator));
-          for (const [rId, role] of adminRoles) {
-            await adminChannel.permissionOverwrites.edit(role.id, {
-              ViewChannel: true,
-              SendMessages: true,
-              EmbedLinks: true
-            }).catch(() => { });
+        // Fallback: check by name
+        if (!adminChannel) {
+          adminChannel = guild.channels.cache.find(c => c.name === '🛡️┃panel-admin' || c.name === 'panel-admin');
+        }
+
+        if (!adminChannel) {
+          // Create the channel
+          adminChannel = await guild.channels.create({
+            name: '🛡️┃panel-admin',
+            type: ChannelType.GuildText,
+            parent: parentId,
+            permissionOverwrites: [
+              {
+                id: guild.roles.everyone.id,
+                deny: [PermissionFlagsBits.ViewChannel]
+              },
+              {
+                id: client.user.id,
+                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ManageMessages]
+              }
+            ]
+          });
+
+          if (parentId) {
+            await adminChannel.lockPermissions().catch(() => { });
+          } else {
+            // If no staff category, allow Administrator role/permission explicitly
+            const adminRoles = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.Administrator));
+            for (const [rId, role] of adminRoles) {
+              await adminChannel.permissionOverwrites.edit(role.id, {
+                ViewChannel: true,
+                SendMessages: true,
+                EmbedLinks: true
+              }).catch(() => { });
+            }
           }
         }
 
-        // Check if row exists, if not insert it
-        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guild.id]);
+        // Update settings in database
         if (!settings) {
           database.run(
             'INSERT INTO ebyus_settings (guild_id, admin_panel_channel_id) VALUES (?, ?)',
@@ -11690,10 +11700,29 @@ async function handleEconomyCommands(message, client) {
           );
         }
 
-        return message.reply({ content: `✅ Berhasil membuat channel khusus admin panel: <#${adminChannel.id}>! Channel ini dikunci agar hanya bisa dilihat oleh Administrator.` });
+        // Purge all messages in the channel to clean it up
+        let fetched;
+        do {
+          fetched = await adminChannel.messages.fetch({ limit: 100 });
+          if (fetched.size > 0) {
+            try {
+              await adminChannel.bulkDelete(fetched);
+            } catch (err) {
+              for (const msg of fetched.values()) {
+                await msg.delete().catch(() => {});
+              }
+            }
+          }
+        } while (fetched.size > 0);
+
+        // Send one persistent admin panel there
+        const adminPanel = require('./adminPanel');
+        await adminPanel.handleAdminPanel(adminChannel, client);
+
+        return message.reply({ content: `✅ Berhasil setup channel khusus admin panel: <#${adminChannel.id}>!\nSeluruh pesan lama telah dibersihkan dan panel kontrol utama telah dikirim ke sana secara permanen.` });
       } catch (err) {
-        console.error('Error creating admin panel channel:', err);
-        return message.reply({ content: `❌ Gagal membuat channel: ${err.message}` });
+        console.error('Error setup admin panel channel:', err);
+        return message.reply({ content: `❌ Gagal setup channel: ${err.message}` });
       }
     }
 

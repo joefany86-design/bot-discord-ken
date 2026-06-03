@@ -639,6 +639,43 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
+  // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
+  if (message.guildId) {
+    const { db } = require('./stockmarket/database');
+    const settings = db.prepare('SELECT admin_panel_channel_id FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
+    const targetChannelId = settings?.admin_panel_channel_id;
+
+    if (targetChannelId && message.channelId === targetChannelId) {
+      await message.delete().catch(() => {});
+
+      const content = message.content.trim().toLowerCase();
+      if (content.startsWith('.')) {
+        const args = content.slice(1).trim().split(/ +/);
+        const commandName = args.shift();
+        if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
+          // Hapus semua pesan di channel ini terlebih dahulu agar bersih
+          let fetched;
+          do {
+            fetched = await message.channel.messages.fetch({ limit: 100 });
+            if (fetched.size > 0) {
+              try {
+                await message.channel.bulkDelete(fetched);
+              } catch (err) {
+                for (const msg of fetched.values()) {
+                  await msg.delete().catch(() => {});
+                }
+              }
+            }
+          } while (fetched.size > 0);
+
+          const adminPanel = require('./stockmarket/adminPanel');
+          await adminPanel.handleAdminPanel(message.channel, client);
+        }
+      }
+      return;
+    }
+  }
+
   // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung (Channel ID: 1509762623917265137)
   if (message.channelId === '1509762623917265137') {
     const activeLobby = client.activeExpeditions;
