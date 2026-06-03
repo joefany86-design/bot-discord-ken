@@ -2383,6 +2383,107 @@ module.exports = {
       ARCHDRAGON: '“Naga purba tertua berselimut aura kosmik. Penguasa mutlak kasta naga.”'
     };
     const flavorText = PET_FLAVORS[pet.pet_type.toUpperCase()] || '“Hewan peliharaan yang setia menemani petualangan Anda di dunia Kosan 1A.”';
+
+    // Statistik Tempur (Menghitung formula PvP yang sebenarnya)
+    const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+    const baseAtk = specBaseAtk + pet.level * 5;
+    
+    let atkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
+    const atkModifiers = [];
+    if (pet.pet_type === 'DRAGON') {
+      atkModifiers.push('Naga +15%');
+    }
+    if (pet.trait === 'WARRIOR') {
+      atkMult += 0.15;
+      atkModifiers.push('Warrior +15%');
+    }
+    if (pet.accessory === 'SWORD_TOY') {
+      atkMult += 0.15;
+      atkModifiers.push('Pedang Mainan +15%');
+    }
+    if (pet.base_atk_bonus_pct > 0) {
+      atkMult += pet.base_atk_bonus_pct;
+      atkModifiers.push(`Bintang +${Math.round(pet.base_atk_bonus_pct * 100)}%`);
+    }
+
+    const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
+    const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
+    let atkDesc = `\`${Math.round(baseAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
+    if (atkModifiers.length > 0) {
+      atkDesc += ` *(Bonus: ${atkModifiers.join(' + ')})*`;
+    }
+
+    const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+    let defMult = 1.0;
+    const defModifiers = [];
+    if (specBaseDef > 0) {
+      defModifiers.push(`Spesies -${specBaseDef}%`);
+    }
+    if (pet.trait === 'STURDY') {
+      defMult *= 0.85;
+      defModifiers.push('Sturdy -15%');
+    }
+    if (pet.accessory === 'SHIELD_TOY') {
+      defMult *= 0.85;
+      defModifiers.push('Tameng Mainan -15%');
+    }
+    if (pet.base_def_bonus_pct > 0) {
+      defModifiers.push(`Bintang -${Math.round(pet.base_def_bonus_pct * 100)}%`);
+    }
+
+    const totalDefMult = (1.0 - (specBaseDef / 100)) * defMult * (1.0 - (pet.base_def_bonus_pct || 0.0));
+    const finalDefReduction = Math.round((1.0 - totalDefMult) * 100);
+    
+    let defDesc = finalDefReduction > 0 
+      ? `\`-${finalDefReduction}% DMG\` diterima` 
+      : '❌ Tidak Ada';
+    if (defModifiers.length > 0) {
+      defDesc += ` *(Bonus: ${defModifiers.join(' + ')})*`;
+    }
+
+    const PET_MOVES = {
+      CAT: { attack: '🐾 Neko Scratch', defense: '💨 Agility Dodge' },
+      GOLEM: { attack: '🧱 Rock Smash', defense: '🛡️ Obsidian Guard' },
+      SLIME: { attack: '🟢 Jelly Slam', defense: '🛡️ Elastic Bounce' },
+      DRAGON: { attack: '🔥 Dragon Breath', defense: '🛡️ Scale Shield' },
+      PHOENIX: { attack: '🦅 Solar Flare', defense: '🛡️ Phoenix Rebirth' },
+      TURTLE: { attack: '🐢 Shell Spin', defense: '🛡️ Iron Shell' },
+      LEVIATHAN: { attack: '🌊 Tsunami Wave', defense: '🛡️ Water Veil' },
+      BEHEMOTH: { attack: '🦏 Earthquake Strike', defense: '🛡️ Heavy Shield' },
+      ARCHDRAGON: { attack: '🐉 Arch Blast', defense: '🛡️ Celestial Barrier' }
+    };
+    const moveInfo = PET_MOVES[pet.pet_type.toUpperCase()] || { attack: '💥 Strike', defense: '🛡️ Guard' };
+
+    // Cooldown Pekerjaan & Berburu (Sesuai dengan Overhaul Baru!)
+    let workCd = 15 * 60;
+    if (pet.pet_type === 'GOLEM') workCd -= 5 * 60; // Golem perk
+    try {
+      const rolexQty = db.get(
+        "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'ROLEX'",
+        [pet.user_id, pet.guild_id]
+      );
+      if (rolexQty && rolexQty.quantity > 0) {
+        workCd -= 5 * 60;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    const nextWork = pet.last_work_at + workCd;
+    const canWork = now >= nextWork;
+    const workCdText = canWork ? '🟢 **Siap!**' : `⏳ <t:${nextWork}:R>`;
+
+    let huntCd = 30 * 60;
+    let huntCdText = '🔒 Lvl 10+ / Dewasa';
+    if (pet.level >= 10 || pet.status === 'ADULT') {
+      const nextHunt = pet.last_hunt_at + huntCd;
+      const canHunt = now >= nextHunt;
+      huntCdText = canHunt ? '🟢 **Siap!**' : `⏳ <t:${nextHunt}:R>`;
+    }
+
+    const nextPlay = (pet.last_play_at || 0) + (15 * 60);
+    const canPlay = now >= nextPlay;
+    const playCdText = canPlay ? '🟢 **Siap!**' : `⏳ <t:${nextPlay}:R>`;
+
     const pbarHp = renderEmojiBar(pet.health, maxHP);
     const pbarXp = renderXpBar(pet.xp, xpNeeded);
 
