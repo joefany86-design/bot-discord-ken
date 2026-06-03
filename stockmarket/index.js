@@ -755,7 +755,7 @@ function initStockMarket(client) {
 
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
-    if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isModalSubmit()) return;
+    if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
     const { customId, guildId, user } = interaction;
     if (!guildId) return;
 
@@ -2997,6 +2997,433 @@ function initStockMarket(client) {
       else if (customId === 'pet_btn_upgrade_hub') {
         await interaction.deferReply({ flags: 64 });
         await handlePetUpgradePanel(interaction, client, true);
+      }
+
+      // ── PORTAL PERMANEN: EKSPEDISI PET PVE ──
+      else if (customId === 'pet_btn_expedition_hub') {
+        await interaction.deferReply({ flags: 64 });
+
+        const getExpeditionPanelPrivate = (targetUserId) => {
+          const freshPet = pet.getPet(targetUserId, guildId);
+          
+          let petInfoText = '';
+          if (!freshPet) {
+            petInfoText = '❌ *Anda tidak memiliki pet aktif untuk ekspedisi.*';
+          } else if (freshPet.status === 'DEAD') {
+            petInfoText = `❌ *Pet Anda **${freshPet.pet_name}** sedang mati 🪦.*`;
+          } else if (freshPet.status === 'EGG') {
+            petInfoText = `❌ *Pet Anda **${freshPet.pet_name}** masih berupa telur 🥚.*`;
+          } else {
+            petInfoText = `🐾 **Pet Aktif:** **${freshPet.pet_name}** (Lv. ${freshPet.level} ${freshPet.pet_type}) · ❤️ **HP:** ${freshPet.health}%`;
+          }
+
+          const embed = new EmbedBuilder()
+            .setColor(0x3F51B5)
+            .setTitle('🗺️ EKSPEDISI BERSAMA TIM PET 🗺️')
+            .setDescription(
+              `Silakan pilih peta zona petualangan di bawah untuk memulai lobi ekspedisi pet PVE secara publik.\n\n` +
+              `${petInfoText}\n\n` +
+              `📌 **DAFTAR ZONA PETUALANGAN PET:**\n` +
+              pet.EXPEDITION_MAPS.map(m => 
+                `🎮 **Peta ${m.id}: ${m.name}**\n` +
+                `• Level Rekomendasi: \`Lv. ${m.recommendedLevel}+\` | Sukses Dasar: \`${m.baseSuccessRate}%\`\n` +
+                `• Hadiah: \`Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}\``
+              ).join('\n\n')
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Rupiah Server • Pet Expedition' });
+
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('pet_select_expedition_map')
+            .setPlaceholder('🗺️ Pilih Peta untuk memulai lobi publik...');
+
+          pet.EXPEDITION_MAPS.forEach(m => {
+            selectMenu.addOptions({
+              label: m.name,
+              description: `Lv. ${m.recommendedLevel}+ | Rp ${m.minPrize}-${m.maxPrize}`,
+              value: m.id.toString()
+            });
+          });
+
+          const row = new ActionRowBuilder().addComponents(selectMenu);
+
+          return { embeds: [embed], components: [row] };
+        };
+
+        const initialData = getExpeditionPanelPrivate(user.id);
+        const privateMsg = await interaction.editReply({ ...initialData });
+        const expCollector = privateMsg.createMessageComponentCollector({ time: 60000 });
+
+        expCollector.on('collect', async iExp => {
+          if (iExp.user.id !== user.id) return iExp.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+          if (iExp.customId === 'pet_select_expedition_map') {
+            const mapChoice = parseInt(iExp.values[0]);
+            const selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
+
+            try {
+              // Validasi awal
+              const initiatorPet = pet.getPet(user.id, guildId);
+              if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
+                throw new Error('Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!');
+              }
+              if (initiatorPet.health < 40) {
+                throw new Error(`Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`);
+              }
+              pet.checkExpeditionLimit(user.id, guildId, true); // dryRun = true
+
+              const wallet = economy.getWallet(user.id, guildId);
+              if (wallet.balance < 250) {
+                throw new Error('Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!');
+              }
+
+              const activeLobby = client.activeExpeditions = client.activeExpeditions || new Map();
+              const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
+              if (guildLobbies.length >= 2) {
+                throw new Error('Maksimal 2 lobi ekspedisi pet aktif telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.');
+              }
+
+              const lobbyKey = `${guildId}-${user.id}`;
+              if (activeLobby.has(lobbyKey)) {
+                throw new Error('Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!');
+              }
+
+              // Potong koin
+              economy.subtractBalance(user.id, guildId, 250, 'PET_EXPEDITION_FEE');
+
+              const lobby = {
+                guildId,
+                initiatorId: user.id,
+                participants: [user.id],
+                timeout: null
+              };
+              activeLobby.set(lobbyKey, lobby);
+
+              const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
+              const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
+              const lobbyEmbed = new EmbedBuilder()
+                .setColor(0x3F51B5)
+                .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+                .setDescription(
+                  `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+                  `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
+                  `👤 **Otak Ekspedisi:** <@${user.id}>\n` +
+                  `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+                  `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
+                  `🦖 **Kru Pet Saat Ini:**\n` +
+                  `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${user.id}>\n\n` +
+                  `🎯 **Peluang Sukses Tim:** **${calcInit.successRate}%**\n` +
+                  `⚡ **Sinergi Elemen Tim:**\n${elementalLogsText}\n\n` +
+                  `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
+                  `⏳ **Waktu Berkumpul:** **90 detik**\n\n` +
+                  `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+                )
+                .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+                .setTimestamp();
+
+              const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('pet_exp_join').setLabel('🛡️ Ikut Ekspedisi').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('pet_exp_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Danger)
+              );
+
+              // Kirim pesan lobi publik di channel
+              const publicMsg = await interaction.channel.send({
+                content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`,
+                embeds: [lobbyEmbed],
+                components: [row]
+              });
+
+              // Beri respon sukses privat ke pemohon & update/tutup panel privat
+              await iExp.reply({ content: `✅ Lobi ekspedisi pet berhasil dibuat secara publik di <#${interaction.channel.id}>!`, flags: 64 });
+              await interaction.editReply({ components: [] }).catch(() => { });
+              expCollector.stop();
+
+              // Jadwalkan countdown
+              let timeLeft = 90;
+              const interval = setInterval(async () => {
+                timeLeft -= 10;
+                if (timeLeft <= 0) {
+                  clearInterval(interval);
+                  return;
+                }
+
+                // Update deskripsi dengan sisa waktu
+                const freshLobby = activeLobby.get(lobbyKey);
+                if (!freshLobby) {
+                  clearInterval(interval);
+                  return;
+                }
+
+                const freshCalc = pet.calculateSuccessRate(guildId, freshLobby.participants, mapChoice);
+                const freshElementalText = freshCalc.logs.length > 0 ? freshCalc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
+                let participantList = '';
+                for (let idx = 0; idx < freshLobby.participants.length; idx++) {
+                  const pId = freshLobby.participants[idx];
+                  const pPet = pet.getPet(pId, guildId);
+                  participantList += `${idx + 1}️⃣ **${pPet.pet_name}** (Lv. ${pPet.level} ${pPet.pet_type}) - <@${pId}>\n`;
+                }
+
+                const updatedEmbed = EmbedBuilder.from(lobbyEmbed)
+                  .setDescription(
+                    `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+                    `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
+                    `👤 **Otak Ekspedisi:** <@${user.id}>\n` +
+                    `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+                    `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
+                    `🦖 **Kru Pet Saat Ini:**\n${participantList}\n` +
+                    `🎯 **Peluang Sukses Tim:** **${freshCalc.successRate}%**\n` +
+                    `⚡ **Sinergi Elemen Tim:**\n${freshElementalText}\n\n` +
+                    `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
+                    `⏳ **Waktu Berkumpul:** **${timeLeft} detik**\n\n` +
+                    `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+                  );
+
+                await publicMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
+              }, 10000);
+
+              // Buat collector untuk tombol accept/decline di pesan publik
+              const lobbyCollector = publicMsg.createMessageComponentCollector({ time: 90000 });
+
+              lobbyCollector.on('collect', async iExpBtn => {
+                try {
+                  if (iExpBtn.customId === 'pet_exp_join') {
+                    const currentLobby = activeLobby.get(lobbyKey);
+                    if (!currentLobby) return iExpBtn.reply({ content: '❌ Lobi ekspedisi sudah berakhir!', flags: 64 });
+
+                    if (currentLobby.participants.includes(iExpBtn.user.id)) {
+                      return iExpBtn.reply({ content: '❌ Anda sudah bergabung dalam lobi ini!', flags: 64 });
+                    }
+
+                    const userPet = pet.getPet(iExpBtn.user.id, guildId);
+                    if (!userPet || userPet.status === 'DEAD' || userPet.status === 'EGG') {
+                      return iExpBtn.reply({ content: '❌ Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!', flags: 64 });
+                    }
+                    if (userPet.health < 40) {
+                      return iExpBtn.reply({ content: `❌ Pet Anda **${userPet.pet_name}** terlalu lelah/sakit (HP ${userPet.health}% < 40) untuk ekspedisi!`, flags: 64 });
+                    }
+
+                    try {
+                      pet.checkExpeditionLimit(iExpBtn.user.id, guildId, true); // dryRun = true
+                    } catch (err) {
+                      return iExpBtn.reply({ content: `❌ ${err.message}`, flags: 64 });
+                    }
+
+                    const userWallet = economy.getWallet(iExpBtn.user.id, guildId);
+                    if (userWallet.balance < 250) {
+                      return iExpBtn.reply({ content: '❌ Saldo Anda kurang untuk membayar biaya ransum Rp 250!', flags: 64 });
+                    }
+
+                    economy.subtractBalance(iExpBtn.user.id, guildId, 250, 'PET_EXPEDITION_FEE');
+                    currentLobby.participants.push(iExpBtn.user.id);
+
+                    await iExpBtn.reply({ content: '🛡️ Berhasil bergabung dengan tim ekspedisi pet!', flags: 64 });
+
+                    let petListText = '';
+                    currentLobby.participants.forEach((pId, idx) => {
+                      const pObj = pet.getPet(pId, guildId);
+                      petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
+                    });
+
+                    const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
+                    const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
+                    const updatedEmbed = new EmbedBuilder()
+                      .setColor(0x3F51B5)
+                      .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+                      .setDescription(
+                        `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+                        `👤 **Otak Ekspedisi:** <@${user.id}>\n` +
+                        `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+                        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
+                        `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
+                        `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
+                        `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
+                        `💰 **Biaya Ransum:** Rp 250 koin\n` +
+                        `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
+                        `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+                      )
+                      .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+                      .setTimestamp();
+
+                    await publicMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
+                  }
+
+                  else if (iExpBtn.customId === 'pet_exp_cancel') {
+                    if (iExpBtn.user.id !== user.id) {
+                      return iExpBtn.reply({ content: '❌ Hanya pembuat lobi ekspedisi yang bisa membatalkan!', flags: 64 });
+                    }
+
+                    clearInterval(interval);
+                    clearTimeout(lobby.timeout);
+                    activeLobby.delete(lobbyKey);
+
+                    currentLobby.participants.forEach(pId => {
+                      economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
+                    });
+
+                    await iExpBtn.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.', ephemeral: false });
+                    await publicMsg.edit({
+                      content: '❌ **Ekspedisi tim pet dibatalkan oleh pembuat lobi.**',
+                      embeds: [],
+                      components: []
+                    }).catch(() => { });
+                    lobbyCollector.stop();
+                  }
+                } catch (err) {
+                  await iExpBtn.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 });
+                }
+              });
+
+              lobbyCollector.on('end', () => {
+                clearInterval(interval);
+              });
+
+              // Timeout eksekusi setelah 90 detik
+              lobby.timeout = setTimeout(async () => {
+                clearInterval(interval);
+                const finalLobby = activeLobby.get(lobbyKey);
+                if (!finalLobby) return;
+
+                activeLobby.delete(lobbyKey);
+
+                try {
+                  const finalRes = pet.executeExpedition(guildId, finalLobby.participants, mapChoice);
+                  
+                  // Hook quest progress for EXPEDITION
+                  finalLobby.participants.forEach(pId => {
+                    try {
+                      pet.incrementQuestProgress(pId, guildId, 'EXPEDITION', 1);
+                    } catch (err) {
+                      console.error('Error incrementing quest progress for EXPEDITION:', err.message);
+                    }
+                  });
+
+                  // HP pet decrease & XP rewards
+                  let successListText = '';
+                  let resultColor = embeds.COLORS.SUCCESS;
+
+                  if (finalRes.success) {
+                    finalRes.results.forEach(r => {
+                      successListText += `• <@${r.userId}>: Pet **${r.petName}** HP **-${r.hpLost}**, mendapat **+${r.xpGained} XP** dan **Rp ${r.reward.toLocaleString('id-ID')}** koin!\n`;
+                    });
+                  } else {
+                    resultColor = embeds.COLORS.ERROR;
+                    finalRes.results.forEach(r => {
+                      successListText += `• <@${r.userId}>: Pet **${r.petName}** HP **-${r.hpLost}**, mendapat **+${r.xpGained} XP** tapi gagal menembus pertahanan boss!\n`;
+                    });
+                  }
+
+                  const resultEmbed = new EmbedBuilder()
+                    .setColor(resultColor)
+                    .setTitle(finalRes.success ? `🎉 EKSPEDISI SUKSES DI ${selectedMap.name.toUpperCase()}! 🎉` : `💀 EKSPEDISI TIM GAGAL TOTAL! 💀`)
+                    .setDescription(
+                      `⚔️ **HASIL AKSI PERTEMPURAN:**\n` +
+                      `Laporan dari zona **${selectedMap.name}**:\n` +
+                      `*Tim pet menghadapi boss **${selectedMap.boss}**.*\n\n` +
+                      `📋 **Hasil Individu Tim:**\n${successListText}\n` +
+                      `📊 **Status Akhir Tim:** Peluang sukses tim kemarin adalah **${finalRes.teamSuccessRate}%**.`
+                    )
+                    .setFooter({ text: 'Gunakan .pet untuk melihat status pet aktif Anda!' })
+                    .setTimestamp();
+
+                  await publicMsg.edit({ embeds: [resultEmbed], components: [] }).catch(() => { });
+                } catch (e) {
+                  console.error(e);
+                  await publicMsg.edit({ content: `❌ Ekspedisi gagal diselesaikan: ${e.message}`, embeds: [], components: [] }).catch(() => { });
+                }
+              }, 90000);
+
+            } catch (err) {
+              await iExp.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Ekspedisi!', err.message)], flags: 64 });
+            }
+          }
+        });
+
+        expCollector.on('end', async () => {
+          await interaction.editReply({ components: [] }).catch(() => { });
+        });
+      }
+
+      // ── PORTAL PERMANEN: UNDIAN LOTRE ──
+      else if (customId === 'eco_btn_lottery_hub') {
+        await interaction.deferReply({ flags: 64 });
+
+        const getLotteryPanelPrivate = (targetUserId) => {
+          const pool = lottery.getPool(guildId);
+          const userTickets = lottery.getUserTickets(targetUserId, guildId);
+          const participants = lottery.getParticipants(guildId);
+          const participantCount = participants.length;
+          const ticketPrice = config.lottery?.TICKET_PRICE || 100;
+          const burnPercent = config.lottery?.BURN_PERCENT || 15;
+
+          const winChance = pool.total_tickets > 0 
+            ? ((userTickets / pool.total_tickets) * 100).toFixed(2)
+            : '0.00';
+
+          const embed = new EmbedBuilder()
+            .setColor(0xFFD700)
+            .setTitle('🎟️ 🏆 LOTRE MINGGUAN SENTINEL')
+            .setDescription(
+              `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
+              `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `📈 **Status Pool Saat Ini:**\n` +
+              `┊ 💰 Total Pool Hadiah: **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n` +
+              `┊ 🎫 Total Tiket Terjual: **${pool.total_tickets} tiket**\n` +
+              `┊ 👥 Jumlah Peserta: **${participantCount} orang**\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `👤 **Status Anda (<@${targetUserId}>):**\n` +
+              `┊ 🎫 Jumlah Tiket: **${userTickets} tiket**\n` +
+              `┊ 🎯 Peluang Menang: **${winChance}%**\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+              `📋 **Informasi Lotre:**\n` +
+              `┊ 🪙 Harga Tiket: **Rp ${ticketPrice.toLocaleString('id-ID')}** per tiket\n` +
+              `┊ 🔥 Koin Dibakar: **${burnPercent}%** dari total pool akan dibakar (dihapus) saat undian untuk stabilitas ekonomi.\n` +
+              `┊ ⏱️ Jadwal Undian: Setiap **Minggu pukul 21:00 WIB**`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Lotre Mingguan • Semoga Beruntung!' });
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('lottery_btn_buy_1').setLabel('🎫 Beli 1 Tiket').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('lottery_btn_buy_10').setLabel('🎫 Beli 10 Tiket').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('lottery_btn_buy_50').setLabel('🎫 Beli 50 Tiket').setStyle(ButtonStyle.Danger)
+          );
+
+          return { embeds: [embed], components: [row] };
+        };
+
+        const initialData = getLotteryPanelPrivate(user.id);
+        const privateMsg = await interaction.editReply({ ...initialData });
+        const lotCollector = privateMsg.createMessageComponentCollector({ time: 60000 });
+
+        lotCollector.on('collect', async iLot => {
+          if (iLot.user.id !== user.id) return iLot.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+          let qty = 1;
+          if (iLot.customId === 'lottery_btn_buy_10') qty = 10;
+          else if (iLot.customId === 'lottery_btn_buy_50') qty = 50;
+
+          try {
+            const res = lottery.buyTickets(user.id, guildId, qty);
+            const successEmb = embeds.successEmbed(
+              'Tiket Lotre Berhasil Dibeli! 🎟️✨',
+              `Anda telah membeli **${res.quantity} tiket** seharga **Rp ${res.totalCost.toLocaleString('id-ID')}**!\n` +
+              `📦 Tiket terdaftar atas nama Anda.\n\n` +
+              `💵 Sisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+            );
+            await iLot.reply({ embeds: [successEmb], flags: 64 });
+            await interaction.editReply(getLotteryPanelPrivate(user.id)).catch(() => { });
+          } catch (err) {
+            await iLot.reply({ embeds: [embeds.errorEmbed('Pembelian Tiket Gagal!', err.message)], flags: 64 });
+          }
+        });
+
+        lotCollector.on('end', async () => {
+          await interaction.editReply({ components: [] }).catch(() => { });
+        });
       }
 
       // ── PORTAL PERMANEN: MISI HARIAN KOSAN 1A ──
@@ -11183,7 +11610,9 @@ async function handleEconomyCommands(message, client) {
 
       const row3 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success)
+        new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('pet_btn_expedition_hub').setLabel('🗺️ Ekspedisi Pet').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
       );
 
       await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
