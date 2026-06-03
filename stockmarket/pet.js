@@ -4,21 +4,21 @@ const config = require('./config');
 
 // Konfigurasi Item Kebutuhan Pet
 const PET_ITEMS = {
-  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 150, hunger: 30, thirst: 0, hp: 0, happiness: 0, cooldown: 300, desc: 'Pakan standar untuk mengisi perut pet.' },
-  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 350, hunger: 70, thirst: 0, hp: 10, happiness: 5, cooldown: 900, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
-  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 100, hunger: 0, thirst: 35, hp: 0, happiness: 0, cooldown: 300, desc: 'Air mineral segar untuk hidrasi pet.' },
+  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 80, hunger: 30, thirst: 0, hp: 0, happiness: 0, cooldown: 300, desc: 'Pakan standar untuk mengisi perut pet.' },
+  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 200, hunger: 70, thirst: 0, hp: 10, happiness: 5, cooldown: 900, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
+  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 50, hunger: 0, thirst: 35, hp: 0, happiness: 0, cooldown: 300, desc: 'Air mineral segar untuk hidrasi pet.' },
   MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, cooldown: 600, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
-  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 250, hunger: 0, thirst: 0, hp: 0, happiness: 50, cooldown: 900, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
-  SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 200, hunger: 0, thirst: 10, hp: 0, happiness: 10, cooldown: 1800, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
-  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 100, hunger: 0, thirst: 0, hp: 0, happiness: 5, cooldown: 600, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
-  COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1200, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
+  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 120, hunger: 0, thirst: 0, hp: 0, happiness: 50, cooldown: 900, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
+  SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 150, hunger: 0, thirst: 10, hp: 0, happiness: 10, cooldown: 1800, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
+  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 50, hunger: 0, thirst: 0, hp: 0, happiness: 5, cooldown: 600, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
+  COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
   SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
   SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
-  LUCKY_AMULET: { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan', price: 2000, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Jimat pelindung sekali pakai. Menyelamatkan pet dari kematian (jika HP mencapai 0) lalu hancur.' },
-  XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 2500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
-  XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 5000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
-  XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 7500, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
-  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 10000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
+  LUCKY_AMULET: { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan', price: 2500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Jimat pelindung sekali pakai. Menyelamatkan pet dari kematian (jika HP mencapai 0) lalu hancur.' },
+  XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 3000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
+  XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 6000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
+  XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 9000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
+  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 12000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
 };
 
 // Konfigurasi Spesies Pet
@@ -63,8 +63,8 @@ const GACHA_TRAIT_EPIC   = ['SURVIVOR'];
 const GACHA_TRAIT_LEGENDARY = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
 
 const GACHA_PRICES = {
-  SINGLE:  1000,
-  MULTI10: 10000,
+  SINGLE:  1200,
+  MULTI10: 12000,
 };
 
 // ═══════════════════════════════════════════════
@@ -859,11 +859,11 @@ function sendToWork(userId, guildId, member = null) {
     throw new Error('Pet Anda terlalu lapar atau haus! Beri makan dan minum sebelum bekerja.');
   }
 
-  // Hitung cooldown (Work: 1 Jam)
-  let cooldownDuration = 1 * 3600; // 1 Jam
-  // Golem Perk: Cooldown kerja dikurangi 20 menit (1200 detik)
+  // Hitung cooldown (Work: 15 Menit)
+  let cooldownDuration = 15 * 60; // 15 Menit
+  // Golem Perk: Cooldown kerja dikurangi 5 menit (300 detik)
   if (pet.pet_type === 'GOLEM') {
-    cooldownDuration -= 20 * 60;
+    cooldownDuration -= 5 * 60;
   }
 
   // Integrasi Luxury Shop: Rolex mengurangi cooldown kerja pet sebesar 5 menit (300 detik)
@@ -888,8 +888,8 @@ function sendToWork(userId, guildId, member = null) {
 
   // Kalkulasi Pendapatan Kerja
   // Level memberikan bonus multiplier
-  const baseRewardMin = 150;
-  const baseRewardMax = 400;
+  const baseRewardMin = 40;
+  const baseRewardMax = 100;
   let reward = Math.floor(Math.random() * (baseRewardMax - baseRewardMin + 1)) + baseRewardMin;
   
   // Bonus level: +5% pendapatan per level pet (dibatasi di maksimal Level 20 untuk menyeimbangkan ekonomi)
@@ -933,9 +933,9 @@ function sendToWork(userId, guildId, member = null) {
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
-    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 15);
-    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 15);
-    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 10);
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 4);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 4);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 3);
 
     db.run(
       `UPDATE user_pets 
@@ -987,7 +987,7 @@ function sendToHunt(userId, guildId, member = null) {
   if (pet.happiness < 50) {
     throw new Error('Mood pet Anda terlalu buruk untuk berburu (Kebahagiaan < 50)! Ajak bermain.');
   }
-  const cooldownDuration = 2 * 3600; // 2 Jam
+  const cooldownDuration = 30 * 60; // 30 Menit
 
   const nextHuntTime = (pet.last_hunt_at || 0) + cooldownDuration;
   if (now < nextHuntTime) {
@@ -997,8 +997,8 @@ function sendToHunt(userId, guildId, member = null) {
   }
 
   // Pendapatan Berburu (Lebih besar namun menguras status)
-  const baseRewardMin = 300;
-  const baseRewardMax = 800;
+  const baseRewardMin = 75;
+  const baseRewardMax = 200;
   let reward = Math.floor(Math.random() * (baseRewardMax - baseRewardMin + 1)) + baseRewardMin;
 
   // Cat Perk: Kucing lincah mendapat bonus +15% hunt earnings
@@ -1074,10 +1074,10 @@ function sendToHunt(userId, guildId, member = null) {
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
-    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 25);
-    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 25);
-    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 15);
-    const newHealth = isGod ? 100 : Math.max(1, pet.health - 10);
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 6);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 6);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 4);
+    const newHealth = isGod ? 100 : Math.max(1, pet.health - 3);
 
     db.run(
       `UPDATE user_pets 
@@ -2227,7 +2227,14 @@ function getOrCreateDailyQuests(userId, guildId) {
     { type: 'WATER', target: 2 },
     { type: 'EXPEDITION', target: 1 },
     { type: 'SELL_FLOWER', target: 2 },
-    { type: 'GIFT_BOUQUET', target: 1 }
+    { type: 'GIFT_BOUQUET', target: 1 },
+    { type: 'ROB', target: 1 },
+    { type: 'HEIST', target: 1 },
+    { type: 'CASINO', target: 2 },
+    { type: 'STOCK_BUY', target: 2 },
+    { type: 'BANK_DEPOSIT', target: 1 },
+    { type: 'GARDEN_PLANT', target: 2 },
+    { type: 'GARDEN_HARVEST', target: 2 }
   ];
 
   // Shuffle pool dan ambil 3 item teratas
@@ -2350,8 +2357,8 @@ function claimDailyQuestReward(userId, guildId) {
   }
 
   db.transaction(() => {
-    // 1. Berikan koin bonus Rp 150
-    economy.addBalance(userId, guildId, 150, 'DAILY_QUEST');
+    // 1. Berikan koin bonus Rp 300
+    economy.addBalance(userId, guildId, 300, 'DAILY_QUEST');
 
     // 2. Set status claimed
     db.run(
@@ -2399,7 +2406,7 @@ function claimDailyQuestReward(userId, guildId) {
   })();
 
   return {
-    rewardAmount: 150,
+    rewardAmount: 300,
     dropItemName: itemName,
     gachaTicketBonus: 1
   };
@@ -2521,7 +2528,7 @@ function trainPet(userId, guildId) {
     throw new Error('Pet Anda terlalu lapar/haus (Kenyangan/Hidrasi < 30) untuk berlatih!');
   }
 
-  const fee = 150;
+  const fee = 80;
   const wallet = economy.getWallet(userId, guildId);
   if (wallet.balance < fee) {
     throw new Error(`Saldo koin Anda tidak mencukupi untuk biaya latihan sebesar Rp ${fee}!`);
@@ -2534,8 +2541,8 @@ function trainPet(userId, guildId) {
     // Kurangi koin
     economy.subtractBalance(userId, guildId, fee, 'PET_GYM_FEE');
 
-    // Berikan XP (+100 XP) dikali xp_multiplier
-    let xpGained = Math.round(100 * (petObj.xp_multiplier || 1.0));
+    // Berikan XP (+50 XP) dikali xp_multiplier
+    let xpGained = Math.round(50 * (petObj.xp_multiplier || 1.0));
     let { newXp, newLevel, levelUp } = addXp(petObj, xpGained, maxHP);
 
     const newHunger = Math.max(0, petObj.hunger - 30);
@@ -2556,7 +2563,7 @@ function trainPet(userId, guildId) {
   return {
     pet: getPet(userId, guildId),
     fee,
-    xpGained: Math.round(100 * (petObj.xp_multiplier || 1.0))
+    xpGained: Math.round(50 * (petObj.xp_multiplier || 1.0))
   };
 }
 

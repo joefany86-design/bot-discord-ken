@@ -77,7 +77,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   const nowSec = Math.floor(Date.now() / 1000);
   const lastRob = thiefWallet.last_rob_at || 0;
   const elapsedRob = nowSec - lastRob;
-  const robCooldownSeconds = 600; // 10 menit
+  const robCooldownSeconds = 300; // 5 menit
   if (elapsedRob < robCooldownSeconds) {
     const remainingMin = Math.ceil((robCooldownSeconds - elapsedRob) / 60);
     throw new Error(`Kaki Anda lelah setelah aksi sebelumnya! Mohon tunggu **${remainingMin} menit** lagi sebelum merampok kembali.`);
@@ -262,6 +262,10 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
         );
       }
     })();
+
+    // Increment daily quest progress for ROB
+    const petMod = require('./pet');
+    petMod.incrementQuestProgress(userId, guildId, 'ROB', 1);
 
     // Berikan XP ke pet pelaku jika ada pet yang aktif
     let petXpGained = false;
@@ -795,6 +799,12 @@ function executeHeist(guildId) {
       }
     });
 
+    // Increment daily quest progress for HEIST
+    const petMod = require('./pet');
+    participants.forEach(p => {
+      petMod.incrementQuestProgress(p, guildId, 'HEIST', 1);
+    });
+
     const maskedUsersList = [];
     participants.forEach(p => {
       if (maskHolders.includes(p)) maskedUsersList.push(p);
@@ -861,6 +871,12 @@ function executeHeist(guildId) {
         );
       });
     })();
+
+    // Increment daily quest progress for HEIST
+    const petMod = require('./pet');
+    participants.forEach(p => {
+      petMod.incrementQuestProgress(p, guildId, 'HEIST', 1);
+    });
 
     return {
       success: false,

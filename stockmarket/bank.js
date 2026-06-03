@@ -134,6 +134,9 @@ function depositSavings(userId, guildId, amountInput) {
     );
   })();
 
+  const petMod = require('./pet');
+  petMod.incrementQuestProgress(userId, guildId, 'BANK_DEPOSIT', 1);
+
   return {
     amount,
     tax,

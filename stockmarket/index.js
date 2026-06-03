@@ -2901,12 +2901,19 @@ function initStockMarket(client) {
               case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
               case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
               case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
+              case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
+              case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
+              case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
+              case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
+              case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
+              case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
+              case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
               default: descText = `Misi Harian`;
             }
             return `${descText} (${progress}/${target})`;
           };
 
-          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
           
           descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
           descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
@@ -3440,12 +3447,19 @@ async function handlePetCommand(message, client, args) {
           case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
           case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
           case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
+          case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
+          case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
+          case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
+          case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
+          case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
+          case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
+          case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
           default: descText = `Misi Harian`;
         }
         return `${descText} (${progress}/${target})`;
       };
 
-      let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 150**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+      let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
       
       descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
       descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;

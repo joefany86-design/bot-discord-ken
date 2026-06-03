@@ -77,6 +77,9 @@ function coinflip(userId, guildId, betInput, guessInput) {
     }
   })();
 
+  const petMod = require('./pet');
+  petMod.incrementQuestProgress(userId, guildId, 'CASINO', 1);
+
   return {
     won,
     bet,
@@ -218,6 +221,9 @@ function spinSlot(userId, guildId, betInput) {
       newBalance = economy.getWallet(userId, guildId).balance;
     }
   })();
+
+  const petMod = require('./pet');
+  petMod.incrementQuestProgress(userId, guildId, 'CASINO', 1);
 
   return {
     won,

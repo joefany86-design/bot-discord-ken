@@ -237,6 +237,9 @@ function buyStock(userId, guildId, ticker, shares) {
     );
   })();
 
+  const petMod = require('./pet');
+  petMod.incrementQuestProgress(userId, guildId, 'STOCK_BUY', 1);
+
   return {
     shares,
     stockName: stock.stock_name,

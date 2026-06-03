@@ -157,6 +157,13 @@ function plantSeed(userId, guildId, slotIndex, flowerKeyInput) {
       'UPDATE garden_slots SET seed_id = ?, planted_at = ?, last_watered_at = 0, water_count = 0 WHERE user_id = ? AND guild_id = ? AND slot_index = ?',
       [flowerConf.id, now, userId, guildId, slotIdx]
     );
+
+    // Update daily quest progress for GARDEN_PLANT
+    try {
+      pet.incrementQuestProgress(userId, guildId, 'GARDEN_PLANT', 1);
+    } catch (err) {
+      console.error('Error incrementing quest progress for GARDEN_PLANT:', err.message);
+    }
   })();
 
   return {
@@ -273,6 +280,13 @@ function harvestPlant(userId, guildId, slotIndexInput) {
 
     // Tambah 1 bunga matang ke inventory
     updateInventory(userId, guildId, flowerConf.flowerId, 1);
+
+    // Update daily quest progress for GARDEN_HARVEST
+    try {
+      pet.incrementQuestProgress(userId, guildId, 'GARDEN_HARVEST', 1);
+    } catch (err) {
+      console.error('Error incrementing quest progress for GARDEN_HARVEST:', err.message);
+    }
   })();
 
   return {

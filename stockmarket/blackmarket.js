@@ -5,11 +5,11 @@ const config = require('./config');
 
 // Konfigurasi Item Black Market
 const BM_ITEMS = {
-  LOCKPICK: { id: 'LOCKPICK', name: '🗝️ Linggis / Lockpick', price: 450, desc: 'Meningkatkan peluang sukses Solo Rob sebesar +15%. Berpeluang 20% patah/hilang setiap kali digunakan.' },
-  MASK: { id: 'MASK', name: '🎭 Topeng Samaran', price: 600, desc: 'Menyembunyikan identitas pelaku saat Solo Rob sukses (korban tidak tahu siapa perampoknya). Habis saat sukses.' },
-  MEAT: { id: 'MEAT', name: '🥩 Daging Bius', price: 350, desc: 'Menonaktifkan alarm & CCTV korban saat Anda merampok. Habis terpakai.' },
-  SOAP: { id: 'SOAP', name: '🧼 Sabun Licin', price: 500, desc: 'Mengurangi durasi penjara virtual sebesar 50% jika tertangkap basah. Habis terpakai.' },
-  BRANKAS: { id: 'BRANKAS', name: '🛡️ Brankas Anti-Hacker', price: 1200, desc: 'Melindungi saldo tabungan bank Anda dari jarahan Heist. Memotong kehilangan saldo sebesar 90% (efek pasif permanen selama disimpan).' }
+  LOCKPICK: { id: 'LOCKPICK', name: '🗝️ Linggis / Lockpick', price: 500, desc: 'Meningkatkan peluang sukses Solo Rob sebesar +15%. Berpeluang 20% patah/hilang setiap kali digunakan.' },
+  MASK: { id: 'MASK', name: '🎭 Topeng Samaran', price: 650, desc: 'Menyembunyikan identitas pelaku saat Solo Rob sukses (korban tidak tahu siapa perampoknya). Habis saat sukses.' },
+  MEAT: { id: 'MEAT', name: '🥩 Daging Bius', price: 400, desc: 'Menonaktifkan alarm & CCTV korban saat Anda merampok. Habis terpakai.' },
+  SOAP: { id: 'SOAP', name: '🧼 Sabun Licin', price: 550, desc: 'Mengurangi durasi penjara virtual sebesar 50% jika tertangkap basah. Habis terpakai.' },
+  BRANKAS: { id: 'BRANKAS', name: '🛡️ Brankas Anti-Hacker', price: 2500, desc: 'Melindungi saldo tabungan bank Anda dari jarahan Heist. Memotong kehilangan saldo sebesar 90% (efek pasif permanen selama disimpan).' }
 };
 
 /**

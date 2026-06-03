@@ -102,8 +102,8 @@ module.exports = {
 
   // Konfigurasi Sistem Gacha Role Premium (Hard Mode)
   gacha: {
-    COST: 500,                  // Biaya memutar Gacha (sangat menantang mengingat saldo susah didapat)
-    CASHBACK: 100,              // Cashback jika memenangkan role yang sudah dimiliki
+    COST: 800,                  // Biaya memutar Gacha
+    CASHBACK: 150,              // Cashback jika memenangkan role yang sudah dimiliki
     ZONK_RATE: 75,              // 75% kemungkinan zonk (seimbang & menantang!)
 
     // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
@@ -209,12 +209,12 @@ module.exports = {
   // Konfigurasi Sistem Perampokan (Robbery & Heist)
   robbery: {
     SUCCESS_RATE: 45,             // Peluang dasar sukses Solo Rob (45%)
-    JAIL_SOLO_SECONDS: 900,       // Masa hukuman Solo Rob: 15 menit (900s)
+    JAIL_SOLO_SECONDS: 300,       // Masa hukuman Solo Rob: 5 menit (300s)
     JAIL_HEIST_BASE: 1800,        // Masa hukuman Heist: 30 menit (1800s)
     BAIL_SOLO: 250,               // Uang jaminan Solo Rob: Rp 250
     BAIL_HEIST: 2500,             // Uang jaminan Heist dinaikkan ke Rp 2.500
-    PREP_FEE: 200,                // Biaya persiapan Heist per orang
-    COOLDOWN_HEIST_SECONDS: 6 * 3600, // Cooldown Heist: 6 jam (21600 detik)
+    PREP_FEE: 400,                // Biaya persiapan Heist per orang
+    COOLDOWN_HEIST_SECONDS: 2 * 3600, // Cooldown Heist: 2 jam (7200 detik)
     MIN_ROB_BALANCE_ROBBER: 300,  // Saldo minimal pelaku agar bisa merampok
     MIN_ROB_BALANCE_VICTIM: 500,  // Saldo minimal korban agar bisa dirampok
     MAX_HEIST_DRAIN_PER_USER: 5000, // Batas maksimal koin terpotong per nasabah per heist
@@ -297,17 +297,17 @@ module.exports = {
   // Konfigurasi Cozy Flower Garden
   garden: {
     SYSTEM_ACTIVE: true, // Set to true to release to public. If false, only Owner/Admins can test it!
-    WATER_COOLDOWN_MS: 60 * 60 * 1000, // Cooldown siram: 1 jam
-    WATER_TIME_REDUCTION_SECONDS: 30 * 60, // Siraman memotong 30 menit
+    WATER_COOLDOWN_MS: 15 * 60 * 1000, // Cooldown siram: 15 menit
+    WATER_TIME_REDUCTION_SECONDS: 10 * 60, // Siraman memotong 10 menit
     GIFT_WRAPPING_PRICE: 100, // Kertas kado seharga Rp 100
     
     // Spesifikasi Bunga
     FLOWERS: {
-      ROSE: { id: 'ROSE', name: '🌹 Mawar Merah', seedId: 'SEED_ROSE', flowerId: 'FLOWER_ROSE', seedPrice: 150, sellPrice: 250, growSeconds: 2 * 3600, rarity: 'COMMON' },
-      TULIP: { id: 'TULIP', name: '🌷 Bunga Tulip', seedId: 'SEED_TULIP', flowerId: 'FLOWER_TULIP', seedPrice: 300, sellPrice: 550, growSeconds: 4 * 3600, rarity: 'COMMON' },
-      LAVENDER: { id: 'LAVENDER', name: '🪻 Bunga Lavender', seedId: 'SEED_LAVENDER', flowerId: 'FLOWER_LAVENDER', seedPrice: 500, sellPrice: 950, growSeconds: 6 * 3600, rarity: 'RARE' },
-      SAKURA: { id: 'SAKURA', name: '🌸 Bunga Sakura', seedId: 'SEED_SAKURA', flowerId: 'FLOWER_SAKURA', seedPrice: 1000, sellPrice: 2200, growSeconds: 12 * 3600, rarity: 'RARE' },
-      ORCHID: { id: 'ORCHID', name: '🪻 Anggrek Langka', seedId: 'SEED_ORCHID', flowerId: 'FLOWER_ORCHID', seedPrice: 2500, sellPrice: 6000, growSeconds: 24 * 3600, rarity: 'EPIC' }
+      ROSE: { id: 'ROSE', name: '🌹 Mawar Merah', seedId: 'SEED_ROSE', flowerId: 'FLOWER_ROSE', seedPrice: 80, sellPrice: 105, growSeconds: 30 * 60, rarity: 'COMMON' },
+      TULIP: { id: 'TULIP', name: '🌷 Bunga Tulip', seedId: 'SEED_TULIP', flowerId: 'FLOWER_TULIP', seedPrice: 150, sellPrice: 200, growSeconds: 1 * 3600, rarity: 'COMMON' },
+      LAVENDER: { id: 'LAVENDER', name: '🪻 Bunga Lavender', seedId: 'SEED_LAVENDER', flowerId: 'FLOWER_LAVENDER', seedPrice: 250, sellPrice: 350, growSeconds: 2 * 3600, rarity: 'RARE' },
+      SAKURA: { id: 'SAKURA', name: '🌸 Bunga Sakura', seedId: 'SEED_SAKURA', flowerId: 'FLOWER_SAKURA', seedPrice: 500, sellPrice: 750, growSeconds: 4 * 3600, rarity: 'RARE' },
+      ORCHID: { id: 'ORCHID', name: '🪻 Anggrek Langka', seedId: 'SEED_ORCHID', flowerId: 'FLOWER_ORCHID', seedPrice: 1200, sellPrice: 2000, growSeconds: 8 * 3600, rarity: 'EPIC' }
     },
     
     // Resep Buket Bunga
