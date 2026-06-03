@@ -1936,15 +1936,10 @@ function initStockMarket(client) {
             ];
             rows.push(new ActionRowBuilder().addComponents(row3Components));
 
-            const isUserOwner = user.id === '436554535037698059';
-            const isUserAdmin = interaction.member && interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
             const row4Components = [
               new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade Bintang').setStyle(ButtonStyle.Success),
               new ButtonBuilder().setCustomId('pet_btn_recycle').setLabel('♻️ Daur Ulang Pet').setStyle(ButtonStyle.Danger)
             ];
-            if (isUserOwner || isUserAdmin) {
-              row4Components.push(new ButtonBuilder().setCustomId('pet_btn_set_image_private').setLabel('🖼️ Ganti Foto').setStyle(ButtonStyle.Secondary));
-            }
             rows.push(new ActionRowBuilder().addComponents(row4Components));
           }
           if (allPets.length > 1) {
@@ -2413,57 +2408,6 @@ function initStockMarket(client) {
                 await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await iPet.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
-              }
-            } else if (iPet.customId === 'pet_btn_set_image_private') {
-              const isOwner = iPet.user.id === '436554535037698059';
-              const isAdmin = iPet.member && iPet.member.permissions.has(PermissionsBitField.Flags.Administrator);
-              if (!isOwner && !isAdmin) {
-                return iPet.reply({ content: '❌ Akses Ditolak! Hanya Owner utama & Administrator server yang dapat mengganti foto pet.', flags: 64 });
-              }
-
-              const freshPet = pet.getPet(user.id, guildId);
-              if (!freshPet) {
-                return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
-              }
-
-              const modal = new ModalBuilder()
-                .setCustomId('pet_modal_set_image_private')
-                .setTitle('🖼️ Ganti Foto Pet');
-
-              const imgInput = new TextInputBuilder()
-                .setCustomId('pet_image_url')
-                .setLabel('Link Gambar / GIF Pet')
-                .setPlaceholder('https://... atau reset untuk hapus kustom')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(imgInput));
-
-              await iPet.showModal(modal);
-
-              const submitted = await iPet.awaitModalSubmit({
-                filter: (sub) => sub.customId === 'pet_modal_set_image_private' && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const urlInput = submitted.fields.getTextInputValue('pet_image_url');
-                  const savedUrl = pet.setCustomImage(user.id, guildId, urlInput);
-                  let desc = '';
-                  if (savedUrl) {
-                    desc = `Berhasil mengubah gambar pet aktif Anda!\n\n**Preview URL:**\n${savedUrl}`;
-                  } else {
-                    desc = `Berhasil menghapus gambar kustom. Pet Anda sekarang kembali menggunakan aset gambar bawaan sistem.`;
-                  }
-                  const successEmb = embeds.successEmbed('Update Gambar Pet Sukses! 📸', desc);
-                  if (savedUrl) successEmb.setImage(savedUrl);
-                  
-                  await submitted.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Update Gambar Gagal!', err.message)], flags: 64 });
-                }
               }
             } else if (iPet.customId === 'pet_btn_nav_adopt') {
               const modal = new ModalBuilder()
