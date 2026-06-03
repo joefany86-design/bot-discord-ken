@@ -1914,6 +1914,11 @@ function initStockMarket(client) {
                 !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
                 userPet.level < 10 &&
                 userPet.status !== 'ADULT'
+              ),
+              new ButtonBuilder().setCustomId('pet_btn_breed').setLabel('💍 Kawin Silang').setStyle(ButtonStyle.Primary).setDisabled(
+                !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
+                userPet.level < 10 &&
+                userPet.status !== 'ADULT'
               )
             ];
             if (canAdoptMore) row2Components.push(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi (+)').setStyle(ButtonStyle.Success));
@@ -2145,6 +2150,171 @@ function initStockMarket(client) {
               const res = pet.sendToHunt(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
               await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+            } else if (iPet.customId === 'pet_btn_breed') {
+              try {
+                const freshPet = pet.getPet(user.id, guildId);
+                if (!freshPet) {
+                  return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
+                }
+                if (freshPet.status !== 'ADULT') {
+                  return iPet.reply({ content: `❌ Pet Anda **${freshPet.pet_name}** belum dewasa (Lv < 10)!`, flags: 64 });
+                }
+
+                const selectPartnerMenu = new UserSelectMenuBuilder()
+                  .setCustomId('pet_breed_select_partner')
+                  .setPlaceholder('💞 Pilih warga/partner kawin silang...');
+
+                const partnerRow = new ActionRowBuilder().addComponents(selectPartnerMenu);
+                const cancelBtn = new ButtonBuilder()
+                  .setCustomId('pet_btn_cancel_breed')
+                  .setLabel('✖️ Batalkan')
+                  .setStyle(ButtonStyle.Secondary);
+                const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+                await iPet.update({
+                  embeds: [
+                    new EmbedBuilder()
+                      .setColor(0xFF80AB)
+                      .setTitle('🔀 PERKAWINAN PET: PILIH PARTNER')
+                      .setDescription(
+                        `Silakan pilih warga server yang ingin Anda ajak kawin silang pet.\n\n` +
+                        `📌 **Syarat Perkawinan:**\n` +
+                        `• Kedua belah pihak harus memiliki **Pet Dewasa (Level >= 10)**\n` +
+                        `• Biaya perkawinan masing-masing adalah **Rp 800**\n` +
+                        `• Pet tidak boleh sedang bau busuk (smelly) atau sakit/terluka`
+                      )
+                  ],
+                  components: [partnerRow, cancelRow]
+                });
+              } catch (err) {
+                await iPet.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
+              }
+            } else if (iPet.customId === 'pet_btn_cancel_breed') {
+              await iPet.update(getDashboardPanelPrivate(user.id));
+            } else if (iPet.customId === 'pet_breed_select_partner') {
+              const partnerId = iPet.values[0];
+              if (partnerId === user.id) {
+                return iPet.reply({ content: '❌ Anda tidak bisa mengawinkan pet dengan diri Anda sendiri!', flags: 64 });
+              }
+
+              const modal = new ModalBuilder()
+                .setCustomId(`pet_breed_modal_${partnerId}`)
+                .setTitle('Nama Bayi Pet Baru');
+
+              const nameInput = new TextInputBuilder()
+                .setCustomId('child_name')
+                .setLabel('Nama Bayi Pet Anda')
+                .setPlaceholder('Contoh: Ciko Jr')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(25);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+
+              await iPet.showModal(modal);
+
+              const submitted = await iPet.awaitModalSubmit({
+                filter: (sub) => sub.customId === `pet_breed_modal_${partnerId}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const newName = submitted.fields.getTextInputValue('child_name');
+                  const chalPet = pet.getPet(user.id, guildId);
+                  const partPet = pet.getPet(partnerId, guildId);
+
+                  if (!chalPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Anda tidak memiliki pet aktif!')], flags: 64 });
+                  if (!partPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Partner Anda tidak memiliki pet aktif!')], flags: 64 });
+
+                  if (chalPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Belum Dewasa!', `Pet Anda **${chalPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
+                  if (partPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Partner Belum Dewasa!', `Pet partner **${partPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
+
+                  const chalWallet = economy.getWallet(user.id, guildId);
+                  const partWallet = economy.getWallet(partnerId, guildId);
+
+                  if (chalWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Saldo Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
+                  if (partWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Partner Kurang!', `Saldo partner Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
+
+                  // Kirim proposal perkawinan secara publik di channel
+                  const proposalEmbed = new EmbedBuilder()
+                    .setColor(0xFF80AB)
+                    .setTitle('💕 PENAWARAN PERKAWINAN PET 💕')
+                    .setDescription(
+                      `🔔 <@${partnerId}>! Anda mendapatkan tawaran kawin silang dari <@${user.id}>!\n\n` +
+                      `🦖 **Pet Anda:** **${partPet.pet_name}** (Lv. ${partPet.level} ${partPet.pet_type})\n` +
+                      `⚔️ **Pet Pengirim:** **${chalPet.pet_name}** (Lv. ${chalPet.level} ${chalPet.pet_type})\n` +
+                      `💰 **Biaya Masing-masing:** **Rp 800**\n` +
+                      `🥚 **Nama Telur Anak:** **${newName}**\n\n` +
+                      `*Klik tombol **🟢 Terima Perjodohan** di bawah untuk memulai breeding. Berlaku selama 60 detik!*`
+                    )
+                    .setFooter({ text: 'Rupiah Server Pet Breeding' })
+                    .setTimestamp();
+
+                  const breedRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('pet_breed_accept').setLabel('🟢 Terima Perjodohan').setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId('pet_breed_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
+                  );
+
+                  const publicMsg = await interaction.channel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
+
+                  // Beri notifikasi sukses privat ke pemohon & update dashboard
+                  await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke <#${interaction.channel.id}>!`, flags: 64 });
+                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+
+                  // Buat collector untuk tombol accept/decline di pesan publik
+                  const breedCollector = publicMsg.createMessageComponentCollector({ time: 60000 });
+
+                  breedCollector.on('collect', async iBreed => {
+                    if (iBreed.user.id !== partnerId) {
+                      return iBreed.reply({ content: '❌ Hanya penerima tawaran yang bisa merespon tombol ini!', flags: 64 });
+                    }
+
+                    try {
+                      if (iBreed.customId === 'pet_breed_decline') {
+                        breedCollector.stop();
+                        await publicMsg.delete().catch(() => { });
+                        return iBreed.reply({ content: `🔴 <@${user.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` });
+                      }
+
+                      if (iBreed.customId === 'pet_breed_accept') {
+                        breedCollector.stop();
+                        await publicMsg.delete().catch(() => { });
+
+                        try {
+                          const res = pet.breedPets(user.id, partnerId, guildId, newName);
+                          const successEmb = new EmbedBuilder()
+                            .setColor(0xFF80AB)
+                            .setTitle('🎉 PERKAWINAN PET BERHASIL! 🎉')
+                            .setDescription(
+                              `💕 Perkawinan antara **${chalPet.pet_name}** dan **${partPet.pet_name}** sukses!\n\n` +
+                              `🥚 **Lahir Telur Baru:** **${res.childName}** (Tipe: \`${res.childType}\`)\n` +
+                              `✨ **Trait Warisan:** ${res.trait ? `**${res.trait}**` : '*Tidak ada trait khusus*'}\n` +
+                              `⏳ **Penetasan Telur:** Telur akan menetas <t:${res.hatchAt}:R>.\n\n` +
+                              `💸 Saldo masing-masing terpotong **Rp 800** untuk biaya perkawinan.`
+                            )
+                            .setFooter({ text: 'Gunakan .pet untuk melihat kandang Anda!' })
+                            .setTimestamp();
+
+                          return iBreed.reply({ content: `<@${user.id}> <@${partnerId}>`, embeds: [successEmb] });
+                        } catch (err) {
+                          return iBreed.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)] });
+                        }
+                      }
+                    } catch (err) {
+                      console.error('Error in breed collector:', err);
+                    }
+                  });
+
+                  breedCollector.on('end', async () => {
+                    if (breedCollector.destroyed) return;
+                    await publicMsg.delete().catch(() => { });
+                  });
+
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
+                }
+              }
             } else if (iPet.customId === 'pet_btn_autocare') {
               try {
                 const res = pet.unlockAutoCare(user.id, guildId);
