@@ -126,9 +126,9 @@ const EXPEDITION_MAPS = [
   },
   {
     id: 2,
-    name: 'BAT Gua Gelap (Dark Cave)',
+    name: '🦇 Gua Gelap (Dark Cave)',
     recommendedLevel: 10,
-    baseSuccessRate: 65,
+    baseSuccessRate: 75,
     minPrize: 400,
     maxPrize: 800,
     description: 'Lorong gua basah penuh kelelawar penghisap darah & laba-laba raksasa.',
@@ -137,9 +137,9 @@ const EXPEDITION_MAPS = [
   },
   {
     id: 3,
-    name: 'VOL Lembah Api (Fire Valley)',
+    name: '🔥 Lembah Api (Fire Valley)',
     recommendedLevel: 25,
-    baseSuccessRate: 45,
+    baseSuccessRate: 65,
     minPrize: 800,
     maxPrize: 1500,
     description: 'Ngarai panas berpijar dengan naga api liar dan golem magma raksasa.',
@@ -148,15 +148,118 @@ const EXPEDITION_MAPS = [
   },
   {
     id: 4,
-    name: 'CAS Istana Kuno (Ancient Palace)',
+    name: '🏰 Istana Kuno (Ancient Palace)',
     recommendedLevel: 40,
-    baseSuccessRate: 25,
+    baseSuccessRate: 55,
     minPrize: 1500,
     maxPrize: 2500,
     description: 'Reruntuhan istana misterius yang dijaga oleh iblis kuno bermata satu.',
     element: 'DRAGON',
     boss: 'Iblis Kuno'
+  },
+  {
+    id: 5,
+    name: '❄️ Tundra Beku (Frozen Tundra)',
+    recommendedLevel: 55,
+    baseSuccessRate: 45,
+    minPrize: 2500,
+    maxPrize: 4500,
+    description: 'Padang salju abadi dingin membeku, dijaga oleh Yeti berbulu tebal.',
+    element: 'WATER',
+    boss: 'Yeti Raksasa'
+  },
+  {
+    id: 6,
+    name: '⚡ Rawa Petir (Thunder Swamp)',
+    recommendedLevel: 70,
+    baseSuccessRate: 40,
+    minPrize: 4500,
+    maxPrize: 7000,
+    description: 'Rawa-rawa dengan petir menyambar tiada henti, dihuni belut listrik purba.',
+    element: 'FIRE',
+    boss: 'Belut Listrik Purba'
+  },
+  {
+    id: 7,
+    name: '🌫️ Kabut Kematian (Death Mist)',
+    recommendedLevel: 85,
+    baseSuccessRate: 35,
+    minPrize: 7000,
+    maxPrize: 10000,
+    description: 'Lembah berkabut racun kelam tempat bersemayamnya arwah penasaran & raja undead.',
+    element: 'DRAGON',
+    boss: 'Lich Necromancer'
+  },
+  {
+    id: 8,
+    name: '🌊 Samudera Abyss (Abyssal Ocean)',
+    recommendedLevel: 100,
+    baseSuccessRate: 30,
+    minPrize: 10000,
+    maxPrize: 14000,
+    description: 'Palung laut terdalam tak tertembus cahaya, dihuni Kraken pelahap kapal bajak laut.',
+    element: 'WATER',
+    boss: 'Gurita Kraken'
+  },
+  {
+    id: 9,
+    name: '🏔️ Puncak Langit (Sky Sanctuary)',
+    recommendedLevel: 125,
+    baseSuccessRate: 25,
+    minPrize: 14000,
+    maxPrize: 20000,
+    description: 'Kuil melayang tinggi di atas awan, diselimuti angin kencang tempat tinggal penjaga surgawi.',
+    element: 'DRAGON',
+    boss: 'Garuda Emas'
+  },
+  {
+    id: 10,
+    name: '🌌 Dimensi Kosmik (Cosmic Abyss)',
+    recommendedLevel: 150,
+    baseSuccessRate: 20,
+    minPrize: 20000,
+    maxPrize: 30000,
+    description: 'Ujung dimensi tempat waktu dan ruang terdistorsi. Hanya untuk pet terkuat!',
+    element: 'DRAGON',
+    boss: 'Void Sovereign'
   }
+];
+
+// Daftar item acak yang dapat dijatuhkan dari ekspedisi pet
+const EXPEDITION_DROPS = [
+  // Black Market Items (Disimpan di user_inventory)
+  { id: 'LOCKPICK', name: '🗝️ Linggis / Lockpick', table: 'user_inventory' },
+  { id: 'MASK', name: '🎭 Topeng Samaran', table: 'user_inventory' },
+  { id: 'MEAT', name: '🥩 Daging Bius', table: 'user_inventory' },
+  { id: 'SOAP', name: '🧼 Sabun Licin', table: 'user_inventory' },
+  { id: 'BRANKAS', name: '🛡️ Brankas Anti-Hacker', table: 'user_inventory' },
+
+  // Gacha Tickets (Disimpan di user_inventory)
+  { id: 'TICKET_GACHA', name: '🎟️ Tiket Gacha Pet', table: 'user_inventory' },
+
+  // Garden Seeds (Disimpan di user_inventory)
+  { id: 'SEED_ROSE', name: '🌱 Benih Mawar Merah', table: 'user_inventory' },
+  { id: 'SEED_TULIP', name: '🌱 Benih Bunga Tulip', table: 'user_inventory' },
+  { id: 'SEED_LAVENDER', name: '🌱 Benih Bunga Lavender', table: 'user_inventory' },
+  { id: 'SEED_SAKURA', name: '🌱 Benih Bunga Sakura', table: 'user_inventory' },
+  { id: 'SEED_ORCHID', name: '🌱 Benih Anggrek Langka', table: 'user_inventory' },
+
+  // Garden Flowers (Disimpan di user_inventory)
+  { id: 'FLOWER_ROSE', name: '🌹 Mawar Merah', table: 'user_inventory' },
+  { id: 'FLOWER_TULIP', name: '🌷 Bunga Tulip', table: 'user_inventory' },
+  { id: 'FLOWER_LAVENDER', name: '🪻 Bunga Lavender', table: 'user_inventory' },
+  { id: 'FLOWER_SAKURA', name: '🌸 Bunga Sakura', table: 'user_inventory' },
+  { id: 'FLOWER_ORCHID', name: '🪻 Anggrek Langka', table: 'user_inventory' },
+  { id: 'GIFT_WRAPPING', name: '🎗️ Kertas Kado Premium', table: 'user_inventory' },
+
+  // Pet Shop Items (Disimpan di pet_inventory)
+  { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', table: 'pet_inventory' },
+  { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', table: 'pet_inventory' },
+  { id: 'WATER', name: '🥤 Air Bersih', table: 'pet_inventory' },
+  { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', table: 'pet_inventory' },
+  { id: 'TOY', name: '⚽ Bola Karet', table: 'pet_inventory' },
+  { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', table: 'pet_inventory' },
+  { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', table: 'pet_inventory' }
 ];
 
 function getXpNeeded(level, trait) {
@@ -1591,6 +1694,25 @@ function calculateSuccessRate(guildId, participantIds, mapId, pathChoice = 'SAFE
     } else if (selectedMap.id === 4) { // Istana Kuno (DRAGON)
       if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH' || petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
       else if (petType === 'PHOENIX') elementMod = -15;
+    } else if (selectedMap.id === 5) { // Tundra Beku (WATER)
+      if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+      else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+    } else if (selectedMap.id === 6) { // Rawa Petir (FIRE - Kilat)
+      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+      else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+    } else if (selectedMap.id === 7) { // Kabut Kematian (DRAGON - Undead)
+      if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+    } else if (selectedMap.id === 8) { // Samudera Abyss (WATER)
+      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+      else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+    } else if (selectedMap.id === 9) { // Puncak Langit (DRAGON - Holy/Sky)
+      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'FIRE' || petType === 'PHOENIX' || petEl === 'DRAGON') elementMod = 15;
+      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+    } else if (selectedMap.id === 10) { // Dimensi Kosmik (DRAGON - Void)
+      const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].rarity : '') || '';
+      if (petRarity === 'LEGENDARY') elementMod = 15;
+      else if (petRarity === 'COMMON' || !petRarity) elementMod = -15;
     }
 
     if (elementMod !== 0) {
@@ -1745,21 +1867,13 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   if (eventSuccess && activePets.length > 0) {
     const luckyWinnerObj = activePets[Math.floor(Math.random() * activePets.length)];
     chestAwardedUser = luckyWinnerObj.userId;
-    const rand = Math.random();
-    let itemId = '';
-    let itemName = '';
-    if (rand < 0.35) {
-      itemId = 'FOOD_PREMIUM';
-      itemName = '🥩 Daging Premium';
-    } else if (rand < 0.70) {
-      itemId = 'TOY';
-      itemName = '⚽ Bola Karet';
+    const randomDrop = EXPEDITION_DROPS[Math.floor(Math.random() * EXPEDITION_DROPS.length)];
+    chestDropItem = randomDrop.name;
+    if (randomDrop.table === 'pet_inventory') {
+      db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [chestAwardedUser, guildId, randomDrop.id]);
     } else {
-      itemId = 'XP_2X';
-      itemName = '⚡ XP Booster 2x';
+      db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [chestAwardedUser, guildId, randomDrop.id]);
     }
-    chestDropItem = itemName;
-    db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [chestAwardedUser, guildId, itemId]);
   }
 
   if (isSuccess) {
@@ -1852,22 +1966,12 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         // Peluang 20% mendapat drop item biasa
         let dropText = '';
         if (Math.random() < 0.20) {
-          const rand = Math.random();
-          if (rand < 0.40) {
-            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'FOOD_BASIC', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
-            dropText = '🍗 Pakan Pet Biasa';
-          } else if (rand < 0.65) {
-            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TOY', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
-            dropText = '⚽ Bola Karet';
-          } else if (rand < 0.80) {
-            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'MEDICINE', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
-            dropText = '💊 Ramuan Kesehatan';
-          } else if (rand < 0.90) {
-            db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'LOCKPICK', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
-            dropText = '🗝️ Linggis Black Market';
+          const randomDrop = EXPEDITION_DROPS[Math.floor(Math.random() * EXPEDITION_DROPS.length)];
+          dropText = randomDrop.name;
+          if (randomDrop.table === 'pet_inventory') {
+            db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId, randomDrop.id]);
           } else {
-            db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SOAP', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
-            dropText = '🧼 Sabun Licin Black Market';
+            db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId, randomDrop.id]);
           }
         }
 

@@ -4234,7 +4234,7 @@ async function handlePetCommand(message, client, args) {
     const selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
     if (!selectedMap) {
       const mapList = pet.EXPEDITION_MAPS.map(m => `🎮 **ID Peta: \`${m.id}\`** — **${m.name}**\n• Level Rekomendasi: \`Lv. ${m.recommendedLevel}+\` | Sukses Dasar: \`${m.baseSuccessRate}%\`\n• Hadiah: \`Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}\`\n• Deskripsi: *${m.description}*`).join('\n\n');
-      return message.reply({ embeds: [embeds.errorEmbed('Pilih Peta Ekspedisi! 🗺️', `Silakan tentukan Peta Ekspedisi yang ingin dijelajahi.\nFormat: \`.pet expedition <ID Peta (1-4)>\`\n\n📌 **DAFTAR ZONA PETUALANGAN PET:**\n${mapList}`)] });
+      return message.reply({ embeds: [embeds.errorEmbed('Pilih Peta Ekspedisi! 🗺️', `Silakan tentukan Peta Ekspedisi yang ingin dijelajahi.\nFormat: \`.pet expedition <ID Peta (1-10)>\`\n\n📌 **DAFTAR ZONA PETUALANGAN PET:**\n${mapList}`)] });
     }
 
     // 2. Maksimal 2 lobi ekspedisi aktif per server secara bersamaan

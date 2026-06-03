@@ -466,7 +466,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
           const lvlInput = new TextInputBuilder()
             .setCustomId('lvl_amount')
-            .setLabel('Level Pet (1 - 100)')
+            .setLabel('Level Pet (Min: 1)')
             .setPlaceholder('Contoh: 10')
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
@@ -481,8 +481,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
           if (sub) {
             const level = parseInt(sub.fields.getTextInputValue('lvl_amount'));
-            if (isNaN(level) || level <= 0 || level > 100) {
-              return sub.reply({ content: '❌ Level harus berupa angka bulat antara 1 hingga 100!', flags: 64 });
+            if (isNaN(level) || level <= 0) {
+              return sub.reply({ content: '❌ Level harus berupa angka bulat minimal 1!', flags: 64 });
             }
             const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
             if (!petData) {
@@ -674,7 +674,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
           const lvlInput = new TextInputBuilder()
             .setCustomId('custom_pet_level')
-            .setLabel('Level Awal (1 - 100)')
+            .setLabel('Level Awal (Min: 1)')
             .setPlaceholder('Default: 1')
             .setStyle(TextInputStyle.Short)
             .setRequired(false);
@@ -733,7 +733,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               }
 
               // Clamping Level & Star
-              pLevel = Math.max(1, Math.min(100, pLevel));
+              pLevel = Math.max(1, pLevel);
               pStar = Math.max(1, Math.min(5, pStar));
 
               // Validasi Trait
