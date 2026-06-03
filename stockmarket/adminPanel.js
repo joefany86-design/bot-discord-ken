@@ -4785,19 +4785,57 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
 
             await sub.deferReply({ flags: 64 });
 
-            // Ambil semua user terdaftar di guild
-            const users = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
-            if (users.length === 0) {
-              return sub.editReply({ content: '❌ Tidak ada warga terdaftar di database server ini!' });
+            // Ambil semua user terdaftar di guild & dari Discord API/cache
+            const memberIds = new Set();
+
+            // 1. Ambil dari wallets
+            try {
+              const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+              activeWallets.forEach(w => memberIds.add(w.user_id));
+            } catch (dbErr) {
+              console.error('Gagal mengambil wallets dari db:', dbErr.message);
+            }
+
+            // 2. Ambil dari user_inventory
+            try {
+              const activeInv = database.all('SELECT DISTINCT user_id FROM user_inventory WHERE guild_id = ?', [guildId]);
+              activeInv.forEach(w => memberIds.add(w.user_id));
+            } catch (dbErr) {
+              console.error('Gagal mengambil user_inventory dari db:', dbErr.message);
+            }
+
+            // 3. Ambil dari cache memori bot (member online/aktif saat ini)
+            if (guild) {
+              guild.members.cache.forEach(member => {
+                if (!member.user.bot) {
+                  memberIds.add(member.id);
+                }
+              });
+
+              // 4. Tarik paksa seluruh member terbaru dari Discord API
+              try {
+                const fetchedMembers = await guild.members.fetch({ force: true });
+                for (const [id, member] of fetchedMembers) {
+                  if (!member.user.bot) {
+                    memberIds.add(id);
+                  }
+                }
+              } catch (err) {
+                console.warn('Gagal fetch all members via Discord API:', err.message);
+              }
+            }
+
+            if (memberIds.size === 0) {
+              return sub.editReply({ content: '❌ Tidak ada warga terdaftar di database atau Discord server ini!' });
             }
 
             database.transaction(() => {
-              users.forEach(u => {
-                updateAdminInventory(u.user_id, guildId, itemId, qty);
+              memberIds.forEach(mId => {
+                updateAdminInventory(mId, guildId, itemId, qty);
               });
             })();
 
-            await sub.editReply({ content: `🎁 Sukses membagikan item \`${itemId}\` sebanyak **${qty} pcs** ke seluruh warga terdaftar (**${users.length} orang**)! 🎉` });
+            await sub.editReply({ content: `🎁 Sukses membagikan item \`${itemId}\` sebanyak **${qty} pcs** ke seluruh warga terdaftar & member server (**${memberIds.size} orang**)! 🎉` });
             
             // Post announcement
             await sendGlobalEconomyAnnouncement(
