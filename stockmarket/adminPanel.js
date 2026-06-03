@@ -4664,6 +4664,15 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
       `📢 **STATUS EVENT SAAT INI:**\n` +
       `• Event Makro: ${eventText}\n` +
       `• Event Sabotase: ${ebyusText}\n\n` +
+      `📦 **DAFTAR ITEM YANG BISA DIBAGIKAN:**\n` +
+      `• **General Items** (Bagi-bagi Item Massal):\n` +
+      `  └ *Kriminal/BM:* \`LOCKPICK\`, \`MASK\`, \`MEAT\`, \`SOAP\`, \`BRANKAS\`\n` +
+      `  └ *Barang Mewah:* \`LAMBO\`, \`GOLD\`, \`KEY\`, \`ROLEX\`, \`IPHONE\`\n` +
+      `  └ *Kebun/Seed:* \`SEED_ROSE\`, \`SEED_TULIP\`, \`SEED_LAVENDER\`, \`SEED_SAKURA\`, \`SEED_ORCHID\`\n` +
+      `  └ *Hasil Panen:* \`FLOWER_ROSE\`, \`FLOWER_TULIP\`, \`FLOWER_LAVENDER\`, \`FLOWER_SAKURA\`, \`FLOWER_ORCHID\`, \`BOUQUET_LOVE\`, \`BOUQUET_PEACE\`\n` +
+      `  └ *Tiket:* \`TICKET_GACHA\`\n` +
+      `• **Pet Items** (Bagi-bagi Item Pet Massal):\n` +
+      `  └ *Pakan/Perawatan:* \`FOOD_BASIC\`, \`FOOD_PREMIUM\`, \`TOY\`, \`SODA\`, \`SOAP\`, \`MEDICINE\`, \`AMULET\`\n\n` +
       `🎟️ **STATISTIK LOTRE MINGGUAN:**\n${lotteryText}`
     );
 
@@ -4680,6 +4689,10 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
         .setLabel('🐾 Bagi-bagi Item Pet Massal (Modal)')
         .setDescription('Membagikan item pet (seperti FOOD_PREMIUM/MEDICINE) ke semua pemilik pet aktif')
         .setValue('gift_all_pet_items_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎫 Bagi-bagi Tiket Gacha Pet Massal (Modal)')
+        .setDescription('Membagikan Tiket Gacha Pet (TICKET_GACHA) gratis ke semua warga')
+        .setValue('gift_all_gacha_tickets_modal'),
       new StringSelectMenuOptionBuilder()
         .setLabel('💰 Suntik Jackpot Lotre (Modal)')
         .setDescription('Menambahkan koin sponsor langsung ke total jackpot pool lotre minggu ini')
@@ -4916,6 +4929,94 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
               '🐾 Hadiah untuk Peliharaan Warga!',
               `🎉 **BAGI-BAGI MAKANAN/OBAT PET MASSAL!**\nAdmin <@${author.id}> telah membagikan item pet **${itemId}** sebanyak **${qty} pcs** secara gratis ke seluruh warga yang memiliki peliharaan aktif! Periksa kandang Anda dengan perintah \`.pet\`!`,
               '#2980B9',
+              []
+            );
+
+            const fresh = getGiftPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'gift_all_gacha_tickets_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_gift_all_gacha_tickets_modal')
+            .setTitle('Bagi-bagi Tiket Gacha Pet');
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('ticket_qty')
+            .setLabel('Jumlah Tiket Gacha per Warga')
+            .setPlaceholder('Contoh: 5')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+          await iGift.showModal(modal);
+
+          const sub = await iGift.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_gift_gacha_tickets_modal' || s.customId === 'admin_gift_all_gacha_tickets_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const qty = parseInt(sub.fields.getTextInputValue('ticket_qty'));
+            if (isNaN(qty) || qty <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat positif!', flags: 64 });
+            }
+
+            await sub.deferReply({ flags: 64 });
+
+            // Ambil semua user terdaftar & dari Discord API/cache
+            const memberIds = new Set();
+            try {
+              const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+              activeWallets.forEach(w => memberIds.add(w.user_id));
+            } catch (dbErr) {
+              console.error('Gagal mengambil wallets dari db:', dbErr.message);
+            }
+            try {
+              const activeInv = database.all('SELECT DISTINCT user_id FROM user_inventory WHERE guild_id = ?', [guildId]);
+              activeInv.forEach(w => memberIds.add(w.user_id));
+            } catch (dbErr) {
+              console.error('Gagal mengambil user_inventory dari db:', dbErr.message);
+            }
+            if (guild) {
+              guild.members.cache.forEach(member => {
+                if (!member.user.bot) {
+                  memberIds.add(member.id);
+                }
+              });
+              try {
+                const fetchedMembers = await guild.members.fetch({ force: true });
+                for (const [id, member] of fetchedMembers) {
+                  if (!member.user.bot) {
+                    memberIds.add(id);
+                  }
+                }
+              } catch (err) {
+                console.warn('Gagal fetch all members via Discord API:', err.message);
+              }
+            }
+
+            if (memberIds.size === 0) {
+              return sub.editReply({ content: '❌ Tidak ada warga terdaftar di database atau Discord server ini!' });
+            }
+
+            const petModule = require('./pet');
+            database.transaction(() => {
+              memberIds.forEach(mId => {
+                petModule.addGachaTickets(mId, guildId, qty);
+              });
+            })();
+
+            await sub.editReply({ content: `🎫 Sukses membagikan **${qty} Tiket Gacha Pet** ke seluruh warga terdaftar & member server (**${memberIds.size} orang**)! 🎉` });
+
+            // Post announcement
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🎫 Hadiah Tiket Gacha Pet Massal!',
+              `🎉 **BAGI-BAGI TIKET GACHA PET GRATIS!**\nAdmin <@${author.id}> telah membagikan **${qty} Tiket Gacha Pet** secara gratis ke seluruh warga server! Periksa tiket gacha Anda dengan mengetik \`.pet\`!`,
+              '#E67E22',
               []
             );
 
