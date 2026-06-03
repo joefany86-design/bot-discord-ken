@@ -736,6 +736,99 @@ function startRealtimeLeaderboard(client) {
 }
 
 /**
+ * Helper untuk membuat tampilan data Portal Hub (Embed dan Dropdown Menu).
+ */
+function getPortalHubData(client) {
+  const embed = new EmbedBuilder()
+    .setColor(embeds.COLORS.PURPLE)
+    .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
+    .setThumbnail(client.user.displayAvatarURL())
+    .setDescription(
+      `Selamat datang di **Sentinel Portal Hub**! 🎮\n\n` +
+      `Pusat layanan ekonomi, investasi, properti, perkebunan, dan permainan server terpadu. Klik menu pilihan di bawah untuk mengakses fitur secara **Pribadi (Private)**:\n\n` +
+      `💼 **Ekonomi & Investasi:** Profil, Toko Role, Bursa Saham, Bank Sentral, Black Market.\n` +
+      `🐾 **Tamagotchi & Hobi:** Kandang Pet, Toko Pet, Sewa Kosan, Cozy Garden, Misi Harian.\n` +
+      `🎰 **Gacha & Undian:** Gacha Pet, Upgrade Bintang, Lotre Mingguan.`
+    )
+    .setFooter({ text: 'Sentinel Active Gamification • Pusat Kontrol Warga' })
+    .setTimestamp();
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId('eco_select_portal_hub_navigation')
+    .setPlaceholder('🎮 Pilih Layanan / Menu Game...')
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎒 Inventory & Profil Saya')
+        .setValue('eco_btn_open_inventory_private_perm')
+        .setDescription('Lihat saldo, status, peralatan, dan aset mewah Anda')
+        .setEmoji('🎒'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🛍️ Toko Role Prestise')
+        .setValue('eco_btn_open_shop_private_perm')
+        .setDescription('Beli tingkatan role prestise atau putar gacha role')
+        .setEmoji('🛍️'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📈 Bursa Saham Server')
+        .setValue('eco_btn_open_market_private_perm')
+        .setDescription('Investasi koin di saham channel server')
+        .setEmoji('📈'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏦 Bank Sentral & Pinjaman')
+        .setValue('eco_btn_open_bank_private_perm')
+        .setDescription('Menabung bunga harian (+1.5%) atau meminjam koin')
+        .setEmoji('🏦'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🕵️‍♂️ Black Market (Pasar Gelap)')
+        .setValue('eco_btn_open_bm_private_perm')
+        .setDescription('Beli lockpick, sabun, topeng, atau brankas anti-hacker')
+        .setEmoji('🕵️‍♂️'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🐾 Kandang Pet (Tamagotchi)')
+        .setValue('pet_btn_open_pet_private_perm')
+        .setDescription('Adopsi, rawat, beri makan, main, & duel pet Anda')
+        .setEmoji('🐾'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🛍️ Toko Kebutuhan Pet')
+        .setValue('pet_btn_open_shop_private_perm')
+        .setDescription('Beli pakan, obat, soda energi, sabun mandi, & jimat pet')
+        .setEmoji('🛒'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🛌 Sewa Kamar Kosan')
+        .setValue('eco_btn_open_kos_private_perm')
+        .setDescription('Sewa kamar Kipas/AC/Penthouse & beli furniture')
+        .setEmoji('🛌'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🌱 Cozy Flower Garden')
+        .setValue('eco_btn_open_garden_private_perm')
+        .setDescription('Menanam benih bunga, menyiram, panen, & buket')
+        .setEmoji('🌱'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📋 Misi Harian Kosan 1A')
+        .setValue('pet_btn_open_quests_private_perm')
+        .setDescription('Selesaikan misi harian untuk koin, gacha ticket & lootbox')
+        .setEmoji('📋'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎰 Gacha Peliharaan (Pet)')
+        .setValue('pet_btn_gacha_hub')
+        .setDescription('Beli & putar gacha telur pet (Common s/d Mythic)')
+        .setEmoji('🎰'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('✨ Upgrade Bintang Pet')
+        .setValue('pet_btn_upgrade_hub')
+        .setDescription('Gabungkan pet duplikat untuk menaikkan bintang & stats')
+        .setEmoji('✨'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Lotre Mingguan Server')
+        .setValue('eco_btn_lottery_hub')
+        .setDescription('Beli tiket lotre mingguan berhadiah jackpot besar')
+        .setEmoji('🎟️')
+    );
+
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+  return { embed, row };
+}
+
+/**
  * Inisialisasi Modul Stock Market.
  * Mengaktifkan scheduler otomatis saat bot siap.
  */
@@ -756,10 +849,21 @@ function initStockMarket(client) {
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
-    const { customId, guildId, user } = interaction;
+    let customId = interaction.customId;
+    if (interaction.isStringSelectMenu() && customId === 'eco_select_portal_hub_navigation') {
+      customId = interaction.values[0];
+    }
+    const { guildId, user } = interaction;
     if (!guildId) return;
 
     try {
+      // Handler untuk tombol prompt membuka portal hub privat
+      if (customId === 'eco_btn_open_portal_hub_private') {
+        const { embed, row } = getPortalHubData(client);
+        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        return;
+      }
+
       // ── PORTAL PERMANEN: TOKO ROLE ──
       if (customId === 'eco_btn_open_shop_private_perm') {
         await interaction.deferReply({ flags: 64 });
@@ -11567,52 +11671,8 @@ async function handleEconomyCommands(message, client) {
 
       await message.delete().catch(() => { });
 
-      const embed = new EmbedBuilder()
-        .setColor(embeds.COLORS.PURPLE)
-        .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
-        .setDescription(
-          `Klik tombol di bawah ini untuk membuka panel secara **Pribadi** (Hanya Anda yang dapat melihatnya):\n\n` +
-          `🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
-          `📈 **Bursa Saham** — Investasi saham channel server.\n` +
-          `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
-          `🕵️‍♂️ **Pasar Gelap** — Beli perlengkapan aksi kriminal (rob).\n` +
-          `🎒 **Inventory Saya** — Lihat peralatan & barang mewah.\n\n` +
-          `🐾 **Kandang Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
-          `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
-          `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
-          `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-          `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.\n\n` +
-          `🎰 **Gacha Pet** — Dapatkan pet acak (Common s/d Mythic).\n` +
-          `✨ **Upgrade Bintang** — Gabungkan pet duplikat untuk memperkuat status.\n` +
-
-          `🎟️ **Lotre Mingguan** — Beli tiket lotre mingguan berhadiah pool besar.`
-        )
-        .setFooter({ text: 'Rupiah Server • Panel Utama Interaktif' })
-        .setTimestamp();
-
-      const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('eco_btn_open_shop_private_perm').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('eco_btn_open_market_private_perm').setLabel('📈 Bursa Saham').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('eco_btn_open_bank_private_perm').setLabel('🏦 Bank Sentral').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('eco_btn_open_bm_private_perm').setLabel('🕵️‍♂️ Black Market').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('eco_btn_open_inventory_private_perm').setLabel('🎒 Inventory Saya').setStyle(ButtonStyle.Success)
-      );
-
-      const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
-      );
-
-      const row3 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
-      );
-
-      await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
+      const { embed, row } = getPortalHubData(client);
+      await message.channel.send({ embeds: [embed], components: [row] });
       return true;
     }
 
