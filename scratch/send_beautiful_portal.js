@@ -48,7 +48,10 @@ client.once('ready', async () => {
         `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
         `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
         `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-        `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.`
+        `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.\n\n` +
+        `🎰 **Gacha Pet** — Dapatkan pet acak (Common s/d Mythic).\n` +
+        `✨ **Upgrade Bintang** — Gabungkan pet duplikat untuk memperkuat status.\n` +
+        `🎟️ **Lotre Mingguan** — Beli tiket lotre mingguan berhadiah pool besar.`
       )
       .setImage('attachment://kosan_dashboard_banner.png')
       .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
@@ -70,7 +73,13 @@ client.once('ready', async () => {
       new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
     );
 
-    await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
+    const row3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
+    );
+
+    await channel.send({ embeds: [embed], components: [row1, row2, row3], files: [attachment] });
     
     console.log('✅ Portal baru yang super premium berhasil dikirim!');
     process.exit(0);
