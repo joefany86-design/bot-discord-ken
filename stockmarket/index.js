@@ -2769,11 +2769,11 @@ function initStockMarket(client) {
             .setThumbnail(user.displayAvatarURL())
             .setDescription(
               `Di sini Anda dapat menjual bunga hasil panen Anda secara instan untuk mendapatkan koin:\n\n` +
-              `🌹 **Mawar Merah**: Punya: \`${stock.ROSE} kuntum\` · Harga: **Rp 250** / kuntum\n` +
-              `🌷 **Bunga Tulip**: Punya: \`${stock.TULIP} kuntum\` · Harga: **Rp 550** / kuntum\n` +
-              `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 950** / kuntum\n` +
-              `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 2.200** / kuntum\n` +
-              `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 6.000** / kuntum\n\n` +
+              `🌹 **Mawar Merah**: Punya: \`${stock.ROSE} kuntum\` · Harga: **Rp 105** / kuntum\n` +
+              `🌷 **Bunga Tulip**: Punya: \`${stock.TULIP} kuntum\` · Harga: **Rp 200** / kuntum\n` +
+              `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 350** / kuntum\n` +
+              `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 750** / kuntum\n` +
+              `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 2.000** / kuntum\n\n` +
               `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki.*`
             )
             .setTimestamp();
