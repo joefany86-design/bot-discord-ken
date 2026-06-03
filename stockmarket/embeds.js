@@ -553,7 +553,7 @@ module.exports = {
 
         desc += `┊ ${typeEmoji} **${pet.pet_name}** Lv.**${pet.level}**${traitLabel}\n`;
         desc += `┊ XP \`${xpBar}\` \`${pet.xp}/${xpNeeded}\`\n`;
-        desc += `┊ ❤️\`${pet.health}%\` 🍖\`${pet.hunger}%\` 💧\`${pet.thirst}%\` ⚽\`${pet.happiness}%\`\n`;
+        desc += `┊ ❤️\`${Math.round(pet.health)}%\` 🍖\`${Math.round(pet.hunger)}%\` 💧\`${Math.round(pet.thirst)}%\` ⚽\`${Math.round(pet.happiness)}%\`\n`;
       }
     } else {
       desc += `┊ *Belum punya — \`.pet buy <nama> <spesies>\`*\n`;
@@ -2498,7 +2498,7 @@ module.exports = {
       `📊 **STATUS VITALITAS**\n` +
       `┊ ❤️ HP   : ${pbarHp} ${isSick ? '⚠️ **[Kritis]**' : ''}\n` +
       `┊ ✨ XP   : ${pbarXp}\n` +
-      `┊ 🍖 Makan: \`${pet.hunger}%\` · 💧 Minum: \`${pet.thirst}%\` · ⚽ Happy: \`${pet.happiness}%\`\n\n` +
+      `┊ 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
       `⚔️ **JURUS TEMPUR**\n` +
       `┊ 💥 ATK : **${moveInfo.attack}** ➔ \`${finalAtkMin}-${finalAtkMax} DMG\`\n` +
       `┊ 🛡️ DEF : **${moveInfo.defense}** ➔ \`${defDesc}\`\n\n` +
@@ -2545,7 +2545,7 @@ module.exports = {
               traitDesc += ` + ${pet.gacha_trait2}`;
             }
           }
-          statusText = `Raritas: **${petRarity}** ${starText} | Lv. ${pet.level} | ❤️ ${pet.health}% HP | 🍖 ${pet.hunger}% Kenyang | 💧 ${pet.thirst}% Hidrasi | ⚽ ${pet.happiness}% Mood${traitDesc}`;
+          statusText = `Raritas: **${petRarity}** ${starText} | Lv. ${pet.level} | ❤️ ${Math.round(pet.health)}% HP | 🍖 ${Math.round(pet.hunger)}% Kenyang | 💧 ${Math.round(pet.thirst)}% Hidrasi | ⚽ ${Math.round(pet.happiness)}% Mood${traitDesc}`;
         }
 
         embed.addFields({
