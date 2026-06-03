@@ -898,7 +898,7 @@ module.exports = {
       .setDescription(
         `\`\`\`\n` +
         `┌───────────────────────────┐\n` +
-        `│  👑 KONGLOMERAT TERKAYA 👑 │\n` +
+        `│  👑 KONGLOMERAT KOSAN 1A 👑 │\n` +
         `│     RUPIAH SERVER 2026     │\n` +
         `└───────────────────────────┘\n` +
         `\`\`\`\n` +
