@@ -2593,12 +2593,18 @@ module.exports = {
       embed
         .setColor(COLORS.GOLD)
         .setDescription(
-          `🤝 **HASIL AKHIR ARENA: DRAW / SEIMBANG!** 🤝\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `\`\`\`\n` +
+          `┌─────────────────────────────┐\n` +
+          `│  ⚔️ ARENA HASIL SEIMBANG ⚔️  │\n` +
+          `│    PVP Pet Arena Draw       │\n` +
+          `└─────────────────────────────┘\n` +
+          `\`\`\`\n` +
           `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat sengit hingga waktu habis!\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `📊 **STATUS HP AKHIR PERTEMPURAN:**\n` +
-          `├─ ⚔️ **${result.challengerName}** (Challenger): \`${result.challengerHP}%\` HP\n` +
-          `└─ 🛡️ **${result.opponentName}** (Opponent): \`${result.opponentHP}%\` HP\n\n` +
+          `┊ ⚔️ **${result.challengerName}** (Challenger): \`${result.challengerHP}%\` HP\n` +
+          `┊ 🛡️ **${result.opponentName}** (Opponent): \`${result.opponentHP}%\` HP\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
           `🪙 **Taruhan Kembalian:** Seluruh koin dikembalikan penuh ke dompet masing-masing!`
         );
     } else {
@@ -2609,14 +2615,19 @@ module.exports = {
       embed
         .setColor(COLORS.FIERY)
         .setDescription(
-          `🏆 **PEMENANG MUTLAK BATTLE ARENA** 🏆\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `\`\`\`\n` +
+          `┌─────────────────────────────┐\n` +
+          `│  🏆 PEMENANG BATTLE ARENA 🏆 │\n` +
+          `│    PVP Pet Arena Victory    │\n` +
+          `└─────────────────────────────┘\n` +
+          `\`\`\`\n` +
           `🔥 **${result.winnerName.toUpperCase()}** (Peliharaan milik **${winnerUser.username}**)\n` +
-          `💥 Sukses menumbangkan **${result.loserName}** (Peliharaan milik **${loserUser.username}**)\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `💥 Sukses menumbangkan **${result.loserName}** (Peliharaan milik **${loserUser.username}**)\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `💰 **JARAHAN PERTEMPURAN (JACKPOT):**\n` +
-          `├─ 🎁 **Hadiah Bersih** : **\`${formatCurrency(result.prizePool)}\`**\n` +
-          `└─ 🏛️ **Pajak Arena** : \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n\n` +
+          `┊ 🎁 **Hadiah Bersih** : **\`${formatCurrency(result.prizePool)}\`**\n` +
+          `┊ 🏛️ **Pajak Arena** : \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
           `📈 *XP & Level pet pemenang telah ditambahkan secara otomatis.*`
         );
     }
@@ -2691,10 +2702,16 @@ module.exports = {
       .setColor(COLORS.FIERY)
       .setTitle('🔥 OPERASI BESAR: BANK HEIST BERSAMA 🔥')
       .setDescription(
-        `💥 **${initiator.username}** menantang Anda untuk bergabung dalam misi perampokan Bank Pusat Server!\n` +
+        `\`\`\`\n` +
+        `┌─────────────────────────────┐\n` +
+        `│   🔥 OPERASI BANK HEIST 🔥  │\n` +
+        `│    Misi Perampokan Bersama  │\n` +
+        `└─────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `💥 **${initiator.username}** menantang Anda untuk bergabung dalam misi perampokan Bank Pusat Server!\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `💵 **Biaya Persiapan** : \`${formatCurrency(prepFee)}\` per orang\n` +
-        `⏳ **Waktu Berkumpul** : **${timeLeft} detik** lagi!\n\n` +
+        `┊ 💵 **Biaya Persiapan** : \`${formatCurrency(prepFee)}\` per orang\n` +
+        `┊ ⏳ **Waktu Berkumpul** : **${timeLeft} detik** lagi!\n\n` +
         `👥 **KRU PERAMPOK AKTIF (${participants.length} / ♾️):**\n` +
         `${crewListStr}\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━`
@@ -2715,7 +2732,23 @@ module.exports = {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     const logText = logs.map(l => ` 🔥 ${l}`).join('\n');
 
-    let desc = `💥 **Lokasi Kejadian:** Central Bank Server\n` +
+    const headerBox = success ?
+        `\`\`\`\n` +
+        `┌─────────────────────────────┐\n` +
+        `│    🏆 AKSI HEIST SUKSES     │\n` +
+        `│    Rekapitulasi Operasi     │\n` +
+        `└─────────────────────────────┘\n` +
+        `\`\`\`\n`
+      :
+        `\`\`\`\n` +
+        `┌─────────────────────────────┐\n` +
+        `│    🚓 OPERASI HEIST GAGAL   │\n` +
+        `│    Dikejar Aparat Penegak   │\n` +
+        `└─────────────────────────────┘\n` +
+        `\`\`\`\n`;
+
+    let desc = headerBox +
+      `💥 **Lokasi Kejadian:** Central Bank Server\n` +
       `👥 **Kru Terlibat:** ${crewList}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -3386,9 +3419,9 @@ module.exports = {
       .setDescription(
         `Halo ${targetMention}, Anda telah menerima kiriman dana ke rekening tabungan bank Anda!\n\n` +
         `\`\`\`\n` +
-        `┌──────────────────────────────────────┐\n` +
-        `│        DETAIL TRANSAKSI MASUK        │\n` +
-        `└──────────────────────────────────────┘\n` +
+        `┌──────────────────────────────┐\n` +
+        `│    DETAIL TRANSAKSI MASUK    │\n` +
+        `└──────────────────────────────┘\n` +
         `\`\`\`\n` +
         `┊ 👤 **Pengirim:** ${senderMention}\n` +
         `┊ 📥 **Jumlah Bersih:** **${amountStr}**\n` +
