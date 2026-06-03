@@ -3907,6 +3907,9 @@ async function handlePetCommand(message, client, args) {
     };
     activeLobby.set(lobbyKey, lobby);
 
+    const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
+    const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
     const lobbyEmbed = new EmbedBuilder()
       .setColor(0x3F51B5)
       .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
@@ -3918,6 +3921,8 @@ async function handlePetCommand(message, client, args) {
         `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
         `🦖 **Kru Pet Saat Ini:**\n` +
         `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${author.id}>\n\n` +
+        `🎯 **Peluang Sukses Tim:** **${calcInit.successRate}%**\n` +
+        `⚡ **Sinergi Elemen Tim:**\n${elementalLogsText}\n\n` +
         `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
         `⏳ **Waktu Berkumpul:** **90 detik**\n\n` +
         `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
@@ -3952,6 +3957,9 @@ async function handlePetCommand(message, client, args) {
         petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
       });
 
+      const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
+      const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
       const updatedEmbed = new EmbedBuilder()
         .setColor(0x3F51B5)
         .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
@@ -3961,7 +3969,9 @@ async function handlePetCommand(message, client, args) {
           `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
           `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
           `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
-          `💰 **Biaya Ransum:** Rp 150 koin\n` +
+          `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
+          `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
+          `💰 **Biaya Ransum:** Rp 250 koin\n` +
           `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
           `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
         )
@@ -3986,7 +3996,264 @@ async function handlePetCommand(message, client, args) {
             console.error(`Error fetching member ${pId} for expedition:`, err.message);
           }
         }
-        const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice, membersMap);
+
+        // Hapus tombol dari pesan lobi saat ini
+        await replyMsg.edit({ components: [] }).catch(() => {});
+
+        // 🧭 STAGE 1: PEMILIHAN JALUR TIM (Voting / Otak Ekspedisi)
+        const stage1Embed = new EmbedBuilder()
+          .setColor(0xFFB300)
+          .setTitle('🧭 STAGE 1: PEMILIHAN JALUR TIM')
+          .setDescription(
+            `🗺️ **Peta:** **${selectedMap.name}**\n` +
+            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
+            `Sebagai pemimpin perjalanan, silakan pilih jalur yang akan ditempuh tim pet:\n\n` +
+            `🛣️ **[Jalur Aman]**\n└─ Perjalanan lancar tanpa risiko ekstra. (+0% Peluang Sukses)\n\n` +
+            `🧗 **[Jalur Pintas Terjal]**\n└─ Mendaki tebing terjal. Sukses **+15%**, namun seluruh pet kelelahan (**-15 HP**).\n\n` +
+            `🌲 **[Rawa Beracun]**\n└─ Menyusup melewati rawa berlumpur. Sukses **+25%**, namun pet berisiko **30% terkena bau/terluka** selama 1 jam.\n\n` +
+            `⏳ *Menunggu keputusan dari <@${author.id}>... (15 detik)*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+
+        const stage1Row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('exp_path_safe').setLabel('🛣️ Jalur Aman').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('exp_path_shortcut').setLabel('🧗 Jalur Pintas').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('exp_path_swamp').setLabel('🌲 Rawa Beracun').setStyle(ButtonStyle.Danger)
+        );
+
+        await replyMsg.edit({ embeds: [stage1Embed], components: [stage1Row] }).catch(() => {});
+
+        const pathCollector = replyMsg.createMessageComponentCollector({
+          filter: i => i.user.id === author.id && ['exp_path_safe', 'exp_path_shortcut', 'exp_path_swamp'].includes(i.customId),
+          time: 15000,
+          max: 1
+        });
+
+        let pathChoice = 'SAFE';
+        let pathText = '🛣️ Jalur Aman';
+
+        await new Promise((resolve) => {
+          pathCollector.on('collect', async i => {
+            if (i.customId === 'exp_path_shortcut') {
+              pathChoice = 'SHORTCUT';
+              pathText = '🧗 Jalur Pintas Terjal';
+              // DB update immediately: -15 HP to all participant pets
+              currentLobby.participants.forEach(pId => {
+                const p = pet.getPet(pId, guildId);
+                if (p) {
+                  const newHealth = Math.max(5, p.health - 15);
+                  database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
+                }
+              });
+              pathText += '\n└─ Seluruh pet kru kelelahan setelah memanjat tebing terjal (**-15 HP**).';
+            } else if (i.customId === 'exp_path_swamp') {
+              pathChoice = 'SWAMP';
+              pathText = '🌲 Rawa Beracun';
+              // DB update immediately: 30% chance of getting smelly or injured
+              const cursedPets = [];
+              const now = Math.floor(Date.now() / 1000);
+              currentLobby.participants.forEach(pId => {
+                const p = pet.getPet(pId, guildId);
+                if (p && Math.random() < 0.30) {
+                  const isSmelly = Math.random() < 0.50;
+                  const curseType = isSmelly ? 'smelly' : 'injured';
+                  const curseUntil = now + 3600;
+                  database.run('UPDATE user_pets SET curse_type = ?, curse_until = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [curseType, curseUntil, pId, guildId, p.pet_name]);
+                  cursedPets.push(`**${p.pet_name}** (${isSmelly ? '🤢 Bau Busuk' : '🩹 Terluka'})`);
+                }
+              });
+              pathText += `\n└─ Menyusup melewati rawa berlumpur. ${cursedPets.length > 0 ? `Pet berikut terkena efek negatif: ${cursedPets.join(', ')}.` : 'Beruntung tidak ada pet yang terkena efek buruk rawa.'}`;
+            } else {
+              pathChoice = 'SAFE';
+              pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
+            }
+            await i.deferUpdate().catch(() => {});
+            resolve();
+          });
+
+          pathCollector.on('end', (collected) => {
+            if (collected.size === 0) {
+              pathChoice = 'SAFE';
+              pathText = '🛣️ Jalur Aman (Batas waktu habis, otomatis mengambil Jalur Aman)';
+            }
+            resolve();
+          });
+        });
+
+        const pathSelectedEmbed = new EmbedBuilder()
+          .setColor(0xFFB300)
+          .setTitle('🧭 STAGE 1 SELESAI')
+          .setDescription(
+            `🗺️ **Peta:** **${selectedMap.name}**\n` +
+            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
+            `📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
+            `*Melanjutkan ke Stage 2 dalam beberapa saat...*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+
+        await replyMsg.edit({ embeds: [pathSelectedEmbed], components: [] }).catch(() => {});
+        await new Promise(r => setTimeout(r, 4000));
+
+        // 📦 STAGE 2: KEJADIAN ACAK (Random Encounter Event)
+        const isChest = Math.random() < 0.5;
+        let eventChoice = 'LEAVE';
+        let eventText = '🏃 Lewati';
+        let eventSuccess = false;
+        let forceChestExploded = false;
+        let waterRefreshed = false;
+
+        if (isChest) {
+          const lockpickRow = database.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'LOCKPICK'", [author.id, guildId]);
+          const hasLockpick = lockpickRow && lockpickRow.quantity > 0;
+
+          const chestEmbed = new EmbedBuilder()
+            .setColor(0x9C27B0)
+            .setTitle('📦 STAGE 2: KEJADIAN ACAK - PETI KUNO TERKUNCI')
+            .setDescription(
+              `Di tengah jalan, tim menemukan sebuah peti kuno berdebu dengan gembok besi besar yang kokoh.\n\n` +
+              `Sebagai **Otak Ekspedisi**, <@${author.id}> harus memilih tindakan:\n\n` +
+              `🗝️ **[Gunakan Lockpick]**\n└─ Membuka peti secara aman dengan Lockpick. (Menjamin 1 item langka acak untuk kru).\n\n` +
+              `💥 **[Dobrak Paksa]**\n└─ 40% berhasil membuka peti, 60% memicu ranjau ledakan (**-15 HP** seluruh pet).\n\n` +
+              `🏃 **[Lewati]**\n└─ Tinggalkan peti dan lanjut dengan aman.\n\n` +
+              `⏳ *Menunggu keputusan... (15 detik)*`
+            )
+            .setFooter({ text: `Status Lockpick Anda: ${hasLockpick ? 'Ada (1x digunakan)' : 'Tidak Ada'}` });
+
+          const chestRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('exp_event_lockpick').setLabel('Gunakan Lockpick').setStyle(ButtonStyle.Primary).setDisabled(!hasLockpick),
+            new ButtonBuilder().setCustomId('exp_event_force').setLabel('Dobrak Paksa').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
+          );
+
+          await replyMsg.edit({ embeds: [chestEmbed], components: [chestRow] }).catch(() => {});
+
+          const eventCollector = replyMsg.createMessageComponentCollector({
+            filter: i => i.user.id === author.id && ['exp_event_lockpick', 'exp_event_force', 'exp_event_leave'].includes(i.customId),
+            time: 15000,
+            max: 1
+          });
+
+          await new Promise((resolve) => {
+            eventCollector.on('collect', async i => {
+              if (i.customId === 'exp_event_lockpick') {
+                eventChoice = 'LOCKPICK';
+                eventText = '🗝️ Menggunakan Lockpick';
+                eventSuccess = true;
+                // Subtract 1 lockpick immediately
+                database.run("UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'LOCKPICK'", [author.id, guildId]);
+                eventText += '\n└─ Peti terbuka dengan mudah! Satu kawan beruntung mendapat drop item langka.';
+              } else if (i.customId === 'exp_event_force') {
+                eventChoice = 'FORCE';
+                if (Math.random() < 0.40) {
+                  eventSuccess = true;
+                  eventText = '💥 Mendobrak Paksa (Berhasil!)';
+                  eventText += '\n└─ Peti terbuka! Menemukan barang jarahan tambahan.';
+                } else {
+                  eventSuccess = false;
+                  forceChestExploded = true;
+                  eventText = '💥 Mendobrak Paksa (Gagal & Meledak!)';
+                  // Subtract 15 HP from all pets immediately
+                  currentLobby.participants.forEach(pId => {
+                    const p = pet.getPet(pId, guildId);
+                    if (p) {
+                      const newHealth = Math.max(5, p.health - 15);
+                      database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
+                    }
+                  });
+                  eventText += '\n└─ DUAR! Ranjau ledakan meledak! Semua pet kehilangan **-15 HP**.';
+                }
+              } else {
+                eventChoice = 'LEAVE';
+                eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
+              }
+              await i.deferUpdate().catch(() => {});
+              resolve();
+            });
+
+            eventCollector.on('end', (collected) => {
+              if (collected.size === 0) {
+                eventChoice = 'LEAVE';
+                eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati peti)';
+              }
+              resolve();
+            });
+          });
+        } else {
+          // Air Terjun Suci
+          const waterfallEmbed = new EmbedBuilder()
+            .setColor(0x00BCD4)
+            .setTitle('💧 STAGE 2: KEJADIAN ACAK - AIR TERJUN SUCI')
+            .setDescription(
+              `Tim menemukan mata air suci tersembunyi yang sangat jernih dan menyegarkan.\n\n` +
+              `Sebagai **Otak Ekspedisi**, <@${author.id}> harus memilih tindakan:\n\n` +
+              `💧 **[Minum Bersama]**\n└─ Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.\n\n` +
+              `🏃 **[Lewati]**\n└─ Lanjut perjalanan tanpa istirahat.\n\n` +
+              `⏳ *Menunggu keputusan... (15 detik)*`
+            );
+
+          const waterfallRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('exp_event_drink').setLabel('Minum Bersama').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
+          );
+
+          await replyMsg.edit({ embeds: [waterfallEmbed], components: [waterfallRow] }).catch(() => {});
+
+          const eventCollector = replyMsg.createMessageComponentCollector({
+            filter: i => i.user.id === author.id && ['exp_event_drink', 'exp_event_leave'].includes(i.customId),
+            time: 15000,
+            max: 1
+          });
+
+          await new Promise((resolve) => {
+            eventCollector.on('collect', async i => {
+              if (i.customId === 'exp_event_drink') {
+                eventChoice = 'DRINK';
+                eventText = '💧 Minum Bersama';
+                waterRefreshed = true;
+                // Add +20 HP & +20 Hydration immediately
+                currentLobby.participants.forEach(pId => {
+                  const p = pet.getPet(pId, guildId);
+                  if (p) {
+                    const maxHP = pet.getMaxHP(p);
+                    const newHealth = Math.min(maxHP, p.health + 20);
+                    const newThirst = Math.min(100, p.thirst + 20);
+                    database.run('UPDATE user_pets SET health = ?, thirst = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, newThirst, pId, guildId, p.pet_name]);
+                  }
+                });
+                eventText += '\n└─ Segar! Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.';
+              } else {
+                eventChoice = 'LEAVE';
+                eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
+              }
+              await i.deferUpdate().catch(() => {});
+              resolve();
+            });
+
+            eventCollector.on('end', (collected) => {
+              if (collected.size === 0) {
+                eventChoice = 'LEAVE';
+                eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati)';
+              }
+              resolve();
+            });
+          });
+        }
+
+        const eventSelectedEmbed = new EmbedBuilder()
+          .setColor(isChest ? 0x9C27B0 : 0x00BCD4)
+          .setTitle('📦 STAGE 2 SELESAI')
+          .setDescription(
+            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
+            `📢 **Keputusan Kejadian:** Tim memilih **${eventText}**\n\n` +
+            `*Melanjutkan ke Stage 3 (Pertempuran Bos Akhir) dalam beberapa saat...*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+
+        await replyMsg.edit({ embeds: [eventSelectedEmbed], components: [] }).catch(() => {});
+        await new Promise(r => setTimeout(r, 4000));
+
+        // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (Simulasi RPG & Hasil)
+        const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice, pathChoice, eventChoice, eventSuccess, forceChestExploded, waterRefreshed, membersMap);
 
         // Hook quest progress for EXPEDITION
         currentLobby.participants.forEach(pId => {
@@ -3996,6 +4263,143 @@ async function handlePetCommand(message, client, args) {
             console.error('Error incrementing quest progress for EXPEDITION:', err.message);
           }
         });
+
+        // Fetch participant pets for flavor text
+        const participantPets = currentLobby.participants.map(pId => {
+          return {
+            userId: pId,
+            pet: pet.getPet(pId, guildId)
+          };
+        }).filter(ap => ap.pet);
+
+        const bossName = selectedMap.boss || 'Giga Guardian';
+
+        const getPetCombatAction = (p) => {
+          const species = (p.pet.pet_type || 'Unknown').toUpperCase();
+          const trait = (p.pet.trait || 'NORMAL').toUpperCase();
+          const petName = p.pet.pet_name;
+          
+          const actions = {
+            PHOENIX: [
+              `🔥 **${petName}** mengepakkan sayap membara, membakar zirah raksasa **${bossName}**!`,
+              `☄️ **${petName}** menembakkan bola api suci dari langit langsung ke arah mata **${bossName}**!`,
+              `☀️ **${petName}** bersinar terang menembus kegelapan, melemahkan pertahanan **${bossName}**!`
+            ],
+            LEVIATHAN: [
+              `🌊 **${petName}** memuntahkan semburan air bertekanan tinggi menghantam **${bossName}**!`,
+              `🌀 **${petName}** menciptakan pusaran air raksasa untuk memperlambat serangan **${bossName}**!`,
+              `💧 **${petName}** menyembuhkan sebagian rasa lelah kru dengan tetesan embun suci!`
+            ],
+            DRAGON: [
+              `🐉 **${petName}** mengaum dahsyat membuat area ekspedisi bergetar, lalu mencakar dada **${bossName}**!`,
+              `🔥 **${petName}** menyemburkan napas naga purba yang melelehkan tanah di bawah kaki **${bossName}**!`,
+              `⚡ **${petName}** meluncur cepat bagai petir menyambar punggung **${bossName}**!`
+            ],
+            TURTLE: [
+              `🛡️ **${petName}** menggunakan cangkang bajanya untuk memblokir hantaman gada **${bossName}**!`,
+              `🦏 **${petName}** meluncur deras bagai bola berduri, menghantam telak kaki **${bossName}**!`,
+              `🧱 **${petName}** membentengi tim dengan dinding batu pertahanan kokoh!`
+            ],
+            BEHEMOTH: [
+              `🦏 **${petName}** menyeruduk keras dengan tanduk raksasanya hingga **${bossName}** terhuyung!`,
+              `🧱 **${petName}** menghentakkan kakinya ke bumi, memicu gempa kecil yang mengacaukan konsentrasi **${bossName}**!`,
+              `💪 **${petName}** meraung keras membakar semangat tempur rekan satu timnya!`
+            ]
+          };
+          
+          const fallbackActions = [
+            `⚔️ **${petName}** berlari lincah menyerang celah zirah **${bossName}**!`,
+            `🐾 **${petName}** menerjang cepat dan mencakar/menggigit bagian belakang **${bossName}**!`,
+            `✨ **${petName}** memancarkan aura magis, membantu serangan rekan-rekannya!`
+          ];
+          
+          let list = actions[species] || fallbackActions;
+          
+          if (trait === 'WARRIOR') {
+            list = list.concat([
+              `💪 **${petName}** (Warrior) mengamuk hebat tanpa rasa takut, menebas **${bossName}** berkali-kali!`,
+            ]);
+          } else if (trait === 'STURDY') {
+            list = list.concat([
+              `🛡️ **${petName}** (Sturdy) berdiri tegap di barisan paling depan menahan hantaman **${bossName}**!`,
+            ]);
+          } else if (trait === 'GENIUS') {
+            list = list.concat([
+              `🧠 **${petName}** (Genius) menganalisis pola gerak **${bossName}** dan mengarahkan serangan presisi!`,
+            ]);
+          }
+          
+          return list[Math.floor(Math.random() * list.length)];
+        };
+
+        const getBossAction = () => {
+          const bossActions = [
+            `👹 **${bossName}** mengayunkan cakar raksasanya, menghempaskan tanah di sekitar tim!`,
+            `💥 **${bossName}** menghentakkan kakinya ke bumi, memicu ledakan gelombang kejut!`,
+            `👁️ **${bossName}** menembakkan sinar energi kegelapan dari matanya menyapu barisan pet!`,
+            `🌪️ **${bossName}** mengaum dahsyat memicu badai angin kencang yang menghempaskan dedaunan!`
+          ];
+          return bossActions[Math.floor(Math.random() * bossActions.length)];
+        };
+
+        // Round 1
+        const round1Embed = new EmbedBuilder()
+          .setColor(0xE91E63)
+          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 1`)
+          .setDescription(
+            `👾 **Bos Zona:** **${bossName}**\n` +
+            `💖 HP Bos: \`[🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩]\` **1000 / 1000**\n\n` +
+            `📝 **Log Pertempuran:**\n` +
+            `⚔️ Pertempuran sengit dimulai! Seluruh tim pet menerjang Bos!\n` +
+            `• ${getPetCombatAction(participantPets[0])}\n` +
+            (participantPets.length > 1 ? `• ${getPetCombatAction(participantPets[1])}\n` : `• ${getPetCombatAction(participantPets[0])}\n`) +
+            `• ${getBossAction()}\n\n` +
+            `*Bertarung sengit...*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          
+        await replyMsg.edit({ embeds: [round1Embed], components: [] }).catch(() => {});
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Round 2
+        const round2Embed = new EmbedBuilder()
+          .setColor(0xE91E63)
+          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 2`)
+          .setDescription(
+            `👾 **Bos Zona:** **${bossName}**\n` +
+            `💖 HP Bos: \`[🟩🟩🟩🟩🟩🟥🟥🟥🟥🟥]\` **500 / 1000**\n\n` +
+            `📝 **Log Pertempuran:**\n` +
+            `• ${getPetCombatAction(participantPets[Math.floor(Math.random() * participantPets.length)])}\n` +
+            `• ${getBossAction()}\n` +
+            `• ${getPetCombatAction(participantPets[Math.floor(Math.random() * participantPets.length)])}\n\n` +
+            `*Bos mulai terdesak!*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          
+        await replyMsg.edit({ embeds: [round2Embed], components: [] }).catch(() => {});
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Round 3 (Climax)
+        const bossFinalHP = res.success ? 0 : 150;
+        const bossHPBar = res.success ? `\`[🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥]\`` : `\`[🟩🟥🟥🟥🟥🟥🟥🟥🟥🟥]\``;
+        const climaxLog = res.success 
+          ? `✨ **Serangan Akhir:** Seluruh kekuatan tim pet disatukan, menghantam telak jantung **${bossName}** hingga hancur berkeping-keping!`
+          : `💀 **Pukulan Telak:** **${bossName}** mengeluarkan jurus terlarang, menghempaskan seluruh tim pet hingga terpental mundur!`;
+          
+        const round3Embed = new EmbedBuilder()
+          .setColor(0xE91E63)
+          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 3`)
+          .setDescription(
+            `👾 **Bos Zona:** **${bossName}**\n` +
+            `💖 HP Bos: ${bossHPBar} **${bossFinalHP} / 1000**\n\n` +
+            `📝 **Log Pertempuran:**\n` +
+            `• ${climaxLog}\n\n` +
+            `*Menghitung jarahan dan mengobati luka...*`
+          )
+          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          
+        await replyMsg.edit({ embeds: [round3Embed], components: [] }).catch(() => {});
+        await new Promise(r => setTimeout(r, 3500));
 
         let reportDesc = '';
         res.logs.forEach(log => {
@@ -4107,6 +4511,9 @@ async function handlePetCommand(message, client, args) {
             petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
           });
 
+          const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
+          const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
+
           const updatedEmbed = new EmbedBuilder()
             .setColor(0x3F51B5)
             .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
@@ -4116,6 +4523,8 @@ async function handlePetCommand(message, client, args) {
               `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
               `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
               `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
+              `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
+              `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
               `💰 **Biaya Ransum:** Rp 250 koin\n` +
               `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
               `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`

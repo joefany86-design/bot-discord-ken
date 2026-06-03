@@ -118,7 +118,9 @@ const EXPEDITION_MAPS = [
     baseSuccessRate: 85,
     minPrize: 200,
     maxPrize: 400,
-    description: 'Hutan rindang bersahabat dengan kelinci liar & jamur kecil.'
+    description: 'Hutan rindang bersahabat dengan kelinci liar & jamur kecil.',
+    element: 'EARTH',
+    boss: 'Raksasa Hutan'
   },
   {
     id: 2,
@@ -127,7 +129,9 @@ const EXPEDITION_MAPS = [
     baseSuccessRate: 65,
     minPrize: 400,
     maxPrize: 800,
-    description: 'Lorong gua basah penuh kelelawar penghisap darah & laba-laba raksasa.'
+    description: 'Lorong gua basah penuh kelelawar penghisap darah & laba-laba raksasa.',
+    element: 'EARTH',
+    boss: 'Kelelawar Raksasa'
   },
   {
     id: 3,
@@ -136,7 +140,9 @@ const EXPEDITION_MAPS = [
     baseSuccessRate: 45,
     minPrize: 800,
     maxPrize: 1500,
-    description: 'Ngarai panas berpijar dengan naga api liar dan golem magma raksasa.'
+    description: 'Ngarai panas berpijar dengan naga api liar dan golem magma raksasa.',
+    element: 'FIRE',
+    boss: 'Golem Magma'
   },
   {
     id: 4,
@@ -145,7 +151,9 @@ const EXPEDITION_MAPS = [
     baseSuccessRate: 25,
     minPrize: 1500,
     maxPrize: 2500,
-    description: 'Reruntuhan istana misterius yang dijaga oleh iblis kuno bermata satu.'
+    description: 'Reruntuhan istana misterius yang dijaga oleh iblis kuno bermata satu.',
+    element: 'DRAGON',
+    boss: 'Iblis Kuno'
   }
 ];
 
@@ -1545,26 +1553,93 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
 /**
  * Simulasi Ekspedisi Pet Kelompok (Co-op PVE)
  */
-function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) {
+/**
+ * Menghitung peluang sukses ekspedisi dan log elemental secara dinamis
+ */
+function calculateSuccessRate(guildId, participantIds, mapId, pathChoice = 'SAFE') {
   const activePets = [];
-  
-  // Ambil pet aktif masing-masing pemain
   participantIds.forEach(pId => {
     const p = getPet(pId, guildId);
     if (p && p.status !== 'DEAD' && p.status !== 'EGG') {
-      const now = Math.floor(Date.now() / 1000);
-      if (p.curse_type === 'smelly' && p.curse_until > now) {
-        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang sangat bau busuk! Mandikan dulu sebelum berpetualang.`);
-      }
-      if (p.curse_type === 'injured' && p.curse_until > now) {
-        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang terluka parah! Obati dulu sebelum berpetualang.`);
-      }
-      if (p.status === 'WEAK') {
-        throw new Error(`Pet **${p.pet_name}** (<@${pId}>) sedang lemas kelaparan! Beri makan/minum dulu sebelum berpetualang.`);
-      }
       activePets.push({ userId: pId, pet: p });
     }
   });
+
+  const selectedMap = EXPEDITION_MAPS.find(m => m.id === parseInt(mapId)) || EXPEDITION_MAPS[0];
+  const teamPower = activePets.reduce((sum, ap) => sum + ap.pet.level, 0);
+
+  let baseSuccessRate = selectedMap.baseSuccessRate;
+  let totalModifications = 0;
+  const logs = [];
+
+  activePets.forEach(ap => {
+    let elementMod = 0;
+    const petEl = ap.pet.gacha_element || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].element : '') || '';
+    const petType = ap.pet.pet_type;
+
+    if (selectedMap.id === 1) { // Hutan Pemula (EARTH)
+      if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+      else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+    } else if (selectedMap.id === 2) { // Gua Gelap (EARTH)
+      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+      else if (petType === 'PHOENIX') elementMod = -15;
+    } else if (selectedMap.id === 3) { // Lembah Api (FIRE)
+      if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = 15;
+      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+    } else if (selectedMap.id === 4) { // Istana Kuno (DRAGON)
+      if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH' || petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+      else if (petType === 'PHOENIX') elementMod = -15;
+    }
+
+    if (elementMod !== 0) {
+      totalModifications += elementMod;
+      const petDisplay = GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].name : petType;
+      logs.push(`• **${ap.pet.pet_name}** (${petDisplay} vs Bos ${selectedMap.element}): ${elementMod > 0 ? `🟢 Keuntungan Elemen +${elementMod}%` : `🔴 Kelemahan Elemen ${elementMod}%`}`);
+    }
+  });
+
+  // 2. Modifikasi Level Pet
+  activePets.forEach(ap => {
+    const levelDiff = ap.pet.level - selectedMap.recommendedLevel;
+    if (levelDiff < 0) {
+      totalModifications += levelDiff * 3;
+      if (-levelDiff >= 10) {
+        totalModifications -= 30; // Flat penalti -30% tambahan
+      }
+    } else {
+      totalModifications += Math.min(15, levelDiff * 1);
+    }
+  });
+
+  // 3. Modifikasi Jalur Perjalanan (Path Choice)
+  let pathMod = 0;
+  if (pathChoice === 'SHORTCUT') {
+    pathMod = 15;
+  } else if (pathChoice === 'SWAMP') {
+    pathMod = 25;
+  }
+
+  let successRate = Math.round(baseSuccessRate + totalModifications + pathMod);
+  if (successRate > 90) successRate = 90;
+  if (successRate < 5) successRate = 5;
+
+  return {
+    successRate,
+    teamPower,
+    logs,
+    activePets
+  };
+}
+
+/**
+ * Simulasi Ekspedisi Pet Kelompok (Co-op PVE) dengan elemen & pilihan interaktif
+ */
+function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAFE', eventChoice = 'SAFE', eventSuccess = false, forceChestExploded = false, waterRefreshed = false, membersMap = {}) {
+  const calc = calculateSuccessRate(guildId, participantIds, mapId, pathChoice);
+  const activePets = calc.activePets;
+  const teamPower = calc.teamPower;
+  const successRate = calc.successRate;
+  const logs = calc.logs;
 
   if (activePets.length === 0) {
     throw new Error('Tidak ada pet aktif yang memenuhi syarat ekspedisi!');
@@ -1585,9 +1660,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
   const recommendedLevel = selectedMap.recommendedLevel;
   const minReward = selectedMap.minPrize;
   const maxReward = selectedMap.maxPrize;
-
-  // Kekuatan Tim (Total level pet)
-  const teamPower = activePets.reduce((sum, ap) => sum + ap.pet.level, 0);
 
   // Cari pet paling jago dan paling cupu
   let bestPet = null;
@@ -1623,40 +1695,70 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
     };
   }
 
-  // Kalkulasi Peluang Sukses berdasarkan level pet, rekomendasi map & denda level rendah
-  let baseSuccessRate = selectedMap.baseSuccessRate;
-  let totalModifications = 0;
   const lowLevelCulprits = [];
-
   activePets.forEach(ap => {
     const levelDiff = ap.pet.level - recommendedLevel;
-    if (levelDiff < 0) {
-      // Penalti kekurangan level: -3% per level kekurangan
-      totalModifications += levelDiff * 3;
-      
-      // Penalti parah jika selisih >= 10 level (banyak peluang gagal jika pet lv rendah gabung level tinggi >= 10)
-      if (-levelDiff >= 10) {
-        totalModifications -= 30; // Flat penalti -30% tambahan
-        lowLevelCulprits.push(ap);
-      }
-    } else {
-      // Bonus kelebihan level: +1% per level kelebihan (maks +15% per pet)
-      totalModifications += Math.min(15, levelDiff * 1);
+    if (levelDiff < 0 && -levelDiff >= 10) {
+      lowLevelCulprits.push(ap);
     }
   });
 
-  let successRate = Math.round(baseSuccessRate + totalModifications);
-  
-  // Batasi successRate agar menantang (maks 90%, min 5%)
-  if (successRate > 90) successRate = 90;
-  if (successRate < 5) successRate = 5;
+  // 3. Modifikasi Jalur Perjalanan (Path Choice) - Menambahkan logs
+  if (pathChoice === 'SHORTCUT') {
+    logs.push("🧗 **Jalur:** Tim mengambil jalan pintas terjal! (+15% Peluang Sukses, seluruh pet kelelahan -15 HP)");
+  } else if (pathChoice === 'SWAMP') {
+    logs.push("🌲 **Jalur:** Tim menyusup melewati Rawa Beracun! (+25% Peluang Sukses, pet berisiko terkena bau busuk/luka)");
+  } else {
+    logs.push("🛣️ **Jalur:** Tim memilih menyusuri jalan raya utama yang aman.");
+  }
+
+  // 4. Kejadian di Perjalanan (Event Choice) - Menambahkan logs
+  if (eventChoice === 'LOCKPICK') {
+    if (eventSuccess) {
+      logs.push("🗝️ **Kejadian:** Tim membuka Peti Kuno menggunakan **Lockpick** pembuat lobi! Satu kawan beruntung mendapat drop item langka.");
+    } else {
+      logs.push("🏃 **Kejadian:** Tim mengabaikan Peti Kuno karena Lockpick tidak tersedia.");
+    }
+  } else if (eventChoice === 'FORCE') {
+    if (eventSuccess) {
+      logs.push("💥 **Kejadian:** Tim mendobrak paksa Peti Kuno secara manual dan berhasil! Menemukan barang rampasan tambahan.");
+    } else {
+      logs.push("💥 **Kejadian:** Tim mencoba mendobrak paksa Peti Kuno secara manual tetapi memicu ledakan jebakan! Semua pet terkena guncangan (-15 HP).");
+    }
+  } else if (eventChoice === 'DRINK') {
+    logs.push("💧 **Kejadian:** Seluruh tim meminum air dari Air Terjun Suci yang menyegarkan! (+20 HP & +20 Hidrasi)");
+  } else {
+    logs.push("🏃 **Kejadian:** Tim memilih mengabaikan kejadian di jalan dan terus fokus melangkah.");
+  }
 
   const roll = Math.random() * 100;
   const isSuccess = roll < successRate;
 
-  const logs = [];
   const rewards = [];
   const now = Math.floor(Date.now() / 1000);
+
+  // Pemrosesan drop peti tambahan
+  let chestAwardedUser = null;
+  let chestDropItem = null;
+  if (eventSuccess && activePets.length > 0) {
+    const luckyWinnerObj = activePets[Math.floor(Math.random() * activePets.length)];
+    chestAwardedUser = luckyWinnerObj.userId;
+    const rand = Math.random();
+    let itemId = '';
+    let itemName = '';
+    if (rand < 0.35) {
+      itemId = 'FOOD_PREMIUM';
+      itemName = '🥩 Daging Premium';
+    } else if (rand < 0.70) {
+      itemId = 'TOY';
+      itemName = '⚽ Bola Karet';
+    } else {
+      itemId = 'XP_2X';
+      itemName = '⚡ XP Booster 2x';
+    }
+    chestDropItem = itemName;
+    db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [chestAwardedUser, guildId, itemId]);
+  }
 
   if (isSuccess) {
     // Sukses: Koin acak dibagi merata
@@ -1682,7 +1784,12 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
         const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
 
-        let finalHealth = ap.pet.health;
+        // finalHealth is equal to current health (since updates are applied in stages)
+        let finalHealth = isGod ? maxHP : ap.pet.health;
+        if (levelUp) {
+          finalHealth = maxHP; // Full HP saat naik level
+        }
+
         let finalStatus = ap.pet.status;
         let finalAccessory = ap.pet.accessory;
         let deathTriggered = false;
@@ -1717,7 +1824,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
 
         db.run(
           `UPDATE user_pets 
-           SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, accessory = ?, last_interaction_at = ? 
+           SET xp = ?, level = ?, hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, accessory = ?, last_interaction_at = ?
            WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
           [newXp, newLevel, newHunger, newThirst, newHappiness, finalHealth, finalStatus, finalAccessory, now, ap.userId, guildId, ap.pet.pet_name]
         );
@@ -1734,30 +1841,29 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
             statusText = 'MENINGGAL DUNIA (Butuh Dokter) 🪦';
             logs.push(`💀 **${ap.pet.pet_name}** (<@${ap.userId}>) mengalami kecelakaan fatal di dalam ekspedisi dan **MENINGGAL DUNIA**! Bawa dia ke Dokter Pet (\`.pet dokter\`) untuk menghidupkannya kembali.`);
           }
+        } else if (ap.pet.curse_type === 'smelly') {
+          statusText = 'Bau Busuk (Lumpur Rawa) 🤢';
+        } else if (ap.pet.curse_type === 'injured') {
+          statusText = 'Terluka Parah 🩹';
         }
 
-        // Peluang 20% mendapat drop item
+        // Peluang 20% mendapat drop item biasa
         let dropText = '';
         if (Math.random() < 0.20) {
           const rand = Math.random();
           if (rand < 0.40) {
-            // Pakan Biasa
             db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'FOOD_BASIC', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🍗 Pakan Pet Biasa';
           } else if (rand < 0.65) {
-            // Bola Karet
             db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TOY', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '⚽ Bola Karet';
           } else if (rand < 0.80) {
-            // Ramuan Kesehatan
             db.run("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'MEDICINE', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '💊 Ramuan Kesehatan';
           } else if (rand < 0.90) {
-            // Linggis Black Market
             db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'LOCKPICK', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🗝️ Linggis Black Market';
           } else {
-            // Sabun Black Market
             db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SOAP', 1) ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity = quantity + 1", [ap.userId, guildId]);
             dropText = '🧼 Sabun Licin Black Market';
           }
@@ -1789,13 +1895,19 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       rewards,
       logs,
       bestPet,
-      worstPet
+      worstPet,
+      pathChoice,
+      eventChoice,
+      eventSuccess,
+      forceChestExploded,
+      waterRefreshed,
+      chestAwardedUser,
+      chestDropItem
     };
   } else {
-    // Tentukan penyebab kegagalan dan kambing hitam (pet yang membuat kalah)
+    // Tentukan penyebab kegagalan dan kambing hitam
     const failScenarios = [];
 
-    // 0. Skenario khusus: Pet level kekecilan (selisih >= 10 dari rekomendasi)
     if (lowLevelCulprits.length > 0) {
       const culpritLow = lowLevelCulprits[Math.floor(Math.random() * lowLevelCulprits.length)];
       failScenarios.push({
@@ -1804,7 +1916,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       });
     }
 
-    // 1. Skenario: Level paling rendah
     const minLevel = Math.min(...activePets.map(ap => ap.pet.level));
     const lowestLevelPets = activePets.filter(ap => ap.pet.level === minLevel);
     const culpritLevel = lowestLevelPets[Math.floor(Math.random() * lowestLevelPets.length)];
@@ -1813,7 +1924,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       reason: `Pet **${culpritLevel.pet.pet_name}** milik <@${culpritLevel.userId}> yang berlevel paling rendah (Lv. ${culpritLevel.pet.level}) gemetar ketakutan melihat Bos Zona dan bersembunyi di balik semak-semak, membuat barisan tempur hancur!`
     });
 
-    // 2. Skenario: HP paling rendah (< 60)
     const lowHpPets = activePets.filter(ap => ap.pet.health < 60);
     if (lowHpPets.length > 0) {
       const culpritHp = lowHpPets[Math.floor(Math.random() * lowHpPets.length)];
@@ -1823,7 +1933,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       });
     }
 
-    // 3. Skenario: Kebahagiaan paling rendah (< 60)
     const lowHappyPets = activePets.filter(ap => ap.pet.happiness < 60);
     if (lowHappyPets.length > 0) {
       const culpritHappy = lowHappyPets[Math.floor(Math.random() * lowHappyPets.length)];
@@ -1833,7 +1942,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       });
     }
 
-    // 4. Skenario: Kejadian konyol acak
     const randomCulprit = activePets[Math.floor(Math.random() * activePets.length)];
     const funnyAccidents = [
       `Pet **${randomCulprit.pet.pet_name}** milik <@${randomCulprit.userId}> tidak sengaja terpeleset kulit pisang saat ingin menerjang bos, membuat formasi tim kacau balau!`,
@@ -1849,7 +1957,6 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       });
     });
 
-    // Pilih salah satu skenario secara acak
     const selectedScenario = failScenarios[Math.floor(Math.random() * failScenarios.length)];
 
     // Gagal: Pet terluka (-30 HP, -25 Happiness), tapi mendapat +60 XP dasar dikali xp_multiplier
@@ -1863,10 +1970,15 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         const isGod = ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059';
-        let newHealth = isGod ? 100 : Math.max(5, ap.pet.health - 30);
         const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);
+
+        // Gagal mengurangi HP pet sebesar 30 HP
+        let finalHealth = isGod ? maxHP : Math.max(5, ap.pet.health - 30);
+        if (levelUp) {
+          finalHealth = maxHP;
+        }
 
         let finalStatus = ap.pet.status;
         let finalAccessory = ap.pet.accessory;
@@ -1885,26 +1997,26 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
           deathTriggered = true;
           if (ap.pet.accessory === 'LUCKY_AMULET') {
             isSavedByAmulet = true;
-            newHealth = 20;
+            finalHealth = 20;
             finalAccessory = '';
             if (finalStatus === 'WEAK') {
               finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
             }
           } else if (ap.pet.trait === 'SURVIVOR') {
             isSavedBySurvivor = true;
-            newHealth = 1;
+            finalHealth = 1;
             finalStatus = 'WEAK';
           } else {
-            newHealth = 0;
+            finalHealth = 0;
             finalStatus = 'DEAD';
           }
         }
 
         db.run(
           `UPDATE user_pets 
-           SET xp = ?, level = ?, health = ?, status = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ?, accessory = ? 
+           SET xp = ?, level = ?, health = ?, status = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ?, accessory = ?
            WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-          [newXp, newLevel, newHealth, finalStatus, newHappiness, newHunger, newThirst, now, finalAccessory, ap.userId, guildId, ap.pet.pet_name]
+          [newXp, newLevel, finalHealth, finalStatus, newHappiness, newHunger, newThirst, now, finalAccessory, ap.userId, guildId, ap.pet.pet_name]
         );
 
         let statusText = '';
@@ -1919,6 +2031,10 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
             statusText = 'MENINGGAL DUNIA (Butuh Dokter) 🪦';
             logs.push(`💀 **${ap.pet.pet_name}** (<@${ap.userId}>) mengalami kecelakaan fatal di dalam ekspedisi dan **MENINGGAL DUNIA**! Bawa dia ke Dokter Pet (\`.pet dokter\`) untuk menghidupkannya kembali.`);
           }
+        } else if (ap.pet.curse_type === 'smelly') {
+          statusText = 'Bau Busuk (Lumpur Rawa) 🤢';
+        } else if (ap.pet.curse_type === 'injured') {
+          statusText = 'Terluka Parah 🩹';
         }
 
         rewards.push({
@@ -1947,7 +2063,14 @@ function executeExpedition(guildId, participantIds, mapId = 1, membersMap = {}) 
       rewards,
       logs,
       bestPet,
-      worstPet
+      worstPet,
+      pathChoice,
+      eventChoice,
+      eventSuccess,
+      forceChestExploded,
+      waterRefreshed,
+      chestAwardedUser,
+      chestDropItem
     };
   }
 }
@@ -2932,6 +3055,7 @@ module.exports = {
   getPetsList,
   switchActivePet,
   breedPets,
+  calculateSuccessRate,
   executeExpedition,
   getXpNeeded,
   checkExpeditionLimit,
