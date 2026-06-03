@@ -3559,90 +3559,142 @@ async function handleAdminPanel(messageOrInteraction, client) {
   if (!guildId) return false;
 
   const getHubPanelData = () => {
+    // Live Stats calculation
+    let walletsCount = 0;
+    let activePetsCount = 0;
+    let totalCoins = 0;
+    let multiplier = 1;
+    let gachaMode = 'NORMAL';
+    let isActiveEvent = false;
+
+    try {
+      const walletsCountRow = database.get('SELECT COUNT(*) as count FROM wallets WHERE guild_id = ?', [guildId]);
+      walletsCount = walletsCountRow ? walletsCountRow.count : 0;
+
+      const activePetsRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE guild_id = ? AND is_active = 1', [guildId]);
+      activePetsCount = activePetsRow ? activePetsRow.count : 0;
+
+      const totalCoinsRow = database.get('SELECT SUM(balance) as total FROM wallets WHERE guild_id = ?', [guildId]);
+      const totalSavingsRow = database.get('SELECT SUM(balance) as total FROM bank_savings WHERE guild_id = ?', [guildId]);
+      totalCoins = (totalCoinsRow ? (totalCoinsRow.total || 0) : 0) + (totalSavingsRow ? (totalSavingsRow.total || 0) : 0);
+
+      const settings = getOrCreateEbyusSettings(guildId);
+      multiplier = settings.coin_multiplier || 1;
+      gachaMode = settings.gacha_mode || 'NORMAL';
+      isActiveEvent = settings.is_active === 1;
+    } catch (e) {
+      console.error('Error calculating hub stats:', e);
+    }
+
+    const eventStatusText = isActiveEvent ? '🔴 **Abuse Event Aktif**' : '🟢 Normal';
+
     let embed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('🎮 PUSAT KONTROL ADMINISTRATOR — SENTINEL')
+      .setTitle('🛡️ PUSAT KONTROL TERPADU ADMINISTRATOR')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
-        `Selamat datang di **Pusat Kontrol Terpadu Sentinel Bot 2026**! 🛡️✨\n\n` +
-        `Dashboard visual ini dipecah menjadi **Sub-Panel Mandiri** terfokus untuk membantu Anda mengelola server tanpa kebingungan:\n\n` +
-        `🐾 **\`Panel Pet\`** — Sembuhkan HP, percepat tetas telur, atur level, atau reset peliharaan warga.\n` +
-        `🏦 **\`Panel Bank\`** — Suntik/potong koin dompet warga, reset total ekonomi, atau bagi-bagi koin massal.\n` +
-        `🚓 **\`Panel Robbery\`** — Bebaskan tahanan Lapas, reset global cooldown bank robbery.\n` +
-        `📈 **\`Panel Saham\`** — Tambah/hapus saham bursa, drop harga, picu event bull/crash, dividen.\n` +
-        `⚡ **\`Panel Abyus\`** — Sabotase kesulitan gacha role, atur multiplier obrolan chat warga, stop event.\n` +
-        `🎭 **\`Panel Shop\`** — Tambahkan penjualan role server, set stok role, kontrol sesi game ToD VC.\n` +
-        `🌱 **\`Panel Garden\`** — Siram instan, percepat mekar bunga 100%, bongkar kebun warga, hadiahkan paket benih.\n` +
-        `📋 **\`Panel Misi Pet\`** — Lihat progress harian, instan selesaikan seluruh misi harian, reset quest acak, kirim paket perawatan.\n` +
-        `😜 **\`Panel Troll\`** — Kerjain warga server! Kutuk pet bau, ilusi bursa saham hancur, alarm copet palsu, kurung di sel VIP reot.\n` +
-        `📊 **\`Audit Keuangan\`** — Log keluar masuk koin global/target, statistik sirkulasi total, sisa tabungan bank warga.\n\n` +
-        `👉 **Silakan klik tombol di bawah untuk membuka panel kontrol yang Anda inginkan:**`
+        `Selamat datang di **Pusat Kontrol Terpadu Sentinel Bot 2026**. Gunakan menu dropdown di bawah untuk mengakses sub-panel kontrol. Setiap sub-panel menyediakan tombol kontrol visual yang terfokus untuk membantu Anda mengelola server secara praktis.`
+      )
+      .addFields(
+        {
+          name: '📊 STATISTIK SERVER REAL-TIME',
+          value: `👥 **Warga Terdaftar:** \`${walletsCount} jiwa\`\n` +
+                 `🐾 **Pet Aktif di Server:** \`${activePetsCount} peliharaan\`\n` +
+                 `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${totalCoins.toLocaleString('id-ID')}\``,
+          inline: false
+        },
+        {
+          name: '⚙️ CONFIG ABYUS SYSTEM',
+          value: `🪙 **Chat Multiplier:** \`${multiplier}x\`\n` +
+                 `🎰 **Gacha Role Mode:** \`${gachaMode}\`\n` +
+                 `📢 **Status Event:** ${eventStatusText}`,
+          inline: false
+        }
       )
       .setTimestamp()
       .setFooter({ text: 'Sentinel Bot • Dashboard Utama Portal' });
 
-    const btnRow1 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('hub_btn_pet')
-        .setLabel('🐾 Pet Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_bank')
-        .setLabel('🏦 Bank Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_rob')
-        .setLabel('🚓 Robbery Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_saham')
-        .setLabel('📈 Saham Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_abyus')
-        .setLabel('⚡ Abyus Panel')
-        .setStyle(ButtonStyle.Success)
-    );
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('admin_hub_select_panel')
+      .setPlaceholder('⚙️ Pilih Sub-Panel Kontrol...');
 
-    const btnRow2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('hub_btn_shop')
-        .setLabel('🎭 Shop & ToD')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_garden')
-        .setLabel('🌱 Garden Panel')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_quests')
-        .setLabel('📋 Misi Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_troll')
-        .setLabel('😜 Troll Panel')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    const btnRow3 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('hub_btn_warga')
-        .setLabel('👥 Citizen Panel')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_gift')
-        .setLabel('🎁 Gift & Event')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('hub_btn_ledger')
+    selectMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🐾 Pet Tamagotchi')
+        .setDescription('Sembuhkan HP, tetas telur, atur level, atau reset pet')
+        .setValue('panel_pet')
+        .setEmoji('🐾'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏦 Bank & Finansial')
+        .setDescription('Suntik/potong koin, reset ekonomi, hapus pinjaman, bansos')
+        .setValue('panel_bank')
+        .setEmoji('🏦'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚓 Robbery & Lapas')
+        .setDescription('Bebaskan tahanan Lapas, reset global cooldown bank robbery')
+        .setValue('panel_rob')
+        .setEmoji('🚓'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📈 Bursa Saham')
+        .setDescription('Tambah/hapus saham, drop harga, bull/crash event, dividen')
+        .setValue('panel_saham')
+        .setEmoji('📈'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚡ Abyus & Event')
+        .setDescription('Atur gacha mode, multiplier chat, broadcast event, stop event')
+        .setValue('panel_abyus')
+        .setEmoji('⚡'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎭 Shop & VC ToD')
+        .setDescription('Manajemen penjualan role server, set stok role, control ToD VC')
+        .setValue('panel_shop')
+        .setEmoji('🎭'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🌱 Cozy Garden')
+        .setDescription('Siram instan, percepat mekar bunga, reset garden, gift benih')
+        .setValue('panel_garden')
+        .setEmoji('🌱'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📋 Quest & Misi Pet')
+        .setDescription('Selesaikan quests, reset quests, kirim lootbox')
+        .setValue('panel_quests')
+        .setEmoji('📋'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('😜 Troll & Prank')
+        .setDescription('Kutuk pet bau, alarm copet palsu, ilusi bursa hancur, sel VIP reot')
+        .setValue('panel_troll')
+        .setEmoji('😜'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('👥 Citizen (Warga)')
+        .setDescription('Lihat status warga, atur status penjara, blacklist warga')
+        .setValue('panel_warga')
+        .setEmoji('👥'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎁 Gift & Event Rewards')
+        .setDescription('Bagi-bagi hadiah massal, event reward, set bonus')
+        .setValue('panel_gift')
+        .setEmoji('🎁'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('📊 Audit Ledger')
-        .setStyle(ButtonStyle.Success),
+        .setDescription('Log keluar masuk koin global/target, statistik sirkulasi total')
+        .setValue('panel_ledger')
+        .setEmoji('📊')
+    );
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('hub_btn_refresh')
+        .setLabel('🔄 Segarkan Hub')
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('hub_btn_close')
         .setLabel('❌ Tutup Hub')
-        .setStyle(ButtonStyle.Secondary)
+        .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [embed], components: [btnRow1, btnRow2, btnRow3] };
+    return { embeds: [embed], components: [selectRow, btnRow] };
   };
 
   const initialData = getHubPanelData();
@@ -3663,62 +3715,31 @@ async function handleAdminPanel(messageOrInteraction, client) {
     const isOwner = iHub.user.id === '436554535037698059';
     const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
-      return iHub.reply({ content: '❌ Akses Ditolak! Tombol ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      return iHub.reply({ content: '❌ Akses Ditolak! Tombol/menu ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
     }
 
     try {
-      if (iHub.customId === 'hub_btn_pet') {
-        const isOwner = iHub.user.id === '436554535037698059';
-        const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!isOwner && !isAdmin) {
-          return iHub.reply({ content: '❌ Akses Ditolak! Panel Admin Pet dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
-        }
+      if (iHub.customId === 'admin_hub_select_panel') {
+        const val = iHub.values[0];
         collector.stop('transition');
-        await handleAdminPetPanel(iHub, client);
+        
+        if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
+        else if (val === 'panel_bank') await handleAdminBankPanel(iHub, client);
+        else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
+        else if (val === 'panel_saham') await handleAdminSahamPanel(iHub, client);
+        else if (val === 'panel_abyus') await handleAdminAbyusPanel(iHub, client);
+        else if (val === 'panel_shop') await handleAdminShopPanel(iHub, client);
+        else if (val === 'panel_garden') await handleAdminGardenPanel(iHub, client);
+        else if (val === 'panel_quests') await handleAdminQuestPanel(iHub, client);
+        else if (val === 'panel_troll') await handleAdminTrollPanel(iHub, client);
+        else if (val === 'panel_warga') await handleAdminWargaPanel(iHub, client);
+        else if (val === 'panel_gift') await handleAdminGiftPanel(iHub, client);
+        else if (val === 'panel_ledger') await handleAdminLedgerPanel(iHub, client);
       }
-      else if (iHub.customId === 'hub_btn_bank') {
-        collector.stop('transition');
-        await handleAdminBankPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_rob') {
-        collector.stop('transition');
-        await handleAdminRobberyPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_saham') {
-        collector.stop('transition');
-        await handleAdminSahamPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_abyus') {
-        collector.stop('transition');
-        await handleAdminAbyusPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_shop') {
-        collector.stop('transition');
-        await handleAdminShopPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_garden') {
-        collector.stop('transition');
-        await handleAdminGardenPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_quests') {
-        collector.stop('transition');
-        await handleAdminQuestPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_troll') {
-        collector.stop('transition');
-        await handleAdminTrollPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_warga') {
-        collector.stop('transition');
-        await handleAdminWargaPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_gift') {
-        collector.stop('transition');
-        await handleAdminGiftPanel(iHub, client);
-      }
-      else if (iHub.customId === 'hub_btn_ledger') {
-        collector.stop('transition');
-        await handleAdminLedgerPanel(iHub, client);
+      else if (iHub.customId === 'hub_btn_refresh') {
+        await iHub.deferUpdate();
+        const fresh = getHubPanelData();
+        await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iHub.customId === 'hub_btn_close') {
         collector.stop();
