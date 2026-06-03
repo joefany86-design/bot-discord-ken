@@ -3701,8 +3701,13 @@ async function handleAdminPanel(messageOrInteraction, client) {
   let replyMsg;
 
   if (isInteraction) {
-    await messageOrInteraction.update(initialData);
-    replyMsg = messageOrInteraction.message;
+    if (messageOrInteraction.customId === 'eco_btn_open_admin_panel_private') {
+      await messageOrInteraction.reply({ ...initialData, flags: 64 });
+      replyMsg = await messageOrInteraction.fetchReply();
+    } else {
+      await messageOrInteraction.update(initialData);
+      replyMsg = messageOrInteraction.message;
+    }
   } else {
     replyMsg = await messageOrInteraction.reply(initialData);
   }

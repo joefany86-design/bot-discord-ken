@@ -818,6 +818,16 @@ function initStockMarket(client) {
         return;
       }
 
+      // Handler untuk tombol prompt membuka admin panel privat khusus owner
+      if (customId === 'eco_btn_open_admin_panel_private') {
+        if (user.id !== '436554535037698059') {
+          return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Owner utama.', flags: 64 });
+        }
+        const adminPanel = require('./adminPanel');
+        await adminPanel.handleAdminPanel(interaction, client);
+        return;
+      }
+
       // ── PORTAL PERMANEN: TOKO ROLE ──
       if (customId === 'eco_btn_open_shop_private_perm') {
         await interaction.deferReply({ flags: 64 });
@@ -7665,7 +7675,7 @@ async function handleEconomyCommands(message, client) {
 
   // ── FILTER SALURAN KHUSUS ADMIN PANEL ──
   const adminCommands = [
-    'admin-panel', 'adminpanel', 'panel-admin', 'paneladmin',
+    'admin-panel', 'adminpanel', 'panel-admin', 'paneladmin', 'ow',
     'admin-pet', 'panel-pet', 'pet-panel',
     'admin-bank', 'panel-bank', 'bank-panel',
     'admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel',
@@ -11593,6 +11603,36 @@ async function handleEconomyCommands(message, client) {
         `Seluruh bypass ekonomi server (mode gacha & multiplier koin chat) telah dinonaktifkan sepenuhnya dan kembali ke setelan standard.`
       );
       await message.reply({ embeds: [embed] });
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Khusus Owner: .ow (Membuka Dashboard Admin secara Privat)
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'ow') {
+      const isOwner = message.author.id === '436554535037698059';
+      if (!isOwner) {
+        return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Owner utama.', flags: 64 });
+      }
+
+      await message.delete().catch(() => {});
+
+      const promptEmbed = new EmbedBuilder()
+        .setColor(0x7C4DFF)
+        .setDescription(`🔒 **Sentinel Admin Panel** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka Dashboard Admin secara rahasia.`);
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_admin_panel_private')
+          .setLabel('🔑 Buka Admin Panel')
+          .setStyle(ButtonStyle.Success)
+      );
+
+      const promptMsg = await message.channel.send({ embeds: [promptEmbed], components: [btnRow] });
+      setTimeout(() => {
+        promptMsg.delete().catch(() => {});
+      }, 20000);
+
       return true;
     }
 
