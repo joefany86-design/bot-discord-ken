@@ -102,23 +102,35 @@ async function runTests() {
   adminPanel.toggleOwnerProtection(guildId, true);
   console.log(`- Owner Protection Status: ${adminPanel.isOwnerProtectionActive(guildId) ? "ACTIVE 🛡️" : "INACTIVE 🔓"}`);
 
-  // Test Solo Rob to Owner (Should throw Owner Protection block error)
-  console.log("\n⚔️ Testing solo robbery from robber to owner (should be blocked by owner protection)...");
+  // Test Solo Rob to Owner (Should trigger Sultan's Punishment)
+  console.log("\n⚔️ Testing solo robbery from robber to owner (should trigger Sultan's Punishment)...");
   try {
     // Reset robber cooldown and jail for testing
     db.run("UPDATE wallets SET last_rob_at = 0, jail_until = 0, balance = 5000 WHERE user_id = ? AND guild_id = ?", [robberId, guildId]);
     db.run("UPDATE wallets SET balance = 5000 WHERE user_id = ? AND guild_id = ?", [ownerId, guildId]);
-    robbery.robSolo(robberId, ownerId, guildId);
-    console.error("  ❌ FAIL: Robbery succeeded or failed normally, but was NOT blocked by Owner Protection!");
-    process.exit(1);
-  } catch (err) {
-    if (err.message.includes("OWNER PROTECTION")) {
-      console.log(`  👉 Got expected error: "${err.message}"`);
-      console.log("  ✅ PASS: Robbery was successfully blocked by owner protection!");
+    
+    const robRes = robbery.robSolo(robberId, ownerId, guildId);
+    
+    console.log(`  👉 Rob result: success = ${robRes.success}, isSultanPunishment = ${robRes.isSultanPunishment}, fine = ${robRes.fine}, jail = ${robRes.jailDurationMinutes} mins`);
+    
+    const updatedRobberWallet = db.get("SELECT balance, jail_until FROM wallets WHERE user_id = ? AND guild_id = ?", [robberId, guildId]);
+    console.log(`  👉 Robber Wallet Balance: Rp ${updatedRobberWallet.balance}`);
+    console.log(`  👉 Robber Jail Until: ${updatedRobberWallet.jail_until}`);
+    
+    if (robRes.success === false && robRes.isSultanPunishment === true) {
+      if (updatedRobberWallet.balance === 3000 && updatedRobberWallet.jail_until > 0) {
+        console.log("  ✅ PASS: Robber was successfully punished for attempting to rob the protected Owner!");
+      } else {
+        console.error(`  ❌ FAIL: Punishment values are incorrect. Balance: ${updatedRobberWallet.balance}, Jail: ${updatedRobberWallet.jail_until}`);
+        process.exit(1);
+      }
     } else {
-      console.error(`  ❌ FAIL: Robbery was blocked by another error: "${err.message}", instead of Owner Protection!`);
+      console.error(`  ❌ FAIL: Response parameters are incorrect. success: ${robRes.success}, isSultanPunishment: ${robRes.isSultanPunishment}`);
       process.exit(1);
     }
+  } catch (err) {
+    console.error(`  ❌ FAIL: Robbery crashed with error: "${err.message}"`);
+    process.exit(1);
   }
 
   // Test Heist (Should skip Owner's bank savings)

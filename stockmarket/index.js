@@ -8000,6 +8000,43 @@ async function handleEconomyCommands(message, client) {
             await message.reply({ embeds: [successEmb] });
           }
         } else {
+          if (res.isSultanPunishment) {
+            const zapEmbed = new EmbedBuilder()
+              .setColor(0xE74C3C) // Red
+              .setTitle('⚡ KUALAT! MERAMPOK SULTAN! ⚡')
+              .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
+              .setDescription(
+                `⚠️ **Tindakan Lancang Dideteksi!**\n\n` +
+                `Anda secara lancang mencoba merampok **Sultan** (<@${targetUser.id}>) yang dilindungi oleh **OWNER PROTECTION**!\n` +
+                `Kekuatan langit murka dan langsung menyambar Anda dengan petir kerajaan! ⚡💨\n\n` +
+                `💸 **Denda Kerajaan**: \`Rp ${res.fine.toLocaleString('id-ID')}\` (Disita langsung oleh kas negara)\n` +
+                `🔒 **Hukuman**: Dijebloskan ke **Penjara Kerajaan selama ${res.jailDurationMinutes} menit**!`
+              )
+              .setTimestamp();
+            
+            await message.reply({ embeds: [zapEmbed] });
+
+            // Kirim notifikasi log otomatis ke log channel kriminal 1510466643103449088
+            const logChannel = await client.channels.fetch('1510466643103449088').catch(() => null);
+            if (logChannel) {
+              const logZapEmbed = new EmbedBuilder()
+                .setColor(0xE74C3C)
+                .setTitle('⚡ LAPORAN HUKUMAN KERAJAAN: KUALAT MERAMPOK SULTAN! ⚡')
+                .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
+                .setDescription(
+                  `⚠️ **Hukuman Langsung dari Langit!**\n\n` +
+                  `👤 **Pelaku**: <@${author.id}>\n` +
+                  `👤 **Target**: <@${targetUser.id}> (Sultan/Owner)\n` +
+                  `💸 **Denda Disita**: \`Rp ${res.fine.toLocaleString('id-ID')}\`\n` +
+                  `🔒 **Hukuman**: **Penjara Kerajaan selama ${res.jailDurationMinutes} menit**!\n\n` +
+                  `*Jangan pernah mencoba mengusik kekayaan sang Sultan jika tidak ingin tersambar petir kerajaan!*`
+                )
+                .setTimestamp();
+              await logChannel.send({ embeds: [logZapEmbed] }).catch(() => {});
+            }
+            return true;
+          }
+
           let failText = toolText;
           if (res.soapUsed) {
             failText += '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n';

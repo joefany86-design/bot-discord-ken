@@ -106,11 +106,40 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     throw new Error('Target adalah bot! Anda tidak bisa merampok bot.');
   }
 
-  // 2a. Cek Perlindungan Owner (Anti-Rob)
+  // 2a. Cek Perlindungan Owner (Anti-Rob) dengan Hukuman Langsung
   const { isOwnerProtectionActive } = require('./adminPanel');
   const isTargetOwner = targetId === OWNER_ID || targetId === '436554535037698059';
   if (isTargetOwner && isOwnerProtectionActive(guildId)) {
-    throw new Error('❌ Target memiliki perlindungan OWNER PROTECTION! Mereka kebal total dari perampokan!');
+    const jailDuration = 3600; // 60 menit (3600 detik)
+    const fine = Math.min(thiefWallet.balance, 2000);
+    
+    db.transaction(() => {
+      if (fine > 0) {
+        economy.subtractBalance(userId, guildId, fine, 'ROB_SULTAN_FINE');
+      }
+      const jailUntil = Math.floor(Date.now() / 1000) + jailDuration;
+      db.run(
+        "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
+        [jailUntil, userId, guildId]
+      );
+    })();
+
+    return {
+      success: false,
+      fine,
+      compensation: 0,
+      hasCctv: false,
+      caughtBySecurity: false,
+      jailDurationMinutes: Math.floor(jailDuration / 60),
+      meatUsed: false,
+      lockpickUsed: false,
+      lockpickBroken: false,
+      soapUsed: false,
+      lamboUsed: false,
+      victimClaimedDaily: false,
+      isVictimWanted: false,
+      isSultanPunishment: true
+    };
   }
 
   const victimWallet = economy.getWallet(targetId, guildId);
