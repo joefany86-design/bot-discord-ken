@@ -759,6 +759,14 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel bot_blacklist:", e.message);
   }
 
+  // 48. Migrasi dinamis: Tambahkan kolom owner_protection ke ebyus_settings (toggle anti rob/hack)
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN owner_protection INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'owner_protection' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }
 

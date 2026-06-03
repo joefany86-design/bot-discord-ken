@@ -58,6 +58,23 @@ function toggleOwnerGodMode(gId, active) {
 }
 
 /**
+ * Cek apakah Owner Protection aktif (anti-rob & anti-heist untuk owner).
+ */
+function isOwnerProtectionActive(gId) {
+  const settings = getOrCreateEbyusSettings(gId);
+  return settings.owner_protection === 1;
+}
+
+/**
+ * Toggle Owner Protection ON/OFF.
+ */
+function toggleOwnerProtection(gId, active) {
+  getOrCreateEbyusSettings(gId);
+  database.run('UPDATE ebyus_settings SET owner_protection = ? WHERE guild_id = ?', [active ? 1 : 0, gId]);
+  return active;
+}
+
+/**
  * Mengirimkan embed pengumuman tindakan global ke channel ID 1509480324373942272.
  */
 async function sendGlobalEconomyAnnouncement(client, guild, adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
@@ -3720,6 +3737,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
     const statusIcon = godModeActive ? '🟢' : '🔴';
     const statusText = godModeActive ? 'AKTIF' : 'NONAKTIF';
 
+    const protectionActive = isOwnerProtectionActive(guildId);
+    const protIcon = protectionActive ? '🛡️' : '🔓';
+    const protText = protectionActive ? 'AKTIF (KEBAL ROB & HACK)' : 'NONAKTIF (BISA DIROB/HACK)';
+
     const ownerEmbed = new EmbedBuilder()
       .setColor(godModeActive ? 0x00E676 : 0x7C4DFF)
       .setTitle('👑 OWNER CONTROL CENTER — SENTINEL')
@@ -3735,6 +3756,12 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `• 🏦 Heist — Selalu berhasil jika Owner ikut\n` +
         `• ⚔️ Ekspedisi Pet — Sukses rate **+50%** bonus\n` +
         `• 🐾 Pet — Kebal kematian & efek negatif\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🛡️ **OWNER PROTECTION (KEBAL TOTAL)**\n` +
+        `Status: ${protIcon} **${protText}**\n\n` +
+        `Jika diaktifkan, Akun Owner:\n` +
+        `• Kebal dari perampokan individu (\`.rob\` / \`.steal\`)\n` +
+        `• Kebal dari pembobolan/draining tabungan bank saat Heist (\`.heist\`)\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━`
       )
       .setFooter({ text: 'Owner Control Center • Sentinel 2026' })
@@ -3758,6 +3785,19 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setDisabled(!godModeActive)
     );
 
+    const protectionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ow_protection_on')
+        .setLabel('🛡️ Aktifkan Proteksi')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(protectionActive),
+      new ButtonBuilder()
+        .setCustomId('ow_protection_off')
+        .setLabel('🔓 Nonaktifkan Proteksi')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!protectionActive)
+    );
+
     const navRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('ow_open_hub')
@@ -3773,7 +3813,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [ownerEmbed], components: [toggleRow, navRow] };
+    return { embeds: [ownerEmbed], components: [toggleRow, protectionRow, navRow] };
   };
 
   const initialData = getHubPanelData();
@@ -3804,6 +3844,14 @@ async function handleAdminPanel(messageOrInteraction, client) {
           await iOw.update(fresh);
         } else if (iOw.customId === 'ow_godmode_off' || iOw.customId === 'ow_godmode_normal') {
           toggleOwnerGodMode(guildId, false);
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_protection_on') {
+          toggleOwnerProtection(guildId, true);
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_protection_off') {
+          toggleOwnerProtection(guildId, false);
           const fresh = getOwnerPanelData(guildId);
           await iOw.update(fresh);
         } else if (iOw.customId === 'ow_open_hub') {
@@ -5348,5 +5396,8 @@ module.exports = {
   handleAdminQuestPanel,
   handleAdminWargaPanel,
   handleAdminGiftPanel,
-  isOwnerGodModeActive
+  isOwnerGodModeActive,
+  isOwnerProtectionActive,
+  toggleOwnerProtection,
+  toggleOwnerGodMode
 };

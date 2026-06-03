@@ -106,6 +106,13 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     throw new Error('Target adalah bot! Anda tidak bisa merampok bot.');
   }
 
+  // 2a. Cek Perlindungan Owner (Anti-Rob)
+  const { isOwnerProtectionActive } = require('./adminPanel');
+  const isTargetOwner = targetId === OWNER_ID || targetId === '436554535037698059';
+  if (isTargetOwner && isOwnerProtectionActive(guildId)) {
+    throw new Error('❌ Target memiliki perlindungan OWNER PROTECTION! Mereka kebal total dari perampokan!');
+  }
+
   const victimWallet = economy.getWallet(targetId, guildId);
   const victimJail = checkJail(targetId, guildId, victimMember);
   if (victimJail.jailed) {
@@ -680,6 +687,7 @@ function executeHeist(guildId) {
   // Roll Success
   const roll = Math.random() * 100;
   const hasOwner = lobby.initiatorId === OWNER_ID || lobby.initiatorId === '436554535037698059' || participants.includes(OWNER_ID) || participants.includes('436554535037698059');
+  const { isOwnerGodModeActive } = require('./adminPanel');
   const heistGodMode = hasOwner && isOwnerGodModeActive(guildId);
   const success = heistGodMode ? true : (roll < finalSuccessRate);
 
@@ -724,7 +732,13 @@ function executeHeist(guildId) {
 
     // Ambil tabungan bank player lain di server ini yang saldonya > 0
     const victims = db.all('SELECT user_id, balance FROM bank_savings WHERE guild_id = ? AND balance > 0', [guildId]);
-    const eligibleVictims = victims.filter(v => !participants.includes(v.user_id));
+    const { isOwnerProtectionActive } = require('./adminPanel');
+    const ownerProt = isOwnerProtectionActive(guildId);
+    const eligibleVictims = victims.filter(v => {
+      const isOwner = v.user_id === OWNER_ID || v.user_id === '436554535037698059';
+      if (isOwner && ownerProt) return false; // Lewati owner jika proteksi aktif
+      return !participants.includes(v.user_id);
+    });
 
     let totalPrize = 0;
     let rewardPerPerson = 0;
