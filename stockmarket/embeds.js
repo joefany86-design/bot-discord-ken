@@ -254,6 +254,51 @@ const PET_ASSETS = {
       'https://media.tenor.com/ykpEHGFKYDoAAAAC/elements-solana.gif'
     ]
   },
+  // 🦅 Phoenix — burung api abadi
+  PHOENIX: {
+    BABY: [
+      'https://media.tenor.com/C5J51yY6a84AAAAC/phoenix-pixel.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/S-K-W6Q4uLwAAAAC/phoenix-rising.gif'
+    ]
+  },
+  // 🐢 Kura-Kura — kura-kura bumi kokoh
+  TURTLE: {
+    BABY: [
+      'https://media.tenor.com/L12s1TzKkKwAAAAC/turtle-pixel.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/xJd1Msz1_9gAAAAd/torterra-pokemon.gif'
+    ]
+  },
+  // 🌊 Leviathan — naga lautan kuno
+  LEVIATHAN: {
+    BABY: [
+      'https://media.tenor.com/rWbNEX8h8_wAAAAC/dratini-pokemon.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/zWzHq_oYJmQAAAAC/gyarados-pokemon.gif'
+    ]
+  },
+  // 🦏 Behemoth — monster bumi tangguh
+  BEHEMOTH: {
+    BABY: [
+      'https://media.tenor.com/kS9Zf619_pUAAAAC/phanpy-pokemon.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/B94K3pW17oMAAAAC/groudon-pokemon.gif'
+    ]
+  },
+  // 🐉 Archdragon — naga purba kosmik
+  ARCHDRAGON: {
+    BABY: [
+      'https://media.tenor.com/97y4s_WlJ3IAAAAC/cute-dragon-flying.gif'
+    ],
+    ADULT: [
+      'https://media.tenor.com/YwO-23gD5oIAAAAC/rayquaza-pokemon.gif'
+    ]
+  },
   // GIF khusus untuk aksi/interaksi tertentu
   ACTION: {
     WORK: [
@@ -292,7 +337,10 @@ function getPetImage(pet) {
   }
 
   const species = pet.pet_type.toUpperCase();
-  const stage = pet.status.toUpperCase();
+  let stage = pet.status.toUpperCase();
+  if (stage !== 'BABY' && stage !== 'ADULT') {
+    stage = pet.level >= 10 ? 'ADULT' : 'BABY';
+  }
 
   if (PET_ASSETS[species] && PET_ASSETS[species][stage]) {
     const arr = PET_ASSETS[species][stage];
@@ -2060,26 +2108,38 @@ module.exports = {
     // Warna aksen per kasta raritas pet
     const RARITY_COLORS = {
       COMMON: 0x78909C,
-      RARE: 0x2ECC71,
+      UNCOMMON: 0x2ECC71,
+      RARE: 0x3498DB,
       EPIC: 0x9B59B6,
       LEGENDARY: 0xF1C40F
     };
-    const speciesColor = RARITY_COLORS[petRarity] || COLORS.INFO;
-    const speciesEmoji = (speciesInfo && speciesInfo.name) ? speciesInfo.name.split(' ')[0] : '🐾';
+
+    // Skema warna kartu dinamis berdasarkan elemen atau kasta raritas
+    let cardColor = RARITY_COLORS[petRarity] || 0x78909C;
+    const elementUpper = (pet.gacha_element || (speciesInfo ? speciesInfo.element : '') || '').toUpperCase();
+    if (petRarity === 'COMMON' || petRarity === 'UNCOMMON') {
+      if (elementUpper === 'FIRE') cardColor = 0xFF6B35;
+      else if (elementUpper === 'WATER') cardColor = 0x00BCD4;
+      else if (elementUpper === 'EARTH') cardColor = 0x8B7355;
+      else if (elementUpper === 'DRAGON') cardColor = 0x9C27B0;
+    }
+
+    const speciesEmoji = (speciesInfo && speciesInfo.emoji) ? speciesInfo.emoji : '🐾';
     const typeName = speciesInfo ? speciesInfo.name.replace(/^\S+\s+/, '') : (pet.pet_type.charAt(0) + pet.pet_type.slice(1).toLowerCase());
 
     // Ambil GIF animasi sesuai spesies & fase
     const petImg = getPetImage(pet);
 
+    // Judul & Tampilan Kartu
+    const starString = renderStars(pet.star_level || 1);
     const embed = new EmbedBuilder()
       .setAuthor({
-        name: `🐾 Kandang Pet — ${user.username}`,
+        name: `👤 Trainer Card: ${user.username}`,
         iconURL: user.displayAvatarURL({ dynamic: true })
       })
-      .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+      .setTitle(`${speciesEmoji} [${petRarity}] ${pet.pet_name} — Lv.${pet.level} ${typeName} ${starString}`)
       .setTimestamp();
 
-    // Pasang GIF animasi sebagai gambar utama embed (banner bawah)
     if (petImg) {
       embed.setImage(petImg);
     }
@@ -2103,13 +2163,13 @@ module.exports = {
 
     if (pet.status === 'DEAD') {
       embed
-        .setColor(0x1E1F22) // Dark Ony
+        .setColor(0x1E1F22) // Dark Onyx
         .setTitle(`🪦 IN MEMORIAM: ${pet.pet_name}`)
         .setDescription(
           `> 😭 **Pet Anda telah meninggal dunia.**\n\n` +
           `**${pet.pet_name}** the **${typeName}** telah berpulang karena kekurangan perawatan.\n\n` +
           `Semoga arwahnya tenang di alam monster sana... 🕯️\n\n` +
-          `👉 Klik **🧹 Reset Kandang** di bawah untuk mengadopsi pet baru seharga **Rp 1.500**.`
+          `👉 Klik **🏥 Dokter Pet** di bawah untuk menghidupkannya kembali.`
         )
         .setFooter({ text: '🪦 Rest in Peace • Kosan 1A Pet System' });
       return embed;
@@ -2120,23 +2180,38 @@ module.exports = {
     const isInjured = pet.curse_type === 'injured' && pet.curse_until > now;
     const isSick = pet.status === 'SICK' || pet.health <= 30 || isInjured;
     const isWeak = pet.health <= 60 && pet.health > 30 && pet.status !== 'SICK' && pet.status !== 'WEAK';
-    
+
     let statusEmoji = pet.status === 'SICK' ? '🤢 Sakit' : (pet.status === 'WEAK' ? '🤕 Lemas' : (pet.status === 'ADULT' ? '🦁 Dewasa' : '🐣 Bayi'));
     if (isInjured) statusEmoji = '🤕 Terluka';
 
-    const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : speciesColor;
+    const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : cardColor;
     const maxHP = getMaxHP(pet);
-
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
-    // XP Progress bar teks
-    const xpRatio = Math.min(1, pet.xp / (xpNeeded || 1));
-    const xpBarLen = 10;
-    const xpFilled = Math.round(xpRatio * xpBarLen);
-    const xpBar = '█'.repeat(xpFilled) + '░'.repeat(xpBarLen - xpFilled);
-    const xpPct = Math.round(xpRatio * 100);
+    // Custom Progress Bars (8 Segmen)
+    const renderEmojiBar = (val, max = 100) => {
+      const totalBars = 8;
+      const pct = Math.min(100, Math.max(0, Math.round((val / max) * 100)));
+      const filled = Math.min(totalBars, Math.max(0, Math.round((pct / 100) * totalBars)));
+      const empty = totalBars - filled;
+      
+      let emoji = '🟩';
+      if (pct < 30) emoji = '🟥';
+      else if (pct < 70) emoji = '🟨';
+      
+      const barStr = emoji.repeat(filled) + '⬛'.repeat(empty);
+      return `\`[${barStr}]\` **${val}/${max}** (${pct}%)`;
+    };
 
-    // Rarity display mapping with emojis
+    const renderXpBar = (val, max) => {
+      const totalBars = 8;
+      const pct = Math.min(100, Math.max(0, Math.round((val / max) * 100)));
+      const filled = Math.min(totalBars, Math.max(0, Math.round((pct / 100) * totalBars)));
+      const empty = totalBars - filled;
+      const barStr = '🟪'.repeat(filled) + '⬛'.repeat(empty);
+      return `\`[${barStr}]\` **${val}/${max}** (${pct}%)`;
+    };
+
     const RARITY_DISPLAY = {
       COMMON: '⚪ COMMON',
       UNCOMMON: '🟢 UNCOMMON',
@@ -2145,7 +2220,6 @@ module.exports = {
       LEGENDARY: '🟡 LEGENDARY'
     };
     const rarityLabel = RARITY_DISPLAY[petRarity] || `✨ ${petRarity}`;
-    const starString = renderStars(pet.star_level || 1);
 
     // Get Trait details
     let traitText = '';
@@ -2155,12 +2229,12 @@ module.exports = {
     
     if (traitList.length > 0) {
       traitText = traitList.map(t => {
-        if (t === 'GENIUS') return '🧠 GENIUS (-15% XP cap)';
-        if (t === 'STURDY') return '🛡️ STURDY (HP decay ÷2)';
-        if (t === 'MUTANT') return '🧬 MUTANT (+10% work/hunt)';
-        if (t === 'WARRIOR') return '⚔️ WARRIOR (+10% ATK)';
-        if (t === 'FRAGILE') return '💀 FRAGILE (Lapar/haus dmg 2.0x)';
-        if (t === 'SURVIVOR') return '🛡️ SURVIVOR (Kebal mati lapar/haus)';
+        if (t === 'GENIUS') return '🧠 GENIUS *(XP Cap -15%)*';
+        if (t === 'STURDY') return '🛡️ STURDY *(Status Decay ÷2)*';
+        if (t === 'MUTANT') return '🧬 MUTANT *(Kerja/Buru +10%)*';
+        if (t === 'WARRIOR') return '⚔️ WARRIOR *(ATK +10%)*';
+        if (t === 'FRAGILE') return '💀 FRAGILE *(Lapar/Haus DMG 2x)*';
+        if (t === 'SURVIVOR') return '🛡️ SURVIVOR *(Kebal Mati Ekspedisi)*';
         return t;
       }).join(' + ');
     } else {
@@ -2168,56 +2242,74 @@ module.exports = {
     }
 
     const multText = (pet.xp_multiplier || 1.0) > 1.0 ? `⚡ **${pet.xp_multiplier}x XP**` : '1x';
-    const healthStatus = pet.status === 'SICK' ? '🤢 Sakit (Overdose)' : (isInjured ? '🤕 Terluka (Luka PvP)' : (pet.status === 'WEAK' ? '⚠️ Lemas (Kelaparan)' : (isSick ? '🚨 **KRITIS!**' : (isWeak ? '⚠️ Lemah' : '💚 Sehat'))));
+    const healthStatus = pet.status === 'SICK' ? '🤢 Sakit (Overdose)' : (isInjured ? '🤕 Terluka (Luka PvP)' : (pet.status === 'WEAK' ? '⚠️ Lemas (Kelaparan)' : '💚 Sehat'));
 
     let accText = '❌ Tidak Ada';
-    if (pet.accessory === 'COLLAR_IRON') accText = '🪮 Kalung Besi (Laju Decay -15%)';
-    else if (pet.accessory === 'SWORD_TOY') accText = '⚔️ Pedang Mainan (PvP DMG +15%)';
-    else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan (PvP DEF +15%)';
-    else if (pet.accessory === 'LUCKY_AMULET') accText = '🔮 Jimat Keberuntungan (Mencegah Kematian 1x)';
+    if (pet.accessory === 'COLLAR_IRON') accText = '🪮 Kalung Besi *(Laju Decay -15%)*';
+    else if (pet.accessory === 'SWORD_TOY') accText = '⚔️ Pedang Mainan *(PvP DMG +15%)*';
+    else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan *(PvP DEF +15%)*';
+    else if (pet.accessory === 'LUCKY_AMULET') accText = '🔮 Jimat Keberuntungan *(Resist Mati 1x)*';
 
-    const autoFeedLabel = pet.auto_feed === 2 ? '👑 VIP (Gratis)' : (pet.auto_feed === 1 ? '✅ Aktif (Berbayar)' : '❌ Nonaktif');
+    const autoFeedLabel = pet.auto_feed === 2 ? '👑 VIP (Gratis)' : (pet.auto_feed === 1 ? '✅ ...' : '❌ Nonaktif');
 
-    embed
-      .setColor(statusColor)
-      .setTitle(`${speciesEmoji} ${pet.pet_name} — Lv.${pet.level} ${typeName} ${starString}`)
-      .setDescription(
-        `> 👤 **Pemilik:** <@${pet.user_id}>\n` +
-        `> 🦁 **Status:** ${statusEmoji} · ${healthStatus}\n` +
-        `> ⭐ **Bintang:** ${starString} (Lv. ${pet.star_level || 1})\n` +
-        `> 🌟 **Raritas Pet:** ${rarityLabel}\n` +
-        `> 🧬 **Trait Bawaan:** ${traitText}\n` +
-        `> 🛡️ **Aksesoris:** ${accText}\n` +
-        `> 🔋 **Auto Care:** ${autoFeedLabel} · ⚡ **Booster:** ${multText}\n` +
-        `> \n` +
-        `> **✨ Progress Level & XP**\n` +
-        `> \`[${xpBar}]\` **${xpPct}%** *(${pet.xp}/${xpNeeded})*`
-      );
+    const elementEmojis = {
+      FIRE: '🔥 Api (FIRE)',
+      WATER: '💧 Air (WATER)',
+      EARTH: '🪨 Tanah (EARTH)',
+      DRAGON: '🐉 Naga (DRAGON)'
+    };
+    const elementText = elementEmojis[elementUpper] || '🐾 Netral';
 
-    // Statistik Utama Pet (Ditata vertikal agar tidak wrap jelek di HP)
-    const barHP = this.renderProgressBar(pet.health, maxHP);
-    const barHunger = this.renderProgressBar(pet.hunger, 100);
-    const barThirst = this.renderProgressBar(pet.thirst, 100);
-    const barHappiness = this.renderProgressBar(pet.happiness, 100);
+    embed.setColor(statusColor);
 
-    const conditionsText = 
-      `> ❤️ **Kesehatan (HP) :** ${barHP}${isSick ? ' ⚠️ **[SAKIT/TERLUKA]**' : ''}\n` +
-      `> 🍖 **Kenyangan (Makan):** ${barHunger}\n` +
-      `> 💧 **Hidrasi (Minum)  :** ${barThirst}\n` +
-      `> ⚽ **Mental (Happy)   :** ${barHappiness}`;
+    // Kutipan unik / Flavor text sesuai tipe spesies pet
+    const PET_FLAVORS = {
+      CAT: '“Kucing lincah yang gemar berburu. Lincah, menggemaskan, dan selalu membawa keberuntungan.”',
+      GOLEM: '“Raksasa pelindung kuno terbuat dari batu solid. Bekerja sangat giat tanpa kenal lelah.”',
+      SLIME: '“Makhluk kenyal dan lucu yang dapat melompat tinggi. Sangat tangguh dan tahan lapar!”',
+      DRAGON: '“Naga legendaris penguasa langit dan api. Memiliki daya hancur yang luar biasa!”',
+      PHOENIX: '“Burung api abadi yang lahir kembali dari abunya sendiri. Membawa kehangatan dan kekuatan membara.”',
+      TURTLE: '“Kura-Kura bumi raksasa berumur ratusan tahun. Kokoh bagaikan benteng pertahanan berjalan.”',
+      LEVIATHAN: '“Naga penguasa lautan dalam. Kekuatannya mengendalikan ombak badai samudera.”',
+      BEHEMOTH: '“Raksasa daratan tak tertandingi. Setiap langkahnya menggetarkan seisi bumi.”',
+      ARCHDRAGON: '“Naga purba tertua berselimut aura kosmik. Penguasa mutlak kasta naga.”'
+    };
+    const flavorText = PET_FLAVORS[pet.pet_type.toUpperCase()] || '“Hewan peliharaan yang setia menemani petualangan Anda di dunia Kosan 1A.”';
+    embed.setDescription(`*${flavorText}*`);
 
+    // Field 1: Kartu Data Pet (Trainer Info)
     embed.addFields({
-      name: '📊 Kondisi & Status Utama Pet',
-      value: conditionsText,
+      name: '📋 DATA KARTU PET (TRAINER INFO)',
+      value:
+        `• **👤 Trainer**  ➔ <@${pet.user_id}>\n` +
+        `• **🧬 Elemen**   ➔ \`${elementText}\`\n` +
+        `• **🌟 Raritas**   ➔ \`${rarityLabel}\`\n` +
+        `• **🦁 Status**   ➔ \`${statusEmoji} · ${healthStatus}\`\n` +
+        `• **🧠 Trait**    ➔ ${traitText}\n` +
+        `• **🛡️ Equip**    ➔ ${accText}\n` +
+        `• **🔋 Auto**     ➔ \`${pet.auto_feed === 2 ? '👑 VIP (Gratis)' : (pet.auto_feed === 1 ? '✅ Aktif' : '❌ Nonaktif')}\` | **⚡ Booster** ➔ \`${multText}\``,
       inline: false
     });
 
-    // Hitung statistik tempur
-    const baseAtk = pet.level * 5;
-    let atkMult = 1.0;
+    // Field 2: Status Vitalitas Pet (Vitality Stats)
+    embed.addFields({
+      name: '📊 STATUS VITALITAS (VITALITY STATS)',
+      value:
+        `• **❤️ HP (Health)**  ➔ ${renderEmojiBar(pet.health, maxHP)} ${isSick ? '⚠️ **[Kritis]**' : ''}\n` +
+        `• **🍖 Kenyangan**     ➔ ${renderEmojiBar(pet.hunger, 100)}\n` +
+        `• **💧 Hidrasi**       ➔ ${renderEmojiBar(pet.thirst, 100)}\n` +
+        `• **⚽ Kebahagiaan**   ➔ ${renderEmojiBar(pet.happiness, 100)}\n` +
+        `• **✨ Level XP**      ➔ ${renderXpBar(pet.xp, xpNeeded)}`,
+      inline: false
+    });
+
+    // Statistik Tempur (Menghitung formula PvP yang sebenarnya)
+    const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+    const baseAtk = specBaseAtk + pet.level * 5;
+    
+    let atkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
     const atkModifiers = [];
     if (pet.pet_type === 'DRAGON') {
-      atkMult += 0.15;
       atkModifiers.push('Naga +15%');
     }
     if (pet.trait === 'WARRIOR') {
@@ -2228,16 +2320,24 @@ module.exports = {
       atkMult += 0.15;
       atkModifiers.push('Pedang Mainan +15%');
     }
-    const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
-    const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
-    
-    let atkDesc = `\`${Math.round(baseAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
-    if (atkModifiers.length > 0) {
-      atkDesc += `\n>    *(Bonus: ${atkModifiers.join(' + ')})*`;
+    if (pet.base_atk_bonus_pct > 0) {
+      atkMult += pet.base_atk_bonus_pct;
+      atkModifiers.push(`Bintang +${Math.round(pet.base_atk_bonus_pct * 100)}%`);
     }
 
+    const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
+    const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
+    let atkDesc = `\`${Math.round(baseAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
+    if (atkModifiers.length > 0) {
+      atkDesc += ` *(Bonus: ${atkModifiers.join(' + ')})*`;
+    }
+
+    const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
     let defMult = 1.0;
     const defModifiers = [];
+    if (specBaseDef > 0) {
+      defModifiers.push(`Spesies -${specBaseDef}%`);
+    }
     if (pet.trait === 'STURDY') {
       defMult *= 0.85;
       defModifiers.push('Sturdy -15%');
@@ -2246,58 +2346,85 @@ module.exports = {
       defMult *= 0.85;
       defModifiers.push('Tameng Mainan -15%');
     }
-    const finalDefReduction = Math.round((1 - defMult) * 100);
+    if (pet.base_def_bonus_pct > 0) {
+      defModifiers.push(`Bintang -${Math.round(pet.base_def_bonus_pct * 100)}%`);
+    }
+
+    const totalDefMult = (1.0 - (specBaseDef / 100)) * defMult * (1.0 - (pet.base_def_bonus_pct || 0.0));
+    const finalDefReduction = Math.round((1.0 - totalDefMult) * 100);
+    
     let defDesc = finalDefReduction > 0 
       ? `\`-${finalDefReduction}% DMG\` diterima` 
       : '❌ Tidak Ada';
     if (defModifiers.length > 0) {
-      defDesc += `\n>    *(Bonus: ${defModifiers.join(' + ')})*`;
+      defDesc += ` *(Bonus: ${defModifiers.join(' + ')})*`;
     }
 
+    const PET_MOVES = {
+      CAT: { attack: '🐾 Neko Scratch', defense: '💨 Agility Dodge' },
+      GOLEM: { attack: '🧱 Rock Smash', defense: '🛡️ Obsidian Guard' },
+      SLIME: { attack: '🟢 Jelly Slam', defense: '🛡️ Elastic Bounce' },
+      DRAGON: { attack: '🔥 Dragon Breath', defense: '🛡️ Scale Shield' },
+      PHOENIX: { attack: '🦅 Solar Flare', defense: '🛡️ Phoenix Rebirth' },
+      TURTLE: { attack: '🐢 Shell Spin', defense: '🛡️ Iron Shell' },
+      LEVIATHAN: { attack: '🌊 Tsunami Wave', defense: '🛡️ Water Veil' },
+      BEHEMOTH: { attack: '🦏 Earthquake Strike', defense: '🛡️ Heavy Shield' },
+      ARCHDRAGON: { attack: '🐉 Arch Blast', defense: '🛡️ Celestial Barrier' }
+    };
+    const moveInfo = PET_MOVES[pet.pet_type.toUpperCase()] || { attack: '💥 Strike', defense: '🛡️ Guard' };
+
+    // Field 3: Jurus Tempur Pet (Moveset)
     embed.addFields({
-      name: '⚔️ Atribut & Statistik Tempur Pet',
-      value: `> ❤️ **HP**  : \`${maxHP} HP\`\n` +
-             `> ⚔️ **ATK** : ${atkDesc}\n` +
-             `> 🛡️ **DEF** : ${defDesc}`,
+      name: '⚔️ JURUS TEMPUR & ATRIBUT KARTU',
+      value:
+        `• **❤️ HP Maksimal**  ➔ \`${maxHP} HP\`\n` +
+        `• **${moveInfo.attack} (ATK)** ➔ ${atkDesc}\n` +
+        `• **${moveInfo.defense} (DEF)** ➔ ${defDesc}`,
       inline: false
     });
 
-
-
-    // Info Cooldown Pekerjaan & Berburu
-    // Cooldown Work (Work: 1 Jam)
-    let workCd = 1 * 3600;
-    if (pet.pet_type === 'GOLEM') workCd -= 20 * 60; // Golem perk
+    // Cooldown Pekerjaan & Berburu (Sesuai dengan Overhaul Baru!)
+    let workCd = 15 * 60;
+    if (pet.pet_type === 'GOLEM') workCd -= 5 * 60; // Golem perk
+    try {
+      const rolexQty = db.get(
+        "SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'ROLEX'",
+        [pet.user_id, pet.guild_id]
+      );
+      if (rolexQty && rolexQty.quantity > 0) {
+        workCd -= 5 * 60;
+      }
+    } catch (e) {
+      console.error(e);
+    }
     const nextWork = pet.last_work_at + workCd;
     const canWork = now >= nextWork;
-    const workCdText = canWork ? '🟢 **Siap!**' : `⏳ <t:${nextWork}:R> (<t:${nextWork}:t>)`;
+    const workCdText = canWork ? '🟢 **Siap!**' : `⏳ <t:${nextWork}:R>`;
 
-    // Cooldown Hunt (Hunt: 2 Jam, Fase adult saja)
+    let huntCd = 30 * 60;
     let huntCdText = '🔒 Lvl 10+ / Dewasa';
     if (pet.level >= 10 || pet.status === 'ADULT') {
-      const nextHunt = pet.last_hunt_at + (2 * 3600);
+      const nextHunt = pet.last_hunt_at + huntCd;
       const canHunt = now >= nextHunt;
-      huntCdText = canHunt ? '🟢 **Siap!**' : `⏳ <t:${nextHunt}:R> (<t:${nextHunt}:t>)`;
+      huntCdText = canHunt ? '🟢 **Siap!**' : `⏳ <t:${nextHunt}:R>`;
     }
 
-    // Cooldown Play
     const nextPlay = (pet.last_play_at || 0) + (15 * 60);
     const canPlay = now >= nextPlay;
-    const playCdText = canPlay ? '🟢 **Siap!**' : `⏳ <t:${nextPlay}:R> (<t:${nextPlay}:t>)`;
+    const playCdText = canPlay ? '🟢 **Siap!**' : `⏳ <t:${nextPlay}:R>`;
 
-    const cooldownsText = 
-      `> 💼 **Bekerja (.pet work) :** ${workCdText}\n` +
-      `> 🏹 **Perburuan (.pet hunt) :** ${huntCdText}\n` +
-      `> ⚽ **Bermain (.pet play)    :** ${playCdText}\n` +
-      `> 🛡️ **Ekspedisi             :** 🟢 **Siap!** *(CD 3 jam setelahnya)*`;
-
+    // Field 4: Status Cooldown & Aktivitas (Activity Cooldowns)
     embed.addFields({
-      name: '⏱️ Status Cooldown & Aktivitas',
-      value: cooldownsText,
+      name: '⏱️ STATUS COOLDOWN & AKTIVITAS',
+      value:
+        `• **💼 Bekerja (.pet work)** ➔ ${workCdText}\n` +
+        `• **🏹 Berburu (.pet hunt)** ➔ ${huntCdText}\n` +
+        `• **⚽ Bermain (.pet play)** ➔ ${playCdText}\n` +
+        `• **🛡️ Ekspedisi Co-op**      ➔ 🟢 **Siap!** *(CD 3 jam setelah main)*`,
       inline: false
     });
 
-    embed.setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet System · Klik tombol di bawah untuk merawat!` });
+    embed.setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet Card Series · Klik tombol di bawah untuk interaksi!` });
     return embed;
   },
 
