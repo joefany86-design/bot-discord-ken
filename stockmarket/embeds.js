@@ -10,7 +10,9 @@ const COLORS = {
   WARN: 0xD4AF37,     // Imperial Gold
   DARK: 0x1E1F22,     // Dark Onyx
   PURPLE: 0x7C4DFF,   // Royal Violet
-  ICE: 0x00E5FF       // Celestial Ice Blue
+  ICE: 0x00E5FF,      // Celestial Ice Blue
+  FIERY: 0xFF5722,    // Orange Red (Fiery)
+  GOLD: 0xFFD700      // Gold (Vibrant)
 };
 
 /**
@@ -594,27 +596,31 @@ module.exports = {
       .setThumbnail(user.displayAvatarURL({ dynamic: true }));
 
     if (result.success) {
-      let desc = `Selamat **${user.username}**! Kamu mendapatkan **${formatCurrency(result.reward)}** hari ini.\n\n` +
-        `💰 Hadiah Dasar: \`${formatCurrency(result.baseReward)}\`\n` +
-        `🔥 Bonus Streak: \`${formatCurrency(result.streakBonus)}\` (${result.streak} hari)`;
+      let desc = `🎉 Selamat **${user.username}**! Anda berhasil mengklaim gaji harian Anda!\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💰 **Gaji Bersih Diterima** : **${formatCurrency(result.finalReward)}**\n` +
+        `🔥 **Hari Streak Aktif**    : \`${result.streak} hari\`\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📊 **RINCIAN BONUS PENDAPATAN:**\n` +
+        `• **Hadiah Pokok** : \`${formatCurrency(result.baseReward)}\`\n` +
+        `• **Bonus Streak** : \`${formatCurrency(result.streakBonus)}\``;
 
       if (result.roomBonus > 0) {
-        desc += `\n🛌 Bonus Kamar (${result.roomName}): \`${formatCurrency(result.roomBonus)}\``;
+        desc += `\n• **Bonus Kamar**  : \`${formatCurrency(result.roomBonus)}\` *(Kamar: ${result.roomName})*`;
       }
 
       if (result.debtPaidDetails) {
         const { creditorId, paidAmount, remainingDebt } = result.debtPaidDetails;
-        desc += `\n\n⚠️ **POTONGAN HUTANG OTOMATIS!**\n` +
-          `Sebesar **${formatCurrency(paidAmount)}** (50% dari hadiah) dipotong secara otomatis untuk mencicil hutang tebusan Anda kepada <@${creditorId}>.\n` +
-          `╰ 💰 Bersih Diterima: **${formatCurrency(result.finalReward)}**\n` +
-          `╰ 🧾 Sisa Hutang Anda: **${remainingDebt > 0 ? formatCurrency(remainingDebt) : '✨ LUNAS!'}**`;
+        desc += `\n\n⚠️ **PEMOTONGAN CICILAN UTANG (50%):**\n` +
+          `• **Jumlah Dipotong** : -\`${formatCurrency(paidAmount)}\` *(Untuk mencicil utang tebusan <@${creditorId}>)*\n` +
+          `• **Sisa Utang Anda** : **${remainingDebt > 0 ? formatCurrency(remainingDebt) : '✨ LUNAS!'}**`;
       }
 
       embed
         .setColor(COLORS.SUCCESS)
-        .setTitle('🎉 Hadiah Harian Berhasil Diklaim!')
+        .setTitle('🎁 GAJI HARIAN KOSAN 1A 🎁')
         .setDescription(desc)
-        .setFooter({ text: 'Kembali lagi besok untuk mempertahankan streak!' });
+        .setFooter({ text: 'Kembali lagi besok untuk melipatgandakan streak harianmu!' });
     } else {
       // Hitung sisa waktu (jam, menit, detik)
       const hours = Math.floor(result.timeLeftMs / (1000 * 60 * 60));
@@ -623,10 +629,11 @@ module.exports = {
 
       embed
         .setColor(COLORS.WARN)
-        .setTitle('⏳ Kamu Sudah Klaim Hari Ini!')
+        .setTitle('⏳ GAJI HARIAN BELUM TERSEDIA!')
         .setDescription(
-          `Sabar ya, kamu baru bisa mengklaim hadiah harian berikutnya dalam:\n` +
-          `👉 **${hours} jam ${minutes} menit ${seconds} detik**`
+          `Sabar ya **${user.username}**, Anda baru saja mengklaim gaji harian baru-baru ini.\n` +
+          `Silakan kembali lagi dalam:\n` +
+          `⏱️ **${hours} jam ${minutes} menit ${seconds} detik**`
         );
     }
     return embed.setTimestamp();
@@ -1260,27 +1267,31 @@ module.exports = {
 
       embed
         .setColor(tierColor)
-        .setTitle(`🎰 GACHA BERHASIL! JACKPOT DI TANGAN! 🎰`)
+        .setTitle('🎰 JACKPOT! GACHA ROLE SUCCESS! 🔥')
         .setDescription(
-          `**${user.username}** baru saja melakukan roll Gacha seharga **${formatCurrency(price)}**!\n\n` +
-          `🎰 **HASIL ROLL:**\n` +
+          `💥 **${user.username}** menarik tuas keberuntungan seharga **${formatCurrency(price)}**!\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🎁 **HADIAH UTAMA YANG DIDAPAT:**\n` +
           `🌟 **${item.role_name}**\n` +
-          `🏷️ **Kelangkaan:** \`${tierEmoji} ${item.tier}\`\n\n` +
-          `*Keberuntungan berpihak padamu! Role ini telah ditambahkan secara otomatis ke profilmu!* 😎\n` +
-          `📉 Sisa saldo Anda: **${formatCurrency(newBalance)}**`
+          `🏷️ **Raritas Tier** : \`${tierEmoji} ${item.tier}\`\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `*Dewi Fortuna tersenyum padamu! Role prestise ini telah disematkan langsung ke profilmu!* 😎\n\n` +
+          `💰 **Sisa Saldo Dompet** : **${formatCurrency(newBalance)}**`
         );
     } else {
       embed
         .setColor(0x8A95A5) // Platinum Slate Gray
-        .setTitle(`🎰 GACHA ZONK: AMSYONG DEK! 😭 🎰`)
+        .setTitle('🎰 GACHA ZONK: AMPAS TOTAL! 😭')
         .setDescription(
-          `**${user.username}** baru saja memutar mesin Gacha seharga **${formatCurrency(price)}**!\n\n` +
-          `🔮 **HASIL PENYARINGAN:**\n` +
-          `> ❌ **ZONK / AMPAS TOTAL!** Dewi Fortuna sedang tidur siang. 💤\n\n` +
-          `🗑️ **Item Rongsokan:** **${item ? item.name : 'Angin Kosong'}**\n` +
-          `📝 **Lore Barang:** *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n\n` +
-          `*“Tabahkan hatimu, mungkin jodohmu di gacha berikutnya!”* 🐔🔥\n` +
-          `📉 Sisa Saldo Anda: **${formatCurrency(newBalance)}**`
+          `💥 **${user.username}** memutar mesin gacha seharga **${formatCurrency(price)}**...\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🔮 **HASIL SCANNING KRISTAL NASIB:**\n` +
+          `> ❌ **ZONK!** Ampas kali dekkk. Dewi Fortuna sedang tidur siang. 💤\n\n` +
+          `🗑️ **Barang Sampah Didapat** : **${item ? item.name : 'Angin Kosong'}**\n` +
+          `📝 **Lore Barang Sampah** : *“${item ? item.desc : 'Tidak ada apa-apa.'}”*\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `*“Jangan menyerah! Putaran gacha berikutnya mungkin adalah takdir emasmu!”* 🐔🔥\n\n` +
+          `💰 **Sisa Saldo Dompet** : **${formatCurrency(newBalance)}**`
         );
     }
 
@@ -2527,20 +2538,20 @@ module.exports = {
   // 29. Embed Battle Arena PvP
   petBattleEmbed(challengerUser, opponentUser, result) {
     const embed = new EmbedBuilder()
-      .setTitle('⚔️ PVP PET ARENA: BATTLE REPORT ⚔️')
+      .setTitle('⚔️ PVP PET ARENA: HASIL PERTEMPURAN MEMBARA ⚔️')
       .setTimestamp();
 
     if (result.draw) {
       embed
-        .setColor(0xD4AF37) // Imperial Gold
+        .setColor(COLORS.GOLD)
         .setDescription(
-          `🤝 **HASIL AKHIR ARENA: SEIMBANG (DRAW) !** 🤝\n\n` +
-          `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat alot dan berakhir imbang!\n\n` +
-          `📊 **STATUS HP TERAKHIR:**\n` +
+          `🤝 **HASIL AKHIR ARENA: DRAW / SEIMBANG!** 🤝\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat sengit hingga waktu habis!\n\n` +
+          `📊 **STATUS HP AKHIR PERTEMPURAN:**\n` +
           `├─ ⚔️ **${result.challengerName}** (Challenger): \`${result.challengerHP}%\` HP\n` +
           `└─ 🛡️ **${result.opponentName}** (Opponent): \`${result.opponentHP}%\` HP\n\n` +
-          `🪙 **Hasil Taruhan:**\n` +
-          `Seluruh koin taruhan dikembalikan ke masing-masing pihak tanpa potongan pajak arena!`
+          `🪙 **Taruhan Kembalian:** Seluruh koin dikembalikan penuh ke dompet masing-masing!`
         );
     } else {
       const isChalWinner = result.winnerId === challengerUser.id;
@@ -2548,15 +2559,16 @@ module.exports = {
       const loserUser = isChalWinner ? opponentUser : challengerUser;
 
       embed
-        .setColor(0x7C4DFF) // Premium Royal Violet
+        .setColor(COLORS.FIERY)
         .setDescription(
-          `👑 **PEMENANG MUTLAK BATTLE ARENA** 👑\n\n` +
-          `🏆 **${result.winnerName.toUpperCase()}** (milik **${winnerUser.username}**)\n` +
-          `💥 Sukses menumbangkan **${result.loserName}** (milik **${loserUser.username}**)!` +
-          `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 **HADIAH JACKPOT PERTEMPURAN:**\n` +
-          `├─ 🎁 Total Bersih: **${formatCurrency(result.prizePool)}**\n` +
-          `└─ 🏛️ Pajak Arena (5%): **Rp ${result.tax.toLocaleString('id-ID')}** *(Disetorkan ke Kas Server)*\n\n` +
+          `🏆 **PEMENANG MUTLAK BATTLE ARENA** 🏆\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🔥 **${result.winnerName.toUpperCase()}** (Peliharaan milik **${winnerUser.username}**)\n` +
+          `💥 Sukses menumbangkan **${result.loserName}** (Peliharaan milik **${loserUser.username}**)\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `💰 **JARAHAN PERTEMPURAN (JACKPOT):**\n` +
+          `├─ 🎁 **Hadiah Bersih** : **\`${formatCurrency(result.prizePool)}\`**\n` +
+          `└─ 🏛️ **Pajak Arena** : \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n\n` +
           `📈 *XP & Level pet pemenang telah ditambahkan secara otomatis.*`
         );
     }
@@ -2620,60 +2632,60 @@ module.exports = {
     const listKru = participants.map((p, idx) => {
       const roles = ['🕶️ Otak Kriminal', '🚗 Pembalap Pelarian', '💣 Ahli Peledak', '🔫 Penembak Jitu', '💻 Peretas Keamanan', '🎒 Pembawa Uang'];
       const roleStr = roles[idx] || '👥 Anggota Kru';
-      return `${idx + 1}. **<@${p}>** (${roleStr})`;
+      return `  ├─ ${idx + 1}. <@${p}> (${roleStr})`;
     }).join('\n');
 
-    const embed = new EmbedBuilder()
-      .setColor(COLORS.WARN)
-      .setTitle('🚨 OPERASI BESAR: SERVER CENTRAL BANK HEIST 🚨')
+    const crewListStr = listKru ? `${listKru}\n  └─ *Siap membobol brankas!*` : '  └─ *Menunggu kru bergabung...*';
+
+    return new EmbedBuilder()
+      .setColor(COLORS.FIERY)
+      .setTitle('🔥 OPERASI BESAR: BANK HEIST BERSAMA 🔥')
       .setDescription(
-        `**${initiator.username}** sedang menggalang tim kriminal untuk membobol brankas Bank Pusat Server!\n\n` +
-        `💵 **Biaya Persiapan:** \`${formatCurrency(prepFee)}\` / orang (potong dompet)\n` +
-        `⏳ **Waktu Berkumpul:** \`${timeLeft} detik lagi...\`\n\n` +
-        `👥 **DAFTAR ANGGOTA KRU (${participants.length}):**\n${listKru || '*Menunggu kru bergabung...*'}`
+        `💥 **${initiator.username}** menantang Anda untuk bergabung dalam misi perampokan Bank Pusat Server!\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💵 **Biaya Persiapan** : \`${formatCurrency(prepFee)}\` per orang\n` +
+        `⏳ **Waktu Berkumpul** : **${timeLeft} detik** lagi!\n\n` +
+        `👥 **KRU PERAMPOK AKTIF (${participants.length} / ♾️):**\n` +
+        `${crewListStr}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
       )
       .addFields(
         {
-          name: '📈 ESTIMASI STRATEGI OPERASI',
-          value: `• **Peluang Keberhasilan:** \`${successRate}%\`\n• **Perkiraan Total Hadiah:** \`${formatCurrency(minPrize)} - ${formatCurrency(maxPrize)}\``,
+          name: '📈 ANALISIS INTELIJEN OPERASI',
+          value: `• **Peluang Sukses** : \`${successRate}%\`\n• **Estimasi Jarahan** : \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\``,
           inline: false
         }
       )
-      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk ikut perampokan ini!' })
+      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk ikut aksi membara ini!' })
       .setTimestamp();
-
-    return embed;
   },
 
   // 32. Heist Result Embed
   heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
-    const embed = new EmbedBuilder()
-      .setTitle(success ? '💥 LAPORAN AKHIR: BANK HEIST SUCCESS! 💰' : '🚓 LAPORAN AKHIR: BANK HEIST GAGAL! 👮')
-      .setColor(success ? COLORS.SUCCESS : COLORS.ERROR)
-      .setTimestamp();
-
     const crewList = participants.map(p => `<@${p}>`).join(', ');
-    const logText = logs.map(l => `• ${l}`).join('\n');
+    const logText = logs.map(l => ` 🔥 ${l}`).join('\n');
 
-    let desc = `🚨 **Lokasi:** Central Bank Server\n` +
-      `👥 **Kru Perampok:** ${crewList}\n\n`;
+    let desc = `💥 **Lokasi Kejadian:** Central Bank Server\n` +
+      `👥 **Kru Terlibat:** ${crewList}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     // 1. Tambahkan Detail Pet Synergy jika ada
     if (extraData.petDetails && extraData.petDetails.length > 0) {
-      desc += `🧬 **SINERGI TAMAGOTCHI PET:**\n` + extraData.petDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+      desc += `🧬 **SINERGI PET ACTIVE:**\n` + extraData.petDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
     }
 
     // 2. Tambahkan Detail Black Market Gear jika ada
     if (extraData.bmDetails && extraData.bmDetails.length > 0) {
-      desc += `🗝️ **PERLENGKAPAN KRIMINAL:**\n` + extraData.bmDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+      desc += `🗝️ **GEAR PASAR GELAP:**\n` + extraData.bmDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
     }
 
-    desc += `📝 **DOKUMENTASI OPERASI:**\n${logText}\n\n`;
+    desc += `📝 **DOKUMENTASI REKAMAN AKSI:**\n${logText}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     if (success) {
       desc += `🏆 **HASIL JARAHAN BRANKAS:**\n` +
-        `💰 **Total Dirampok:** \`${formatCurrency(totalReward)}\`\n` +
-        `👉 **Setiap Anggota Mendapatkan:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih!)*`;
+        `💰 **Total Didapat** : \`${formatCurrency(totalReward)}\`\n` +
+        `👉 **Gaji per Anggota** : **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih)*`;
 
       // Masked users bonus
       if (extraData.maskedUsers && extraData.maskedUsers.length > 0) {
@@ -2682,32 +2694,34 @@ module.exports = {
       }
 
       if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
-        const victimList = deductionLogs.map(dl => `• <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
+        const victimList = deductionLogs.map(dl => ` • <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
         desc += `\n\n💸 **DANA NASABAH YANG DIKORBANKAN:**\n${victimList}\n` +
-          `🏦 **Total Disita dari Rekening Nasabah:** \`${formatCurrency(stolenFromPlayers)}\``;
+          `🏦 **Total Disita dari Rekening:** \`${formatCurrency(stolenFromPlayers)}\``;
       }
-
-      embed.setDescription(desc);
     } else {
-      desc += `❌ **KONSEKUENSI PENANGKAPAN:**\n` +
-        `💸 **Denda per Anggota:** \`${formatCurrency(fineAmount)}\` (potong dompet)\n` +
-        `🔒 **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!`;
+      desc += `🚨 **KONSEKUENSI KEGAGALAN:**\n` +
+        `💸 **Denda Kerugian** : \`${formatCurrency(fineAmount)}\` per orang\n` +
+        `🔒 **Hukuman Penjara** : \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!`;
 
       // Slime dodge jail users
       if (extraData.dodgedJailUsers && extraData.dodgedJailUsers.length > 0) {
         const dodgeList = extraData.dodgedJailUsers.map(u => `<@${u}>`).join(', ');
         desc += `\n\n🟢 **Dodge Jail!** ${dodgeList} berhasil melarikan diri menggunakan tubuh licin pet **Slime** dan terhindar dari penjara!`;
       }
-
-      embed.setDescription(desc);
     }
+
+    const embed = new EmbedBuilder()
+      .setTitle(success ? '🏆 BANK HEIST SUKSES BESAR! 💰' : '🚓 HEIST GAGAL: DIKEPUNG POLISI! 👮')
+      .setColor(success ? COLORS.FIERY : COLORS.ERROR)
+      .setDescription(desc)
+      .setTimestamp();
 
     // Tampilkan barang kriminal yang hancur jika ada
     if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
       const brokenList = extraData.brokenLockpicks.map(u => `<@${u}>`).join(', ');
       embed.addFields({
-        name: '🛠️ LAPORAN KERUSAKAN ALAT',
-        value: `⚠️ Lockpick milik ${brokenList} patah/rusak saat aksi perampokan!`
+        name: '⚠️ ALAT KATAHAN / RUSAK',
+        value: `Lockpick milik ${brokenList} patah/rusak saat membobol brankas!`
       });
     }
 
