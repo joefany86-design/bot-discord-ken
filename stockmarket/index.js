@@ -6049,6 +6049,9 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
         if (submitted) {
           try {
+            if (!pendingPull) {
+              return submitted.reply({ content: '❌ Pet gacha sudah disimpan atau didaur ulang!', flags: 64 });
+            }
             const petName = submitted.fields.getTextInputValue('gacha_pet_name');
             const saved = pet.saveGachaPet(author.id, guildId, pendingPull, petName);
             pendingPull = null;
@@ -6094,7 +6097,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
         // Tampilkan modal input nama untuk semua pet yang dipilih
         const modal = new ModalBuilder()
-          .setCustomId('gacha10_modal_names')
+          .setCustomId(`gacha10_modal_names_${selectedIndices.join(',')}`)
           .setTitle(`💾 Beri Nama ${selectedIndices.length} Pet Gacha`);
 
         selectedIndices.forEach((idx, i) => {
@@ -6113,14 +6116,21 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
         await iGacha.showModal(modal);
 
         const submitted = await iGacha.awaitModalSubmit({
-          filter: (sub) => sub.customId === 'gacha10_modal_names' && sub.user.id === author.id,
+          filter: (sub) => sub.customId.startsWith('gacha10_modal_names_') && sub.user.id === author.id,
           time: 120000
         }).catch(() => null);
 
         if (submitted) {
           try {
+            if (!pendingPulls || pendingPulls.length === 0) {
+              return submitted.reply({ content: '❌ Data gacha 10x sudah diproses atau kedaluwarsa!', flags: 64 });
+            }
+
+            const indicesStr = submitted.customId.replace('gacha10_modal_names_', '');
+            const selectedIndicesParsed = indicesStr ? indicesStr.split(',').map(Number) : [];
+
             const savedNames = [];
-            for (const idx of selectedIndices) {
+            for (const idx of selectedIndicesParsed) {
               const petName = submitted.fields.getTextInputValue(`gacha10_name_${idx}`);
               const p = pendingPulls[idx];
               pet.saveGachaPet(author.id, guildId, p, petName);
@@ -6128,7 +6138,7 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
             }
 
             // Recycle sisanya
-            const recycledCount = pendingPulls.length - selectedIndices.length;
+            const recycledCount = pendingPulls.length - selectedIndicesParsed.length;
             if (recycledCount > 0) {
               economy.addBalance(author.id, guildId, recycledCount * pet.RECYCLE_REWARD, 'PET_GACHA_RECYCLE_MULTI');
             }
