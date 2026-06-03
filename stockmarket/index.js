@@ -1932,10 +1932,15 @@ function initStockMarket(client) {
               new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Inventaris').setStyle(ButtonStyle.Primary),
               new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
               new ButtonBuilder().setCustomId('pet_btn_gacha').setLabel('🎰 Gacha').setStyle(ButtonStyle.Primary),
-              new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade').setStyle(ButtonStyle.Success),
               new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄').setStyle(ButtonStyle.Secondary)
             ];
             rows.push(new ActionRowBuilder().addComponents(row3Components));
+
+            const row4Components = [
+              new ButtonBuilder().setCustomId('pet_btn_upgrade').setLabel('✨ Upgrade Bintang').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('pet_btn_recycle').setLabel('♻️ Daur Ulang Pet').setStyle(ButtonStyle.Danger)
+            ];
+            rows.push(new ActionRowBuilder().addComponents(row4Components));
           }
           if (allPets.length > 1) {
             const selectMenu = new StringSelectMenuBuilder().setCustomId('pet_select_active').setPlaceholder('🐾 Ganti Peliharaan Aktif...');
@@ -2339,6 +2344,54 @@ function initStockMarket(client) {
               // Redirect ke panel upgrade (ephemeral reply)
               await iPet.deferReply({ flags: 64 });
               await handlePetUpgradePanel(iPet, client, true);
+            } else if (iPet.customId === 'pet_btn_recycle') {
+              const allPetsFresh = pet.getPetsList(user.id, guildId);
+              if (allPetsFresh.length === 0) {
+                return iPet.reply({ content: '❌ Anda tidak memiliki pet!', flags: 64 });
+              }
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('pet_select_recycle_private')
+                .setPlaceholder('♻️ Pilih pet yang ingin didaur ulang...');
+              allPetsFresh.forEach(p => {
+                const star = pet.renderStars(p.star_level || 1);
+                selectMenu.addOptions(new StringSelectMenuOptionBuilder()
+                  .setLabel(`${p.pet_name} the ${p.pet_type} (${star}, Lv.${p.level})`)
+                  .setDescription(`Recycle → +Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}`)
+                  .setValue(p.pet_name)
+                );
+              });
+              const recycleEmbed = new EmbedBuilder()
+                .setColor(0xFF5252)
+                .setTitle('♻️ DAUR ULANG PET ♻️')
+                .setDescription(`Pilih pet yang ingin didaur ulang. Pet akan dihapus permanen dan Anda menerima **Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}** sebagai kompensasi.\n\n⚠️ **Aksi ini tidak bisa dibatalkan!**`)
+                .setTimestamp();
+              const subPrivateMsg = await iPet.reply({
+                embeds: [recycleEmbed],
+                components: [new ActionRowBuilder().addComponents(selectMenu)],
+                flags: 64,
+                fetchReply: true
+              });
+
+              const recycleCollector = subPrivateMsg.createMessageComponentCollector({
+                componentType: ComponentType.StringSelect,
+                time: 60000
+              });
+
+              recycleCollector.on('collect', async iRecycle => {
+                if (iRecycle.user.id !== user.id) return;
+                const targetPetName = iRecycle.values[0];
+                try {
+                  const res = pet.recyclePet(user.id, guildId, targetPetName);
+                  await iRecycle.update({
+                    embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
+                    components: []
+                  });
+                  // Refresh private dashboard
+                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                } catch (err) {
+                  await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
+                }
+              });
             } else if (iPet.customId === 'pet_btn_nav_shop') {
               await iPet.update(getShopPanelDataPrivate(user.id));
             } else if (iPet.customId === 'pet_btn_cancel_shop') {
