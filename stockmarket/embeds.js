@@ -3156,11 +3156,18 @@ module.exports = {
       waterStatusText = `💦 **Ember Air:** ⏳ Mengisi Ulang (**${minsLeft}m ${secsLeft}s**)`;
     }
 
-    let desc = `Selamat datang di kebun bunga virtualmu, **${user.username}**! 🌸\n` +
+    let desc = `\`\`\`\n` +
+      `┌──────────────────────────────┐\n` +
+      `│     🌸 KEBUN BUNGA COZY 🌸    │\n` +
+      `│  Sistem Kebun Raya Kosan 1A  │\n` +
+      `└──────────────────────────────┘\n` +
+      `\`\`\`\n` +
+      `Selamat datang di kebun bunga virtualmu, **${user.username}**! 🌸\n` +
       `Rawatlah benih tanamanmu hingga mekar penuh, panen bunga segarnya, dan rangkai menjadi buket indah berpita untuk dihadiahkan kepada warga lain!\n\n` +
-      `${waterStatusText}\n\n` +
+      `┊ ${waterStatusText}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `🏡 **DAFTAR TANAH AKTIF (3 SLOT):**\n` +
-      `──────────────────────────────\n`;
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
     slots.forEach(slot => {
       desc += `\n`;
@@ -3188,7 +3195,7 @@ module.exports = {
           `┊ *Tanah gembur siap ditanami benih bunga baru!*\n` +
           `┊ 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
       }
-      desc += `──────────────────────────────\n`;
+      desc += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     });
 
     return new EmbedBuilder()
@@ -3202,24 +3209,30 @@ module.exports = {
 
   // 42. Cozy Flower Garden Shop Embed
   gardenShopEmbed(user, wallet) {
-    let desc = `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
+    let desc = `\`\`\`\n` +
+      `┌──────────────────────────────┐\n` +
+      `│ 🛒 TOKO BENIH KEBUN KOSAN 1A │\n` +
+      `│ Persediaan Bibit & Kertas    │\n` +
+      `└──────────────────────────────┘\n` +
+      `\`\`\`\n` +
+      `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
       `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
-      `──────────────────────────────\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
       `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
       `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
-      `   • Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` (Common)\n` +
+      `   ┊ Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` *(Common)*\n` +
       `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
-      `   • Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` (Common)\n` +
+      `   ┊ Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` *(Common)*\n` +
       `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
-      `   • Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` (Rare)\n` +
+      `   ┊ Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` *(Rare)*\n` +
       `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
-      `   • Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` (Rare)\n` +
+      `   ┊ Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` *(Rare)*\n` +
       `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
-      `   • Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` (Epic)\n\n` +
+      `   ┊ Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` *(Epic)*\n\n` +
       `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
       `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
-      `  • Harga: \`Rp 100\` (Bahan wajib untuk merangkai buket bunga)\n\n` +
-      `──────────────────────────────\n` +
+      `  ┊ Harga: \`Rp 100\` *(Bahan wajib untuk merangkai buket bunga)*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `👉 **Cara Membeli:** Ketik \`.toko-kebun beli <nama_benih> <jumlah>\`\n` +
       `*Contoh:* \`.toko-kebun beli mawar 3\` atau \`.toko-kebun beli wrapping 1\``;
 
@@ -3253,25 +3266,32 @@ module.exports = {
     const qtyOrchid = getQty('FLOWER_ORCHID');
     const qtyWrapping = getQty('GIFT_WRAPPING');
 
-    let desc = `Halo **${user.username}**, di sini Anda dapat merangkai bunga segar hasil panen menjadi buket bunga indah berpita yang memiliki efek pasif **Daily Claim Buff** melimpah saat dihadiahkan ke warga lain!\n\n` +
+    let desc = `\`\`\`\n` +
+      `┌──────────────────────────────┐\n` +
+      `│ 💐 MEJA MERANGKAI BUKET 💐    │\n` +
+      `│    Kerajinan Buket Premium   │\n` +
+      `└──────────────────────────────┘\n` +
+      `\`\`\`\n` +
+      `Halo **${user.username}**, di sini Anda dapat merangkai bunga segar hasil panen menjadi buket bunga indah berpita yang memiliki efek pasif **Daily Claim Buff** melimpah saat dihadiahkan ke warga lain!\n\n` +
       `🎒 **INVENTORY BAHAN ANDA:**\n` +
-      `• 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
-      `• 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
-      `• 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
-      `• 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
-      `• 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
-      `• 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
+      `┊ 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
+      `┊ 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
+      `┊ 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
+      `┊ 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
+      `┊ 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
+      `┊ 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📜 **RESEP BUKET BUNGA YANG TERSEDIA:**\n\n` +
       `1. **💐 Buket Kasih Sayang** (\`love\`)\n` +
-      `   • **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
-      `   • **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `   ┊ **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
+      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
       `2. **💐 Buket Ketenangan** (\`peace\`)\n` +
-      `   • **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
-      `   • **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `   ┊ **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
+      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
       `3. **👑 Buket Legendaris (Imperial)** (\`imperial\`)\n` +
-      `   • **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
-      `   • **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
-      `──────────────────────────────\n` +
+      `   ┊ **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
+      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `👉 **Cara Merangkai:** Ketik \`.buket <jenis>\`\n` +
       `*Contoh:* \`.buket love\``;
 
@@ -3291,10 +3311,18 @@ module.exports = {
       .setTitle(`💝 KADO BUKET BUNGA PENUH KASIH SAYANG 💝`)
       .setThumbnail(receiver.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(
+        `\`\`\`\n` +
+        `┌──────────────────────────────┐\n` +
+        `│ 💝 KADO BUKET BUNGA 💝       │\n` +
+        `│    Kiriman Spesial Kosan 1A  │\n` +
+        `└──────────────────────────────┘\n` +
+        `\`\`\`\n` +
         `### 💐 Ada Kiriman Hadiah Manis Untukmu! 💐\n\n` +
         `**<@${sender.id}>** baru saja mengirimkan buket bunga yang sangat indah untuk **<@${receiver.id}>**!\n\n` +
-        `📦 **Buket Hadiah:** **${bouquetName}**\n` +
-        `💌 **Pesan Manis:**\n*“ ${messageText} ”*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `┊ 📦 **Buket Hadiah:** **${bouquetName}**\n` +
+        `┊ 💌 **Pesan Manis:**\n*“ ${messageText} ”*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `✨ **Efek Pasif Aktif:**\n` +
         `**<@${receiver.id}>** mendapatkan tambahan pasif harian koin kado saat mengklaim daily selama **24 jam** ke depan! 🎉`
       )
@@ -3304,13 +3332,27 @@ module.exports = {
 
   // 45. Global Action Announcement Embed
   globalActionAnnouncementEmbed(adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
+    const headerBox = isLaw ?
+        `┌──────────────────────────────┐\n` +
+        `│  🚨 REGULASI HUKUM GLOBAL 🚨 │\n` +
+        `│     Lapas/Hukum Kosan 1A     │\n` +
+        `└──────────────────────────────┘\n`
+      :
+        `┌──────────────────────────────┐\n` +
+        `│  📢 REGULASI EKONOMI GLOBAL  │\n` +
+        `│    Keuangan Global Kosan 1A  │\n` +
+        `└──────────────────────────────┘\n`;
+
     const embed = new EmbedBuilder()
       .setColor(colorHex || '#7C4DFF')
       .setTitle(isLaw ? '🚨 PENGUMUMAN REGULASI HUKUM GLOBAL' : '📢 PENGUMUMAN TINDAKAN EKONOMI GLOBAL')
       .setDescription(
+        `\`\`\`\n` +
+        headerBox +
+        `\`\`\`\n` +
         `🚨 **Tindakan Regulasi ${isLaw ? 'Hukum/Hukuman' : 'Ekonomi'} Global baru saja dipicu oleh Administrator!**\n\n` +
-        `**Tindakan:** ${actionName}\n` +
-        `**Deskripsi:** ${actionDescription}`
+        `┊ **Tindakan:** ${actionName}\n` +
+        `┊ **Deskripsi:** ${actionDescription}`
       )
       .setAuthor({
         name: adminUser.username,
@@ -3348,9 +3390,10 @@ module.exports = {
         `│        DETAIL TRANSAKSI MASUK        │\n` +
         `└──────────────────────────────────────┘\n` +
         `\`\`\`\n` +
-        `👤 **Pengirim:** ${senderMention}\n` +
-        `📥 **Jumlah Bersih:** **${amountStr}**\n` +
-        `📂 **Kategori:** \`${transactionType}\` ${transactionEmoji}\n\n` +
+        `┊ 👤 **Pengirim:** ${senderMention}\n` +
+        `┊ 📥 **Jumlah Bersih:** **${amountStr}**\n` +
+        `┊ 📂 **Kategori:** \`${transactionType}\` ${transactionEmoji}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `*Catatan: Koin sudah bersih dipotong pajak transfer/sistem dan telah ditambahkan secara otomatis ke saldo tabungan bank Anda.*`
       )
       .setTimestamp()
