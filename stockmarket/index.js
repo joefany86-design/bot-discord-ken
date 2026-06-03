@@ -2695,21 +2695,21 @@ function initStockMarket(client) {
             .setCustomId('garden_select_plant_perm')
             .setPlaceholder('🌱 Pilih benih & slot untuk menanam...')
             .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 2 Jam)').setValue('plant_rose_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 4 Jam)').setValue('plant_tulip_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 6 Jam)').setValue('plant_lavender_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 12 Jam)').setValue('plant_sakura_3'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_1'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_2'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 24 Jam)').setValue('plant_orchid_3')
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_3'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_1'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_2'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_3'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_1'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_2'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_3')
             );
 
           const row2 = new ActionRowBuilder().addComponents(selectMenu);
@@ -2722,13 +2722,13 @@ function initStockMarket(client) {
           const embed = embeds.gardenShopEmbed(user, walletShop);
 
           const shopRow1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_buy_rose_perm').setLabel('🌹 Mawar (Rp 150)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_tulip_perm').setLabel('🌷 Tulip (Rp 300)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_lavender_perm').setLabel('🪻 Lavender (Rp 500)').setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId('garden_buy_rose_perm').setLabel('🌹 Mawar (Rp 80)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_tulip_perm').setLabel('🌷 Tulip (Rp 150)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_lavender_perm').setLabel('🪻 Lavender (Rp 250)').setStyle(ButtonStyle.Success)
           );
           const shopRow2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_buy_sakura_perm').setLabel('🌸 Sakura (Rp 1k)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_orchid_perm').setLabel('👑 Anggrek (Rp 2.5k)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_sakura_perm').setLabel('🌸 Sakura (Rp 500)').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('garden_buy_orchid_perm').setLabel('👑 Anggrek (Rp 1.200)').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('garden_buy_wrapping_perm').setLabel('🎗️ Kertas Kado (Rp 100)').setStyle(ButtonStyle.Primary)
           );
           const shopRow3 = new ActionRowBuilder().addComponents(

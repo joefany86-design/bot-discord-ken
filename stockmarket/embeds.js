@@ -3277,15 +3277,15 @@ module.exports = {
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
       `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
       `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
-      `   ┊ Harga: \`Rp 150\` | Waktu: \`2 Jam\` | Jual: \`Rp 250\` *(Common)*\n` +
+      `   ┊ Harga: \`Rp 80\` | Waktu: \`30 Menit\` | Jual: \`Rp 105\` *(Common)*\n` +
       `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
-      `   ┊ Harga: \`Rp 300\` | Waktu: \`4 Jam\` | Jual: \`Rp 550\` *(Common)*\n` +
+      `   ┊ Harga: \`Rp 150\` | Waktu: \`1 Jam\` | Jual: \`Rp 200\` *(Common)*\n` +
       `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
-      `   ┊ Harga: \`Rp 500\` | Waktu: \`6 Jam\` | Jual: \`Rp 950\` *(Rare)*\n` +
+      `   ┊ Harga: \`Rp 250\` | Waktu: \`2 Jam\` | Jual: \`Rp 350\` *(Rare)*\n` +
       `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
-      `   ┊ Harga: \`Rp 1.000\` | Waktu: \`12 Jam\` | Jual: \`Rp 2.200\` *(Rare)*\n` +
+      `   ┊ Harga: \`Rp 500\` | Waktu: \`4 Jam\` | Jual: \`Rp 750\` *(Rare)*\n` +
       `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
-      `   ┊ Harga: \`Rp 2.500\` | Waktu: \`24 Jam\` | Jual: \`Rp 6.000\` *(Epic)*\n\n` +
+      `   ┊ Harga: \`Rp 1.200\` | Waktu: \`8 Jam\` | Jual: \`Rp 2.000\` *(Epic)*\n\n` +
       `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
       `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
       `  ┊ Harga: \`Rp 100\` *(Bahan wajib untuk merangkai buket bunga)*\n\n` +
