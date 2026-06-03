@@ -78,7 +78,7 @@ function toggleOwnerProtection(gId, active) {
  * Mengirimkan embed pengumuman tindakan global ke channel ID 1509480324373942272.
  */
 async function sendGlobalEconomyAnnouncement(client, guild, adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
-  const channelId = '1509480324373942272';
+  const channelId = config.ANNOUNCEMENT_CHANNEL_ID || '1509480324373942272';
   try {
     const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
     if (!channel) {
@@ -2522,12 +2522,14 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const settings = getOrCreateEbyusSettings(guildId);
         const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at, includeFreeAll, includeResetCds);
         
-        let targetChannel = guild.channels.cache.get('1422642326798598348');
+        const targetChannelId = config.ANNOUNCEMENT_CHANNEL_ID || '1422642326798598348';
+        let targetChannel = guild.channels.cache.get(targetChannelId);
         if (!targetChannel) {
           try {
-            targetChannel = await guild.channels.fetch('1422642326798598348');
+            targetChannel = await guild.channels.fetch(targetChannelId);
           } catch (e) {
-            targetChannel = messageOrInteraction.channel;
+            // Fallback to living room if announcement channel fails
+            targetChannel = guild.channels.cache.get('1422642326798598348') || await guild.channels.fetch('1422642326798598348').catch(() => messageOrInteraction.channel);
           }
         }
 
