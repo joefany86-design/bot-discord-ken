@@ -960,12 +960,12 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       
       targetText = `🎯 **<@${targetUserId}>**\n` +
                    `• ID: \`${targetUserId}\`\n` +
-                   `• Dompet: \`Rp ${walletVal.toLocaleString('id-ID')}\`\n` +
-                   `• Tabungan Bank: \`Rp ${bankVal.toLocaleString('id-ID')}\`\n`;
+                   `• Dompet: \`Rp ${(walletVal || 0).toLocaleString('id-ID')}\`\n` +
+                   `• Tabungan Bank: \`Rp ${(bankVal || 0).toLocaleString('id-ID')}\`\n`;
 
       const activeLoan = database.get('SELECT * FROM bank_loans WHERE user_id = ? AND guild_id = ? AND status IN (\'ACTIVE\', \'OVERDUE\')', [targetUserId, gId]);
       if (activeLoan) {
-        targetText += `• Pinjaman Bank: ⚠️ **ADA PINJAMAN** (\`Rp ${activeLoan.amount.toLocaleString('id-ID')}\` - Status: **${activeLoan.status}**)\n`;
+        targetText += `• Pinjaman Bank: ⚠️ **ADA PINJAMAN** (\`Rp ${(activeLoan.total_due || 0).toLocaleString('id-ID')}\` - Status: **${activeLoan.status}**)\n`;
       } else {
         targetText += `• Pinjaman Bank: 🟢 Bersih\n`;
       }
@@ -2511,8 +2511,8 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       .setTimestamp()
       .setFooter({ text: 'Sentinel Admin • Keamanan & Bypass Server' });
 
-    let giftCoinsText = settings.gift_coins > 0 ? `🟢 **Rp ${settings.gift_coins.toLocaleString('id-ID')}**` : '⚪ **Nonaktif (0)**';
-    let giftItemText = settings.gift_item_qty > 0 && settings.gift_item_id ? `🟢 **${settings.gift_item_qty}x ${settings.gift_item_id}**` : '⚪ **Nonaktif**';
+    let giftCoinsText = (settings.gift_coins || 0) > 0 ? `🟢 **Rp ${(settings.gift_coins || 0).toLocaleString('id-ID')}**` : '⚪ **Nonaktif (0)**';
+    let giftItemText = (settings.gift_item_qty || 0) > 0 && settings.gift_item_id ? `🟢 **${settings.gift_item_qty}x ${settings.gift_item_id}**` : '⚪ **Nonaktif**';
 
     embed.setDescription(
       `Sabotase persentase kemenangan gacha role, atur multiplier obrolan chat warga, set batas waktu auto-reset event, atau lakukan penghentian darurat:\n\n` +
@@ -3927,7 +3927,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
           name: '📊 STATISTIK SERVER REAL-TIME',
           value: `👥 **Warga Terdaftar:** \`${walletsCount} jiwa\`\n` +
                  `🐾 **Pet Aktif di Server:** \`${activePetsCount} peliharaan\`\n` +
-                 `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${totalCoins.toLocaleString('id-ID')}\``,
+                 `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\``,
           inline: false
         },
         {
