@@ -813,6 +813,9 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     }
   }
 
+  let xpGained = 0;
+  let levelUp = false;
+
   // 3. Eksekusi konsumsi item
   db.transaction(() => {
     // Potong kuantitas inventory
@@ -829,12 +832,18 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
     const now = Math.floor(Date.now() / 1000);
 
     if (item.multiplier) {
-      // Set XP multiplier
+      // Set XP multiplier & give instant XP based on pet level * 100 * (multiplier / 2)
+      xpGained = Math.round(pet.level * 100 * (item.multiplier / 2.0));
+      const resXp = addXp(pet, xpGained, maxHP);
+      levelUp = resXp.levelUp;
+      const newHealth = levelUp ? maxHP : pet.health;
+      const newStatus = levelUp && pet.status === 'BABY' && resXp.newLevel >= 10 ? 'ADULT' : pet.status;
+
       db.run(
         `UPDATE user_pets 
-         SET xp_multiplier = ?, last_interaction_at = ?
+         SET xp_multiplier = ?, xp = ?, level = ?, health = ?, status = ?, last_interaction_at = ?
          WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-        [item.multiplier, now, userId, guildId, pet.pet_name]
+        [item.multiplier, resXp.newXp, resXp.newLevel, newHealth, newStatus, now, userId, guildId, pet.pet_name]
       );
     } else {
       // Update stats pet
@@ -844,8 +853,9 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
       let newHealth = Math.min(maxHP, pet.health + item.hp);
 
       // Dapatkan XP dari perawatan (+10 XP per aksi perawatan) dikali xp_multiplier
-      let xpGained = Math.round(10 * (pet.xp_multiplier || 1.0));
-      let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
+      xpGained = Math.round(10 * (pet.xp_multiplier || 1.0));
+      let { newXp, newLevel, levelUp: careLevelUp } = addXp(pet, xpGained, maxHP);
+      levelUp = careLevelUp;
       if (levelUp) {
         newHealth = maxHP; // Full HP saat naik level
       }
@@ -886,7 +896,9 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
   return {
     pet: updatedPet,
     item,
-    didAutoBuy
+    didAutoBuy,
+    xpGained,
+    levelUp
   };
 }
 
@@ -3297,6 +3309,7 @@ module.exports = {
   getStarBonuses,
   renderStars,
   getMaxHP,
+  addXp,
   // Core
   getPet,
   adoptPet,

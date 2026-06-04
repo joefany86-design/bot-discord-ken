@@ -344,21 +344,16 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     let petMsg = '';
     const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
     if (pet && pet.status !== 'DEAD' && pet.status !== 'EGG') {
-      let newXp = pet.xp + 20;
-      let newLevel = pet.level;
-      const xpNeeded = newLevel * 100;
-      let levelUp = false;
-      if (newXp >= xpNeeded) {
-        newXp -= xpNeeded;
-        newLevel += 1;
-        levelUp = true;
-      }
+      const baseHp = petMod.getMaxHP(pet);
+      const xpGained = Math.round(20 * (pet.xp_multiplier || 1.0));
+      const { newXp, newLevel, levelUp } = petMod.addXp(pet, xpGained, baseHp);
+      
       db.run(
-        'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
-        [newXp, newLevel, userId, guildId]
+        'UPDATE user_pets SET xp = ?, level = ?, health = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1',
+        [newXp, newLevel, levelUp ? baseHp : pet.health, userId, guildId]
       );
       petXpGained = true;
-      petMsg = `\n🐾 Pet Anda **${pet.pet_name}** mendapatkan **+20 XP**!${levelUp ? ` (Naik ke Level ${newLevel}! 🎉)` : ''}`;
+      petMsg = `\n🐾 Pet Anda **${pet.pet_name}** mendapatkan **+${xpGained} XP**!${levelUp ? ` (Naik ke Level ${newLevel}! 🎉)` : ''}`;
     }
 
     return {

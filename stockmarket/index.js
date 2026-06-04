@@ -2243,7 +2243,7 @@ function initStockMarket(client) {
                     } else {
                       result = pet.useItem(user.id, guildId, selectedItemId, false);
                       if (result.item.multiplier) {
-                        detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!`;
+                        detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${result.xpGained} XP**${result.levelUp ? ` (Naik ke Level **${result.pet.level}**! 🎉)` : ''}`;
                       } else {
                         const mins = Math.floor(result.item.cooldown / 60);
                         detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).\n⏱️ *Cooldown: ${mins} Menit.*`;
@@ -4130,7 +4130,7 @@ async function handlePetCommand(message, client, args) {
       const successEmb = embeds.successEmbed(
         'Penggunaan Item Sukses! ✨',
         `Berhasil menggunakan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n` +
-        (res.item.multiplier ? `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!` : `📊 Status baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`)
+        (res.item.multiplier ? `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${res.xpGained} XP**${res.levelUp ? ` (Naik ke Level **${res.pet.level}**! 🎉)` : ''}` : `📊 Status baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`)
       );
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
