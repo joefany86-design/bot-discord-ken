@@ -1887,7 +1887,14 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   if (isSuccess) {
     // Sukses: Koin acak dibagi merata
     const totalPrize = minReward + Math.floor(Math.random() * (maxReward - minReward + 1));
-    const prizePerPerson = Math.floor(totalPrize / kruCount);
+    let prizePerPerson = Math.floor(totalPrize / kruCount);
+
+    // Terapkan pengali Solo vs Co-op
+    if (kruCount === 1) {
+      prizePerPerson = Math.floor(prizePerPerson * 0.3); // Solo: 30% koin
+    } else {
+      prizePerPerson = Math.floor(prizePerPerson * 1.5); // Co-op: 150% koin
+    }
 
     db.transaction(() => {
       activePets.forEach(ap => {
@@ -1899,6 +1906,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
 
         // Berikan XP (+200 XP dasar) dikali xp_multiplier
         let xpGained = Math.round(200 * (ap.pet.xp_multiplier || 1.0));
+        if (kruCount === 1) {
+          xpGained = Math.round(xpGained * 0.3); // Solo: 30% XP
+        } else {
+          xpGained = Math.round(xpGained * 1.5); // Co-op: 150% XP
+        }
         const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
@@ -2080,6 +2092,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         checkExpeditionLimit(ap.userId, guildId, false);
 
         let xpGained = Math.round(60 * (ap.pet.xp_multiplier || 1.0));
+        if (kruCount === 1) {
+          xpGained = Math.round(xpGained * 0.3); // Solo: 30% XP
+        } else {
+          xpGained = Math.round(xpGained * 1.5); // Co-op: 150% XP
+        }
         const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
@@ -3148,6 +3165,123 @@ function forceSetStar(userId, guildId, petName, starLevel) {
   return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petRow.pet_name]);
 }
 
+/**
+ * Memproses kegagalan ekspedisi pet akibat salah klik (Interference) atau waktu reaksi habis (Timeout)
+ * Menarik risiko kematian pet berdasarkan level pet, peta zona, dan di bawah level rekomendasi.
+ */
+function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reasonType, mapId, membersMap = {}) {
+  const activePets = [];
+  participantIds.forEach(pId => {
+    const p = getPet(pId, guildId);
+    if (p && p.status !== 'DEAD' && p.status !== 'EGG') {
+      activePets.push({ userId: pId, pet: p });
+    }
+  });
+
+  const selectedMap = EXPEDITION_MAPS.find(m => m.id === parseInt(mapId)) || EXPEDITION_MAPS[0];
+  const now = Math.floor(Date.now() / 1000);
+  const results = [];
+
+  db.transaction(() => {
+    activePets.forEach(ap => {
+      // Increment daily expedition count
+      checkExpeditionLimit(ap.userId, guildId, false);
+
+      const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059');
+      const maxHP = getMaxHP(ap.pet);
+
+      // Dampak kegagalan QTE: Lapar -15, Haus -15, Kebahagiaan -30 (Stress tinggi)
+      const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 30);
+      const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
+      const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);
+
+      // Hitung risiko kematian pet
+      // Base: 2%
+      let deathProb = 0.02;
+
+      // Faktor Level Pet: +(level - 1) * 0.5%
+      deathProb += (ap.pet.level - 1) * 0.005;
+
+      // Faktor Zona Map: +mapId * 2%
+      deathProb += selectedMap.id * 0.02;
+
+      // Penalti Level Di Bawah Rekomendasi: +(recommLvl - lvl) * 6%
+      const lvlDiff = selectedMap.recommendedLevel - ap.pet.level;
+      if (lvlDiff > 0) {
+        deathProb += lvlDiff * 0.06;
+      }
+
+      // Gacha tier protection
+      if (membersMap && membersMap[ap.userId]) {
+        const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
+        if (gachaTier === 'LEGENDARY') deathProb = Math.max(0, deathProb - 0.10);
+        else if (gachaTier === 'MYTHIC') deathProb = 0.0;
+      }
+
+      // Limit deathChance to 85% max
+      if (deathProb > 0.85) deathProb = 0.85;
+
+      let finalHealth = isGod ? maxHP : Math.max(5, ap.pet.health - 25);
+      let finalStatus = ap.pet.status;
+      let finalAccessory = ap.pet.accessory;
+      let deathTriggered = false;
+      let isSavedByAmulet = false;
+      let isSavedBySurvivor = false;
+
+      // Roll kematian
+      if (!isGod && Math.random() < deathProb) {
+        deathTriggered = true;
+        if (ap.pet.accessory === 'LUCKY_AMULET') {
+          isSavedByAmulet = true;
+          finalHealth = 20;
+          finalAccessory = '';
+          if (finalStatus === 'WEAK') {
+            finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
+          }
+        } else if (ap.pet.trait === 'SURVIVOR') {
+          isSavedBySurvivor = true;
+          finalHealth = 1;
+          finalStatus = 'WEAK';
+        } else {
+          finalHealth = 0;
+          finalStatus = 'DEAD';
+        }
+      }
+
+      db.run(
+        `UPDATE user_pets 
+         SET health = ?, status = ?, happiness = ?, hunger = ?, thirst = ?, last_interaction_at = ?, accessory = ?
+         WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+        [finalHealth, finalStatus, newHappiness, newHunger, newThirst, now, finalAccessory, ap.userId, guildId, ap.pet.pet_name]
+      );
+
+      let statusText = '';
+      if (deathTriggered) {
+        if (isSavedByAmulet) {
+          statusText = '💥 **Jimat Keberuntungan Hancur!** Pet selamat dari maut dengan sisa 20 HP. 🛡️';
+        } else if (isSavedBySurvivor) {
+          statusText = '❤️ **Dampak Fatal!** Pet bertahan hidup dengan sisa 1 HP karena trait *Survivor*. 🩹';
+        } else {
+          statusText = '🪦 **MENINGGAL DUNIA!** Pet tewas di tempat pertempuran. (Butuh Dokter Pet untuk dihidupkan)';
+        }
+      } else {
+        statusText = `🩹 Terluka parah (HP: **${finalHealth}%**, Mood: **${newHappiness}%**)`;
+      }
+
+      results.push({
+        userId: ap.userId,
+        petName: ap.pet.pet_name,
+        statusText,
+        deathTriggered,
+        isSavedByAmulet,
+        isSavedBySurvivor
+      });
+    });
+  })();
+
+  return results;
+}
+
 
 module.exports = {
   // Config & utils
@@ -3177,6 +3311,7 @@ module.exports = {
   getPetsList,
   switchActivePet,
   breedPets,
+  executeExpeditionQteFailure,
   calculateSuccessRate,
   executeExpedition,
   getXpNeeded,

@@ -2952,6 +2952,76 @@ module.exports = {
     return embed;
   },
 
+  // 30b. Pet Expedition QTE Step Embed
+  petExpeditionStepEmbed(guild, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix) {
+    const petName = petObj ? petObj.pet_name : 'Unknown Pet';
+    const petType = petObj ? petObj.pet_type : 'Normal';
+    const petLvl = petObj ? petObj.level : 1;
+    
+    return new EmbedBuilder()
+      .setColor('#FFB300') // Vibrant Yellow/Gold
+      .setTitle(`⚔️ EXPEDITION BATTLE: GILIRAN SERANG! ⚔️`)
+      .setDescription(
+        `\`\`\`\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│       ⚡ FASE COMBAT ACTIVE QTE ⚡      │\n` +
+        `│       Langkah ${stepNumber} dari ${totalSteps} Giliran Kru       │\n` +
+        `└────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `👾 **BOS PENJAGA**: **${bossName}**\n\n` +
+        `Bos bersiap melepaskan serangan balik mematikan! Formasi tim pet membutuhkan tindakan cepat!\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🎯 **GILIRAN PET**: **${petName}** (Lv. ${petLvl} ${petType})\n` +
+        `👤 **PEMILIK PET**: <@${targetUserId}>\n` +
+        `⏳ **BATAS REAKSI**: <t:${endTimeUnix}:R>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `*⚠️ PERINGATAN KERAS: Hanya <@${targetUserId}> yang boleh mengeklik tombol skill pet di bawah! Kru lain yang salah klik/salah giliran akan mengacaukan sinergi tim, memicu serangan balik Bos secara instan!*`
+      )
+      .setFooter({ text: 'Sentinel Pet Co-op RPG • Jaga fokus, pimpin pet Anda!' })
+      .setTimestamp();
+  },
+
+  // 30c. Pet Expedition QTE Failure Embed
+  petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results) {
+    const crewList = participants.map(p => `<@${p}>`).join(', ');
+    let causeText = '';
+    
+    if (reasonType === 'Timeout') {
+      causeText = `🔴 **Penyebab Kegagalan**: Kru <@${failedUserId}> terlambat memicu skill pet miliknya melewati batas 6 detik! Pet terdiam membingungkan sehingga Bos menghantam formasi tim!`;
+    } else {
+      causeText = `🚨 **Penyebab Kegagalan**: Kru <@${failedUserId}> panik dan memicu skill pet miliknya di luar giliran! Tabrakan energi skill pet menggagalkan formasi pertempuran!`;
+    }
+
+    let statusLines = '';
+    if (results && results.length > 0) {
+      results.forEach(r => {
+        statusLines += `• <@${r.userId}> (Pet: **${r.petName}**): ${r.statusText || 'Terluka parah (-25 HP) & Stress tinggi 🩹'}\n`;
+      });
+    } else {
+      statusLines = '*Seluruh pet kru terluka parah (-25 HP) & Stress bertambah (+30 Stress).*';
+    }
+
+    return new EmbedBuilder()
+      .setColor('#D32F2F') // Crimson Dark Red
+      .setTitle('💀 EXPEDITION FAIL: TIM TERPENTAL KELUAR! 💀')
+      .setDescription(
+        `\`\`\`\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│        ☠️ BOS ZONA MENGAMUK ☠️        │\n` +
+        `│      Ekspedisi Gagal / Pet Terluka     │\n` +
+        `└────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `💥 **Zona Ekspedisi:** ${zoneName}\n` +
+        `👥 **Kru Terlibat:** ${crewList}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${causeText}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🩹 **STATUS & KORBAN JIWA TIM PET:**\n` +
+        `${statusLines}`
+      )
+      .setTimestamp();
+  },
+
   // 31. Heist Lobby Embed (.heist)
   heistLobbyEmbed(guild, initiator, participants, endTimeUnix, successRate, minPrize, maxPrize, prepFee) {
     const listKru = participants.map((p, idx) => {

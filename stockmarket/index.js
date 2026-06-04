@@ -4673,7 +4673,101 @@ async function handlePetCommand(message, client, args) {
         await replyMsg.edit({ embeds: [eventSelectedEmbed], components: [] }).catch(() => {});
         await new Promise(r => setTimeout(r, 4000));
 
-        // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (Simulasi RPG & Hasil)
+        // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (QTE Turn-Based & Hasil)
+        const bossName = selectedMap.boss || 'Giga Guardian';
+        const totalSteps = currentLobby.participants.length;
+        let qteFailed = false;
+        let failedUserId = null;
+        let reasonType = null; // 'Timeout' or 'Interference'
+
+        // Loop sequential QTE untuk setiap peserta secara berurutan
+        for (let idx = 0; idx < totalSteps; idx++) {
+          if (qteFailed) break;
+
+          const targetUserId = currentLobby.participants[idx];
+          const petObj = pet.getPet(targetUserId, guildId);
+          const stepNumber = idx + 1;
+          const durationSeconds = 6;
+          const endTimeUnix = Math.floor((Date.now() + durationSeconds * 1000) / 1000);
+
+          // Buat embeds dan action row tombol QTE
+          const qteEmbed = embeds.petExpeditionStepEmbed(guildId, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix);
+          const qteRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('pet_exp_qte_skill')
+              .setLabel('⚡ Lepaskan Skill Pet')
+              .setStyle(ButtonStyle.Danger)
+          );
+
+          await replyMsg.edit({ embeds: [qteEmbed], components: [qteRow] }).catch(() => {});
+
+          // Setup collector interaksi tombol
+          const qteCollector = replyMsg.createMessageComponentCollector({
+            time: durationSeconds * 1000
+          });
+
+          let turnCompleted = false;
+
+          await new Promise((resolveTurn) => {
+            qteCollector.on('collect', async iQte => {
+              if (iQte.customId === 'pet_exp_qte_skill') {
+                // Cek apakah pengklik adalah target yang benar
+                if (iQte.user.id === targetUserId) {
+                  turnCompleted = true;
+                  qteCollector.stop('success');
+                  await iQte.deferUpdate().catch(() => {});
+                  resolveTurn();
+                } else if (currentLobby.participants.includes(iQte.user.id)) {
+                  // Pengklik adalah kru lain (Interference)
+                  qteFailed = true;
+                  failedUserId = iQte.user.id;
+                  reasonType = 'Interference';
+                  qteCollector.stop('interference');
+                  await iQte.deferUpdate().catch(() => {});
+                  resolveTurn();
+                } else {
+                  // Pengklik bukan peserta lobi ekspedisi
+                  await iQte.reply({ content: '❌ Anda tidak ikut dalam ekspedisi ini!', flags: 64 }).catch(() => {});
+                }
+              }
+            });
+
+            qteCollector.on('end', (collected, reason) => {
+              if (!turnCompleted && reason !== 'interference' && reason !== 'success') {
+                // Batas waktu habis (Timeout)
+                qteFailed = true;
+                failedUserId = targetUserId;
+                reasonType = 'Timeout';
+              }
+              resolveTurn();
+            });
+          });
+
+          // Jeda singkat antar giliran
+          if (!qteFailed) {
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+
+        if (qteFailed) {
+          // Proses kegagalan QTE di database
+          const failResults = pet.executeExpeditionQteFailure(guildId, currentLobby.participants, failedUserId, reasonType, mapChoice, membersMap);
+          const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults);
+          
+          await replyMsg.edit({
+            content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
+            embeds: [failEmbed],
+            components: []
+          }).catch(async () => {
+            await message.channel.send({
+              content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
+              embeds: [failEmbed]
+            });
+          });
+          return;
+        }
+
+        // Jika berhasil melewati semua QTE, jalankan executeExpedition untuk keberhasilan
         const res = pet.executeExpedition(guildId, currentLobby.participants, mapChoice, pathChoice, eventChoice, eventSuccess, forceChestExploded, waterRefreshed, membersMap);
 
         // Hook quest progress for EXPEDITION
@@ -4684,143 +4778,6 @@ async function handlePetCommand(message, client, args) {
             console.error('Error incrementing quest progress for EXPEDITION:', err.message);
           }
         });
-
-        // Fetch participant pets for flavor text
-        const participantPets = currentLobby.participants.map(pId => {
-          return {
-            userId: pId,
-            pet: pet.getPet(pId, guildId)
-          };
-        }).filter(ap => ap.pet);
-
-        const bossName = selectedMap.boss || 'Giga Guardian';
-
-        const getPetCombatAction = (p) => {
-          const species = (p.pet.pet_type || 'Unknown').toUpperCase();
-          const trait = (p.pet.trait || 'NORMAL').toUpperCase();
-          const petName = p.pet.pet_name;
-          
-          const actions = {
-            PHOENIX: [
-              `🔥 **${petName}** mengepakkan sayap membara, membakar zirah raksasa **${bossName}**!`,
-              `☄️ **${petName}** menembakkan bola api suci dari langit langsung ke arah mata **${bossName}**!`,
-              `☀️ **${petName}** bersinar terang menembus kegelapan, melemahkan pertahanan **${bossName}**!`
-            ],
-            LEVIATHAN: [
-              `🌊 **${petName}** memuntahkan semburan air bertekanan tinggi menghantam **${bossName}**!`,
-              `🌀 **${petName}** menciptakan pusaran air raksasa untuk memperlambat serangan **${bossName}**!`,
-              `💧 **${petName}** menyembuhkan sebagian rasa lelah kru dengan tetesan embun suci!`
-            ],
-            DRAGON: [
-              `🐉 **${petName}** mengaum dahsyat membuat area ekspedisi bergetar, lalu mencakar dada **${bossName}**!`,
-              `🔥 **${petName}** menyemburkan napas naga purba yang melelehkan tanah di bawah kaki **${bossName}**!`,
-              `⚡ **${petName}** meluncur cepat bagai petir menyambar punggung **${bossName}**!`
-            ],
-            TURTLE: [
-              `🛡️ **${petName}** menggunakan cangkang bajanya untuk memblokir hantaman gada **${bossName}**!`,
-              `🦏 **${petName}** meluncur deras bagai bola berduri, menghantam telak kaki **${bossName}**!`,
-              `🧱 **${petName}** membentengi tim dengan dinding batu pertahanan kokoh!`
-            ],
-            BEHEMOTH: [
-              `🦏 **${petName}** menyeruduk keras dengan tanduk raksasanya hingga **${bossName}** terhuyung!`,
-              `🧱 **${petName}** menghentakkan kakinya ke bumi, memicu gempa kecil yang mengacaukan konsentrasi **${bossName}**!`,
-              `💪 **${petName}** meraung keras membakar semangat tempur rekan satu timnya!`
-            ]
-          };
-          
-          const fallbackActions = [
-            `⚔️ **${petName}** berlari lincah menyerang celah zirah **${bossName}**!`,
-            `🐾 **${petName}** menerjang cepat dan mencakar/menggigit bagian belakang **${bossName}**!`,
-            `✨ **${petName}** memancarkan aura magis, membantu serangan rekan-rekannya!`
-          ];
-          
-          let list = actions[species] || fallbackActions;
-          
-          if (trait === 'WARRIOR') {
-            list = list.concat([
-              `💪 **${petName}** (Warrior) mengamuk hebat tanpa rasa takut, menebas **${bossName}** berkali-kali!`,
-            ]);
-          } else if (trait === 'STURDY') {
-            list = list.concat([
-              `🛡️ **${petName}** (Sturdy) berdiri tegap di barisan paling depan menahan hantaman **${bossName}**!`,
-            ]);
-          } else if (trait === 'GENIUS') {
-            list = list.concat([
-              `🧠 **${petName}** (Genius) menganalisis pola gerak **${bossName}** dan mengarahkan serangan presisi!`,
-            ]);
-          }
-          
-          return list[Math.floor(Math.random() * list.length)];
-        };
-
-        const getBossAction = () => {
-          const bossActions = [
-            `👹 **${bossName}** mengayunkan cakar raksasanya, menghempaskan tanah di sekitar tim!`,
-            `💥 **${bossName}** menghentakkan kakinya ke bumi, memicu ledakan gelombang kejut!`,
-            `👁️ **${bossName}** menembakkan sinar energi kegelapan dari matanya menyapu barisan pet!`,
-            `🌪️ **${bossName}** mengaum dahsyat memicu badai angin kencang yang menghempaskan dedaunan!`
-          ];
-          return bossActions[Math.floor(Math.random() * bossActions.length)];
-        };
-
-        // Round 1
-        const round1Embed = new EmbedBuilder()
-          .setColor(0xE91E63)
-          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 1`)
-          .setDescription(
-            `👾 **Bos Zona:** **${bossName}**\n` +
-            `💖 HP Bos: \`[🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩]\` **1000 / 1000**\n\n` +
-            `📝 **Log Pertempuran:**\n` +
-            `⚔️ Pertempuran sengit dimulai! Seluruh tim pet menerjang Bos!\n` +
-            `• ${getPetCombatAction(participantPets[0])}\n` +
-            (participantPets.length > 1 ? `• ${getPetCombatAction(participantPets[1])}\n` : `• ${getPetCombatAction(participantPets[0])}\n`) +
-            `• ${getBossAction()}\n\n` +
-            `*Bertarung sengit...*`
-          )
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
-          
-        await replyMsg.edit({ embeds: [round1Embed], components: [] }).catch(() => {});
-        await new Promise(r => setTimeout(r, 3000));
-
-        // Round 2
-        const round2Embed = new EmbedBuilder()
-          .setColor(0xE91E63)
-          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 2`)
-          .setDescription(
-            `👾 **Bos Zona:** **${bossName}**\n` +
-            `💖 HP Bos: \`[🟩🟩🟩🟩🟩🟥🟥🟥🟥🟥]\` **500 / 1000**\n\n` +
-            `📝 **Log Pertempuran:**\n` +
-            `• ${getPetCombatAction(participantPets[Math.floor(Math.random() * participantPets.length)])}\n` +
-            `• ${getBossAction()}\n` +
-            `• ${getPetCombatAction(participantPets[Math.floor(Math.random() * participantPets.length)])}\n\n` +
-            `*Bos mulai terdesak!*`
-          )
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
-          
-        await replyMsg.edit({ embeds: [round2Embed], components: [] }).catch(() => {});
-        await new Promise(r => setTimeout(r, 3000));
-
-        // Round 3 (Climax)
-        const bossFinalHP = res.success ? 0 : 150;
-        const bossHPBar = res.success ? `\`[🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥]\`` : `\`[🟩🟥🟥🟥🟥🟥🟥🟥🟥🟥]\``;
-        const climaxLog = res.success 
-          ? `✨ **Serangan Akhir:** Seluruh kekuatan tim pet disatukan, menghantam telak jantung **${bossName}** hingga hancur berkeping-keping!`
-          : `💀 **Pukulan Telak:** **${bossName}** mengeluarkan jurus terlarang, menghempaskan seluruh tim pet hingga terpental mundur!`;
-          
-        const round3Embed = new EmbedBuilder()
-          .setColor(0xE91E63)
-          .setTitle(`⚔️ STAGE 3: PERTEMPURAN BOS AKHIR - ROUND 3`)
-          .setDescription(
-            `👾 **Bos Zona:** **${bossName}**\n` +
-            `💖 HP Bos: ${bossHPBar} **${bossFinalHP} / 1000**\n\n` +
-            `📝 **Log Pertempuran:**\n` +
-            `• ${climaxLog}\n\n` +
-            `*Menghitung jarahan dan mengobati luka...*`
-          )
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
-          
-        await replyMsg.edit({ embeds: [round3Embed], components: [] }).catch(() => {});
-        await new Promise(r => setTimeout(r, 3500));
 
         let reportDesc = '';
         res.logs.forEach(log => {
