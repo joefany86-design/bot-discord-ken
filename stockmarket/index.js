@@ -4317,7 +4317,7 @@ async function handlePetCommand(message, client, args) {
 
     economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
 
-    const endTimeUnix = Math.floor((Date.now() + 90000) / 1000); // 90 detik
+    const endTimeUnix = Math.floor((Date.now() + 30000) / 1000); // 30 detik
 
     const lobby = {
       guildId,
@@ -4800,9 +4800,9 @@ async function handlePetCommand(message, client, args) {
         console.error(err);
         await message.channel.send({ content: `❌ Ekspedisi gagal diselesaikan: ${err.message}` });
       }
-    }, 90000);
+    }, 30000);
 
-    const collector = replyMsg.createMessageComponentCollector({ time: 90000 });
+    const collector = replyMsg.createMessageComponentCollector({ time: 30000 });
 
     collector.on('collect', async iExp => {
       try {
@@ -4850,7 +4850,7 @@ async function handlePetCommand(message, client, args) {
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
-          const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 90000) / 1000);
+          const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
           const updatedEmbed = new EmbedBuilder()
             .setColor(0x3F51B5)
             .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
