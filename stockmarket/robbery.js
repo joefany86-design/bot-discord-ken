@@ -63,23 +63,6 @@ function checkJail(userId, guildId, member = null) {
 }
 
 /**
- * Menghitung berapa kali seorang user dijadikan target rob (sukses/gagal) dalam 24 jam terakhir.
- */
-function getRobberyTargetCount(targetId, guildId) {
-  const nowSec = Math.floor(Date.now() / 1000);
-  const time24HoursAgo = nowSec - 24 * 3600;
-
-  const result = db.get(
-    `SELECT COUNT(*) as cnt FROM transactions 
-     WHERE user_id = ? AND guild_id = ? 
-       AND type IN ('ROBBED_BY', 'ROB_VICTIM_COMPENSATION') 
-       AND created_at >= ?`,
-    [targetId, guildId, time24HoursAgo]
-  );
-  return result ? (result.cnt || 0) : 0;
-}
-
-/**
  * Menghitung berapa kali seorang perampok menargetkan target tertentu dalam 24 jam terakhir.
  */
 function getRobberToTargetCount(robberId, targetId, guildId) {
@@ -124,12 +107,6 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   // 2. Validasi Korban
   if (userId === targetId) {
     throw new Error('Anda tidak bisa merampok diri sendiri, carilah target lain!');
-  }
-
-  // Cek batas target rob (maksimal 10 kali dalam 24 jam)
-  const targetRobCount = getRobberyTargetCount(targetId, guildId);
-  if (targetRobCount >= 10) {
-    throw new Error('Target sudah terlalu lelah karena telah dirampok 10 kali dalam 24 jam terakhir. Cari target lain!');
   }
 
   // Cek batas target rob personal (pelaku maksimal 10 kali menargetkan target yang sama dalam 24 jam)

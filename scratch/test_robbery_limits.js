@@ -6,7 +6,7 @@ const db = new Database(dbPath);
 const robbery = require('../stockmarket/robbery');
 
 console.log("==================================================");
-console.log("🧪 TESTING ROBBERY ORIGINAL TARGET & PERSONAL LIMITS");
+console.log("🧪 TESTING ROBBERY PERSONAL LIMIT ONLY");
 console.log("==================================================\n");
 
 const thiefId = 'LIMIT_TEST_THIEF';
@@ -24,14 +24,6 @@ db.prepare("INSERT INTO wallets (user_id, guild_id, balance, last_active_date) V
 
 const nowSec = Math.floor(Date.now() / 1000);
 
-// Helper function to insert transactions
-function insertTransaction(userId, type, timeAgoSeconds) {
-  db.prepare(`
-    INSERT INTO transactions (user_id, guild_id, type, amount, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(userId, guildId, type, 100, nowSec - timeAgoSeconds);
-}
-
 // Helper function to insert robbery attempts
 function insertRobberyAttempt(robberId, targetId, success, timeAgoSeconds) {
   db.prepare(`
@@ -44,40 +36,8 @@ function resetThiefState() {
   db.prepare("UPDATE wallets SET jail_until = 0, jail_type = '', last_rob_at = 0 WHERE user_id = ? AND guild_id = ?").run(thiefId, guildId);
 }
 
-// 1. Test overall target limit (10 total attempts on target by anyone)
-console.log("👉 Scenario 1: Test 10 overall attempts limit on target");
-// Insert 9 failed attempts on victimId
-for (let i = 0; i < 9; i++) {
-  insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600); // 1 hour ago
-}
-
-// Verify stats before 10th
-resetThiefState();
-let stats = robbery.robSolo(thiefId, victimId, guildId);
-console.log("   👉 10th attempt allowed because only 9 attempts existed.");
-
-// Insert 1 more failed attempt to make it 10 attempts total
-insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600);
-
-// The 11th attempt should fail
-resetThiefState();
-try {
-  robbery.robSolo(thiefId, victimId, guildId);
-  console.log("   ❌ FAILED: 11th attempt was allowed but should have been blocked!");
-} catch (e) {
-  if (e.message.includes("10 kali")) {
-    console.log("   ✅ SUCCESS: 11th attempt blocked correctly with error:", e.message);
-  } else {
-    console.log("   ❌ FAILED: Blocked but with wrong error message:", e.message);
-  }
-}
-
-// Clean up for Scenario 2
-db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
-db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
-
-// 2. Test personal limit: Robber A can target Victim B at most 10 times in 24 hours
-console.log("\n👉 Scenario 2: Test personal limit (robber can target same victim max 10 times)");
+// 1. Test personal limit: Robber A can target Victim B at most 10 times in 24 hours
+console.log("👉 Scenario 1: Test personal limit (robber can target same victim max 10 times)");
 // Insert 9 attempts by thiefId on victimId (failures)
 for (let i = 0; i < 9; i++) {
   insertRobberyAttempt(thiefId, victimId, 0, 3600);
@@ -85,7 +45,7 @@ for (let i = 0; i < 9; i++) {
 
 // Verify 10th attempt is allowed
 resetThiefState();
-stats = robbery.robSolo(thiefId, victimId, guildId);
+let stats = robbery.robSolo(thiefId, victimId, guildId);
 console.log("   👉 10th attempt allowed because robber only targeted victim 9 times.");
 
 // Insert 1 more attempt to make it 10 attempts total
