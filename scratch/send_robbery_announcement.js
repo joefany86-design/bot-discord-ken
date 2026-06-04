@@ -20,11 +20,12 @@ const ANNOUNCEMENT_DESCRIPTION = "Halo @everyone! 👋✨\n\n" +
   "*   💸 **Denda Penyitaan**: Setiap percobaan tindakan lancang akan dikenakan denda sebesar **Rp 10.000** (disita langsung oleh Kas Negara).\n" +
   "*   🔒 **Hukuman Sel Khusus**: Pelaku perampokan akan langsung dijebloskan ke **Sel Khusus Kerajaan selama 10 Jam** tanpa ampun!\n\n" +
   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-  "🛡️ **2. BATAS MAKSIMAL TARGET PERAMPOKAN (Anti-Griefing Protection)**\n" +
+  "🛡️ **2. BATAS MAKSIMAL PERCOBAAN PERSONAL (Robbery Limit)**\n" +
   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-  "Untuk menghindari eksploitasi perampokan beruntun pada satu korban pasif, sistem menerapkan pembatasan target:\n" +
-  "*   🛑 **Batas 24 Jam**: Seorang warga hanya dapat dijadikan target perampokan (baik sukses maupun gagal) maksimal **10 kali dalam kurun waktu 24 jam**.\n" +
-  "*   🔒 **Perlindungan Otomatis**: Jika seorang warga sudah diserang 10 kali, upaya perampokan berikutnya dari siapapun akan **otomatis diblokir oleh sistem** dengan pemberitahuan penolakan.\n\n" +
+  "Untuk menghindari tindakan spam/farming target yang sama oleh pelaku yang sama, sistem menerapkan pembatasan target berikut:\n" +
+  "*   🛑 **Batas Target Personal (24 Jam)**: Seorang pelaku perampokan maksimal hanya dapat mencoba merampok **target yang sama sebanyak 10 kali** dalam kurun waktu 24 jam.\n" +
+  "*   🔒 **Penolakan Otomatis**: Jika pelaku mencoba merampok korban yang sama untuk ke-11 kalinya, perintah `.rob` akan langsung ditolak.\n" +
+  "*   🔓 **Batas Target Global Dihapus**: Batas maksimal target global (maksimal dirampok oleh siapapun) telah **dihapus sepenuhnya** agar target bebas dirampok oleh warga lain secara bergantian.\n\n" +
   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
   "🎨 **3. DESAIN VISUAL NOTIFIKASI PREMIUM**\n" +
   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
