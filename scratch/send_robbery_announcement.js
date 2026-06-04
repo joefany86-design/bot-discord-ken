@@ -8,7 +8,7 @@ const client = new Client({
 });
 
 // ID Saluran Pengumuman
-const ANNOUNCEMENT_CHANNEL_ID = process.env.ANNOUNCEMENT_CHANNEL_ID || '1511871394210779247';
+const ANNOUNCEMENT_CHANNEL_ID = '1509770711839805641';
 
 const ANNOUNCEMENT_DESCRIPTION = "Halo @everyone! 👋✨\n\n" +
   "Hari ini kami merilis pembaruan regulasi pada **Sistem Perampokan Solo (.rob)** demi menciptakan keseimbangan ekonomi server yang lebih sehat, kompetitif, dan adil! ⚖️💰\n\n" +
