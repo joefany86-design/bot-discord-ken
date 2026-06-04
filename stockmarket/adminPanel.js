@@ -3876,7 +3876,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
  * 🎮 7. MAIN HUB PORTAL (ADMIN DASHBOARD CONTROL HUB)
  */
 async function handleAdminPanel(messageOrInteraction, client) {
-  const isInteraction = messageOrInteraction.isInteraction && messageOrInteraction.isInteraction();
+  const isInteraction = !messageOrInteraction.author && !!messageOrInteraction.user;
   const isChannel = typeof messageOrInteraction.send === 'function';
   const guildId = messageOrInteraction.guildId || (isChannel ? messageOrInteraction.guild?.id : null);
 
