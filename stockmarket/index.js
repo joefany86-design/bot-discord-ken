@@ -11,11 +11,22 @@ const robbery = require('./robbery');
 const bm = require('./blackmarket');
 const garden = require('./garden');
 const lottery = require('./lottery');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
+const path = require('path');
+const fs = require('fs');
 // Owner ID dari environment variable (fallback ke default)
 const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
 // ID Channel Portal Shop (#🛍️┃shop) — panel hanya privat di channel ini
 const SHOP_CHANNEL_ID = '1510121069783023646';
+
+// Helper: Ambil gambar map ekspedisi berdasarkan mapId (1-10)
+function getMapAttachment(mapId) {
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapId}.png`);
+  if (fs.existsSync(mapPath)) {
+    return new AttachmentBuilder(mapPath, { name: `map${mapId}.png` });
+  }
+  return null;
+}
 
 // Map untuk mengelola cooldown perintah .bal per user
 const balCooldowns = new Map();
@@ -4328,6 +4339,14 @@ async function handlePetCommand(message, client, args) {
     };
     activeLobby.set(lobbyKey, lobby);
 
+    // Set expedition lock untuk channel ini
+    const expeditionLocks = client.expeditionLocks = client.expeditionLocks || new Map();
+    expeditionLocks.set(message.channelId, lobbyKey);
+    lobby.channelId = message.channelId;
+
+    // Siapkan gambar map
+    const mapAttachment = getMapAttachment(mapChoice);
+
     const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
     const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
@@ -4348,6 +4367,7 @@ async function handlePetCommand(message, client, args) {
         `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
         `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
       )
+      .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
       .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
       .setTimestamp();
 
@@ -4356,7 +4376,9 @@ async function handlePetCommand(message, client, args) {
       new ButtonBuilder().setCustomId('pet_exp_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Danger)
     );
 
-    const replyMsg = await message.reply({ content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] });
+    const replyMsgOpts = { content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] };
+    if (mapAttachment) replyMsgOpts.files = [mapAttachment];
+    const replyMsg = await message.reply(replyMsgOpts);
 
     lobby.timeout = setTimeout(async () => {
       activeLobby.delete(lobbyKey);
@@ -4389,6 +4411,7 @@ async function handlePetCommand(message, client, args) {
             `🌲 **[Rawa Beracun]**\n└─ Menyusup melewati rawa berlumpur. Sukses **+25%**, namun pet berisiko **30% terkena bau/terluka** selama 1 jam.\n\n` +
             `⏳ *Menunggu keputusan dari <@${author.id}>... (15 detik)*`
           )
+          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
           .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
 
         const stage1Row = new ActionRowBuilder().addComponents(
@@ -4397,7 +4420,10 @@ async function handlePetCommand(message, client, args) {
           new ButtonBuilder().setCustomId('exp_path_swamp').setLabel('🌲 Rawa Beracun').setStyle(ButtonStyle.Danger)
         );
 
-        await replyMsg.edit({ embeds: [stage1Embed], components: [stage1Row] }).catch(() => {});
+        const s1EditOpts = { embeds: [stage1Embed], components: [stage1Row] };
+        const s1Att = getMapAttachment(mapChoice);
+        if (s1Att) s1EditOpts.files = [s1Att];
+        await replyMsg.edit(s1EditOpts).catch(() => {});
 
         const pathCollector = replyMsg.createMessageComponentCollector({
           filter: i => i.user.id === author.id && ['exp_path_safe', 'exp_path_shortcut', 'exp_path_swamp'].includes(i.customId),
@@ -4465,9 +4491,13 @@ async function handlePetCommand(message, client, args) {
             `📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
             `*Melanjutkan ke Stage 2 dalam beberapa saat...*`
           )
+          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
           .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
 
-        await replyMsg.edit({ embeds: [pathSelectedEmbed], components: [] }).catch(() => {});
+        const s1dAtt = getMapAttachment(mapChoice);
+        const s1dOpts = { embeds: [pathSelectedEmbed], components: [] };
+        if (s1dAtt) s1dOpts.files = [s1dAtt];
+        await replyMsg.edit(s1dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 4000));
 
         // 📦 STAGE 2: KEJADIAN ACAK (Random Encounter Event)
@@ -4493,6 +4523,7 @@ async function handlePetCommand(message, client, args) {
               `🏃 **[Lewati]**\n└─ Tinggalkan peti dan lanjut dengan aman.\n\n` +
               `⏳ *Menunggu keputusan... (15 detik)*`
             )
+            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
             .setFooter({ text: `Status Lockpick Anda: ${hasLockpick ? 'Ada (1x digunakan)' : 'Tidak Ada'}` });
 
           const chestRow = new ActionRowBuilder().addComponents(
@@ -4501,7 +4532,10 @@ async function handlePetCommand(message, client, args) {
             new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
           );
 
-          await replyMsg.edit({ embeds: [chestEmbed], components: [chestRow] }).catch(() => {});
+          const s2cAtt = getMapAttachment(mapChoice);
+          const s2cOpts = { embeds: [chestEmbed], components: [chestRow] };
+          if (s2cAtt) s2cOpts.files = [s2cAtt];
+          await replyMsg.edit(s2cOpts).catch(() => {});
 
           const eventCollector = replyMsg.createMessageComponentCollector({
             filter: i => i.user.id === author.id && ['exp_event_lockpick', 'exp_event_force', 'exp_event_leave'].includes(i.customId),
@@ -4565,14 +4599,18 @@ async function handlePetCommand(message, client, args) {
               `💧 **[Minum Bersama]**\n└─ Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.\n\n` +
               `🏃 **[Lewati]**\n└─ Lanjut perjalanan tanpa istirahat.\n\n` +
               `⏳ *Menunggu keputusan... (15 detik)*`
-            );
+            )
+            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null);
 
           const waterfallRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('exp_event_drink').setLabel('Minum Bersama').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
           );
 
-          await replyMsg.edit({ embeds: [waterfallEmbed], components: [waterfallRow] }).catch(() => {});
+          const s2wAtt = getMapAttachment(mapChoice);
+          const s2wOpts = { embeds: [waterfallEmbed], components: [waterfallRow] };
+          if (s2wAtt) s2wOpts.files = [s2wAtt];
+          await replyMsg.edit(s2wOpts).catch(() => {});
 
           const eventCollector = replyMsg.createMessageComponentCollector({
             filter: i => i.user.id === author.id && ['exp_event_drink', 'exp_event_leave'].includes(i.customId),
@@ -4623,9 +4661,13 @@ async function handlePetCommand(message, client, args) {
             `📢 **Keputusan Kejadian:** Tim memilih **${eventText}**\n\n` +
             `*Melanjutkan ke Stage 3 (Pertempuran Bos Akhir) dalam beberapa saat...*`
           )
+          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
           .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
 
-        await replyMsg.edit({ embeds: [eventSelectedEmbed], components: [] }).catch(() => {});
+        const s2dAtt = getMapAttachment(mapChoice);
+        const s2dOpts = { embeds: [eventSelectedEmbed], components: [] };
+        if (s2dAtt) s2dOpts.files = [s2dAtt];
+        await replyMsg.edit(s2dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 4000));
 
         // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (QTE Turn-Based & Hasil)
@@ -4646,7 +4688,7 @@ async function handlePetCommand(message, client, args) {
           const endTimeUnix = Math.floor((Date.now() + durationSeconds * 1000) / 1000);
 
           // Buat embeds dan action row tombol QTE
-          const qteEmbed = embeds.petExpeditionStepEmbed(guildId, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix);
+          const qteEmbed = embeds.petExpeditionStepEmbed(guildId, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix, mapChoice);
           const qteRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
               .setCustomId('pet_exp_qte_skill')
@@ -4654,7 +4696,10 @@ async function handlePetCommand(message, client, args) {
               .setStyle(ButtonStyle.Danger)
           );
 
-          await replyMsg.edit({ embeds: [qteEmbed], components: [qteRow] }).catch(() => {});
+          const qteAtt = getMapAttachment(mapChoice);
+          const qteOpts = { embeds: [qteEmbed], components: [qteRow] };
+          if (qteAtt) qteOpts.files = [qteAtt];
+          await replyMsg.edit(qteOpts).catch(() => {});
 
           // Setup collector interaksi tombol
           const qteCollector = replyMsg.createMessageComponentCollector({
@@ -4707,18 +4752,24 @@ async function handlePetCommand(message, client, args) {
         if (qteFailed) {
           // Proses kegagalan QTE di database
           const failResults = pet.executeExpeditionQteFailure(guildId, currentLobby.participants, failedUserId, reasonType, mapChoice, membersMap);
-          const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults);
+          const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults, mapChoice);
           
-          await replyMsg.edit({
+          const failAtt = getMapAttachment(mapChoice);
+          const failOpts = {
             content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
             embeds: [failEmbed],
             components: []
-          }).catch(async () => {
+          };
+          if (failAtt) failOpts.files = [failAtt];
+          await replyMsg.edit(failOpts).catch(async () => {
             await message.channel.send({
               content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
               embeds: [failEmbed]
             });
           });
+          // Release expedition lock
+          const expLocksQte = client.expeditionLocks || new Map();
+          expLocksQte.delete(message.channelId);
           return;
         }
 
@@ -4783,22 +4834,32 @@ async function handlePetCommand(message, client, args) {
           .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
           .setDescription(reportDesc)
           .addFields(fields)
+          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
           .setFooter({ text: 'kosan 1A' })
           .setTimestamp();
 
-        await replyMsg.edit({
+        const resAtt = getMapAttachment(mapChoice);
+        const resOpts = {
           content: `⚔️ **EKSPEDISI PET SELESAI!**`,
           embeds: [resultEmbed],
           components: []
-        }).catch(async () => {
+        };
+        if (resAtt) resOpts.files = [resAtt];
+        await replyMsg.edit(resOpts).catch(async () => {
           await message.channel.send({
             content: `⚔️ **EKSPEDISI PET SELESAI!**`,
             embeds: [resultEmbed]
           });
         });
+        // Release expedition lock setelah selesai
+        const expLocksRes = client.expeditionLocks || new Map();
+        expLocksRes.delete(message.channelId);
       } catch (err) {
         console.error(err);
         await message.channel.send({ content: `❌ Ekspedisi gagal diselesaikan: ${err.message}` });
+        // Release expedition lock on error
+        const expLocksErr = client.expeditionLocks || new Map();
+        expLocksErr.delete(message.channelId);
       }
     }, 30000);
 
@@ -4866,10 +4927,14 @@ async function handlePetCommand(message, client, args) {
               `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
               `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
             )
+            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
             .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
             .setTimestamp();
 
-          await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
+          const joinAtt = getMapAttachment(mapChoice);
+          const joinOpts = { embeds: [updatedEmbed] };
+          if (joinAtt) joinOpts.files = [joinAtt];
+          await replyMsg.edit(joinOpts).catch(() => { });
         }
 
         else if (iExp.customId === 'pet_exp_cancel') {
@@ -4879,6 +4944,10 @@ async function handlePetCommand(message, client, args) {
 
           clearTimeout(lobby.timeout);
           activeLobby.delete(lobbyKey);
+
+          // Release expedition lock on cancel
+          const expLocksCancel = client.expeditionLocks || new Map();
+          expLocksCancel.delete(message.channelId);
 
           currentLobby.participants.forEach(pId => {
             economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
@@ -7560,6 +7629,17 @@ async function handleEconomyCommands(message, client) {
         replyMsg.delete().catch(() => {});
       }, 10000);
     }
+    return true;
+  }
+
+  // ── PROTEKSI AKTIF EKSPEDISI PET DI CHANNEL ──
+  const expeditionLocks = client.expeditionLocks = client.expeditionLocks || new Map();
+  if (expeditionLocks.has(message.channelId) && commandName !== 'pet') {
+    await message.delete().catch(() => {});
+    const warnMsg = await message.channel.send({
+      content: `⚠️ <@${author.id}>, **Pet Ekspedisi** sedang berlangsung di channel ini! Harap tunggu sampai ekspedisi selesai sebelum menggunakan perintah lain.`
+    }).catch(() => null);
+    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
     return true;
   }
 

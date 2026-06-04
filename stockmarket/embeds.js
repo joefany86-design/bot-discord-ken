@@ -2953,7 +2953,7 @@ module.exports = {
   },
 
   // 30b. Pet Expedition QTE Step Embed
-  petExpeditionStepEmbed(guild, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix) {
+  petExpeditionStepEmbed(guild, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix, mapId) {
     const petName = petObj ? petObj.pet_name : 'Unknown Pet';
     const petType = petObj ? petObj.pet_type : 'Normal';
     const petLvl = petObj ? petObj.level : 1;
@@ -2977,12 +2977,13 @@ module.exports = {
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `*⚠️ PERINGATAN KERAS: Hanya <@${targetUserId}> yang boleh mengeklik tombol skill pet di bawah! Kru lain yang salah klik/salah giliran akan mengacaukan sinergi tim, memicu serangan balik Bos secara instan!*`
       )
+      .setImage(mapId ? `attachment://map${mapId}.png` : null)
       .setFooter({ text: 'Sentinel Pet Co-op RPG • Jaga fokus, pimpin pet Anda!' })
       .setTimestamp();
   },
 
   // 30c. Pet Expedition QTE Failure Embed
-  petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results) {
+  petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results, mapId) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     let causeText = '';
     
@@ -3019,6 +3020,7 @@ module.exports = {
         `🩹 **STATUS & KORBAN JIWA TIM PET:**\n` +
         `${statusLines}`
       )
+      .setImage(mapId ? `attachment://map${mapId}.png` : null)
       .setTimestamp();
   },
 
