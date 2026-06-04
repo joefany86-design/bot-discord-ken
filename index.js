@@ -631,6 +631,46 @@ client.on('interactionCreate', async interaction => {
   else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
     await sendPortalHubDirect(interaction, true, interaction.user, guild, client);
   }
+  // ── ARREST ──
+  else if (commandName === 'arrest') {
+    const targetUser = interaction.options.getUser('target');
+    if (!targetUser) {
+      return interaction.reply({ content: '❌ Anda harus menentukan warga buronan yang ingin Anda tangkap!', flags: 64 });
+    }
+
+    await interaction.deferReply({ flags: 64 });
+
+    try {
+      const robbery = require('./stockmarket/robbery');
+      const embeds = require('./stockmarket/embeds');
+      
+      const res = robbery.arrestBuronan(interaction.user.id, targetUser.id, guildId, interaction.member);
+      if (res.success) {
+        const successEmb = embeds.successEmbed(
+          '👮 Buronan Berhasil Ditangkap! 🚨',
+          `Luar biasa, Pemburu! <@${interaction.user.id}> berhasil meringkus buronan <@${targetUser.id}>!\n\n` +
+          `🪙 **Bounty Didapat:** **Rp ${res.bounty.toLocaleString('id-ID')}** (Koin hadiah bounty masuk dompet Anda)\n` +
+          `🔒 **Masa Tahanan:** Pelaku langsung dimasukkan ke **sel tahanan selama 3 jam**!${res.hasHandcuffs ? '\n👮 *Anda menggunakan Borgol / Handcuffs (+20% success rate)!*' : ''}`
+        );
+        await interaction.editReply({ embeds: [successEmb] });
+      } else {
+        let failMsg = '';
+        if (res.petDamaged) {
+          failMsg = `Buronan melawan dengan sengit dan kabur! Pet aktif Anda **${res.petName}** terluka dan HP-nya berkurang **-20** (HP Tersisa: \`${res.petHpLeft}\`).`;
+        } else {
+          failMsg = `Buronan melawan dengan sengit dan kabur! Karena Anda tidak memiliki pet aktif yang sehat untuk bertarung, Anda didenda **Rp ${res.fineAmount}** yang langsung ditransfer ke buronan sebagai ganti rugi!`;
+        }
+        const failEmb = embeds.errorEmbed(
+          '👮 Gagal Menangkap Buronan! 💨',
+          failMsg + (res.hasHandcuffs ? '\n👮 *Meskipun menggunakan Borgol, buronan tetap berhasil lolos!*' : '')
+        );
+        await interaction.editReply({ embeds: [failEmb] });
+      }
+    } catch (err) {
+      const embeds = require('./stockmarket/embeds');
+      await interaction.editReply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
+    }
+  }
 });
 
 // ═══════════════════════════════════════════════════

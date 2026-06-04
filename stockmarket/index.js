@@ -118,22 +118,34 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
     const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 100;
 
     // BUY row
-    const buyRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('trade_buy_1').setLabel('📥 Beli 1').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold),
-      new ButtonBuilder().setCustomId('trade_buy_10').setLabel('📥 Beli 10').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 10 || activeStock.available_shares < 10 || userShares + 10 > maxHold),
-      new ButtonBuilder().setCustomId('trade_buy_50').setLabel('📥 Beli 50').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price * 50 || activeStock.available_shares < 50 || userShares + 50 > maxHold),
-      new ButtonBuilder().setCustomId('trade_buy_max').setLabel('📥 Beli Max').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold),
-      new ButtonBuilder().setCustomId('trade_buy_custom').setLabel('📥 Custom').setStyle(ButtonStyle.Success).setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold)
-    );
+    const buySelect = new StringSelectMenuBuilder()
+      .setCustomId('eco_trade_select_buy')
+      .setPlaceholder('📥 Aksi Beli (Pilih Jumlah)...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('Beli 1').setDescription(`Harga: Rp ${activeStock.current_price.toLocaleString('id-ID')}`).setValue('1'),
+        new StringSelectMenuOptionBuilder().setLabel('Beli 10').setDescription(`Harga: Rp ${(activeStock.current_price * 10).toLocaleString('id-ID')}`).setValue('10'),
+        new StringSelectMenuOptionBuilder().setLabel('Beli 50').setDescription(`Harga: Rp ${(activeStock.current_price * 50).toLocaleString('id-ID')}`).setValue('50'),
+        new StringSelectMenuOptionBuilder().setLabel('Beli Max').setDescription('Beli sebanyak mungkin yang bisa dijangkau').setValue('max'),
+        new StringSelectMenuOptionBuilder().setLabel('Beli Custom').setDescription('Tentukan jumlah lembar secara kustom').setValue('custom')
+      )
+      .setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold);
+
+    const buyRow = new ActionRowBuilder().addComponents(buySelect);
 
     // SELL row
-    const sellRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('trade_sell_1').setLabel('📤 Jual 1').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1),
-      new ButtonBuilder().setCustomId('trade_sell_10').setLabel('📤 Jual 10').setStyle(ButtonStyle.Danger).setDisabled(userShares < 10),
-      new ButtonBuilder().setCustomId('trade_sell_50').setLabel('📤 Jual 50').setStyle(ButtonStyle.Danger).setDisabled(userShares < 50),
-      new ButtonBuilder().setCustomId('trade_sell_all').setLabel('📤 Jual Semua').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1),
-      new ButtonBuilder().setCustomId('trade_sell_custom').setLabel('📤 Custom').setStyle(ButtonStyle.Danger).setDisabled(userShares < 1)
-    );
+    const sellSelect = new StringSelectMenuBuilder()
+      .setCustomId('eco_trade_select_sell')
+      .setPlaceholder('📤 Aksi Jual (Pilih Jumlah)...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('Jual 1').setDescription(`Harga: Rp ${activeStock.current_price.toLocaleString('id-ID')}`).setValue('1'),
+        new StringSelectMenuOptionBuilder().setLabel('Jual 10').setDescription(`Harga: Rp ${(activeStock.current_price * 10).toLocaleString('id-ID')}`).setValue('10'),
+        new StringSelectMenuOptionBuilder().setLabel('Jual 50').setDescription(`Harga: Rp ${(activeStock.current_price * 50).toLocaleString('id-ID')}`).setValue('50'),
+        new StringSelectMenuOptionBuilder().setLabel('Jual Semua').setDescription(`Jual seluruh kepemilikan (${userShares} lembar)`).setValue('all'),
+        new StringSelectMenuOptionBuilder().setLabel('Jual Custom').setDescription('Tentukan jumlah lembar secara kustom').setValue('custom')
+      )
+      .setDisabled(userShares < 1);
+
+    const sellRow = new ActionRowBuilder().addComponents(sellSelect);
 
     // Exit row
     const exitRow = new ActionRowBuilder().addComponents(
@@ -170,9 +182,9 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
       } else if (iTrade.customId === 'trade_btn_exit') {
         tradeCollector.stop();
         await iTrade.update({ content: '👋 Selesai bertransaksi!', embeds: [], components: [] }).catch(() => { });
-      } else if (iTrade.customId.startsWith('trade_buy_') || iTrade.customId.startsWith('trade_sell_')) {
-        const action = iTrade.customId.startsWith('trade_buy_') ? 'BUY' : 'SELL';
-        const amountType = iTrade.customId.split('_').pop();
+      } else if (iTrade.customId === 'eco_trade_select_buy' || iTrade.customId === 'eco_trade_select_sell') {
+        const action = iTrade.customId === 'eco_trade_select_buy' ? 'BUY' : 'SELL';
+        const amountType = iTrade.values[0];
 
         const stock = stocks.getStock(guildId, selectedTicker);
         if (!stock) {
@@ -1976,54 +1988,87 @@ function initStockMarket(client) {
             `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
             `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
             `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
-            `*Klik tombol di bawah untuk membeli barang secara privat.*`
+            `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
+            `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
+            `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
+            `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
+            `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
           )
           .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
           .setTimestamp();
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('bm_btn_buy_lockpick_perm').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('bm_btn_buy_mask_perm').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('bm_btn_buy_meat_perm').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary)
+        const bmSelect = new StringSelectMenuBuilder()
+          .setCustomId('bm_select_buy_items')
+          .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
+          .addOptions(
+            new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
+            new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
+            new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
+            new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
+            new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
+            new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
+          );
+
+        const selectRow = new ActionRowBuilder().addComponents(bmSelect);
+        const exitRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
         );
 
-        const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [row] });
-        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+        const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [selectRow, exitRow] });
+        const collector = privateMsg.createMessageComponentCollector({ time: 60000 });
 
         collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan tombol!', flags: 64 });
+          if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
 
-          let itemId = '';
-          if (i.customId === 'bm_btn_buy_lockpick_perm') itemId = 'lockpick';
-          if (i.customId === 'bm_btn_buy_mask_perm') itemId = 'mask';
-          if (i.customId === 'bm_btn_buy_meat_perm') itemId = 'meat';
-          if (i.customId === 'bm_btn_buy_soap_perm') itemId = 'soap';
-
-          try {
-            const res = bm.buyItem(user.id, guildId, itemId, 1);
-            const successEmb = embeds.successEmbed(
-              'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
-              `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-              `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
-              `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-            );
-            await i.update({ embeds: [successEmb], components: [] });
+          if (i.customId === 'bm_btn_exit_perm') {
             collector.stop();
-          } catch (err) {
-            await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
+            await i.update({ content: '👋 Meninggalkan pasar gelap...', embeds: [], components: [] }).catch(() => {});
+            return;
+          }
+
+          if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
+            const itemId = i.values[0];
+            try {
+              const res = bm.buyItem(user.id, guildId, itemId, 1);
+              const successEmb = embeds.successEmbed(
+                'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+                `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+                `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+                `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+              );
+              await i.update({ embeds: [successEmb], components: [] });
+              collector.stop();
+            } catch (err) {
+              await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
+            }
           }
         });
 
         collector.on('end', async () => {
           if (collector.destroyed) return;
-          const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('bm_btn_buy_lockpick_perm').setLabel('🗝️ Linggis').setStyle(ButtonStyle.Secondary).setDisabled(true),
-            new ButtonBuilder().setCustomId('bm_btn_buy_mask_perm').setLabel('🎭 Topeng').setStyle(ButtonStyle.Secondary).setDisabled(true),
-            new ButtonBuilder().setCustomId('bm_btn_buy_meat_perm').setLabel('🥩 Daging').setStyle(ButtonStyle.Secondary).setDisabled(true),
-            new ButtonBuilder().setCustomId('bm_btn_buy_soap_perm').setLabel('🧼 Sabun').setStyle(ButtonStyle.Secondary).setDisabled(true)
-          );
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
+          const disabledSelect = new StringSelectMenuBuilder()
+            .setCustomId('bm_select_buy_items')
+            .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
+              new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
+              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
+              new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
+              new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
+              new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
+            )
+            .setDisabled(true);
+
+          const disabledExit = new ButtonBuilder()
+            .setCustomId('bm_btn_exit_perm')
+            .setLabel('✖️ Tutup Pasar Gelap')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(true);
+
+          const dRow1 = new ActionRowBuilder().addComponents(disabledSelect);
+          const dRow2 = new ActionRowBuilder().addComponents(disabledExit);
+
+          await privateMsg.edit({ components: [dRow1, dRow2] }).catch(() => { });
         });
       }
 
@@ -3017,15 +3062,20 @@ function initStockMarket(client) {
 
           const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('garden_btn_water_all_perm').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_btn_shop_perm').setLabel('🛒 Toko Benih').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('garden_btn_craft_perm').setLabel('💐 Rangkai Buket').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success)
           );
 
-          const row_buttons_2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_btn_sell_menu_perm').setLabel('💰 Jual Bunga').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_btn_gift_menu_perm').setLabel('🎁 Kirim Kado').setStyle(ButtonStyle.Primary)
-          );
+          const manageDropdown = new StringSelectMenuBuilder()
+            .setCustomId('garden_select_manage_actions')
+            .setPlaceholder('⚙️ Kelola Kebun (Toko, Crafting, Jual, Gift)...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🛒 Toko Benih').setDescription('Beli benih bunga baru dan kertas kado').setValue('go_shop'),
+              new StringSelectMenuOptionBuilder().setLabel('💐 Rangkai Buket (Crafting)').setDescription('Rangkai bunga segar menjadi buket bunga indah').setValue('go_craft'),
+              new StringSelectMenuOptionBuilder().setLabel('💰 Jual Bunga').setDescription('Jual hasil panen bunga langsung untuk koin').setValue('go_sell_menu'),
+              new StringSelectMenuOptionBuilder().setLabel('🎁 Kirim Kado').setDescription('Kirim kado buket bunga kepada warga lain').setValue('go_gift_menu')
+            );
+
+          const row_manage = new ActionRowBuilder().addComponents(manageDropdown);
 
           const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('garden_select_plant_perm')
@@ -3050,28 +3100,31 @@ function initStockMarket(client) {
 
           const row2 = new ActionRowBuilder().addComponents(selectMenu);
 
-          return { embeds: [embed], components: [row1, row_buttons_2, row2] };
+          return { embeds: [embed], components: [row1, row_manage, row2] };
         };
 
         const getGardenShopDataPrivate = (targetUserId) => {
           const walletShop = economy.getWallet(targetUserId, guildId);
           const embed = embeds.gardenShopEmbed(user, walletShop);
 
-          const shopRow1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_buy_rose_perm').setLabel('🌹 Mawar (Rp 80)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_tulip_perm').setLabel('🌷 Tulip (Rp 150)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_lavender_perm').setLabel('🪻 Lavender (Rp 250)').setStyle(ButtonStyle.Success)
-          );
+          const shopSelect = new StringSelectMenuBuilder()
+            .setCustomId('garden_select_buy_seeds')
+            .setPlaceholder('🛒 Pilih Benih / Item untuk Dibeli...')
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Benih Mawar').setDescription('Harga: Rp 80').setValue('buy_rose'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Benih Tulip').setDescription('Harga: Rp 150').setValue('buy_tulip'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Benih Lavender').setDescription('Harga: Rp 250').setValue('buy_lavender'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Benih Sakura').setDescription('Harga: Rp 500').setValue('buy_sakura'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Benih Anggrek').setDescription('Harga: Rp 1.200').setValue('buy_orchid'),
+              new StringSelectMenuOptionBuilder().setLabel('🎗️ Kertas Kado').setDescription('Harga: Rp 100').setValue('buy_wrapping')
+            );
+
+          const shopRow1 = new ActionRowBuilder().addComponents(shopSelect);
           const shopRow2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_buy_sakura_perm').setLabel('🌸 Sakura (Rp 500)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_orchid_perm').setLabel('👑 Anggrek (Rp 1.200)').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('garden_buy_wrapping_perm').setLabel('🎗️ Kertas Kado (Rp 100)').setStyle(ButtonStyle.Primary)
-          );
-          const shopRow3 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Secondary)
           );
 
-          return { embeds: [embed], components: [shopRow1, shopRow2, shopRow3] };
+          return { embeds: [embed], components: [shopRow1, shopRow2] };
         };
 
         const getGardenCraftDataPrivate = (targetUserId) => {
@@ -3290,17 +3343,37 @@ function initStockMarket(client) {
               }
             }
 
-            else if (i.customId === 'garden_btn_shop_perm') {
-              await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
+            else if (i.isStringSelectMenu() && i.customId === 'garden_select_manage_actions') {
+              const action = i.values[0];
+              if (action === 'go_shop') {
+                await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
+              } else if (action === 'go_craft') {
+                await i.update(getGardenCraftDataPrivate(user.id)).catch(() => { });
+              } else if (action === 'go_sell_menu') {
+                await i.update(getGardenSellDataPrivate(user.id)).catch(() => { });
+              } else if (action === 'go_gift_menu') {
+                selectedRecipientId = null;
+                await i.update(getGardenGiftDataPrivate(user.id)).catch(() => { });
+              }
             }
 
-            else if (i.customId === 'garden_btn_sell_menu_perm') {
-              await i.update(getGardenSellDataPrivate(user.id)).catch(() => { });
-            }
+            else if (i.isStringSelectMenu() && i.customId === 'garden_select_buy_seeds') {
+              const itemKey = i.values[0].replace('buy_', '');
+              await i.deferReply({ flags: 64 }).catch(() => { });
+              try {
+                const res = garden.buySeed(user.id, guildId, itemKey, 1);
+                await i.editReply({
+                  embeds: [embeds.successEmbed(
+                    '🛒 Pembelian Berhasil!',
+                    `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
+                    `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  )]
+                }).catch(() => { });
 
-            else if (i.customId === 'garden_btn_gift_menu_perm') {
-              selectedRecipientId = null;
-              await i.update(getGardenGiftDataPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getGardenShopDataPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
+              }
             }
 
             else if (i.customId.startsWith('garden_sell_') && i.customId.endsWith('_all_perm')) {
@@ -3319,29 +3392,6 @@ function initStockMarket(client) {
               } catch (err) {
                 await i.editReply({ content: `❌ Gagal menjual bunga: ${err.message}` }).catch(() => { });
               }
-            }
-
-            else if (i.customId.startsWith('garden_buy_') && i.customId.endsWith('_perm')) {
-              const itemKey = i.customId.replace('garden_buy_', '').replace('_perm', '');
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const res = garden.buySeed(user.id, guildId, itemKey, 1);
-                await i.editReply({
-                  embeds: [embeds.successEmbed(
-                    '🛒 Pembelian Berhasil!',
-                    `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
-                    `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-                  )]
-                }).catch(() => { });
-
-                await interaction.editReply(getGardenShopDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.customId === 'garden_btn_craft_perm') {
-              await i.update(getGardenCraftDataPrivate(user.id)).catch(() => { });
             }
 
             else if (i.customId === 'garden_btn_back_perm') {
@@ -8185,103 +8235,429 @@ async function handleEconomyCommands(message, client) {
 
       const targetMember = message.mentions.members?.first();
 
+      // Validasi awal perampokan sebelum memicu Alarm/QTE
+      const robberWallet = economy.getWallet(author.id, guildId);
+      const robberJail = robbery.checkJail(author.id, guildId, message.member);
+      if (robberJail.jailed) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', `Anda tidak bisa merampok karena sedang dipenjara! Sisa waktu: ${Math.ceil(robberJail.remaining / 60)} menit lagi.`)] });
+      }
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      const lastRob = robberWallet.last_rob_at || 0;
+      const elapsedRob = nowSec - lastRob;
+      const robCooldownSeconds = 300;
+      if (elapsedRob < robCooldownSeconds) {
+        const remainingMin = Math.ceil((robCooldownSeconds - elapsedRob) / 60);
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', `Kaki Anda lelah setelah aksi sebelumnya! Mohon tunggu **${remainingMin} menit** lagi sebelum merampok kembali.`)] });
+      }
+
+      if (robberWallet.balance < (config.robbery.MIN_ROB_BALANCE_ROBBER || 300)) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', `Anda membutuhkan saldo minimal Rp ${config.robbery.MIN_ROB_BALANCE_ROBBER || 300} untuk membayar denda jika gagal.`)] });
+      }
+
+      if (author.id === targetUser.id) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', 'Anda tidak bisa merampok diri sendiri, carilah target lain!')] });
+      }
+
+      // Cek batas target rob personal
+      const personalCountResult = database.get(
+        `SELECT COUNT(*) as cnt FROM robbery_attempts WHERE robber_id = ? AND target_id = ? AND guild_id = ? AND created_at >= ?`,
+        [author.id, targetUser.id, guildId, nowSec - 24 * 3600]
+      );
+      const personalCount = personalCountResult ? (personalCountResult.cnt || 0) : 0;
+      if (personalCount >= 10) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', 'Anda sudah merampok target ini 10 kali dalam 24 jam terakhir! Silakan cari target lain.')] });
+      }
+
+      const victimWallet = economy.getWallet(targetUser.id, guildId);
+      const victimJail = robbery.checkJail(targetUser.id, guildId, targetMember);
+      if (victimJail.jailed) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', 'Target sedang berada di dalam penjara, tidak bisa dirampok.')] });
+      }
+      if (victimWallet.balance < (config.robbery.MIN_ROB_BALANCE_VICTIM || 100)) {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', `Target terlalu miskin! Saldo minimal korban untuk dirampok adalah Rp ${config.robbery.MIN_ROB_BALANCE_VICTIM || 100}.`)] });
+      }
+
+      const victimGachaTier = economy.getMemberGachaTier(targetMember, guildId);
+      if (victimGachaTier === 'MYTHIC') {
+        return message.reply({ embeds: [embeds.errorEmbed('Aksi Gagal!', `❌ Target memiliki perlindungan Gacha Role **MYTHIC**! Mereka kebal total dari perampokan!`)] });
+      }
+
+      const triggerPoliceChaseQte = async (res, toolText) => {
+        const routes = [
+          { id: 'gang', label: '🚗 Terobos Gang Sempit', rate: 70 },
+          { id: 'pasar', label: '🏃 Lari ke Keramaian Pasar', rate: 40 },
+          { id: 'jembatan', label: '🌉 Lompat ke Jembatan Layang', rate: 20 }
+        ];
+        // Shuffle routes
+        routes.sort(() => Math.random() - 0.5);
+
+        const routeButtons = routes.map(r =>
+          new ButtonBuilder()
+            .setCustomId(`rob_chase_route_${r.id}_${r.rate}`)
+            .setLabel(r.label)
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        const chaseRow = new ActionRowBuilder().addComponents(routeButtons);
+
+        const chaseEmbed = new EmbedBuilder()
+          .setColor(0x3B82F6)
+          .setTitle('🚨 POLISI DATANG! KEJAR-KEJARAN DIMULAI! 🚨')
+          .setDescription(
+            `Aksi perampokan gagal! Polisi virtual mengepung area sekitar!\n` +
+            `<@${author.id}>, cepat pilih salah satu rute pelarian di bawah ini!\n\n` +
+            `⏱️ **Waktu tersisa: 10 detik!**`
+          )
+          .setTimestamp();
+
+        const chaseMsg = await message.reply({ embeds: [chaseEmbed], components: [chaseRow] });
+
+        const chaseCollector = chaseMsg.createMessageComponentCollector({
+          time: 10000
+        });
+
+        let responded = false;
+
+        chaseCollector.on('collect', async iChase => {
+          if (iChase.user.id !== author.id) {
+            return iChase.reply({ content: '❌ Tombol ini bukan untuk Anda!', flags: 64 });
+          }
+
+          responded = true;
+          chaseCollector.stop();
+
+          const parts = iChase.customId.split('_');
+          const routeId = parts[3];
+          const rate = parseInt(parts[4]);
+
+          const roll = Math.random() * 100;
+          const escaped = roll < rate;
+
+          let finalJailDuration = 0;
+          let finalFine = 0;
+          let finalCompensation = 0;
+          let resultTitle = '';
+          let resultDesc = '';
+
+          let routeName = '';
+          if (routeId === 'gang') routeName = '🚗 Gang Sempit';
+          else if (routeId === 'pasar') routeName = '🏃 Keramaian Pasar';
+          else if (routeId === 'jembatan') routeName = '🌉 Jembatan Layang';
+
+          if (escaped) {
+            finalJailDuration = 0;
+            finalFine = Math.floor(res.fine * 0.5);
+            finalCompensation = Math.round(finalFine * 0.75);
+
+            const rWallet = economy.getWallet(author.id, guildId);
+            const actualFine = Math.min(rWallet.balance, finalFine);
+
+            database.transaction(() => {
+              if (actualFine > 0) {
+                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
+                if (finalCompensation > 0) {
+                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
+                }
+              }
+              // Log attempt
+              database.run(
+                'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+                [author.id, targetUser.id, guildId, 0, Math.floor(Date.now() / 1000)]
+              );
+            })();
+
+            resultTitle = '🏁 ESCAPED! Anda Berhasil Lolos! 🏎️💨';
+            resultDesc =
+              toolText +
+              `Anda melarikan diri lewat **${routeName}** dan berhasil mengecoh kejaran polisi virtual!\n\n` +
+              `💸 **Denda Dipotong 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet Anda)\n` +
+              `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
+              `🔒 **Status Tahanan:** Anda bebas dan tidak masuk penjara!`;
+          } else {
+            finalJailDuration = Math.floor(res.jailDurationSeconds * 1.5);
+            finalFine = Math.floor(res.fine * 1.5);
+            finalCompensation = Math.round(finalFine * 0.75);
+
+            const rWallet = economy.getWallet(author.id, guildId);
+            const actualFine = Math.min(rWallet.balance, finalFine);
+
+            database.transaction(() => {
+              if (actualFine > 0) {
+                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
+                if (finalCompensation > 0) {
+                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
+                }
+              }
+              const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
+              database.run(
+                "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
+                [jailUntil, author.id, guildId]
+              );
+              // Log attempt
+              database.run(
+                'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+                [author.id, targetUser.id, guildId, 0, Math.floor(Date.now() / 1000)]
+              );
+            })();
+
+            resultTitle = '👮 BUSTED! Anda Tertangkap Polisi! 🚓';
+            resultDesc =
+              toolText +
+              (res.soapUsed ? '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n' : '') +
+              (res.lamboUsed ? '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n' : '') +
+              `Anda mencoba melarikan diri lewat **${routeName}**, namun polisi telah memblokade jalan dan langsung menyergap Anda!\n\n` +
+              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}**\n` +
+              `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
+              `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
+          }
+
+          const finalEmb = escaped
+            ? embeds.successEmbed(resultTitle, resultDesc)
+            : embeds.errorEmbed(resultTitle, resultDesc);
+
+          await iChase.update({ embeds: [finalEmb], components: [] }).catch(() => {});
+        });
+
+        chaseCollector.on('end', async () => {
+          if (!responded) {
+            const finalJailDuration = Math.floor(res.jailDurationSeconds * 1.5);
+            const finalFine = Math.floor(res.fine * 1.5);
+            const finalCompensation = Math.round(finalFine * 0.75);
+
+            const rWallet = economy.getWallet(author.id, guildId);
+            const actualFine = Math.min(rWallet.balance, finalFine);
+
+            database.transaction(() => {
+              if (actualFine > 0) {
+                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
+                if (finalCompensation > 0) {
+                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
+                }
+              }
+              const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
+              database.run(
+                "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
+                [jailUntil, author.id, guildId]
+              );
+              // Log attempt
+              database.run(
+                'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+                [author.id, targetUser.id, guildId, 0, Math.floor(Date.now() / 1000)]
+              );
+            })();
+
+            const resultTitle = '👮 BUSTED! Waktu Habis & Tertangkap Polisi! 🚓';
+            const resultDesc =
+              toolText +
+              (res.soapUsed ? '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n' : '') +
+              (res.lamboUsed ? '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n' : '') +
+              `Anda ragu-ragu menentukan arah pelarian, polisi virtual mengepung dan langsung menyergap Anda di tempat!\n\n` +
+              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}**\n` +
+              `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
+              `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
+
+            const failEmb = embeds.errorEmbed(resultTitle, resultDesc);
+            await chaseMsg.edit({ embeds: [failEmb], components: [] }).catch(() => {});
+          }
+        });
+      };
+
+      const executeRobberyAction = async () => {
+        try {
+          const res = robbery.robSolo(author.id, targetUser.id, guildId, message.member, targetMember);
+
+          let toolText = '';
+          if (res.isVictimWanted) {
+            toolText += '🎯 *Target adalah buronan WANTED! Peluang sukses perampokan Anda meningkat +15%!*\n';
+          }
+          if (res.meatUsed) {
+            toolText += '🥩 *Kamu melempar Daging Bius untuk menidurkan Alarm/CCTV korban!*\n';
+          }
+          if (res.lockpickUsed) {
+            toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
+          } else {
+            toolText += `❌ *Kamu merampok tanpa menggunakan Linggis (Peluang sukses -25%, denda +Rp 150, & hukuman penjara +50%)!* ⚠️\n`;
+          }
+          if (!res.victimClaimedDaily) {
+            toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (peluang sukses naik menjadi 50%)!*\n';
+          }
+
+          if (res.success) {
+            const wantedWarning = res.gotWanted ? `\n\n🚨 **WANTED!** Karena mencuri dalam jumlah besar, ${res.maskUsed ? 'pelaku' : 'Anda'} menjadi buronan polisi virtual selama 2 jam!` : '';
+
+            if (res.maskUsed) {
+              message.delete().catch(() => { });
+
+              const maskEmb = embeds.successEmbed(
+                '🎭 Perampokan Bertopeng Misterius! 💰',
+                toolText +
+                `Seorang pencuri bertopeng misterius menyelinap masuk dan merampok **${targetUser.username}**!\n\n` +
+                `💸 **Uang Dibawa Kabur:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.\n\n` +
+                `*Identitas perampok tersembunyi berkat Topeng Samaran!*` +
+                wantedWarning
+              );
+              await message.channel.send({ embeds: [maskEmb] });
+            } else {
+              const successEmb = embeds.successEmbed(
+                '💥 Perampokan Berhasil! 💰',
+                toolText +
+                `Anda berhasil merampok **${targetUser.username}**!\n\n` +
+                `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}` +
+                wantedWarning
+              );
+              await message.reply({ embeds: [successEmb] });
+            }
+          } else {
+            if (res.isSultanPunishment) {
+              const zapEmbed = new EmbedBuilder()
+                .setColor(0xD4AF37)
+                .setTitle('👑 HUKUMAN DEKRET KERAJAAN 👑')
+                .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
+                .setDescription(
+                  `⚠️ **Tindakan Ilegal Dideteksi!**\n\n` +
+                  `Anda mencoba merampok **Sultan** (<@${targetUser.id}>) yang dilindungi oleh **Kekebalan Diplomatis Kerajaan**.\n` +
+                  `Sistem pertahanan otomatis langsung melumpuhkan Anda seketika! ⚡💨\n\n` +
+                  `💸 **Denda Penyitaan:** \`Rp ${res.fine.toLocaleString('id-ID')}\` (Disita oleh Kas Negara)\n` +
+                  `🔒 **Masa Tahanan:** Dijebloskan ke **Sel Khusus Kerajaan selama ${res.jailDurationMinutes} menit**!`
+                )
+                .setTimestamp()
+                .setFooter({ text: 'Sistem Keamanan Kerajaan • Sentinel Secure' });
+              
+              await message.reply({ embeds: [zapEmbed] });
+              return;
+            }
+
+            // Pemicu Police Chase QTE
+            await triggerPoliceChaseQte(res, toolText);
+          }
+        } catch (err) {
+          await message.reply({ embeds: [embeds.errorEmbed('Operasi Gagal!', err.message)] });
+        }
+      };
+
+      const targetHasAlarm = kos.hasUpgrade(targetUser.id, guildId, 'ALARM');
+      const robberHasMeat = bm.getItemQty(author.id, guildId, 'MEAT') > 0;
+
+      if (targetHasAlarm && !robberHasMeat) {
+        const alarmEmbed = new EmbedBuilder()
+          .setColor(0xEF4444)
+          .setTitle('🚨 MALING TERDETEKSI! 🚨')
+          .setDescription(
+            `Kosan <@${targetUser.id}> mendeteksi penyusup! <@${author.id}> terpantau hendak merampok!\n\n` +
+            `🔔 **Alarm berbunyi sangat nyaring!**\n` +
+            `Siapapun (korban atau warga lain, KECUALI pelaku) silakan tekan tombol di bawah dalam waktu **15 detik** untuk menangkap maling!`
+          )
+          .setTimestamp();
+
+        const catchButton = new ButtonBuilder()
+          .setCustomId(`rob_alarm_catch_${author.id}_${targetUser.id}`)
+          .setLabel('👮 Tangkap Maling!')
+          .setStyle(ButtonStyle.Danger);
+
+        const alarmRow = new ActionRowBuilder().addComponents(catchButton);
+        const alarmMsg = await message.reply({ embeds: [alarmEmbed], components: [alarmRow] });
+
+        const alarmCollector = alarmMsg.createMessageComponentCollector({
+          time: 15000
+        });
+
+        let caught = false;
+
+        alarmCollector.on('collect', async iAlarm => {
+          if (iAlarm.user.id === author.id) {
+            return iAlarm.reply({ content: '❌ Anda adalah malingnya, Anda tidak bisa menangkap diri sendiri!', flags: 64 });
+          }
+
+          caught = true;
+          alarmCollector.stop();
+
+          const fine = 400;
+          const rWallet = economy.getWallet(author.id, guildId);
+          const actualFine = Math.min(rWallet.balance, fine);
+
+          database.transaction(() => {
+            if (actualFine > 0) {
+              economy.subtractBalance(author.id, guildId, actualFine, 'ROB_ALARM_FINE');
+              economy.addBalance(targetUser.id, guildId, actualFine, 'ROB_ALARM_COMPENSATION');
+            }
+            const jailUntil = Math.floor(Date.now() / 1000) + 36000;
+            database.run(
+              "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
+              [jailUntil, author.id, guildId]
+            );
+            database.run(
+              'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+              [author.id, targetUser.id, guildId, 0, Math.floor(Date.now() / 1000)]
+            );
+          })();
+
+          const caughtEmb = embeds.errorEmbed(
+            '👮 Maling Berhasil Diringkus! 🚓',
+            `🚨 <@${iAlarm.user.id}> beraksi cepat dan meringkus <@${author.id}> yang sedang menyelinap!\n\n` +
+            `💸 **Denda Langsung:** **Rp ${actualFine.toLocaleString('id-ID')}** (Dikompensasikan penuh ke korban <@${targetUser.id}>)\n` +
+            `🔒 **Hukuman Penjara:** Dijebloskan ke **sel selama 10 jam**!`
+          );
+
+          await iAlarm.update({ embeds: [caughtEmb], components: [] }).catch(() => {});
+        });
+
+        alarmCollector.on('end', async () => {
+          if (!caught) {
+            const disabledRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`rob_alarm_catch_${author.id}_${targetUser.id}`)
+                .setLabel('Waktu Habis!')
+                .setStyle(ButtonStyle.Danger)
+                .setDisabled(true)
+            );
+            await alarmMsg.edit({ components: [disabledRow] }).catch(() => {});
+
+            // Lanjutkan perampokan
+            await executeRobberyAction();
+          }
+        });
+      } else {
+        await executeRobberyAction();
+      }
+
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .arrest @user
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'arrest') {
+      const targetUser = message.mentions.users.first();
+      if (!targetUser) {
+        return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: \`.arrest @user\` untuk menangkap buronan.')] });
+      }
+      const targetMember = message.mentions.members?.first();
       try {
-        const res = robbery.robSolo(author.id, targetUser.id, guildId, message.member, targetMember);
-
-        let toolText = '';
-        if (res.isVictimWanted) {
-          toolText += '🎯 *Target adalah buronan WANTED! Peluang sukses perampokan Anda meningkat +15%!*\n';
-        }
-        if (res.meatUsed) {
-          toolText += '🥩 *Kamu melempar Daging Bius untuk menidurkan Alarm/CCTV korban!*\n';
-        }
-        if (res.lockpickUsed) {
-          toolText += `🗝️ *Kamu menggunakan Linggis untuk mencungkil pintu (+15% peluang sukses)!*${res.lockpickBroken ? ' *(Brak! Linggis kamu patah setelah digunakan)*' : ''}\n`;
-        } else {
-          toolText += `❌ *Kamu merampok tanpa menggunakan Linggis (Peluang sukses -25%, denda +Rp 150, & hukuman penjara +50%)!* ⚠️\n`;
-        }
-        if (!res.victimClaimedDaily) {
-          toolText += '🔓 *Korban lalai belum mengambil gaji harian (.daily) hari ini (peluang sukses naik menjadi 50%)!*\n';
-        }
-
+        const res = robbery.arrestBuronan(author.id, targetUser.id, guildId, message.member);
         if (res.success) {
-          const wantedWarning = res.gotWanted ? `\n\n🚨 **WANTED!** Karena mencuri dalam jumlah besar, ${res.maskUsed ? 'pelaku' : 'Anda'} menjadi buronan polisi virtual selama 2 jam!` : '';
-
-          if (res.maskUsed) {
-            // Hapus pesan pemicu agar nama tidak ketahuan
-            message.delete().catch(() => { });
-
-            const maskEmb = embeds.successEmbed(
-              '🎭 Perampokan Bertopeng Misterius! 💰',
-              toolText +
-              `Seorang pencuri bertopeng misterius menyelinap masuk dan merampok **${targetUser.username}**!\n\n` +
-              `💸 **Uang Dibawa Kabur:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.\n\n` +
-              `*Identitas perampok tersembunyi berkat Topeng Samaran!*` +
-              wantedWarning
-            );
-            await message.channel.send({ embeds: [maskEmb] });
-          } else {
-            const successEmb = embeds.successEmbed(
-              '💥 Perampokan Berhasil! 💰',
-              toolText +
-              `Anda berhasil merampok **${targetUser.username}**!\n\n` +
-              `💸 **Uang Didapat:** **Rp ${res.amount.toLocaleString('id-ID')}** (Mencuri ${res.percent}% dari dompet target)${res.hasGembok ? ' *(Potong 50% karena target memiliki Gembok)*' : ''}.${res.petMsg}` +
-              wantedWarning
-            );
-            await message.reply({ embeds: [successEmb] });
-          }
+          const successEmb = embeds.successEmbed(
+            '👮 Buronan Berhasil Ditangkap! 🚨',
+            `Luar biasa, Pemburu! <@${author.id}> berhasil meringkus buronan <@${targetUser.id}>!\n\n` +
+            `🪙 **Bounty Didapat:** **Rp ${res.bounty.toLocaleString('id-ID')}** (Koin hadiah bounty masuk dompet Anda)\n` +
+            `🔒 **Masa Tahanan:** Pelaku langsung dimasukkan ke **sel tahanan selama 3 jam**!${res.hasHandcuffs ? '\n👮 *Anda menggunakan Borgol / Handcuffs (+20% success rate)!*' : ''}`
+          );
+          await message.reply({ embeds: [successEmb] });
         } else {
-          if (res.isSultanPunishment) {
-            const zapEmbed = new EmbedBuilder()
-              .setColor(0xD4AF37) // Imperial Gold
-              .setTitle('👑 HUKUMAN DEKRET KERAJAAN 👑')
-              .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
-              .setDescription(
-                `⚠️ **Tindakan Ilegal Dideteksi!**\n\n` +
-                `Anda mencoba merampok **Sultan** (<@${targetUser.id}>) yang dilindungi oleh **Kekebalan Diplomatis Kerajaan**.\n` +
-                `Sistem pertahanan otomatis langsung melumpuhkan Anda seketika! ⚡💨\n\n` +
-                `💸 **Denda Penyitaan:** \`Rp ${res.fine.toLocaleString('id-ID')}\` (Disita oleh Kas Negara)\n` +
-                `🔒 **Masa Tahanan:** Dijebloskan ke **Sel Khusus Kerajaan selama ${res.jailDurationMinutes} menit**!`
-              )
-              .setTimestamp()
-              .setFooter({ text: 'Sistem Keamanan Kerajaan • Sentinel Secure' });
-            
-            await message.reply({ embeds: [zapEmbed] });
-            return true;
-          }
-
-          let failText = toolText;
-          if (res.soapUsed) {
-            failText += '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n';
-          }
-          if (res.lamboUsed) {
-            failText += '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n';
-          }
-          
-          let failEmb;
-          if (res.caughtBySecurity) {
-            failEmb = embeds.errorEmbed(
-              '👮 TERTANGKAP SECURITY PENTHOUSE! 🚓',
-              failText +
-              `Anda mencoba menyelinap masuk ke **👑 Penthouse** milik **${targetUser.username}**, namun petugas **👮 Security Jaga Penthouse** langsung menangkap basah Anda!\n\n` +
-              `💸 **Denda Dibayar:** **Rp ${res.fine.toLocaleString('id-ID')}**\n` +
-              `🎁 **Kompensasi Korban:** **Rp ${res.compensation.toLocaleString('id-ID')}** (75% diterima korban, 25% disita/dibakar sistem)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
-              `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
-            );
+          let failMsg = '';
+          if (res.petDamaged) {
+            failMsg = `Buronan melawan dengan sengit dan kabur! Pet aktif Anda **${res.petName}** terluka dan HP-nya berkurang **-20** (HP Tersisa: \`${res.petHpLeft}\`).`;
           } else {
-            failEmb = embeds.errorEmbed(
-              '🚓 Perampokan Gagal! 👮',
-              failText +
-              `Anda gagal merampok **${targetUser.username}**!\n\n` +
-              `💸 **Denda Dibayar:** **Rp ${res.fine.toLocaleString('id-ID')}**\n` +
-              `🎁 **Kompensasi Korban:** **Rp ${res.compensation.toLocaleString('id-ID')}** (75% diterima korban, 25% disita/dibakar sistem)${res.hasCctv ? ' *(Tambahan denda karena target memiliki CCTV)*' : ''}.\n` +
-              `🔒 **Hukuman:** Dijebloskan ke **Penjara Virtual selama ${res.jailDurationMinutes} menit**!`
-            );
+            failMsg = `Buronan melawan dengan sengit dan kabur! Karena Anda tidak memiliki pet aktif yang sehat untuk bertarung, Anda didenda **Rp ${res.fineAmount}** yang langsung ditransfer ke buronan sebagai ganti rugi!`;
           }
+          const failEmb = embeds.errorEmbed(
+            '👮 Gagal Menangkap Buronan! 💨',
+            failMsg + (res.hasHandcuffs ? '\n👮 *Meskipun menggunakan Borgol, buronan tetap berhasil lolos!*' : '')
+          );
           await message.reply({ embeds: [failEmb] });
         }
       } catch (err) {
-        await message.reply({ embeds: [embeds.errorEmbed('Operasi Gagal!', err.message)] });
+        await message.reply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
       }
       return true;
     }

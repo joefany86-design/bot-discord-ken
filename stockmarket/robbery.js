@@ -322,9 +322,10 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       // Cek Wanted Status pelaku (jika jarahan >= Rp 1.500)
       if (amountStolen >= 1500) {
         const wantedUntil = nowSec + 7200; // 2 jam status buronan
+        const bounty = Math.floor(amountStolen * 0.5);
         db.run(
-          'UPDATE wallets SET wanted_until = ? WHERE user_id = ? AND guild_id = ?',
-          [wantedUntil, userId, guildId]
+          'UPDATE wallets SET wanted_until = ?, wanted_bounty = ? WHERE user_id = ? AND guild_id = ?',
+          [wantedUntil, bounty, userId, guildId]
         );
       }
 
@@ -424,35 +425,16 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 
     const compensation = Math.round(finalFine * 0.75);
 
-    db.transaction(() => {
-      if (finalFine > 0) {
-        economy.subtractBalance(userId, guildId, finalFine, 'ROB_FAILED_FINE');
-        if (compensation > 0) {
-          economy.addBalance(targetId, guildId, compensation, 'ROB_VICTIM_COMPENSATION');
-        }
-      }
-
-      // Penjara pelaku
-      const jailUntil = Math.floor(Date.now() / 1000) + jailDuration;
-      db.run(
-        "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
-        [jailUntil, userId, guildId]
-      );
-
-      // Log attempt
-      db.run(
-        'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
-        [userId, targetId, guildId, 0, nowSec]
-      );
-    })();
-
+    // Kita TIDAK melakukan penulisan database (denda & penjara) di sini agar bisa diproses oleh Chase QTE.
+    // Tapi kita tetap return data estimasi denda dan durasi penjaranya.
     return {
       success: false,
-      fine: finalFine,
+      fine: fine, // Kembalikan nilai base fine (sebelum dibatasi balance pelaku, agar bisa ditingkatkan/dikurangi di QTE baru dicap)
       compensation,
       hasCctv: activeCctv,
       caughtBySecurity: hasSecurity,
       jailDurationMinutes: Math.floor(jailDuration / 60),
+      jailDurationSeconds: jailDuration,
       meatUsed,
       lockpickUsed,
       lockpickBroken,
@@ -1115,12 +1097,108 @@ function adminResetCooldown(guildId) {
   return true;
 }
 
+/**
+ * Menangkap buronan (wanted) yang memiliki bounty koin.
+ */
+function arrestBuronan(hunterId, targetId, guildId, hunterMember) {
+  if (hunterId === targetId) {
+    throw new Error('Anda tidak bisa menangkap diri sendiri!');
+  }
+
+  const hunterJail = checkJail(hunterId, guildId, hunterMember);
+  if (hunterJail.jailed) {
+    throw new Error('Anda tidak bisa menangkap buronan karena Anda sedang di dalam penjara!');
+  }
+
+  const targetJail = checkJail(targetId, guildId);
+  if (targetJail.jailed) {
+    throw new Error('Target sudah berada di dalam penjara!');
+  }
+
+  const targetWallet = economy.getWallet(targetId, guildId);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!targetWallet.wanted_until || targetWallet.wanted_until < nowSec || targetWallet.wanted_bounty <= 0) {
+    throw new Error('Target bukan merupakan buronan (wanted) yang aktif!');
+  }
+
+  const hasHandcuffs = bm.getItemQty(hunterId, guildId, 'HANDCUFFS') > 0;
+  const successRate = hasHandcuffs ? 65 : 45;
+  const roll = Math.random() * 100;
+  const isSuccess = roll < successRate;
+
+  if (isSuccess) {
+    const bounty = targetWallet.wanted_bounty;
+    
+    db.transaction(() => {
+      // 1. Tambah koin pemburu
+      economy.addBalance(hunterId, guildId, bounty, 'ARREST_BOUNTY');
+      
+      // 2. Kurung target di penjara 3 jam (10800 detik) & reset status wanted
+      const jailUntil = nowSec + 10800;
+      db.run(
+        "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1, wanted_until = 0, wanted_bounty = 0 WHERE user_id = ? AND guild_id = ?",
+        [jailUntil, targetId, guildId]
+      );
+    })();
+
+    return {
+      success: true,
+      bounty,
+      hasHandcuffs
+    };
+  } else {
+    // Gagal: HP pet berkurang atau denda Rp 200 ke target
+    const petMod = require('./pet');
+    const activePet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [hunterId, guildId]);
+    let petDamaged = false;
+    let petName = '';
+    let petHpLeft = 0;
+    let finedTarget = false;
+    let fineAmount = 200;
+
+    if (activePet && activePet.status !== 'DEAD' && activePet.status !== 'EGG') {
+      const newHp = Math.max(0, activePet.health - 20);
+      const isDead = newHp <= 0;
+      const status = isDead ? 'DEAD' : activePet.status;
+      db.run(
+        'UPDATE user_pets SET health = ?, status = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [newHp, status, hunterId, guildId, activePet.pet_name]
+      );
+      petDamaged = true;
+      petName = activePet.pet_name;
+      petHpLeft = newHp;
+    } else {
+      const hunterWallet = economy.getWallet(hunterId, guildId);
+      const actualFine = Math.min(hunterWallet.balance, fineAmount);
+      if (actualFine > 0) {
+        db.transaction(() => {
+          economy.subtractBalance(hunterId, guildId, actualFine, 'ARREST_FAILED_FINE');
+          economy.addBalance(targetId, guildId, actualFine, 'ARREST_FAILED_COMPENSATION');
+        })();
+      }
+      finedTarget = true;
+      fineAmount = actualFine;
+    }
+
+    return {
+      success: false,
+      petDamaged,
+      petName,
+      petHpLeft,
+      finedTarget,
+      fineAmount,
+      hasHandcuffs
+    };
+  }
+}
+
 module.exports = {
   activeHeists,
   getJailTimeRemaining,
   getJailType,
   checkJail,
   robSolo,
+  arrestBuronan,
   getUserHeistCooldown,
   getHeistStats,
   startHeistLobby,

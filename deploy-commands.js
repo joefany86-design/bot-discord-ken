@@ -25,6 +25,15 @@ const commands = [
   new SlashCommandBuilder()
     .setName('portal')
     .setDescription('Membuka Pusat Kontrol & Portal Hub Sentinel secara instan'),
+
+  new SlashCommandBuilder()
+    .setName('arrest')
+    .setDescription('Menangkap buronan (wanted) yang memiliki bounty koin')
+    .addUserOption(option =>
+      option.setName('target')
+        .setDescription('Warga buronan yang ingin Anda tangkap')
+        .setRequired(true)
+    ),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

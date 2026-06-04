@@ -72,6 +72,14 @@ function initSchema() {
     // Kolom sudah ada
   }
 
+  // 1e. Migrasi dinamis: Tambahkan kolom wanted_bounty jika belum ada
+  try {
+    db.exec("ALTER TABLE wallets ADD COLUMN wanted_bounty INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'wanted_bounty' berhasil ditambahkan/diverifikasi di tabel wallets.");
+  } catch (e) {
+    // Kolom sudah ada
+  }
+
   // 2. Stocks (Data Saham Channel per Guild)
   db.exec(`
     CREATE TABLE IF NOT EXISTS stocks (
