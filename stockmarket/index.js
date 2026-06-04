@@ -4783,7 +4783,7 @@ async function handlePetCommand(message, client, args) {
           .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
           .setDescription(reportDesc)
           .addFields(fields)
-          .setFooter({ text: 'Rupiah Server Pet Expedition • Gunakan .pet untuk merawat pet Anda' })
+          .setFooter({ text: 'kosan 1A' })
           .setTimestamp();
 
         await replyMsg.edit({
