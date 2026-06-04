@@ -1065,6 +1065,9 @@ function initStockMarket(client) {
 
           try {
             if (iBank.customId === 'bank_btn_deposit') {
+              if (robbery.activeHeists.has(guildId)) {
+                return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+              }
               const modal = new ModalBuilder()
                 .setCustomId('bank_modal_deposit_perm')
                 .setTitle('🏛️ Deposit Tabungan Bank');
@@ -1113,6 +1116,9 @@ function initStockMarket(client) {
             }
 
             else if (iBank.customId === 'bank_btn_withdraw') {
+              if (robbery.activeHeists.has(guildId)) {
+                return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+              }
               const modal = new ModalBuilder()
                 .setCustomId('bank_modal_withdraw_perm')
                 .setTitle('🏛️ Penarikan Saldo Bank');
@@ -8696,6 +8702,9 @@ async function handleEconomyCommands(message, client) {
 
         try {
           if (iBank.customId === 'bank_btn_deposit') {
+            if (robbery.activeHeists.has(guildId)) {
+              return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+            }
             const modal = new ModalBuilder()
               .setCustomId('bank_modal_deposit')
               .setTitle('🏛️ Deposit Tabungan Bank');
@@ -8750,6 +8759,9 @@ async function handleEconomyCommands(message, client) {
           }
 
           else if (iBank.customId === 'bank_btn_withdraw') {
+            if (robbery.activeHeists.has(guildId)) {
+              return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+            }
             const modal = new ModalBuilder()
               .setCustomId('bank_modal_withdraw')
               .setTitle('🏛️ Penarikan Saldo Bank');

@@ -2041,6 +2041,29 @@ module.exports = {
     return embed;
   },
 
+  // 18b. Embed Bank Lockdown Darurat
+  bankLockdownEmbed(guild) {
+    return new EmbedBuilder()
+      .setColor('#C0392B') // Crimson Danger Red
+      .setTitle('🚨 BANK SECURITY: LOCKDOWN SYSTEM ACTIVE! 🚨')
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/3037/3037233.png')
+      .setDescription(
+        `\`\`\`\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│       🏛️ SISTEM BANK DINONAKTIFKAN      │\n` +
+        `│        Status: Keamanan Lockdown       │\n` +
+        `└────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `🚫 **TRANSAKSI DITOLAK: JARINGAN SEKTOR UTAMA OFFLINE** 🚫\n\n` +
+        `Jaringan perbankan digital telah dinonaktifkan secara otomatis oleh protokol darurat karena adanya **aktivitas pencuri/percobaan perampokan (HEIST)** yang sedang berlangsung di area Bank Pusat!\n\n` +
+        `🔐 **Status Gerbang Utama:** TERTUTUP RAPAT (LOCKDOWN)\n` +
+        `💻 **Server Transaksi:** OFFLINE DARURAT\n\n` +
+        `*⚠️ Semua penarikan (Withdraw) dan penyimpanan (Deposit) diblokir sampai situasi keamanan di Bank Pusat kembali kondusif.*`
+      )
+      .setFooter({ text: `Keamanan Finansial Server ${guild.name}` })
+      .setTimestamp();
+  },
+
   // 19. Embed Dashboard Utama Bank
   bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit) {
     const kos = require('./kos');
