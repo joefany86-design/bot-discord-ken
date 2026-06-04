@@ -1,3 +1,4 @@
+// @version v2.1.0 — Select Menu Item (2026-06-04)
 const config = require('./config');
 const database = require('./database');
 const economy = require('./economy');
