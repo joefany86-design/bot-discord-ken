@@ -4302,6 +4302,7 @@ async function handlePetCommand(message, client, args) {
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Menara Ujian!', err.message)] });
     }
+    return;
   }
 
   // ── SUB-PERINTAH: RAID / BOSS ──
@@ -4417,6 +4418,7 @@ async function handlePetCommand(message, client, args) {
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Raid World Boss!', err.message)] });
     }
+    return;
   }
 
   // ── SUB-PERINTAH: LIST / DAFTAR ──
