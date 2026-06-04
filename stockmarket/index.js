@@ -7362,9 +7362,10 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
         `*Semua bersorak merayakan keberuntungan spektakuler sultan gacha kita!* 🎰🚀`
       );
 
-      const reportChannel = guild.channels.cache.get(config.REPORT_CHANNEL_ID);
-      if (reportChannel) {
-        await reportChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
+      const targetChanId = '1508417228624887928';
+      const targetChannel = guild.channels.cache.get(targetChanId) || await guild.channels.fetch(targetChanId).catch(() => null);
+      if (targetChannel) {
+        await targetChannel.send({ embeds: [broadcastEmbed] }).catch(() => { });
       }
 
       client.emit('playTtsEvent', {
