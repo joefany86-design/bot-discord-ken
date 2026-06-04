@@ -275,7 +275,10 @@ function initSchema() {
       updated_at INTEGER DEFAULT 0,
       updated_by TEXT,
       expires_at INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 0
+      is_active INTEGER DEFAULT 0,
+      gift_coins INTEGER DEFAULT 0,
+      gift_item_id TEXT,
+      gift_item_qty INTEGER DEFAULT 0
     )
   `);
 
@@ -766,6 +769,22 @@ function initSchema() {
   } catch (e) {
     // Kolom sudah ada
   }
+
+  // 49. Migrasi dinamis: Tambahkan kolom gift_coins, gift_item_id, gift_item_qty ke ebyus_settings untuk event reward
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN gift_coins INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'gift_coins' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {}
+
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN gift_item_id TEXT");
+    console.log("⚡ [Database] Kolom 'gift_item_id' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {}
+
+  try {
+    db.exec("ALTER TABLE ebyus_settings ADD COLUMN gift_item_qty INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom 'gift_item_qty' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
+  } catch (e) {}
 
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
 }

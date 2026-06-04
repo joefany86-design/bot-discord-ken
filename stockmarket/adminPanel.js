@@ -27,14 +27,17 @@ const {
 function getOrCreateEbyusSettings(gId) {
   let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [gId]);
   if (!settings) {
-    database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at) VALUES (?, ?, ?, ?, ?, 0)', [gId, 'NORMAL', 1, 0, '']);
+    database.run('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, updated_at, updated_by, expires_at, gift_coins, gift_item_id, gift_item_qty) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, 0)', [gId, 'NORMAL', 1, 0, '']);
     settings = {
       guild_id: gId,
       gacha_mode: 'NORMAL',
       coin_multiplier: 1,
       updated_at: 0,
       updated_by: '',
-      expires_at: 0
+      expires_at: 0,
+      gift_coins: 0,
+      gift_item_id: null,
+      gift_item_qty: 0
     };
   }
   return settings;
@@ -2388,6 +2391,9 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       .setTimestamp()
       .setFooter({ text: 'Sentinel Admin • Keamanan & Bypass Server' });
 
+    let giftCoinsText = settings.gift_coins > 0 ? `🟢 **Rp ${settings.gift_coins.toLocaleString('id-ID')}**` : '⚪ **Nonaktif (0)**';
+    let giftItemText = settings.gift_item_qty > 0 && settings.gift_item_id ? `🟢 **${settings.gift_item_qty}x ${settings.gift_item_id}**` : '⚪ **Nonaktif**';
+
     embed.setDescription(
       `Sabotase persentase kemenangan gacha role, atur multiplier obrolan chat warga, set batas waktu auto-reset event, atau lakukan penghentian darurat:\n\n` +
       `📊 **STATUS BYPASS & EKONOMI SERVER:**\n` +
@@ -2395,6 +2401,9 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
       `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
       `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
+      `🎁 **HADIAH MASSAL (DIBAGIKAN SAAT BROADCAST):**\n` +
+      `• Koin Massal per Warga: ${giftCoinsText}\n` +
+      `• Item Massal per Warga: ${giftItemText}\n\n` +
       `⚙️ **OPSI PENGAKTIFAN TAMBAHAN (DIKIRIM SAAT BROADCAST):**\n` +
       `• Bebaskan Semua Tahanan: ${includeFreeAll ? '🟢 **Ya (Aktif)**' : '⚪ **Tidak (Nonaktif)**'}\n` +
       `• Reset Semua Cooldown: ${includeResetCds ? '🟢 **Ya (Aktif)**' : '⚪ **Tidak (Nonaktif)**'}`
@@ -2479,11 +2488,11 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_give_coins')
-        .setLabel('💸 Beri Koin Massal (Modal)')
+        .setLabel('💸 Set Koin Massal (Modal)')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_give_item')
-        .setLabel('🎒 Beri Item Massal (Modal)')
+        .setLabel('🎒 Set Item Massal (Modal)')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_back')
@@ -2535,6 +2544,53 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         await replyMsg.edit(fresh).catch(() => {});
       }
       else if (iAbyus.customId === 'admin_abyus_btn_broadcast') {
+        const settings = getOrCreateEbyusSettings(guildId);
+        const distributedCoins = settings.gift_coins || 0;
+        const distributedItemName = settings.gift_item_id || '';
+        const distributedItemQty = settings.gift_item_qty || 0;
+
+        // Distribusikan hadiah secara massal jika dikonfigurasi
+        if (distributedCoins > 0 || distributedItemQty > 0) {
+          const memberIds = await getAllGuildMembers(guild, guildId);
+          if (memberIds.length > 0) {
+            database.transaction(() => {
+              for (const memberId of memberIds) {
+                // 1. Bagikan koin
+                if (distributedCoins > 0) {
+                  let wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [memberId, guildId]);
+                  if (!wallet) {
+                    database.run(
+                      `INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at) 
+                       VALUES (?, ?, ?, ?, ?)`,
+                      [memberId, guildId, 0, 0, 0]
+                    );
+                    wallet = { balance: 0 };
+                  }
+
+                  const newBal = Math.max(0, wallet.balance + distributedCoins);
+                  database.run(
+                    `UPDATE wallets 
+                     SET balance = ?, total_earned = total_earned + ? 
+                     WHERE user_id = ? AND guild_id = ?`,
+                    [newBal, distributedCoins > 0 ? distributedCoins : 0, memberId, guildId]
+                  );
+
+                  database.run(
+                    `INSERT INTO transactions (user_id, guild_id, type, amount) 
+                     VALUES (?, ?, ?, ?)`,
+                    [memberId, guildId, distributedCoins > 0 ? 'ADMIN_GIVEALL' : 'ADMIN_TAKEALL', distributedCoins]
+                  );
+                }
+
+                // 2. Bagikan item
+                if (distributedItemQty > 0 && distributedItemName) {
+                  updateAdminInventory(memberId, guildId, distributedItemName, distributedItemQty);
+                }
+              }
+            })();
+          }
+        }
+
         // Execute supplementary actions if toggled
         if (includeFreeAll) {
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE guild_id = ?", [guildId]);
@@ -2550,9 +2606,23 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           );
         }
 
-        database.run('UPDATE ebyus_settings SET is_active = 1 WHERE guild_id = ?', [guildId]);
-        const settings = getOrCreateEbyusSettings(guildId);
-        const broadcastEmb = embeds.ebyusBroadcastEmbed(guild, settings.gacha_mode, settings.coin_multiplier, settings.expires_at, includeFreeAll, includeResetCds);
+        // Aktifkan event dan reset konfigurasi hadiah agar bersih
+        database.run(
+          'UPDATE ebyus_settings SET is_active = 1, gift_coins = 0, gift_item_id = NULL, gift_item_qty = 0 WHERE guild_id = ?',
+          [guildId]
+        );
+
+        const broadcastEmb = embeds.ebyusBroadcastEmbed(
+          guild, 
+          settings.gacha_mode, 
+          settings.coin_multiplier, 
+          settings.expires_at, 
+          includeFreeAll, 
+          includeResetCds,
+          distributedCoins,
+          distributedItemName,
+          distributedItemQty
+        );
         
         const targetChannelId = config.ANNOUNCEMENT_CHANNEL_ID || '1422642326798598348';
         let targetChannel = guild.channels.cache.get(targetChannelId);
@@ -2659,55 +2729,16 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         }).catch(() => null);
 
         if (sub) {
-          await sub.deferReply({ flags: 64 });
           const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
           if (isNaN(amount) || amount === 0) {
-            return sub.editReply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!' });
+            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
           }
 
-          const memberIds = await getAllGuildMembers(guild, guildId);
-          if (memberIds.length === 0) {
-            return sub.editReply({ content: '❌ Gagal menemukan member untuk dibagikan koin.' });
-          }
+          database.run('UPDATE ebyus_settings SET gift_coins = ? WHERE guild_id = ?', [amount, guildId]);
 
-          let memberCount = 0;
-          try {
-            database.transaction(() => {
-              for (const memberId of memberIds) {
-                let wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [memberId, guildId]);
-                if (!wallet) {
-                  database.run(
-                    `INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at) 
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [memberId, guildId, 0, 0, 0]
-                  );
-                  wallet = { balance: 0 };
-                }
-
-                const newBal = Math.max(0, wallet.balance + amount);
-                database.run(
-                  `UPDATE wallets 
-                   SET balance = ?, total_earned = total_earned + ? 
-                   WHERE user_id = ? AND guild_id = ?`,
-                  [newBal, amount > 0 ? amount : 0, memberId, guildId]
-                );
-
-                database.run(
-                  `INSERT INTO transactions (user_id, guild_id, type, amount) 
-                   VALUES (?, ?, ?, ?)`,
-                  [memberId, guildId, amount > 0 ? 'ADMIN_GIVEALL' : 'ADMIN_TAKEALL', amount]
-                );
-                memberCount++;
-              }
-            })();
-
-            await sub.editReply({ content: `💸 Sukses membagikan **Rp ${amount.toLocaleString('id-ID')}** kepada **${memberCount} member** secara massal!` });
-            const fresh = getAbyusPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
-          } catch (dbErr) {
-            console.error('Database error in Abyus mass-give coins:', dbErr);
-            await sub.editReply({ content: '❌ Terjadi kesalahan internal saat memperbarui database koin.' });
-          }
+          await sub.reply({ content: `💸 Sukses menyetel hadiah koin massal ke **Rp ${amount.toLocaleString('id-ID')}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => {});
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_give_item') {
@@ -2741,37 +2772,20 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         }).catch(() => null);
 
         if (sub) {
-          await sub.deferReply({ flags: 64 });
           const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
           const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
           if (!itemId) {
-            return sub.editReply({ content: '❌ ID Item tidak boleh kosong!' });
+            return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
           }
           if (isNaN(qty) || qty === 0) {
-            return sub.editReply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!' });
+            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
           }
 
-          const memberIds = await getAllGuildMembers(guild, guildId);
-          if (memberIds.length === 0) {
-            return sub.editReply({ content: '❌ Gagal menemukan member untuk dibagikan item.' });
-          }
+          database.run('UPDATE ebyus_settings SET gift_item_id = ?, gift_item_qty = ? WHERE guild_id = ?', [itemId, qty, guildId]);
 
-          let memberCount = 0;
-          try {
-            database.transaction(() => {
-              for (const memberId of memberIds) {
-                updateAdminInventory(memberId, guildId, itemId, qty);
-                memberCount++;
-              }
-            })();
-
-            await sub.editReply({ content: `🎒 Sukses membagikan item \`${itemId}\` sebanyak **${qty > 0 ? '+' : ''}${qty}** kepada **${memberCount} member** secara massal!` });
-            const fresh = getAbyusPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
-          } catch (dbErr) {
-            console.error('Database error in Abyus mass-give items:', dbErr);
-            await sub.editReply({ content: '❌ Terjadi kesalahan internal saat memperbarui database inventaris.' });
-          }
+          await sub.reply({ content: `🎒 Sukses menyetel hadiah item massal ke **${qty}x ${itemId}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => {});
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {

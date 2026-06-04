@@ -3304,8 +3304,7 @@ module.exports = {
       .setTimestamp();
   },
 
-  // 38. Ebyus Broadcast Embed
-  ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt, freeAll = false, resetCds = false) {
+  ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt, freeAll = false, resetCds = false, giftCoins = 0, giftItemId = '', giftItemQty = 0) {
     const gachaDesc =
       mode === 'ABUSE' ? '🔥 **0% ZONK! (100% PASTI MENANG ROLE)**' :
         mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
@@ -3327,6 +3326,17 @@ module.exports = {
       extraTexts += `\n\n⏱️ **RESET COOLDOWN KRIMINAL MASSAL:**\n  👉 **AKTIF!** Seluruh cooldown mencuri (rob) dan perampokan bank (heist) di-reset ke 0 untuk semua warga!`;
     }
 
+    let giftTexts = '';
+    if (giftCoins > 0 || (giftItemQty > 0 && giftItemId)) {
+      giftTexts += `\n\n🎁 **HADIAH EVENT DIKIRIMKAN MASSAL:**`;
+      if (giftCoins > 0) {
+        giftTexts += `\n  👉 **Koin Gratis:** Rp ${giftCoins.toLocaleString('id-ID')} telah dikirimkan ke dompet seluruh warga!`;
+      }
+      if (giftItemQty > 0 && giftItemId) {
+        giftTexts += `\n  👉 **Item Gratis:** ${giftItemQty}x \`${giftItemId}\` telah dimasukkan ke inventaris seluruh warga!`;
+      }
+    }
+
     return new EmbedBuilder()
       .setColor('#FF007F') // Neon Hot Pink
       .setTitle(`🚨 EVENT SERVER: KEBOCORAN MODIFIKASI ADMIN ACTIVE! 🚨`)
@@ -3336,6 +3346,7 @@ module.exports = {
         `Sistem keamanan pusat server telah dimanipulasi oleh Administrator Server secara masif! Efek bypass aktif saat ini:\n\n` +
         `🎰 **SABOTASE GACHA ROLE:**\n  👉 ${gachaDesc}\n\n` +
         `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}` +
+        `${giftTexts}` +
         `${extraTexts}` +
         `${durationText}\n\n` +
         `**👉 *Jangan sia-siakan kesempatan emas ini! Segera kirim chat aktif di channel publik dan putar \`.gacha-role\` Anda sebanyak-banyaknya sebelum sistem ditutup kembali oleh sistem pusat!* ** 🎰🪙💸`
