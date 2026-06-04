@@ -4366,7 +4366,10 @@ async function handlePetCommand(message, client, args) {
       let petListText = '';
       currentLobby.participants.forEach((pId, idx) => {
         const pObj = pet.getPet(pId, guildId);
-        petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
+        const pName = pObj ? pObj.pet_name : 'Unknown Pet';
+        const pLvl = pObj ? pObj.level : 1;
+        const pType = pObj ? pObj.pet_type : 'Normal';
+        petListText += `${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) - <@${pId}>\n`;
       });
 
       const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
@@ -4920,7 +4923,10 @@ async function handlePetCommand(message, client, args) {
           let petListText = '';
           currentLobby.participants.forEach((pId, idx) => {
             const pObj = pet.getPet(pId, guildId);
-            petListText += `${idx + 1}️⃣ **${pObj.pet_name}** (Lv. ${pObj.level} ${pObj.pet_type}) - <@${pId}>\n`;
+            const pName = pObj ? pObj.pet_name : 'Unknown Pet';
+            const pLvl = pObj ? pObj.level : 1;
+            const pType = pObj ? pObj.pet_type : 'Normal';
+            petListText += `${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) - <@${pId}>\n`;
           });
 
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
@@ -7109,11 +7115,18 @@ async function handlePetAdminCommand(message, client, args) {
 
   if (subCommand === 'reset-expedition' || subCommand === 'clear-expedition') {
     const activeLobby = client.activeExpeditions;
-    if (activeLobby && activeLobby.has(guildId)) {
-      const lobby = activeLobby.get(guildId);
-      if (lobby.timeout) clearTimeout(lobby.timeout);
-      activeLobby.delete(guildId);
-      return message.reply('✅ Sukses mereset secara paksa lobi ekspedisi pet yang aktif di server ini.');
+    let deletedCount = 0;
+    if (activeLobby) {
+      for (const [key, lobby] of activeLobby.entries()) {
+        if (lobby.guildId === guildId) {
+          if (lobby.timeout) clearTimeout(lobby.timeout);
+          activeLobby.delete(key);
+          deletedCount++;
+        }
+      }
+    }
+    if (deletedCount > 0) {
+      return message.reply(`✅ Sukses mereset secara paksa ${deletedCount} lobi ekspedisi pet yang aktif di server ini.`);
     } else {
       return message.reply('❌ Tidak ada lobi ekspedisi pet yang aktif di server ini saat ini.');
     }
