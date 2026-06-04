@@ -8479,6 +8479,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .rob @user
     // ═══════════════════════════════════════════════════
     if (commandName === 'rob') {
+      const kos = require('./kos');
       const firstArg = args[0]?.toLowerCase();
       if (firstArg === 'announcement' || firstArg === 'anoncemen' || firstArg === 'info') {
         const robInfoEmbed = embeds.robAnnouncementEmbed(message.guild);
