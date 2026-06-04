@@ -6,7 +6,7 @@ const db = new Database(dbPath);
 const robbery = require('../stockmarket/robbery');
 
 console.log("==================================================");
-console.log("🧪 TESTING ROBBERY DUAL & PERSONAL LIMITS");
+console.log("🧪 TESTING ROBBERY ORIGINAL TARGET & PERSONAL LIMITS");
 console.log("==================================================\n");
 
 const thiefId = 'LIMIT_TEST_THIEF';
@@ -44,52 +44,20 @@ function resetThiefState() {
   db.prepare("UPDATE wallets SET jail_until = 0, jail_type = '', last_rob_at = 0 WHERE user_id = ? AND guild_id = ?").run(thiefId, guildId);
 }
 
-// 1. Test total attempts limit (15 total attempts on target by anyone)
-console.log("👉 Scenario 1: Test 15 total attempts limit on target (all failed attempts)");
-// Insert 14 failed attempts on victimId
-for (let i = 0; i < 14; i++) {
-  insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600); // 1 hour ago
-}
-
-// Verify stats before 15th
-resetThiefState();
-let stats = robbery.robSolo(thiefId, victimId, guildId);
-console.log("   👉 15th attempt allowed because only 14 attempts existed.");
-
-// Insert 1 more failed attempt to make it 15 attempts total
-insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600);
-
-// The 16th attempt should fail
-resetThiefState();
-try {
-  robbery.robSolo(thiefId, victimId, guildId);
-  console.log("   ❌ FAILED: 16th attempt was allowed but should have been blocked!");
-} catch (e) {
-  if (e.message.includes("15 kali")) {
-    console.log("   ✅ SUCCESS: 16th attempt blocked correctly with error:", e.message);
-  } else {
-    console.log("   ❌ FAILED: Blocked but with wrong error message:", e.message);
-  }
-}
-
-// Clean up for Scenario 2
-db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
-db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
-
-// 2. Test successful attempts limit (10 successful attempts on target by anyone)
-console.log("\n👉 Scenario 2: Test 10 successful attempts limit on target");
-// Insert 9 successful attempts
+// 1. Test overall target limit (10 total attempts on target by anyone)
+console.log("👉 Scenario 1: Test 10 overall attempts limit on target");
+// Insert 9 failed attempts on victimId
 for (let i = 0; i < 9; i++) {
-  insertTransaction(victimId, 'ROBBED_BY', 3600);
+  insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600); // 1 hour ago
 }
 
 // Verify stats before 10th
 resetThiefState();
-stats = robbery.robSolo(thiefId, victimId, guildId);
-console.log("   👉 10th attempt allowed because only 9 successful attempts existed.");
+let stats = robbery.robSolo(thiefId, victimId, guildId);
+console.log("   👉 10th attempt allowed because only 9 attempts existed.");
 
-// Insert 1 more successful attempt to make it 10 successful attempts total
-insertTransaction(victimId, 'ROBBED_BY', 3600);
+// Insert 1 more failed attempt to make it 10 attempts total
+insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600);
 
 // The 11th attempt should fail
 resetThiefState();
@@ -104,13 +72,13 @@ try {
   }
 }
 
-// Clean up for Scenario 3
+// Clean up for Scenario 2
 db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
 db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
 
-// 3. Test personal limit: Robber A can target Victim B at most 10 times in 24 hours
-console.log("\n👉 Scenario 3: Test personal limit (robber can target same victim max 10 times)");
-// Insert 9 attempts by thiefId on victimId (success or fail doesn't matter, we insert failures here)
+// 2. Test personal limit: Robber A can target Victim B at most 10 times in 24 hours
+console.log("\n👉 Scenario 2: Test personal limit (robber can target same victim max 10 times)");
+// Insert 9 attempts by thiefId on victimId (failures)
 for (let i = 0; i < 9; i++) {
   insertRobberyAttempt(thiefId, victimId, 0, 3600);
 }
@@ -129,7 +97,7 @@ try {
   robbery.robSolo(thiefId, victimId, guildId);
   console.log("   ❌ FAILED: 11th attempt was allowed but robber should have been blocked!");
 } catch (e) {
-  if (e.message.includes("10 kali")) {
+  if (e.message.includes("Anda sudah merampok target ini 10 kali")) {
     console.log("   ✅ SUCCESS: 11th attempt blocked correctly with error:", e.message);
   } else {
     console.log("   ❌ FAILED: Blocked but with wrong error message:", e.message);

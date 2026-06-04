@@ -63,26 +63,20 @@ function checkJail(userId, guildId, member = null) {
 }
 
 /**
- * Menghitung statistik berapa kali seorang user dijadikan target rob (sukses & total) dalam 24 jam terakhir.
+ * Menghitung berapa kali seorang user dijadikan target rob (sukses/gagal) dalam 24 jam terakhir.
  */
-function getRobberyTargetStats(targetId, guildId) {
+function getRobberyTargetCount(targetId, guildId) {
   const nowSec = Math.floor(Date.now() / 1000);
   const time24HoursAgo = nowSec - 24 * 3600;
 
   const result = db.get(
-    `SELECT 
-        COUNT(*) as total_attempts,
-        SUM(CASE WHEN type = 'ROBBED_BY' THEN 1 ELSE 0 END) as successful_attempts
-     FROM transactions 
+    `SELECT COUNT(*) as cnt FROM transactions 
      WHERE user_id = ? AND guild_id = ? 
        AND type IN ('ROBBED_BY', 'ROB_VICTIM_COMPENSATION') 
        AND created_at >= ?`,
     [targetId, guildId, time24HoursAgo]
   );
-  return {
-    totalAttempts: result ? (result.total_attempts || 0) : 0,
-    successfulAttempts: result ? (result.successful_attempts || 0) : 0
-  };
+  return result ? (result.cnt || 0) : 0;
 }
 
 /**
@@ -132,19 +126,16 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     throw new Error('Anda tidak bisa merampok diri sendiri, carilah target lain!');
   }
 
+  // Cek batas target rob (maksimal 10 kali dalam 24 jam)
+  const targetRobCount = getRobberyTargetCount(targetId, guildId);
+  if (targetRobCount >= 10) {
+    throw new Error('Target sudah terlalu lelah karena telah dirampok 10 kali dalam 24 jam terakhir. Cari target lain!');
+  }
+
   // Cek batas target rob personal (pelaku maksimal 10 kali menargetkan target yang sama dalam 24 jam)
   const personalCount = getRobberToTargetCount(userId, targetId, guildId);
   if (personalCount >= 10) {
     throw new Error('Anda sudah merampok target ini 10 kali dalam 24 jam terakhir! Silakan cari target lain.');
-  }
-
-  // Cek batas target rob (maksimal 15 kali total target, atau maksimal 10 kali sukses dirampok dalam 24 jam)
-  const stats = getRobberyTargetStats(targetId, guildId);
-  if (stats.successfulAttempts >= 10) {
-    throw new Error('Target sudah terlalu trauma karena berhasil dirampok 10 kali dalam 24 jam terakhir. Cari target lain!');
-  }
-  if (stats.totalAttempts >= 15) {
-    throw new Error('Target sudah terlalu lelah karena telah dijadikan sasaran perampokan 15 kali dalam 24 jam terakhir. Cari target lain!');
   }
 
   // Cek apakah target adalah bot di guild target
