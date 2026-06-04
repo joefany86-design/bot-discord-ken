@@ -6,16 +6,17 @@ const db = new Database(dbPath);
 const robbery = require('../stockmarket/robbery');
 
 console.log("==================================================");
-console.log("🧪 TESTING ROBBERY DUAL LIMITS (15 ATTEMPTS / 10 SUCCESSES)");
+console.log("🧪 TESTING ROBBERY DUAL & PERSONAL LIMITS");
 console.log("==================================================\n");
 
 const thiefId = 'LIMIT_TEST_THIEF';
 const victimId = 'LIMIT_TEST_VICTIM';
 const guildId = 'LIMIT_TEST_GUILD';
 
-// Clean up previous transactions/wallets
+// Clean up previous transactions/wallets/robbery attempts
 db.prepare("DELETE FROM wallets WHERE guild_id = ?").run(guildId);
 db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
+db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
 
 // Initialize wallets
 db.prepare("INSERT INTO wallets (user_id, guild_id, balance, last_active_date) VALUES (?, ?, 50000, '2026-06-04')").run(thiefId, guildId);
@@ -31,13 +32,21 @@ function insertTransaction(userId, type, timeAgoSeconds) {
   `).run(userId, guildId, type, 100, nowSec - timeAgoSeconds);
 }
 
+// Helper function to insert robbery attempts
+function insertRobberyAttempt(robberId, targetId, success, timeAgoSeconds) {
+  db.prepare(`
+    INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(robberId, targetId, guildId, success, nowSec - timeAgoSeconds);
+}
+
 function resetThiefState() {
   db.prepare("UPDATE wallets SET jail_until = 0, jail_type = '', last_rob_at = 0 WHERE user_id = ? AND guild_id = ?").run(thiefId, guildId);
 }
 
-// 1. Test total attempts limit (15 total attempts)
-console.log("👉 Scenario 1: Test 15 total attempts limit (all failed attempts)");
-// Insert 14 failed attempts (ROB_VICTIM_COMPENSATION) in the last 23 hours
+// 1. Test total attempts limit (15 total attempts on target by anyone)
+console.log("👉 Scenario 1: Test 15 total attempts limit on target (all failed attempts)");
+// Insert 14 failed attempts on victimId
 for (let i = 0; i < 14; i++) {
   insertTransaction(victimId, 'ROB_VICTIM_COMPENSATION', 3600); // 1 hour ago
 }
@@ -63,12 +72,13 @@ try {
   }
 }
 
-// Clean up transactions for Scenario 2
+// Clean up for Scenario 2
 db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
+db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
 
-// 2. Test successful attempts limit (10 successful attempts)
-console.log("\n👉 Scenario 2: Test 10 successful attempts limit");
-// Insert 9 successful attempts (ROBBED_BY)
+// 2. Test successful attempts limit (10 successful attempts on target by anyone)
+console.log("\n👉 Scenario 2: Test 10 successful attempts limit on target");
+// Insert 9 successful attempts
 for (let i = 0; i < 9; i++) {
   insertTransaction(victimId, 'ROBBED_BY', 3600);
 }
@@ -94,9 +104,42 @@ try {
   }
 }
 
+// Clean up for Scenario 3
+db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
+db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
+
+// 3. Test personal limit: Robber A can target Victim B at most 10 times in 24 hours
+console.log("\n👉 Scenario 3: Test personal limit (robber can target same victim max 10 times)");
+// Insert 9 attempts by thiefId on victimId (success or fail doesn't matter, we insert failures here)
+for (let i = 0; i < 9; i++) {
+  insertRobberyAttempt(thiefId, victimId, 0, 3600);
+}
+
+// Verify 10th attempt is allowed
+resetThiefState();
+stats = robbery.robSolo(thiefId, victimId, guildId);
+console.log("   👉 10th attempt allowed because robber only targeted victim 9 times.");
+
+// Insert 1 more attempt to make it 10 attempts total
+insertRobberyAttempt(thiefId, victimId, 0, 3600);
+
+// The 11th attempt should fail
+resetThiefState();
+try {
+  robbery.robSolo(thiefId, victimId, guildId);
+  console.log("   ❌ FAILED: 11th attempt was allowed but robber should have been blocked!");
+} catch (e) {
+  if (e.message.includes("10 kali")) {
+    console.log("   ✅ SUCCESS: 11th attempt blocked correctly with error:", e.message);
+  } else {
+    console.log("   ❌ FAILED: Blocked but with wrong error message:", e.message);
+  }
+}
+
 // Clean up
 db.prepare("DELETE FROM wallets WHERE guild_id = ?").run(guildId);
 db.prepare("DELETE FROM transactions WHERE guild_id = ?").run(guildId);
+db.prepare("DELETE FROM robbery_attempts WHERE guild_id = ?").run(guildId);
 db.close();
 
 console.log("\n==================================================");

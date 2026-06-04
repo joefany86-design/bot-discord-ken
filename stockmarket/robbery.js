@@ -86,6 +86,23 @@ function getRobberyTargetStats(targetId, guildId) {
 }
 
 /**
+ * Menghitung berapa kali seorang perampok menargetkan target tertentu dalam 24 jam terakhir.
+ */
+function getRobberToTargetCount(robberId, targetId, guildId) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const time24HoursAgo = nowSec - 24 * 3600;
+
+  const result = db.get(
+    `SELECT COUNT(*) as cnt 
+     FROM robbery_attempts 
+     WHERE robber_id = ? AND target_id = ? AND guild_id = ? 
+       AND created_at >= ?`,
+    [robberId, targetId, guildId, time24HoursAgo]
+  );
+  return result ? (result.cnt || 0) : 0;
+}
+
+/**
  * Solo Robbery: Merampok koin warga secara individu
  */
 function robSolo(userId, targetId, guildId, robberMember = null, victimMember = null) {
@@ -113,6 +130,12 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   // 2. Validasi Korban
   if (userId === targetId) {
     throw new Error('Anda tidak bisa merampok diri sendiri, carilah target lain!');
+  }
+
+  // Cek batas target rob personal (pelaku maksimal 10 kali menargetkan target yang sama dalam 24 jam)
+  const personalCount = getRobberToTargetCount(userId, targetId, guildId);
+  if (personalCount >= 10) {
+    throw new Error('Anda sudah merampok target ini 10 kali dalam 24 jam terakhir! Silakan cari target lain.');
   }
 
   // Cek batas target rob (maksimal 15 kali total target, atau maksimal 10 kali sukses dirampok dalam 24 jam)
@@ -153,6 +176,11 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       db.run(
         "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [jailUntil, userId, guildId]
+      );
+      // Log attempt
+      db.run(
+        'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+        [userId, targetId, guildId, 0, Math.floor(Date.now() / 1000)]
       );
     })();
 
@@ -331,6 +359,12 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
           [wantedUntil, userId, guildId]
         );
       }
+
+      // Log attempt
+      db.run(
+        'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+        [userId, targetId, guildId, 1, nowSec]
+      );
     })();
 
     // Increment daily quest progress for ROB
@@ -440,6 +474,12 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
       db.run(
         "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [jailUntil, userId, guildId]
+      );
+
+      // Log attempt
+      db.run(
+        'INSERT INTO robbery_attempts (robber_id, target_id, guild_id, success, created_at) VALUES (?, ?, ?, ?, ?)',
+        [userId, targetId, guildId, 0, nowSec]
       );
     })();
 

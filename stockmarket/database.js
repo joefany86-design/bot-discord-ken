@@ -762,6 +762,25 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel bot_blacklist:", e.message);
   }
 
+  // 50. Tabel robbery_attempts untuk membatasi target personal perampok
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS robbery_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        robber_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        success INTEGER NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_robbery_attempts_robber_target ON robbery_attempts (robber_id, target_id, guild_id, created_at)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_robbery_attempts_target ON robbery_attempts (target_id, guild_id, created_at)");
+    console.log("⚡ [Database] Tabel 'robbery_attempts' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel robbery_attempts:", e.message);
+  }
+
   // 48. Migrasi dinamis: Tambahkan kolom owner_protection ke ebyus_settings (toggle anti rob/hack)
   try {
     db.exec("ALTER TABLE ebyus_settings ADD COLUMN owner_protection INTEGER DEFAULT 0");
