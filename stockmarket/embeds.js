@@ -452,7 +452,7 @@ module.exports = {
 
     if (activeTab === 'dashboard') {
       footerText = '💡 Halaman 1/5 · Gunakan tombol di bawah untuk berpindah tab';
-      
+
       desc += `💼 **FINANCIAL DASHBOARD** · ${tier.emoji} **${tier.name} MEMBER**\n`;
       desc += `\`\`\`\n`;
       desc += `┌───────────────────────┐\n`;
@@ -514,7 +514,7 @@ module.exports = {
 
       if (extraData.kosRental) {
         const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                         extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
+          extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
         desc += `┊ 🏠 Kamar Kos: **${roomName}**\n`;
       } else {
         desc += `┊ 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
@@ -672,7 +672,7 @@ module.exports = {
       if (extraData.kosRental) {
         const { room_tier, ends_at } = extraData.kosRental;
         const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                         room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+          room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
         desc += `┊ Kamar Aktif: **${roomName}**\n`;
         desc += `┊ Masa Sewa  : <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
       } else {
@@ -761,8 +761,8 @@ module.exports = {
           desc += `┊ Status Misi: 🎁 **Hadiah Harian Telah Diklaim!**\n\n`;
         } else {
           const isAllDone = dq.quest_1_progress >= dq.quest_1_target &&
-                            dq.quest_2_progress >= dq.quest_2_target &&
-                            dq.quest_3_progress >= dq.quest_3_target;
+            dq.quest_2_progress >= dq.quest_2_target &&
+            dq.quest_3_progress >= dq.quest_3_target;
           desc += `┊ Status Misi: ${isAllDone ? '🎉 **Siap Klaim! (Ketik `.pet quest claim`)**' : '❌ Belum menyelesaikan semua misi harian'}\n\n`;
         }
       } else {
@@ -914,8 +914,8 @@ module.exports = {
         const barSize = 10;
         const soldCount = stock.total_shares - stock.available_shares;
         const soldPct = ((soldCount / stock.total_shares) * 100).toFixed(0);
-        const stockText = stock.total_shares === 99999999 
-          ? '`Tanpa Batas (♾️)`' 
+        const stockText = stock.total_shares === 99999999
+          ? '`Tanpa Batas (♾️)`'
           : `\`${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')}\` lembar`;
         const progressBarText = stock.total_shares === 99999999
           ? '`Tersedia Melimpah ⚡`'
@@ -2542,11 +2542,11 @@ module.exports = {
       const pct = Math.min(100, Math.max(0, Math.round((val / max) * 100)));
       const filled = Math.min(totalBars, Math.max(0, Math.round((pct / 100) * totalBars)));
       const empty = totalBars - filled;
-      
+
       let emoji = '🟩';
       if (pct < 30) emoji = '🟥';
       else if (pct < 70) emoji = '🟨';
-      
+
       const barStr = emoji.repeat(filled) + '⬛'.repeat(empty);
       return `\`[${barStr}]\` **${val}/${max}** (${pct}%)`;
     };
@@ -2574,7 +2574,7 @@ module.exports = {
     const traitList = [];
     if (pet.trait) traitList.push(pet.trait.toUpperCase());
     if (pet.gacha_trait2) traitList.push(pet.gacha_trait2.toUpperCase());
-    
+
     if (traitList.length > 0) {
       traitText = traitList.map(t => {
         if (t === 'GENIUS') return '🧠 GENIUS *(XP Cap -15%)*';
@@ -2627,7 +2627,7 @@ module.exports = {
     // Statistik Tempur (Menghitung formula PvP yang sebenarnya)
     const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
     const baseAtk = specBaseAtk + pet.level * 5;
-    
+
     let atkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
     const atkModifiers = [];
     if (pet.pet_type === 'DRAGON') {
@@ -2673,9 +2673,9 @@ module.exports = {
 
     const totalDefMult = (1.0 - (specBaseDef / 100)) * defMult * (1.0 - (pet.base_def_bonus_pct || 0.0));
     const finalDefReduction = Math.round((1.0 - totalDefMult) * 100);
-    
-    let defDesc = finalDefReduction > 0 
-      ? `\`-${finalDefReduction}% DMG\` diterima` 
+
+    let defDesc = finalDefReduction > 0
+      ? `\`-${finalDefReduction}% DMG\` diterima`
       : '❌ Tidak Ada';
     if (defModifiers.length > 0) {
       defDesc += ` *(Bonus: ${defModifiers.join(' + ')})*`;
@@ -2765,7 +2765,7 @@ module.exports = {
     } else {
       pets.forEach((pet, idx) => {
         const activeLabel = pet.is_active ? '🟢 **AKTIF**' : '⚪ Pasif';
-        
+
         const speciesInfo = GACHA_SPECIES[pet.pet_type];
         const typeLabel = speciesInfo ? speciesInfo.name : pet.pet_type;
 
@@ -2777,7 +2777,7 @@ module.exports = {
         } else {
           const petRarity = (pet.gacha_rarity || (speciesInfo ? speciesInfo.rarity : 'COMMON')).toUpperCase();
           const starText = renderStars(pet.star_level || 1);
-          
+
           let traitDesc = '';
           if (pet.trait) {
             traitDesc = ` | Trait: ${pet.trait}`;
@@ -2911,7 +2911,7 @@ module.exports = {
   jailStatusEmbed(user, secondsRemaining, bailAmount, jailType = '') {
     const now = Math.floor(Date.now() / 1000);
     const releaseTime = now + secondsRemaining;
-    
+
     let description = '';
     let color = COLORS.ERROR;
     let title = '🚨 TAHANAN VIRTUAL 👮';
@@ -2923,7 +2923,7 @@ module.exports = {
       color = 0x95A5A6;
       thumbnail = 'https://cdn-icons-png.flaticon.com/512/2996/2996172.png';
       footerText = '😜 Nikmati masa tenang Anda di sel VIP!';
-      description = 
+      description =
         `\`\`\`\n┌───────────────────────┐\n│  😜 KENA TROLL ADMIN 😜 │\n└───────────────────────┘\n\`\`\`\n` +
         `⚠️ **${user.username}** dimasukkan ke **Sel VIP Kertas** oleh Admin!\n\n` +
         `┊ 🔒 **Status:** \`KENA PRANK\`\n` +
@@ -2932,7 +2932,7 @@ module.exports = {
         `┊ 💰 **Tebusan:** \`Gratis\` *(Tapi harus nunggu!)*\n\n` +
         `> *Seluruh aktivitas ekonomi dibekukan demi kenyamanan perenungan.*`;
     } else {
-      description = 
+      description =
         `\`\`\`\n┌───────────────────────┐\n│  🔒 PENJARA VIRTUAL 🔒  │\n└───────────────────────┘\n\`\`\`\n` +
         `⚠️ **${user.username}** sedang ditahan di Penjara Virtual!\n\n` +
         `┊ 🔒 **Status:** \`JAILED\`\n` +
@@ -2957,7 +2957,7 @@ module.exports = {
     const petName = petObj ? petObj.pet_name : 'Unknown Pet';
     const petType = petObj ? petObj.pet_type : 'Normal';
     const petLvl = petObj ? petObj.level : 1;
-    
+
     return new EmbedBuilder()
       .setColor('#FFD600') // Electric Gold
       .setTitle('⚔️ EXPEDITION BATTLE: GILIRAN SERANG! ⚔️')
@@ -2994,7 +2994,7 @@ module.exports = {
   petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results, mapId) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     let causeText = '';
-    
+
     if (reasonType === 'Timeout') {
       causeText = `🔴 **Kru <@${failedUserId}> lambat bereaksi!** Melewati batas waktu reaksi 6 detik. Pet terdiam membingungkan sehingga Bos menghantam pertahanan tim!`;
     } else {
@@ -3045,75 +3045,54 @@ module.exports = {
     const listKru = participants.map((p, idx) => {
       const roles = ['🕶️ Otak Kriminal', '💻 Peretas Keamanan', '🧨 Ahli Peledak', '🔫 Jaga Sandera', '👜 Pembawa Jarahan', '🚗 Pembalap Pelarian'];
       const roleStr = roles[idx] || '👥 Anggota Kru Backup';
-      return `• ${idx + 1}️⃣ <@${p}> · *${roleStr}*`;
+      return `  ├─ ${idx + 1}. <@${p}> (${roleStr})`;
     }).join('\n');
 
-    const crewListStr = listKru ? listKru : '*Belum ada kru yang bergabung...*';
+    const crewListStr = listKru ? `${listKru}\n  └─ *Kru bersiap di posisi masing-masing!*` : '  └─ *Menunggu kru bergabung...*';
 
     return new EmbedBuilder()
-      .setColor('#D50000') // Bold Red
+      .setColor(COLORS.FIERY || 0xE74C3C)
       .setTitle('🚨 OPERASI CRITICAL: CENTRAL BANK HEIST 🚨')
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2823/2823864.png')
       .setDescription(
-        `### 🏛️ Misi Perampokan Bank Pusat\n` +
-        `**${initiator.username}** sedang merekrut tim elit untuk membobol brankas utama Bank Server!\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
+        `### 🏛️ MISI PERAMPOKAN BANK PUSAT\n` +
+        `💥 **${initiator.username}** merekrut tim elit untuk membobol brankas utama Bank Server!\n\n` +
+        `💵 **Biaya Persiapan:** \`${formatCurrency(prepFee)}\` per orang\n` +
+        `⏳ **Batas Waktu Lobi:** <t:${endTimeUnix}:T> (<t:${endTimeUnix}:R>)\n\n` +
+        `👥 **DAFTAR KRU PERAMPOK (${participants.length}):**\n` +
+        `${crewListStr}\n\n` +
+        `⚠️ *Perhatian: Urutan giliran (QTE) dan peran kru akan diacak secara otomatis saat operasi dimulai. Semua kru wajib berpartisipasi dan fokus!*`
       )
       .addFields(
         {
-          name: '👥 Kru Perampok Terdaftar',
-          value: crewListStr,
+          name: '📊 ANALISIS RISIKO & PROSPEK JARAHAN',
+          value: `📈 **Peluang Sukses Dasar:** \`${successRate}%\`\n` +
+                 `💰 **Estimasi Hasil Jarahan:** \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\` *(belum termasuk tabungan nasabah)*`,
           inline: false
-        },
-        {
-          name: '📊 Analisis Risiko & Potensi Jarahan',
-          value: `• **Peluang Sukses Dasar:** \`${successRate}%\`\n` +
-                 `• **Rentang Hasil Jarahan:** \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\``,
-          inline: false
-        },
-        {
-          name: '💰 Biaya Persiapan',
-          value: `\`${formatCurrency(prepFee)}\` per orang`,
-          inline: true
-        },
-        {
-          name: '⏳ Batas Waktu Gabung',
-          value: `<t:${endTimeUnix}:R>`,
-          inline: true
         }
       )
-      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk masuk ke lobi!' })
+      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk mendaftar!' })
       .setTimestamp();
   },
 
   // 31b. Heist Step QTE Embed
-  heistStepEmbed(guild, stepNumber, stepTitle, stepDesc, targetUserId, endTimeUnix) {
+  heistStepEmbed(guild, stepNumber, totalSteps, stepTitle, stepDesc, targetUserId, endTimeUnix) {
     return new EmbedBuilder()
-      .setColor('#FF9100') // Vibrant Orange
-      .setTitle(`⚔️ HEIST STAGE: ${stepTitle} ⚔️`)
+      .setColor(0xFF9800) // Vibrant Orange
+      .setTitle(`⚡ FASE EKSEKUSI QTE: ${stepTitle} ⚡`)
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/3233/3233483.png')
       .setDescription(
-        `### ⚡ FASE EKSEKUSI QTE ⚡\n` +
-        `*Langkah **${stepNumber}**: Rantai Aksi Tim*\n\n` +
-        `${stepDesc}\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
+        `### 🚀 Rantai Aksi Tim (Langkah ${stepNumber} dari ${totalSteps})\n` +
+        `*Operasi sedang berlangsung! Selesaikan tugas peran Anda sebelum alarm berbunyi!*\n\n` +
+        `📢 **Instruksi Peran:**\n` +
+        `> ${stepDesc}\n\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n` +
+        `🎯 **Target Giliran:** <@${targetUserId}>\n` +
+        `⏳ **Batas Reaksi:** <t:${endTimeUnix}:R> *(Waktu tipis!)*\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n\n` +
+        `🚨 **Peringatan Keras:** Hanya <@${targetUserId}> yang boleh mengeklik tombol peran di bawah! Jika kru lain mengeklik di luar giliran, alarm akan aktif dan operasi **gagal seketika** (Interference Penalti)!`
       )
-      .addFields(
-        {
-          name: '🎯 Giliran Peran Kru',
-          value: `<@${targetUserId}>`,
-          inline: true
-        },
-        {
-          name: '⏳ Sisa Waktu Reaksi',
-          value: `<t:${endTimeUnix}:R> *(Batas waktu 6 detik)*`,
-          inline: true
-        },
-        {
-          name: '⚠️ Peringatan Keras',
-          value: `*Hanya <@${targetUserId}> yang boleh mengeklik tombol peran di bawah! Kru lain yang salah klik/salah giliran akan memicu sensor laser alarm bank dan membuat heist GAGAL seketika!*`,
-          inline: false
-        }
-      )
-      .setFooter({ text: 'Kosan 1A Heist Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
+      .setFooter({ text: 'Sentinel Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
       .setTimestamp();
   },
 
@@ -3121,117 +3100,99 @@ module.exports = {
   heistQteFailureEmbed(guild, failedUserId, reasonType, participants) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     let causeText = '';
-    
+
     if (reasonType === 'Timeout') {
-      causeText = `🔴 **Kru <@${failedUserId}> panik/lambat bereaksi!** Melewati batas waktu reaksi 6 detik untuk perannya.`;
+      causeText = `🔴 **Penyebab Kegagalan:** Kru <@${failedUserId}> terlambat mengambil tindakan tepat waktu hingga batas **6 detik habis**! Tim keamanan menyadari kelalaian ini.`;
     } else {
-      causeText = `🚨 **Kru <@${failedUserId}> panik dan salah klik!** Menekan tombol peran yang **bukan gilirannya**, memicu alarm seketika!`;
+      causeText = `🚨 **Penyebab Kegagalan:** Kru <@${failedUserId}> menekan tombol aksi **di luar gilirannya**! Pergerakan acak ini langsung memicu sensor laser keamanan bank!`;
     }
 
     return new EmbedBuilder()
-      .setColor('#D50000') // Blood Red
-      .setTitle('🚓 OPERASI HANG: HEIST GAGAL TOTAL! 👮')
+      .setColor(0xE74C3C) // Crimson Red
+      .setTitle('🚓 HEIST DIGAGALKAN: TIM SWEEP & TANGKAP! 👮')
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
       .setDescription(
-        `### 🚓 Alarm Bank Menyala Keras!\n` +
-        `Operasi gagal di tengah jalan, seluruh pintu keluar ditutup oleh dinding baja!\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
+        `### 💥 Alarm Bank Berbunyi Nyaring!\n` +
+        `Operasi dihentikan paksa. Seluruh area bank diblokade total oleh unit kepolisian!\n\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n` +
+        `${causeText}\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n\n` +
+        `👥 **Kru yang Tertangkap:** ${crewList}\n` +
+        `👮 **Konsekuensi:** Seluruh kru dijebloskan ke penjara virtual dan dikenakan denda biaya pembersihan TKP!`
       )
-      .addFields(
-        {
-          name: '💥 Lokasi Operasi',
-          value: `• **Tempat:** Central Bank Server\n• **Kru Terlibat:** ${crewList}`,
-          inline: false
-        },
-        {
-          name: '🔍 Penyebab Kegagalan',
-          value: causeText,
-          inline: false
-        },
-        {
-          name: '👮 Konsekuensi Hukum & Keamanan',
-          value: `Tim SWAT mengepung lokasi dan menangkap seluruh kru. Setiap kru masuk penjara virtual dan dikenakan denda pembersihan TKP!`,
-          inline: false
-        }
-      )
+      .setFooter({ text: 'Sentinel Heist Failure • Hubungi inisiator untuk merencanakan ulang.' })
       .setTimestamp();
   },
 
   // 32. Heist Result Embed
   heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
-    const logText = logs.map(l => `☠️ ${l}`).join('\n');
+    const logText = logs.map(l => ` • ${l}`).join('\n');
 
-    let desc = `### ${success ? '🏆 Brankas Utama Berhasil Dibobol!' : '🚓 Bala Bantuan Polisi Mengepung!'}\n` +
-      `• **Lokasi:** Central Bank Server\n` +
-      `• **Kru Terlibat:** ${crewList}\n\n` +
-      `─── ⋆⋅☆⋅⋆ ───\n\n`;
-
-    // 1. Tambahkan Detail Pet Synergy jika ada
+    let desc = '';
+    
+    // Add Pet Synergy Detail if present
     if (extraData.petDetails && extraData.petDetails.length > 0) {
-      desc += `🧬 **Sinergi Pet Active:**\n` + extraData.petDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+      desc += `🧬 **Sinergi Pet Aktif:**\n` + extraData.petDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
     }
 
-    // 2. Tambahkan Detail Black Market Gear jika ada
+    // Add Black Market Gear Detail if present
     if (extraData.bmDetails && extraData.bmDetails.length > 0) {
-      desc += `🗝️ **Gear Pasar Gelap:**\n` + extraData.bmDetails.map(d => `• ${d}`).join('\n') + `\n\n`;
+      desc += `🗝️ **Perlengkapan Pasar Gelap:**\n` + extraData.bmDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
     }
 
-    desc += `📝 **Rekaman Chronology Aksi:**\n${logText}\n\n` +
-      `─── ⋆⋅☆⋅⋆ ───\n\n`;
+    desc += `📝 **Kronologi Kejadian (Logs):**\n\`\`\`\n${logText || 'Tidak ada log aktivitas.'}\n\`\`\`\n`;
 
-    const fields = [];
+    const embed = new EmbedBuilder()
+      .setTimestamp();
 
     if (success) {
-      let successValue = `• **Total Kas Didapat:** \`${formatCurrency(totalReward)}\`\n` +
-                         `• **Gaji per Anggota:** **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih)*`;
+      embed.setColor(0x2ECC71) // Emerald Green
+        .setTitle('🏆 OPERASI BANK HEIST SUKSES BESAR! 💰')
+        .setThumbnail('https://cdn-icons-png.flaticon.com/512/2953/2953363.png');
 
-      // Masked users bonus
+      let rewardDetails = 
+        `### 💰 Rekapitulasi Hasil Jarahan\n` +
+        `🏦 **Total Kas Tercuri:** \`${formatCurrency(totalReward)}\`\n` +
+        `👉 **Gaji per Kru (Bersih):** **\`${formatCurrency(rewardPerPerson)}\`**\n\n` +
+        `👥 **Kru Sukses:** ${crewList}`;
+
       if (extraData.maskedUsers && extraData.maskedUsers.length > 0) {
         const maskList = extraData.maskedUsers.map(u => `<@${u}>`).join(', ');
-        successValue += `\n\n🎭 ${maskList} menggunakan **Topeng Samaran** dan mendapatkan bonus **+10% koin jarahan**!`;
+        rewardDetails += `\n\n🎭 ${maskList} menggunakan **Topeng Samaran** (+10% koin bonus).`;
       }
 
       if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
-        const victimList = deductionLogs.map(dl => `• <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
-        successValue += `\n\n💸 **Dana Rekening Nasabah Dikorbankan:**\n${victimList}\n` +
-          `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
+        const victimList = deductionLogs.map(dl => ` • <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
+        rewardDetails += `\n\n💸 **Rekening Nasabah Korban:**\n${victimList}\n` +
+                         `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
       }
 
-      fields.push({
-        name: '🏆 Rekapitulasi Hasil Jarahan',
-        value: successValue,
-        inline: false
-      });
+      embed.setDescription(desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + rewardDetails);
     } else {
-      let failValue = `• **Denda Keberangkatan:** \`${formatCurrency(fineAmount)}\` per orang\n` +
-                      `• **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!`;
+      embed.setColor(0xE74C3C) // Crimson Red
+        .setTitle('🚓 OPERASI GAGAL: TIM SWEEP & PENJARA! 👮')
+        .setThumbnail('https://cdn-icons-png.flaticon.com/512/1022/1022332.png');
 
-      // Slime dodge jail users
+      let penaltyDetails = 
+        `### 🚨 Konsekuensi Aparat Hukum\n` +
+        `💸 **Denda Kerugian:** \`${formatCurrency(fineAmount)}\` per orang\n` +
+        `🔒 **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!\n\n` +
+        `👥 **Kru Tertangkap:** ${crewList}`;
+
       if (extraData.dodgedJailUsers && extraData.dodgedJailUsers.length > 0) {
         const dodgeList = extraData.dodgedJailUsers.map(u => `<@${u}>`).join(', ');
-        failValue += `\n\n🟢 **Dodge Jail!** ${dodgeList} melarikan diri menggunakan tubuh licin pet **Slime** dan terhindar dari penjara!`;
+        penaltyDetails += `\n\n🟢 **Dodge Jail!** ${dodgeList} berhasil melarikan diri menggunakan kelicinan pet **Slime**!`;
       }
 
-      fields.push({
-        name: '🚨 Konsekuensi Aparat Hukum',
-        value: failValue,
-        inline: false
-      });
+      embed.setDescription(desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + penaltyDetails);
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle(success ? '🏆 BRANKAS UTAMA DIHANCURKAN! 💰' : '🚓 HEIST GAGAL: APARAT MENGEPUNG TIM! 👮')
-      .setColor(success ? COLORS.FIERY : COLORS.ERROR)
-      .setDescription(desc)
-      .addFields(fields)
-      .setTimestamp();
-
-    // Tampilkan barang kriminal yang hancur jika ada
     if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
       const brokenList = extraData.brokenLockpicks.map(u => `<@${u}>`).join(', ');
       embed.addFields({
-        name: '⚠️ ALAT SITAAN / HANCUR',
-        value: `Lockpick milik ${brokenList} patah/rusak saat membobol pintu lapis baja!`
+        name: '⚠️ Barang Sitaan / Rusak',
+        value: `Lockpick milik ${brokenList} patah/rusak saat membobol brankas!`
       });
     }
 
@@ -3804,15 +3765,15 @@ module.exports = {
   // 45. Global Action Announcement Embed
   globalActionAnnouncementEmbed(adminUser, actionName, actionDescription, colorHex, detailsFields = [], isLaw = false) {
     const headerBox = isLaw ?
-        `┌──────────────────────────────┐\n` +
-        `│  🚨 REGULASI HUKUM GLOBAL 🚨 │\n` +
-        `│     Lapas/Hukum Kosan 1A     │\n` +
-        `└──────────────────────────────┘\n`
+      `┌──────────────────────────────┐\n` +
+      `│  🚨 REGULASI HUKUM GLOBAL 🚨 │\n` +
+      `│     Lapas/Hukum Kosan 1A     │\n` +
+      `└──────────────────────────────┘\n`
       :
-        `┌──────────────────────────────┐\n` +
-        `│  📢 REGULASI EKONOMI GLOBAL  │\n` +
-        `│    Keuangan Global Kosan 1A  │\n` +
-        `└──────────────────────────────┘\n`;
+      `┌──────────────────────────────┐\n` +
+      `│  📢 REGULASI EKONOMI GLOBAL  │\n` +
+      `│    Keuangan Global Kosan 1A  │\n` +
+      `└──────────────────────────────┘\n`;
 
     const embed = new EmbedBuilder()
       .setColor(colorHex || '#7C4DFF')

@@ -8153,6 +8153,16 @@ async function handleEconomyCommands(message, client) {
             components: [row]
           });
 
+          // Helper function to shuffle array elements
+          function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+          }
+
           // Pemicu timeout eksekusi otomatis setelah 90 detik
           lobby.timeout = setTimeout(async () => {
             try {
@@ -8165,47 +8175,126 @@ async function handleEconomyCommands(message, client) {
               // Rantai aksi berurutan berdasarkan jumlah kru
               const steps = [];
 
-              // Step 1: Hacker (selalu ada, indeks 0)
-              steps.push({
-                roleName: 'Hacker',
-                title: '💻 Peretas Keamanan (Hacker)',
-                desc: '💻 **Tugas:** Bobol firewall bank! Tekan tombol di bawah untuk melumpuhkan sistem alarm digital.',
-                buttonLabel: '💻 Jalankan Hack',
-                buttonId: 'heist_qte_hacker',
-                targetUserId: participants[0]
-              });
-
-              // Step 2: Peledak (selalu ada; jika kru >= 2, indeks 1; jika Solo, indeks 0)
-              steps.push({
-                roleName: 'Peledak',
-                title: '🧨 Ahli Peledak (Demolition)',
-                desc: '🧨 **Tugas:** Pasang dan ledakkan thermite di pintu brankas utama! Tekan tombol di bawah untuk meledakkan pintu.',
-                buttonLabel: '🧨 Ledakkan Pintu',
-                buttonId: 'heist_qte_peledak',
-                targetUserId: kruCount >= 2 ? participants[1] : participants[0]
-              });
-
-              // Step 3: Eksekutor (hanya jika kru >= 3, indeks 2)
-              if (kruCount >= 3) {
+              if (kruCount === 1) {
+                // Solo heist still has the classic 3 steps for the single player
                 steps.push({
-                  roleName: 'Eksekutor',
-                  title: '🔫 Jaga Sandera (Enforcer)',
-                  desc: '🔫 **Tugas:** Jaga sandera dan lumpuhkan petugas keamanan yang mencoba melawan! Tekan tombol di bawah untuk menembak.',
-                  buttonLabel: '🔫 Lumpuhkan Penjaga',
-                  buttonId: 'heist_qte_enforcer',
-                  targetUserId: participants[2]
+                  roleName: 'Hacker',
+                  title: '💻 Peretas Keamanan (Hacker)',
+                  desc: '💻 **Tugas:** Bobol firewall bank! Tekan tombol di bawah untuk melumpuhkan sistem alarm digital.',
+                  buttonLabel: '💻 Jalankan Hack',
+                  buttonId: 'heist_qte_hacker',
+                  targetUserId: participants[0]
+                });
+                steps.push({
+                  roleName: 'Peledak',
+                  title: '🧨 Ahli Peledak (Demolition)',
+                  desc: '🧨 **Tugas:** Pasang dan ledakkan thermite di pintu brankas utama! Tekan tombol di bawah untuk meledakkan pintu.',
+                  buttonLabel: '🧨 Ledakkan Pintu',
+                  buttonId: 'heist_qte_peledak',
+                  targetUserId: participants[0]
+                });
+                steps.push({
+                  roleName: 'Supir',
+                  title: '🚗 Pembalap Pelarian (Driver)',
+                  desc: '🚗 **Tugas:** Polisi datang mengepung! Tancap gas dan bawa kabur uang jarahannya! Tekan tombol di bawah untuk tancap gas.',
+                  buttonLabel: '🚗 Tancap Gas',
+                  buttonId: 'heist_qte_driver',
+                  targetUserId: participants[0]
+                });
+              } else {
+                // Multiplayer heist: 1 step per participant, randomized sequence
+                const shuffledParticipants = shuffleArray(participants);
+
+                // Step 1: Hacker (shuffledParticipants[0])
+                steps.push({
+                  roleName: 'Hacker',
+                  title: '💻 Peretas Keamanan (Hacker)',
+                  desc: '💻 **Tugas:** Bobol firewall bank! Tekan tombol di bawah untuk melumpuhkan sistem alarm digital.',
+                  buttonLabel: '💻 Jalankan Hack',
+                  buttonId: 'heist_qte_hacker',
+                  targetUserId: shuffledParticipants[0]
+                });
+
+                // Middle Steps: shuffledParticipants[1] to shuffledParticipants[kruCount - 2]
+                const middleRoles = [
+                  {
+                    roleName: 'Peledak',
+                    title: '🧨 Ahli Peledak (Demolition)',
+                    desc: '🧨 **Tugas:** Pasang dan ledakkan thermite di pintu brankas utama! Tekan tombol di bawah untuk meledakkan pintu.',
+                    buttonLabel: '🧨 Ledakkan Pintu',
+                    buttonId: 'heist_qte_peledak'
+                  },
+                  {
+                    roleName: 'Eksekutor',
+                    title: '🔫 Jaga Sandera (Enforcer)',
+                    desc: '🔫 **Tugas:** Jaga sandera dan lumpuhkan petugas keamanan yang mencoba melawan! Tekan tombol di bawah untuk menembak.',
+                    buttonLabel: '🔫 Lumpuhkan Penjaga',
+                    buttonId: 'heist_qte_enforcer'
+                  },
+                  {
+                    roleName: 'Lockpicker',
+                    title: '🗝️ Ahli Cungkil Brankas (Lockpicker)',
+                    desc: '🗝️ **Tugas:** Cungkil laci emas tambahan dan isi tas jarahan! Tekan tombol di bawah untuk membobol kunci.',
+                    buttonLabel: '🗝️ Bobol Laci Emas',
+                    buttonId: 'heist_qte_lockpicker'
+                  },
+                  {
+                    roleName: 'Spotter',
+                    title: '🚁 Pemantau Lapangan (Spotter)',
+                    desc: '🚁 **Tugas:** Pantau pergerakan patroli polisi dari atas helikopter! Tekan tombol di bawah untuk memberikan rute aman.',
+                    buttonLabel: '🚁 Berikan Rute Aman',
+                    buttonId: 'heist_qte_spotter'
+                  },
+                  {
+                    roleName: 'Cleaner',
+                    title: '🧼 Pembersih TKP (Cleaner)',
+                    desc: '🧼 **Tugas:** Bersihkan sidik jari dan barang bukti di TKP! Tekan tombol di bawah untuk menyeka jejak.',
+                    buttonLabel: '🧼 Bersihkan Jejak',
+                    buttonId: 'heist_qte_cleaner'
+                  },
+                  {
+                    roleName: 'Decoy',
+                    title: '💨 Pengalih Perhatian (Decoy)',
+                    desc: '💨 **Tugas:** Ledakkan bom asap di lobi depan untuk mengalihkan perhatian polisi! Tekan tombol di bawah untuk melempar asap.',
+                    buttonLabel: '💨 Lempar Bom Asap',
+                    buttonId: 'heist_qte_decoy'
+                  },
+                  {
+                    roleName: 'Bagman',
+                    title: '👜 Pengangkut Jarahan (Bagman)',
+                    desc: '👜 **Tugas:** Angkut kantong koin jarahan ke bagasi mobil dengan cepat! Tekan tombol di bawah untuk melempar tas.',
+                    buttonLabel: '👜 Lempar Tas Jarahan',
+                    buttonId: 'heist_qte_bagman'
+                  },
+                  {
+                    roleName: 'Negotiator',
+                    title: '📞 Negosiator Sandera (Negotiator)',
+                    desc: '📞 **Tugas:** Berbicara di telepon dengan kepolisian untuk mengulur waktu pelarian! Tekan tombol di bawah untuk bernegosiasi.',
+                    buttonLabel: '📞 Ulur Waktu',
+                    buttonId: 'heist_qte_negotiator'
+                  }
+                ];
+
+                const shuffledMiddleRoles = shuffleArray(middleRoles);
+
+                for (let i = 1; i < kruCount - 1; i++) {
+                  const roleTemplate = shuffledMiddleRoles[(i - 1) % shuffledMiddleRoles.length];
+                  steps.push({
+                    ...roleTemplate,
+                    targetUserId: shuffledParticipants[i]
+                  });
+                }
+
+                // Step N: Supir (shuffledParticipants[kruCount - 1])
+                steps.push({
+                  roleName: 'Supir',
+                  title: '🚗 Pembalap Pelarian (Driver)',
+                  desc: '🚗 **Tugas:** Polisi datang mengepung! Tancap gas dan bawa kabur uang jarahannya! Tekan tombol di bawah untuk tancap gas.',
+                  buttonLabel: '🚗 Tancap Gas',
+                  buttonId: 'heist_qte_driver',
+                  targetUserId: shuffledParticipants[kruCount - 1]
                 });
               }
-
-              // Step 4: Supir (selalu ada, indeks terakhir: kruCount - 1)
-              steps.push({
-                roleName: 'Supir',
-                title: '🚗 Pembalap Pelarian (Driver)',
-                desc: '🚗 **Tugas:** Polisi datang mengepung! Tancap gas dan bawa kabur uang jarahannya! Tekan tombol di bawah untuk tancap gas.',
-                buttonLabel: '🚗 Tancap Gas',
-                buttonId: 'heist_qte_driver',
-                targetUserId: participants[kruCount - 1]
-              });
 
               let isHeistFailed = false;
 
@@ -8218,6 +8307,7 @@ async function handleEconomyCommands(message, client) {
                 const stepEmbed = embeds.heistStepEmbed(
                   guild,
                   stepNumber,
+                  steps.length,
                   step.title,
                   step.desc,
                   step.targetUserId,

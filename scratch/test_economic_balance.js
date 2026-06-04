@@ -12,12 +12,12 @@ console.log("==================================================\n");
 
 // 1. Verify Gacha Config
 console.log("🎲 1. Verifying Gacha Parameters...");
-console.log(`   👉 Cost per roll: Rp ${config.gacha.COST} (Expected: 500)`);
+console.log(`   👉 Cost per roll: Rp ${config.gacha.COST} (Expected: 800)`);
 console.log(`   👉 Zonk rate: ${config.gacha.ZONK_RATE}% (Expected: 75)`);
 console.log(`   👉 Common rate: ${config.gacha.RATES.COMMON}% (Expected: 81.5)`);
 console.log(`   👉 Legendary rate: ${config.gacha.RATES.LEGENDARY}% (Expected: 0.5)`);
 
-if (config.gacha.COST === 500 && config.gacha.ZONK_RATE === 75 && config.gacha.RATES.COMMON === 81.5 && config.gacha.RATES.LEGENDARY === 0.5) {
+if (config.gacha.COST === 800 && config.gacha.ZONK_RATE === 75 && config.gacha.RATES.COMMON === 81.5 && config.gacha.RATES.LEGENDARY === 0.5) {
   console.log("   ✅ Gacha configuration verified successfully!\n");
 } else {
   console.error("   ❌ ERROR: Gacha configuration mismatch!\n");
@@ -82,9 +82,9 @@ if (heistResult.success) {
     process.exit(1);
   }
 } else {
-  console.log(`   👉 Fine amount paid: Rp ${heistResult.fineAmount} (Expected: 750)`);
+  console.log(`   👉 Fine amount paid: Rp ${heistResult.fineAmount} (Expected: 3500)`);
   console.log(`   👉 Jail hours: ${heistResult.jailHours} (Expected: 2)`);
-  if (heistResult.fineAmount === 750) {
+  if (heistResult.fineAmount === 3500) {
     console.log("   ✅ Heist fines verified successfully!\n");
   } else {
     console.error("   ❌ ERROR: Heist fine mismatch!\n");
