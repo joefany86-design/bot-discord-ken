@@ -2576,15 +2576,6 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           ['NORMAL', 1, nowUnix, iAbyus.user.id, guildId]
         );
         await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL`, multiplier koin chat kembali ke `1x` (nonaktif), dan status event dimatikan.', flags: 64 });
-        await sendGlobalEconomyAnnouncement(
-          client,
-          guild,
-          author,
-          '🛑 Penghentian Event Abuse',
-          '🛑 PESTA RAKYAT SELESAI! Seluruh event abuse gacha role gratis dan multiplier koin chat resmi dihentikan oleh admin. Kembali ke mode hemat dan rajin bekerja!',
-          '#00FFFF',
-          []
-        );
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
