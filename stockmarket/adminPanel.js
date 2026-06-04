@@ -7,18 +7,18 @@ const scheduler = require('./scheduler');
 const robbery = require('./robbery');
 const bank = require('./bank');
 const lottery = require('./lottery');
-const { 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  StringSelectMenuBuilder, 
-  StringSelectMenuOptionBuilder, 
-  TextInputBuilder, 
-  TextInputStyle, 
-  ModalBuilder, 
-  PermissionsBitField, 
-  UserSelectMenuBuilder 
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ModalBuilder,
+  PermissionsBitField,
+  UserSelectMenuBuilder
 } = require('discord.js');
 
 /**
@@ -130,7 +130,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
     if (targetUserId) {
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n`;
+        `• ID: \`${targetUserId}\`\n`;
 
       const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
       const wallet = database.get('SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
@@ -144,15 +144,15 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         const traitLabel = targetPet.trait ? `**${targetPet.trait}**` : '*Tidak ada*';
 
         targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()})\n` +
-                      `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
-                      `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
-                      `• Trait: ${traitLabel}\n` +
-                      `• Auto-Feed: ${autoFeedLabel}\n` +
-                      `• Status: **${targetPet.status}**\n` +
-                      `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
+          `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
+          `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
+          `• Trait: ${traitLabel}\n` +
+          `• Auto-Feed: ${autoFeedLabel}\n` +
+          `• Status: **${targetPet.status}**\n` +
+          `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
       } else {
         targetText += `• Pet: *Tidak ada peliharaan aktif*\n` +
-                      `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
+          `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
       }
     }
 
@@ -282,7 +282,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       }
       else if (iPet.customId === 'admin_pet_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iPet.customId === 'admin_pet_btn_audit') {
         // Query Top 3 Level
@@ -291,7 +291,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
            FROM user_pets 
            WHERE guild_id = ? AND is_active = 1 
            ORDER BY level DESC, xp DESC 
-           LIMIT 3`, 
+           LIMIT 3`,
           [guildId]
         );
 
@@ -301,7 +301,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
            FROM user_pets 
            WHERE guild_id = ? AND is_active = 1 
            ORDER BY pvp_wins DESC 
-           LIMIT 3`, 
+           LIMIT 3`,
           [guildId]
         );
 
@@ -310,7 +310,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           `SELECT status, COUNT(*) as count 
            FROM user_pets 
            WHERE guild_id = ? 
-           GROUP BY status`, 
+           GROUP BY status`,
           [guildId]
         );
 
@@ -319,7 +319,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           `SELECT pet_type, COUNT(*) as count 
            FROM user_pets 
            WHERE guild_id = ? 
-           GROUP BY pet_type`, 
+           GROUP BY pet_type`,
           [guildId]
         );
 
@@ -337,7 +337,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           topLevels.forEach((pet, index) => {
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
             lvlText += `${medal} **${pet.pet_name}** (${pet.pet_type}) — **Lv.${pet.level}**\n` +
-                       `> Owner: <@${pet.user_id}>\n`;
+              `> Owner: <@${pet.user_id}>\n`;
           });
         }
 
@@ -348,7 +348,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           topPvp.forEach((pet, index) => {
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
             pvpText += `${medal} **${pet.pet_name}** (${pet.pet_type}) — **${pet.pvp_wins} Kemenangan**\n` +
-                       `> Owner: <@${pet.user_id}>\n`;
+              `> Owner: <@${pet.user_id}>\n`;
           });
         }
 
@@ -395,7 +395,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           database.run('UPDATE user_pets SET hatch_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [now - 10, selectedTargetUserId, guildId]);
           await iPet.reply({ content: `🐣 Sukses mempercepat penetasan telur pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>. Telur sekarang siap menetas!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_heal_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
@@ -407,7 +407,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           database.run('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1', [maxHP, selectedTargetUserId, guildId]);
           await iPet.reply({ content: `❤️ Sukses memulihkan stats HP (${maxHP} HP), Kenyangan, & Hidrasi pet milik <@${selectedTargetUserId}> menjadi 100%.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_revive_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
@@ -421,30 +421,30 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           const maxHP = petModule.getMaxHP(targetPet);
           const newStatus = targetPet.level >= 10 ? 'ADULT' : 'BABY';
           const now = Math.floor(Date.now() / 1000);
-          
+
           database.run(
             `UPDATE user_pets 
              SET status = ?, health = ?, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? 
              WHERE user_id = ? AND guild_id = ? AND is_active = 1`,
             [newStatus, maxHP, now, selectedTargetUserId, guildId]
           );
-          
+
           await iPet.reply({ content: `💖 Sukses menghidupkan kembali pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}>! Status diubah menjadi **${newStatus}** dengan HP & Kebutuhan penuh 100%.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_reset_expedition_cooldown') {
           database.run('UPDATE wallets SET daily_expedition_count = 0, expedition_cooldown_until = 0 WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           await iPet.reply({ content: `🛡️ Sukses mereset batas harian & cooldown ekspedisi pet milik <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_give_xp_pet_modal') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
           if (!targetPet) {
             return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
-          
+
           const modal = new ModalBuilder()
             .setCustomId('admin_pet_give_xp_modal')
             .setTitle('Suntik XP Pet Member');
@@ -483,10 +483,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               leveledUp = true;
             }
             database.run('UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [newXp, level, selectedTargetUserId, guildId]);
-            
+
             await sub.reply({ content: `🧪 Sukses memberikan **+${amount} XP** ke pet milik <@${selectedTargetUserId}>!${leveledUp ? ` Pet naik ke Level **${level}**! 🎉` : ''}`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_set_level_pet_modal') {
@@ -494,7 +494,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (!targetPet) {
             return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
           }
-          
+
           const modal = new ModalBuilder()
             .setCustomId('admin_pet_set_level_modal')
             .setTitle('Atur Level Pet Member');
@@ -523,17 +523,17 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             if (!petData) {
               return sub.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan!', flags: 64 });
             }
-            
+
             let newStatus = petData.status;
             if (newStatus !== 'DEAD') {
               newStatus = level >= 10 ? 'ADULT' : (newStatus === 'EGG' ? 'EGG' : 'BABY');
             }
-            
+
             database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [level, newStatus, selectedTargetUserId, guildId]);
-            
+
             await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_change_trait_pet_modal') {
@@ -564,18 +564,18 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           if (sub) {
             const rawTrait = sub.fields.getTextInputValue('trait_name').trim().toUpperCase();
             const validTraits = ['MUTANT', 'GENIUS', 'STURDY', 'WARRIOR'];
-            
+
             let finalTrait = '';
             if (rawTrait !== 'NONE' && validTraits.includes(rawTrait)) {
               finalTrait = rawTrait;
             }
 
             database.run('UPDATE user_pets SET trait = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [finalTrait, selectedTargetUserId, guildId]);
-            
+
             const traitMsg = finalTrait ? `menjadi Trait **${finalTrait}**` : 'menjadi **Tanpa Trait** (NONE)';
             await sub.reply({ content: `🧬 Sukses mengubah trait pet aktif milik <@${selectedTargetUserId}> ${traitMsg}!`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_reset_activity_cooldowns') {
@@ -587,13 +587,13 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           database.run(
             `UPDATE user_pets 
              SET last_work_at = 0, last_hunt_at = 0, last_play_at = 0 
-             WHERE user_id = ? AND guild_id = ? AND is_active = 1`, 
+             WHERE user_id = ? AND guild_id = ? AND is_active = 1`,
             [selectedTargetUserId, guildId]
           );
 
           await iPet.reply({ content: `⏳ Sukses mereset cooldown Bekerja, Berburu, & Bermain pet aktif milik <@${selectedTargetUserId}> secara instan!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_toggle_vip_autofeed') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
@@ -610,7 +610,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           const statusMsg = newStatus === 2 ? '👑 **VIP Gratis (Auto-Feed tanpa biaya)**' : '❌ **Nonaktif**';
           await iPet.reply({ content: `🔋 Sukses mengubah mode Auto-Feed pet aktif milik <@${selectedTargetUserId}> menjadi ${statusMsg}!`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_add_ticket_modal') {
           const modal = new ModalBuilder()
@@ -641,7 +641,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             petModule.addGachaTickets(selectedTargetUserId, guildId, qty);
             await sub.reply({ content: `🎟️ Sukses menambahkan **+${qty} Tiket Gacha** ke inventaris <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_force_star_modal') {
@@ -678,7 +678,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             petModule.forceSetStar(selectedTargetUserId, guildId, targetPet.pet_name, star);
             await sub.reply({ content: `⭐ Sukses memaksa bintang pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}> menjadi Bintang **${star}**!`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_give_custom_pet_modal') {
@@ -823,7 +823,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                   ?, ?, ?, ?
                 )`,
                 [
-                  selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP, 
+                  selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
                   now, hatchAt, now, isActive, finalTrait,
                   pStar, bonusHp, bonusAtkPct, bonusDefPct,
                   gSource, gRarity, gElement, finalTrait2
@@ -833,11 +833,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
               const starText = petModule.renderStars(pStar);
               await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${selectedTargetUserId}>!`, flags: 64 });
-              
+
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
-              await replyMsg.edit(fresh).catch(() => {});
+              await replyMsg.edit(fresh).catch(() => { });
             } catch (err) {
-              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, flags: 64 }).catch(() => {});
+              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, flags: 64 }).catch(() => { });
             }
           }
         }
@@ -849,24 +849,24 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
           const confirmed = await askConfirmation(iPet, author.id, `RESET / HAPUS data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}>`);
           if (!confirmed) return;
-          
+
           database.transaction(() => {
             database.run('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, targetPet.pet_name]);
             const remainingRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
             const remaining = remainingRow ? remainingRow.count : 0;
             if (remaining === 0) {
-               database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+              database.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
             } else {
-               const nextPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [selectedTargetUserId, guildId]);
-               if (nextPet) {
-                 database.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, nextPet.pet_name]);
-               }
+              const nextPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [selectedTargetUserId, guildId]);
+              if (nextPet) {
+                database.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [selectedTargetUserId, guildId, nextPet.pet_name]);
+              }
             }
           })();
-          
+
           await iPet.followUp({ content: `💀 Sukses menghapus data pet aktif **${targetPet.pet_name}** milik <@${selectedTargetUserId}> dari database kandang.`, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_set_custom_image_modal') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
@@ -898,23 +898,23 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const url = sub.fields.getTextInputValue('image_url');
               const petModule = require('./pet');
               const savedUrl = petModule.setCustomImage(selectedTargetUserId, guildId, url);
-              
+
               if (savedUrl) {
                 await sub.reply({ content: `📸 Sukses! Gambar pet aktif milik <@${selectedTargetUserId}> berhasil diubah secara kustom.`, flags: 64 });
               } else {
                 await sub.reply({ content: `📸 Sukses mereset gambar pet aktif milik <@${selectedTargetUserId}> ke tampilan bawaan.`, flags: 64 });
               }
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
-              await replyMsg.edit(fresh).catch(() => {});
+              await replyMsg.edit(fresh).catch(() => { });
             } catch (err) {
-              await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, flags: 64 }).catch(() => {});
+              await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, flags: 64 }).catch(() => { });
             }
           }
         }
       }
     } catch (err) {
       console.error('Error in Pet Panel Interaction:', err);
-      await iPet.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iPet.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -923,8 +923,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     try {
       const fresh = getPetPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -957,11 +957,11 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       const savingsRow = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
       const walletVal = walletRow ? walletRow.balance : 0;
       const bankVal = savingsRow ? savingsRow.balance : 0;
-      
+
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n` +
-                   `• Dompet: \`Rp ${(walletVal || 0).toLocaleString('id-ID')}\`\n` +
-                   `• Tabungan Bank: \`Rp ${(bankVal || 0).toLocaleString('id-ID')}\`\n`;
+        `• ID: \`${targetUserId}\`\n` +
+        `• Dompet: \`Rp ${(walletVal || 0).toLocaleString('id-ID')}\`\n` +
+        `• Tabungan Bank: \`Rp ${(bankVal || 0).toLocaleString('id-ID')}\`\n`;
 
       const activeLoan = database.get('SELECT * FROM bank_loans WHERE user_id = ? AND guild_id = ? AND status IN (\'ACTIVE\', \'OVERDUE\')', [targetUserId, gId]);
       if (activeLoan) {
@@ -1082,7 +1082,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       }
       else if (iBank.customId === 'admin_bank_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iBank.customId === 'admin_bank_select_action') {
         const action = iBank.values[0];
@@ -1118,7 +1118,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             economy.addBalance(selectedTargetUserId, guildId, amount, 'ADMIN_GIVE');
             await sub.reply({ content: `💸 Sukses menyuntikkan koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke dompet <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_take_coins_modal') {
@@ -1153,7 +1153,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             }
             await sub.reply({ content: `📉 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari dompet <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_give_bank_savings_modal') {
@@ -1181,7 +1181,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             if (isNaN(amount) || amount <= 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat di atas 0!', flags: 64 });
             }
-            
+
             bank.getSavings(selectedTargetUserId, guildId);
 
             database.run(
@@ -1195,7 +1195,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
 
             await sub.reply({ content: `🏦 Sukses menyuntikkan koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke tabungan bank <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_take_bank_savings_modal') {
@@ -1240,7 +1240,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
 
             await sub.reply({ content: `🏦 Sukses menarik/memotong koin **Rp ${amountToTake.toLocaleString('id-ID')}** dari tabungan bank <@${selectedTargetUserId}>!`, flags: 64 });
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_reset_economy') {
@@ -1255,13 +1255,13 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           database.run('DELETE FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
           await iBank.followUp({ content: `🚨 **RESET TOTAL SUKSES!** Dompet, tabungan bank, seluruh lembar saham, serta pinjaman/utang jaminan milik <@${selectedTargetUserId}> telah dikembalikan ke 0 atau dibersihkan.`, flags: 64 });
           const fresh = getBankPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_settle_loan') {
           database.run("UPDATE bank_loans SET status = 'PAID', total_due = 0, penalty_accumulated = 0 WHERE user_id = ? AND guild_id = ? AND status IN ('ACTIVE', 'OVERDUE')", [selectedTargetUserId, guildId]);
           await iBank.reply({ content: `💼 Sukses melunasi/menghapus seluruh pinjaman bank aktif milik <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getBankPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iBank.customId === 'admin_bank_select_global') {
@@ -1306,7 +1306,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
               ]
             );
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'global_bansos_wealth_limit') {
@@ -1389,10 +1389,10 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
 
             await sub.reply({
               content: `💸 **DISTRIBUSI BANSOS SELESAI!**\n\n` +
-                       `• Target Penerima : Total Kekayaan < **Rp ${wealthLimit.toLocaleString('id-ID')}**\n` +
-                       `• Nominal Bansos  : **Rp ${bansosAmount.toLocaleString('id-ID')}** per orang\n` +
-                       `• Total Penerima  : **${receiverCount} member**\n` +
-                       `• Total Dana Keluar: **Rp ${totalDistributed.toLocaleString('id-ID')}**`,
+                `• Target Penerima : Total Kekayaan < **Rp ${wealthLimit.toLocaleString('id-ID')}**\n` +
+                `• Nominal Bansos  : **Rp ${bansosAmount.toLocaleString('id-ID')}** per orang\n` +
+                `• Total Penerima  : **${receiverCount} member**\n` +
+                `• Total Dana Keluar: **Rp ${totalDistributed.toLocaleString('id-ID')}**`,
               flags: 64
             });
 
@@ -1412,7 +1412,7 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             );
 
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'global_reclaim_inactive_assets') {
@@ -1499,17 +1499,17 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             success = true;
           } catch (txErr) {
             console.error('Failed to execute reclaim transaction:', txErr);
-            await iBank.followUp({ content: `❌ Gagal mengeksekusi penyitaan aset di database: ${txErr.message}`, flags: 64 }).catch(() => {});
+            await iBank.followUp({ content: `❌ Gagal mengeksekusi penyitaan aset di database: ${txErr.message}`, flags: 64 }).catch(() => { });
           }
 
           if (success) {
             await iBank.followUp({
               content: `🔴 **PENYITAAN ASET WARGA INAKTIF SELESAI!**\n\n` +
-                       `• Total Akun Diproses  : **${totalUsers} warga**\n` +
-                       `• Saldo Dompet Disita : **Rp ${totalWallet.toLocaleString('id-ID')}**\n` +
-                       `• Saldo Bank Disita   : **Rp ${totalBank.toLocaleString('id-ID')}**\n` +
-                       `• Item Warga Dihapus  : **${totalUserItems.toLocaleString('id-ID')} pcs**\n` +
-                       `• Item Pet Dihapus    : **${totalPetItems.toLocaleString('id-ID')} pcs**`,
+                `• Total Akun Diproses  : **${totalUsers} warga**\n` +
+                `• Saldo Dompet Disita : **Rp ${totalWallet.toLocaleString('id-ID')}**\n` +
+                `• Saldo Bank Disita   : **Rp ${totalBank.toLocaleString('id-ID')}**\n` +
+                `• Item Warga Dihapus  : **${totalUserItems.toLocaleString('id-ID')} pcs**\n` +
+                `• Item Pet Dihapus    : **${totalPetItems.toLocaleString('id-ID')} pcs**`,
               flags: 64
             });
 
@@ -1528,13 +1528,13 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
             );
 
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
       }
     } catch (err) {
       console.error('Error in Bank Panel Interaction:', err);
-      await iBank.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iBank.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -1543,8 +1543,8 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
     try {
       const fresh = getBankPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -1574,13 +1574,13 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
     if (targetUserId) {
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n`;
+        `• ID: \`${targetUserId}\`\n`;
 
       const nowUnix = Math.floor(Date.now() / 1000);
       const jail = database.get('SELECT jail_until, jail_type FROM wallets WHERE user_id = ? AND guild_id = ? AND jail_until > ?', [targetUserId, gId, nowUnix]);
       if (jail) {
         targetText += `• Status Lapas: 🚨 **DITAHAN** (Sisa <t:${jail.jail_until}:R>)\n` +
-                      `• Alasan Sel: \`${jail.jail_type || 'Kegagalan Robbery/Tindakan Kriminal'}\`\n`;
+          `• Alasan Sel: \`${jail.jail_type || 'Kegagalan Robbery/Tindakan Kriminal'}\`\n`;
       } else {
         targetText += `• Status Lapas: 🟢 Bebas Aktif\n`;
       }
@@ -1681,7 +1681,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
       }
       else if (iRob.customId === 'admin_rob_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iRob.customId === 'admin_rob_select_action') {
         const action = iRob.values[0];
@@ -1699,7 +1699,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
           await iRob.reply({ content: `🔓 Sukses membebaskan paksa <@${selectedTargetUserId}> dari penjara virtual.`, flags: 64 });
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_jail_target_modal') {
           const modal = new ModalBuilder()
@@ -1747,7 +1747,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
             await sub.reply({ content: `🚨 Sukses menjebloskan <@${selectedTargetUserId}> ke Lapas Virtual selama **${minutes} menit** dengan alasan: \`${reason}\`!`, flags: 64 });
             const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'action_reset_cooldown_target') {
@@ -1757,7 +1757,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
           );
           await iRob.reply({ content: `⏱️ Sukses mereset cooldown kriminal (rob & heist) untuk <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iRob.customId === 'admin_rob_select_global') {
@@ -1798,12 +1798,12 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
             true
           );
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Robbery Panel Interaction:', err);
-      await iRob.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iRob.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -1812,8 +1812,8 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
     try {
       const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -1841,7 +1841,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
       .setFooter({ text: 'Sentinel Admin • Bursa Saham & Analitik' });
 
     const activeStocks = database.all('SELECT * FROM stocks WHERE guild_id = ?', [gId]);
-    
+
     let bursaList = '*Tidak ada instrumen saham terdaftar di bursa*';
     if (activeStocks.length > 0) {
       const nowUnix = Math.floor(Date.now() / 1000);
@@ -2001,7 +2001,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
       }
       else if (iSaham.customId === 'admin_saham_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iSaham.customId === 'admin_saham_select_action') {
         const action = iSaham.values[0];
@@ -2054,7 +2054,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
             await sub.reply({ content: `📈 Sukses menaikkan harga saham **${selectedTicker}** sebesar **+${percent}%** (Lama: Rp ${oldPrice.toLocaleString('id-ID')} -> Baru: Rp ${newPrice.toLocaleString('id-ID')})!`, flags: 64 });
             const fresh = getSahamPanelData(guildId, selectedTicker);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'bursa_action_drop_modal') {
@@ -2102,7 +2102,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 
             await sub.reply({ content: `📉 Sukses menurunkan harga saham **${selectedTicker}** sebesar **${percent}%** (Lama: Rp ${oldPrice.toLocaleString('id-ID')} -> Baru: Rp ${newPrice.toLocaleString('id-ID')})!`, flags: 64 });
             const fresh = getSahamPanelData(guildId, selectedTicker);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'bursa_action_manipulate_trend_modal') {
@@ -2178,7 +2178,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             let durationMsg = trendVal === 'NONE' ? 'tren dibersihkan' : `dikunci ke **${trendVal}** selama **${durationVal} jam**`;
             await sub.reply({ content: `🧬 Saham **${selectedTicker}** berhasil ${durationMsg}!`, flags: 64 });
             const fresh = getSahamPanelData(guildId, selectedTicker);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'bursa_action_remove') {
@@ -2193,7 +2193,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
           selectedTicker = null;
           await iSaham.reply({ content: `❌ Sukses menghapus instrumen saham **${stock.stock_ticker}** dari bursa server.`, flags: 64 });
           const fresh = getSahamPanelData(guildId, selectedTicker);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iSaham.customId === 'admin_saham_select_global') {
@@ -2262,7 +2262,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             []
           );
           const fresh = getSahamPanelData(guildId, selectedTicker);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'global_action_drop_all') {
           const activeStocks = database.all('SELECT * FROM stocks WHERE guild_id = ?', [guildId]);
@@ -2299,7 +2299,7 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             []
           );
           const fresh = getSahamPanelData(guildId, selectedTicker);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'global_trigger_double') {
           const events = require('./events');
@@ -2394,14 +2394,14 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
               ]
             );
             const fresh = getSahamPanelData(guildId, selectedTicker);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'bursa_global_reinit') {
           database.transaction(() => {
             database.run('DELETE FROM stocks WHERE guild_id = ?', [guildId]);
             database.run('DELETE FROM portfolios WHERE guild_id = ?', [guildId]);
-            
+
             const defaults = [
               { name: 'general', ticker: '$GENERAL', price: 100 },
               { name: 'lounge', ticker: '$LOUNGE', price: 100 },
@@ -2429,12 +2429,12 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
             []
           );
           const fresh = getSahamPanelData(guildId, selectedTicker);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Saham Panel Interaction:', err);
-      await iSaham.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iSaham.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -2443,8 +2443,8 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
     try {
       const fresh = getSahamPanelData(guildId, selectedTicker);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -2503,7 +2503,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
   const getAbyusPanelData = (gId) => {
     const settings = getOrCreateEbyusSettings(gId);
-    
+
     let embed = new EmbedBuilder()
       .setColor(0x00E5FF) // Celestial Ice Blue
       .setTitle('⚡ ADMIN CONTROL PANEL — BYPASS & EVENT ABYUS')
@@ -2654,14 +2654,14 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         database.run('UPDATE ebyus_settings SET gacha_mode = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mode, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🎰 Sukses menyetel mode gacha ke **${mode}** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_select_multiplier') {
         const mult = parseInt(iAbyus.values[0]);
         database.run('UPDATE ebyus_settings SET coin_multiplier = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [mult, nowUnix, iAbyus.user.id, guildId]);
         await iAbyus.reply({ content: `🪙 Sukses menyetel multiplier koin chat ke **${mult}x** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_broadcast') {
         const settings = getOrCreateEbyusSettings(guildId);
@@ -2733,17 +2733,17 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         );
 
         const broadcastEmb = embeds.ebyusBroadcastEmbed(
-          guild, 
-          settings.gacha_mode, 
-          settings.coin_multiplier, 
-          settings.expires_at, 
-          includeFreeAll, 
+          guild,
+          settings.gacha_mode,
+          settings.coin_multiplier,
+          settings.expires_at,
+          includeFreeAll,
           includeResetCds,
           distributedCoins,
           distributedItemName,
           distributedItemQty
         );
-        
+
         const targetChannelId = config.ANNOUNCEMENT_CHANNEL_ID || '1422642326798598348';
         let targetChannel = guild.channels.cache.get(targetChannelId);
         if (!targetChannel) {
@@ -2767,7 +2767,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         includeResetCds = false;
 
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_duration') {
         const modal = new ModalBuilder()
@@ -2796,10 +2796,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           }
           const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
           database.run('UPDATE ebyus_settings SET expires_at = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
-          
+
           await sub.reply({ content: `⏱️ Sukses menyetel durasi event bypass menjadi **${minutes} menit** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_stop_abyus') {
@@ -2809,7 +2809,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         );
         await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL`, multiplier koin chat kembali ke `1x` (nonaktif), dan status event dimatikan.', flags: 64 });
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_status') {
         const settings = getOrCreateEbyusSettings(guildId);
@@ -2820,13 +2820,13 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         includeFreeAll = !includeFreeAll;
         await iAbyus.reply({ content: `🔓 Opsi Bebaskan Semua Tahanan saat broadcast sekarang: **${includeFreeAll ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_toggle_reset') {
         includeResetCds = !includeResetCds;
         await iAbyus.reply({ content: `⏱️ Opsi Reset Semua Cooldown saat broadcast sekarang: **${includeResetCds ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
+        await replyMsg.edit(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_give_coins') {
         const modal = new ModalBuilder()
@@ -2858,7 +2858,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
           await sub.reply({ content: `💸 Sukses menyetel hadiah koin massal ke **Rp ${amount.toLocaleString('id-ID')}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_give_item') {
@@ -2905,7 +2905,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
           await sub.reply({ content: `🎒 Sukses menyetel hadiah item massal ke **${qty}x ${itemId}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
@@ -2914,11 +2914,11 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       }
       else if (iAbyus.customId === 'admin_abyus_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
     } catch (err) {
       console.error('Error in Abyus Panel Interaction:', err);
-      await iAbyus.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iAbyus.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -2927,12 +2927,12 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     try {
       const fresh = getAbyusPanelData(guildId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
-}        
+}
 
 /**
  * 🎭 6. PANEL TOKO ROLE & GAME ToD
@@ -3052,7 +3052,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
       }
       else if (iShop.customId === 'admin_shop_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iShop.customId === 'admin_shop_select_action') {
         const action = iShop.values[0];
@@ -3116,7 +3116,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
             await sub.reply({ content: `✅ Sukses menjual role <@&${rId}> seharga **Rp ${price.toLocaleString('id-ID')}** di etalase Toko!`, flags: 64 });
             const fresh = getShopPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'shop_action_remove_modal') {
@@ -3142,10 +3142,10 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
           if (sub) {
             const rId = sub.fields.getTextInputValue('role_id').trim();
             database.run('DELETE FROM shop_items WHERE role_id = ? AND guild_id = ?', [rId, guildId]);
-            
+
             await sub.reply({ content: `❌ Sukses menghapus role ID \`${rId}\` dari etalase toko.`, flags: 64 });
             const fresh = getShopPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'shop_action_stock_modal') {
@@ -3190,7 +3190,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
             await sub.reply({ content: `✅ Sukses memperbarui stok role ID \`${rId}\` menjadi **${stock === -1 ? 'Unlimited' : stock + ' slot'}**!`, flags: 64 });
             const fresh = getShopPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'shop_action_auto') {
@@ -3201,7 +3201,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             { name: 'Rare Resident', color: '#00BFFF', price: 50000, tier: 'RARE', desc: 'Warga kelas menengah yang aktif.' },
             { name: 'Common Resident', color: '#00FF88', price: 15000, tier: 'COMMON', desc: 'Anggota pemukiman resmi pemegang KTP.' }
           ];
-          
+
           let createdCount = 0;
           for (const rData of defaultRoles) {
             const existing = database.get('SELECT * FROM shop_items WHERE role_name = ? AND guild_id = ?', [rData.name, guildId]);
@@ -3211,7 +3211,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
                 color: rData.color,
                 reason: 'Sentinel Auto Shop Role Initialization'
               }).catch(() => null);
-              
+
               if (newRole) {
                 database.run(
                   'INSERT INTO shop_items (guild_id, role_id, role_name, price, tier, stock, description) VALUES (?, ?, ?, ?, ?, -1, ?)',
@@ -3223,7 +3223,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
           }
           await iShop.reply({ content: `🎭 Sukses menginisialisasi Toko Role. Berhasil mendaftarkan & membuat **${createdCount}/5** kasta role prestise server!`, flags: 64 });
           const fresh = getShopPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
       else if (iShop.customId === 'admin_shop_select_tod') {
@@ -3245,7 +3245,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
                 audio.clearVoiceConnection(guildId);
               }
             }
-          } catch (e) {}
+          } catch (e) { }
           await iShop.reply({ content: '🛑 Sukses menghentikan paksa sesi aktif game ToD di Voice Channel.', flags: 64 });
         }
         else if (action === 'tod_action_add_question_modal') {
@@ -3306,7 +3306,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
       }
     } catch (err) {
       console.error('Error in Shop Panel Interaction:', err);
-      await iShop.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iShop.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -3315,8 +3315,8 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
     try {
       const fresh = getShopPanelData(guildId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -3347,18 +3347,18 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
     if (targetUserId) {
       const wallet = economy.getWallet(targetUserId, gId);
       const activePet = database.get('SELECT pet_name, pet_type, curse_type, curse_until FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
-      
+
       const now = Math.floor(Date.now() / 1000);
       const isFakeJailed = wallet.jail_type === 'troll' && wallet.jail_until > now;
       const isFakeCrashed = wallet.curse_type === 'fake_crash' && wallet.curse_until > now;
       const isPetCursed = activePet && activePet.curse_type === 'smelly' && activePet.curse_until > now;
 
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n` +
-                   `• Status Sel VIP: ${isFakeJailed ? `🚨 **AKTIF** (<t:${wallet.jail_until}:R>)` : '🟢 Bebas'}\n` +
-                   `• Status Fake Crash: ${isFakeCrashed ? `🚨 **AKTIF**` : '🟢 Normal'}\n` +
-                   `• Active Pet: ${activePet ? `**${activePet.pet_name}** (${activePet.pet_type})` : '*Tidak ada pet aktif*'}\n` +
-                   `• Status Kutukan Pet: ${isPetCursed ? `🦨 **BAU BUSUK** (<t:${activePet.curse_until}:R>)` : '🟢 Wangi/Bersih'}\n`;
+        `• ID: \`${targetUserId}\`\n` +
+        `• Status Sel VIP: ${isFakeJailed ? `🚨 **AKTIF** (<t:${wallet.jail_until}:R>)` : '🟢 Bebas'}\n` +
+        `• Status Fake Crash: ${isFakeCrashed ? `🚨 **AKTIF**` : '🟢 Normal'}\n` +
+        `• Active Pet: ${activePet ? `**${activePet.pet_name}** (${activePet.pet_type})` : '*Tidak ada pet aktif*'}\n` +
+        `• Status Kutukan Pet: ${isPetCursed ? `🦨 **BAU BUSUK** (<t:${activePet.curse_until}:R>)` : '🟢 Wangi/Bersih'}\n`;
     }
 
     embed.setDescription(
@@ -3451,7 +3451,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
       }
       else if (iTroll.customId === 'admin_troll_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iTroll.customId === 'admin_troll_select_action') {
         const action = iTroll.values[0];
@@ -3472,7 +3472,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 
           await iTroll.reply({ content: `🦨 Sukses memberikan **Kutukan Pet Bau** ke pet milik <@${selectedTargetUserId}> selama 5 menit!`, flags: 64 });
           const fresh = getTrollPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'troll_fake_crash') {
           const curseUntil = now + 1200; // 20 Menit
@@ -3480,7 +3480,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 
           await iTroll.reply({ content: `📉 Sukses memasang jebakan **Fake Portfolio Crash** pada <@${selectedTargetUserId}>! Saat membuka \`.portfolio\`, asetnya akan terlihat dilikuidasi total!`, flags: 64 });
           const fresh = getTrollPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'troll_fake_jail') {
           const jailUntil = now + 300; // 5 Menit
@@ -3488,7 +3488,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 
           await iTroll.reply({ content: `⛓️ Sukses memenjarakan <@${selectedTargetUserId}> di dalam **Sel VIP Kertas** selama 5 menit!`, flags: 64 });
           const fresh = getTrollPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'troll_fake_rob') {
           const channel = iTroll.channel;
@@ -3517,7 +3517,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
             if (!responded) {
               await channel.send(`💨 **WAKTU HABIS!** Maling palsunya keburu kabur... tapi koin <@${selectedTargetUserId}> tetap aman kok! Cuman dikerjain Admin! 😜🎈`);
             }
-            alertMsg.delete().catch(() => {});
+            alertMsg.delete().catch(() => { });
           });
         }
         else if (action === 'troll_rename_pet_modal') {
@@ -3554,7 +3554,7 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
             database.run("UPDATE user_pets SET pet_name = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1", [funnyName, selectedTargetUserId, guildId]);
             await sub.reply({ content: `🤡 Sukses merubah nama pet aktif milik <@${selectedTargetUserId}> menjadi **"${funnyName}"** secara paksa!`, flags: 64 });
             const fresh = getTrollPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'troll_clear_all') {
@@ -3563,12 +3563,12 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
 
           await iTroll.reply({ content: `🧹 Sukses membersihkan seluruh efek kutukan & membebaskan <@${selectedTargetUserId}> dari kejailan!`, flags: 64 });
           const fresh = getTrollPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Troll Panel Interaction:', err);
-      await iTroll.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iTroll.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -3577,8 +3577,8 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
     try {
       const fresh = getTrollPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -3659,7 +3659,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     // 5. Ambil data transaksi paginated
     const limit = 15;
     const offset = (currentPageIndex - 1) * limit;
-    
+
     let queryParams = [...params, limit, offset];
     const txs = database.all(
       `SELECT * FROM transactions ${filterSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
@@ -3674,7 +3674,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
       txs.forEach((tx, idx) => {
         const sign = tx.amount > 0 ? '+' : '';
         const dateStr = `<t:${tx.created_at}:R>`;
-        
+
         let txDetails = `<@${tx.user_id}>`;
         if (tx.channel_id && /^\d{17,20}$/.test(tx.channel_id)) {
           if (tx.type === 'TRANSFER_OUT' || tx.type === 'BANK_TRANSFER_OUT') {
@@ -3683,7 +3683,7 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
             txDetails = `<@${tx.channel_id}> ➡️ <@${tx.user_id}>`;
           }
         }
-        
+
         logText += `${idx + 1 + offset}. ${dateStr} | ${txDetails} | \`${tx.type}\` | **${sign}Rp ${tx.amount.toLocaleString('id-ID')}**\n`;
       });
     }
@@ -3713,12 +3713,12 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
       const userNetSign = userNet >= 0 ? '+' : '';
 
       userAuditText = `👤 **HASIL AUDIT ANGGOTA (<@${targetUserId}>):**\n` +
-                      `• Saldo Dompet: \`Rp ${userWallet.toLocaleString('id-ID')}\`\n` +
-                      `• Tabungan Bank: \`Rp ${userSavings.toLocaleString('id-ID')}\`\n` +
-                      `• Total Kekayaan Cair: **Rp ${(userWallet + userSavings).toLocaleString('id-ID')}**\n` +
-                      `• 📥 Pendapatan (24j terakhir): \`+Rp ${userInflow.toLocaleString('id-ID')}\`\n` +
-                      `• 📤 Pengeluaran (24j terakhir): \`-Rp ${userOutflow.toLocaleString('id-ID')}\`\n` +
-                      `• ⚖️ Aliran Bersih (Net Change): **${userNetSign}Rp ${userNet.toLocaleString('id-ID')}**\n\n`;
+        `• Saldo Dompet: \`Rp ${userWallet.toLocaleString('id-ID')}\`\n` +
+        `• Tabungan Bank: \`Rp ${userSavings.toLocaleString('id-ID')}\`\n` +
+        `• Total Kekayaan Cair: **Rp ${(userWallet + userSavings).toLocaleString('id-ID')}**\n` +
+        `• 📥 Pendapatan (24j terakhir): \`+Rp ${userInflow.toLocaleString('id-ID')}\`\n` +
+        `• 📤 Pengeluaran (24j terakhir): \`-Rp ${userOutflow.toLocaleString('id-ID')}\`\n` +
+        `• ⚖️ Aliran Bersih (Net Change): **${userNetSign}Rp ${userNet.toLocaleString('id-ID')}**\n\n`;
     }
 
     let embed = new EmbedBuilder()
@@ -3852,11 +3852,11 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
       }
       else if (iLedger.customId === 'admin_ledger_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
     } catch (err) {
       console.error('Error in Ledger Panel Interaction:', err);
-      await iLedger.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iLedger.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -3865,8 +3865,8 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     try {
       const fresh = getLedgerPanelData(guildId, selectedTargetUserId, selectedTypeFilter, currentPage);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -3926,15 +3926,15 @@ async function handleAdminPanel(messageOrInteraction, client) {
         {
           name: '📊 STATISTIK SERVER REAL-TIME',
           value: `👥 **Warga Terdaftar:** \`${walletsCount} jiwa\`\n` +
-                 `🐾 **Pet Aktif di Server:** \`${activePetsCount} peliharaan\`\n` +
-                 `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\``,
+            `🐾 **Pet Aktif di Server:** \`${activePetsCount} peliharaan\`\n` +
+            `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\``,
           inline: false
         },
         {
           name: '⚙️ CONFIG ABYUS SYSTEM',
           value: `🪙 **Chat Multiplier:** \`${multiplier}x\`\n` +
-                 `🎰 **Gacha Role Mode:** \`${gachaMode}\`\n` +
-                 `📢 **Status Event:** ${eventStatusText}`,
+            `🎰 **Gacha Role Mode:** \`${gachaMode}\`\n` +
+            `📢 **Status Event:** ${eventStatusText}`,
           inline: false
         }
       )
@@ -4163,11 +4163,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
           await iOw.update(fresh);
         } else if (iOw.customId === 'ow_close') {
           ownerCollector.stop();
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
         }
       } catch (err) {
         console.error('Error in Owner Panel Interaction:', err);
-        await iOw.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+        await iOw.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
       }
     });
 
@@ -4176,8 +4176,8 @@ async function handleAdminPanel(messageOrInteraction, client) {
       try {
         const fresh = getOwnerPanelData(messageOrInteraction.guildId);
         fresh.components = [];
-        await replyMsg.edit(fresh).catch(() => {});
-      } catch (e) {}
+        await replyMsg.edit(fresh).catch(() => { });
+      } catch (e) { }
     });
 
     return true;
@@ -4205,7 +4205,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         if (iHub.customId === 'admin_hub_select_panel') {
           const val = iHub.values[0];
           collector.stop('transition');
-          
+
           if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
           else if (val === 'panel_bank') await handleAdminBankPanel(iHub, client);
           else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
@@ -4222,15 +4222,15 @@ async function handleAdminPanel(messageOrInteraction, client) {
         else if (iHub.customId === 'hub_btn_refresh') {
           await iHub.deferUpdate();
           const fresh = getHubPanelData();
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (iHub.customId === 'hub_btn_close') {
           collector.stop();
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
         }
       } catch (err) {
         console.error('Error in Hub Panel Interaction:', err);
-        await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+        await iHub.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
       }
     });
 
@@ -4239,8 +4239,8 @@ async function handleAdminPanel(messageOrInteraction, client) {
       try {
         const fresh = getHubPanelData();
         fresh.components = [];
-        await replyMsg.edit(fresh).catch(() => {});
-      } catch (e) {}
+        await replyMsg.edit(fresh).catch(() => { });
+      } catch (e) { }
     });
   }
 
@@ -4273,19 +4273,19 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
     if (targetUserId) {
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n\n`;
+        `• ID: \`${targetUserId}\`\n\n`;
 
       try {
         const garden = require('./garden');
         const slots = garden.getGardenSlots(targetUserId, gId);
-        
+
         let slotsText = '';
         slots.forEach(s => {
           if (s.seed_id) {
             const progressEmoji = s.growthProgress >= 100 ? '🟢 Siap Panen' : '⏳ Tumbuh';
             slotsText += `🔹 **Slot ${s.slot_index}:** **${s.flowerName}** [${s.growthStatus}]\n` +
-                         `  • Progress: \`${s.growthProgress}%\` | Siram: \`${s.water_count}x\`\n` +
-                         `  • Status: ${progressEmoji} (Sisa: \`${s.secondsLeft}s\`)\n`;
+              `  • Progress: \`${s.growthProgress}%\` | Siram: \`${s.water_count}x\`\n` +
+              `  • Status: ${progressEmoji} (Sisa: \`${s.secondsLeft}s\`)\n`;
           } else {
             slotsText += `🔹 **Slot ${s.slot_index}:** *Tanah Kosong*\n`;
           }
@@ -4378,7 +4378,7 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
       }
       else if (iGarden.customId === 'admin_garden_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iGarden.customId === 'admin_garden_select_action') {
         const action = iGarden.values[0];
@@ -4398,11 +4398,11 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
             if (activeSlots.length > 0) {
               petMod.incrementQuestProgress(selectedTargetUserId, guildId, 'WATER', activeSlots.length);
             }
-          } catch (e) {}
+          } catch (e) { }
 
           await iGarden.reply({ content: `✅ Sukses menyiram seluruh tanaman aktif milik <@${selectedTargetUserId}> dan mereset cooldown ember siramnya!`, flags: 64 });
           const fresh = getGardenPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_instant_grow') {
           database.run(
@@ -4411,7 +4411,7 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
           );
           await iGarden.reply({ content: `✅ Seluruh tanaman aktif milik <@${selectedTargetUserId}> telah dipaksa tumbuh mekar 100%!`, flags: 64 });
           const fresh = getGardenPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_reset_garden') {
           database.run(
@@ -4420,7 +4420,7 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
           );
           await iGarden.reply({ content: `✅ Kebun milik <@${selectedTargetUserId}> berhasil direset menjadi tanah kosong!`, flags: 64 });
           const fresh = getGardenPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_gift_seeds') {
           const giftItems = ['SEED_ROSE', 'SEED_TULIP', 'SEED_LAVENDER', 'SEED_SAKURA', 'SEED_ORCHID', 'GIFT_WRAPPING'];
@@ -4431,12 +4431,12 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
           })();
           await iGarden.reply({ content: `✅ Paket Benih Lengkap (+5 dari masing-masing benih & kertas kado) sukses dikirim ke inventory <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getGardenPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Garden Panel Interaction:', err);
-      await iGarden.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iGarden.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -4445,8 +4445,8 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
     try {
       const fresh = getGardenPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -4475,7 +4475,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
     if (targetUserId) {
       targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID: \`${targetUserId}\`\n\n`;
+        `• ID: \`${targetUserId}\`\n\n`;
 
       const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
       const questRow = database.get(
@@ -4490,10 +4490,10 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
         const claimStatus = questRow.reward_claimed === 1 ? '✅ Sudah Klaim Hadiah' : '❌ Belum Klaim Hadiah';
 
         targetText += `📋 **MISI HARIAN HARI INI (${questRow.quest_date}):**\n` +
-                     `🔹 Misi 1: **${questRow.quest_1_type}** (${q1Status})\n` +
-                     `🔹 Misi 2: **${questRow.quest_2_type}** (${q2Status})\n` +
-                     `🔹 Misi 3: **${questRow.quest_3_type}** (${q3Status})\n\n` +
-                     `🎁 Status Klaim Hadiah Utama: **${claimStatus}**\n`;
+          `🔹 Misi 1: **${questRow.quest_1_type}** (${q1Status})\n` +
+          `🔹 Misi 2: **${questRow.quest_2_type}** (${q2Status})\n` +
+          `🔹 Misi 3: **${questRow.quest_3_type}** (${q3Status})\n\n` +
+          `🎁 Status Klaim Hadiah Utama: **${claimStatus}**\n`;
       } else {
         targetText += `⚠️ **Status:** *Misi harian hari ini belum diinisialisasi oleh user (Akan dibuat otomatis saat user mengetik \`.pet misi\`)*\n`;
       }
@@ -4577,7 +4577,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
       }
       else if (iQuest.customId === 'admin_quest_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iQuest.customId === 'admin_quest_select_action') {
         const action = iQuest.values[0];
@@ -4603,7 +4603,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
 
           await iQuest.reply({ content: `✅ Sukses menyelesaikan instan 3 misi harian milik <@${selectedTargetUserId}> untuk hari ini!`, flags: 64 });
           const fresh = getQuestPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_reset_quests') {
           database.run(
@@ -4612,7 +4612,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
           );
           await iQuest.reply({ content: `✅ Sukses menghapus/reset misi harian milik <@${selectedTargetUserId}> hari ini! Mereka dapat mengacak ulang misi baru sekarang.`, flags: 64 });
           const fresh = getQuestPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'action_gift_care_package') {
           database.transaction(() => {
@@ -4628,12 +4628,12 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
 
           await iQuest.reply({ content: `✅ Sukses mengirimkan Paket Perawatan Pet Premium (+5 Daging Premium, Mainan, Obat di Pet Inventory & +5 Linggis, Sabun di User Inventory) ke <@${selectedTargetUserId}>!`, flags: 64 });
           const fresh = getQuestPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Quest Panel Interaction:', err);
-      await iQuest.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iQuest.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -4642,8 +4642,8 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
     try {
       const fresh = getQuestPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -4665,7 +4665,7 @@ function updateAdminInventory(userId, guildId, itemId, quantityChange) {
     'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
     [userId, guildId, upperId]
   );
-  
+
   if (!row) {
     if (quantityChange > 0) {
       database.run(
@@ -4730,109 +4730,205 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
   if (!guildId) return false;
 
   let selectedTargetUserId = initialTargetUserId;
+  let activeSubMenu = 'main'; // 'main', 'select_item_warga', 'select_item_pet'
 
   const getWargaPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('👥 ADMIN CONTROL PANEL — CITIZEN (WARGA)')
       .setThumbnail(client.user.displayAvatarURL())
-      .setTimestamp()
-      .setFooter({ text: 'Sentinel Admin • Pengelolaan Data Warga' });
+      .setTimestamp();
 
-    let targetText = '*Belum ada warga terpilih (Silakan pilih di menu dropdown di bawah)*';
-    if (targetUserId) {
-      // Pastikan wallet terbuat agar data tidak kosong
-      economy.getWallet(targetUserId, gId);
+    if (activeSubMenu === 'main') {
+      embed.setTitle('👥 ADMIN CONTROL PANEL — CITIZEN (WARGA)')
+        .setFooter({ text: 'Sentinel Admin • Pengelolaan Data Warga' });
 
-      const wallet = database.get('SELECT balance, jail_until, jail_type, wanted_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0, jail_until: 0, jail_type: '', wanted_until: 0 };
-      const savings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0 };
-      const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      let targetText = '*Belum ada warga terpilih (Silakan pilih di menu dropdown di bawah)*';
+      if (targetUserId) {
+        // Pastikan wallet terbuat agar data tidak kosong
+        economy.getWallet(targetUserId, gId);
 
-      // Get inventory items
-      const items = database.all('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
-      const petItems = database.all('SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+        const wallet = database.get('SELECT balance, jail_until, jail_type, wanted_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0, jail_until: 0, jail_type: '', wanted_until: 0 };
+        const savings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0 };
+        const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
 
-      let itemText = items.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
-      let petItemText = petItems.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
+        // Get inventory items
+        const items = database.all('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+        const petItems = database.all('SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
 
-      const nowUnix = Math.floor(Date.now() / 1000);
-      let jailStatus = '🟢 Bebas';
-      if (wallet.jail_until > nowUnix) {
-        jailStatus = `🔴 Ditahan (${wallet.jail_type || 'solo'}) - Bebas: <t:${wallet.jail_until}:R>`;
+        let itemText = items.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
+        let petItemText = petItems.map(it => `• \`${it.item_id}\` x${it.quantity}`).join('\n') || '*Kosong*';
+
+        const nowUnix = Math.floor(Date.now() / 1000);
+        let jailStatus = '🟢 Bebas';
+        if (wallet.jail_until > nowUnix) {
+          jailStatus = `🔴 Ditahan (${wallet.jail_type || 'solo'}) - Bebas: <t:${wallet.jail_until}:R>`;
+        }
+        let wantedStatus = '🟢 Bersih';
+        if (wallet.wanted_until > nowUnix) {
+          wantedStatus = `🔴 Buronan (Wanted) - Sisa CD: <t:${wallet.wanted_until}:R>`;
+        }
+
+        targetText = `🎯 **<@${targetUserId}>**\n` +
+          `• ID Warga: \`${targetUserId}\`\n` +
+          `• Dompet: **Rp ${(wallet.balance || 0).toLocaleString('id-ID')}**\n` +
+          `• Tabungan Bank: **Rp ${(savings.balance || 0).toLocaleString('id-ID')}**\n` +
+          `• Status Tahanan: ${jailStatus}\n` +
+          `• Status Wanted: ${wantedStatus}\n` +
+          `• Blacklist Bot: ${isBlacklisted ? '🔴 **YA (Banned dari Bot)**' : '🟢 Tidak (Aktif)'}\n\n` +
+          `🎒 **INVENTARIS WARGA:**\n${itemText}\n\n` +
+          `🐾 **INVENTARIS PET WARGA:**\n${petItemText}`;
       }
-      let wantedStatus = '🟢 Bersih';
-      if (wallet.wanted_until > nowUnix) {
-        wantedStatus = `🔴 Buronan (Wanted) - Sisa CD: <t:${wallet.wanted_until}:R>`;
-      }
 
-      targetText = `🎯 **<@${targetUserId}>**\n` +
-                   `• ID Warga: \`${targetUserId}\`\n` +
-                   `• Dompet: **Rp ${(wallet.balance || 0).toLocaleString('id-ID')}**\n` +
-                   `• Tabungan Bank: **Rp ${(savings.balance || 0).toLocaleString('id-ID')}**\n` +
-                   `• Status Tahanan: ${jailStatus}\n` +
-                   `• Status Wanted: ${wantedStatus}\n` +
-                   `• Blacklist Bot: ${isBlacklisted ? '🔴 **YA (Banned dari Bot)**' : '🟢 Tidak (Aktif)'}\n\n` +
-                   `🎒 **INVENTARIS WARGA:**\n${itemText}\n\n` +
-                   `🐾 **INVENTARIS PET WARGA:**\n${petItemText}`;
+      embed.setDescription(
+        `Gunakan menu dropdown di bawah untuk memilih warga, kemudian pilih tindakan kustom untuk memodifikasi profil warga secara langsung:\n\n` +
+        `👤 **INFORMASI DATA WARGA:**\n${targetText}`
+      );
+
+      const userSelect = new UserSelectMenuBuilder()
+        .setCustomId('admin_warga_select_target')
+        .setPlaceholder('👤 Pilih Target Warga');
+
+      const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+      const actionSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_warga_select_action')
+        .setPlaceholder('🎯 Pilih Tindakan Pengelolaan Warga')
+        .setDisabled(!targetUserId);
+
+      actionSelect.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('💸 Suntik/Tarik Koin Warga (Modal)')
+          .setDescription('Menambahkan/mengurangi koin langsung di dompet target')
+          .setValue('warga_edit_coins_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏦 Suntik/Tarik Tabungan Bank (Modal)')
+          .setDescription('Menambahkan/mengurangi koin langsung di tabungan bank target')
+          .setValue('warga_edit_bank_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🎒 Kelola Item Warga (Pilih)')
+          .setDescription('Pilih & beri/tarik item inventaris general (LOCKPICK, SOAP, TICKET_GACHA, dll)')
+          .setValue('warga_edit_item_select'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🐾 Kelola Item Pet (Pilih)')
+          .setDescription('Pilih & beri/tarik item inventaris pet (FOOD_BASIC, MEDICINE, dll)')
+          .setValue('warga_edit_pet_item_select'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🚫 Toggle Blacklist Bot (Banned)')
+          .setDescription('Memblokir/memulihkan akses warga dari penggunaan bot')
+          .setValue('warga_toggle_blacklist'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🚓 Bebaskan dari Lapas Penjara')
+          .setDescription('Bebaskan seketika warga target dari hukuman penjara')
+          .setValue('warga_release_jail')
+      );
+
+      const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_back')
+          .setLabel('🔙 Kembali ke Hub')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return { embeds: [embed], components: [userRow, actionRow, btnRow] };
     }
+    else if (activeSubMenu === 'select_item_warga') {
+      embed.setTitle('🎒 KELOLA ITEM WARGA')
+        .setDescription(`Silakan pilih item yang ingin ditambahkan atau ditarik dari warga <@${targetUserId}>:\n\n*Pilih item di bawah, kemudian pop-up modal jumlah akan otomatis terbuka.*`)
+        .setFooter({ text: 'Sentinel Admin • Pengelolaan Item Warga' });
 
-    embed.setDescription(
-      `Gunakan menu dropdown di bawah untuk memilih warga, kemudian pilih tindakan kustom untuk memodifikasi profil warga secara langsung:\n\n` +
-      `👤 **INFORMASI DATA WARGA:**\n${targetText}`
-    );
+      const itemSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_warga_select_item_warga_id')
+        .setPlaceholder('🎒 Pilih Item General / Warga...');
 
-    const userSelect = new UserSelectMenuBuilder()
-      .setCustomId('admin_warga_select_target')
-      .setPlaceholder('👤 Pilih Target Warga');
+      itemSelect.addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('🎟️ Tiket Gacha Pet (TICKET_GACHA)').setValue('TICKET_GACHA'),
+        new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick (LOCKPICK)').setValue('LOCKPICK'),
+        new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran (MASK)').setValue('MASK'),
+        new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius (MEAT)').setValue('MEAT'),
+        new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin (SOAP)').setValue('SOAP'),
+        new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker (BRANKAS)').setValue('BRANKAS'),
+        new StringSelectMenuOptionBuilder().setLabel('🏎️ Lamborghini (LAMBO)').setValue('LAMBO'),
+        new StringSelectMenuOptionBuilder().setLabel('👑 Emas Batangan (GOLD)').setValue('GOLD'),
+        new StringSelectMenuOptionBuilder().setLabel('🔑 Kunci Penthouse (KEY)').setValue('KEY'),
+        new StringSelectMenuOptionBuilder().setLabel('⌚ Jam Rolex (ROLEX)').setValue('ROLEX'),
+        new StringSelectMenuOptionBuilder().setLabel('📱 iPhone 16 Pro Max (IPHONE)').setValue('IPHONE'),
+        new StringSelectMenuOptionBuilder().setLabel('🌱 Benih Rose (SEED_ROSE)').setValue('SEED_ROSE'),
+        new StringSelectMenuOptionBuilder().setLabel('🌱 Benih Tulip (SEED_TULIP)').setValue('SEED_TULIP'),
+        new StringSelectMenuOptionBuilder().setLabel('🌱 Benih Lavender (SEED_LAVENDER)').setValue('SEED_LAVENDER'),
+        new StringSelectMenuOptionBuilder().setLabel('🌱 Benih Sakura (SEED_SAKURA)').setValue('SEED_SAKURA'),
+        new StringSelectMenuOptionBuilder().setLabel('🌱 Benih Orchid (SEED_ORCHID)').setValue('SEED_ORCHID'),
+        new StringSelectMenuOptionBuilder().setLabel('🌹 Bunga Rose (FLOWER_ROSE)').setValue('FLOWER_ROSE'),
+        new StringSelectMenuOptionBuilder().setLabel('🌷 Bunga Tulip (FLOWER_TULIP)').setValue('FLOWER_TULIP'),
+        new StringSelectMenuOptionBuilder().setLabel('🪻 Bunga Lavender (FLOWER_LAVENDER)').setValue('FLOWER_LAVENDER'),
+        new StringSelectMenuOptionBuilder().setLabel('🌸 Bunga Sakura (FLOWER_SAKURA)').setValue('FLOWER_SAKURA'),
+        new StringSelectMenuOptionBuilder().setLabel('🪻 Bunga Orchid (FLOWER_ORCHID)').setValue('FLOWER_ORCHID'),
+        new StringSelectMenuOptionBuilder().setLabel('💐 Bouquet Love (BOUQUET_LOVE)').setValue('BOUQUET_LOVE'),
+        new StringSelectMenuOptionBuilder().setLabel('💐 Bouquet Peace (BOUQUET_PEACE)').setValue('BOUQUET_PEACE')
+      );
 
-    const userRow = new ActionRowBuilder().addComponents(userSelect);
+      const selectRow = new ActionRowBuilder().addComponents(itemSelect);
 
-    const actionSelect = new StringSelectMenuBuilder()
-      .setCustomId('admin_warga_select_action')
-      .setPlaceholder('🎯 Pilih Tindakan Pengelolaan Warga')
-      .setDisabled(!targetUserId);
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_back_to_main')
+          .setLabel('🔙 Kembali')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
 
-    actionSelect.addOptions(
-      new StringSelectMenuOptionBuilder()
-        .setLabel('💸 Suntik/Tarik Koin Warga (Modal)')
-        .setDescription('Menambahkan/mengurangi koin langsung di dompet target')
-        .setValue('warga_edit_coins_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏦 Suntik/Tarik Tabungan Bank (Modal)')
-        .setDescription('Menambahkan/mengurangi koin langsung di tabungan bank target')
-        .setValue('warga_edit_bank_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🎒 Kelola Item Warga (Modal)')
-        .setDescription('Beri/tarik item inventaris general (LOCKPICK, SOAP, dll) target')
-        .setValue('warga_edit_item_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🐾 Kelola Item Pet (Modal)')
-        .setDescription('Beri/tarik item inventaris pet (FOOD_BASIC, MEDICINE, dll) target')
-        .setValue('warga_edit_pet_item_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🚫 Toggle Blacklist Bot (Banned)')
-        .setDescription('Memblokir/memulihkan akses warga dari penggunaan bot')
-        .setValue('warga_toggle_blacklist'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🚓 Bebaskan dari Lapas Penjara')
-        .setDescription('Bebaskan seketika warga target dari hukuman penjara')
-        .setValue('warga_release_jail')
-    );
+      return { embeds: [embed], components: [selectRow, btnRow] };
+    }
+    else if (activeSubMenu === 'select_item_pet') {
+      embed.setTitle('🐾 KELOLA ITEM PET WARGA')
+        .setDescription(`Silakan pilih item pet yang ingin ditambahkan atau ditarik dari pet milik <@${targetUserId}>:\n\n*Pilih item di bawah, kemudian pop-up modal jumlah akan otomatis terbuka.*`)
+        .setFooter({ text: 'Sentinel Admin • Pengelolaan Item Pet Warga' });
 
-    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+      const itemSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_warga_select_item_pet_id')
+        .setPlaceholder('🐾 Pilih Item Pet...');
 
-    const btnRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('admin_warga_btn_back')
-        .setLabel('🔙 Kembali ke Hub')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('admin_warga_btn_close')
-        .setLabel('❌ Tutup Panel')
-        .setStyle(ButtonStyle.Danger)
-    );
+      itemSelect.addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('🥩 Makanan Biasa (FOOD_BASIC)').setValue('FOOD_BASIC'),
+        new StringSelectMenuOptionBuilder().setLabel('🍖 Makanan Premium (FOOD_PREMIUM)').setValue('FOOD_PREMIUM'),
+        new StringSelectMenuOptionBuilder().setLabel('💧 Air Minum (WATER)').setValue('WATER'),
+        new StringSelectMenuOptionBuilder().setLabel('💊 Obat-obatan (MEDICINE)').setValue('MEDICINE'),
+        new StringSelectMenuOptionBuilder().setLabel('🧸 Mainan Pet (TOY)').setValue('TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi (SODA_ENERGY)').setValue('SODA_ENERGY'),
+        new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Pet (SOAP_PET)').setValue('SOAP_PET'),
+        new StringSelectMenuOptionBuilder().setLabel('⛓️ Kalung Besi (COLLAR_IRON)').setValue('COLLAR_IRON'),
+        new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan (SWORD_TOY)').setValue('SWORD_TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan (SHIELD_TOY)').setValue('SHIELD_TOY'),
+        new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan (LUCKY_AMULET)').setValue('LUCKY_AMULET'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 2X (XP_2X)').setValue('XP_2X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 4X (XP_4X)').setValue('XP_4X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 6X (XP_6X)').setValue('XP_6X'),
+        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 8X (XP_8X)').setValue('XP_8X')
+      );
 
-    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+      const selectRow = new ActionRowBuilder().addComponents(itemSelect);
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_back_to_main')
+          .setLabel('🔙 Kembali')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_warga_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return { embeds: [embed], components: [selectRow, btnRow] };
+    }
   };
 
   const initialData = getWargaPanelData(guildId, selectedTargetUserId);
@@ -4866,7 +4962,82 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
       }
       else if (iWarga.customId === 'admin_warga_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
+      }
+      else if (iWarga.customId === 'admin_warga_btn_back_to_main') {
+        activeSubMenu = 'main';
+        const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+        await iWarga.update(fresh);
+      }
+      else if (iWarga.customId === 'admin_warga_select_item_warga_id') {
+        const itemId = iWarga.values[0];
+        const modal = new ModalBuilder()
+          .setCustomId('admin_warga_qty_modal')
+          .setTitle(`Jumlah: ${itemId}`);
+
+        const qtyInput = new TextInputBuilder()
+          .setCustomId('item_qty')
+          .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
+          .setPlaceholder('Contoh: 5 atau -3')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+        await iWarga.showModal(modal);
+
+        const sub = await iWarga.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_warga_qty_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+          if (isNaN(qty) || qty === 0) {
+            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+          }
+
+          updateAdminInventory(selectedTargetUserId, guildId, itemId, qty);
+
+          await sub.reply({ content: `🎒 Sukses mengubah item \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
+          activeSubMenu = 'main';
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+      }
+      else if (iWarga.customId === 'admin_warga_select_item_pet_id') {
+        const itemId = iWarga.values[0];
+        const modal = new ModalBuilder()
+          .setCustomId('admin_warga_pet_qty_modal')
+          .setTitle(`Jumlah Pet Item: ${itemId}`);
+
+        const qtyInput = new TextInputBuilder()
+          .setCustomId('item_qty')
+          .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
+          .setPlaceholder('Contoh: 10 atau -5')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+        await iWarga.showModal(modal);
+
+        const sub = await iWarga.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_warga_pet_qty_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+          if (isNaN(qty) || qty === 0) {
+            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+          }
+
+          updateAdminPetInventory(selectedTargetUserId, guildId, itemId, qty);
+
+          await sub.reply({ content: `🐾 Sukses mengubah item pet \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
+          activeSubMenu = 'main';
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
       }
       else if (iWarga.customId === 'admin_warga_select_action') {
         const action = iWarga.values[0];
@@ -4899,12 +5070,12 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
             if (isNaN(amount) || amount === 0) {
               return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
             }
-            
+
             const current = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
             const currentBal = current ? current.balance : 0;
             const newBal = Math.max(0, currentBal + amount);
             database.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, selectedTargetUserId, guildId]);
-            
+
             // Record transaction
             database.run(
               'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
@@ -4913,7 +5084,7 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
 
             await sub.reply({ content: `💸 Sukses mengubah koin dompet <@${selectedTargetUserId}> sebesar **Rp ${amount.toLocaleString('id-ID')}** (Saldo sekarang: **Rp ${newBal.toLocaleString('id-ID')}**)!`, flags: 64 });
             const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'warga_edit_bank_modal') {
@@ -4954,102 +5125,18 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
 
             await sub.reply({ content: `🏦 Sukses mengubah tabungan bank <@${selectedTargetUserId}> sebesar **Rp ${amount.toLocaleString('id-ID')}** (Tabungan sekarang: **Rp ${newBal.toLocaleString('id-ID')}**)!`, flags: 64 });
             const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
-        else if (action === 'warga_edit_item_modal') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_warga_edit_item_modal')
-            .setTitle('Edit Item Inventaris Warga');
-
-          const itemIdInput = new TextInputBuilder()
-            .setCustomId('item_id')
-            .setLabel('ID Item (LOCKPICK, SOAP, LAMBO, dll)')
-            .setPlaceholder('Contoh: LOCKPICK')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const qtyInput = new TextInputBuilder()
-            .setCustomId('item_qty')
-            .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
-            .setPlaceholder('Contoh: 5 atau -3')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(itemIdInput),
-            new ActionRowBuilder().addComponents(qtyInput)
-          );
-          await iWarga.showModal(modal);
-
-          const sub = await iWarga.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_warga_edit_item_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
-            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
-            if (!itemId) {
-              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
-            }
-            if (isNaN(qty) || qty === 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
-            }
-
-            updateAdminInventory(selectedTargetUserId, guildId, itemId, qty);
-
-            await sub.reply({ content: `🎒 Sukses mengubah item \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
-            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
-          }
+        else if (action === 'warga_edit_item_select') {
+          activeSubMenu = 'select_item_warga';
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await iWarga.update(fresh);
         }
-        else if (action === 'warga_edit_pet_item_modal') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_warga_edit_pet_item_modal')
-            .setTitle('Edit Item Inventaris Pet Warga');
-
-          const itemIdInput = new TextInputBuilder()
-            .setCustomId('item_id')
-            .setLabel('ID Item Pet (FOOD_BASIC, MEDICINE, dll)')
-            .setPlaceholder('Contoh: FOOD_PREMIUM')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const qtyInput = new TextInputBuilder()
-            .setCustomId('item_qty')
-            .setLabel('Jumlah (Gunakan minus untuk mengurangi)')
-            .setPlaceholder('Contoh: 10 atau -5')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(itemIdInput),
-            new ActionRowBuilder().addComponents(qtyInput)
-          );
-          await iWarga.showModal(modal);
-
-          const sub = await iWarga.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_warga_edit_pet_item_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
-            const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
-            if (!itemId) {
-              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
-            }
-            if (isNaN(qty) || qty === 0) {
-              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
-            }
-
-            updateAdminPetInventory(selectedTargetUserId, guildId, itemId, qty);
-
-            await sub.reply({ content: `🐾 Sukses mengubah item pet \`${itemId}\` untuk <@${selectedTargetUserId}> sebesar **${qty > 0 ? '+' : ''}${qty}**!`, flags: 64 });
-            const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => {});
-          }
+        else if (action === 'warga_edit_pet_item_select') {
+          activeSubMenu = 'select_item_pet';
+          const fresh = getWargaPanelData(guildId, selectedTargetUserId);
+          await iWarga.update(fresh);
         }
         else if (action === 'warga_toggle_blacklist') {
           const exist = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
@@ -5066,19 +5153,19 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
             await iWarga.followUp({ content: `🔴 Sukses memasukkan warga <@${selectedTargetUserId}> ke dalam blacklist bot (Banned dari Bot)!`, flags: 64 });
           }
           const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'warga_release_jail') {
           await iWarga.deferReply({ flags: 64 });
           database.run("UPDATE wallets SET jail_until = 0, jail_type = '' WHERE user_id = ? AND guild_id = ?", [selectedTargetUserId, guildId]);
           await iWarga.editReply({ content: `🚓 Sukses membebaskan warga <@${selectedTargetUserId}> seketika dari sel Lapas Penjara!` });
           const fresh = getWargaPanelData(guildId, selectedTargetUserId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Warga Panel Interaction:', err);
-      await iWarga.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iWarga.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -5087,8 +5174,8 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
     try {
       const fresh = getWargaPanelData(guildId, selectedTargetUserId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
@@ -5112,7 +5199,7 @@ async function askConfirmation(interaction, authorId, actionDescription) {
   );
 
   const confirmMsg = await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], flags: 64, fetchReply: true });
-  
+
   const confirmSub = await confirmMsg.awaitMessageComponent({
     filter: (btn) => ['admin_confirm_yes', 'admin_confirm_no'].includes(btn.customId) && btn.user.id === authorId,
     time: 30000
@@ -5120,18 +5207,18 @@ async function askConfirmation(interaction, authorId, actionDescription) {
 
   if (confirmSub) {
     if (confirmSub.customId === 'admin_confirm_yes') {
-      await confirmSub.deferUpdate().catch(() => {});
-      await confirmMsg.delete().catch(() => {});
+      await confirmSub.deferUpdate().catch(() => { });
+      await confirmMsg.delete().catch(() => { });
       return true;
     } else {
-      await confirmSub.deferUpdate().catch(() => {});
-      await confirmMsg.delete().catch(() => {});
-      await confirmSub.followUp({ content: '❌ Tindakan dibatalkan.', flags: 64 }).catch(() => {});
+      await confirmSub.deferUpdate().catch(() => { });
+      await confirmMsg.delete().catch(() => { });
+      await confirmSub.followUp({ content: '❌ Tindakan dibatalkan.', flags: 64 }).catch(() => { });
       return false;
     }
   } else {
-    await confirmMsg.delete().catch(() => {});
-    await interaction.followUp({ content: '❌ Waktu konfirmasi habis. Tindakan dibatalkan.', flags: 64 }).catch(() => {});
+    await confirmMsg.delete().catch(() => { });
+    await interaction.followUp({ content: '❌ Waktu konfirmasi habis. Tindakan dibatalkan.', flags: 64 }).catch(() => { });
     return false;
   }
 }
@@ -5173,9 +5260,9 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
     const participants = lottery.getParticipants(gId);
     const ticketPrice = config.lottery?.TICKET_PRICE || 100;
     const lotteryText = `• Total Jackpot Pool: **Rp ${(pool.total_pool || 0).toLocaleString('id-ID')}**\n` +
-                        `• Total Tiket Terjual: **${pool.total_tickets || 0} tiket** (@ Rp ${ticketPrice.toLocaleString('id-ID')}/tiket)\n` +
-                        `• Jumlah Peserta: **${participants.length} orang**\n` +
-                        `• Periode Minggu Ini: \`${pool.week_start || lottery.getCurrentWeekStart()}\``;
+      `• Total Tiket Terjual: **${pool.total_tickets || 0} tiket** (@ Rp ${ticketPrice.toLocaleString('id-ID')}/tiket)\n` +
+      `• Jumlah Peserta: **${participants.length} orang**\n` +
+      `• Periode Minggu Ini: \`${pool.week_start || lottery.getCurrentWeekStart()}\``;
 
     embed.setDescription(
       `Gunakan panel ini untuk membagikan item massal ke seluruh warga server, menyuntik koin jackpot lotre, atau memicu undian pemenang lotre secara instan:\n\n` +
@@ -5267,7 +5354,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
       }
       else if (iGift.customId === 'admin_gift_btn_close') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
       }
       else if (iGift.customId === 'admin_gift_select_action') {
         const action = iGift.values[0];
@@ -5365,7 +5452,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             })();
 
             await sub.editReply({ content: `🎁 Sukses membagikan item \`${itemId}\` sebanyak **${qty} pcs** ke seluruh warga terdaftar & member server (**${memberIds.size} orang**)! 🎉` });
-            
+
             // Post announcement
             await sendGlobalEconomyAnnouncement(
               client,
@@ -5378,7 +5465,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             );
 
             const fresh = getGiftPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'gift_all_pet_items_modal') {
@@ -5436,7 +5523,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             })();
 
             await sub.editReply({ content: `🐾 Sukses membagikan item pet \`${itemId}\` sebanyak **${qty} pcs** ke seluruh pemilik pet aktif (**${petOwners.length} orang**)! 🎉` });
-            
+
             // Post announcement
             await sendGlobalEconomyAnnouncement(
               client,
@@ -5449,7 +5536,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             );
 
             const fresh = getGiftPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'gift_all_gacha_tickets_modal') {
@@ -5537,7 +5624,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             );
 
             const fresh = getGiftPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'lottery_inject_pool_modal') {
@@ -5587,7 +5674,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
             );
 
             const fresh = getGiftPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => {});
+            await replyMsg.edit(fresh).catch(() => { });
           }
         }
         else if (action === 'lottery_instant_draw') {
@@ -5632,13 +5719,13 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
           }
 
           if (targetChannel) {
-            await targetChannel.send({ content: `@everyone 🎉 <@${drawRes.winnerId}> telah memenangkan lotre minggu ini!`, embeds: [drawEmbed] }).catch(() => {});
+            await targetChannel.send({ content: `@everyone 🎉 <@${drawRes.winnerId}> telah memenangkan lotre minggu ini!`, embeds: [drawEmbed] }).catch(() => { });
           }
 
           await iGift.followUp({ content: `🏆 Sukses mengundi lotre secara instan! Pemenang: <@${drawRes.winnerId}> (Hadiah: Rp ${drawRes.prizeAmount.toLocaleString('id-ID')}). Pengumuman dikirim ke <#${targetChannel?.id}>.`, flags: 64 });
-          
+
           const fresh = getGiftPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
         else if (action === 'lottery_reset_pool') {
           // Double Confirmation
@@ -5652,12 +5739,12 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
           await iGift.followUp({ content: '🚨 **RESET LOTRE SUKSES!** Total pool dikembalikan ke 0 dan seluruh tiket lotre warga minggu ini telah dihapus permanen.', flags: 64 });
 
           const fresh = getGiftPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => {});
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {
       console.error('Error in Gift Panel Interaction:', err);
-      await iGift.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await iGift.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
   });
 
@@ -5666,8 +5753,8 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
     try {
       const fresh = getGiftPanelData(guildId);
       fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => {});
-    } catch (e) {}
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
   });
 
   return true;
