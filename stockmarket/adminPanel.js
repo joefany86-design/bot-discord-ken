@@ -119,13 +119,19 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
   if (!guildId) return false;
 
   let selectedTargetUserId = initialTargetUserId;
+  let petPanelSubMenu = 'main'; // 'main', 'give_custom_pet'
+  let petGiveSpecies = null;
+  let petGiveTrait = null;
+  let petGiveStar = null;
 
   const getPetPanelData = (gId, targetUserId) => {
     let embed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('🐾 ADMIN CONTROL PANEL — PET TAMAGOTCHI')
       .setThumbnail(client.user.displayAvatarURL())
-      .setTimestamp()
+      .setTimestamp();
+
+    if (petPanelSubMenu === 'main') {
+    embed.setTitle('🐾 ADMIN CONTROL PANEL — PET TAMAGOTCHI')
       .setFooter({ text: 'Sentinel Admin • Kandang & Perawatan Pet' });
 
     let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
@@ -250,6 +256,91 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     );
 
     return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+    }
+    else if (petPanelSubMenu === 'give_custom_pet') {
+      embed.setTitle('🎁 BERI PET KUSTOM')
+        .setFooter({ text: 'Sentinel Admin • Beri Pet Kustom' });
+
+      const speciesLabel = petGiveSpecies ? `✅ ${petGiveSpecies}` : '❌ Belum dipilih';
+      const traitLabel = petGiveTrait ? `✅ ${petGiveTrait}` : '❌ Belum dipilih';
+      const starLabel = petGiveStar ? `✅ ⭐${petGiveStar}` : '❌ Belum dipilih';
+
+      embed.setDescription(
+        `Pilih spesies, trait, dan bintang pet untuk diberikan ke <@${targetUserId}>:\n\n` +
+        `🐾 **Spesies:** ${speciesLabel}\n` +
+        `🧬 **Trait:** ${traitLabel}\n` +
+        `⭐ **Bintang:** ${starLabel}\n\n` +
+        `*Setelah semua terisi, klik tombol **✅ Lanjutkan** untuk mengisi nama & level pet.*`
+      );
+
+      // Species Select
+      const speciesSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_pet_give_species')
+        .setPlaceholder('🐾 Pilih Spesies Pet...');
+
+      speciesSelect.addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('🐱 Kucing (Cat)').setDescription('⚪ Common — Lincah berburu').setValue('CAT'),
+        new StringSelectMenuOptionBuilder().setLabel('🧱 Golem').setDescription('⚪ Common — Pekerja keras').setValue('GOLEM'),
+        new StringSelectMenuOptionBuilder().setLabel('🟢 Slime').setDescription('⚪ Common — Vitalitas tinggi (120 HP)').setValue('SLIME'),
+        new StringSelectMenuOptionBuilder().setLabel('🔥 Naga (Dragon)').setDescription('🟢 Rare — Api legendaris (+15% ATK)').setValue('DRAGON'),
+        new StringSelectMenuOptionBuilder().setLabel('🦅 Phoenix').setDescription('🟣 Epic — Burung api abadi (+20% ATK)').setValue('PHOENIX'),
+        new StringSelectMenuOptionBuilder().setLabel('🐢 Kura-Kura (Turtle)').setDescription('🟣 Epic — Tangguh (+20% HP & DEF)').setValue('TURTLE'),
+        new StringSelectMenuOptionBuilder().setLabel('🌊 Leviathan').setDescription('🟡 Legendary — Naga lautan kuno').setValue('LEVIATHAN'),
+        new StringSelectMenuOptionBuilder().setLabel('🦏 Behemoth').setDescription('🟡 Legendary — Monster bumi').setValue('BEHEMOTH'),
+        new StringSelectMenuOptionBuilder().setLabel('🐉 Archdragon').setDescription('🟡 Legendary — Naga purba tertua').setValue('ARCHDRAGON')
+      );
+
+      // Trait Select
+      const traitSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_pet_give_trait')
+        .setPlaceholder('🧬 Pilih Trait Pet...');
+
+      traitSelect.addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('❌ Tanpa Trait (None)').setDescription('Pet tanpa kemampuan khusus').setValue('NONE'),
+        new StringSelectMenuOptionBuilder().setLabel('🧠 Genius').setDescription('Leveling lebih cepat (-20% XP cap)').setValue('GENIUS'),
+        new StringSelectMenuOptionBuilder().setLabel('🛡️ Sturdy').setDescription('Tahan banting (-40% decay, -50% HP loss)').setValue('STURDY'),
+        new StringSelectMenuOptionBuilder().setLabel('🧬 Mutant').setDescription('Mutasi genetik unik').setValue('MUTANT'),
+        new StringSelectMenuOptionBuilder().setLabel('⚔️ Warrior').setDescription('Petarung tangguh di PvP').setValue('WARRIOR'),
+        new StringSelectMenuOptionBuilder().setLabel('💀 Survivor').setDescription('Bertahan hidup saat HP 0 (Epic trait)').setValue('SURVIVOR')
+      );
+
+      // Star Select
+      const starSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_pet_give_star')
+        .setPlaceholder('⭐ Pilih Bintang Pet...');
+
+      starSelect.addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('⭐ Bintang 1').setDescription('Base stats standar').setValue('1'),
+        new StringSelectMenuOptionBuilder().setLabel('⭐⭐ Bintang 2').setDescription('+15 HP, +25% ATK, +5% DEF').setValue('2'),
+        new StringSelectMenuOptionBuilder().setLabel('⭐⭐⭐ Bintang 3').setDescription('+30 HP, +50% ATK, +10% DEF').setValue('3'),
+        new StringSelectMenuOptionBuilder().setLabel('⭐⭐⭐⭐ Bintang 4').setDescription('+45 HP, +75% ATK, +15% DEF').setValue('4'),
+        new StringSelectMenuOptionBuilder().setLabel('⭐⭐⭐⭐⭐ Bintang 5').setDescription('+60 HP, +100% ATK, +20% DEF').setValue('5')
+      );
+
+      const speciesRow = new ActionRowBuilder().addComponents(speciesSelect);
+      const traitRow = new ActionRowBuilder().addComponents(traitSelect);
+      const starRow = new ActionRowBuilder().addComponents(starSelect);
+
+      const allSelected = petGiveSpecies && petGiveTrait && petGiveStar;
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_pet_give_confirm')
+          .setLabel('✅ Lanjutkan (Nama & Level)')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(!allSelected),
+        new ButtonBuilder()
+          .setCustomId('admin_pet_give_back')
+          .setLabel('🔙 Kembali')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_pet_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return { embeds: [embed], components: [speciesRow, traitRow, starRow, btnRow] };
+    }
   };
 
   const initialData = getPetPanelData(guildId, selectedTargetUserId);
@@ -377,6 +468,168 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         );
 
         return iPet.reply({ embeds: [auditEmbed], flags: 64 });
+      }
+      // === Give Custom Pet Sub-Menu Handlers ===
+      else if (iPet.customId === 'admin_pet_give_species') {
+        petGiveSpecies = iPet.values[0];
+        const fresh = getPetPanelData(guildId, selectedTargetUserId);
+        await iPet.update(fresh);
+      }
+      else if (iPet.customId === 'admin_pet_give_trait') {
+        petGiveTrait = iPet.values[0];
+        const fresh = getPetPanelData(guildId, selectedTargetUserId);
+        await iPet.update(fresh);
+      }
+      else if (iPet.customId === 'admin_pet_give_star') {
+        petGiveStar = parseInt(iPet.values[0]);
+        const fresh = getPetPanelData(guildId, selectedTargetUserId);
+        await iPet.update(fresh);
+      }
+      else if (iPet.customId === 'admin_pet_give_back') {
+        petPanelSubMenu = 'main';
+        petGiveSpecies = null;
+        petGiveTrait = null;
+        petGiveStar = null;
+        const fresh = getPetPanelData(guildId, selectedTargetUserId);
+        await iPet.update(fresh);
+      }
+      else if (iPet.customId === 'admin_pet_give_confirm') {
+        if (!petGiveSpecies || !petGiveTrait || !petGiveStar) {
+          return iPet.reply({ content: '❌ Silakan pilih Spesies, Trait, dan Bintang terlebih dahulu!', flags: 64 });
+        }
+
+        const modal = new ModalBuilder()
+          .setCustomId('admin_pet_give_final_modal')
+          .setTitle(`Beri Pet: ${petGiveSpecies} ⭐${petGiveStar}`);
+
+        const nameInput = new TextInputBuilder()
+          .setCustomId('custom_pet_name')
+          .setLabel('Nama Pet')
+          .setPlaceholder('Contoh: Ciko, Ramzi, Shadow')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const lvlInput = new TextInputBuilder()
+          .setCustomId('custom_pet_level')
+          .setLabel('Level Awal (Min: 1)')
+          .setPlaceholder('Default: 1')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(nameInput),
+          new ActionRowBuilder().addComponents(lvlInput)
+        );
+
+        await iPet.showModal(modal);
+
+        const sub = await iPet.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_pet_give_final_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          try {
+            const pName = sub.fields.getTextInputValue('custom_pet_name');
+            let pLevel = parseInt(sub.fields.getTextInputValue('custom_pet_level')) || 1;
+            const pType = petGiveSpecies;
+            let pTrait = petGiveTrait === 'NONE' ? '' : petGiveTrait;
+            const pStar = petGiveStar;
+
+            // Validasi Spesies
+            const petModule = require('./pet');
+            const speciesInfo = petModule.GACHA_SPECIES[pType] || petModule.PET_SPECIES[pType];
+            if (!speciesInfo) {
+              return sub.reply({ content: `❌ Spesies tidak valid!`, flags: 64 });
+            }
+
+            // Sanitasi & Validasi Nama
+            const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+            if (sanitizedName.length === 0 || sanitizedName.length > 25) {
+              return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
+            }
+
+            // Validasi Slot
+            const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
+            const count = countRow ? countRow.count : 0;
+
+            // Cek Duplikat Nama
+            const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedTargetUserId, guildId, sanitizedName.toLowerCase()]);
+            if (nameExists) {
+              return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
+            }
+
+            // Clamping Level & Star
+            pLevel = Math.max(1, pLevel);
+
+            const pStatus = pLevel >= 10 ? 'ADULT' : 'BABY';
+            const now = Math.floor(Date.now() / 1000);
+            const isActive = count === 0 ? 1 : 0;
+            const hatchAt = 0;
+
+            // Calculate HP & Combat bonuses based on stars
+            const baseHP = speciesInfo.baseHP || 100;
+            const starMultiplier = 1 + (pStar - 1) * 0.15;
+            const bonusHp = Math.round(baseHP * (starMultiplier - 1));
+            const bonusAtkPct = (pStar - 1) * 0.15;
+            const bonusDefPct = (pStar - 1) * 0.15;
+            const maxHP = baseHP + bonusHp;
+
+            const gSource = 'ADMIN';
+            const gRarity = speciesInfo.rarity || 'COMMON';
+            const gElement = speciesInfo.element || '';
+
+            // Auto-assign traits if empty and needed
+            let finalTrait = pTrait;
+            let finalTrait2 = '';
+            if (!finalTrait) {
+              const traitsPool = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+              if (gRarity === 'LEGENDARY') {
+                finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
+                const pool2 = traitsPool.filter(t => t !== finalTrait);
+                finalTrait2 = pool2[Math.floor(Math.random() * pool2.length)];
+              } else if (gRarity === 'EPIC') {
+                finalTrait = 'SURVIVOR';
+              } else if (gRarity === 'RARE') {
+                finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
+              }
+            }
+
+            database.run(
+              `INSERT INTO user_pets (
+                user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
+                last_interaction_at, hatch_at, created_at, is_active, trait, 
+                star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
+                gacha_source, gacha_rarity, gacha_element, gacha_trait2
+              ) VALUES (
+                ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
+                ?, ?, ?, ?, ?, 
+                ?, ?, ?, ?,
+                ?, ?, ?, ?
+              )`,
+              [
+                selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
+                now, hatchAt, now, isActive, finalTrait,
+                pStar, bonusHp, bonusAtkPct, bonusDefPct,
+                gSource, gRarity, gElement, finalTrait2
+              ]
+            );
+
+            const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
+            const starText = petModule.renderStars(pStar);
+            await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${selectedTargetUserId}>!`, flags: 64 });
+
+            // Reset state and go back to main
+            petPanelSubMenu = 'main';
+            petGiveSpecies = null;
+            petGiveTrait = null;
+            petGiveStar = null;
+            const fresh = getPetPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          } catch (err) {
+            await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, flags: 64 }).catch(() => { });
+          }
+        }
       }
       else if (iPet.customId === 'admin_pet_select_action') {
         const action = iPet.values[0];
@@ -683,164 +936,13 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           }
         }
         else if (action === 'action_give_custom_pet_modal') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_pet_give_custom_modal')
-            .setTitle('Beri Pet Kustom');
-
-          const nameInput = new TextInputBuilder()
-            .setCustomId('custom_pet_name')
-            .setLabel('Nama Pet')
-            .setPlaceholder('Contoh: Ciko')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const typeInput = new TextInputBuilder()
-            .setCustomId('custom_pet_type')
-            .setLabel('Spesies (Cat/Golem/Slime/Dragon/Phoenix...)')
-            .setPlaceholder('Ketik jenis pet (contoh: Phoenix, Leviathan, dll)')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const traitInput = new TextInputBuilder()
-            .setCustomId('custom_pet_trait')
-            .setLabel('Trait (Genius/Sturdy/Mutant/Warrior/None)')
-            .setPlaceholder('Kosongkan jika tidak ada')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-          const lvlInput = new TextInputBuilder()
-            .setCustomId('custom_pet_level')
-            .setLabel('Level Awal (Min: 1)')
-            .setPlaceholder('Default: 1')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-          const starInput = new TextInputBuilder()
-            .setCustomId('custom_pet_star')
-            .setLabel('Bintang Pet (1 - 5)')
-            .setPlaceholder('Default: 1')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(nameInput),
-            new ActionRowBuilder().addComponents(typeInput),
-            new ActionRowBuilder().addComponents(traitInput),
-            new ActionRowBuilder().addComponents(lvlInput),
-            new ActionRowBuilder().addComponents(starInput)
-          );
-
-          await iPet.showModal(modal);
-
-          const sub = await iPet.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_pet_give_custom_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            try {
-              const pName = sub.fields.getTextInputValue('custom_pet_name');
-              const pType = sub.fields.getTextInputValue('custom_pet_type').trim().toUpperCase();
-              let pTrait = sub.fields.getTextInputValue('custom_pet_trait').trim().toUpperCase();
-              let pLevel = parseInt(sub.fields.getTextInputValue('custom_pet_level')) || 1;
-              let pStar = parseInt(sub.fields.getTextInputValue('custom_pet_star')) || 1;
-
-              // Validasi Spesies
-              const petModule = require('./pet');
-              const speciesInfo = petModule.GACHA_SPECIES[pType] || petModule.PET_SPECIES[pType];
-              if (!speciesInfo) {
-                return sub.reply({ content: `❌ Spesies tidak valid! Pilihan: ${Object.keys(petModule.GACHA_SPECIES).join(', ')}`, flags: 64 });
-              }
-
-              // Sanitasi & Validasi Nama
-              const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
-              if (sanitizedName.length === 0 || sanitizedName.length > 25) {
-                return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
-              }
-
-              // Validasi Slot (tetap dihitung untuk menentukan isActive)
-              const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedTargetUserId, guildId]);
-              const count = countRow ? countRow.count : 0;
-
-              // Cek Duplikat Nama
-              const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedTargetUserId, guildId, sanitizedName.toLowerCase()]);
-              if (nameExists) {
-                return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
-              }
-
-              // Clamping Level & Star
-              pLevel = Math.max(1, pLevel);
-              pStar = Math.max(1, Math.min(5, pStar));
-
-              // Validasi Trait
-              const validTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
-              if (pTrait === 'NONE' || !validTraits.includes(pTrait)) {
-                pTrait = '';
-              }
-
-              const pStatus = pLevel >= 10 ? 'ADULT' : 'BABY';
-              const now = Math.floor(Date.now() / 1000);
-              const isActive = count === 0 ? 1 : 0;
-              const hatchAt = 0;
-
-              // Calculate HP & Combat bonuses based on stars
-              const baseHP = speciesInfo.baseHP || 100;
-              const starMultiplier = 1 + (pStar - 1) * 0.15;
-              const bonusHp = Math.round(baseHP * (starMultiplier - 1));
-              const bonusAtkPct = (pStar - 1) * 0.15;
-              const bonusDefPct = (pStar - 1) * 0.15;
-              const maxHP = baseHP + bonusHp;
-
-              const gSource = 'ADMIN';
-              const gRarity = speciesInfo.rarity || 'COMMON';
-              const gElement = speciesInfo.element || '';
-
-              // Auto-assign traits if empty and needed
-              let finalTrait = pTrait;
-              let finalTrait2 = '';
-              if (!finalTrait) {
-                const traitsPool = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
-                if (gRarity === 'LEGENDARY') {
-                  finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
-                  const pool2 = traitsPool.filter(t => t !== finalTrait);
-                  finalTrait2 = pool2[Math.floor(Math.random() * pool2.length)];
-                } else if (gRarity === 'EPIC') {
-                  finalTrait = 'SURVIVOR';
-                } else if (gRarity === 'RARE') {
-                  finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
-                }
-              }
-
-              database.run(
-                `INSERT INTO user_pets (
-                  user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
-                  last_interaction_at, hatch_at, created_at, is_active, trait, 
-                  star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
-                  gacha_source, gacha_rarity, gacha_element, gacha_trait2
-                ) VALUES (
-                  ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
-                  ?, ?, ?, ?, ?, 
-                  ?, ?, ?, ?,
-                  ?, ?, ?, ?
-                )`,
-                [
-                  selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
-                  now, hatchAt, now, isActive, finalTrait,
-                  pStar, bonusHp, bonusAtkPct, bonusDefPct,
-                  gSource, gRarity, gElement, finalTrait2
-                ]
-              );
-
-              const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
-              const starText = petModule.renderStars(pStar);
-              await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${selectedTargetUserId}>!`, flags: 64 });
-
-              const fresh = getPetPanelData(guildId, selectedTargetUserId);
-              await replyMsg.edit(fresh).catch(() => { });
-            } catch (err) {
-              await sub.reply({ content: `❌ Gagal memproses pemberian pet: ${err.message}`, flags: 64 }).catch(() => { });
-            }
-          }
+          // Transition to give_custom_pet sub-menu
+          petPanelSubMenu = 'give_custom_pet';
+          petGiveSpecies = null;
+          petGiveTrait = null;
+          petGiveStar = null;
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await iPet.update(fresh);
         }
         else if (action === 'action_reset_pet') {
           const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
