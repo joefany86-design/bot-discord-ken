@@ -3635,14 +3635,11 @@ module.exports = {
         `\`\`\`\n` +
         headerBox +
         `\`\`\`\n` +
-        `🚨 **Tindakan Regulasi ${isLaw ? 'Hukum/Hukuman' : 'Ekonomi'} Global baru saja dipicu oleh Administrator!**\n\n` +
-        `┊ **Tindakan:** ${actionName}\n` +
-        `┊ **Deskripsi:** ${actionDescription}`
+        `📊 **Kebijakan ${isLaw ? 'Hukum & Ketertiban' : 'Keuangan & Ekonomi'} baru saja diberlakukan secara menyeluruh:**\n\n` +
+        `⚙️ **Kategori:** ${actionName}\n` +
+        `📝 **Keterangan:** ${actionDescription}`
       )
-      .setAuthor({
-        name: adminUser.username,
-        iconURL: adminUser.displayAvatarURL({ dynamic: true })
-      })
+      .setThumbnail(adminUser.client?.user?.displayAvatarURL({ dynamic: true }) || null)
       .setTimestamp()
       .setFooter({ text: isLaw ? 'Sistem Hukum & Lapas Kosan 1A • Sentinel Law' : 'Sistem Regulasi Ekonomi Kosan 1A • Sentinel Finance' });
 
