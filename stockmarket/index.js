@@ -7956,17 +7956,18 @@ async function handleEconomyCommands(message, client) {
         } else {
           if (res.isSultanPunishment) {
             const zapEmbed = new EmbedBuilder()
-              .setColor(0xE74C3C) // Red
-              .setTitle('⚡ KUALAT! MERAMPOK SULTAN! ⚡')
+              .setColor(0xD4AF37) // Imperial Gold
+              .setTitle('👑 HUKUMAN DEKRET KERAJAAN 👑')
               .setThumbnail('https://cdn-icons-png.flaticon.com/512/3602/3602145.png')
               .setDescription(
-                `⚠️ **Tindakan Lancang Dideteksi!**\n\n` +
-                `Anda secara lancang mencoba merampok **Sultan** (<@${targetUser.id}>) yang dilindungi oleh **OWNER PROTECTION**!\n` +
-                `Kekuatan langit murka dan langsung menyambar Anda dengan petir kerajaan! ⚡💨\n\n` +
-                `💸 **Denda Kerajaan**: \`Rp ${res.fine.toLocaleString('id-ID')}\` (Disita langsung oleh kas negara)\n` +
-                `🔒 **Hukuman**: Dijebloskan ke **Penjara Kerajaan selama ${res.jailDurationMinutes} menit**!`
+                `⚠️ **Tindakan Ilegal Dideteksi!**\n\n` +
+                `Anda mencoba merampok **Sultan** (<@${targetUser.id}>) yang dilindungi oleh **Kekebalan Diplomatis Kerajaan**.\n` +
+                `Sistem pertahanan otomatis langsung melumpuhkan Anda seketika! ⚡💨\n\n` +
+                `💸 **Denda Penyitaan:** \`Rp ${res.fine.toLocaleString('id-ID')}\` (Disita oleh Kas Negara)\n` +
+                `🔒 **Masa Tahanan:** Dijebloskan ke **Sel Khusus Kerajaan selama ${res.jailDurationMinutes} menit**!`
               )
-              .setTimestamp();
+              .setTimestamp()
+              .setFooter({ text: 'Sistem Keamanan Kerajaan • Sentinel Secure' });
             
             await message.reply({ embeds: [zapEmbed] });
             return true;
