@@ -24,8 +24,9 @@ jobs:
             # 1. Masuk ke folder bot di VPS
             cd /root/bot-discord-2026
 
-            # 2. Ambil kod terkini dari GitHub
-            git pull origin main
+            # 2. Ambil kod terkini dari GitHub (force reset untuk hindari konflik)
+            git fetch origin main
+            git reset --hard origin/main
 
             # 3. Pasang library baru jika ada (secara bersih)
             npm install --production
