@@ -1028,7 +1028,11 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       new StringSelectMenuOptionBuilder()
         .setLabel('💸 Bansos Massal (Kekayaan Terbatas)')
         .setDescription('Bagi koin kepada seluruh member dengan total kekayaan di bawah limit tertentu')
-        .setValue('global_bansos_wealth_limit')
+        .setValue('global_bansos_wealth_limit'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔴 Sita Aset Warga Inaktif (Never Daily)')
+        .setDescription('Menyita koin dompet, saldo bank, dan seluruh item warga yang tidak pernah klaim daily')
+        .setValue('global_reclaim_inactive_assets')
     );
 
     const globalRow = new ActionRowBuilder().addComponents(globalSelect);
@@ -1404,6 +1408,122 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
                 { name: 'Nominal Bansos per Orang', value: `Rp ${bansosAmount.toLocaleString('id-ID')}`, inline: true },
                 { name: 'Jumlah Penerima', value: `${receiverCount} member`, inline: true },
                 { name: 'Total Dana Terdistribusi', value: `Rp ${totalDistributed.toLocaleString('id-ID')}`, inline: true }
+              ]
+            );
+
+            const fresh = getBankPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => {});
+          }
+        }
+        else if (action === 'global_reclaim_inactive_assets') {
+          const preview = database.get(`
+            SELECT 
+                COUNT(w.user_id) as total_users,
+                SUM(w.balance) as total_wallet_coins,
+                SUM(COALESCE(bs.balance, 0)) as total_bank_coins,
+                (
+                    SELECT COALESCE(SUM(ui.quantity), 0) 
+                    FROM user_inventory ui 
+                    WHERE ui.guild_id = w.guild_id AND ui.user_id IN (
+                        SELECT user_id FROM wallets WHERE guild_id = w.guild_id AND (last_active_date IS NULL OR last_active_date = '')
+                    )
+                ) as total_user_items,
+                (
+                    SELECT COALESCE(SUM(pi.quantity), 0) 
+                    FROM pet_inventory pi 
+                    WHERE pi.guild_id = w.guild_id AND pi.user_id IN (
+                        SELECT user_id FROM wallets WHERE guild_id = w.guild_id AND (last_active_date IS NULL OR last_active_date = '')
+                    )
+                ) as total_pet_items
+            FROM wallets w
+            LEFT JOIN bank_savings bs ON w.user_id = bs.user_id AND w.guild_id = bs.guild_id
+            WHERE w.guild_id = ? AND (w.last_active_date IS NULL OR w.last_active_date = '')
+          `, [guildId]);
+
+          const totalUsers = preview ? (preview.total_users || 0) : 0;
+          const totalWallet = preview ? (preview.total_wallet_coins || 0) : 0;
+          const totalBank = preview ? (preview.total_bank_coins || 0) : 0;
+          const totalUserItems = preview ? (preview.total_user_items || 0) : 0;
+          const totalPetItems = preview ? (preview.total_pet_items || 0) : 0;
+
+          if (totalUsers === 0) {
+            return iBank.reply({ content: 'ℹ️ Tidak ditemukan warga inaktif (yang belum pernah daily) di server ini.', flags: 64 });
+          }
+
+          const description = `**Penyitaan Aset Warga Inaktif (Never Daily)** secara massal.\n\n` +
+            `• Warga Terdampak: **${totalUsers.toLocaleString('id-ID')} akun**\n` +
+            `• Sita Koin Dompet: **Rp ${totalWallet.toLocaleString('id-ID')}**\n` +
+            `• Sita Koin Tabungan Bank: **Rp ${totalBank.toLocaleString('id-ID')}**\n` +
+            `• Hapus Item Inventaris Warga: **${totalUserItems.toLocaleString('id-ID')} item**\n` +
+            `• Hapus Item Inventaris Pet: **${totalPetItems.toLocaleString('id-ID')} item**\n\n` +
+            `⚠️ *Tindakan ini bersifat permanen dan tidak dapat dibatalkan!*`;
+
+          const confirmed = await askConfirmation(iBank, author.id, description);
+          if (!confirmed) return;
+
+          let success = false;
+          try {
+            database.transaction(() => {
+              // 1. Hapus user_inventory
+              database.prepare(`
+                DELETE FROM user_inventory 
+                WHERE guild_id = ? AND user_id IN (
+                  SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
+                )
+              `).run(guildId, guildId);
+
+              // 2. Hapus pet_inventory
+              database.prepare(`
+                DELETE FROM pet_inventory 
+                WHERE guild_id = ? AND user_id IN (
+                  SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
+                )
+              `).run(guildId, guildId);
+
+              // 3. Reset bank_savings
+              database.prepare(`
+                UPDATE bank_savings 
+                SET balance = 0 
+                WHERE guild_id = ? AND user_id IN (
+                  SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
+                )
+              `).run(guildId, guildId);
+
+              // 4. Reset wallets balance & total_earned
+              database.prepare(`
+                UPDATE wallets 
+                SET balance = 0, total_earned = 0 
+                WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
+              `).run(guildId);
+            })();
+            success = true;
+          } catch (txErr) {
+            console.error('Failed to execute reclaim transaction:', txErr);
+            await iBank.followUp({ content: `❌ Gagal mengeksekusi penyitaan aset di database: ${txErr.message}`, flags: 64 }).catch(() => {});
+          }
+
+          if (success) {
+            await iBank.followUp({
+              content: `🔴 **PENYITAAN ASET WARGA INAKTIF SELESAI!**\n\n` +
+                       `• Total Akun Diproses  : **${totalUsers} warga**\n` +
+                       `• Saldo Dompet Disita : **Rp ${totalWallet.toLocaleString('id-ID')}**\n` +
+                       `• Saldo Bank Disita   : **Rp ${totalBank.toLocaleString('id-ID')}**\n` +
+                       `• Item Warga Dihapus  : **${totalUserItems.toLocaleString('id-ID')} pcs**\n` +
+                       `• Item Pet Dihapus    : **${totalPetItems.toLocaleString('id-ID')} pcs**`,
+              flags: 64
+            });
+
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🔴 Penyitaan Aset Warga Inaktif',
+              '🚨 Kas Negara dipulihkan! Admin telah menyita seluruh koin (dompet & bank) serta menghapus inventaris item dari warga yang terbukti tidak pernah aktif berpartisipasi dalam klaim daily.',
+              '#FF3366',
+              [
+                { name: 'Total Warga Terdampak', value: `${totalUsers} akun`, inline: true },
+                { name: 'Total Koin Disita', value: `Rp ${(totalWallet + totalBank).toLocaleString('id-ID')}`, inline: true },
+                { name: 'Total Item Dihapus', value: `${(totalUserItems + totalPetItems).toLocaleString('id-ID')} unit`, inline: true }
               ]
             );
 
