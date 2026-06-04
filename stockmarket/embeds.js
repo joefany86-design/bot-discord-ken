@@ -2959,26 +2959,34 @@ module.exports = {
     const petLvl = petObj ? petObj.level : 1;
     
     return new EmbedBuilder()
-      .setColor('#FFB300') // Vibrant Yellow/Gold
-      .setTitle(`⚔️ EXPEDITION BATTLE: GILIRAN SERANG! ⚔️`)
+      .setColor('#FFD600') // Electric Gold
+      .setTitle('⚔️ EXPEDITION BATTLE: GILIRAN SERANG! ⚔️')
       .setDescription(
-        `\`\`\`\n` +
-        `┌────────────────────────────────────────┐\n` +
-        `│       ⚡ FASE COMBAT ACTIVE QTE ⚡      │\n` +
-        `│       Langkah ${stepNumber} dari ${totalSteps} Giliran Kru       │\n` +
-        `└────────────────────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `👾 **BOS PENJAGA**: **${bossName}**\n\n` +
-        `Bos bersiap melepaskan serangan balik mematikan! Formasi tim pet membutuhkan tindakan cepat!\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `🎯 **GILIRAN PET**: **${petName}** (Lv. ${petLvl} ${petType})\n` +
-        `👤 **PEMILIK PET**: <@${targetUserId}>\n` +
-        `⏳ **BATAS REAKSI**: <t:${endTimeUnix}:R>\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `*⚠️ PERINGATAN KERAS: Hanya <@${targetUserId}> yang boleh mengeklik tombol skill pet di bawah! Kru lain yang salah klik/salah giliran akan mengacaukan sinergi tim, memicu serangan balik Bos secara instan!*`
+        `### ⚡ FASE COMBAT ACTIVE QTE ⚡\n` +
+        `*Langkah **${stepNumber}** dari **${totalSteps}** Giliran Kru*\n\n` +
+        `👾 **BOS PENJAGA:** **${bossName}**\n` +
+        `*Bos bersiap melepaskan serangan balik mematikan! Lakukan tindakan cepat!*\n\n` +
+        `─── ⋆⋅☆⋅⋆ ───`
+      )
+      .addFields(
+        {
+          name: '🎯 Target Giliran Pet',
+          value: `🦖 **${petName}** (Lv. ${petLvl} ${petType})\n👤 Owner: <@${targetUserId}>`,
+          inline: false
+        },
+        {
+          name: '⏳ Sisa Waktu Reaksi',
+          value: `<t:${endTimeUnix}:R> *(Batas waktu 6 detik)*`,
+          inline: false
+        },
+        {
+          name: '⚠️ Peringatan Keras',
+          value: `*Hanya <@${targetUserId}> yang boleh mengeklik tombol skill pet di bawah! Kru lain yang menekan tombol di luar giliran akan menggagalkan seluruh ekspedisi secara instan!*`,
+          inline: false
+        }
       )
       .setImage(mapId ? `attachment://map${mapId}.png` : null)
-      .setFooter({ text: 'Sentinel Pet Co-op RPG • Jaga fokus, pimpin pet Anda!' })
+      .setFooter({ text: 'Kosan 1A RPG • Jaga fokus, pimpin pet Anda!' })
       .setTimestamp();
   },
 
@@ -2988,9 +2996,9 @@ module.exports = {
     let causeText = '';
     
     if (reasonType === 'Timeout') {
-      causeText = `🔴 **Penyebab Kegagalan**: Kru <@${failedUserId}> terlambat memicu skill pet miliknya melewati batas 6 detik! Pet terdiam membingungkan sehingga Bos menghantam formasi tim!`;
+      causeText = `🔴 **Kru <@${failedUserId}> lambat bereaksi!** Melewati batas waktu reaksi 6 detik. Pet terdiam membingungkan sehingga Bos menghantam pertahanan tim!`;
     } else {
-      causeText = `🚨 **Penyebab Kegagalan**: Kru <@${failedUserId}> panik dan memicu skill pet miliknya di luar giliran! Tabrakan energi skill pet menggagalkan formasi pertempuran!`;
+      causeText = `🚨 **Kru <@${failedUserId}> menekan tombol di luar giliran!** Gelombang energi pet yang bertabrakan mengacaukan sinergi pertempuran tim!`;
     }
 
     let statusLines = '';
@@ -3003,24 +3011,32 @@ module.exports = {
     }
 
     return new EmbedBuilder()
-      .setColor('#D32F2F') // Crimson Dark Red
-      .setTitle('💀 EXPEDITION FAIL: TIM TERPENTAL KELUAR! 💀')
+      .setColor('#D50000') // Bright Red
+      .setTitle('☠️ EXPEDITION FAIL: TIM TERPENTAL KELUAR! ☠️')
       .setDescription(
-        `\`\`\`\n` +
-        `┌────────────────────────────────────────┐\n` +
-        `│        ☠️ BOS ZONA MENGAMUK ☠️        │\n` +
-        `│      Ekspedisi Gagal / Pet Terluka     │\n` +
-        `└────────────────────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `💥 **Zona Ekspedisi:** ${zoneName}\n` +
-        `👥 **Kru Terlibat:** ${crewList}\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `${causeText}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🩹 **STATUS & KORBAN JIWA TIM PET:**\n` +
-        `${statusLines}`
+        `### 💥 Bos Zona Mengamuk!\n` +
+        `Formasi pertahanan tim pet hancur and terpental keluar dari zona pertarungan!\n\n` +
+        `─── ⋆⋅☆⋅⋆ ───`
+      )
+      .addFields(
+        {
+          name: '🗺️ Zona Ekspedisi',
+          value: `• **Peta:** **${zoneName}**\n• **Kru Terlibat:** ${crewList}`,
+          inline: false
+        },
+        {
+          name: '🔍 Penyebab Kegagalan',
+          value: causeText,
+          inline: false
+        },
+        {
+          name: '🩹 Rekapitulasi Konsekuensi Pet',
+          value: statusLines,
+          inline: false
+        }
       )
       .setImage(mapId ? `attachment://map${mapId}.png` : null)
+      .setFooter({ text: 'Kosan 1A Pet Expedition • Hubungi dokter pet (.pet dokter) jika pet Anda tewas' })
       .setTimestamp();
   },
 

@@ -4351,24 +4351,41 @@ async function handlePetCommand(message, client, args) {
     const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
     const lobbyEmbed = new EmbedBuilder()
-      .setColor(0x3F51B5)
-      .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+      .setColor('#3D5AFE') // Electric Indigo
+      .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
       .setDescription(
-        `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
+        `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
         `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
-        `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n\n` +
+        `👤 **Otak Ekspedisi (Pemimpin):** <@${author.id}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Peluang gagal parah jika pet di bawah level rekomendasi)*\n\n` +
-        `🦖 **Kru Pet Saat Ini:**\n` +
-        `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) - <@${author.id}>\n\n` +
-        `🎯 **Peluang Sukses Tim:** **${calcInit.successRate}%**\n` +
-        `⚡ **Sinergi Elemen Tim:**\n${elementalLogsText}\n\n` +
-        `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
-        `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
-        `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
+      )
+      .addFields(
+        {
+          name: '🦖 Kru Pet Saat Ini',
+          value: `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
+          inline: false
+        },
+        {
+          name: '🎯 Peluang & Sinergi Elemen',
+          value: `• **Peluang Sukses Tim:** **\`${calcInit.successRate}%\`**\n` +
+                 `• **Sinergi Elemen:**\n${elementalLogsText}`,
+          inline: false
+        },
+        {
+          name: '💰 Biaya Ransum',
+          value: `\`Rp 250\` koin`,
+          inline: true
+        },
+        {
+          name: '⏳ Batas Persiapan',
+          value: `<t:${endTimeUnix}:R>`,
+          inline: true
+        }
       )
       .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-      .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+      .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -4400,19 +4417,34 @@ async function handlePetCommand(message, client, args) {
 
         // 🧭 STAGE 1: PEMILIHAN JALUR TIM (Voting / Otak Ekspedisi)
         const stage1Embed = new EmbedBuilder()
-          .setColor(0xFFB300)
-          .setTitle('🧭 STAGE 1: PEMILIHAN JALUR TIM')
+          .setColor('#FF9100') // Vibrant Orange
+          .setTitle('🧭 STAGE 1: PEMILIHAN JALUR TIM 🧭')
           .setDescription(
-            `🗺️ **Peta:** **${selectedMap.name}**\n` +
-            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
-            `Sebagai pemimpin perjalanan, silakan pilih jalur yang akan ditempuh tim pet:\n\n` +
-            `🛣️ **[Jalur Aman]**\n└─ Perjalanan lancar tanpa risiko ekstra. (+0% Peluang Sukses)\n\n` +
-            `🧗 **[Jalur Pintas Terjal]**\n└─ Mendaki tebing terjal. Sukses **+15%**, namun seluruh pet kelelahan (**-15 HP**).\n\n` +
-            `🌲 **[Rawa Beracun]**\n└─ Menyusup melewati rawa berlumpur. Sukses **+25%**, namun pet berisiko **30% terkena bau/terluka** selama 1 jam.\n\n` +
-            `⏳ *Menunggu keputusan dari <@${author.id}>... (15 detik)*`
+            `### Jalur mana yang akan ditempuh tim pet?\n` +
+            `<@${author.id}> selaku **Pemimpin Perjalanan**, silakan pilih jalur di bawah ini:\n\n` +
+            `─── ⋆⋅☆⋅⋆ ───`
+          )
+          .addFields(
+            {
+              name: '🗺️ Informasi Wilayah',
+              value: `• **Peta:** **${selectedMap.name}**\n• **Pemimpin:** <@${author.id}>`,
+              inline: false
+            },
+            {
+              name: '🛣️ Pilihan Jalur',
+              value: 
+                `• **[Jalur Aman]**\n` +
+                `  └─ Perjalanan lancar tanpa risiko ekstra. (**+0%** Peluang Sukses)\n\n` +
+                `• **🧗 [Jalur Pintas Terjal]**\n` +
+                `  └─ Mendaki tebing terjal. Sukses **+15%**, seluruh pet kelelahan (**-15 HP**).\n\n` +
+                `• **🌲 [Rawa Beracun]**\n` +
+                `  └─ Rawa berlumpur. Sukses **+25%**, risiko **30% terkena bau/terluka** (1 jam).`,
+              inline: false
+            }
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          .setFooter({ text: 'Batas pengambilan keputusan: 15 detik' })
+          .setTimestamp();
 
         const stage1Row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('exp_path_safe').setLabel('🛣️ Jalur Aman').setStyle(ButtonStyle.Success),
@@ -4483,16 +4515,18 @@ async function handlePetCommand(message, client, args) {
         });
 
         const pathSelectedEmbed = new EmbedBuilder()
-          .setColor(0xFFB300)
-          .setTitle('🧭 STAGE 1 SELESAI')
+          .setColor('#FF9100') // Vibrant Orange
+          .setTitle('🧭 STAGE 1 SELESAI: JALUR DIPILIH 🧭')
           .setDescription(
-            `🗺️ **Peta:** **${selectedMap.name}**\n` +
-            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
             `📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
-            `*Melanjutkan ke Stage 2 dalam beberapa saat...*`
+            `─── ⋆⋅☆⋅⋆ ───\n\n` +
+            `• **Peta:** **${selectedMap.name}**\n` +
+            `• **Pemimpin:** <@${author.id}>\n\n` +
+            `*Menghubungkan ke Stage 2, harap bersiap... ⏳*`
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          .setFooter({ text: 'Kosan 1A Pet Expedition' })
+          .setTimestamp();
 
         const s1dAtt = getMapAttachment(mapChoice);
         const s1dOpts = { embeds: [pathSelectedEmbed], components: [] };
@@ -4513,18 +4547,34 @@ async function handlePetCommand(message, client, args) {
           const hasLockpick = lockpickRow && lockpickRow.quantity > 0;
 
           const chestEmbed = new EmbedBuilder()
-            .setColor(0x9C27B0)
-            .setTitle('📦 STAGE 2: KEJADIAN ACAK - PETI KUNO TERKUNCI')
+            .setColor('#E040FB') // Vibrant Magenta
+            .setTitle('📦 STAGE 2: KEJADIAN ACAK - PETI KUNO 📦')
             .setDescription(
-              `Di tengah jalan, tim menemukan sebuah peti kuno berdebu dengan gembok besi besar yang kokoh.\n\n` +
-              `Sebagai **Otak Ekspedisi**, <@${author.id}> harus memilih tindakan:\n\n` +
-              `🗝️ **[Gunakan Lockpick]**\n└─ Membuka peti secara aman dengan Lockpick. (Menjamin 1 item langka acak untuk kru).\n\n` +
-              `💥 **[Dobrak Paksa]**\n└─ 40% berhasil membuka peti, 60% memicu ranjau ledakan (**-15 HP** seluruh pet).\n\n` +
-              `🏃 **[Lewati]**\n└─ Tinggalkan peti dan lanjut dengan aman.\n\n` +
-              `⏳ *Menunggu keputusan... (15 detik)*`
+              `### 🧭 Temuan Peti Kuno Terkunci!\n` +
+              `Di tengah petualangan, tim menemukan peti kuno berdebu dengan gembok besi besar yang kokoh.\n\n` +
+              `─── ⋆⋅☆⋅⋆ ───`
+            )
+            .addFields(
+              {
+                name: '🗝️ Opsi Tindakan Pemimpin',
+                value: 
+                  `• **[Gunakan Lockpick]**\n` +
+                  `  └─ Membuka peti secara aman. (Menjamin 1 item langka acak untuk salah satu kru).\n\n` +
+                  `• **💥 [Dobrak Paksa]**\n` +
+                  `  └─ **40%** sukses membuka peti, **60%** memicu ledakan (**-15 HP** seluruh pet).\n\n` +
+                  `• **🏃 [Lewati]**\n` +
+                  `  └─ Tinggalkan peti dan lanjut dengan aman.`,
+                inline: false
+              },
+              {
+                name: '🎒 Inventaris Pemimpin',
+                value: `• **Lockpick:** ${hasLockpick ? '🟢 **Tersedia** *(1x digunakan)*' : '🔴 **Tidak Ada**'}`,
+                inline: false
+              }
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: `Status Lockpick Anda: ${hasLockpick ? 'Ada (1x digunakan)' : 'Tidak Ada'}` });
+            .setFooter({ text: 'Batas waktu pengambilan keputusan: 15 detik' })
+            .setTimestamp();
 
           const chestRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('exp_event_lockpick').setLabel('Gunakan Lockpick').setStyle(ButtonStyle.Primary).setDisabled(!hasLockpick),
@@ -4591,16 +4641,27 @@ async function handlePetCommand(message, client, args) {
         } else {
           // Air Terjun Suci
           const waterfallEmbed = new EmbedBuilder()
-            .setColor(0x00BCD4)
-            .setTitle('💧 STAGE 2: KEJADIAN ACAK - AIR TERJUN SUCI')
+            .setColor('#00E5FF') // Vibrant Cyan
+            .setTitle('💧 STAGE 2: KEJADIAN ACAK - AIR TERJUN SUCI 💧')
             .setDescription(
-              `Tim menemukan mata air suci tersembunyi yang sangat jernih dan menyegarkan.\n\n` +
-              `Sebagai **Otak Ekspedisi**, <@${author.id}> harus memilih tindakan:\n\n` +
-              `💧 **[Minum Bersama]**\n└─ Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.\n\n` +
-              `🏃 **[Lewati]**\n└─ Lanjut perjalanan tanpa istirahat.\n\n` +
-              `⏳ *Menunggu keputusan... (15 detik)*`
+              `### 🧭 Temuan Air Terjun Suci!\n` +
+              `Tim menemukan mata air suci tersembunyi yang sangat jernih, sejuk, dan memancarkan aura magis.\n\n` +
+              `─── ⋆⋅☆⋅⋆ ───`
             )
-            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null);
+            .addFields(
+              {
+                name: '⛲ Opsi Tindakan Pemimpin',
+                value: 
+                  `• **[Minum Bersama]**\n` +
+                  `  └─ Seluruh pet kru memulihkan **+20 HP & +20 Hidrasi**.\n\n` +
+                  `• **🏃 [Lewati]**\n` +
+                  `  └─ Lanjut perjalanan tanpa mengambil istirahat.`,
+                inline: false
+              }
+            )
+            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
+            .setFooter({ text: 'Batas waktu pengambilan keputusan: 15 detik' })
+            .setTimestamp();
 
           const waterfallRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('exp_event_drink').setLabel('Minum Bersama').setStyle(ButtonStyle.Success),
@@ -4654,15 +4715,17 @@ async function handlePetCommand(message, client, args) {
         }
 
         const eventSelectedEmbed = new EmbedBuilder()
-          .setColor(isChest ? 0x9C27B0 : 0x00BCD4)
-          .setTitle('📦 STAGE 2 SELESAI')
+          .setColor(isChest ? '#E040FB' : '#00E5FF')
+          .setTitle('📦 STAGE 2 SELESAI: KEJADIAN AKHIR 📦')
           .setDescription(
-            `👤 **Otak Ekspedisi:** <@${author.id}>\n\n` +
             `📢 **Keputusan Kejadian:** Tim memilih **${eventText}**\n\n` +
-            `*Melanjutkan ke Stage 3 (Pertempuran Bos Akhir) dalam beberapa saat...*`
+            `─── ⋆⋅☆⋅⋆ ───\n\n` +
+            `• **Pemimpin:** <@${author.id}>\n\n` +
+            `*Gerbang Bos Akhir terbuka! Menghubungkan ke Stage 3... ⚔️*`
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Rupiah Server Pet Expedition RPG' });
+          .setFooter({ text: 'Kosan 1A Pet Expedition' })
+          .setTimestamp();
 
         const s2dAtt = getMapAttachment(mapChoice);
         const s2dOpts = { embeds: [eventSelectedEmbed], components: [] };
@@ -4790,52 +4853,60 @@ async function handlePetCommand(message, client, args) {
           reportDesc += `> ${log}\n`;
         });
 
+        let rewardText = '';
         if (res.success) {
-          reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎉 **🎁 JARAHAN & PENGALAMAN TIM:**\n`;
           res.rewards.forEach(r => {
-            reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `├─ 💰 Koin: **+Rp ${r.koin}**\n` +
-              `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `├─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
-              `└─ 🎒 Status: ${r.statusText || '*Sehat & Bahagia* ☀️'}\n\n`;
+            rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
+              `  ├─ 💰 Koin: **+Rp ${r.koin.toLocaleString('id-ID')}**\n` +
+              `  ├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `  ├─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
+              `  └─ 📊 Status: ${r.statusText || '☀️ Sehat & Bahagia'}\n\n`;
           });
         } else {
-          reportDesc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n💔 **😢 REKAP PENGALAMAN (MESKI GAGAL):**\n`;
           res.rewards.forEach(r => {
-            reportDesc += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `├─ 💰 Koin: **+Rp 0** *(Zonk!)*\n` +
-              `├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `└─ 🎒 Status: ${r.statusText || '*Menderita luka & stress* 🩸'}\n\n`;
+            rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
+              `  ├─ 💰 Koin: **+Rp 0**\n` +
+              `  ├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `  └─ 📊 Status: ${r.statusText || '🩸 Menderita luka & stress'}\n\n`;
           });
         }
 
         const fields = [
-          { name: '🔥 Kombinasi Level Tim', value: `✨ **Lv. ${res.teamPower}**`, inline: true },
-          { name: '🎯 Peluang Sukses', value: `✨ **${res.successRate}%**`, inline: true }
+          {
+            name: res.success ? '🎉 JARAHAN & PENGALAMAN TIM' : '💔 REKAP PENGALAMAN (MESKI GAGAL)',
+            value: rewardText || '*Tidak ada kru*',
+            inline: false
+          },
+          { name: '🔥 Kombinasi Level Tim', value: `\`Lv. ${res.teamPower}\``, inline: true },
+          { name: '🎯 Peluang Sukses', value: `\`${res.successRate}%\``, inline: true }
         ];
 
         if (res.bestPet && res.worstPet) {
           fields.push(
             {
               name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑',
-              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) - <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`,
+              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) · <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`,
               inline: false
             },
             {
               name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌',
-              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) - <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`,
+              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) · <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`,
               inline: false
             }
           );
         }
 
         const resultEmbed = new EmbedBuilder()
-          .setColor(res.success ? 0x00E676 : 0xFF3D00)
+          .setColor(res.success ? '#00E676' : '#D50000')
           .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
-          .setDescription(reportDesc)
+          .setDescription(
+            `### 🧭 Chronology Petualangan\n` +
+            reportDesc + `\n` +
+            `─── ⋆⋅☆⋅⋆ ───`
+          )
           .addFields(fields)
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'kosan 1A' })
+          .setFooter({ text: 'Kosan 1A RPG' })
           .setTimestamp();
 
         const resAtt = getMapAttachment(mapChoice);
@@ -4905,7 +4976,7 @@ async function handlePetCommand(message, client, args) {
             const pName = pObj ? pObj.pet_name : 'Unknown Pet';
             const pLvl = pObj ? pObj.level : 1;
             const pType = pObj ? pObj.pet_type : 'Normal';
-            petListText += `${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) - <@${pId}>\n`;
+            petListText += `• ${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) · <@${pId}>\n`;
           });
 
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
@@ -4913,22 +4984,41 @@ async function handlePetCommand(message, client, args) {
 
           const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
           const updatedEmbed = new EmbedBuilder()
-            .setColor(0x3F51B5)
-            .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
+            .setColor('#3D5AFE') // Electric Indigo
+            .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
             .setDescription(
-              `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
-              `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
+              `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
+              `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
+              `─── ⋆⋅☆⋅⋆ ───\n\n` +
+              `👤 **Otak Ekspedisi (Pemimpin):** <@${author.id}>\n` +
               `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-              `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
-              `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
-              `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
-              `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
-              `💰 **Biaya Ransum:** Rp 250 koin\n` +
-              `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
-              `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
+              `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
+            )
+            .addFields(
+              {
+                name: '🦖 Kru Pet Saat Ini',
+                value: petListText || '*Belum ada peserta*',
+                inline: false
+              },
+              {
+                name: '🎯 Peluang & Sinergi Elemen',
+                value: `• **Peluang Sukses Tim:** **\`${calc.successRate}%\`**\n` +
+                       `• **Sinergi Elemen:**\n${elementalLogsTextVal}`,
+                inline: false
+              },
+              {
+                name: '💰 Biaya Ransum',
+                value: `\`Rp 250\` koin`,
+                inline: true
+              },
+              {
+                name: '⏳ Batas Persiapan',
+                value: `<t:${endTimeUnix}:R>`,
+                inline: true
+              }
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
+            .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
             .setTimestamp();
 
           const joinAtt = getMapAttachment(mapChoice);
