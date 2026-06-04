@@ -504,11 +504,11 @@ function getFunnyArrestReason(userId) {
 
 /**
  * Memulai pengkinian Papan Peringkat Realtime (Rich Leaderboard, Pet Leaderboard, & Jail Leaderboard)
- * secara berkala setiap 5 detik di channel masing-masing.
+ * secara berkala setiap 60 detik di channel masing-masing.
  */
 let leaderboardInterval = null; // Guard: mencegah interval bertumpuk
 function startRealtimeLeaderboard(client) {
-  console.log('🏆 Memulai Papan Peringkat Realtime (5s)...');
+  console.log('🏆 Memulai Papan Peringkat Realtime (60s)...');
 
   // Guard: bersihkan interval sebelumnya jika ada (mencegah duplikasi saat reconnect)
   if (leaderboardInterval) {
@@ -704,7 +704,7 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime thief leaderboard:', err);
     }
-  }, 5000);
+  }, 60000);
 }
 
 /**
