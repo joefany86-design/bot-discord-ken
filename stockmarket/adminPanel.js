@@ -1465,36 +1465,36 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
           try {
             database.transaction(() => {
               // 1. Hapus user_inventory
-              database.prepare(`
+              database.run(`
                 DELETE FROM user_inventory 
                 WHERE guild_id = ? AND user_id IN (
                   SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
                 )
-              `).run(guildId, guildId);
+              `, [guildId, guildId]);
 
               // 2. Hapus pet_inventory
-              database.prepare(`
+              database.run(`
                 DELETE FROM pet_inventory 
                 WHERE guild_id = ? AND user_id IN (
                   SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
                 )
-              `).run(guildId, guildId);
+              `, [guildId, guildId]);
 
               // 3. Reset bank_savings
-              database.prepare(`
+              database.run(`
                 UPDATE bank_savings 
                 SET balance = 0 
                 WHERE guild_id = ? AND user_id IN (
                   SELECT user_id FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
                 )
-              `).run(guildId, guildId);
+              `, [guildId, guildId]);
 
               // 4. Reset wallets balance & total_earned
-              database.prepare(`
+              database.run(`
                 UPDATE wallets 
                 SET balance = 0, total_earned = 0 
                 WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')
-              `).run(guildId);
+              `, [guildId]);
             })();
             success = true;
           } catch (txErr) {
