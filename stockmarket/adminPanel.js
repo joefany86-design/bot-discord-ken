@@ -4744,7 +4744,7 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
       // Pastikan wallet terbuat agar data tidak kosong
       economy.getWallet(targetUserId, gId);
 
-      const wallet = database.get('SELECT balance, jail_until, jail_type, wanted_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+      const wallet = database.get('SELECT balance, jail_until, jail_type, wanted_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0, jail_until: 0, jail_type: '', wanted_until: 0 };
       const savings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]) || { balance: 0 };
       const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
 
