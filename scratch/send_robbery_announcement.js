@@ -26,10 +26,6 @@ const ANNOUNCEMENT_DESCRIPTION = "Halo @everyone! 👋✨\n\n" +
   "*   🛑 **Batas Target Personal (24 Jam)**: Seorang pelaku perampokan maksimal hanya dapat mencoba merampok **target yang sama sebanyak 10 kali** dalam kurun waktu 24 jam.\n" +
   "*   🔒 **Penolakan Otomatis**: Jika pelaku mencoba merampok korban yang sama untuk ke-11 kalinya, perintah `.rob` akan langsung ditolak.\n" +
   "*   🔓 **Batas Target Global Dihapus**: Batas maksimal target global (maksimal dirampok oleh siapapun) telah **dihapus sepenuhnya** agar target bebas dirampok oleh warga lain secara bergantian.\n\n" +
-  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-  "🎨 **3. DESAIN VISUAL NOTIFIKASI PREMIUM**\n" +
-  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-  "*   Seluruh embed kegagalan perampokan Sultan, laporan regulasi ekonomi global, dan penalti bank telah didesain ulang menggunakan warna premium (*Imperial Gold*) dan struktur emoji yang rapi agar lebih eksklusif.\n\n" +
   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
   "💡 *Saran Finansial*: Tetap waspada, tingkatkan keamanan kamar kosan Anda (seperti membeli upgrade Gembok, Alarm, dan CCTV), dan simpan kelebihan koin Anda di Bank agar aman dari incaran perampok!\n\n" +
   "Selamat bermain dan mari ciptakan simulasi ekonomi yang sportif! 🎲 Kosan 1A Finance ✨";
