@@ -39,19 +39,18 @@ client.once('ready', async () => {
       .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
       .setDescription(
         `Klik tombol di bawah ini untuk membuka panel secara **Pribadi/Private** (Hanya Anda yang dapat melihatnya):\n\n` +
-        `🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
-        `📈 **Bursa Saham** — Investasi saham channel server.\n` +
-        `🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
-        `🕵️‍♂️ **Black Market** — Beli perlengkapan aksi kriminal (rob).\n` +
-        `🎒 **Inventory Saya** — Lihat peralatan & barang mewah.\n\n` +
-        `🐾 **Kandang Pet** — Adopsi, rawat, & main dengan pet Anda.\n` +
-        `🛍️ **Toko Pet** — Beli pakan, obat, soda, sabun, & jimat pet.\n` +
-        `🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
-        `🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
-        `📋 **Misi Harian Kosan 1A** — Selesaikan misi harian untuk koin & barang.\n\n` +
-        `🎰 **Gacha Pet** — Dapatkan pet acak (Common s/d Mythic).\n` +
-        `✨ **Upgrade Bintang** — Gabungkan pet duplikat untuk memperkuat status.\n` +
-        `🎟️ **Lotre Mingguan** — Beli tiket lotre mingguan berhadiah pool besar.`
+        `💼 **EKONOMI & FINANSIAL**\n` +
+        `• 🛍️ **Toko Role** — Beli kasta role prestise & gacha.\n` +
+        `• 📈 **Bursa Saham** — Investasi saham channel server.\n` +
+        `• 🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
+        `• 🕵️‍♂️ **Black Market** — Beli peralatan aksi kriminal (rob).\n` +
+        `• 🎒 **Profil & Aset** — Lihat peralatan & barang mewah.\n\n` +
+        `🐾 **DUNIA PET & GAYA HIDUP**\n` +
+        `• 🐾 **Kandang Pet** — Pusat perawatan, kerja, buru, & kelola pet.\n` +
+        `• 🛌 **Sewa Kosan** — Sewa kamar kos & upgrade fasilitas.\n` +
+        `• 🌱 **Cozy Garden** — Menanam bunga & berkebun cozy.\n` +
+        `• 📋 **Misi Harian** — Selesaikan misi harian untuk koin & barang.\n` +
+        `• 🎟️ **Lotre Mingguan** — Beli tiket lotre mingguan berhadiah pool besar.`
       )
       .setImage('attachment://kosan_dashboard_banner.png')
       .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
@@ -62,24 +61,18 @@ client.once('ready', async () => {
       new ButtonBuilder().setCustomId('eco_btn_open_market_private_perm').setLabel('📈 Bursa Saham').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('eco_btn_open_bank_private_perm').setLabel('🏦 Bank Sentral').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('eco_btn_open_bm_private_perm').setLabel('🕵️‍♂️ Black Market').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('eco_btn_open_inventory_private_perm').setLabel('🎒 Inventory Saya').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('eco_btn_open_inventory_private_perm').setLabel('🎒 Profil & Aset').setStyle(ButtonStyle.Primary)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('pet_btn_open_shop_private_perm').setLabel('🛍️ Toko Pet').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('pet_btn_open_pet_private_perm').setLabel('🐾 Kandang Pet').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('eco_btn_open_kos_private_perm').setLabel('🛌 Sewa Kosan').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('eco_btn_open_garden_private_perm').setLabel('🌱 Cozy Garden').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian Kosan 1A').setStyle(ButtonStyle.Primary)
-    );
-
-    const row3 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('pet_btn_gacha_hub').setLabel('🎰 Gacha Pet').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('pet_btn_upgrade_hub').setLabel('✨ Upgrade Bintang Pet').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('pet_btn_open_quests_private_perm').setLabel('📋 Misi Harian').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
     );
 
-    await channel.send({ embeds: [embed], components: [row1, row2, row3], files: [attachment] });
+    await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
     
     console.log('✅ Portal baru yang super premium berhasil dikirim!');
     process.exit(0);
