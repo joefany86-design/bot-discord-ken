@@ -882,6 +882,37 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // 9. Cron Job: Pengingat Publik Jatuh Tempo Pinjaman (Setiap 30 Menit)
+  cron.schedule('*/30 * * * *', async () => {
+    console.log('⏰ [Scheduler] Memeriksa pinjaman jatuh tempo (overdue) untuk dikirimkan pengingat...');
+    const database = require('./database');
+    const embeds = require('./embeds');
+
+    client.guilds.cache.forEach(async guild => {
+      let targetChannel = null;
+      const targetChanId = config.BANK_REPORT_CHANNEL_ID || config.REPORT_CHANNEL_ID;
+      if (targetChanId) {
+        targetChannel = guild.channels.cache.get(targetChanId) || await guild.channels.fetch(targetChanId).catch(() => null);
+      }
+      if (!targetChannel) return;
+
+      try {
+        const overdueLoans = database.all("SELECT * FROM bank_loans WHERE status = 'OVERDUE' AND guild_id = ?", [guild.id]);
+        for (const loan of overdueLoans) {
+          const userObj = client.users.cache.get(loan.user_id) || await client.users.fetch(loan.user_id).catch(() => null);
+          if (userObj) {
+            const noticeEmbed = embeds.bankOverdueNoticeEmbed(userObj, loan);
+            await targetChannel.send({ content: `<@${loan.user_id}>`, embeds: [noticeEmbed] }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.error(`❌ Gagal mengirim pengingat jatuh tempo di guild ${guild.name}:`, err.message);
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 
