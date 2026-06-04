@@ -813,7 +813,37 @@ function initSchema() {
     console.log("⚡ [Database] Kolom 'gift_item_qty' berhasil diverifikasi/ditambahkan di tabel ebyus_settings.");
   } catch (e) {}
 
-  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden & Ebyus Settings berhasil diinisialisasi.');
+  // 51. Migrasi dinamis: Tambahkan kolom Gym Stat Pet ke user_pets
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN stat_str INTEGER DEFAULT 0");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN stat_vit INTEGER DEFAULT 0");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN stat_def INTEGER DEFAULT 0");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN stat_dex INTEGER DEFAULT 0");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE user_pets ADD COLUMN unused_tp INTEGER DEFAULT 0");
+    console.log("⚡ [Database] Kolom Gym Stat Pet berhasil diverifikasi/ditambahkan di tabel user_pets.");
+  } catch (e) {}
+
+  // 52. Migrasi dinamis: Hitung retroaktif unused_tp untuk pet yang sudah ada
+  try {
+    db.exec(`
+      UPDATE user_pets 
+      SET unused_tp = (level - 1) * 3 
+      WHERE level > 1 AND unused_tp = 0 AND stat_str = 0 AND stat_vit = 0 AND stat_def = 0 AND stat_dex = 0
+    `);
+    console.log("⚡ [Database] Migrasi retroaktif TP selesai untuk pet level tinggi.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal menjalankan migrasi retroaktif TP:", e.message);
+  }
+
+  console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden, Ebyus Settings & Gym Stats berhasil diinisialisasi.');
 }
 
 // Panggil fungsi inisialisasi skema saat startup

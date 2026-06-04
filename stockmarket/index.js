@@ -2103,6 +2103,12 @@ function initStockMarket(client) {
                   .setDescription('Tingkatkan bintang pet aktif Anda')
                   .setValue('pet_manage_upgrade')
               );
+              manageOptions.push(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('🏋️ Gym & Latih Stat')
+                  .setDescription('Kembangkan STR, VIT, DEF, & DEX pet Anda')
+                  .setValue('pet_manage_gym')
+              );
             }
 
             manageOptions.push(
@@ -2363,6 +2369,9 @@ function initStockMarket(client) {
                 } catch (err) {
                   await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
                 }
+              } else if (selectedValue === 'pet_manage_gym') {
+                await iPet.deferReply({ flags: 64 });
+                await handlePetGymPanel(iPet, client, true);
               }
             } else if (iPet.customId === 'pet_btn_refresh') {
               await iPet.update(getDashboardPanelPrivate(user.id));
@@ -4202,6 +4211,11 @@ async function handlePetCommand(message, client, args) {
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)] });
     }
+  }
+
+  // ── SUB-PERINTAH: GYM / LATIH STAT ──
+  if (subCommand === 'gym' || subCommand === 'latih-stat' || subCommand === 'latih') {
+    return handlePetGymPanel(message, client);
   }
 
   // ── SUB-PERINTAH: SHOP ──
@@ -6911,6 +6925,205 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// HANDLER: PANEL GYM / PUSAT KEBUGARAN & STATS PET (.pet gym)
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePetGymPanel(context, client, isInteraction = false) {
+  const guildId = context.guildId;
+  const author = isInteraction ? context.user : context.author;
+
+  const userPet = pet.getPet(author.id, guildId);
+  if (!userPet) {
+    const errorEmb = embeds.errorEmbed('Gym Gagal!', 'Anda tidak memiliki hewan peliharaan aktif! Ketik `.pet` untuk adopsi.');
+    if (isInteraction) return context.reply({ embeds: [errorEmb], flags: 64 });
+    return context.reply({ embeds: [errorEmb] });
+  }
+  if (userPet.status === 'DEAD') {
+    const errorEmb = embeds.errorEmbed('Gym Gagal!', 'Pet Anda telah mati! Harap hidupkan kembali lewat Dokter terlebih dahulu.');
+    if (isInteraction) return context.reply({ embeds: [errorEmb], flags: 64 });
+    return context.reply({ embeds: [errorEmb] });
+  }
+  if (userPet.status === 'EGG') {
+    const errorEmb = embeds.errorEmbed('Gym Gagal!', 'Pet Anda masih berupa telur! Mengerami telur dengan ketik `.pet` / `.pet hatch`!');
+    if (isInteraction) return context.reply({ embeds: [errorEmb], flags: 64 });
+    return context.reply({ embeds: [errorEmb] });
+  }
+
+  const getGymPanelData = (userId, gId) => {
+    const pData = pet.getPet(userId, gId);
+    if (!pData) return { embeds: [embeds.errorEmbed('Error', 'Pet tidak ditemukan!')] };
+
+    const star = pet.renderStars(pData.star_level || 1);
+    const unusedTp = pData.unused_tp || 0;
+    const starBonus = pet.getStarBonuses(pData.star_level || 1);
+    const maxHP = pet.getMaxHP(pData);
+    
+    // ATK Damage
+    const speciesBaseAtk = pet.GACHA_SPECIES[pData.pet_type]?.baseAtk || 10;
+    const totalAtk = speciesBaseAtk + pData.level * 5 + (pData.stat_str || 0) * 2;
+    
+    // DEF (Damage Reduction)
+    const speciesBaseDef = pet.GACHA_SPECIES[pData.pet_type]?.baseDef || 0;
+    const defGym = Math.min(50, (pData.stat_def || 0) * 0.5);
+    const totalDefPct = (speciesBaseDef) + (starBonus.defBonusPct * 100) + defGym;
+    
+    // DEX (Crit Rate & Expedition Success)
+    const critRate = Math.min(35, (pData.stat_dex || 0) * 0.5);
+    const expSuccess = Math.min(5, (pData.stat_dex || 0) * 0.1);
+
+    const wallet = economy.getWallet(userId, gId);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x9C27B0)
+      .setTitle(`🏋️ PUSAT KEBUGARAN & STATS PET: ${pData.pet_name} 🏋️`)
+      .setDescription(
+        `🐾 **Spesies:** ${pData.pet_type} (Lv. ${pData.level}) | ${star}\n` +
+        `✨ **Poin Latihan Tersedia (TP):** 🔴 **${unusedTp} Poin**\n\n` +
+        `📊 **ATRIBUT STAT GYM SAAT INI:**\n` +
+        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK)\n` +
+        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP)\n` +
+        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi Damage)\n` +
+        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | +${expSuccess.toFixed(1)}% Sukses Eksp)\n\n` +
+        `🔥 **TOTAL KEKUATAN COMBAT & UTILITY:**\n` +
+        `• ❤️ **Max HP:** \`${maxHP} HP\`\n` +
+        `• ⚔️ **ATK Damage:** \`${totalAtk} ATK\`\n` +
+        `• 🛡️ **Damage Reduction:** \`${totalDefPct.toFixed(1)}%\`\n` +
+        `• ⚡ **Crit Rate:** \`${critRate.toFixed(1)}%\`\n\n` +
+        `💰 **Biaya Reset Stat:** Rp 1.000 (Dompet: Rp ${wallet.balance.toLocaleString('id-ID')})`
+      )
+      .setFooter({ text: 'Pilih tombol di bawah untuk melatih pet Anda!' })
+      .setTimestamp();
+
+    const buttonsRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_gym_btn_str').setLabel('💪 +STR').setStyle(ButtonStyle.Primary).setDisabled(unusedTp <= 0),
+      new ButtonBuilder().setCustomId('pet_gym_btn_vit').setLabel('❤️ +VIT').setStyle(ButtonStyle.Primary).setDisabled(unusedTp <= 0),
+      new ButtonBuilder().setCustomId('pet_gym_btn_def').setLabel('🛡️ +DEF').setStyle(ButtonStyle.Primary).setDisabled(unusedTp <= 0),
+      new ButtonBuilder().setCustomId('pet_gym_btn_dex').setLabel('⚡ +DEX').setStyle(ButtonStyle.Primary).setDisabled(unusedTp <= 0)
+    );
+
+    const controlRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_gym_btn_reset').setLabel('🔄 Reset Stats (Rp 1.000)').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('pet_gym_btn_close').setLabel('❌ Tutup Gym').setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [buttonsRow, controlRow] };
+  };
+
+  let replyMsg;
+  const initialData = getGymPanelData(author.id, guildId);
+  if (isInteraction) {
+    if (context.deferred || context.replied) {
+      replyMsg = await context.editReply({ ...initialData });
+    } else {
+      initialData.flags = 64;
+      const resp = await context.reply({ ...initialData, withResponse: true });
+      replyMsg = resp.resource?.message ?? await context.fetchReply();
+    }
+  } else {
+    replyMsg = await context.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 120000
+  });
+
+  const editMessage = async (payload) => {
+    if (isInteraction) {
+      await context.editReply(payload).catch(() => {});
+    } else {
+      await replyMsg.edit(payload).catch(() => {});
+    }
+  };
+
+  collector.on('collect', async iGym => {
+    if (iGym.user.id !== author.id) {
+      return iGym.reply({ content: '❌ Menu ini bukan milik Anda!', flags: 64 });
+    }
+
+    try {
+      if (iGym.customId === 'pet_gym_btn_close') {
+        collector.stop();
+        if (isInteraction) {
+          await context.deleteReply().catch(() => {});
+        } else {
+          await replyMsg.delete().catch(() => {});
+          await handlePetCommand(context, client, []);
+        }
+        return;
+      }
+
+      if (iGym.customId === 'pet_gym_btn_reset') {
+        const confirmEmbed = new EmbedBuilder()
+          .setColor(0xFF5252)
+          .setTitle('⚠️ KONFIRMASI RESET STAT GYM ⚠️')
+          .setDescription(`Apakah Anda yakin ingin me-reset seluruh alokasi stat pet Anda kembali ke 0?\n\n💰 **Biaya:** Rp 1.000 koin.\n✨ Seluruh Poin Latihan (TP) akan dikembalikan utuh.`);
+        
+        const confirmRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_gym_reset_confirm').setLabel('Yes, Reset!').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('pet_gym_reset_cancel').setLabel('Batal').setStyle(ButtonStyle.Secondary)
+        );
+
+        await iGym.update({ embeds: [confirmEmbed], components: [confirmRow] });
+        return;
+      }
+
+      if (iGym.customId === 'pet_gym_reset_cancel') {
+        await iGym.update(getGymPanelData(author.id, guildId));
+        return;
+      }
+
+      if (iGym.customId === 'pet_gym_reset_confirm') {
+        try {
+          const res = pet.resetGymStats(author.id, guildId);
+          const successEmb = embeds.successEmbed(
+            'Reset Stat Sukses! 🔄',
+            `Berhasil me-reset stat **${res.pet.pet_name}**!\n` +
+            `💸 Biaya reset **Rp ${res.cost.toLocaleString('id-ID')}** koin dipotong dari dompet Anda.\n` +
+            `🔴 **${res.pointsRefunded} Poin Latihan (TP)** telah dikembalikan ke pool sisa TP.`
+          );
+          
+          await iGym.update({ embeds: [successEmb], components: [] });
+          await new Promise(r => setTimeout(r, 3000));
+          await editMessage(getGymPanelData(author.id, guildId));
+        } catch (err) {
+          await iGym.update({ embeds: [embeds.errorEmbed('Reset Gagal!', err.message)], components: [] });
+          await new Promise(r => setTimeout(r, 3000));
+          await editMessage(getGymPanelData(author.id, guildId));
+        }
+        return;
+      }
+
+      // Alokasi stat
+      let statName = '';
+      if (iGym.customId === 'pet_gym_btn_str') statName = 'str';
+      else if (iGym.customId === 'pet_gym_btn_vit') statName = 'vit';
+      else if (iGym.customId === 'pet_gym_btn_def') statName = 'def';
+      else if (iGym.customId === 'pet_gym_btn_dex') statName = 'dex';
+
+      if (statName) {
+        try {
+          pet.allocateStat(author.id, guildId, statName);
+          await iGym.update(getGymPanelData(author.id, guildId));
+        } catch (err) {
+          await iGym.reply({ embeds: [embeds.errorEmbed('Alokasi Gagal!', err.message)], flags: 64 });
+        }
+      }
+
+    } catch (err) {
+      console.error('Error in pet gym collector:', err);
+    }
+  });
+
+  collector.on('end', async () => {
+    try {
+      const finalData = getGymPanelData(author.id, guildId);
+      finalData.components = [];
+      await editMessage(finalData);
+    } catch (err) {}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 // HANDLER: PANEL UPGRADE BINTANG PET (.pet upgrade)
 // ═══════════════════════════════════════════════════════════════
 
@@ -7471,7 +7684,63 @@ async function handlePetAdminCommand(message, client, args) {
     }
   }
 
-  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`, `add-ticket`, `force-star`');
+  // ── ADMIN: SET-TP (Atur Training Points Pet) ──
+  if (subCommand === 'set-tp') {
+    if (!target) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin set-tp @user <jumlah>`');
+    }
+    const tp = parseInt(args[2]);
+    if (isNaN(tp) || tp < 0) {
+      return message.reply('❌ Jumlah TP harus berupa angka bulat minimal 0!');
+    }
+    const petData = pet.getPet(target.id, guildId);
+    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet aktif!');
+
+    database.run('UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [tp, target.id, guildId]);
+    return message.reply(`✅ Berhasil mengatur sisa Poin Latihan (TP) pet **${petData.pet_name}** milik <@${target.id}> menjadi **${tp} TP**!`);
+  }
+
+  // ── ADMIN: SET-STATS (Ubah Atribut Stat Gym Pet) ──
+  if (subCommand === 'set-stats') {
+    if (!target || !args[2] || !args[3] || !args[4] || !args[5]) {
+      return message.reply('❌ Format salah! Gunakan: `.pet-admin set-stats @user <str> <vit> <def> <dex> [tp]`');
+    }
+    const str = parseInt(args[2]);
+    const vit = parseInt(args[3]);
+    const def = parseInt(args[4]);
+    const dex = parseInt(args[5]);
+    const tp = args[6] !== undefined ? parseInt(args[6]) : null;
+
+    if (isNaN(str) || str < 0 || isNaN(vit) || vit < 0 || isNaN(def) || def < 0 || isNaN(dex) || dex < 0) {
+      return message.reply('❌ Seluruh nilai stat harus berupa angka bulat minimal 0!');
+    }
+    if (tp !== null && (isNaN(tp) || tp < 0)) {
+      return message.reply('❌ Nilai TP harus berupa angka bulat minimal 0!');
+    }
+
+    const petData = pet.getPet(target.id, guildId);
+    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet aktif!');
+
+    database.transaction(() => {
+      database.run(
+        `UPDATE user_pets 
+         SET stat_str = ?, stat_vit = ?, stat_def = ?, stat_dex = ? 
+         WHERE user_id = ? AND guild_id = ? AND is_active = 1`,
+        [str, vit, def, dex, target.id, guildId]
+      );
+      if (tp !== null) {
+        database.run(
+          `UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1`,
+          [tp, target.id, guildId]
+        );
+      }
+    })();
+
+    const tpText = tp !== null ? ` | TP: \`${tp}\`` : '';
+    return message.reply(`✅ Berhasil memperbarui stat gym pet **${petData.pet_name}** milik <@${target.id}>:\n💪 STR: \`${str}\` | ❤️ VIT: \`${vit}\` | 🛡️ DEF: \`${def}\` | ⚡ DEX: \`${dex}\`${tpText}`);
+  }
+
+  return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`, `add-ticket`, `force-star`, `set-tp`, `set-stats`');
 }
 
 /**

@@ -106,7 +106,8 @@ function getMaxHP(pet) {
   const baseHP = speciesInfo ? (speciesInfo.baseHP || 100) : (pet.pet_type === 'SLIME' ? 120 : 100);
   const starLevel = pet.star_level || 1;
   const hpBonus = (starLevel - 1) * 15;
-  return baseHP + hpBonus;
+  const vitBonus = (pet.stat_vit || 0) * 3; // +3 Max HP per Vitality
+  return baseHP + hpBonus + vitBonus;
 }
 
 
@@ -277,6 +278,7 @@ function addXp(pet, xpGained, maxHP) {
   let newXp = pet.xp + xpGained;
   let newLevel = pet.level;
   let levelUp = false;
+  let tpGained = 0;
 
   while (true) {
     const xpNeeded = getXpNeeded(newLevel, pet.trait);
@@ -284,12 +286,20 @@ function addXp(pet, xpGained, maxHP) {
       newXp -= xpNeeded;
       newLevel += 1;
       levelUp = true;
+      tpGained += 3;
     } else {
       break;
     }
   }
 
-  return { newXp, newLevel, levelUp };
+  if (levelUp && tpGained > 0 && pet.user_id && pet.guild_id && pet.pet_name) {
+    db.run(
+      'UPDATE user_pets SET unused_tp = unused_tp + ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [tpGained, pet.user_id, pet.guild_id, pet.pet_name]
+    );
+  }
+
+  return { newXp, newLevel, levelUp, tpGained };
 }
 
 /**
@@ -1251,41 +1261,43 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   let oppHP = opponent.health;
 
   // Hitung stats tempur awal
-  // Base Attack = Species Base ATK + Level * 5
+  // Base Attack = Species Base ATK + Level * 5 + STR * 2
   const chalSpecies = GACHA_SPECIES[challenger.pet_type];
   const chalSpecBaseAtk = chalSpecies ? (chalSpecies.baseAtk || 10) : 10;
-  const chalBaseAtk = isGodChallenger ? 99999 : (chalSpecBaseAtk + challenger.level * 5);
-
+  const chalBaseAtk = isGodChallenger ? 99999 : (chalSpecBaseAtk + challenger.level * 5 + (challenger.stat_str || 0) * 2);
+ 
   const oppSpecies = GACHA_SPECIES[opponent.pet_type];
   const oppSpecBaseAtk = oppSpecies ? (oppSpecies.baseAtk || 10) : 10;
-  const oppBaseAtk = isGodOpponent ? 99999 : (oppSpecBaseAtk + opponent.level * 5);
-
+  const oppBaseAtk = isGodOpponent ? 99999 : (oppSpecBaseAtk + opponent.level * 5 + (opponent.stat_str || 0) * 2);
+ 
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack
   if (challenger.accessory === 'SWORD_TOY') chalAtkMultiplier += 0.15; // Toy Sword: +15% damage
   chalAtkMultiplier += (challenger.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
-
+ 
   let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack
   if (opponent.accessory === 'SWORD_TOY') oppAtkMultiplier += 0.15; // Toy Sword: +15% damage
   oppAtkMultiplier += (opponent.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
-
-  // Kalkulasi Reduksi Damage (Defense)
+ 
+  // Kalkulasi Reduksi Damage (Defense: base def + Sturdy/Shield + stat_def * 0.5%)
   const chalSpecBaseDef = chalSpecies ? (chalSpecies.baseDef || 0) : 0;
   let chalDefMult = 1.0;
   if (challenger.trait === 'STURDY') chalDefMult *= 0.85; // Sturdy: -15% damage
   if (challenger.accessory === 'SHIELD_TOY') chalDefMult *= 0.85; // Toy Shield: -15% damage
-  const chalDamageTakenMult = (1.0 - (chalSpecBaseDef / 100)) * chalDefMult * (1.0 - (challenger.base_def_bonus_pct || 0.0));
-
+  const chalDefGym = Math.min(0.50, (challenger.stat_def || 0) * 0.005);
+  const chalDamageTakenMult = (1.0 - (chalSpecBaseDef / 100)) * chalDefMult * (1.0 - (challenger.base_def_bonus_pct || 0.0)) * (1.0 - chalDefGym);
+ 
   const oppSpecBaseDef = oppSpecies ? (oppSpecies.baseDef || 0) : 0;
   let oppDefMult = 1.0;
   if (opponent.trait === 'STURDY') oppDefMult *= 0.85; // Sturdy: -15% damage
   if (opponent.accessory === 'SHIELD_TOY') oppDefMult *= 0.85; // Toy Shield: -15% damage
-  const oppDamageTakenMult = (1.0 - (oppSpecBaseDef / 100)) * oppDefMult * (1.0 - (opponent.base_def_bonus_pct || 0.0));
-
+  const oppDefGym = Math.min(0.50, (opponent.stat_def || 0) * 0.005);
+  const oppDamageTakenMult = (1.0 - (oppSpecBaseDef / 100)) * oppDefMult * (1.0 - (opponent.base_def_bonus_pct || 0.0)) * (1.0 - oppDefGym);
+ 
   let round = 1;
   const maxRounds = 5;
-
+ 
   while (round <= maxRounds && chalHP > 0 && oppHP > 0) {
     // 1. Giliran Challenger menyerang Opponent
     let chalDmg;
@@ -1299,12 +1311,22 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     } else {
       chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
       chalDmg = Math.round(chalDmg * oppDamageTakenMult);
+      
+      // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
+      const chalDex = challenger.stat_dex || 0;
+      const chalCritChance = Math.min(0.35, chalDex * 0.005);
+      const isChalCrit = Math.random() < chalCritChance;
+      if (isChalCrit) {
+        chalDmg = Math.round(chalDmg * 1.5);
+      }
+      
       oppHP = Math.max(0, oppHP - chalDmg);
-      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**! (HP Lawan: ${oppHP}%)`);
+      const critText = isChalCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**!${critText} (HP Lawan: ${oppHP}%)`);
     }
-
+ 
     if (oppHP <= 0) break;
-
+ 
     // 2. Giliran Opponent menyerang Challenger
     let oppDmg;
     if (isGodOpponent) {
@@ -1317,8 +1339,18 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     } else {
       oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
       oppDmg = Math.round(oppDmg * chalDamageTakenMult);
+      
+      // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
+      const oppDex = opponent.stat_dex || 0;
+      const oppCritChance = Math.min(0.35, oppDex * 0.005);
+      const isOppCrit = Math.random() < oppCritChance;
+      if (isOppCrit) {
+        oppDmg = Math.round(oppDmg * 1.5);
+      }
+      
       chalHP = Math.max(0, chalHP - oppDmg);
-      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**! (HP Anda: ${chalHP}%)`);
+      const critText = isOppCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**!${critText} (HP Anda: ${chalHP}%)`);
     }
 
     round++;
@@ -1731,6 +1763,13 @@ function calculateSuccessRate(guildId, participantIds, mapId, pathChoice = 'SAFE
       totalModifications += elementMod;
       const petDisplay = GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].name : petType;
       logs.push(`• **${ap.pet.pet_name}** (${petDisplay} vs Bos ${selectedMap.element}): ${elementMod > 0 ? `🟢 Keuntungan Elemen +${elementMod}%` : `🔴 Kelemahan Elemen ${elementMod}%`}`);
+    }
+
+    // Modifikasi DEX (Kelincahan: +0.1% sukses flat per DEX, max +5.0%)
+    const dexBonus = Math.min(5.0, (ap.pet.stat_dex || 0) * 0.1);
+    if (dexBonus > 0) {
+      totalModifications += dexBonus;
+      logs.push(`• **${ap.pet.pet_name}** (DEX Bonus Kelincahan): +${dexBonus.toFixed(1)}% Peluang Sukses`);
     }
   });
 
@@ -2822,6 +2861,97 @@ function toggleAutoFeed(userId, guildId) {
   };
 }
 
+/**
+ * Alokasikan 1 poin Training Point (TP) ke salah satu stat: str, vit, def, dex
+ */
+function allocateStat(userId, guildId, statName) {
+  const allowedStats = ['str', 'vit', 'def', 'dex'];
+  const sName = statName.toLowerCase();
+  if (!allowedStats.includes(sName)) {
+    throw new Error('Stat tidak dikenal! Gunakan: str, vit, def, dex');
+  }
+
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  }
+  if (petObj.status === 'EGG') {
+    throw new Error('Pet Anda masih berupa telur! Tunggu sampai menetas.');
+  }
+  if (petObj.status === 'DEAD') {
+    throw new Error('Pet Anda telah meninggal! Revive di Dokter terlebih dahulu.');
+  }
+
+  const unusedTp = petObj.unused_tp || 0;
+  if (unusedTp <= 0) {
+    throw new Error('Pet Anda tidak memiliki sisa Poin Latihan (TP) yang tersedia!');
+  }
+
+  const column = `stat_${sName}`;
+  
+  db.transaction(() => {
+    db.run(
+      `UPDATE user_pets 
+       SET ${column} = ${column} + 1, unused_tp = unused_tp - 1 
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [userId, guildId, petObj.pet_name]
+    );
+  })();
+
+  return getPet(userId, guildId);
+}
+
+/**
+ * Reset seluruh alokasi stat pet dan kembalikan ke unused_tp untuk biaya Rp 1.000 koin
+ */
+function resetGymStats(userId, guildId) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  }
+  if (petObj.status === 'EGG') {
+    throw new Error('Pet Anda masih berupa telur!');
+  }
+  if (petObj.status === 'DEAD') {
+    throw new Error('Pet Anda telah meninggal!');
+  }
+
+  const str = petObj.stat_str || 0;
+  const vit = petObj.stat_vit || 0;
+  const def = petObj.stat_def || 0;
+  const dex = petObj.stat_dex || 0;
+  const totalAllocated = str + vit + def + dex;
+
+  if (totalAllocated === 0) {
+    throw new Error('Pet Anda belum memiliki alokasi stat apapun yang perlu di-reset!');
+  }
+
+  const resetCost = 1000;
+  const wallet = economy.getWallet(userId, guildId);
+  if (wallet.balance < resetCost) {
+    throw new Error(`Saldo koin Anda kurang untuk biaya reset sebesar Rp ${resetCost.toLocaleString('id-ID')}!`);
+  }
+
+  db.transaction(() => {
+    // Potong koin
+    economy.subtractBalance(userId, guildId, resetCost, 'PET_GYM_RESET');
+
+    // Reset stat dan kembalikan ke unused_tp
+    db.run(
+      `UPDATE user_pets 
+       SET stat_str = 0, stat_vit = 0, stat_def = 0, stat_dex = 0, unused_tp = unused_tp + ? 
+       WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [totalAllocated, userId, guildId, petObj.pet_name]
+    );
+  })();
+
+  return {
+    pet: getPet(userId, guildId),
+    cost: resetCost,
+    pointsRefunded: totalAllocated
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SISTEM GACHA PET
 // ═══════════════════════════════════════════════════════════════
@@ -3342,6 +3472,8 @@ module.exports = {
   setItemCooldown,
   unlockAutoCare,
   toggleAutoFeed,
+  allocateStat,
+  resetGymStats,
   // Gacha
   rollGacha,
   _rollOnce,
