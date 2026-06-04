@@ -981,6 +981,91 @@ function executeHeist(guildId) {
 }
 
 /**
+ * Memproses kegagalan perampokan bank akibat QTE timeout atau salah klik (Interference)
+ */
+function executeHeistQteFailure(guildId, failedUserId, reasonType) {
+  const lobby = activeHeists.get(guildId);
+  if (!lobby) {
+    throw new Error('Tidak ada lobi heist aktif untuk dieksekusi.');
+  }
+
+  if (lobby.timeout) {
+    clearTimeout(lobby.timeout);
+  }
+  activeHeists.delete(guildId);
+
+  const participants = lobby.participants;
+  const kruCount = participants.length;
+  const stats = getHeistStats(kruCount);
+
+  const now = Math.floor(Date.now() / 1000);
+  const soapUsedUsers = [];
+  const dodgedJailUsers = [];
+
+  // Hitung denda dan penjara untuk kegagalan
+  // Golem Perk: denda uang dikurangi 25% jika ada golem dewasa aktif
+  let golemJailReduction = 0.0;
+  participants.forEach(p => {
+    const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p, guildId]);
+    if (pet && pet.status === 'ADULT' && pet.pet_type === 'GOLEM') {
+      golemJailReduction = 0.25;
+    }
+  });
+
+  let fineAmt = stats.fine;
+  if (golemJailReduction > 0) {
+    fineAmt = Math.round(fineAmt * 0.75);
+  }
+
+  db.transaction(() => {
+    participants.forEach(p => {
+      const wallet = economy.getWallet(p, guildId);
+      const finalFine = Math.min(wallet.balance, fineAmt);
+      if (finalFine > 0) {
+        economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
+      }
+
+      // Slime Perk: 10% peluang melarikan diri (dodge jail)
+      const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p, guildId]);
+      if (pet && pet.status === 'ADULT' && pet.pet_type === 'SLIME' && Math.random() < 0.10) {
+        dodgedJailUsers.push(p);
+        return; // Lewati penjara!
+      }
+
+      // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara heist 50%
+      const soapQty = bm.getItemQty(p, guildId, 'SOAP');
+      let userJailSecs = stats.jailDurationSeconds;
+      if (golemJailReduction > 0) {
+        userJailSecs = Math.round(userJailSecs * 0.75);
+      }
+
+      if (soapQty > 0) {
+        bm.consumeItem(p, guildId, 'SOAP');
+        userJailSecs = Math.floor(userJailSecs / 2);
+        soapUsedUsers.push(p);
+      }
+
+      const userJailUntil = now + userJailSecs;
+      db.run(
+        "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
+        [userJailUntil, p, guildId]
+      );
+    });
+  })();
+
+  return {
+    success: false,
+    participants,
+    failedUserId,
+    reasonType,
+    fineAmount: fineAmt,
+    jailHours: (stats.jailDurationSeconds * (golemJailReduction > 0 ? 0.75 : 1)) / 3600,
+    soapUsedUsers,
+    dodgedJailUsers
+  };
+}
+
+/**
  * Membayar jaminan penjara
  */
 function payBail(userId, guildId, member = null) {
@@ -1047,6 +1132,7 @@ module.exports = {
   joinHeistLobby,
   cancelHeistLobby,
   executeHeist,
+  executeHeistQteFailure,
   payBail,
   adminFreeUser,
   adminResetCooldown

@@ -2930,66 +2930,122 @@ module.exports = {
   },
 
   // 31. Heist Lobby Embed (.heist)
-  heistLobbyEmbed(guild, initiator, participants, timeLeft, successRate, minPrize, maxPrize, prepFee) {
+  heistLobbyEmbed(guild, initiator, participants, endTimeUnix, successRate, minPrize, maxPrize, prepFee) {
     const listKru = participants.map((p, idx) => {
-      const roles = ['🕶️ Otak Kriminal', '🚗 Pembalap Pelarian', '💣 Ahli Peledak', '🔫 Penembak Jitu', '💻 Peretas Keamanan', '🎒 Pembawa Uang'];
-      const roleStr = roles[idx] || '👥 Anggota Kru';
+      const roles = ['🕶️ Otak Kriminal', '💻 Peretas Keamanan', '🧨 Ahli Peledak', '🔫 Jaga Sandera', '👜 Pembawa Jarahan', '🚗 Pembalap Pelarian'];
+      const roleStr = roles[idx] || '👥 Anggota Kru Backup';
       return `  ├─ ${idx + 1}. <@${p}> (${roleStr})`;
     }).join('\n');
 
-    const crewListStr = listKru ? `${listKru}\n  └─ *Siap membobol brankas!*` : '  └─ *Menunggu kru bergabung...*';
+    const crewListStr = listKru ? `${listKru}\n  └─ *Kru bersiap di posisi masing-masing!*` : '  └─ *Menunggu kru bergabung...*';
 
     return new EmbedBuilder()
       .setColor(COLORS.FIERY)
-      .setTitle('🔥 OPERASI BESAR: BANK HEIST BERSAMA 🔥')
+      .setTitle('🚨 OPERASI CRITICAL: CENTRAL BANK HEIST 🚨')
       .setDescription(
         `\`\`\`\n` +
-        `┌─────────────────────────────┐\n` +
-        `│   🔥 OPERASI BANK HEIST 🔥  │\n` +
-        `│    Misi Perampokan Bersama  │\n` +
-        `└─────────────────────────────┘\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│     🏛️ MISI PERAMPOKAN BANK PUSAT 🏛️    │\n` +
+        `│     Kategori: Operasi Kelompok (PVE)   │\n` +
+        `└────────────────────────────────────────┘\n` +
         `\`\`\`\n` +
-        `💥 **${initiator.username}** menantang Anda untuk bergabung dalam misi perampokan Bank Pusat Server!\n\n` +
+        `💥 **${initiator.username}** merekrut tim elit untuk membobol brankas utama Bank Server!\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `┊ 💵 **Biaya Persiapan** : \`${formatCurrency(prepFee)}\` per orang\n` +
-        `┊ ⏳ **Waktu Berkumpul** : **${timeLeft} detik** lagi!\n\n` +
-        `👥 **KRU PERAMPOK AKTIF (${participants.length} / ♾️):**\n` +
+        `💰 **Biaya Ransum** : \`${formatCurrency(prepFee)}\` per orang\n` +
+        `⏳ **Batas Waktu**   : <t:${endTimeUnix}:T> (<t:${endTimeUnix}:R>)\n\n` +
+        `👥 **KRU PERAMPOK TERDAFTAR (${participants.length} / ♾️):**\n` +
         `${crewListStr}\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━`
       )
       .addFields(
         {
-          name: '📈 ANALISIS INTELIJEN OPERASI',
-          value: `• **Peluang Sukses** : \`${successRate}%\`\n• **Estimasi Jarahan** : \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\``,
+          name: '📊 ANALISIS RISIKO & POTENSI JARAHAN',
+          value: `• **Peluang Sukses Dasar** : \`${successRate}%\`\n• **Rentang Hasil Jarahan** : \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\``,
           inline: false
         }
       )
-      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk ikut aksi membara ini!' })
+      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk masuk ke lobi!' })
+      .setTimestamp();
+  },
+
+  // 31b. Heist Step QTE Embed
+  heistStepEmbed(guild, stepNumber, stepTitle, stepDesc, targetUserId, endTimeUnix) {
+    return new EmbedBuilder()
+      .setColor('#FF9800') // Vibrant Orange
+      .setTitle(`⚔️ HEIST STAGE: ${stepTitle} ⚔️`)
+      .setDescription(
+        `\`\`\`\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│         ⚡ FASE EKSEKUSI QTE ⚡        │\n` +
+        `│       Langkah ${stepNumber}: Rantai Aksi Tim       │\n` +
+        `└────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `${stepDesc}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🎯 **GILIRAN PERAN:** <@${targetUserId}>\n` +
+        `⏳ **SISA WAKTU REAKSI:** <t:${endTimeUnix}:R>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `*⚠️ PERINGATAN KERAS: Hanya <@${targetUserId}> yang boleh mengeklik tombol peran di bawah! Kru lain yang salah klik/salah giliran akan memicu sensor laser alarm bank dan membuat heist GAGAL seketika!*`
+      )
+      .setFooter({ text: 'Sentinel Heist Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
+      .setTimestamp();
+  },
+
+  // 31c. Heist QTE Failure Embed
+  heistQteFailureEmbed(guild, failedUserId, reasonType, participants) {
+    const crewList = participants.map(p => `<@${p}>`).join(', ');
+    let causeText = '';
+    
+    if (reasonType === 'Timeout') {
+      causeText = `🔴 **Penyebab Kegagalan**: Kru <@${failedUserId}> mengalami serangan panik, tangannya gemetar, atau terlambat mengeksekusi perannya tepat waktu hingga batas 6 detik habis!`;
+    } else {
+      causeText = `🚨 **Penyebab Kegagalan**: Kru <@${failedUserId}> panik dan salah klik/menekan tombol peran yang **bukan gilirannya**! Hal ini langsung memicu sistem keamanan darurat bank berbunyi!`;
+    }
+
+    return new EmbedBuilder()
+      .setColor('#F44336') // Blood Red
+      .setTitle('🚓 OPERASI HANG: HEIST GAGAL TOTAL! 👮')
+      .setDescription(
+        `\`\`\`\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│        🚓 ALARM BANK MENYALAK 🚓       │\n` +
+        `│     Operasi Gagal / Anggota Ditangkap   │\n` +
+        `└────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `💥 **Lokasi Operasi:** Central Bank Server\n` +
+        `👥 **Kru Terlibat:** ${crewList}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${causeText}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `👮 **KONSEKUENSI KEAMANAN:**\n` +
+        `Dinding baja anti-ledakan menutup seluruh pintu keluar. Tim SWAT mengepung lokasi dan menangkap seluruh kru.\n` +
+        `*Setiap kru masuk penjara virtual dan dikenakan denda pembersihan TKP!*`
+      )
       .setTimestamp();
   },
 
   // 32. Heist Result Embed
   heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
-    const logText = logs.map(l => ` 🔥 ${l}`).join('\n');
+    const logText = logs.map(l => ` ☠️ ${l}`).join('\n');
 
     const headerBox = success ?
         `\`\`\`\n` +
-        `┌─────────────────────────────┐\n` +
-        `│    🏆 AKSI HEIST SUKSES     │\n` +
-        `│    Rekapitulasi Operasi     │\n` +
-        `└─────────────────────────────┘\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│       🏆 AKSI HEIST SUKSES BESAR      │\n` +
+        `│       Brankas Utama Berhasil Dibobol    │\n` +
+        `└────────────────────────────────────────┘\n` +
         `\`\`\`\n`
       :
         `\`\`\`\n` +
-        `┌─────────────────────────────┐\n` +
-        `│    🚓 OPERASI HEIST GAGAL   │\n` +
-        `│    Dikejar Aparat Penegak   │\n` +
-        `└─────────────────────────────┘\n` +
+        `┌────────────────────────────────────────┐\n` +
+        `│      🚓 OPERASI GAGAL DI TENGAH JALAN   │\n` +
+        `│       Bala Bantuan Polisi Mengepung    │\n` +
+        `└────────────────────────────────────────┘\n` +
         `\`\`\`\n`;
 
     let desc = headerBox +
-      `💥 **Lokasi Kejadian:** Central Bank Server\n` +
+      `💥 **Lokasi Operasi:** Central Bank Server\n` +
       `👥 **Kru Terlibat:** ${crewList}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -3003,12 +3059,12 @@ module.exports = {
       desc += `🗝️ **GEAR PASAR GELAP:**\n` + extraData.bmDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
     }
 
-    desc += `📝 **DOKUMENTASI REKAMAN AKSI:**\n${logText}\n\n` +
+    desc += `📝 **REKAMAN CHRONOLOGY AKSI:**\n${logText}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     if (success) {
-      desc += `🏆 **HASIL JARAHAN BRANKAS:**\n` +
-        `💰 **Total Didapat** : \`${formatCurrency(totalReward)}\`\n` +
+      desc += `🏆 **REKAPITULASI HASIL JARAHAN:**\n` +
+        `💰 **Total Kas Didapat** : \`${formatCurrency(totalReward)}\`\n` +
         `👉 **Gaji per Anggota** : **\`${formatCurrency(rewardPerPerson)}\`** *(Bersih)*`;
 
       // Masked users bonus
@@ -3019,11 +3075,11 @@ module.exports = {
 
       if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
         const victimList = deductionLogs.map(dl => ` • <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
-        desc += `\n\n💸 **DANA NASABAH YANG DIKORBANKAN:**\n${victimList}\n` +
-          `🏦 **Total Disita dari Rekening:** \`${formatCurrency(stolenFromPlayers)}\``;
+        desc += `\n\n💸 **DANA REKENING NASABAH DIKORBANKAN:**\n${victimList}\n` +
+          `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
       }
     } else {
-      desc += `🚨 **KONSEKUENSI KEGAGALAN:**\n` +
+      desc += `🚨 **KONSEKUENSI APARAT HUKUM:**\n` +
         `💸 **Denda Kerugian** : \`${formatCurrency(fineAmount)}\` per orang\n` +
         `🔒 **Hukuman Penjara** : \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!`;
 
@@ -3035,7 +3091,7 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setTitle(success ? '🏆 BANK HEIST SUKSES BESAR! 💰' : '🚓 HEIST GAGAL: DIKEPUNG POLISI! 👮')
+      .setTitle(success ? '🏆 BRANKAS UTAMA DIHANCURKAN! 💰' : '🚓 HEIST GAGAL: APARAT MENGEPUNG TIM! 👮')
       .setColor(success ? COLORS.FIERY : COLORS.ERROR)
       .setDescription(desc)
       .setTimestamp();
@@ -3044,8 +3100,8 @@ module.exports = {
     if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
       const brokenList = extraData.brokenLockpicks.map(u => `<@${u}>`).join(', ');
       embed.addFields({
-        name: '⚠️ ALAT KATAHAN / RUSAK',
-        value: `Lockpick milik ${brokenList} patah/rusak saat membobol brankas!`
+        name: '⚠️ ALAT SITAAN / HANCUR',
+        value: `Lockpick milik ${brokenList} patah/rusak saat membobol pintu lapis baja!`
       });
     }
 

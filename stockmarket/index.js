@@ -8018,6 +8018,9 @@ async function handleEconomyCommands(message, client) {
 
       if (!sub || sub === 'start') {
         try {
+          const durationSeconds = 90;
+          const endTimeUnix = Math.floor((Date.now() + durationSeconds * 1000) / 1000);
+
           const lobby = robbery.startHeistLobby(author.id, guildId);
           const stats = robbery.getHeistStats(1);
 
@@ -8025,7 +8028,7 @@ async function handleEconomyCommands(message, client) {
             guild,
             author,
             lobby.participants,
-            90,
+            endTimeUnix,
             stats.successRate,
             stats.minPrize,
             stats.maxPrize,
@@ -8049,84 +8052,208 @@ async function handleEconomyCommands(message, client) {
             components: [row]
           });
 
-          // Waktu hitung mundur 90 detik
-          let timeLeft = 90;
-          const interval = setInterval(async () => {
-            timeLeft -= 10;
-            if (timeLeft <= 0) {
-              clearInterval(interval);
-              return;
-            }
-
-            const currentLobby = robbery.activeHeists.get(guildId);
-            if (!currentLobby) {
-              clearInterval(interval);
-              return;
-            }
-
-            const currentStats = robbery.getHeistStats(currentLobby.participants.length);
-            const updatedEmbed = embeds.heistLobbyEmbed(
-              guild,
-              author,
-              currentLobby.participants,
-              timeLeft,
-              currentStats.successRate,
-              currentStats.minPrize,
-              currentStats.maxPrize,
-              currentLobby.prepFee
-            );
-
-            await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
-          }, 10000);
-
           // Pemicu timeout eksekusi otomatis setelah 90 detik
           lobby.timeout = setTimeout(async () => {
-            clearInterval(interval);
             try {
               const currentLobby = robbery.activeHeists.get(guildId);
               if (!currentLobby) return;
 
-              const res = robbery.executeHeist(guildId);
+              const participants = currentLobby.participants;
+              const kruCount = participants.length;
 
-              // Notifikasi log kriminal ditiadakan atas permintaan pemilik server
+              // Rantai aksi berurutan berdasarkan jumlah kru
+              const steps = [];
 
-              const resultEmbed = embeds.heistResultEmbed(
-                guild,
-                res.success,
-                res.participants,
-                res.logs,
-                res.totalReward,
-                res.rewardPerPerson,
-                res.fineAmount,
-                res.jailHours,
-                res.stolenFromPlayers,
-                res.deductionLogs,
-                res
-              );
+              // Step 1: Hacker (selalu ada, indeks 0)
+              steps.push({
+                roleName: 'Hacker',
+                title: '💻 Peretas Keamanan (Hacker)',
+                desc: '💻 **Tugas:** Bobol firewall bank! Tekan tombol di bawah untuk melumpuhkan sistem alarm digital.',
+                buttonLabel: '💻 Jalankan Hack',
+                buttonId: 'heist_qte_hacker',
+                targetUserId: participants[0]
+              });
 
-              let contentMsg = `💥 **OPERASI BANK HEIST SELESAI!**`;
-              if (!res.success && res.soapUsedUsers && res.soapUsedUsers.length > 0) {
-                const mentions = res.soapUsedUsers.map(u => `<@${u}>`).join(', ');
-                contentMsg += `\n🧼 **Sabun Licin Terpakai!** ${mentions} menggunakan Sabun Licin untuk memotong waktu penjara heist sebesar 50%!`;
+              // Step 2: Peledak (selalu ada; jika kru >= 2, indeks 1; jika Solo, indeks 0)
+              steps.push({
+                roleName: 'Peledak',
+                title: '🧨 Ahli Peledak (Demolition)',
+                desc: '🧨 **Tugas:** Pasang dan ledakkan thermite di pintu brankas utama! Tekan tombol di bawah untuk meledakkan pintu.',
+                buttonLabel: '🧨 Ledakkan Pintu',
+                buttonId: 'heist_qte_peledak',
+                targetUserId: kruCount >= 2 ? participants[1] : participants[0]
+              });
+
+              // Step 3: Eksekutor (hanya jika kru >= 3, indeks 2)
+              if (kruCount >= 3) {
+                steps.push({
+                  roleName: 'Eksekutor',
+                  title: '🔫 Jaga Sandera (Enforcer)',
+                  desc: '🔫 **Tugas:** Jaga sandera dan lumpuhkan petugas keamanan yang mencoba melawan! Tekan tombol di bawah untuk menembak.',
+                  buttonLabel: '🔫 Lumpuhkan Penjaga',
+                  buttonId: 'heist_qte_enforcer',
+                  targetUserId: participants[2]
+                });
               }
 
-              await replyMsg.edit({
-                content: contentMsg,
-                embeds: [resultEmbed],
-                components: []
-              }).catch(async () => {
-                await message.channel.send({
-                  content: contentMsg,
-                  embeds: [resultEmbed]
-                });
+              // Step 4: Supir (selalu ada, indeks terakhir: kruCount - 1)
+              steps.push({
+                roleName: 'Supir',
+                title: '🚗 Pembalap Pelarian (Driver)',
+                desc: '🚗 **Tugas:** Polisi datang mengepung! Tancap gas dan bawa kabur uang jarahannya! Tekan tombol di bawah untuk tancap gas.',
+                buttonLabel: '🚗 Tancap Gas',
+                buttonId: 'heist_qte_driver',
+                targetUserId: participants[kruCount - 1]
               });
+
+              let isHeistFailed = false;
+
+              for (let stepIdx = 0; stepIdx < steps.length; stepIdx++) {
+                const step = steps[stepIdx];
+                const stepNumber = stepIdx + 1;
+                const qteDuration = 6;
+                const endTimeQteUnix = Math.floor((Date.now() + qteDuration * 1000) / 1000);
+
+                const stepEmbed = embeds.heistStepEmbed(
+                  guild,
+                  stepNumber,
+                  step.title,
+                  step.desc,
+                  step.targetUserId,
+                  endTimeQteUnix
+                );
+
+                const stepRow = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId(step.buttonId)
+                    .setLabel(step.buttonLabel)
+                    .setStyle(ButtonStyle.Danger)
+                );
+
+                await replyMsg.edit({
+                  content: `🚨 **TAHAPAN ${stepNumber}/${steps.length} SEDANG BERJALAN!**`,
+                  embeds: [stepEmbed],
+                  components: [stepRow]
+                }).catch(() => {});
+
+                // Buat collector QTE selama 6 detik
+                const qteCollector = replyMsg.createMessageComponentCollector({
+                  time: qteDuration * 1000
+                });
+
+                let stepSuccess = false;
+
+                const qtePromise = new Promise((resolveQte) => {
+                  qteCollector.on('collect', async iQte => {
+                    try {
+                      // Cek apakah pengklik adalah target yang benar
+                      if (iQte.user.id === step.targetUserId) {
+                        stepSuccess = true;
+                        qteCollector.stop('success');
+                        await iQte.reply({ content: `✅ Sukses! Langkah ${stepNumber} diselesaikan dengan cepat.`, flags: 64 });
+                        resolveQte();
+                      } 
+                      // Cek apakah pengklik adalah peserta heist lain (Interference Instafail!)
+                      else if (participants.includes(iQte.user.id)) {
+                        isHeistFailed = true;
+                        qteCollector.stop('interference');
+                        
+                        // Heist gagal instan karena salah klik
+                        const res = robbery.executeHeistQteFailure(guildId, iQte.user.id, 'Interference');
+                        const failEmbed = embeds.heistQteFailureEmbed(guild, iQte.user.id, 'Interference', participants);
+                        
+                        await iQte.reply({ content: `🚨 Anda memicu alarm karena menekan tombol di luar giliran!`, flags: 64 });
+                        await replyMsg.edit({
+                          content: `❌ **HEIST GAGAL: OPERASI DIGAGALKAN OLEH KRU!**`,
+                          embeds: [failEmbed],
+                          components: []
+                        }).catch(() => {});
+                        
+                        resolveQte();
+                      } 
+                      // Pengklik bukan peserta heist
+                      else {
+                        await iQte.reply({ content: `❌ Anda tidak berpartisipasi dalam perampokan ini!`, flags: 64 });
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      resolveQte();
+                    }
+                  });
+
+                  qteCollector.on('end', async (collected, reason) => {
+                    if (reason === 'success' || reason === 'interference') {
+                      return;
+                    }
+                    // Jika waktu habis (6 detik) dan tidak ditekan
+                    if (!stepSuccess && !isHeistFailed) {
+                      isHeistFailed = true;
+                      
+                      const res = robbery.executeHeistQteFailure(guildId, step.targetUserId, 'Timeout');
+                      const failEmbed = embeds.heistQteFailureEmbed(guild, step.targetUserId, 'Timeout', participants);
+                      
+                      await replyMsg.edit({
+                        content: `❌ **HEIST GAGAL: WAKTU REAKSI TIM HABIS!**`,
+                        embeds: [failEmbed],
+                        components: []
+                      }).catch(() => {});
+                    }
+                    resolveQte();
+                  });
+                });
+
+                await qtePromise;
+                if (isHeistFailed) {
+                  break;
+                }
+
+                // Beri jeda singkat 1 detik antar tahapan
+                await new Promise(r => setTimeout(r, 1000));
+              }
+
+              // Jika seluruh tahapan QTE sukses dilewati tanpa kegagalan
+              if (!isHeistFailed) {
+                const res = robbery.executeHeist(guildId);
+
+                const resultEmbed = embeds.heistResultEmbed(
+                  guild,
+                  res.success,
+                  res.participants,
+                  res.logs,
+                  res.totalReward,
+                  res.rewardPerPerson,
+                  res.fineAmount,
+                  res.jailHours,
+                  res.stolenFromPlayers,
+                  res.deductionLogs,
+                  res
+                );
+
+                let contentMsg = `💥 **OPERASI BANK HEIST SELESAI!**`;
+                if (!res.success && res.soapUsedUsers && res.soapUsedUsers.length > 0) {
+                  const mentions = res.soapUsedUsers.map(u => `<@${u}>`).join(', ');
+                  contentMsg += `\n🧼 **Sabun Licin Terpakai!** ${mentions} menggunakan Sabun Licin untuk memotong waktu penjara heist sebesar 50%!`;
+                }
+
+                await replyMsg.edit({
+                  content: contentMsg,
+                  embeds: [resultEmbed],
+                  components: []
+                }).catch(async () => {
+                  await message.channel.send({
+                    content: contentMsg,
+                    embeds: [resultEmbed]
+                  });
+                });
+              }
+
             } catch (err) {
               console.error(err);
               await message.channel.send({ content: `❌ Gagal mengeksekusi heist: ${err.message}` });
             }
           }, 90000);
 
-          // Collector untuk tombol interaksi
+          // Collector untuk tombol interaksi lobi
           const collector = replyMsg.createMessageComponentCollector({
             time: 90000
           });
@@ -8141,7 +8268,7 @@ async function handleEconomyCommands(message, client) {
                   guild,
                   author,
                   updatedLobby.participants,
-                  timeLeft,
+                  endTimeUnix,
                   currentStats.successRate,
                   currentStats.minPrize,
                   currentStats.maxPrize,
@@ -8157,7 +8284,7 @@ async function handleEconomyCommands(message, client) {
                   return iHeist.reply({ content: '❌ Hanya inisiator (otak kriminal) yang bisa membatalkan operasi!', flags: 64 });
                 }
 
-                clearInterval(interval);
+                clearTimeout(lobby.timeout);
                 robbery.cancelHeistLobby(author.id, guildId);
 
                 await iHeist.reply({ content: '✖️ Operasi bank heist dibatalkan dan biaya persiapan telah dikembalikan ke seluruh kru.', ephemeral: false });
@@ -8171,10 +8298,6 @@ async function handleEconomyCommands(message, client) {
             } catch (err) {
               await iHeist.reply({ content: `❌ Error: ${err.message}`, flags: 64 });
             }
-          });
-
-          collector.on('end', () => {
-            clearInterval(interval);
           });
 
         } catch (err) {
