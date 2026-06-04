@@ -110,8 +110,8 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   const { isOwnerProtectionActive } = require('./adminPanel');
   const isTargetOwner = targetId === OWNER_ID || targetId === '436554535037698059';
   if (isTargetOwner && isOwnerProtectionActive(guildId)) {
-    const jailDuration = 3600; // 60 menit (3600 detik)
-    const fine = Math.min(thiefWallet.balance, 2000);
+    const jailDuration = 36000; // 10 jam (36000 detik)
+    const fine = Math.min(thiefWallet.balance, 10000);
     
     db.transaction(() => {
       if (fine > 0) {
