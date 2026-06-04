@@ -4317,10 +4317,13 @@ async function handlePetCommand(message, client, args) {
 
     economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
 
+    const endTimeUnix = Math.floor((Date.now() + 90000) / 1000); // 90 detik
+
     const lobby = {
       guildId,
       initiatorId: author.id,
       participants: [author.id],
+      endTimeUnix,
       timeout: null
     };
     activeLobby.set(lobbyKey, lobby);
@@ -4342,7 +4345,7 @@ async function handlePetCommand(message, client, args) {
         `🎯 **Peluang Sukses Tim:** **${calcInit.successRate}%**\n` +
         `⚡ **Sinergi Elemen Tim:**\n${elementalLogsText}\n\n` +
         `💰 **Biaya Ransum:** Rp 250 koin per orang\n` +
-        `⏳ **Waktu Berkumpul:** **90 detik**\n\n` +
+        `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
         `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
       )
       .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
@@ -4355,55 +4358,7 @@ async function handlePetCommand(message, client, args) {
 
     const replyMsg = await message.reply({ content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] });
 
-    let timeLeft = 90;
-    const interval = setInterval(async () => {
-      timeLeft -= 10;
-      if (timeLeft <= 0) {
-        clearInterval(interval);
-        return;
-      }
-
-      const currentLobby = activeLobby.get(lobbyKey);
-      if (!currentLobby) {
-        clearInterval(interval);
-        return;
-      }
-
-      let petListText = '';
-      currentLobby.participants.forEach((pId, idx) => {
-        const pObj = pet.getPet(pId, guildId);
-        const pName = pObj ? pObj.pet_name : 'Unknown Pet';
-        const pLvl = pObj ? pObj.level : 1;
-        const pType = pObj ? pObj.pet_type : 'Normal';
-        petListText += `${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) - <@${pId}>\n`;
-      });
-
-      const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
-      const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
-
-      const updatedEmbed = new EmbedBuilder()
-        .setColor(0x3F51B5)
-        .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
-        .setDescription(
-          `🚨 **LOBI EKSPEDISI PET TELAH DIBUKA!** 🚨\n\n` +
-          `👤 **Otak Ekspedisi:** <@${author.id}>\n` +
-          `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-          `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\`\n\n` +
-          `🦖 **Kru Pet Saat Ini:**\n${petListText}\n` +
-          `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
-          `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
-          `💰 **Biaya Ransum:** Rp 250 koin\n` +
-          `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
-          `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
-        )
-        .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
-        .setTimestamp();
-
-      await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
-    }, 10000);
-
     lobby.timeout = setTimeout(async () => {
-      clearInterval(interval);
       activeLobby.delete(lobbyKey);
 
       const currentLobby = lobby;
@@ -4895,6 +4850,7 @@ async function handlePetCommand(message, client, args) {
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
+          const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 90000) / 1000);
           const updatedEmbed = new EmbedBuilder()
             .setColor(0x3F51B5)
             .setTitle('🛡️ EKSPEDISI BERSAMA TIM PET 🛡️')
@@ -4907,7 +4863,7 @@ async function handlePetCommand(message, client, args) {
               `🎯 **Peluang Sukses Tim:** **${calc.successRate}%**\n` +
               `⚡ **Sinergi Elemen Tim:**\n${elementalLogsTextVal}\n\n` +
               `💰 **Biaya Ransum:** Rp 250 koin\n` +
-              `⏳ **Waktu Tersisa:** **${timeLeft} detik**\n\n` +
+              `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n\n` +
               `*Klik tombol **🛡️ Ikut Ekspedisi** untuk bergabung!*`
             )
             .setFooter({ text: 'Rupiah Server Pet Expedition PVE' })
@@ -4921,7 +4877,6 @@ async function handlePetCommand(message, client, args) {
             return iExp.reply({ content: '❌ Hanya pembuat lobi ekspedisi yang bisa membatalkan!', flags: 64 });
           }
 
-          clearInterval(interval);
           clearTimeout(lobby.timeout);
           activeLobby.delete(lobbyKey);
 
@@ -4943,7 +4898,7 @@ async function handlePetCommand(message, client, args) {
     });
 
     collector.on('end', () => {
-      clearInterval(interval);
+      // Lobby ended
     });
 
     return;
