@@ -4148,6 +4148,277 @@ async function handlePetCommand(message, client, args) {
     return message.reply({ embeds: [petInfoEmbed] });
   }
 
+  // ── SUB-PERINTAH: TOWER ──
+  if (subCommand === 'tower' || subCommand === 'menara' || subCommand === 'dungeon') {
+    const activePet = pet.getPet(author.id, guildId);
+    if (!activePet) {
+      return message.reply({ embeds: [embeds.petDashboardEmbed(author, null, [])] });
+    }
+    if (activePet.status === 'EGG') {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Masih Telur!', 'Pet Anda masih berbentuk telur! Tetaskan terlebih dahulu.')] });
+    }
+    if (activePet.status === 'DEAD') {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Meninggal!', 'Pet Anda telah meninggal! Hidupkan kembali di Dokter Pet terlebih dahulu.')] });
+    }
+
+    try {
+      const getTowerPanelData = (userId, gId, freshPet) => {
+        const towerState = pet.getTowerState(userId, gId);
+        const boss = pet.getTowerBoss(towerState.current_floor);
+        const embed = embeds.petTowerEmbed(author, freshPet, towerState, boss);
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_btn_tower_climb').setLabel('⚔️ Tantang Lantai').setStyle(ButtonStyle.Success).setDisabled(towerState.current_floor > 50),
+          new ButtonBuilder().setCustomId('pet_btn_tower_sweep').setLabel('🧹 Sapu Bersih (Sweep)').setStyle(ButtonStyle.Primary).setDisabled(towerState.current_floor <= 1),
+          new ButtonBuilder().setCustomId('pet_btn_close_panel').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
+        );
+        return { embeds: [embed], components: [row] };
+      };
+
+      const panelData = getTowerPanelData(author.id, guildId, activePet);
+      const replyMsg = await message.reply(panelData);
+      const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+        try {
+          if (i.customId === 'pet_btn_close_panel') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+          } else if (i.customId === 'pet_btn_tower_sweep') {
+            await i.deferReply({ flags: 64 });
+            try {
+              const res = pet.sweepTower(author.id, guildId);
+              const successEmb = embeds.successEmbed(
+                '🧹 Sapu Bersih Menara Sukses!',
+                `Anda menyapu bersih lantai 1 s/d ${res.floorCleared}!\n\n` +
+                `💰 **Koin didapat:** **Rp ${res.rewardCoins.toLocaleString('id-ID')}**\n` +
+                `🌟 **XP didapat:** **+${res.rewardXp} XP**\n\n` +
+                `📊 Status Baru Pet: Kelaparan \`${pet.getPet(author.id, guildId).hunger}%\`, Kehausan \`${pet.getPet(author.id, guildId).thirst}%\`.`
+              );
+              await i.editReply({ embeds: [successEmb] });
+              
+              const freshPet = pet.getPet(author.id, guildId);
+              await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+            } catch (err) {
+              await i.editReply({ content: `❌ Sweep gagal: ${err.message}` });
+            }
+          } else if (i.customId === 'pet_btn_tower_climb') {
+            const tState = pet.getTowerState(author.id, guildId);
+            if (tState.daily_attempts >= 5) {
+              await i.deferReply({ flags: 64 });
+              const confirmEmb = embeds.warnEmbed(
+                'Konfirmasi Tiket Masuk! 🎫',
+                `Kuota harian (5/5) Anda sudah habis!\n` +
+                `Apakah Anda ingin menggunakan **1x 🥤 Soda Energi Pet** atau membayar **Rp 500 koin** untuk masuk kembali?`
+              );
+              const confirmRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('pet_btn_tower_climb_confirm').setLabel('🟢 Gunakan Soda/Rp 500').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('pet_btn_tower_climb_cancel').setLabel('🔴 Batal').setStyle(ButtonStyle.Secondary)
+              );
+              
+              const confMsg = await i.editReply({ embeds: [confirmEmb], components: [confirmRow] });
+              const confCollector = confMsg.createMessageComponentCollector({ time: 30000, max: 1 });
+              
+              confCollector.on('collect', async iConf => {
+                if (iConf.user.id !== author.id) return iConf.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+                await iConf.deferUpdate();
+                
+                if (iConf.customId === 'pet_btn_tower_climb_confirm') {
+                  try {
+                    const fightRes = pet.climbTower(author.id, guildId, true);
+                    const fightEmbed = embeds.petBattleLogEmbed(
+                      fightRes.isWin 
+                        ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉` 
+                        : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
+                      fightRes.logs,
+                      fightRes.isWin
+                    );
+                    
+                    if (fightRes.isWin) {
+                      let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
+                      if (fightRes.gotCheckpointReward) {
+                        rewardText += `\n🎁 **Bonus Lantai Boss:** Mendapatkan **1x ${fightRes.checkpointRewardName}**!`;
+                      }
+                      fightEmbed.addFields({ name: '🎁 Hadiah Kemenangan', value: rewardText });
+                    } else {
+                      fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
+                    }
+                    
+                    await i.editReply({ embeds: [fightEmbed], components: [] });
+                    
+                    const freshPet = pet.getPet(author.id, guildId);
+                    await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+                  } catch (err) {
+                    await i.editReply({ content: `❌ Pertempuran gagal: ${err.message}`, components: [] });
+                  }
+                } else {
+                  await i.editReply({ content: '❌ Tantangan dibatalkan.', embeds: [], components: [] });
+                }
+              });
+            } else {
+              await i.deferReply({ flags: 64 });
+              try {
+                const fightRes = pet.climbTower(author.id, guildId, false);
+                const fightEmbed = embeds.petBattleLogEmbed(
+                  fightRes.isWin 
+                    ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉` 
+                    : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
+                  fightRes.logs,
+                  fightRes.isWin
+                );
+                
+                if (fightRes.isWin) {
+                  let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
+                  if (fightRes.gotCheckpointReward) {
+                    rewardText += `\n🎁 **Bonus Lantai Boss:** Mendapatkan **1x ${fightRes.checkpointRewardName}**!`;
+                  }
+                  fightEmbed.addFields({ name: '🎁 Hadiah Kemenangan', value: rewardText });
+                } else {
+                  fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
+                }
+                
+                await i.editReply({ embeds: [fightEmbed] });
+                
+                const freshPet = pet.getPet(author.id, guildId);
+                await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+              } catch (err) {
+                await i.editReply({ content: `❌ Pertempuran gagal: ${err.message}` });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error in tower interaction:", err);
+        }
+      });
+
+      collector.on('end', async () => {
+        const freshData = getTowerPanelData(author.id, guildId, activePet);
+        freshData.components = [];
+        await replyMsg.edit(freshData).catch(() => {});
+      });
+
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Menara Ujian!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: RAID / BOSS ──
+  if (subCommand === 'raid' || subCommand === 'worldboss' || subCommand === 'boss') {
+    const activePet = pet.getPet(author.id, guildId);
+    if (!activePet) {
+      return message.reply({ embeds: [embeds.petDashboardEmbed(author, null, [])] });
+    }
+    if (activePet.status === 'EGG') {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Masih Telur!', 'Pet Anda masih berbentuk telur! Tetaskan terlebih dahulu.')] });
+    }
+    if (activePet.status === 'DEAD') {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Meninggal!', 'Pet Anda telah meninggal! Hidupkan kembali di Dokter Pet terlebih dahulu.')] });
+    }
+
+    try {
+      const getRaidPanelData = (userId, gId, freshPet) => {
+        const boss = pet.getOrCreateWorldBoss(gId);
+        const weekStart = pet.getWeekStartString();
+        const participant = database.get('SELECT * FROM world_boss_participants WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?', [userId, gId, freshPet.pet_name, weekStart]);
+        
+        const embed = embeds.petRaidEmbed(author, freshPet, boss, participant);
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_btn_raid_attack').setLabel('⚔️ Serang Boss').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE'),
+          new ButtonBuilder().setCustomId('pet_btn_raid_soda').setLabel('🥤 Gunakan Soda (+1 Serang)').setStyle(ButtonStyle.Primary).setDisabled(boss.status !== 'ACTIVE'),
+          new ButtonBuilder().setCustomId('pet_btn_close_panel').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
+        );
+        return { embeds: [embed], components: [row] };
+      };
+
+      const panelData = getRaidPanelData(author.id, guildId, activePet);
+      const replyMsg = await message.reply(panelData);
+      const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+        try {
+          if (i.customId === 'pet_btn_close_panel') {
+            collector.stop();
+            await replyMsg.delete().catch(() => {});
+          } else if (i.customId === 'pet_btn_raid_soda') {
+            await i.deferReply({ flags: 64 });
+            try {
+              const freshPet = pet.getPet(author.id, guildId);
+              const fightRes = pet.attackWorldBoss(author.id, guildId, true);
+              
+              const fightEmbed = embeds.petBattleLogEmbed(
+                fightRes.bossKilled 
+                  ? `🎉 WORLD BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
+                  : `⚔️ LAPORAN SERANGAN WORLD BOSS ⚔️`,
+                fightRes.logs,
+                fightRes.bossKilled
+              );
+
+              fightEmbed.addFields({ name: '📊 Dampak Serangan', value: `Pet Anda berhasil meluncurkan **${fightRes.totalDmgDealt.toLocaleString('id-ID')} DMG** ke Boss!` });
+
+              if (fightRes.bossKilled && fightRes.distributeResult) {
+                const rewards = fightRes.distributeResult.rewards;
+                const winnerLog = rewards.map(r => `• <@${r.userId}>: **${r.damage.toLocaleString('id-ID')} DMG** ➔ Rp ${r.coins.toLocaleString('id-ID')} + ${r.items}`).join('\n');
+                fightEmbed.addFields({ name: '🎁 Distribusi Hadiah Server', value: winnerLog.substring(0, 1024) });
+              }
+
+              await i.editReply({ embeds: [fightEmbed] });
+              
+              const pFresh = pet.getPet(author.id, guildId);
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
+            } catch (err) {
+              await i.editReply({ content: `❌ Serangan tambahan gagal: ${err.message}` });
+            }
+          } else if (i.customId === 'pet_btn_raid_attack') {
+            await i.deferReply({ flags: 64 });
+            try {
+              const freshPet = pet.getPet(author.id, guildId);
+              const fightRes = pet.attackWorldBoss(author.id, guildId, false);
+              
+              const fightEmbed = embeds.petBattleLogEmbed(
+                fightRes.bossKilled 
+                  ? `🎉 WORLD BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
+                  : `⚔️ LAPORAN SERANGAN WORLD BOSS ⚔️`,
+                fightRes.logs,
+                fightRes.bossKilled
+              );
+
+              fightEmbed.addFields({ name: '📊 Dampak Serangan', value: `Pet Anda berhasil meluncurkan **${fightRes.totalDmgDealt.toLocaleString('id-ID')} DMG** ke Boss!` });
+
+              if (fightRes.bossKilled && fightRes.distributeResult) {
+                const rewards = fightRes.distributeResult.rewards;
+                const winnerLog = rewards.map(r => `• <@${r.userId}>: **${r.damage.toLocaleString('id-ID')} DMG** ➔ Rp ${r.coins.toLocaleString('id-ID')} + ${r.items}`).join('\n');
+                fightEmbed.addFields({ name: '🎁 Distribusi Hadiah Server', value: winnerLog.substring(0, 1024) });
+              }
+
+              await i.editReply({ embeds: [fightEmbed] });
+              
+              const pFresh = pet.getPet(author.id, guildId);
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
+            } catch (err) {
+              await i.editReply({ content: `❌ Serangan gagal: ${err.message}` });
+            }
+          }
+        } catch (err) {
+          console.error("Error in raid interaction:", err);
+        }
+      });
+
+      collector.on('end', async () => {
+        const freshData = getRaidPanelData(author.id, guildId, activePet);
+        freshData.components = [];
+        await replyMsg.edit(freshData).catch(() => {});
+      });
+
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memuat Raid World Boss!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: LIST / DAFTAR ──
   if (subCommand === 'list' || subCommand === 'daftar') {
     const pets = pet.getPetsList(author.id, guildId);

@@ -843,6 +843,50 @@ function initSchema() {
     console.error("❌ [Database] Gagal menjalankan migrasi retroaktif TP:", e.message);
   }
 
+  // 53. Tabel World Boss, World Boss Participants, dan user_pet_tower
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS world_boss (
+        guild_id TEXT NOT NULL,
+        week_start TEXT NOT NULL,
+        boss_name TEXT NOT NULL,
+        boss_type TEXT NOT NULL,
+        max_hp INTEGER NOT NULL,
+        current_hp INTEGER NOT NULL,
+        status TEXT DEFAULT 'ACTIVE',
+        created_at INTEGER DEFAULT (strftime('%s','now')),
+        PRIMARY KEY (guild_id, week_start)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS world_boss_participants (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        pet_name TEXT NOT NULL,
+        week_start TEXT NOT NULL,
+        damage_dealt INTEGER DEFAULT 0,
+        attacks_count INTEGER DEFAULT 0,
+        last_attack_at INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id, pet_name, week_start)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_pet_tower (
+        user_id TEXT NOT NULL,
+        guild_id TEXT NOT NULL,
+        current_floor INTEGER DEFAULT 1,
+        daily_attempts INTEGER DEFAULT 0,
+        last_attempt_date TEXT DEFAULT '',
+        last_sweep_date TEXT DEFAULT '',
+        created_at INTEGER DEFAULT (strftime('%s','now')),
+        PRIMARY KEY (user_id, guild_id)
+      )
+    `);
+    console.log("⚡ [Database] Tabel World Boss, World Boss Participants, dan Menara Ujian berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel World Boss/Menara Ujian:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden, Ebyus Settings & Gym Stats berhasil diinisialisasi.');
 }
 

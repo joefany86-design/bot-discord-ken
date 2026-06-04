@@ -2744,10 +2744,104 @@ module.exports = {
       `┊ 🛡️ DEF : **${moveInfo.defense}** ➔ \`${defDesc}\`\n\n` +
       `⏱️ **STATUS AKTIVITAS (CD)**\n` +
       `┊ 💼 Kerja: ${workCdText} · 🏹 Buru: ${huntCdText}\n` +
-      `└─ ⚽ Main : ${playCdText} · 🗺️ Ekspedisi: 🟢 **Siap!**`
+      `└─ ⚽ Main : ${playCdText} · 🗺️ Eksp: 🟢 **Siap!** · 🏰 Menara: Lantai **${(() => {
+        let floorLabel = 1;
+        try {
+          const tower = db.get('SELECT current_floor FROM user_pet_tower WHERE user_id = ? AND guild_id = ?', [pet.user_id, pet.guild_id]);
+          if (tower) floorLabel = tower.current_floor;
+        } catch (e) {
+          console.error(e);
+        }
+        return floorLabel;
+      })()}**`
     );
 
     embed.setFooter({ text: `${speciesEmoji} ${typeName} · Kosan 1A Pet Card Series · Klik tombol di bawah untuk interaksi!` });
+    return embed;
+  },
+
+  petTowerEmbed(user, pet, towerState, boss) {
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.INFO)
+      .setTitle(`🏰 MENARA UJIAN (TOWER OF TRIALS) 🏰`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `Selamat datang di Menara Ujian, **${user.username}**!\n` +
+        `Buktikan ketangguhan peliharaan Anda menghadapi penjaga menara lantai demi lantai.\n\n` +
+        `👤 **Pemain:** <@${user.id}>\n` +
+        `🐾 **Pet Aktif:** **${pet.pet_name}** the **${pet.pet_type}** (Lv.${pet.level})\n` +
+        `🌟 **Lantai Progres:** Lantai **${towerState.current_floor}**\n` +
+        `🎫 **Kuota Harian:** **${towerState.daily_attempts}/5** percobaan telah digunakan hari ini.\n\n` +
+        `👾 **MUSUH LANTAI ${towerState.current_floor}:** **${boss.name}**\n` +
+        `├─ ❤️ HP: \`${boss.hp.toLocaleString('id-ID')} HP\`\n` +
+        `├─ ⚔️ ATK: \`${boss.atk.toLocaleString('id-ID')} ATK\` · 🛡️ DEF: \`${boss.def}%\`\n` +
+        `└─ 🧬 Elemen: \`${boss.element}\` (Rekomendasi Elemen Kontra untuk +25% DMG)\n\n` +
+        `🎁 **Hadiah Lantai Ini:** **Rp ${Math.round(500 + Math.pow(towerState.current_floor, 2.1) * 13).toLocaleString('id-ID')}** koin + **${towerState.current_floor * 10 + 50} XP** Pet!` +
+        (towerState.current_floor % 5 === 0 ? `\n🔥 **LANTAI BOSS:** Menyelesaikan lantai ini akan menjatuhkan **1x 🎟️ Tiket Gacha Pet**!` : '')
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Menara Ujian • Kosan 1A Pet System' });
+    return embed;
+  },
+
+  petRaidEmbed(user, pet, boss, participant) {
+    const hpPercent = Math.round((boss.current_hp / boss.max_hp) * 100);
+    
+    // Build HP Bar (10 segments)
+    const filledBars = Math.max(0, Math.min(10, Math.round(hpPercent / 10)));
+    const emptyBars = 10 - filledBars;
+    const hpBarStr = '🟥'.repeat(filledBars) + '⬛'.repeat(emptyBars);
+
+    const attacksCount = participant ? participant.attacks_count : 0;
+    const damageDealt = participant ? participant.damage_dealt : 0;
+
+    let tierLabel = 'BRONZE TIER (Partisipasi)';
+    if (participant) {
+      if (damageDealt > 1000000) tierLabel = '🥇 GOLD TIER (Kontribusi Tinggi)';
+      else if (damageDealt > 300000) tierLabel = '🥈 SILVER TIER (Kontribusi Sedang)';
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.FIERY)
+      .setTitle(`🌋 RAID WORLD BOSS MINGGUAN 🌋`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .setDescription(
+        `🔥 **World Boss Terdeteksi!** Seluruh warga server harus berjuang mengalahkannya!\n\n` +
+        `👹 **Nama Boss:** **${boss.boss_name}**\n` +
+        `🧬 **Elemen:** **${boss.boss_type}** *(WATER > FIRE > EARTH > WATER)*\n` +
+        `❤️ **HP Boss:** ${hpBarStr} **${boss.current_hp.toLocaleString('id-ID')} / ${boss.max_hp.toLocaleString('id-ID')} HP** (${hpPercent}%)\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📊 **KONTRIBUSI ANDA MINGGU INI:**\n` +
+        `├─ 👤 Pet Aktif: **${pet.pet_name}** (Lv. ${pet.level})\n` +
+        `├─ ⚔️ Total Damage: **${damageDealt.toLocaleString('id-ID')} DMG**\n` +
+        `├─ 🏆 Perkiraan Reward: **${tierLabel}**\n` +
+        `└─ 🔴 Jumlah Serangan: **${attacksCount}/3** Kali Gratis *(Maksimal 5 dengan Soda)*\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `*Gunakan tombol di bawah untuk Menyerang Boss menggunakan Pet aktif Anda!*`
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Raid World Boss • Kosan 1A Pet System' });
+    return embed;
+  },
+
+  petBattleLogEmbed(title, logs, isWin) {
+    const embed = new EmbedBuilder()
+      .setColor(isWin ? COLORS.SUCCESS : COLORS.ERROR)
+      .setTitle(title)
+      .setDescription(
+        `📝 **LOG PERTEMPURAN:**\n` +
+        `\`\`\`diff\n` +
+        logs.map(line => {
+          if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang')) {
+            return `+ ${line}`;
+          } else if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('pingsan')) {
+            return `- ${line}`;
+          }
+          return `  ${line}`;
+        }).join('\n').substring(0, 1900) +
+        `\n\`\`\``
+      )
+      .setTimestamp();
     return embed;
   },
 

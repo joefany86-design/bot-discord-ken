@@ -245,6 +245,22 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setDescription('Mengubah tingkat bintang pet aktif anggota target secara langsung (1-5)')
         .setValue('action_force_star_modal'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('🏰 Atur Lantai Menara Ujian (Modal)')
+        .setDescription('Mengatur progres lantai Menara Ujian pet target')
+        .setValue('action_admin_set_floor_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏰 Reset Tiket Harian Menara')
+        .setDescription('Mereset batas percobaan harian Menara Ujian pet target')
+        .setValue('action_admin_reset_tower_attempts'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('👹 Spawn World Boss (Modal)')
+        .setDescription('Spawn atau modifikasi status World Boss minggu ini')
+        .setValue('action_admin_spawn_boss_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('☠️ Kalahkan World Boss Instan')
+        .setDescription('Mengurangi HP World Boss menjadi 0 untuk memicu distribusi hadiah')
+        .setValue('action_admin_kill_boss'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
         .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
         .setValue('action_set_custom_image_modal')
@@ -1173,6 +1189,200 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               await sub.reply({ content: `❌ Gagal mengubah gambar: ${err.message}`, flags: 64 }).catch(() => { });
             }
           }
+        }
+        else if (action === 'action_admin_set_floor_modal') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
+          }
+
+          const petModule = require('./pet');
+          const towerState = petModule.getTowerState(selectedTargetUserId, guildId);
+
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_set_floor_modal')
+            .setTitle('Atur Lantai Menara Ujian');
+
+          const floorInput = new TextInputBuilder()
+            .setCustomId('floor_level')
+            .setLabel('Lantai Menara (1 - 50)')
+            .setValue(String(towerState.current_floor || 1))
+            .setPlaceholder('Contoh: 15')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(floorInput));
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_set_floor_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const floorVal = parseInt(sub.fields.getTextInputValue('floor_level'));
+            if (isNaN(floorVal) || floorVal < 1 || floorVal > 50) {
+              return sub.reply({ content: '❌ Lantai Menara harus berupa angka bulat antara 1 hingga 50!', flags: 64 });
+            }
+
+            database.run(
+              'UPDATE user_pet_tower SET current_floor = ? WHERE user_id = ? AND guild_id = ?',
+              [floorVal, selectedTargetUserId, guildId]
+            );
+
+            await sub.reply({ content: `🏰 Sukses mengatur lantai Menara Ujian pet milik <@${selectedTargetUserId}> menjadi Lantai **${floorVal}**!`, flags: 64 });
+            const fresh = getPetPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'action_admin_reset_tower_attempts') {
+          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
+          if (!targetPet) {
+            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
+          }
+
+          const petModule = require('./pet');
+          petModule.getTowerState(selectedTargetUserId, guildId);
+
+          database.run(
+            'UPDATE user_pet_tower SET daily_attempts = 0 WHERE user_id = ? AND guild_id = ?',
+            [selectedTargetUserId, guildId]
+          );
+
+          await iPet.reply({ content: `🏰 Sukses mereset tiket percobaan harian Menara Ujian untuk <@${selectedTargetUserId}> menjadi **0/5**!`, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'action_admin_spawn_boss_modal') {
+          const petModule = require('./pet');
+          const weekStart = petModule.getWeekStartString();
+          let currentBoss = database.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_spawn_boss_modal')
+            .setTitle('Spawn/Edit World Boss Mingguan');
+
+          const nameInput = new TextInputBuilder()
+            .setCustomId('boss_name')
+            .setLabel('Nama World Boss')
+            .setValue(currentBoss ? currentBoss.boss_name : '🌋 Volcanus Custom')
+            .setPlaceholder('Contoh: 🌋 Volcanus, ⛰️ Terrasaur')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const elementInput = new TextInputBuilder()
+            .setCustomId('boss_element')
+            .setLabel('Elemen Boss (FIRE/WATER/EARTH/DRAGON)')
+            .setValue(currentBoss ? currentBoss.boss_type : 'FIRE')
+            .setPlaceholder('Pilih salah satu: FIRE, WATER, EARTH, DRAGON')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const maxHpInput = new TextInputBuilder()
+            .setCustomId('boss_max_hp')
+            .setLabel('Max HP Boss')
+            .setValue(currentBoss ? String(currentBoss.max_hp) : '5000000')
+            .setPlaceholder('Jumlah HP maksimum')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const curHpInput = new TextInputBuilder()
+            .setCustomId('boss_cur_hp')
+            .setLabel('Current HP Boss (Kosongkan = Max HP)')
+            .setValue(currentBoss ? String(currentBoss.current_hp) : '')
+            .setPlaceholder('HP saat ini')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(nameInput),
+            new ActionRowBuilder().addComponents(elementInput),
+            new ActionRowBuilder().addComponents(maxHpInput),
+            new ActionRowBuilder().addComponents(curHpInput)
+          );
+
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_spawn_boss_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const bName = sub.fields.getTextInputValue('boss_name').trim();
+            const bEl = sub.fields.getTextInputValue('boss_element').trim().toUpperCase();
+            const bMaxHp = parseInt(sub.fields.getTextInputValue('boss_max_hp'));
+            let bCurHp = parseInt(sub.fields.getTextInputValue('boss_cur_hp'));
+
+            if (!['FIRE', 'WATER', 'EARTH', 'DRAGON'].includes(bEl)) {
+              return sub.reply({ content: '❌ Elemen Boss tidak valid! Harus salah satu dari: FIRE, WATER, EARTH, DRAGON.', flags: 64 });
+            }
+            if (isNaN(bMaxHp) || bMaxHp <= 0) {
+              return sub.reply({ content: '❌ Max HP Boss harus berupa angka bulat positif!', flags: 64 });
+            }
+            if (isNaN(bCurHp)) {
+              bCurHp = bMaxHp;
+            } else if (bCurHp < 0 || bCurHp > bMaxHp) {
+              return sub.reply({ content: '❌ Current HP Boss harus di antara 0 dan Max HP!', flags: 64 });
+            }
+
+            const now = Math.floor(Date.now() / 1000);
+            
+            // Check if boss already exists
+            const exists = database.get('SELECT 1 FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+            if (exists) {
+              database.run(
+                'UPDATE world_boss SET boss_name = ?, boss_type = ?, max_hp = ?, current_hp = ?, status = ? WHERE guild_id = ? AND week_start = ?',
+                [bName, bEl, bMaxHp, bCurHp, bCurHp === 0 ? 'DEFEATED' : 'ACTIVE', guildId, weekStart]
+              );
+            } else {
+              database.run(
+                'INSERT INTO world_boss (guild_id, week_start, boss_name, boss_type, max_hp, current_hp, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [guildId, weekStart, bName, bEl, bMaxHp, bCurHp, bCurHp === 0 ? 'DEFEATED' : 'ACTIVE', now]
+              );
+            }
+
+            if (bCurHp === 0) {
+              petModule.distributeWorldBossRewards(guildId, null, weekStart);
+            }
+
+            await sub.reply({ content: `👹 Sukses men-spawn/mengedit World Boss minggu ini (**${weekStart}**):\n• Nama: **${bName}**\n• Elemen: **${bEl}**\n• HP: \`${bCurHp}/${bMaxHp}\` (${bCurHp === 0 ? 'Kalah' : 'Aktif'})`, flags: 64 });
+            const fresh = getPetPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'action_admin_kill_boss') {
+          const petModule = require('./pet');
+          const weekStart = petModule.getWeekStartString();
+
+          const boss = database.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+          if (!boss) {
+            return iPet.reply({ content: '❌ Tidak ada World Boss aktif minggu ini untuk dikalahkan!', flags: 64 });
+          }
+
+          if (boss.status === 'DISTRIBUTED' || boss.current_hp === 0) {
+            return iPet.reply({ content: '❌ World Boss minggu ini sudah dikalahkan atau hadiahnya sudah dibagikan!', flags: 64 });
+          }
+
+          // Force kill: Set HP to 0 and status to DEFEATED
+          database.run(
+            "UPDATE world_boss SET current_hp = 0, status = 'DEFEATED' WHERE guild_id = ? AND week_start = ?",
+            [guildId, weekStart]
+          );
+
+          // Distribute rewards
+          const res = petModule.distributeWorldBossRewards(guildId, null, weekStart);
+
+          let rewardMsg = `☠️ Sukses mengalahkan World Boss **${boss.boss_name}** secara paksa!\n`;
+          if (res && res.totalRewarded > 0) {
+            rewardMsg += `🎁 Hadiah telah didistribusikan ke **${res.totalRewarded}** partisipan.`;
+          } else {
+            rewardMsg += `⚠️ Tidak ada partisipan yang terdaftar untuk menerima hadiah minggu ini.`;
+          }
+
+          await iPet.reply({ content: rewardMsg, flags: 64 });
+          const fresh = getPetPanelData(guildId, selectedTargetUserId);
+          await replyMsg.edit(fresh).catch(() => { });
         }
       }
     } catch (err) {

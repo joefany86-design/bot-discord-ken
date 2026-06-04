@@ -3488,3 +3488,694 @@ module.exports = {
   forceSetStar,
 };
 
+// ═══════════════════════════════════════════════
+// FITUR BARU: MENARA UJIAN & RAID WORLD BOSS MINGGUAN
+// ═══════════════════════════════════════════════
+
+function getWeekStartString() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
+}
+
+function getTowerBoss(floor) {
+  const baseHp = 100;
+  const baseAtk = 10;
+  const baseDef = 0;
+  
+  const hp = Math.round(baseHp * Math.pow(1.15, floor) + floor * 50);
+  const atk = Math.round(baseAtk * Math.pow(1.1, floor) + floor * 5);
+  const def = Math.min(45, Math.round(baseDef + floor * 0.8));
+  
+  const elements = ['EARTH', 'FIRE', 'WATER', 'DRAGON'];
+  let element = elements[(floor - 1) % elements.length];
+  if (floor % 5 === 0) {
+    element = 'DRAGON';
+  }
+  
+  const bossNames = [
+    'Slime Raksasa', 'Kelelawar Gua', 'Ular Hutan', 'Goblin Petarung', 'Raksasa Batu',
+    'Golem Magma', 'Kepiting Samudera', 'Serigala Salju', 'Prajurit Tengkorak', 'Lich Necromancer',
+    'Void Seeker', 'Behemoth Kecil', 'Hydra Rawa', 'Leviathan Muda', 'Archdragon Kuno'
+  ];
+  let name = bossNames[(floor - 1) % bossNames.length];
+  if (floor % 5 === 0) {
+    name += ' (BOSS)';
+  }
+
+  return { name, hp, maxHp: hp, atk, def, element };
+}
+
+function isElementAdvantage(petEl, opponentEl) {
+  if (!petEl || !opponentEl) return false;
+  const p = petEl.toUpperCase();
+  const o = opponentEl.toUpperCase();
+  if (p === 'WATER' && o === 'FIRE') return true;
+  if (p === 'FIRE' && o === 'EARTH') return true;
+  if (p === 'EARTH' && o === 'WATER') return true;
+  if (p === 'DRAGON' && o !== 'DRAGON') return true;
+  return false;
+}
+
+function getTowerState(userId, guildId) {
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+  
+  let state = db.get('SELECT * FROM user_pet_tower WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  if (!state) {
+    db.run(
+      "INSERT INTO user_pet_tower (user_id, guild_id, current_floor, daily_attempts, last_attempt_date, last_sweep_date) VALUES (?, ?, 1, 0, ?, '')",
+      [userId, guildId, todayStr]
+    );
+    state = db.get('SELECT * FROM user_pet_tower WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  } else if (state.last_attempt_date !== todayStr) {
+    db.run(
+      'UPDATE user_pet_tower SET daily_attempts = 0, last_attempt_date = ? WHERE user_id = ? AND guild_id = ?',
+      [todayStr, userId, guildId]
+    );
+    state.daily_attempts = 0;
+    state.last_attempt_date = todayStr;
+  }
+  return state;
+}
+
+function climbTower(userId, guildId, useSoda) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur! Tunggu sampai menetas.');
+  if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal! Revive terlebih dahulu.');
+  if (petObj.health < 20) throw new Error('Pet Anda terlalu lelah (HP < 20)! Obati dia terlebih dahulu.');
+
+  const towerState = getTowerState(userId, guildId);
+  const floor = towerState.current_floor;
+  if (floor > 50) throw new Error('Selamat! Anda telah menyelesaikan seluruh 50 lantai Menara Ujian!');
+
+  // Cek Kuota Percobaan
+  if (towerState.daily_attempts >= 5) {
+    if (useSoda) {
+      // Cari Soda Energi di inventory
+      const sodaQty = getItemQuantity(userId, guildId, 'SODA_ENERGY');
+      if (sodaQty > 0) {
+        db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = "SODA_ENERGY"', [userId, guildId]);
+      } else {
+        // Coba bayar Rp 500
+        const wallet = economy.getWallet(userId, guildId);
+        if (wallet.balance < 500) {
+          throw new Error('Anda kehabisan kuota harian Menara Ujian! Anda butuh 🥤 Soda Energi Pet atau Rp 500 koin untuk tiket masuk tambahan.');
+        }
+        economy.subtractBalance(userId, guildId, 500, 'PET_TOWER_TICKET');
+      }
+    } else {
+      throw new Error('Kuota harian (5/5) Menara Ujian Anda sudah habis! Konfirmasi penggunaan Soda Energi / Rp 500 koin untuk melanjutkan.');
+    }
+  }
+
+  const boss = getTowerBoss(floor);
+
+  // --- COMBAT SIMULATION ---
+  const logs = [];
+  let petHP = petObj.health;
+  let bossHP = boss.hp;
+
+  const speciesInfo = GACHA_SPECIES[petObj.pet_type];
+  const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+  const petBaseAtk = specBaseAtk + petObj.level * 5 + (petObj.stat_str || 0) * 2;
+
+  let petAtkMult = petObj.pet_type === 'DRAGON' ? 1.15 : 1.0;
+  if (petObj.trait === 'WARRIOR') petAtkMult += 0.15;
+  if (petObj.accessory === 'SWORD_TOY') petAtkMult += 0.15;
+  petAtkMult += (petObj.base_atk_bonus_pct || 0.0);
+
+  // Element Advantage
+  const hasAdvantage = isElementAdvantage(petObj.gacha_element, boss.element);
+  if (hasAdvantage) {
+    petAtkMult += 0.25;
+    logs.push(`⭐ **Efek Elemen:** Elemen **${petObj.gacha_element}** pet Anda diuntungkan melawan elemen **${boss.element}** Boss! (+25% ATK)`);
+  }
+
+  // Pet DEF
+  const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+  let petDefMult = 1.0;
+  if (petObj.trait === 'STURDY') petDefMult *= 0.85;
+  if (petObj.accessory === 'SHIELD_TOY') petDefMult *= 0.85;
+  const petDefGym = Math.min(0.50, (petObj.stat_def || 0) * 0.005);
+  const petDamageTakenMult = (1.0 - (specBaseDef / 100)) * petDefMult * (1.0 - (petObj.base_def_bonus_pct || 0.0)) * (1.0 - petDefGym);
+
+  const petDex = petObj.stat_dex || 0;
+  const petCritChance = Math.min(0.35, petDex * 0.005);
+
+  let round = 1;
+  const maxRounds = 10;
+  let isWin = false;
+
+  logs.push(`⚔️ **Pertempuran Dimulai!** **${petObj.pet_name}** (HP: ${petHP}/${getMaxHP(petObj)}) VS **${boss.name}** (HP: ${boss.hp})`);
+
+  while (round <= maxRounds && petHP > 0 && bossHP > 0) {
+    // 1. Pet attacks Boss
+    let dmg = Math.round(petBaseAtk * petAtkMult * (0.8 + Math.random() * 0.4));
+    dmg = Math.round(dmg * (1.0 - (boss.def / 100)));
+    
+    const isCrit = Math.random() < petCritChance;
+    if (isCrit) {
+      dmg = Math.round(dmg * 1.5);
+    }
+
+    bossHP = Math.max(0, bossHP - dmg);
+    const critText = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
+    logs.push(` R.${round}: **${petObj.pet_name}** menyerang **${boss.name}** sebesar **${dmg} DMG**!${critText} (HP Boss: ${bossHP})`);
+
+    if (bossHP <= 0) {
+      isWin = true;
+      break;
+    }
+
+    // 2. Boss attacks Pet
+    let bossDmg = Math.round(boss.atk * (0.8 + Math.random() * 0.4));
+    bossDmg = Math.round(bossDmg * petDamageTakenMult);
+
+    petHP = Math.max(0, petHP - bossDmg);
+    logs.push(` R.${round}: **${boss.name}** membalas sebesar **${bossDmg} DMG**! (HP Pet: ${petHP})`);
+
+    if (petHP <= 0) {
+      break;
+    }
+
+    round++;
+  }
+
+  // --- POST COMBAT ---
+  let rewardCoins = 0;
+  let rewardXp = 0;
+  let gotCheckpointReward = false;
+  let checkpointRewardName = '';
+
+  if (isWin) {
+    logs.push(`🎉 **KEMENANGAN!** **${petObj.pet_name}** berhasil menaklukkan Lantai ${floor}!`);
+    
+    // Reward Formula
+    rewardCoins = Math.round(500 + Math.pow(floor, 2.1) * 13);
+    rewardXp = floor * 10 + 50;
+
+    // Checkpoint reward (multiples of 5)
+    if (floor % 5 === 0) {
+      gotCheckpointReward = true;
+      checkpointRewardName = '🎟️ Tiket Gacha Pet';
+      // Add ticket to user_inventory
+      const exist = db.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = "TICKET_GACHA"', [userId, guildId]);
+      if (exist) {
+        db.run('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = "TICKET_GACHA"', [userId, guildId]);
+      } else {
+        db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "TICKET_GACHA", 1)', [userId, guildId]);
+      }
+    }
+
+    // Add balance
+    economy.addBalance(userId, guildId, rewardCoins, 'PET_TOWER_REWARD');
+
+    // Add XP
+    const xpResult = addXp(petObj, rewardXp, getMaxHP(petObj));
+    db.run(
+      'UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [xpResult.newXp, xpResult.newLevel, userId, guildId, petObj.pet_name]
+    );
+
+    // Update Tower State
+    db.run(
+      'UPDATE user_pet_tower SET current_floor = current_floor + 1, daily_attempts = daily_attempts + 1 WHERE user_id = ? AND guild_id = ?',
+      [userId, guildId]
+    );
+  } else {
+    logs.push(`💀 **KEKALAHAN!** **${petObj.pet_name}** pingsan di Lantai ${floor}.`);
+    
+    // Reduce HP
+    db.run(
+      'UPDATE user_pets SET health = 1, status = "WEAK" WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [userId, guildId, petObj.pet_name]
+    );
+
+    db.run(
+      'UPDATE user_pet_tower SET daily_attempts = daily_attempts + 1 WHERE user_id = ? AND guild_id = ?',
+      [userId, guildId]
+    );
+  }
+
+  return {
+    isWin,
+    logs,
+    floor,
+    rewardCoins,
+    rewardXp,
+    gotCheckpointReward,
+    checkpointRewardName,
+    petHP: isWin ? petHP : 1
+  };
+}
+
+function sweepTower(userId, guildId) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
+  if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal!');
+
+  const towerState = getTowerState(userId, guildId);
+  const floor = towerState.current_floor;
+  if (floor === 1) throw new Error('Anda harus menyelesaikan minimal Lantai 1 terlebih dahulu sebelum bisa melakukan Sweep!');
+
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+
+  if (towerState.last_sweep_date === todayStr) {
+    throw new Error('Anda sudah melakukan Sweep hari ini! Silakan kembali besok.');
+  }
+
+  // Syarat Kesejahteraan Pet
+  if (petObj.hunger < 50 || petObj.thirst < 50 || petObj.happiness < 50) {
+    throw new Error('Pet Anda terlalu lapar, haus, atau sedih (harus > 50%) untuk melakukan Sweep! Rawat pet Anda terlebih dahulu.');
+  }
+
+  // Calculate rewards (10% sum of rewards of all cleared floors)
+  let totalCumulativeCoins = 0;
+  for (let f = 1; f < floor; f++) {
+    totalCumulativeCoins += 500 + Math.pow(f, 2.1) * 13;
+  }
+
+  let rewardCoins = Math.round(totalCumulativeCoins * 0.10);
+  // Cap reward coins to Rp 15.000 to prevent economy breaking
+  rewardCoins = Math.min(15000, rewardCoins);
+
+  let rewardXp = Math.min(150, (floor - 1) * 5 + 10);
+
+  // Apply decay to pet: -10 Hunger, -10 Thirst
+  const newHunger = Math.max(0, petObj.hunger - 10);
+  const newThirst = Math.max(0, petObj.thirst - 10);
+
+  // Add balance
+  economy.addBalance(userId, guildId, rewardCoins, 'PET_TOWER_SWEEP');
+
+  // Add XP
+  const xpResult = addXp(petObj, rewardXp, getMaxHP(petObj));
+
+  db.run(
+    `UPDATE user_pets 
+     SET hunger = ?, thirst = ?, xp = ?, level = ? 
+     WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+    [newHunger, newThirst, xpResult.newXp, xpResult.newLevel, userId, guildId, petObj.pet_name]
+  );
+
+  // Update Sweep Date
+  db.run(
+    'UPDATE user_pet_tower SET last_sweep_date = ? WHERE user_id = ? AND guild_id = ?',
+    [todayStr, userId, guildId]
+  );
+
+  return {
+    rewardCoins,
+    rewardXp,
+    floorCleared: floor - 1
+  };
+}
+
+function getOrCreateWorldBoss(guildId) {
+  const weekStart = getWeekStartString();
+  
+  // Auto-distribute any undistributed previous bosses first
+  const oldBosses = db.all("SELECT * FROM world_boss WHERE guild_id = ? AND week_start != ? AND status IN ('ACTIVE', 'DEFEATED')", [guildId, weekStart]);
+  for (const ob of oldBosses) {
+    if (ob.status === 'ACTIVE') {
+      db.run("UPDATE world_boss SET status = 'EXPIRED' WHERE guild_id = ? AND week_start = ?", [guildId, ob.week_start]);
+    }
+    distributeWorldBossRewards(guildId, null, ob.week_start);
+  }
+
+  let boss = db.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+
+  if (!boss) {
+    const activeUsersCountRow = db.get("SELECT COUNT(*) as count FROM wallets WHERE guild_id = ?", [guildId]);
+    const activeUsersCount = activeUsersCountRow ? activeUsersCountRow.count : 1;
+    const maxHp = Math.max(5000000, activeUsersCount * 250000);
+
+    const elements = ['FIRE', 'WATER', 'EARTH', 'DRAGON'];
+    const bossType = elements[Math.floor(Math.random() * elements.length)];
+
+    const bossNames = {
+      FIRE: '🌋 Volcanus',
+      WATER: '🌊 Leviathan Core',
+      EARTH: '⛰️ Terrasaur',
+      DRAGON: '🌀 Aetherius'
+    };
+    const bossName = bossNames[bossType];
+
+    db.run(
+      "INSERT INTO world_boss (guild_id, week_start, boss_name, boss_type, max_hp, current_hp, status) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')",
+      [guildId, weekStart, bossName, bossType, maxHp, maxHp]
+    );
+
+    boss = db.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+  }
+
+  return boss;
+}
+
+function attackWorldBoss(userId, guildId, useSoda) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+  if (petObj.status === 'EGG') throw new Error('Pet Anda masih berupa telur!');
+  if (petObj.status === 'DEAD') throw new Error('Pet Anda sudah meninggal!');
+  if (petObj.health < 20 || petObj.hunger < 20 || petObj.thirst < 20) {
+    throw new Error('Pet Anda terlalu lelah, lapar, atau haus (harus > 20) untuk menyerang World Boss! Rawat pet Anda terlebih dahulu.');
+  }
+
+  const boss = getOrCreateWorldBoss(guildId);
+  if (boss.status !== 'ACTIVE' || boss.current_hp <= 0) {
+    throw new Error('World Boss sudah berhasil dikalahkan minggu ini!');
+  }
+
+  const weekStart = getWeekStartString();
+  let part = db.get('SELECT * FROM world_boss_participants WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?', [userId, guildId, petObj.pet_name, weekStart]);
+
+  if (!part) {
+    db.run(
+      'INSERT INTO world_boss_participants (user_id, guild_id, pet_name, week_start, damage_dealt, attacks_count, last_attack_at) VALUES (?, ?, ?, ?, 0, 0, 0)',
+      [userId, guildId, petObj.pet_name, weekStart]
+    );
+    part = db.get('SELECT * FROM world_boss_participants WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?', [userId, guildId, petObj.pet_name, weekStart]);
+  }
+
+  // Check Attack Count
+  if (part.attacks_count >= 3) {
+    if (useSoda) {
+      if (part.attacks_count >= 5) {
+        throw new Error('Anda telah mencapai batas maksimum serangan tambahan (soda) minggu ini (maksimal 5 kali serangan total)!');
+      }
+      const sodaQty = getItemQuantity(userId, guildId, 'SODA_ENERGY');
+      if (sodaQty <= 0) {
+        throw new Error('Anda kehabisan kuota serangan gratis! Anda butuh 🥤 Soda Energi Pet di inventory untuk menambah kuota.');
+      }
+      db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = "SODA_ENERGY"', [userId, guildId]);
+    } else {
+      throw new Error('Kuota serangan gratis Anda minggu ini telah habis (3/3)! Konfirmasi penggunaan Soda Energi Pet untuk melakukan serangan tambahan.');
+    }
+  }
+
+  // --- 5-ROUND COMBAT SIMULATION ---
+  const logs = [];
+  let petHP = petObj.health;
+  let totalDmgDealt = 0;
+
+  const speciesInfo = GACHA_SPECIES[petObj.pet_type];
+  const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+  const petBaseAtk = specBaseAtk + petObj.level * 5 + (petObj.stat_str || 0) * 2;
+
+  let petAtkMult = petObj.pet_type === 'DRAGON' ? 1.15 : 1.0;
+  if (petObj.trait === 'WARRIOR') petAtkMult += 0.15;
+  if (petObj.accessory === 'SWORD_TOY') petAtkMult += 0.15;
+  petAtkMult += (petObj.base_atk_bonus_pct || 0.0);
+
+  // Element Advantage
+  const hasAdvantage = isElementAdvantage(petObj.gacha_element, boss.boss_type);
+  if (hasAdvantage) {
+    petAtkMult += 0.25;
+    logs.push(`⭐ **Efek Elemen:** Elemen **${petObj.gacha_element}** pet Anda diuntungkan melawan elemen **${boss.boss_type}** Boss! (+25% ATK)`);
+  }
+
+  const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+  let petDefMult = 1.0;
+  if (petObj.trait === 'STURDY') petDefMult *= 0.85;
+  if (petObj.accessory === 'SHIELD_TOY') petDefMult *= 0.85;
+  const petDefGym = Math.min(0.50, (petObj.stat_def || 0) * 0.005);
+  const petDamageTakenMult = (1.0 - (specBaseDef / 100)) * petDefMult * (1.0 - (petObj.base_def_bonus_pct || 0.0)) * (1.0 - petDefGym);
+
+  const petDex = petObj.stat_dex || 0;
+  const petCritChance = Math.min(0.35, petDex * 0.005);
+
+  logs.push(`⚔️ **Menyerbu World Boss!** **${petObj.pet_name}** maju menyerang **${boss.boss_name}**!`);
+
+  for (let r = 1; r <= 5; r++) {
+    // 1. Pet attacks Boss
+    let dmg = Math.round(petBaseAtk * petAtkMult * (0.8 + Math.random() * 0.4));
+    const isCrit = Math.random() < petCritChance;
+    if (isCrit) {
+      dmg = Math.round(dmg * 1.5);
+    }
+    totalDmgDealt += dmg;
+    const critText = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
+    logs.push(` T.${r}: **${petObj.pet_name}** memberikan **${dmg} DMG**!${critText}`);
+
+    // 2. Boss counter attacks
+    const bossBaseAtk = 150 + r * 30; // Damage increases over rounds
+    let bossDmg = Math.round(bossBaseAtk * (0.8 + Math.random() * 0.4));
+    bossDmg = Math.round(bossDmg * petDamageTakenMult);
+
+    petHP = Math.max(0, petHP - bossDmg);
+    logs.push(` T.${r}: **${boss.boss_name}** menghempaskan pet Anda sebesar **${bossDmg} DMG**! (Sisa HP Pet: ${petHP})`);
+
+    if (petHP <= 0) {
+      logs.push(`🤕 **${petObj.pet_name}** terlalu lelah dan terkapar pingsan.`);
+      break;
+    }
+  }
+
+  // --- POST COMBAT ---
+  // Update Boss HP in DB
+  const newBossHp = Math.max(0, boss.current_hp - totalDmgDealt);
+  const bossKilled = newBossHp === 0;
+  const bossStatus = bossKilled ? 'DEFEATED' : 'ACTIVE';
+
+  db.run(
+    'UPDATE world_boss SET current_hp = ?, status = ? WHERE guild_id = ? AND week_start = ?',
+    [newBossHp, bossStatus, guildId, weekStart]
+  );
+
+  // Update Participant
+  db.run(
+    `UPDATE world_boss_participants 
+     SET damage_dealt = damage_dealt + ?, attacks_count = attacks_count + 1, last_attack_at = ? 
+     WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?`,
+    [totalDmgDealt, Math.floor(Date.now() / 1000), userId, guildId, petObj.pet_name, weekStart]
+  );
+
+  // Decay Pet Stats: -15 Hunger, -15 Thirst, -10 Happiness
+  const newHunger = Math.max(0, petObj.hunger - 15);
+  const newThirst = Math.max(0, petObj.thirst - 15);
+  const newHappiness = Math.max(0, petObj.happiness - 10);
+  const finalHealth = petHP <= 0 ? 1 : petHP;
+  const finalStatus = petHP <= 0 ? 'WEAK' : petObj.status;
+
+  db.run(
+    `UPDATE user_pets 
+     SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ? 
+     WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+    [newHunger, newThirst, newHappiness, finalHealth, finalStatus, userId, guildId, petObj.pet_name]
+  );
+
+  // If Boss killed, distribute rewards
+  let distributeResult = null;
+  if (bossKilled) {
+    distributeResult = distributeWorldBossRewards(guildId, userId, weekStart);
+  }
+
+  return {
+    bossName: boss.boss_name,
+    totalDmgDealt,
+    bossKilled,
+    logs,
+    petHP: finalHealth,
+    distributeResult
+  };
+}
+
+function distributeWorldBossRewards(guildId, lastHitUserId = null, targetWeekStart = null) {
+  const weekStart = targetWeekStart || getWeekStartString();
+  const boss = db.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
+  if (!boss) return null;
+
+  // Prevent multiple distributions
+  if (boss.status === 'DISTRIBUTED') return null;
+
+  // Update status to DISTRIBUTED
+  db.run("UPDATE world_boss SET status = 'DISTRIBUTED' WHERE guild_id = ? AND week_start = ?", [guildId, weekStart]);
+
+  const participants = db.all('SELECT * FROM world_boss_participants WHERE guild_id = ? AND week_start = ? ORDER BY damage_dealt DESC', [guildId, weekStart]);
+  if (participants.length === 0) return { totalRewarded: 0 };
+
+  const totalPart = participants.length;
+  const rewardsList = [];
+
+  participants.forEach((p, idx) => {
+    // Determine Tier
+    let tier = 'BRONZE';
+    let rewardCoins = 0;
+    const itemsGained = [];
+
+    const goldLimit = Math.max(1, Math.round(totalPart * 0.1));
+    const silverLimit = Math.max(2, Math.round(totalPart * 0.3));
+
+    if (idx < goldLimit) {
+      tier = 'GOLD';
+      rewardCoins = Math.floor(Math.random() * (10000 - 6000 + 1)) + 6000;
+      
+      // 2x Ticket Gacha
+      itemsGained.push({ itemId: 'TICKET_GACHA', quantity: 2, name: '🎟️ Tiket Gacha Pet' });
+      // 15% Accessory chance
+      if (Math.random() < 0.15) {
+        const accs = ['COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY'];
+        const chosenAcc = accs[Math.floor(Math.random() * accs.length)];
+        
+        const activePet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p.user_id, guildId]);
+        if (activePet && !activePet.accessory) {
+          db.run('UPDATE user_pets SET accessory = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [chosenAcc, p.user_id, guildId, activePet.pet_name]);
+          const accNames = { COLLAR_IRON: '🪮 Kalung Besi', SWORD_TOY: '⚔️ Pedang Mainan', SHIELD_TOY: '🛡️ Tameng Mainan' };
+          itemsGained.push({ itemId: chosenAcc, quantity: 1, name: `${accNames[chosenAcc]} (Langsung Terpasang)` });
+        } else {
+          // Give compensation coin value
+          const compCoins = 1500;
+          rewardCoins += compCoins;
+          itemsGained.push({ itemId: chosenAcc, quantity: 0, name: `Kompensasi Aksesoris (Sudah punya equip): +Rp 1.500 koin` });
+        }
+      }
+    } else if (idx < silverLimit) {
+      tier = 'SILVER';
+      rewardCoins = Math.floor(Math.random() * (5000 - 3000 + 1)) + 3000;
+      itemsGained.push({ itemId: 'TICKET_GACHA', quantity: 1, name: '🎟️ Tiket Gacha Pet' });
+    } else {
+      tier = 'BRONZE';
+      rewardCoins = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
+      itemsGained.push({ itemId: 'FOOD_PREMIUM', quantity: 1, name: '🥩 Daging Premium' });
+    }
+
+    // Add Boss Defeat Bonus
+    if (boss.current_hp <= 0 || boss.status === 'DEFEATED' || boss.status === 'DISTRIBUTED') {
+      rewardCoins += 2000;
+    }
+
+    // Add Last Hit Bonus
+    const isLastHit = lastHitUserId && p.user_id === lastHitUserId;
+    if (isLastHit) {
+      rewardCoins += 3000;
+      // Add title tag to pet
+      const activePet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [p.user_id, guildId]);
+      if (activePet) {
+        db.run('UPDATE user_pets SET pet_name = pet_name || " (Slayer)" WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND pet_name NOT LIKE "%(Slayer)%"', [p.user_id, guildId, activePet.pet_name]);
+      }
+    }
+
+    // Add Coins to Wallet
+    economy.addBalance(p.user_id, guildId, rewardCoins, 'PET_RAID_REWARD');
+
+    // Add Items to inventories
+    itemsGained.forEach(item => {
+      if (item.quantity > 0) {
+        if (item.itemId === 'TICKET_GACHA') {
+          const exist = db.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [p.user_id, guildId, item.itemId]);
+          if (exist) {
+            db.run('UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [item.quantity, p.user_id, guildId, item.itemId]);
+          } else {
+            db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [p.user_id, guildId, item.itemId, item.quantity]);
+          }
+        } else if (item.itemId === 'FOOD_PREMIUM') {
+          const exist = db.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [p.user_id, guildId, item.itemId]);
+          if (exist) {
+            db.run('UPDATE pet_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [item.quantity, p.user_id, guildId, item.itemId]);
+          } else {
+            db.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [p.user_id, guildId, item.itemId, item.quantity]);
+          }
+        }
+      }
+    });
+
+    rewardsList.push({
+      userId: p.user_id,
+      petName: p.pet_name,
+      damage: p.damage_dealt,
+      tier,
+      coins: rewardCoins,
+      items: itemsGained.map(i => `${i.quantity > 0 ? `${i.quantity}x ` : ''}${i.name}`).join(', '),
+      isLastHit
+    });
+  });
+
+  return {
+    bossName: boss.boss_name,
+    totalRewarded: totalPart,
+    rewards: rewardsList
+  };
+}
+
+module.exports = {
+  // Config & utils
+  PET_ITEMS,
+
+  PET_SPECIES,
+  EXPEDITION_MAPS,
+  GACHA_SPECIES,
+  GACHA_RATES,
+  GACHA_PRICES,
+  RECYCLE_REWARD,
+  STAR_UPGRADE_REQ,
+  getStarBonuses,
+  renderStars,
+  getMaxHP,
+  addXp,
+  // Core
+  getPet,
+  adoptPet,
+  resetPet,
+  getInventory,
+  buyItem,
+  useItem,
+  playWithPet,
+  sendToWork,
+  sendToHunt,
+  executePvP,
+  getPetsList,
+  switchActivePet,
+  breedPets,
+  executeExpeditionQteFailure,
+  calculateSuccessRate,
+  executeExpedition,
+  getXpNeeded,
+  checkExpeditionLimit,
+  getPetLeaderboard,
+  setCustomImage,
+  washPet,
+  getOrCreateDailyQuests,
+  incrementQuestProgress,
+  claimDailyQuestReward,
+  revivePet,
+  useSodaEnergy,
+  trainPet,
+  getItemCooldown,
+  setItemCooldown,
+  unlockAutoCare,
+  toggleAutoFeed,
+  allocateStat,
+  resetGymStats,
+  // Gacha
+  rollGacha,
+  _rollOnce,
+  saveGachaPet,
+  recyclePet,
+  getGachaTickets,
+  addGachaTickets,
+  // Upgrade Bintang
+  upgradePetStar,
+  getUpgradeRequirements,
+  getPetSacrificeList,
+  forceSetStar,
+  // Menara Ujian & World Boss
+  getWeekStartString,
+  getTowerBoss,
+  isElementAdvantage,
+  getTowerState,
+  climbTower,
+  sweepTower,
+  getOrCreateWorldBoss,
+  attackWorldBoss,
+  distributeWorldBossRewards,
+};
+
+
