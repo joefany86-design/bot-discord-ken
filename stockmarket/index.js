@@ -4202,7 +4202,7 @@ async function handlePetCommand(message, client, args) {
               const freshPet = pet.getPet(author.id, guildId);
               await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
             } catch (err) {
-              await i.editReply({ content: `❌ Sweep gagal: ${err.message}` });
+              await i.editReply({ embeds: [embeds.errorEmbed('Sweep Gagal! 🧹', err.message)] });
             }
           } else if (i.customId === 'pet_btn_tower_climb') {
             const tState = pet.getTowerState(author.id, guildId);
@@ -4251,10 +4251,10 @@ async function handlePetCommand(message, client, args) {
                     const freshPet = pet.getPet(author.id, guildId);
                     await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
                   } catch (err) {
-                    await i.editReply({ content: `❌ Pertempuran gagal: ${err.message}`, components: [] });
+                    await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)], components: [] });
                   }
                 } else {
-                  await i.editReply({ content: '❌ Tantangan dibatalkan.', embeds: [], components: [] });
+                  await i.editReply({ embeds: [embeds.warnEmbed('Tantangan Dibatalkan! 🎫', 'Anda telah membatalkan tantangan Menara Ujian.')], components: [] });
                 }
               });
             } else {
@@ -4284,7 +4284,7 @@ async function handlePetCommand(message, client, args) {
                 const freshPet = pet.getPet(author.id, guildId);
                 await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
               } catch (err) {
-                await i.editReply({ content: `❌ Pertempuran gagal: ${err.message}` });
+                await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)] });
               }
             }
           }
@@ -4372,7 +4372,7 @@ async function handlePetCommand(message, client, args) {
               const pFresh = pet.getPet(author.id, guildId);
               await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
             } catch (err) {
-              await i.editReply({ content: `❌ Serangan tambahan gagal: ${err.message}` });
+              await i.editReply({ embeds: [embeds.errorEmbed('Serangan Gagal! 🥤', err.message)] });
             }
           } else if (i.customId === 'pet_btn_raid_attack') {
             await i.deferReply({ flags: 64 });
@@ -4401,7 +4401,7 @@ async function handlePetCommand(message, client, args) {
               const pFresh = pet.getPet(author.id, guildId);
               await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
             } catch (err) {
-              await i.editReply({ content: `❌ Serangan gagal: ${err.message}` });
+              await i.editReply({ embeds: [embeds.errorEmbed('Serangan Gagal! ⚔️', err.message)] });
             }
           }
         } catch (err) {

@@ -3713,7 +3713,7 @@ function climbTower(userId, guildId, useSoda) {
     
     // Reduce HP
     db.run(
-      'UPDATE user_pets SET health = 1, status = "WEAK" WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      "UPDATE user_pets SET health = 1, status = 'WEAK' WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
       [userId, guildId, petObj.pet_name]
     );
 
