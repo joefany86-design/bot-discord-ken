@@ -2328,6 +2328,43 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
 }
 
 /**
+ * Mengambil seluruh ID member server yang terdaftar di database wallets, cache bot, atau Discord API
+ */
+async function getAllGuildMembers(guild, guildId) {
+  const memberIds = new Set();
+  try {
+    const activeWallets = database.all('SELECT user_id FROM wallets WHERE guild_id = ?', [guildId]);
+    if (activeWallets) {
+      activeWallets.forEach(w => {
+        if (w.user_id) memberIds.add(w.user_id);
+      });
+    }
+  } catch (e) {
+    console.error('Gagal mengambil wallets dari db:', e.message);
+  }
+
+  if (guild && guild.members) {
+    guild.members.cache.forEach(member => {
+      if (member && member.user && !member.user.bot) {
+        memberIds.add(member.id);
+      }
+    });
+
+    try {
+      const fetchedMembers = await guild.members.fetch({ force: true });
+      for (const [id, member] of fetchedMembers) {
+        if (member && member.user && !member.user.bot) {
+          memberIds.add(id);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal fetch all members via Discord API:', err.message);
+    }
+  }
+  return Array.from(memberIds);
+}
+
+/**
  * ⚡ 5. PANEL BYPASS & ABYUS (SABOTASE EKONOMI)
  */
 async function handleAdminAbyusPanel(messageOrInteraction, client) {
@@ -2354,7 +2391,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     embed.setDescription(
       `Sabotase persentase kemenangan gacha role, atur multiplier obrolan chat warga, set batas waktu auto-reset event, atau lakukan penghentian darurat:\n\n` +
       `📊 **STATUS BYPASS & EKONOMI SERVER:**\n` +
-      `📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkan)**'}\n` +
+      `📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkannya)**'}\n` +
       `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
       `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
       `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
@@ -2424,25 +2461,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_stop_abyus')
         .setLabel('🛑 Stop Event Abyus')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    const btnRow2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_status')
-        .setLabel('📊 Status Real-time')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_back')
-        .setLabel('🔙 Kembali ke Hub')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_close')
-        .setLabel('❌ Tutup Panel')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    const btnRow3 = new ActionRowBuilder().addComponents(
+        .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_toggle_free')
         .setLabel(`🔓 Bebaskan Tahanan: ${includeFreeAll ? '✅ ON' : '⚪ OFF'}`)
@@ -2453,7 +2472,30 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setStyle(includeResetCds ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
-    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2, btnRow3] };
+    const btnRow2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_status')
+        .setLabel('📊 Status Real-time')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_give_coins')
+        .setLabel('💸 Beri Koin Massal (Modal)')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_give_item')
+        .setLabel('🎒 Beri Item Massal (Modal)')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_abyus_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2] };
   };
 
   const initialData = getAbyusPanelData(guildId);
@@ -2596,6 +2638,142 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => {});
       }
+      else if (iAbyus.customId === 'admin_abyus_btn_give_coins') {
+        const modal = new ModalBuilder()
+          .setCustomId('admin_abyus_give_coins_modal')
+          .setTitle('Bagi Koin Massal (Abyus)');
+
+        const amountInput = new TextInputBuilder()
+          .setCustomId('coin_amount')
+          .setLabel('Jumlah Koin per Member (Bisa minus)')
+          .setPlaceholder('Contoh: 100000 atau -50000')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+        await iAbyus.showModal(modal);
+
+        const sub = await iAbyus.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_abyus_give_coins_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          await sub.deferReply({ flags: 64 });
+          const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+          if (isNaN(amount) || amount === 0) {
+            return sub.editReply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!' });
+          }
+
+          const memberIds = await getAllGuildMembers(guild, guildId);
+          if (memberIds.length === 0) {
+            return sub.editReply({ content: '❌ Gagal menemukan member untuk dibagikan koin.' });
+          }
+
+          let memberCount = 0;
+          try {
+            database.transaction(() => {
+              for (const memberId of memberIds) {
+                let wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [memberId, guildId]);
+                if (!wallet) {
+                  database.run(
+                    `INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at) 
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [memberId, guildId, 0, 0, 0]
+                  );
+                  wallet = { balance: 0 };
+                }
+
+                const newBal = Math.max(0, wallet.balance + amount);
+                database.run(
+                  `UPDATE wallets 
+                   SET balance = ?, total_earned = total_earned + ? 
+                   WHERE user_id = ? AND guild_id = ?`,
+                  [newBal, amount > 0 ? amount : 0, memberId, guildId]
+                );
+
+                database.run(
+                  `INSERT INTO transactions (user_id, guild_id, type, amount) 
+                   VALUES (?, ?, ?, ?)`,
+                  [memberId, guildId, amount > 0 ? 'ADMIN_GIVEALL' : 'ADMIN_TAKEALL', amount]
+                );
+                memberCount++;
+              }
+            })();
+
+            await sub.editReply({ content: `💸 Sukses membagikan **Rp ${amount.toLocaleString('id-ID')}** kepada **${memberCount} member** secara massal!` });
+            const fresh = getAbyusPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          } catch (dbErr) {
+            console.error('Database error in Abyus mass-give coins:', dbErr);
+            await sub.editReply({ content: '❌ Terjadi kesalahan internal saat memperbarui database koin.' });
+          }
+        }
+      }
+      else if (iAbyus.customId === 'admin_abyus_btn_give_item') {
+        const modal = new ModalBuilder()
+          .setCustomId('admin_abyus_give_item_modal')
+          .setTitle('Bagi Item Massal (Abyus)');
+
+        const itemIdInput = new TextInputBuilder()
+          .setCustomId('item_id')
+          .setLabel('ID Item (LOCKPICK, SOAP, LAMBO, dll)')
+          .setPlaceholder('Contoh: LOCKPICK')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const qtyInput = new TextInputBuilder()
+          .setCustomId('item_qty')
+          .setLabel('Jumlah per Member (Bisa minus)')
+          .setPlaceholder('Contoh: 5 atau -2')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(itemIdInput),
+          new ActionRowBuilder().addComponents(qtyInput)
+        );
+        await iAbyus.showModal(modal);
+
+        const sub = await iAbyus.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_abyus_give_item_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          await sub.deferReply({ flags: 64 });
+          const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+          const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+          if (!itemId) {
+            return sub.editReply({ content: '❌ ID Item tidak boleh kosong!' });
+          }
+          if (isNaN(qty) || qty === 0) {
+            return sub.editReply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!' });
+          }
+
+          const memberIds = await getAllGuildMembers(guild, guildId);
+          if (memberIds.length === 0) {
+            return sub.editReply({ content: '❌ Gagal menemukan member untuk dibagikan item.' });
+          }
+
+          let memberCount = 0;
+          try {
+            database.transaction(() => {
+              for (const memberId of memberIds) {
+                updateAdminInventory(memberId, guildId, itemId, qty);
+                memberCount++;
+              }
+            })();
+
+            await sub.editReply({ content: `🎒 Sukses membagikan item \`${itemId}\` sebanyak **${qty > 0 ? '+' : ''}${qty}** kepada **${memberCount} member** secara massal!` });
+            const fresh = getAbyusPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => {});
+          } catch (dbErr) {
+            console.error('Database error in Abyus mass-give items:', dbErr);
+            await sub.editReply({ content: '❌ Terjadi kesalahan internal saat memperbarui database inventaris.' });
+          }
+        }
+      }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
         collector.stop('transition');
         await handleAdminPanel(iAbyus, client);
@@ -2620,7 +2798,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
   });
 
   return true;
-}
+}        
 
 /**
  * 🎭 6. PANEL TOKO ROLE & GAME ToD
