@@ -1,39 +1,62 @@
-📢 **PEMBERITAHUAN FITUR BARU: SISTEM GACHA & UPGRADE BINTANG PET (TAMAGOTCHI) 🐾✨**
+📢 **PEMBERITAHUAN UPDATE BESAR PET: PET GYM, MENARA UJIAN & WORLD BOSS RAID 🐾⚔️🌋**
 ════════════════════════════════════════════════════════════════════════════════════
 Halo Warga Kosan 1A! 🏠✨
-Kandang peliharaan kita kini semakin canggih dan menantang! Hari ini kami resmi meluncurkan pembaruan besar **Sistem Gacha Pet & Upgrade Bintang** untuk Sentinel Bot. Sekarang Anda bisa mengoleksi pet langka legendaris, mendaur ulang pet duplikat, dan berevolusi hingga Bintang 5 untuk memperkuat statistik tempur mereka! ⚔️🔥
 
-Berikut rincian fitur-fitur baru yang bisa langsung Anda nikmati:
+Kandang peliharaan kita kini resmi memasuki era petualangan RPG yang sesungguhnya! Hari ini kami meluncurkan **3 Fitur Combat & Progression Baru** untuk sistem Pet Sentinel Bot. Saatnya melatih stat pet Anda, menantang menara ujian, dan berkolaborasi mengalahkan World Boss mingguan untuk memperebutkan hadiah koin serta item langka! 🛡️🏆
 
-🐾 1. SISTEM GACHA PET (`.pet gacha`)
-Dapatkan pet impianmu secara instan tanpa masa telur! Gacha pet langsung melahirkan pet dewasa (**ADULT**) dengan species dan keunikan acak.
-*   🪙 **Harga Gacha**: Rp 1.000 untuk 1x Pull | Rp 10.000 untuk 10x Pull sekaligus!
-*   🎫 **Tiket Gacha (`TICKET_GACHA`)**: Gunakan 1 tiket untuk 1x pull gratis!
-*   📊 **Persentase Drop Rate (Rarity)**:
-    *   🟢 **COMMON** (65%): Cat, Golem, Slime.
-    *   🟢 **RARE** (25%): Cat, Golem, Slime, Dragon.
-    *   🟣 **EPIC** (8%): Phoenix, Turtle.
-    *   🟡 **LEGENDARY** (2%): Leviathan, Behemoth, Archdragon.
-*   📺 **Fitur Simpan/Daur Ulang**: Setelah gacha, Anda bisa memilih untuk mengklaim pet baru ke kandang Anda (maksimal slot kandang tetap 3 pet) atau langsung mendaur ulangnya menjadi koin Rupiah.
+Berikut rincian fitur terbaru yang sudah aktif dan bisa langsung Anda mainkan:
 
-🌟 2. UPGRADE & EVOLUSI BINTANG PET (`.pet upgrade`)
-Tingkatkan kekuatan bertarung pet Anda dengan menaikkan tingkat bintangnya (**Bintang 1 s/d Bintang 5**).
-*   🧬 **Mekanik Evolusi**: Korbankan pet duplikat dengan spesies yang sama (tidak peduli level atau rarity duplikat tersebut) sebagai tumbal evolusi.
-*   🔥 **Buff Statistik Tempur (Combat Stats)**: Setiap kali bintang pet naik, pet akan mendapatkan peningkatan stats permanen:
-    *   ❤️ **HP Maksimal**: +15% per tingkat bintang
-    *   ⚔️ **ATK (Attack)**: +15% per tingkat bintang
-    *   🛡️ **DEF (Defense)**: +15% per tingkat bintang
-*   ⭐ Pet dengan Bintang 5 akan memiliki statistik tempur **+60% lebih kuat** dibanding pet bintang 1! Sangat berguna untuk mode PvP & Ekspedisi di masa mendatang!
+---
 
-♻️ 3. DAUR ULANG PET (`.pet recycle <nama_pet>`)
-Kandang sudah penuh dengan pet common yang tidak terpakai? Jangan khawatir!
-*   👉 Gunakan perintah **`.pet recycle`** (atau lewat tombol menu) untuk mendaur ulang pet Anda. Setiap pet yang didaur ulang akan dikonversi menjadi **Rp 1.000** langsung ke dompet Anda!
+### 💪 1. PUSAT KEBUGARAN PET (`.pet gym`)
+Setiap kali pet Anda naik level, mereka kini mendapatkan **Poin Latihan (Training Points / TP)**. Gunakan TP tersebut di **Pet Gym** untuk membentuk stat bertarung pet Anda:
+*   💪 **Strength (STR):** Meningkatkan damage serangan dasar pet sebesar **+2 ATK** per poin STR.
+*   ❤️ **Vitality (VIT):** Meningkatkan kapasitas darah maksimal pet sebesar **+10 HP** per poin VIT.
+*   🛡️ **Defense (DEF):** Mengurangi damage yang diterima pet sebesar **+0.5% DEF** per poin DEF (Maksimal 50%).
+*   ⚡ **Dexterity (DEX):** Meningkatkan peluang serangan kritikal sebesar **+0.5% Crit Rate** per poin DEX (Maksimal 35%). *Critical hit memberikan 1.5x damage!*
+*   🔄 **Reset Stat:** Ingin mengubah gaya bermain? Anda bisa mereset alokasi stat pet kapan saja di panel Gym seharga **Rp 1.500 koin**.
 
-🚪 4. AKSES CEPAT & NAVIGASI TOMBOL BARU
-Fitur ini telah diintegrasikan secara penuh di berbagai panel menu agar Anda tidak perlu mengetik perintah panjang:
-*   🟢 **Dashboard Utama (`.pet`)**: Row tombol baru ditambahkan di bagian bawah dashboard pet Anda untuk akses instan ke menu Gacha, Upgrade, dan Recycle.
-*   🟢 **Portal Utama (`.hub`)**: Tombol Gacha Pet kini tersedia di Baris ke-3 menu Hub utama.
-*   🟢 **Kandang Pet (`.hub` -> Kandang)**: Tombol Gacha & Upgrade disematkan langsung di dalam panel manajemen kandang pet privat.
+---
+
+### 🏰 2. MENARA UJIAN (TOWER OF TRIALS) — `.pet tower`
+Tantang pet Anda untuk memanjat **50 Lantai Menara Ujian** yang dijaga oleh monster-monster tangguh di setiap lantainya!
+
+*   ⚔️ **Tantang Lantai (Climb):**
+    *   Setiap hari Anda mendapatkan **5 tiket tantangan gratis**.
+    *   Jika tiket gratis habis, Anda dapat menggunakan **🥤 Soda Energi Pet** atau membayar **Rp 500 koin** untuk masuk kembali.
+    *   **Hasil Pertempuran:**
+        *   **Menang:** Naik ke lantai berikutnya, mendapatkan **koin Rupiah & XP pet secara penuh**.
+        *   **Kalah:** HP pet Anda berkurang dan statusnya menjadi **LEMAS (WEAK)** (HP 1). Anda harus mengobati pet Anda terlebih dahulu sebelum bisa bertarung kembali.
+    *   🎁 **Lantai Boss (Kelipatan 5):** Mengalahkan lantai Boss kelipatan 5 menawarkan hadiah checkpoint spesial berupa item/lootbox gratis!
+*   🧹 **Sapu Bersih (Sweep):**
+    *   Sudah mencapai lantai tinggi dan malas memanjat manual? Lakukan **Sweep** sekali sehari!
+    *   Anda akan langsung mendapatkan **10% koin & XP** dari total akumulasi hadiah seluruh lantai yang sudah pernah Anda selesaikan (Maksimal Rp 15.000 koin untuk mencegah inflasi).
+    *   *Syarat: Kondisi pet (Hunger, Thirst, Happiness) harus di atas 50%. Melakukan Sweep memotong -10 Hunger dan -10 Thirst pet Anda.*
+
+---
+
+### 🌋 3. RAID WORLD BOSS MINGGUAN — `.pet raid`
+Boss raksasa berkekuatan dahsyat dengan HP jutaan telah muncul! Seluruh warga server harus bersatu padu menyerang Boss ini setiap minggunya. Tipe elemen Boss akan berganti secara acak setiap hari Senin (FIRE, WATER, EARTH, DRAGON).
+
+*   ⚔️ **Mekanik Serbuan (Attack):**
+    *   Setiap pemain memiliki **3 kuota serangan gratis per minggu**.
+    *   Gunakan **🥤 Soda Energi Pet** untuk menambah kesempatan menyerang hingga total maksimal **5 kali serangan per minggu**.
+    *   Gunakan pet dengan **keunggulan elemen** dari tipe Boss minggu ini untuk mendapatkan **bonus +25% ATK**!
+*   🎁 **Hadiah Leaderboard Kontribusi (Tiers):**
+    Ketika Boss berhasil dikalahkan atau saat event mingguan berakhir, hadiah akan ditransfer langsung ke dompet dan tas inventory Anda berdasarkan peringkat damage:
+    *   🥇 **Gold Tier (Top 10% Damage):** Hadiah Rp 6.000 - Rp 10.000 koin + 2x Tiket Gacha + **15% peluang mendapatkan Aksesoris Tempur Langka (Pedang/Tameng/Kalung)**. Jika slot aksesoris pet sudah penuh, otomatis diganti kompensasi koin +Rp 1.500.
+    *   🥈 **Silver Tier (Top 30% Damage):** Hadiah Rp 3.000 - Rp 5.000 koin + 1x Tiket Gacha.
+    *   🥉 **Bronze Tier (Partisipan Lain):** Hadiah Rp 1.000 - Rp 2.000 koin + 1x Daging Premium.
+    *   🏆 **Bonus Kemenangan Server:** Tambahan **+Rp 2.000 koin** untuk seluruh warga yang berpartisipasi jika Boss berhasil ditundukkan!
+    *   💥 **Last Hit Bonus:** Pemain yang berhasil mendaratkan serangan terakhir hingga HP Boss menjadi 0 mendapatkan bonus **+Rp 3.000 koin** dan gelar **`(Slayer)`** permanen pada nama pet aktifnya!
+
+---
+
+### 🕹️ PERINTAH BARU YANG BISA DIGUNAKAN:
+*   👉 **`.pet gym`** - Membuka panel latihan kebugaran pet Anda.
+*   👉 **`.pet tower`** - Membuka dashboard Menara Ujian.
+*   👉 **`.pet raid`** - Membuka dashboard World Boss Raid.
+*   👉 **`.pet-admin`** - Panel kontrol khusus Owner/Admin untuk me-reset tiket menara, mengatur lantai, men-spawn, atau mengalahkan World Boss secara instan.
 
 ════════════════════════════════════════════════════════════════════════════════════
-*Yuk, ketik `.pet` atau buka `.hub` sekarang, lalu masuk ke kandang pet Anda dan mulailah berburu pet legendaris impianmu! Semoga beruntung di putaran Gacha pertamamu! 🍀🦖💎✨*
+*Yuk, latih pet terbaik Anda, susun strategi elemen, dan mari bersama-sama tumbangkan World Boss minggu ini! Selamat bertualang dan semoga pet Anda menjadi petarung terkuat di server! 🐉🛡️💥✨*
