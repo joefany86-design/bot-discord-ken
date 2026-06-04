@@ -5,9 +5,19 @@ Fitur ekspedisi pet (`.pet expedition`) saat ini berjalan secara otomatis pada S
 
 Pembaruan ini juga memperkenalkan **Risiko Kematian Pet Aktif** jika terjadi kegagalan QTE (berdasarkan level pet, tingkat kesulitan map, dan kecocokan level rekomendasi), serta **Skema Pembagian Hadiah Dinamis** (Solo mendapatkan penalti hasil, Co-op mendapatkan bonus hasil).
 
+### Phase 3: Penyelarasan Mode Solo & Kematian
+* Mengimplementasikan fitur pemilihan Multi-Pet milik pribadi untuk mode solo, serta sistem rekrutmen NPC Mercenary sebagai fallback.
+
 ---
 
 ## 2. Deskripsi Fitur & Mekanisme Game
+
+* **Opsi A: Sistem Party Pet Pribadi (Solo Multi-Pet & Mercenary)**
+  * Pemain solo dapat membawa hingga 2 pet cadangan miliknya sendiri dari kandang (stable) untuk ikut serta dalam ekspedisi (total 3 pet miliknya).
+  * Jika pemain memiliki lebih dari satu pet hidup di akunnya, mereka dapat memilih pet cadangan tersebut untuk ikut bertarung.
+  * **Fallback (Pet Mercenary NPC)**: Jika pemain tidak memiliki pet cadangan (hanya punya 1 pet), mereka dapat menyewa pet NPC bayaran (misal: 1 NPC healer / 1 NPC tank) dari barak petualang dengan biaya koin.
+  * Selama pertempuran, **pemain solo akan mengendalikan tombol aksi untuk seluruh pet miliknya dan NPC tersebut** secara bergantian sesuai urutan giliran.
+  * Hal ini mendorong pemain untuk aktif mengoleksi, merawat, dan melatih lebih dari 1 pet agar memiliki komposisi tim solo (Tank/DPS/Healer) yang tangguh tanpa bergantung pada NPC!
 
 * **Sequential Turn-Based Skill (QTE)**: 
   * Di Stage 3, seluruh peserta ekspedisi akan mendapatkan giliran menyerang bos secara berurutan sesuai daftar indeks peserta (`0, 1, 2, ..., n-1`).
@@ -110,6 +120,7 @@ graph TD
      * Jika `kruCount > 1`: kalikan Koin dan XP didapat dengan `1.5` (bonus 50%).
 2. **[embeds.js](file:///Users/joefany/bot-discord-2026/stockmarket/embeds.js)**:
    * Menambahkan `petExpeditionStepEmbed` dan `petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results)`.
-3. **[index.js](file:///Users/joefany/bot-discord-2026/stockmarket/index.js)**:
+3. **[index.js](file:///Users/joefany/bot-discord-2026/index.js)**:
    * Mengubah loop eksekusi Stage 3 pada lobi timeout menjadi loop sequential promise (menggunakan `createMessageComponentCollector` selama 6 detik per pemain).
    * Menghubungkan tombol QTE dengan validasi `targetUserId` dan pemicu kegagalan instan.
+   * **Proteksi Saluran (Strict Channel Lock)**: Menghapus (delete) setiap pesan teks yang dikirim oleh member di saluran khusus ekspedisi pet saat status ekspedisi terdeteksi aktif, lalu mengirimkan pesan peringatan sementara (self-destructing warning) selama 3 detik.
