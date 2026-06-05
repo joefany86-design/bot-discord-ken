@@ -31,8 +31,9 @@ jobs:
             # 3. Pasang library baru jika ada (secara bersih)
             npm install --production
 
-            # 4. Daftarkan slash commands baru jika ada
-            npm run deploy
+            # 4. Hapus proses duplikat jika ada (legacy cleanup)
+            pm2 delete my-discord-bot 2>/dev/null || true
 
-            # 5. Restart bot menggunakan PM2
-            pm2 restart my-discord-bot || pm2 start index.js --name "my-discord-bot"
+            # 5. Restart bot menggunakan PM2 (sesuai ecosystem.config.js → nama: bot-2026)
+            pm2 reload ecosystem.config.js --update-env
+            pm2 save
