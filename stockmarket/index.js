@@ -743,17 +743,17 @@ function startRealtimeLeaderboard(client) {
 function getPortalHubData(client) {
   const embed = new EmbedBuilder()
     .setColor(embeds.COLORS.PURPLE)
-    .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
+    .setTitle('🎮 PORTAL HUB BOT KOSAN 1A — PUSAT KONTROL UTAMA')
     .setThumbnail(client.user.displayAvatarURL())
     .setDescription(
-      `Selamat datang di **Sentinel Portal Hub**! 🎮\n` +
+      `Selamat datang di **Portal Hub Bot Kosan 1A**! 🎮\n` +
       `Pusat layanan warga terpadu. Klik tombol di bawah ini untuk mengakses fitur secara **Pribadi & Rahasia (Private)**:\n\n` +
       `💼 **EKONOMI & FINANSIAL**\n` +
       `• Toko Role • Bursa Saham • Bank Sentral • Black Market • Profil & Aset\n\n` +
       `🐾 **DUNIA PET & GAYA HIDUP**\n` +
       `• Kandang Pet (Pusat Pet) • Sewa Kosan • Cozy Garden • Misi Harian • Lotre Mingguan`
     )
-    .setFooter({ text: 'Sentinel Active Gamification • Pusat Kontrol Warga' })
+    .setFooter({ text: 'Bot Kosan 1A Active Gamification • Pusat Kontrol Warga' })
     .setTimestamp();
 
   const row1 = new ActionRowBuilder().addComponents(
@@ -1982,7 +1982,7 @@ function initStockMarket(client) {
           .setTitle('🎒 INVENTORY PEMAIN — KANTONG PERALATAN & ASET')
           .setThumbnail(user.displayAvatarURL())
           .setDescription(desc)
-          .setFooter({ text: 'Sentinel Inventory System • Klik Portal Hub untuk belanja!' })
+          .setFooter({ text: 'Sistem Inventaris Bot Kosan 1A • Klik Portal Hub untuk belanja!' })
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
@@ -2016,7 +2016,7 @@ function initStockMarket(client) {
                 `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
                 `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
               )
-              .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+              .setFooter({ text: 'Pasar Gelap Bot Kosan 1A • Kerahasiaan Terjamin' })
               .setTimestamp();
             return { embeds: [embed] };
           };
@@ -3616,7 +3616,7 @@ function initStockMarket(client) {
 
           const embed = new EmbedBuilder()
             .setColor(0xFFD700)
-            .setTitle('🎟️ 🏆 LOTRE MINGGUAN SENTINEL')
+            .setTitle('🎟️ 🏆 LOTRE MINGGUAN BOT KOSAN 1A')
             .setDescription(
               `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
               `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
@@ -4014,7 +4014,7 @@ async function handleEconomyChat(message) {
             `👉 **Pemain pertama yang mengetik \`.claim-peti\` akan membukanya dan membawa pulang koin di dalamnya!**\n\n` +
             `*Siapa cepat dia dapat! 🏃‍♂️💨*`
           )
-          .setFooter({ text: 'Sentinel Active Gamification • Harta Karun Obrolan' })
+          .setFooter({ text: 'Bot Kosan 1A Active Gamification • Harta Karun Obrolan' })
           .setTimestamp();
 
         message.channel.send({ embeds: [chestEmbed] }).catch(() => {});
@@ -6822,7 +6822,7 @@ async function handleBlackMarketCommand(message, client, args) {
       `*Melindungi saldo bank Anda dari Heist. Memotong kehilangan saldo sebesar 90% (efek pasif permanen).*\n\n` +
       `*Gunakan tombol di bawah untuk membeli barang secara instan, atau gunakan perintah \`.bm buy <item_id> [jumlah]\`.*`
     )
-    .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+    .setFooter({ text: 'Pasar Gelap Bot Kosan 1A • Kerahasiaan Terjamin' })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
@@ -8941,7 +8941,7 @@ async function handleEconomyCommands(message, client) {
         `*Koin telah ditambahkan ke dompet Anda. Teruslah mengobrol aktif di server ini!*`
       )
       .setThumbnail(author.displayAvatarURL({ dynamic: true }))
-      .setFooter({ text: 'Sentinel Active Gamification' })
+      .setFooter({ text: 'Bot Kosan 1A Active Gamification' })
       .setTimestamp();
 
     return message.reply({ embeds: [claimEmbed] });
@@ -9310,7 +9310,7 @@ async function handleEconomyCommands(message, client) {
                   `🔒 **Masa Tahanan:** Dijebloskan ke **Sel Khusus Kerajaan selama ${res.jailDurationMinutes} menit**!`
                 )
                 .setTimestamp()
-                .setFooter({ text: 'Sistem Keamanan Kerajaan • Sentinel Secure' });
+                .setFooter({ text: 'Sistem Keamanan Kerajaan • Keamanan Bot Kosan 1A' });
               
               await message.reply({ embeds: [zapEmbed] });
               return;
@@ -11350,7 +11350,7 @@ async function handleEconomyCommands(message, client) {
 
       const lotteryEmbed = new EmbedBuilder()
         .setColor(0xFFD700)
-        .setTitle('🎟️ 🏆 LOTRE MINGGUAN SENTINEL')
+        .setTitle('🎟️ 🏆 LOTRE MINGGUAN BOT KOSAN 1A')
         .setDescription(
           `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
           `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
@@ -12193,7 +12193,7 @@ async function handleEconomyCommands(message, client) {
           `${updateText}` +
           `─────────────────────────────────────`
         )
-        .setFooter({ text: `Sentinel Bot  •  Manual Update by Admin  •  ${updates.length} saham diperbarui` })
+        .setFooter({ text: `Bot Kosan 1A  •  Manual Update by Admin  •  ${updates.length} saham diperbarui` })
         .setTimestamp();
 
       await message.reply({ embeds: [reportEmbed] });
@@ -12464,7 +12464,7 @@ async function handleEconomyCommands(message, client) {
         // Bagi embed menjadi 3 pesan terpisah untuk menghindari batas 6000 karakter Discord
         // Pesan 1: Hero Header & Voice/Economy
         await targetChannel.send({
-          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH SENTINEL BOT 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*',
+          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH BOT KOSAN 1A 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*',
           embeds: [announcementEmbeds[0], announcementEmbeds[1]],
           allowedMentions: { parse: ['everyone'] }
         });
@@ -13306,7 +13306,7 @@ async function handleEconomyCommands(message, client) {
 
       const promptEmbed = new EmbedBuilder()
         .setColor(0x7C4DFF)
-        .setDescription(`🔒 **Sentinel Admin Panel** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka Dashboard Admin secara rahasia.`);
+        .setDescription(`🔒 **Admin Panel Bot Kosan 1A** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka Dashboard Admin secara rahasia.`);
 
       const btnRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()

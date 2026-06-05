@@ -114,7 +114,7 @@ function initScheduler(client) {
             `${updateText}` +
             `─────────────────────────────────────`
           )
-          .setFooter({ text: `Sentinel Bot  •  Live Market Updates  •  ${updates.length} saham diperbarui` })
+          .setFooter({ text: `Bot Kosan 1A  •  Live Market Updates  •  ${updates.length} saham diperbarui` })
           .setTimestamp();
 
         targetChannel.send({ embeds: [reportEmbed] }).catch(err => {
@@ -779,7 +779,7 @@ function initScheduler(client) {
               `💡 *Beli tiket lotre minggu depan dengan perintah \`.lotre beli <jumlah>\`!*`
             )
             .setTimestamp()
-            .setFooter({ text: 'Lotre Mingguan Sentinel • Keberuntungan Anda Menanti!' });
+            .setFooter({ text: 'Lotre Mingguan Bot Kosan 1A • Keberuntungan Anda Menanti!' });
 
           targetChannel.send({ content: `🎉 <@${result.winnerId}> telah memenangkan lotre minggu ini!`, embeds: [drawEmbed] }).catch(err => {
             console.error('❌ Gagal mengirim pengumuman lotre:', err.message);

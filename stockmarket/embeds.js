@@ -1611,12 +1611,12 @@ module.exports = {
     // ══════════════════════════════════════════════════
     const heroEmbed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('📢  ENSIKLOPEDIA LENGKAP PERINTAH & FITUR SENTINEL BOT 2026  📢')
+      .setTitle('📢  ENSIKLOPEDIA LENGKAP PERINTAH & FITUR BOT KOSAN 1A 2026  📢')
       .setThumbnail(guild.iconURL({ dynamic: true }) || null)
       .setDescription(
         `${divider}\n\n` +
         `Halo Warga **${guild.name}**! 👋✨\n\n` +
-        `Selamat datang di **Pusat Informasi Resmi Sentinel Bot 2026** — Bot multifungsi serba bisa yang menguasai keamanan Voice Channel, ekonomi kosan, perdagangan saham interaktif, perbankan modern, simulasi hunian, peliharaan virtual, perampokan berisiko tinggi, hingga permainan sosial!\n\n` +
+        `Selamat datang di **Pusat Informasi Resmi Bot Kosan 1A 2026** — Bot multifungsi serba bisa yang menguasai keamanan Voice Channel, ekonomi kosan, perdagangan saham interaktif, perbankan modern, simulasi hunian, peliharaan virtual, perampokan berisiko tinggi, hingga permainan sosial!\n\n` +
         `Di bawah ini tersaji **seluruh katalog fitur & daftar perintah** yang aktif penuh dan siap Anda gunakan.\n\n` +
         `> 💡 *Ketik **\`.help\`** kapan saja untuk membuka panel navigasi interaktif di dalam Discord.*\n\n` +
         `${divider}`
@@ -1867,7 +1867,7 @@ module.exports = {
         `*Selamat nongkrong, selamat trading, dan selamat rebahan di Kamar AC!* 🛌💸📈\n\n` +
         `${divider}`
       )
-      .setFooter({ text: '— Tim Developer & Sentinel Bot Kosan 1A 2026 ❤️', iconURL: guild.iconURL({ dynamic: true }) || null })
+      .setFooter({ text: '— Tim Developer & Bot Kosan 1A 2026 ❤️', iconURL: guild.iconURL({ dynamic: true }) || null })
       .setTimestamp(timestamp);
 
     return [heroEmbed, voiceEcoEmbed, stocksEmbed, bankKosEmbed, petRobEmbed, closingEmbed];
@@ -2333,7 +2333,7 @@ module.exports = {
       });
     }
 
-    embed.setFooter({ text: 'Sentinel Kosan System 1A • Kelola kosanmu!' })
+    embed.setFooter({ text: 'Bot Kosan System 1A • Kelola kosanmu!' })
       .setTimestamp();
 
     return embed;
@@ -3186,7 +3186,7 @@ module.exports = {
         `─── ⋆⋅☆⋅⋆ ───\n\n` +
         `🚨 **Peringatan Keras:** Hanya <@${targetUserId}> yang boleh mengeklik tombol peran di bawah! Jika kru lain mengeklik di luar giliran, alarm akan aktif dan operasi **gagal seketika** (Interference Penalti)!`
       )
-      .setFooter({ text: 'Sentinel Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
+      .setFooter({ text: 'Bot Kosan 1A Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
       .setTimestamp();
   },
 
@@ -3214,7 +3214,7 @@ module.exports = {
         `👥 **Kru yang Tertangkap:** ${crewList}\n` +
         `👮 **Konsekuensi:** Seluruh kru dijebloskan ke penjara virtual dan dikenakan denda biaya pembersihan TKP!`
       )
-      .setFooter({ text: 'Sentinel Heist Failure • Hubungi inisiator untuk merencanakan ulang.' })
+      .setFooter({ text: 'Bot Kosan 1A Heist Failure • Hubungi inisiator untuk merencanakan ulang.' })
       .setTimestamp();
   },
 
@@ -3541,7 +3541,7 @@ module.exports = {
           inline: false
         }
       )
-      .setFooter({ text: 'Sentinel Ebyus Panel • Dilarang disalahgunakan!' })
+      .setFooter({ text: 'Bot Kosan 1A Ebyus Panel • Dilarang disalahgunakan!' })
       .setTimestamp();
   },
 
@@ -3641,7 +3641,7 @@ module.exports = {
         `2. Cari pesan lobby game dan klik tombol **🙋‍♂️ Gabung**.\n` +
         `3. Tunggu Host memulai permainan!`
       )
-      .setFooter({ text: 'Sentinel ToD Game System • Selamat bersenang-senang!' })
+      .setFooter({ text: 'Bot Kosan 1A ToD Game System • Selamat bersenang-senang!' })
       .setTimestamp();
   },
 
@@ -3729,7 +3729,7 @@ module.exports = {
       .setTitle(`🌸 KEBUN BUNGA COZY — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
-      .setFooter({ text: 'Sentinel Cozy Garden System • Rawat dengan kasih sayang!' })
+      .setFooter({ text: 'Bot Kosan 1A Cozy Garden System • Rawat dengan kasih sayang!' })
       .setTimestamp();
   },
 
@@ -3768,7 +3768,7 @@ module.exports = {
       .setTitle(`🛒 TOKO BENIH KEBUN KOSAN 1A`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
-      .setFooter({ text: 'Sentinel Garden Shop System • Ketik .kebun untuk kembali ke kebun' })
+      .setFooter({ text: 'Bot Kosan 1A Garden Shop System • Ketik .kebun untuk kembali ke kebun' })
       .setTimestamp();
   },
 
@@ -3827,7 +3827,7 @@ module.exports = {
       .setTitle(`💐 MEJA MERANGKAI BUKET BUNGA 💐`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(desc)
-      .setFooter({ text: 'Sentinel Bouquet Crafting System • Gunakan .gift-buket untuk mengirim' })
+      .setFooter({ text: 'Bot Kosan 1A Bouquet Crafting System • Gunakan .gift-buket untuk mengirim' })
       .setTimestamp();
   },
 
@@ -3883,7 +3883,7 @@ module.exports = {
       )
       .setThumbnail(adminUser.client?.user?.displayAvatarURL({ dynamic: true }) || null)
       .setTimestamp()
-      .setFooter({ text: isLaw ? 'Sistem Hukum & Lapas Kosan 1A • Sentinel Law' : 'Sistem Regulasi Ekonomi Kosan 1A • Sentinel Finance' });
+      .setFooter({ text: isLaw ? 'Sistem Hukum & Lapas Kosan 1A • Hukum Bot Kosan 1A' : 'Sistem Regulasi Ekonomi Kosan 1A • Keuangan Bot Kosan 1A' });
 
     if (detailsFields && detailsFields.length > 0) {
       embed.addFields(detailsFields);
@@ -3921,7 +3921,38 @@ module.exports = {
         `*Catatan: Koin sudah bersih dipotong pajak transfer/sistem dan telah ditambahkan secara otomatis ke saldo tabungan bank Anda.*`
       )
       .setTimestamp()
-      .setFooter({ text: 'Sentinel Banking System • Keamanan & Kepercayaan' });
+      .setFooter({ text: 'Sistem Perbankan Bot Kosan 1A • Keamanan & Kepercayaan' });
+  },
+
+  // 47. Embed Pengumuman Penjara Perampok Massal (>10x)
+  globalJailRobbersAnnouncementEmbed(adminUser, durationMinutes, reason, robberCount) {
+    const hours = (durationMinutes / 60).toFixed(1);
+    const timeStr = durationMinutes >= 60 ? `${hours} Jam (${durationMinutes} Menit)` : `${durationMinutes} Menit`;
+
+    return new EmbedBuilder()
+      .setColor('#EF4444') // Red Crimson
+      .setTitle('👮 OPERASI BOT KOSAN 1A: PENJARA MASSAL PERAMPOK KAKAP! 🚨')
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
+      .setDescription(
+        `\`\`\`\n` +
+        `┌───────────────────────────────────────────┐\n` +
+        `│  🚨 DEKRET HUKUM DARURAT BOT KOSAN 1A 🚨  │\n` +
+        `│       Lapas/Ketertiban Kosan 1A           │\n` +
+        `└───────────────────────────────────────────┘\n` +
+        `\`\`\`\n` +
+        `### 📢 Operasi Pembersihan Kriminalitas Aktif!\n` +
+        `Mata-mata intelijen kepolisian virtual mendeteksi tingkat kejahatan perampokan yang merajalela. Untuk menjaga stabilitas ekonomi dan keamanan kosan, seluruh warga yang terbukti memiliki catatan kriminal **merampok lebih dari 10 kali** resmi disergap dan dimasukkan ke Lapas Virtual secara massal!\n\n` +
+        `⚠️ **Dekret / Titah Administrator:**\n` +
+        `> *"${reason}"*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      )
+      .addFields(
+        { name: '⏳ Durasi Hukuman', value: `\`${timeStr}\``, inline: true },
+        { name: '👥 Jumlah Terhukum', value: `\`${robberCount} Perampok Kakap\``, inline: true },
+        { name: '👮 Status Operasi', value: `\`🚨 BERHASIL DISERGAP\``, inline: true }
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Sistem Ketertiban & Lapas Kosan 1A • Penegak Hukum Bot Kosan 1A' });
   }
 };
 

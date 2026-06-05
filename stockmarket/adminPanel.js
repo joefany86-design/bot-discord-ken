@@ -96,6 +96,24 @@ async function sendGlobalEconomyAnnouncement(client, guild, adminUser, actionNam
   }
 }
 
+/**
+ * Mengirimkan embed pengumuman penjara perampok massal ke channel pengumuman.
+ */
+async function sendGlobalJailRobbersAnnouncement(client, guild, adminUser, durationMinutes, reason, robberCount) {
+  const channelId = config.ANNOUNCEMENT_CHANNEL_ID || '1509480324373942272';
+  try {
+    const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+    if (!channel) {
+      console.error(`Gagal mengirim pengumuman hukum global: Channel ID ${channelId} tidak ditemukan.`);
+      return;
+    }
+    const embed = embeds.globalJailRobbersAnnouncementEmbed(adminUser, durationMinutes, reason, robberCount);
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error('Error sending global jail robbers announcement:', err);
+  }
+}
+
 
 /**
  * 🐾 1. PANEL PET & KANDANG (TAMAGOTCHI)
@@ -131,159 +149,159 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       .setTimestamp();
 
     if (petPanelSubMenu === 'main') {
-    embed.setTitle('🐾 ADMIN CONTROL PANEL — PET TAMAGOTCHI')
-      .setFooter({ text: 'Sentinel Admin • Kandang & Perawatan Pet' });
+      embed.setTitle('🐾 ADMIN CONTROL PANEL — PET TAMAGOTCHI')
+        .setFooter({ text: 'Sentinel Admin • Kandang & Perawatan Pet' });
 
-    let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
-    if (targetUserId) {
-      targetText = `🎯 **<@${targetUserId}>**\n` +
-        `• ID: \`${targetUserId}\`\n`;
+      let targetText = '*Belum ada anggota terpilih (Silakan pilih di menu dropdown di bawah)*';
+      if (targetUserId) {
+        targetText = `🎯 **<@${targetUserId}>**\n` +
+          `• ID: \`${targetUserId}\`\n`;
 
-      const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
-      const wallet = database.get('SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
-      const expCount = wallet ? (wallet.daily_expedition_count || 0) : 0;
-      const expCD = wallet ? (wallet.expedition_cooldown_until || 0) : 0;
-      const nowUnix = Math.floor(Date.now() / 1000);
-      const cdText = expCD > nowUnix ? `<t:${expCD}:R>` : '🟢 Ready';
+        const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [targetUserId, gId]);
+        const wallet = database.get('SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?', [targetUserId, gId]);
+        const expCount = wallet ? (wallet.daily_expedition_count || 0) : 0;
+        const expCD = wallet ? (wallet.expedition_cooldown_until || 0) : 0;
+        const nowUnix = Math.floor(Date.now() / 1000);
+        const cdText = expCD > nowUnix ? `<t:${expCD}:R>` : '🟢 Ready';
 
-      if (targetPet) {
-        const autoFeedLabel = targetPet.auto_feed === 2 ? '👑 VIP (Gratis)' : (targetPet.auto_feed === 1 ? '✅ Aktif (Bayar)' : '❌ Nonaktif');
-        const traitLabel = targetPet.trait ? `**${targetPet.trait}**` : '*Tidak ada*';
+        if (targetPet) {
+          const autoFeedLabel = targetPet.auto_feed === 2 ? '👑 VIP (Gratis)' : (targetPet.auto_feed === 1 ? '✅ Aktif (Bayar)' : '❌ Nonaktif');
+          const traitLabel = targetPet.trait ? `**${targetPet.trait}**` : '*Tidak ada*';
 
-        targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()})\n` +
-          `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
-          `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
-          `• Trait: ${traitLabel}\n` +
-          `• Auto-Feed: ${autoFeedLabel}\n` +
-          `• Status: **${targetPet.status}**\n` +
-          `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
-      } else {
-        targetText += `• Pet: *Tidak ada peliharaan aktif*\n` +
-          `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
+          targetText += `• Pet: **${targetPet.pet_name}** (Lv.${targetPet.level} ${targetPet.pet_type.toUpperCase()})\n` +
+            `• HP: \`${targetPet.health}%\` | XP: \`${targetPet.xp}/${targetPet.level * 100}\`\n` +
+            `• Kenyang: \`${targetPet.hunger}%\` | Hidrasi: \`${targetPet.thirst}%\` | Ceria: \`${targetPet.happiness}%\`\n` +
+            `• Trait: ${traitLabel}\n` +
+            `• Auto-Feed: ${autoFeedLabel}\n` +
+            `• Status: **${targetPet.status}**\n` +
+            `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
+        } else {
+          targetText += `• Pet: *Tidak ada peliharaan aktif*\n` +
+            `• Ekspedisi Harian: \`${expCount}/10\` | Cooldown: ${cdText}\n`;
+        }
       }
-    }
 
-    embed.setDescription(
-      `Gunakan menu di bawah untuk memilih target anggota, lalu tentukan tindakan cepat untuk mengelola peliharaan mereka:\n\n` +
-      `👤 **INFORMASI TARGET ANGGOTA:**\n${targetText}`
-    );
+      embed.setDescription(
+        `Gunakan menu di bawah untuk memilih target anggota, lalu tentukan tindakan cepat untuk mengelola peliharaan mereka:\n\n` +
+        `👤 **INFORMASI TARGET ANGGOTA:**\n${targetText}`
+      );
 
-    const userSelect = new UserSelectMenuBuilder()
-      .setCustomId('admin_pet_select_target')
-      .setPlaceholder('👤 Pilih Target Anggota');
+      const userSelect = new UserSelectMenuBuilder()
+        .setCustomId('admin_pet_select_target')
+        .setPlaceholder('👤 Pilih Target Anggota');
 
-    const userRow = new ActionRowBuilder().addComponents(userSelect);
+      const userRow = new ActionRowBuilder().addComponents(userSelect);
 
-    const actionSelect = new StringSelectMenuBuilder()
-      .setCustomId('admin_pet_select_action')
-      .setPlaceholder('🎯 Pilih Tindakan Perawatan Pet')
-      .setDisabled(!targetUserId);
+      const actionSelect = new StringSelectMenuBuilder()
+        .setCustomId('admin_pet_select_action')
+        .setPlaceholder('🎯 Pilih Tindakan Perawatan Pet')
+        .setDisabled(!targetUserId);
 
-    actionSelect.addOptions(
-      new StringSelectMenuOptionBuilder()
-        .setLabel('❤️ Sembuhkan & Pulihkan Pet')
-        .setDescription('Mengisi HP, Kenyangan, Hidrasi & Kebahagiaan Pet menjadi 100%')
-        .setValue('action_heal_pet'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('💖 Hidupkan Kembali Pet (Revive)')
-        .setDescription('Menghidupkan kembali pet yang mati (DEAD) dan memulihkan HP/status ke 100%')
-        .setValue('action_revive_pet'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🐣 Percepat Penetasan Telur Pet')
-        .setDescription('Mengatur telur agar siap menetas saat ini juga')
-        .setValue('action_hatch_pet'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🛡️ Reset Cooldown Ekspedisi')
-        .setDescription('Mereset batas harian & cooldown ekspedisi pet target')
-        .setValue('action_reset_expedition_cooldown'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🧪 Suntik Custom XP Pet (Modal)')
-        .setDescription('Menambahkan jumlah XP tertentu ke Pet target')
-        .setValue('action_give_xp_pet_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🦁 Ubah Level Pet (Modal)')
-        .setDescription('Mengatur level Pet target secara instan')
-        .setValue('action_set_level_pet_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🧬 Modifikasi Trait Pet (Modal)')
-        .setDescription('Mengubah Trait khusus (MUTANT, GENIUS, dll) pet target')
-        .setValue('action_change_trait_pet_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏋️ Set Unused TP Pet (Modal)')
-        .setDescription('Mengubah sisa Poin Latihan (TP) pet target')
-        .setValue('action_set_unused_tp_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏋️ Modifikasi Stat Gym Pet (Modal)')
-        .setDescription('Ubah nilai STR, VIT, DEF, DEX & sisa TP target sekaligus')
-        .setValue('action_set_gym_stats_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏋️ Reset Stat Gym Pet (Gratis)')
-        .setDescription('Reset stat pet ke 0 dan refund TP gratis tanpa potong koin')
-        .setValue('action_admin_reset_gym'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('⏳ Reset Cooldown Aktivitas')
-        .setDescription('Reset cooldown Bekerja, Berburu, & Bermain pet target')
-        .setValue('action_reset_activity_cooldowns'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🔋 Toggle VIP Auto-Feed')
-        .setDescription('Toggle fitur Auto-Feed Gratis (VIP) untuk pet target')
-        .setValue('action_toggle_vip_autofeed'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('💀 Reset Data Pet Kandang')
-        .setDescription('Menghapus total Pet target dari kandang (database)')
-        .setValue('action_reset_pet'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🎁 Beri Pet Kustom (Modal)')
-        .setDescription('Buatkan pet baru dengan spesies, level, & bintang kustom')
-        .setValue('action_give_custom_pet_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🎟️ Tambah Tiket Gacha (Modal)')
-        .setDescription('Menambahkan tiket gacha gratis ke inventaris anggota target')
-        .setValue('action_add_ticket_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('⭐ Paksa Bintang Pet (Modal)')
-        .setDescription('Mengubah tingkat bintang pet aktif anggota target secara langsung (1-5)')
-        .setValue('action_force_star_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏰 Atur Lantai Menara Ujian (Modal)')
-        .setDescription('Mengatur progres lantai Menara Ujian pet target')
-        .setValue('action_admin_set_floor_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🏰 Reset Tiket Harian Menara')
-        .setDescription('Mereset batas percobaan harian Menara Ujian pet target')
-        .setValue('action_admin_reset_tower_attempts'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('👹 Spawn World Boss (Modal)')
-        .setDescription('Spawn atau modifikasi status World Boss minggu ini')
-        .setValue('action_admin_spawn_boss_modal'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('☠️ Kalahkan World Boss Instan')
-        .setDescription('Mengurangi HP World Boss menjadi 0 untuk memicu distribusi hadiah')
-        .setValue('action_admin_kill_boss'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
-        .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
-        .setValue('action_set_custom_image_modal')
-    );
+      actionSelect.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('❤️ Sembuhkan & Pulihkan Pet')
+          .setDescription('Mengisi HP, Kenyangan, Hidrasi & Kebahagiaan Pet menjadi 100%')
+          .setValue('action_heal_pet'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('💖 Hidupkan Kembali Pet (Revive)')
+          .setDescription('Menghidupkan kembali pet yang mati (DEAD) dan memulihkan HP/status ke 100%')
+          .setValue('action_revive_pet'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🐣 Percepat Penetasan Telur Pet')
+          .setDescription('Mengatur telur agar siap menetas saat ini juga')
+          .setValue('action_hatch_pet'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🛡️ Reset Cooldown Ekspedisi')
+          .setDescription('Mereset batas harian & cooldown ekspedisi pet target')
+          .setValue('action_reset_expedition_cooldown'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🧪 Suntik Custom XP Pet (Modal)')
+          .setDescription('Menambahkan jumlah XP tertentu ke Pet target')
+          .setValue('action_give_xp_pet_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🦁 Ubah Level Pet (Modal)')
+          .setDescription('Mengatur level Pet target secara instan')
+          .setValue('action_set_level_pet_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🧬 Modifikasi Trait Pet (Modal)')
+          .setDescription('Mengubah Trait khusus (MUTANT, GENIUS, dll) pet target')
+          .setValue('action_change_trait_pet_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏋️ Set Unused TP Pet (Modal)')
+          .setDescription('Mengubah sisa Poin Latihan (TP) pet target')
+          .setValue('action_set_unused_tp_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏋️ Modifikasi Stat Gym Pet (Modal)')
+          .setDescription('Ubah nilai STR, VIT, DEF, DEX & sisa TP target sekaligus')
+          .setValue('action_set_gym_stats_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏋️ Reset Stat Gym Pet (Gratis)')
+          .setDescription('Reset stat pet ke 0 dan refund TP gratis tanpa potong koin')
+          .setValue('action_admin_reset_gym'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('⏳ Reset Cooldown Aktivitas')
+          .setDescription('Reset cooldown Bekerja, Berburu, & Bermain pet target')
+          .setValue('action_reset_activity_cooldowns'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🔋 Toggle VIP Auto-Feed')
+          .setDescription('Toggle fitur Auto-Feed Gratis (VIP) untuk pet target')
+          .setValue('action_toggle_vip_autofeed'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('💀 Reset Data Pet Kandang')
+          .setDescription('Menghapus total Pet target dari kandang (database)')
+          .setValue('action_reset_pet'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🎁 Beri Pet Kustom (Modal)')
+          .setDescription('Buatkan pet baru dengan spesies, level, & bintang kustom')
+          .setValue('action_give_custom_pet_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🎟️ Tambah Tiket Gacha (Modal)')
+          .setDescription('Menambahkan tiket gacha gratis ke inventaris anggota target')
+          .setValue('action_add_ticket_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('⭐ Paksa Bintang Pet (Modal)')
+          .setDescription('Mengubah tingkat bintang pet aktif anggota target secara langsung (1-5)')
+          .setValue('action_force_star_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏰 Atur Lantai Menara Ujian (Modal)')
+          .setDescription('Mengatur progres lantai Menara Ujian pet target')
+          .setValue('action_admin_set_floor_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏰 Reset Tiket Harian Menara')
+          .setDescription('Mereset batas percobaan harian Menara Ujian pet target')
+          .setValue('action_admin_reset_tower_attempts'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('👹 Spawn World Boss (Modal)')
+          .setDescription('Spawn atau modifikasi status World Boss minggu ini')
+          .setValue('action_admin_spawn_boss_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('☠️ Kalahkan World Boss Instan')
+          .setDescription('Mengurangi HP World Boss menjadi 0 untuk memicu distribusi hadiah')
+          .setValue('action_admin_kill_boss'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
+          .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
+          .setValue('action_set_custom_image_modal')
+      );
 
-    const actionRow = new ActionRowBuilder().addComponents(actionSelect);
+      const actionRow = new ActionRowBuilder().addComponents(actionSelect);
 
-    const btnRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('admin_pet_btn_back')
-        .setLabel('🔙 Kembali ke Hub')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('admin_pet_btn_audit')
-        .setLabel('🏆 Audit & Leaderboard Pet')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('admin_pet_btn_close')
-        .setLabel('❌ Tutup Panel')
-        .setStyle(ButtonStyle.Danger)
-    );
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_pet_btn_back')
+          .setLabel('🔙 Kembali ke Hub')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_pet_btn_audit')
+          .setLabel('🏆 Audit & Leaderboard Pet')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('admin_pet_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
 
-    return { embeds: [embed], components: [userRow, actionRow, btnRow] };
+      return { embeds: [embed], components: [userRow, actionRow, btnRow] };
     }
     else if (petPanelSubMenu === 'give_custom_pet') {
       embed.setTitle('🎁 BERI PET KUSTOM')
@@ -890,7 +908,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             if (isNaN(tpVal) || tpVal < 0) {
               return sub.reply({ content: '❌ Jumlah TP harus berupa angka bulat minimal 0!', flags: 64 });
             }
-            
+
             database.run('UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [tpVal, selectedTargetUserId, guildId]);
 
             await sub.reply({ content: `🏋️ Sukses mengatur sisa Poin Latihan (TP) pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}> menjadi **${tpVal} TP**!`, flags: 64 });
@@ -1327,7 +1345,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             }
 
             const now = Math.floor(Date.now() / 1000);
-            
+
             // Check if boss already exists
             const exists = database.get('SELECT 1 FROM world_boss WHERE guild_id = ? AND week_start = ?', [guildId, weekStart]);
             if (exists) {
@@ -2106,8 +2124,8 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
         .setDescription('Mengeluarkan massal seluruh warga server dari penjara virtual seketika')
         .setValue('global_free_all_jail'),
       new StringSelectMenuOptionBuilder()
-        .setLabel('🚨 Tahan Massal Seluruh Warga (Modal)')
-        .setDescription('Memasukkan seluruh warga server ke penjara virtual dengan durasi & denda kustom')
+        .setLabel('🚨 Tahan Massal Perampok >10x (Modal)')
+        .setDescription('Memasukkan seluruh warga yang merampok >10 kali ke penjara virtual dengan denda kustom')
         .setValue('global_jail_all_modal')
     );
 
@@ -2280,19 +2298,12 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
         else if (action === 'global_jail_all_modal') {
           const modal = new ModalBuilder()
             .setCustomId('admin_rob_global_jail_modal')
-            .setTitle('Tahan Massal Seluruh Warga');
+            .setTitle('Tahan Massal Perampok >10x');
 
           const durationInput = new TextInputBuilder()
             .setCustomId('global_jail_duration')
             .setLabel('Durasi Penjara (Menit)')
             .setPlaceholder('Contoh: 15')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const fineInput = new TextInputBuilder()
-            .setCustomId('global_jail_fine')
-            .setLabel('Denda Uang (Rupiah)')
-            .setPlaceholder('Contoh: 500')
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
@@ -2305,7 +2316,6 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
           modal.addComponents(
             new ActionRowBuilder().addComponents(durationInput),
-            new ActionRowBuilder().addComponents(fineInput),
             new ActionRowBuilder().addComponents(reasonInput)
           );
           await iRob.showModal(modal);
@@ -2317,26 +2327,28 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
           if (sub) {
             const minutes = parseInt(sub.fields.getTextInputValue('global_jail_duration'), 10);
-            const fine = parseInt(sub.fields.getTextInputValue('global_jail_fine'), 10);
             const reason = sub.fields.getTextInputValue('global_jail_reason') || 'Tindakan Darurat Global oleh Administrator';
 
             if (isNaN(minutes) || minutes <= 0) {
               return sub.reply({ content: '❌ Durasi harus berupa angka bulat positif di atas 0!', flags: 64 });
             }
-            if (isNaN(fine) || fine < 0) {
-              return sub.reply({ content: '❌ Denda harus berupa angka bulat non-negatif (minimal 0)!', flags: 64 });
-            }
 
-            const wallets = database.all('SELECT user_id, balance FROM wallets WHERE guild_id = ?', [guildId]);
+            const wallets = database.all(
+              `SELECT user_id, balance FROM wallets 
+               WHERE guild_id = ? 
+                 AND user_id IN (
+                   SELECT robber_id FROM robbery_attempts 
+                   WHERE guild_id = ? 
+                   GROUP BY robber_id 
+                   HAVING COUNT(*) > 10
+                 )`,
+              [guildId, guildId]
+            );
             const now = Math.floor(Date.now() / 1000);
             const jailUntil = now + (minutes * 60);
 
             database.transaction(() => {
               wallets.forEach(w => {
-                const finalFine = Math.min(Math.floor(w.balance), fine);
-                if (finalFine > 0) {
-                  economy.subtractBalance(w.user_id, guildId, finalFine, 'GLOBAL_JAIL_FINE');
-                }
                 database.run(
                   'UPDATE wallets SET jail_until = ?, jail_type = ?, jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?',
                   [jailUntil, reason, w.user_id, guildId]
@@ -2344,19 +2356,18 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
               });
             })();
 
-            await sub.reply({ content: `🚨 Sukses menjebloskan **${wallets.length} warga** ke Lapas Virtual selama **${minutes} menit** dengan denda **Rp ${fine.toLocaleString('id-ID')}**!`, flags: 64 });
+            await sub.reply({ content: `🚨 Sukses menjebloskan **${wallets.length} perampok aktif (merampok >10x)** ke Lapas Virtual selama **${minutes} menit**!`, flags: 64 });
 
             await sendGlobalEconomyAnnouncement(
               client,
               guild,
               author,
-              '🚨 TINDAKAN DARURAT: PENJARA MASSAL',
-              `Seluruh warga server dijebloskan ke tahanan virtual selama **${minutes} menit** dengan denda sebesar **Rp ${fine.toLocaleString('id-ID')}**.\n\n⚠️ **Alasan/Dekret:** *"${reason}"*`,
+              '🚨 TINDAKAN DARURAT: PENJARA PERAMPOK MASSAL',
+              `Seluruh warga yang terdeteksi telah melakukan aksi perampokan lebih dari 10 kali dijebloskan ke tahanan virtual selama **${minutes} menit** tanpa denda.\n\n⚠️ **Alasan/Dekret:** *"${reason}"*`,
               '#e74c3c',
               [
                 { name: '⏳ Durasi Penjara', value: `${minutes} Menit`, inline: true },
-                { name: '💸 Denda Penyitaan', value: `Rp ${fine.toLocaleString('id-ID')}`, inline: true },
-                { name: '👥 Jumlah Terhukum', value: `${wallets.length} Jiwa`, inline: true }
+                { name: '👥 Jumlah Terhukum', value: `${wallets.length} Perampok`, inline: true }
               ],
               true
             );

@@ -240,11 +240,11 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
   // 1. Bangun embed kontrol panel utama
   const mainEmbed = new EmbedBuilder()
     .setColor(0x7C4DFF) // Royal Violet
-    .setTitle('🎮 PUSAT KONTROL SENTINEL BOT')
+    .setTitle('🎮 PUSAT KONTROL BOT KOSAN 1A')
     .setThumbnail(client.user.displayAvatarURL())
     .setDescription(
       `Halo Warga **${guild.name}**! 👋✨\n\n` +
-      `Selamat datang di **Pusat Kontrol & Navigasi Sentinel Bot 2026**.\n` +
+      `Selamat datang di **Pusat Kontrol & Navigasi Bot Kosan 1A 2026**.\n` +
       `Di sini Anda dapat mengakses semua daftar perintah bot secara terperinci, rapi, dan dinamis.\n\n` +
       `👉 Silakan klik tombol di bawah ini untuk membuka menu kontrol yang sesuai:`
     )
@@ -308,7 +308,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
       if (i.customId === 'help_btn_member') {
         const memberEmbed = new EmbedBuilder()
           .setColor(0x10B981) // Velvet Emerald Green
-          .setTitle('👤 PANEL KONTROL MEMBER — SENTINEL')
+          .setTitle('👤 PANEL KONTROL MEMBER — BOT KOSAN 1A')
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription([
             `Berikut adalah daftar seluruh perintah publik yang dapat digunakan oleh seluruh member server:\n`,
@@ -357,7 +357,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.gacha-role\`** - Memutar spin gacha role misteri seharga Rp 1.000 (Jackpot/Cashback jika duplikat).`,
             `👉 **\`.indexrole\`** - Menampilkan kartu index seluruh kasta role prestise yang Anda miliki.`
           ].join('\n'))
-          .setFooter({ text: 'Sentinel bot • Member Panel' })
+          .setFooter({ text: 'Bot Kosan 1A • Member Panel' })
           .setTimestamp();
 
         await i.reply({ embeds: [memberEmbed], flags: 64 });
@@ -375,14 +375,14 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 
         const adminEmbed = new EmbedBuilder()
           .setColor(0x7C4DFF) // Royal Violet
-          .setTitle('🛡️ PANEL KONTROL ADMINISTRATOR — SENTINEL')
+          .setTitle('🛡️ PANEL KONTROL ADMINISTRATOR — BOT KOSAN 1A')
           .setThumbnail(client.user.displayAvatarURL())
           .setDescription(`Halo **${user.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola perekonomian, bursa saham, toko, serta game:`)
           .addFields(
             {
               name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
               value: [
-                `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** (Portal Hub utama).`,
+                `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Bot Kosan 1A Terpadu** (Portal Hub utama).`,
                 `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
                 `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
                 `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
@@ -457,7 +457,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
               ].join('\n')
             }
           )
-          .setFooter({ text: 'Sentinel bot • Administrator Panel' })
+          .setFooter({ text: 'Bot Kosan 1A • Administrator Panel' })
           .setTimestamp();
 
         await i.reply({ embeds: [adminEmbed], flags: 64 });
@@ -514,7 +514,7 @@ client.once('clientReady', () => {
   console.log(`  Servers: ${client.guilds.cache.size}`);
   console.log(`══════════════════════════════════════`);
 
-  client.user.setActivity('🎙️ .join & /join | Sentinel Bot', { type: 2 });
+  client.user.setActivity('🎙️ .join & /join | Bot Kosan 1A', { type: 2 });
 
   // Cache seluruh member di guild target agar status bot bisa dideteksi secara akurat
   const targetGuild = client.guilds.cache.get('1410239829874053296');
@@ -899,14 +899,14 @@ client.on('messageCreate', async message => {
 
     const embed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — SENTINEL')
+      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — BOT KOSAN 1A')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(`Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:`)
       .addFields(
         {
           name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
           value: [
-            `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Sentinel Terpadu** (Portal Hub utama).`,
+            `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Bot Kosan 1A Terpadu** (Portal Hub utama).`,
             `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
             `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
             `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
@@ -981,7 +981,7 @@ client.on('messageCreate', async message => {
           ].join('\n')
         }
       )
-      .setFooter({ text: 'Sentinel bot • Administrator Panel' })
+      .setFooter({ text: 'Bot Kosan 1A • Administrator Panel' })
       .setTimestamp();
 
     return message.reply({ embeds: [embed] });

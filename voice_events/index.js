@@ -214,7 +214,7 @@ async function startTodGame(message, client) {
   session.message = lobbyMessage;
 
   // Umumkan lewat TTS bahwa lobby dibuka
-  audio.announceGameStart(client, guildId).catch(() => {});
+  audio.announceGameStart(client, guildId).catch(() => { });
 
   // 7. Component Collector untuk penanganan Lobby
   const collector = lobbyMessage.createMessageComponentCollector({
@@ -360,7 +360,7 @@ async function startTodGame(message, client) {
           .setFooter({ text: 'Pastikan Anda berada di Voice Channel sebelum bergabung!' })
           .setTimestamp();
 
-        await lobbyMessage.edit({ embeds: [updatedLobbyEmbed] }).catch(() => {});
+        await lobbyMessage.edit({ embeds: [updatedLobbyEmbed] }).catch(() => { });
       });
     }
 
@@ -479,7 +479,7 @@ async function startHotseatTransition(client, guildId) {
       .setTimestamp();
 
     // Umumkan via TTS
-    audio.speak(client, guildId, `Giliran satu lawan satu! ${chosenChallenger.displayName} sebagai penanya, and ${chosenVictim.displayName} sebagai penjawab. Bersiaplah.`).catch(() => {});
+    audio.speak(client, guildId, `Giliran satu lawan satu! ${chosenChallenger.displayName} sebagai penanya, and ${chosenVictim.displayName} sebagai penjawab. Bersiaplah.`).catch(() => { });
 
   } else if (session.mode === 'mode_3') {
     // Mode 3: Bot TTS Bertanya
@@ -496,7 +496,7 @@ async function startHotseatTransition(client, guildId) {
       .setTimestamp();
 
     // Umumkan via TTS
-    audio.speak(client, guildId, `Kini giliran bot t s untuk bertanya kepada ${chosenVictim.displayName}. Bersiaplah.`).catch(() => {});
+    audio.speak(client, guildId, `Kini giliran bot t s untuk bertanya kepada ${chosenVictim.displayName}. Bersiaplah.`).catch(() => { });
 
   } else {
     // Mode 2: Interogasi (Hot Seat) - Bawaan
@@ -516,7 +516,7 @@ async function startHotseatTransition(client, guildId) {
       .setTimestamp();
 
     // Umumkan via TTS
-    audio.announceNewHotseat(client, guildId, chosenVictim.displayName).catch(() => {});
+    audio.announceNewHotseat(client, guildId, chosenVictim.displayName).catch(() => { });
   }
 
   const msg = await session.textChannel.send({ embeds: [transEmbed] });
@@ -675,7 +675,7 @@ async function startNextTurn(client, guildId) {
     session.challenger = null; // Penanya adalah Bot
 
     // Umumkan ajakan memilih lewat TTS
-    audio.askTruthOrDareTTS(client, guildId, victim.displayName).catch(() => {});
+    audio.askTruthOrDareTTS(client, guildId, victim.displayName).catch(() => { });
 
     const turnEmbed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
@@ -735,7 +735,7 @@ async function startNextTurn(client, guildId) {
         : `Tanyakan satu hal konyol bertema ${session.category.toUpperCase()} kepada korban secara langsung!`;
 
       // Bacakan pertanyaan menggunakan Google TTS di Voice Channel
-      audio.readQuestionTTS(client, guildId, victim.displayName, type, questionText).catch(() => {});
+      audio.readQuestionTTS(client, guildId, victim.displayName, type, questionText).catch(() => { });
 
       // Mulai fase jawaban dengan Bot sebagai penanya
       await startAnswerPhase(client, guildId, questionText, type);
@@ -787,7 +787,7 @@ async function startNextTurn(client, guildId) {
     session.state = 'waiting_for_method_selection';
 
     // Umumkan giliran lewat TTS
-    audio.announceChallengerTurn(client, guildId, challenger.displayName, victim.displayName).catch(() => {});
+    audio.announceChallengerTurn(client, guildId, challenger.displayName, victim.displayName).catch(() => { });
 
     // Embed Pemilihan Metode Tantangan
     const turnEmbed = new EmbedBuilder()
@@ -1048,7 +1048,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
             challengerId ? `* 🎁 **${session.challenger}**: \`+Rp ${config.economy.ACTIVE_CHALLENGER_BONUS}\` (Bonus Penanya Aktif)` : ''
           ].filter(Boolean).join('\n'));
 
-        audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => {});
+        audio.announceSuccess(client, guildId, session.victim.displayName, config.economy.SUCCESS_REWARD).catch(() => { });
       } else {
         // Denda Korban
         database.incrementSkipStats(victimId);
@@ -1069,7 +1069,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
             `* 💸 **${session.victim}**: \`-Rp ${config.economy.SKIP_FINE}\` (Denda Kegagalan)`
           ].join('\n'));
 
-        audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => {});
+        audio.announceSkip(client, guildId, session.victim.displayName, config.economy.SKIP_FINE).catch(() => { });
       }
 
       // Tampilkan tombol transisi putaran berikutnya
@@ -1085,7 +1085,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       session.timer = setTimeout(async () => {
         const s = activeGames.get(guildId);
         if (s && s === session) {
-          await judgmentMessage.edit({ components: [] }).catch(() => {});
+          await judgmentMessage.edit({ components: [] }).catch(() => { });
           await startNextTurn(client, guildId);
         }
       }, config.durations.TRANSITION_DELAY_MS);
@@ -1285,7 +1285,7 @@ async function handleVoiceTodCommand(message, client) {
 
   const content = message.content.trim().split(/ +/);
   const prefixCmd = content.shift().toLowerCase();
-  
+
   if (prefixCmd !== '.tod' && prefixCmd !== '.truthordare') return false;
 
   const subCommand = content[0]?.toLowerCase();
@@ -1383,7 +1383,7 @@ function forceStopTodGame(guildId) {
   cleanSession(guildId);
   try {
     audio.clearVoiceConnection(guildId);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 module.exports = {
