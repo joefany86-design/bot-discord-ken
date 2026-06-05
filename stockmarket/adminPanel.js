@@ -2333,7 +2333,7 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
 
             database.transaction(() => {
               wallets.forEach(w => {
-                const finalFine = Math.min(w.balance, fine);
+                const finalFine = Math.min(Math.floor(w.balance), fine);
                 if (finalFine > 0) {
                   economy.subtractBalance(w.user_id, guildId, finalFine, 'GLOBAL_JAIL_FINE');
                 }
