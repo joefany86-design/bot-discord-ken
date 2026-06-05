@@ -2908,17 +2908,17 @@ module.exports = {
   },
 
   // 28. Toko Item Pet (.pet shop)
-  petShopEmbed(wallet, inventory) {
+  petShopEmbed(wallet, inventory, statusMessage = '') {
     const { PET_ITEMS } = require('./pet');
+    const desc = `Jaga kelangsungan hidup pet Anda dengan berbelanja supplies berkualitas!\n\n` +
+                 (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
+                 `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
+                 `📦 **Persediaan Anda Saat Ini:**\n` +
+                 inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
       .setTitle('🎒 TOKO PERSEDIAAN PET TAMAGOTCHI')
-      .setDescription(
-        `Jaga kelangsungan hidup pet Anda dengan berbelanja supplies berkualitas!\n\n` +
-        `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
-        `📦 **Persediaan Anda Saat Ini:**\n` +
-        inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n')
-      );
+      .setDescription(desc);
 
     Object.keys(PET_ITEMS).forEach(key => {
       const item = PET_ITEMS[key];

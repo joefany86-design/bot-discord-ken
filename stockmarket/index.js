@@ -2247,10 +2247,10 @@ function initStockMarket(client) {
           return { embeds: [embed], components: rows };
         };
 
-        const getShopPanelDataPrivate = (targetUserId) => {
+        const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
           const wallet2 = economy.getWallet(targetUserId, guildId);
           const inv = pet.getInventory(targetUserId, guildId);
-          const embed = embeds.petShopEmbed(wallet2, inv);
+          const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
 
           const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('pet_select_shop_item')
@@ -2809,17 +2809,43 @@ function initStockMarket(client) {
             } else if (iPet.customId === 'pet_btn_cancel_shop') {
               await iPet.update(getDashboardPanelPrivate(user.id));
             } else if (iPet.customId === 'pet_select_shop_item') {
-              const selectedItem = iPet.values[0];
-              try {
-                const res = pet.buyItem(user.id, guildId, selectedItem, 1);
-                const successEmb = embeds.successEmbed(
-                  'Transaksi Belanja Sukses! 🛒',
-                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang dimasukkan ke kandang.\n\nSisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-                );
-                await iPet.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+              const selectedItemId = iPet.values[0];
+              const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+              if (!item) return;
+
+              const modal = new ModalBuilder()
+                .setCustomId(`pet_modal_buy_${selectedItemId}`)
+                .setTitle(`Beli ${item.name}`);
+
+              const qtyInput = new TextInputBuilder()
+                .setCustomId('buy_qty')
+                .setLabel('Jumlah yang ingin dibeli')
+                .setPlaceholder('Contoh: 5')
+                .setValue('1')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+              await iPet.showModal(modal);
+
+              const submitted = await iPet.awaitModalSubmit({
+                filter: (sub) => sub.customId === `pet_modal_buy_${selectedItemId}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                  const qty = Math.max(1, parseInt(qtyStr) || 1);
+                  
+                  const res = pet.buyItem(user.id, guildId, selectedItemId, qty);
+                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                  await submitted.update(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                }
               }
             } else if (iPet.customId === 'pet_btn_nav_adopt') {
               const modal = new ModalBuilder()
@@ -2878,10 +2904,10 @@ function initStockMarket(client) {
       else if (customId === 'pet_btn_open_shop_private_perm') {
         await interaction.deferReply({ flags: 64 });
 
-        const getShopPanelDataPrivate = (targetUserId) => {
+        const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
           const wallet2 = economy.getWallet(targetUserId, guildId);
           const inv = pet.getInventory(targetUserId, guildId);
-          const embed = embeds.petShopEmbed(wallet2, inv);
+          const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
 
           const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('pet_select_shop_item_perm')
@@ -2907,17 +2933,43 @@ function initStockMarket(client) {
               await privateMsg.delete().catch(() => {});
               collector.stop();
             } else if (iShop.customId === 'pet_select_shop_item_perm') {
-              const selectedItem = iShop.values[0];
-              try {
-                const res = pet.buyItem(user.id, guildId, selectedItem, 1);
-                const successEmb = embeds.successEmbed(
-                  'Transaksi Belanja Sukses! 🛒',
-                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Barang dimasukkan ke kandang.\n\nSisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-                );
-                await iShop.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getShopPanelDataPrivate(user.id)).catch(() => {});
-              } catch (err) {
-                await iShop.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+              const selectedItemId = iShop.values[0];
+              const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+              if (!item) return;
+
+              const modal = new ModalBuilder()
+                .setCustomId(`pet_modal_buy_perm_${selectedItemId}`)
+                .setTitle(`Beli ${item.name}`);
+
+              const qtyInput = new TextInputBuilder()
+                .setCustomId('buy_qty')
+                .setLabel('Jumlah yang ingin dibeli')
+                .setPlaceholder('Contoh: 5')
+                .setValue('1')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+              await iShop.showModal(modal);
+
+              const submitted = await iShop.awaitModalSubmit({
+                filter: (sub) => sub.customId === `pet_modal_buy_perm_${selectedItemId}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                  const qty = Math.max(1, parseInt(qtyStr) || 1);
+                  
+                  const res = pet.buyItem(user.id, guildId, selectedItemId, qty);
+                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                  await submitted.update(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                }
               }
             }
           } catch (err) {
@@ -7687,10 +7739,10 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
   const guildId = context.guildId;
   const author = isInteraction ? context.user : context.author;
 
-  const getShopPanelData = (userId, guildId) => {
+  const getShopPanelData = (userId, guildId, statusMsg = '') => {
     const wallet = economy.getWallet(userId, guildId);
     const inventory = pet.getInventory(userId, guildId);
-    const embed = embeds.petShopEmbed(wallet, inventory);
+    const embed = embeds.petShopEmbed(wallet, inventory, statusMsg);
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('pet_select_shop_item')
@@ -7733,21 +7785,43 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
           await handlePetCommand(context, client, []);
         }
       } else if (iShop.customId === 'pet_select_shop_item') {
-        collector.stop();
-        const selectedItem = iShop.values[0];
+        const selectedItemId = iShop.values[0];
+        const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+        if (!item) return;
 
-        try {
-          const res = pet.buyItem(author.id, guildId, selectedItem, 1);
-          const successEmb = embeds.successEmbed(
-            'Transaksi Belanja Sukses! 🛒',
-            `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-            (res.isAccessory ? `🛡️ Aksesoris telah langsung dipasang pada pet aktif Anda!\n\n` : `📦 Barang telah dimasukkan ke persediaan pet Anda.\n\n`) +
-            `📉 Sisa dompetmu sekarang adalah **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
-          );
-          await iShop.update({ embeds: [successEmb], components: [] });
-        } catch (err) {
-          const errorEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-          await iShop.update({ embeds: [errorEmb], components: [] });
+        const modal = new ModalBuilder()
+          .setCustomId(`pet_modal_buy_cmd_${selectedItemId}`)
+          .setTitle(`Beli ${item.name}`);
+
+        const qtyInput = new TextInputBuilder()
+          .setCustomId('buy_qty')
+          .setLabel('Jumlah yang ingin dibeli')
+          .setPlaceholder('Contoh: 5')
+          .setValue('1')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMinLength(1)
+          .setMaxLength(4);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+        await iShop.showModal(modal);
+
+        const submitted = await iShop.awaitModalSubmit({
+          filter: (sub) => sub.customId === `pet_modal_buy_cmd_${selectedItemId}` && sub.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (submitted) {
+          try {
+            const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+            const qty = Math.max(1, parseInt(qtyStr) || 1);
+            
+            const res = pet.buyItem(author.id, guildId, selectedItemId, qty);
+            const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+            await submitted.update(getShopPanelData(author.id, guildId, statusMsg)).catch(() => {});
+          } catch (err) {
+            await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+          }
         }
       }
     } catch (err) {
