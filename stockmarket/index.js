@@ -165,7 +165,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
     if (messageOrInteraction.deferred || messageOrInteraction.replied) {
       await messageOrInteraction.editReply(initialData);
     } else {
-      await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID });
+      await messageOrInteraction.reply({ ...initialData, flags: messageOrInteraction.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
     }
     tradeMsg = await messageOrInteraction.fetchReply();
   } else {
@@ -195,7 +195,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
 
         const stock = stocks.getStock(guildId, selectedTicker);
         if (!stock) {
-          return iTrade.reply({ content: '❌ Saham tidak ditemukan!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+          return iTrade.reply({ content: '❌ Saham tidak ditemukan!', flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
         }
 
         let shares = 0;
@@ -215,7 +215,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             const maxHoldAllowed = (config.market.MAX_SHARES_HOLD_PER_USER || 100) - userShares;
             shares = Math.min(maxAfford, stock.available_shares, maxHoldAllowed);
             if (shares <= 0) {
-              return iTrade.reply({ content: `❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan ${config.market.MAX_SHARES_HOLD_PER_USER || 100} lembar)!`, ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+              return iTrade.reply({ content: `❌ Anda tidak dapat membeli lembar saham lagi (saldo tidak cukup, stok bursa habis, atau sudah mencapai batas kepemilikan ${config.market.MAX_SHARES_HOLD_PER_USER || 100} lembar)!`, flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
             }
           } else if (amountType === 'custom') {
             const modal = new ModalBuilder()
@@ -242,13 +242,13 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (submitted) {
               const inputVal = parseInt(submitted.fields.getTextInputValue('buy_amount'));
               if (isNaN(inputVal) || inputVal <= 0) {
-                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
               }
 
               try {
                 const res = stocks.buyStock(author.id, guildId, selectedTicker, inputVal);
                 const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-                await submitted.reply({ embeds: [successEmb], ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                await submitted.reply({ embeds: [successEmb], flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
 
                 if (inputVal >= 50) {
                   client.emit('playTtsEvent', {
@@ -263,7 +263,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
                 await tradeMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
-                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
               }
             }
             return;
@@ -276,7 +276,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
           else if (amountType === 'all') {
             shares = userShares;
             if (shares <= 0) {
-              return iTrade.reply({ content: '❌ Anda tidak memiliki saham ini untuk dijual!', ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+              return iTrade.reply({ content: '❌ Anda tidak memiliki saham ini untuk dijual!', flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
             }
           } else if (amountType === 'custom') {
             const modal = new ModalBuilder()
@@ -303,13 +303,13 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (submitted) {
               const inputVal = parseInt(submitted.fields.getTextInputValue('sell_amount'));
               if (isNaN(inputVal) || inputVal <= 0) {
-                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                return submitted.reply({ content: '❌ Jumlah lembar harus berupa angka di atas 0!', flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
               }
 
               try {
                 const res = stocks.sellStock(author.id, guildId, selectedTicker, inputVal, submitted.member);
                 const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-                await submitted.reply({ embeds: [successEmb], ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                await submitted.reply({ embeds: [successEmb], flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
 
                 if (inputVal >= 50) {
                   client.emit('playTtsEvent', {
@@ -324,7 +324,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
                 await tradeMsg.edit(freshData).catch(console.error);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
-                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: submitted.channelId === SHOP_CHANNEL_ID });
+                await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
               }
             }
             return;
@@ -337,7 +337,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             if (action === 'BUY') {
               const res = stocks.buyStock(author.id, guildId, selectedTicker, shares);
               const successEmb = embeds.transactionSuccessEmbed(author, true, res);
-              await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+              await iTrade.reply({ embeds: [successEmb], flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
 
               if (shares >= 50) {
                 client.emit('playTtsEvent', {
@@ -349,7 +349,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             } else {
               const res = stocks.sellStock(author.id, guildId, selectedTicker, shares, iTrade.member);
               const successEmb = embeds.transactionSuccessEmbed(author, false, res);
-              await iTrade.reply({ embeds: [successEmb], ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+              await iTrade.reply({ embeds: [successEmb], flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
 
               if (shares >= 50) {
                 client.emit('playTtsEvent', {
@@ -365,7 +365,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
             });
           } catch (err) {
             const cleaned = err.message.replace(/^❌\s*/, '');
-            await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, ephemeral: iTrade.channelId === SHOP_CHANNEL_ID });
+            await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
           }
         }
       }
@@ -5748,7 +5748,7 @@ async function handlePetCommand(message, client, args) {
             economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
           });
 
-          await iExp.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.', ephemeral: false });
+          await iExp.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.' });
           await replyMsg.edit({
             content: '❌ **Ekspedisi tim pet dibatalkan oleh pembuat lobi.**',
             embeds: [],
@@ -8280,7 +8280,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (wallet.balance < gachaCost) {
     const warnEmb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
     if (isInteraction) {
-      return replyTarget.reply({ embeds: [warnEmb], ephemeral: replyTarget.channelId === SHOP_CHANNEL_ID });
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
     }
     return replyTarget.reply({ embeds: [warnEmb] });
   }
@@ -8289,7 +8289,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (gachaItems.length === 0) {
     const warnEmb = embeds.warnEmbed('Gacha Tidak Tersedia!', 'Belum ada role gacha yang dikonfigurasi di server ini. Silakan admin menambahkan role gacha terlebih dahulu!');
     if (isInteraction) {
-      return replyTarget.reply({ embeds: [warnEmb], ephemeral: replyTarget.channelId === SHOP_CHANNEL_ID });
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
     }
     return replyTarget.reply({ embeds: [warnEmb] });
   }
@@ -8297,7 +8297,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   // Animasi rolling menegangkan multi-tahap
   let rollingMsg = null;
   if (isInteraction) {
-    await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', ephemeral: replyTarget.channelId === SHOP_CHANNEL_ID });
+    await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
   } else {
     rollingMsg = await replyTarget.reply('🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙');
   }
@@ -9926,7 +9926,7 @@ async function handleEconomyCommands(message, client) {
                 clearTimeout(lobby.timeout);
                 robbery.cancelHeistLobby(author.id, guildId);
 
-                await iHeist.reply({ content: '✖️ Operasi bank heist dibatalkan dan biaya persiapan telah dikembalikan ke seluruh kru.', ephemeral: false });
+                await iHeist.reply({ content: '✖️ Operasi bank heist dibatalkan dan biaya persiapan telah dikembalikan ke seluruh kru.' });
                 await replyMsg.edit({
                   content: '❌ **Operasi bank heist dibatalkan oleh inisiator.**',
                   embeds: [],
