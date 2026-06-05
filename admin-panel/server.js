@@ -6,7 +6,7 @@ const Database = require('better-sqlite3');
 
 const config = require('../stockmarket/config');
 
-const PORT = 3000;
+const PORT = 80;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 let DB_PATH = config.DATABASE_PATH;
 const LOG_FILE = path.join(__dirname, 'server.log');
