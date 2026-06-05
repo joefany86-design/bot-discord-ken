@@ -5053,43 +5053,15 @@ async function handlePetCommand(message, client, args) {
     const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
     const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
-    const lobbyEmbed = new EmbedBuilder()
-      .setColor('#3D5AFE') // Electric Indigo
-      .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
-      .setDescription(
-        `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
-        `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n\n` +
-        `👤 **Otak Ekspedisi (Pemimpin):** <@${author.id}>\n` +
-        `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
-      )
-      .addFields(
-        {
-          name: '🦖 Kru Pet Saat Ini',
-          value: `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
-          inline: false
-        },
-        {
-          name: '🎯 Peluang & Sinergi Elemen',
-          value: `• **Peluang Sukses Tim:** **\`${calcInit.successRate}%\`**\n` +
-                 `• **Sinergi Elemen:**\n${elementalLogsText}`,
-          inline: false
-        },
-        {
-          name: '💰 Biaya Ransum',
-          value: `\`Rp 250\` koin`,
-          inline: true
-        },
-        {
-          name: '⏳ Batas Persiapan',
-          value: `<t:${endTimeUnix}:R>`,
-          inline: true
-        }
-      )
-      .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-      .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
-      .setTimestamp();
+    const lobbyEmbed = embeds.petExpeditionLobbyEmbed(
+      author.id,
+      selectedMap,
+      `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
+      calcInit.successRate,
+      elementalLogsText,
+      endTimeUnix,
+      mapChoice
+    );
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('pet_exp_join').setLabel('🛡️ Ikut Ekspedisi').setStyle(ButtonStyle.Primary),
@@ -5599,18 +5571,7 @@ async function handlePetCommand(message, client, args) {
           );
         }
 
-        const resultEmbed = new EmbedBuilder()
-          .setColor(res.success ? '#00E676' : '#D50000')
-          .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
-          .setDescription(
-            `### 🧭 Chronology Petualangan\n` +
-            reportDesc + `\n` +
-            `─── ⋆⋅☆⋅⋆ ───`
-          )
-          .addFields(fields)
-          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Kosan 1A RPG' })
-          .setTimestamp();
+        const resultEmbed = embeds.petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice);
 
         const resAtt = getMapAttachment(mapChoice);
         const resOpts = {
@@ -5686,43 +5647,15 @@ async function handlePetCommand(message, client, args) {
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
           const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
-          const updatedEmbed = new EmbedBuilder()
-            .setColor('#3D5AFE') // Electric Indigo
-            .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
-            .setDescription(
-              `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
-              `Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!\n\n` +
-              `─── ⋆⋅☆⋅⋆ ───\n\n` +
-              `👤 **Otak Ekspedisi (Pemimpin):** <@${author.id}>\n` +
-              `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-              `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
-            )
-            .addFields(
-              {
-                name: '🦖 Kru Pet Saat Ini',
-                value: petListText || '*Belum ada peserta*',
-                inline: false
-              },
-              {
-                name: '🎯 Peluang & Sinergi Elemen',
-                value: `• **Peluang Sukses Tim:** **\`${calc.successRate}%\`**\n` +
-                       `• **Sinergi Elemen:**\n${elementalLogsTextVal}`,
-                inline: false
-              },
-              {
-                name: '💰 Biaya Ransum',
-                value: `\`Rp 250\` koin`,
-                inline: true
-              },
-              {
-                name: '⏳ Batas Persiapan',
-                value: `<t:${endTimeUnix}:R>`,
-                inline: true
-              }
-            )
-            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
-            .setTimestamp();
+          const updatedEmbed = embeds.petExpeditionLobbyEmbed(
+            author.id,
+            selectedMap,
+            petListText,
+            calc.successRate,
+            elementalLogsTextVal,
+            endTimeUnix,
+            mapChoice
+          );
 
           const joinAtt = getMapAttachment(mapChoice);
           const joinOpts = { embeds: [updatedEmbed] };

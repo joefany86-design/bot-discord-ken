@@ -4140,6 +4140,92 @@ module.exports = {
       )
       .setTimestamp()
       .setFooter({ text: 'Sistem Ketertiban & Lapas Kosan 1A • Penegak Hukum Bot Kosan 1A' });
+  },
+
+  // 30d. Pet Expedition Lobby Embed (Premium)
+  petExpeditionLobbyEmbed(authorId, selectedMap, petListText, successRate, elementalLogsText, endTimeUnix, mapChoice) {
+    const isChallenging = selectedMap.recommendedLevel >= 25;
+    const embedColor = isChallenging ? 0x990000 : 0xFFB800; // Crimson / Gold Premium
+
+    return new EmbedBuilder()
+      .setColor(embedColor)
+      .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
+      .setDescription(
+        `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
+        `*Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!*\n\n` +
+        `─── ⋆⋅☆⋅⋆ ───\n\n` +
+        `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
+        `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
+        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
+      )
+      .addFields(
+        {
+          name: '🦖 Kru Pet Saat Ini',
+          value: petListText || '*Belum ada peserta*',
+          inline: false
+        },
+        {
+          name: '🎯 Peluang & Sinergi Elemen',
+          value: `• **Peluang Sukses Tim:** **\`${successRate}%\`**\n` +
+                 `• **Sinergi Elemen:**\n${elementalLogsText}`,
+          inline: false
+        },
+        {
+          name: '💰 Biaya Ransum',
+          value: `\`Rp 250\` koin`,
+          inline: true
+        },
+        {
+          name: '⏳ Batas Persiapan',
+          value: `<t:${endTimeUnix}:R>`,
+          inline: true
+        }
+      )
+      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
+      .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
+      .setTimestamp();
+  },
+
+  // 30e. Pet Expedition Result Embed (Premium)
+  petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice) {
+    const embedColor = res.success ? 0x00E676 : 0xD50000; // Emerald Green / Bright Red
+    const fields = [
+      {
+        name: res.success ? '🎉 JARAHAN & PENGALAMAN TIM' : '💔 REKAP PENGALAMAN (MESKI GAGAL)',
+        value: rewardText || '*Tidak ada kru*',
+        inline: false
+      },
+      { name: '🔥 Kombinasi Level Tim', value: `\`Lv. ${res.teamPower}\``, inline: true },
+      { name: '🎯 Peluang Sukses', value: `\`${res.successRate}%\``, inline: true }
+    ];
+
+    if (res.bestPet && res.worstPet) {
+      fields.push(
+        {
+          name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑',
+          value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) · <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`,
+          inline: false
+        },
+        {
+          name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌',
+          value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) · <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`,
+          inline: false
+        }
+      );
+    }
+
+    return new EmbedBuilder()
+      .setColor(embedColor)
+      .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
+      .setDescription(
+        `### 🧭 Chronology Petualangan\n` +
+        reportDesc + `\n` +
+        `─── ⋆⋅☆⋅⋆ ───`
+      )
+      .addFields(fields)
+      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
+      .setFooter({ text: 'Kosan 1A RPG' })
+      .setTimestamp();
   }
 };
 
