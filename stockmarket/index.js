@@ -798,6 +798,22 @@ function initStockMarket(client) {
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
     let customId = interaction.customId;
+
+    // Handler interaksi turnamen Admin Cup
+    if (interaction.isButton() && customId.startsWith('cup_btn_')) {
+      const parts = customId.split('_');
+      const actionType = parts[2]; // 'atk', 'def', 'elem', 'ult'
+      const matchId = parseInt(parts[3]);
+
+      try {
+        const tournament = require('./tournament');
+        tournament.processTurn(matchId, interaction.user.id, actionType, client);
+        await interaction.deferUpdate().catch(() => {});
+      } catch (err) {
+        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 }).catch(() => {});
+      }
+      return;
+    }
     if (interaction.isStringSelectMenu() && customId === 'eco_select_portal_hub_navigation') {
       customId = interaction.values[0];
     }
@@ -4301,6 +4317,28 @@ async function handlePetCommand(message, client, args) {
   if (subCommand === 'announcement' || subCommand === 'anoncemen' || subCommand === 'info') {
     const petInfoEmbed = embeds.petAnnouncementEmbed(message.guild);
     return message.reply({ embeds: [petInfoEmbed] });
+  }
+
+  // ── SUB-PERINTAH: CUP (ADMIN CUP REGISTER) ──
+  if (subCommand === 'cup') {
+    const action = args[1] ? args[1].toLowerCase() : null;
+    if (action === 'register' || action === 'daftar') {
+      const petName = args.slice(2).join(' ');
+      try {
+        const tournament = require('./tournament');
+        const userPet = tournament.registerParticipant(author.id, guildId, petName);
+        const successEmb = embeds.successEmbed(
+          'Pendaftaran Admin Cup Sukses! 🏆🐾',
+          `Pet aktif Anda **${userPet.pet_name}** (Lv.${userPet.level}) berhasil didaftarkan ke Turnamen Admin Cup!\n\n` +
+          `ℹ️ *Tunggu hingga pendaftaran selesai untuk pengacakan bagan tanding.*`
+        );
+        return message.reply({ embeds: [successEmb] });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Pendaftaran Gagal!', err.message)] });
+      }
+    } else {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan: `.pet cup register [nama_pet]` untuk mendaftarkan pet aktif Anda.')] });
+    }
   }
 
   // ── SUB-PERINTAH: TOWER ──
@@ -11983,7 +12021,7 @@ async function handleEconomyCommands(message, client) {
     // ═══════════════════════════════════════════════════
     // PROTEKSI ADMIN: Hanya bisa digunakan oleh Owner atau Administrator Guild
     // ═══════════════════════════════════════════════════
-    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'market-drop', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger'];
+    const adminCommands = ['eco-give', 'eco-giveall', 'eco-take', 'market-add', 'market-remove', 'market-drop', 'eco-reset', 'eco-resetall', 'market-reinit', 'shop-add', 'shop-remove', 'shop-setstock', 'eco-announce', 'event-trigger', 'autoshoprole', 'shop-auto', 'anoncemen', 'announcement', 'dividends-trigger', 'admincup', 'admin-cup'];
     if (adminCommands.includes(commandName)) {
       const isOwner = author.id === OWNER_ID;
       const isGuildOwner = message.guild && author.id === message.guild.ownerId;
@@ -12113,6 +12151,60 @@ async function handleEconomyCommands(message, client) {
       );
       await message.reply({ embeds: [successEmbed] });
       return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .admincup [start/stop/force-end]
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'admincup' || commandName === 'admin-cup') {
+      const action = args[0] ? args[0].toLowerCase() : null;
+      const tournament = require('./tournament');
+
+      if (action === 'start') {
+        const durationMins = parseInt(args[1]) || 30;
+        const minLevel = parseInt(args[2]) || 10;
+        const maxLevel = parseInt(args[3]) || 9999;
+
+        try {
+          const res = tournament.startTournament(author.id, guildId, message.channelId, durationMins, minLevel, maxLevel);
+          const announceEmbed = new EmbedBuilder()
+            .setColor(0x7C4DFF)
+            .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
+            .setDescription(
+              `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
+              `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
+              `⏱️ **Sisa Waktu Pendaftaran:** ${durationMins} Menit (Pendaftaran ditutup otomatis)\n` +
+              `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
+              `👉 Ketik **\`.pet cup register\`** atau **\`.pet cup daftar\`** untuk mendaftarkan pet aktif Anda!\n\n` +
+              `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
+            )
+            .setFooter({ text: 'Admin Cup • Registration Phase' })
+            .setTimestamp();
+
+          // Kirim pengumuman
+          await message.channel.send({ embeds: [announceEmbed] });
+
+          // Jadwalkan penutupan registrasi dan seeding
+          setTimeout(() => {
+            tournament.closeRegistrationAndGenerateBracket(guildId, client);
+          }, durationMins * 60 * 1000);
+
+          return true;
+        } catch (err) {
+          return message.reply({ embeds: [embeds.errorEmbed('Gagal Memulai Turnamen!', err.message)] });
+        }
+      }
+
+      if (action === 'stop' || action === 'force-end' || action === 'batal') {
+        try {
+          tournament.stopTournament(guildId);
+          return message.reply({ embeds: [embeds.successEmbed('Turnamen Dibatalkan!', 'Turnamen Admin Cup aktif berhasil dibatalkan dan semua data pendaftaran telah dibersihkan.')] });
+        } catch (err) {
+          return message.reply({ embeds: [embeds.errorEmbed('Gagal Membatalkan Turnamen!', err.message)] });
+        }
+      }
+
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.admincup start [durasi_menit] [min_level] [max_level]\`\n👉 \`.admincup stop\`')] });
     }
 
 

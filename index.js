@@ -344,6 +344,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
             `👉 **\`.pet expedition\`** - Lobi co-op PVE berpetualang kelompok mengalahkan bos zona (Hadiah koin & jackpot drop item).`,
             `👉 **\`.pet play\`** - Bermain bersama pet untuk memulihkan kebahagiaan & XP.`,
             `👉 **\`.pet pvp @user <taruhan>\`** - Duel Arena PvP antar pet memperebutkan koin taruhan.`,
+            `👉 **\`.pet cup register [nama]\`** - Mendaftarkan pet aktif Anda ke turnamen Admin Cup.`,
             `👉 **\`.pet reset\`** - Mengosongkan kandang untuk mengadopsi pet baru.`,
             `👉 **\`.pet auto-care\`** - Buka perawatan pet otomatis (makan/minum gratis saat lapar/haus) seharga **Rp 5.000**.`,
             `\n💥 **PERAMPOKAN BERISIKO TINGGI (ROB & HEIST):**`,
@@ -977,7 +978,9 @@ client.on('messageCreate', async message => {
             `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
             `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
             `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
-            `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`
+            `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`,
+            `👉 **\`.admincup start [durasi_menit] [min_level] [max_level]\`** - Memulai turnamen Admin Cup adu pet interaktif.`,
+            `👉 **\`.admincup stop\`** - Membatalkan turnamen Admin Cup aktif.`
           ].join('\n')
         }
       )

@@ -887,6 +887,47 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel World Boss/Menara Ujian:", e.message);
   }
 
+  // 54. Tabel Turnamen Admin Cup (Admin Cup Pet Tournament)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tournament_events (
+        guild_id TEXT PRIMARY KEY,
+        status TEXT NOT NULL, -- 'REGISTERING', 'PLAYING', 'COMPLETED'
+        admin_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL,
+        registration_end_at INTEGER NOT NULL,
+        current_round INTEGER DEFAULT 1,
+        min_level INTEGER DEFAULT 10,
+        max_level INTEGER DEFAULT 9999,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tournament_participants (
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        pet_name TEXT NOT NULL,
+        status TEXT DEFAULT 'ACTIVE', -- 'ACTIVE', 'ELIMINATED'
+        PRIMARY KEY (guild_id, user_id)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tournament_matches (
+        match_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        round_number INTEGER NOT NULL,
+        player_1_id TEXT NOT NULL,
+        player_2_id TEXT, -- NULL jika BYE
+        winner_id TEXT,
+        thread_id TEXT,
+        match_status TEXT DEFAULT 'PENDING' -- 'PENDING', 'ACTIVE', 'COMPLETED', 'FORFEITED'
+      )
+    `);
+    console.log("⚡ [Database] Tabel Turnamen Admin Cup (events, participants, matches) berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel Turnamen Admin Cup:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden, Ebyus Settings & Gym Stats berhasil diinisialisasi.');
 }
 

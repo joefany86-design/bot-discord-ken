@@ -281,7 +281,15 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder()
           .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
           .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
-          .setValue('action_set_custom_image_modal')
+          .setValue('action_set_custom_image_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏆 Mulai Turnamen Admin Cup (Modal)')
+          .setDescription('Mulai pendaftaran turnamen adu pet interaktif server')
+          .setValue('action_admincup_start_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏆 Batalkan Turnamen Admin Cup')
+          .setDescription('Membatalkan turnamen Admin Cup aktif di server')
+          .setValue('action_admincup_stop')
       );
 
       const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -1489,6 +1497,106 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           await iPet.reply({ content: rewardMsg, flags: 64 });
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'action_admincup_start_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_pet_admincup_start_modal')
+            .setTitle('Mulai Turnamen Admin Cup');
+
+          const durationInput = new TextInputBuilder()
+            .setCustomId('cup_duration')
+            .setLabel('Durasi Registrasi (Menit)')
+            .setValue('30')
+            .setPlaceholder('Contoh: 30')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const minLevelInput = new TextInputBuilder()
+            .setCustomId('cup_min_level')
+            .setLabel('Level Minimal Pet')
+            .setValue('10')
+            .setPlaceholder('Contoh: 10')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const maxLevelInput = new TextInputBuilder()
+            .setCustomId('cup_max_level')
+            .setLabel('Level Maksimal Pet')
+            .setValue('9999')
+            .setPlaceholder('Contoh: 9999')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(durationInput),
+            new ActionRowBuilder().addComponents(minLevelInput),
+            new ActionRowBuilder().addComponents(maxLevelInput)
+          );
+
+          await iPet.showModal(modal);
+
+          const sub = await iPet.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_pet_admincup_start_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
+            const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
+            const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
+
+            if (isNaN(durationMins) || durationMins <= 0) {
+              return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
+            }
+            if (isNaN(minLevel) || minLevel < 1) {
+              return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
+            }
+            if (isNaN(maxLevel) || maxLevel < minLevel) {
+              return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
+            }
+
+            const tournament = require('./tournament');
+            try {
+              tournament.startTournament(author.id, guildId, iPet.channelId, durationMins, minLevel, maxLevel);
+
+              const announceEmbed = new EmbedBuilder()
+                .setColor(0x7C4DFF)
+                .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
+                .setDescription(
+                  `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
+                  `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
+                  `⏱️ **Sisa Waktu Pendaftaran:** ${durationMins} Menit (Pendaftaran ditutup otomatis)\n` +
+                  `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
+                  `👉 Ketik **\`.pet cup register\`** atau **\`.pet cup daftar\`** untuk mendaftarkan pet aktif Anda!\n\n` +
+                  `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
+                )
+                .setFooter({ text: 'Admin Cup • Registration Phase' })
+                .setTimestamp();
+
+              await iPet.channel.send({ embeds: [announceEmbed] });
+
+              setTimeout(() => {
+                tournament.closeRegistrationAndGenerateBracket(guildId, client);
+              }, durationMins * 60 * 1000);
+
+              await sub.reply({ content: `🏆 Sukses memulai pendaftaran turnamen Admin Cup selama **${durationMins}** menit!`, flags: 64 });
+              const fresh = getPetPanelData(guildId, selectedTargetUserId);
+              await replyMsg.edit(fresh).catch(() => { });
+            } catch (err) {
+              return sub.reply({ content: `❌ Gagal memulai turnamen: ${err.message}`, flags: 64 });
+            }
+          }
+        }
+        else if (action === 'action_admincup_stop') {
+          const tournament = require('./tournament');
+          try {
+            tournament.stopTournament(guildId);
+            await iPet.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });
+            const fresh = getPetPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          } catch (err) {
+            await iPet.reply({ content: `❌ Gagal membatalkan turnamen: ${err.message}`, flags: 64 });
+          }
         }
       }
     } catch (err) {
