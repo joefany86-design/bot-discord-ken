@@ -159,7 +159,11 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
   if (!initialData) return;
 
   if (isInteraction) {
-    await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID });
+    if (messageOrInteraction.deferred || messageOrInteraction.replied) {
+      await messageOrInteraction.editReply(initialData);
+    } else {
+      await messageOrInteraction.reply({ ...initialData, ephemeral: messageOrInteraction.channelId === SHOP_CHANNEL_ID });
+    }
     tradeMsg = await messageOrInteraction.fetchReply();
   } else {
     tradeMsg = await messageOrInteraction.reply(initialData);
@@ -816,7 +820,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: TOKO ROLE ──
-      if (customId === 'eco_btn_open_shop_private_perm') {
+      if (customId === 'eco_btn_open_shop_private_perm' || customId === 'eco_btn_open_shop_direct') {
         await interaction.deferReply({ flags: 64 });
         const wallet = economy.getWallet(user.id, guildId);
         const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -988,7 +992,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: BURSA SAHAM ──
-      else if (customId === 'eco_btn_open_market_private_perm') {
+      else if (customId === 'eco_btn_open_market_private_perm' || customId === 'eco_btn_open_market_direct') {
         await interaction.deferReply({ flags: 64 });
         const activeStocks = stocks.getStocks(guildId);
         const isOpen = stocks.isMarketOpen();
@@ -1048,7 +1052,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: BANK SENTRAL ──
-      else if (customId === 'eco_btn_open_bank_private_perm') {
+      else if (customId === 'eco_btn_open_bank_private_perm' || customId === 'eco_btn_open_bank_direct') {
         await interaction.deferReply({ flags: 64 });
         const getBankDashboardDataPrivate = (targetUserId) => {
           const wallet = economy.getWallet(targetUserId, guildId);
@@ -1757,7 +1761,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: INVENTORY SAYA ──
-      else if (customId === 'eco_btn_open_inventory_private_perm') {
+      else if (customId === 'eco_btn_open_inventory_private_perm' || customId === 'eco_btn_open_inventory_direct') {
         await interaction.deferReply({ flags: 64 });
         
         // Fetch all inventory items (quantity > 0)
@@ -1972,7 +1976,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
-      else if (customId === 'eco_btn_open_bm_private_perm') {
+      else if (customId === 'eco_btn_open_bm_private_perm' || customId === 'eco_btn_open_bm_direct') {
         await interaction.deferReply({ flags: 64 });
         const bmEmbed = new EmbedBuilder()
           .setColor(0x1A1A1A)
@@ -2910,7 +2914,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: KOSAN (.kos) ──
-      else if (customId === 'eco_btn_open_kos_private_perm') {
+      else if (customId === 'eco_btn_open_kos_private_perm' || customId === 'eco_btn_open_kos_direct') {
         await interaction.deferReply({ flags: 64 });
         const kos = require('./kos');
 
@@ -8480,11 +8484,49 @@ async function handleEconomyCommands(message, client) {
       `<@${author.id}>, perintah \`.${commandName}\` kini sudah tidak dapat digunakan lagi.\n\n` +
       `Silakan gunakan perintah **\`.hub\`** (atau **\`.portal\`**) untuk mengakses menu terintegrasi kami (Toko, Pasar Saham, Bank, Black Market, dan Kos-kosan).`
     );
-    const replyMsg = await message.channel.send({ embeds: [redirectEmb] }).catch(() => null);
+
+    let btnLabel = '';
+    let btnCustomId = '';
+    let btnStyle = ButtonStyle.Success;
+
+    if (['saham', 'market'].includes(commandName)) {
+      btnLabel = '📈 Buka Bursa Saham';
+      btnCustomId = 'eco_btn_open_market_direct';
+      btnStyle = ButtonStyle.Primary;
+    } else if (['shop', 'rolemarket'].includes(commandName)) {
+      btnLabel = '🛍️ Buka Toko Role';
+      btnCustomId = 'eco_btn_open_shop_direct';
+      btnStyle = ButtonStyle.Success;
+    } else if (['bank'].includes(commandName)) {
+      btnLabel = '🏦 Buka Bank Sentral';
+      btnCustomId = 'eco_btn_open_bank_direct';
+      btnStyle = ButtonStyle.Secondary;
+    } else if (['bm', 'blackmarket'].includes(commandName)) {
+      btnLabel = '🕵️‍♂️ Buka Black Market';
+      btnCustomId = 'eco_btn_open_bm_direct';
+      btnStyle = ButtonStyle.Danger;
+    } else if (['kos', 'kosan'].includes(commandName)) {
+      btnLabel = '🛌 Buka Sewa Kosan';
+      btnCustomId = 'eco_btn_open_kos_direct';
+      btnStyle = ButtonStyle.Primary;
+    }
+
+    let components = [];
+    if (btnLabel && btnCustomId) {
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(btnCustomId)
+          .setLabel(btnLabel)
+          .setStyle(btnStyle)
+      );
+      components.push(row);
+    }
+
+    const replyMsg = await message.channel.send({ embeds: [redirectEmb], components }).catch(() => null);
     if (replyMsg) {
       setTimeout(() => {
         replyMsg.delete().catch(() => {});
-      }, 10000);
+      }, 15000);
     }
     return true;
   }
@@ -13165,5 +13207,6 @@ module.exports = {
   initStockMarket,
   handleEconomyChat,
   handleEconomyCommands,
-  getPortalHubData
+  getPortalHubData,
+  sendInteractiveTradePanel
 };

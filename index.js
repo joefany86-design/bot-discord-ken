@@ -1143,9 +1143,35 @@ client.on('messageCreate', async message => {
   else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
     await sendInteractiveHelp(message, false, message.author, guild, client);
   }
-  // ── .portal / .portalhub / .hub ──
-  else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
-    await sendPortalHubDirect(message, false, message.author, guild, client);
+  // ── .portal / .portalhub / .hub / .hun / .hunian ──
+  else if (['portal', 'portalhub', 'hub', 'hun', 'hunian'].includes(commandName)) {
+    const subCommand = args[0]?.toLowerCase();
+    if (subCommand === 'saham' || subCommand === 'market' || subCommand === 'bursa') {
+      await message.delete().catch(() => {});
+      const { getStocks } = require('./stockmarket/stocks');
+      const activeStocks = getStocks(guildId);
+      if (activeStocks.length === 0) {
+        return message.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
+      }
+
+      const promptEmbed = new EmbedBuilder()
+        .setColor(0x7C4DFF)
+        .setDescription(`📊 **Portal Bursa Saham** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka panel perdagangan saham pribadi Anda secara rahasia.`);
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('eco_btn_open_market_direct')
+          .setLabel('📊 Buka Bursa Saham')
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      const promptMsg = await message.channel.send({ embeds: [promptEmbed], components: [btnRow] });
+      setTimeout(() => {
+        promptMsg.delete().catch(() => {});
+      }, 20000);
+    } else {
+      await sendPortalHubDirect(message, false, message.author, guild, client);
+    }
   }
 });
 
