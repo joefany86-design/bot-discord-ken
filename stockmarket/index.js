@@ -982,43 +982,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          const disabledRows = [];
-          const disabledBtnRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger).setDisabled(true)
-          );
-          disabledRows.push(disabledBtnRow);
-
-          // Ambil status terbaru untuk layout penutup yang presisi
-          const freshItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-          if (freshItems.length > 0) {
-            const selectMenu = new StringSelectMenuBuilder()
-              .setCustomId('eco_select_buy_role')
-              .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...')
-              .setDisabled(true);
-
-            const TIER_EMOJIS = {
-              COMMON: '🟢',
-              RARE: '🔵',
-              EPIC: '🟣',
-              LEGENDARY: '👑',
-              MYTHIC: '🌟'
-            };
-
-            const options = freshItems.slice(0, 25).map(item => {
-              const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-              const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
-              return new StringSelectMenuOptionBuilder()
-                .setLabel(`${emoji} ${item.role_name}`)
-                .setValue(item.id.toString())
-                .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
-            });
-
-            selectMenu.addOptions(options);
-            disabledRows.push(new ActionRowBuilder().addComponents(selectMenu));
-          }
-
-          await privateMsg.edit({ components: disabledRows }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -1070,15 +1034,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
-            new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true)
-          );
-          if (activeStocks.length > 0) {
-            disabledRow.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true));
-          }
-          await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -1797,7 +1753,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -2134,30 +2090,7 @@ function initStockMarket(client) {
           });
 
           collector.on('end', async () => {
-            if (collector.destroyed) return;
-            const disabledSelect = new StringSelectMenuBuilder()
-              .setCustomId('bm_select_buy_items')
-              .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
-              .addOptions(
-                new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
-                new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
-                new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
-                new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
-                new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
-                new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
-              )
-              .setDisabled(true);
-
-            const disabledExit = new ButtonBuilder()
-              .setCustomId('bm_btn_exit_perm')
-              .setLabel('✖️ Tutup Pasar Gelap')
-              .setStyle(ButtonStyle.Danger)
-              .setDisabled(true);
-
-            const dRow1 = new ActionRowBuilder().addComponents(disabledSelect);
-            const dRow2 = new ActionRowBuilder().addComponents(disabledExit);
-
-            await privateMsg.edit({ components: [dRow1, dRow2] }).catch(() => { });
+            await interaction.deleteReply().catch(() => { });
           });
         } catch (err) {
           await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Black Market!', err.message)] }).catch(() => {});
@@ -2967,7 +2900,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -3049,8 +2982,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          if (collector.destroyed) return;
-          await privateMsg.edit({ components: [] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -3200,7 +3132,7 @@ function initStockMarket(client) {
           });
 
           collector.on('end', async () => {
-            await privateMsg.edit({ components: [] }).catch(() => { });
+            await interaction.deleteReply().catch(() => { });
           });
         } catch (err) {
           await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Menu Kosan!', err.message)] }).catch(() => {});
@@ -3610,7 +3542,7 @@ function initStockMarket(client) {
         });
 
         collector.on('end', async () => {
-          await interaction.editReply({ components: [] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -3702,7 +3634,7 @@ function initStockMarket(client) {
         });
 
         lotCollector.on('end', async () => {
-          await interaction.editReply({ components: [] }).catch(() => { });
+          await interaction.deleteReply().catch(() => { });
         });
       }
 
@@ -3810,7 +3742,7 @@ function initStockMarket(client) {
           });
 
           collector.on('end', async () => {
-            await privateMsg.edit({ components: [] }).catch(() => { });
+            await interaction.deleteReply().catch(() => { });
           });
         } catch (err) {
           await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] }).catch(() => {});
