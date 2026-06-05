@@ -75,6 +75,34 @@ const server = http.createServer((req, res) => {
 
   // API Endpoints
   if (pathname.startsWith('/api/')) {
+    // Auth route to verify passcode
+    if (pathname === '/api/auth' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const { token } = JSON.parse(body);
+          const expectedToken = process.env.ADMIN_ACCESS_TOKEN || '123456';
+          if (token === expectedToken) {
+            sendJSON(res, 200, { success: true, message: 'Autentikasi berhasil!' });
+          } else {
+            sendJSON(res, 401, { success: false, message: 'Kode akses admin salah!' });
+          }
+        } catch (err) {
+          sendJSON(res, 400, { success: false, message: 'Invalid payload' });
+        }
+      });
+      return;
+    }
+
+    // Auth verification middleware
+    const token = req.headers['x-admin-token'];
+    const expectedToken = process.env.ADMIN_ACCESS_TOKEN || '123456';
+    if (token !== expectedToken) {
+      sendJSON(res, 401, { success: false, message: 'Akses Ditolak! Harap masukkan kode akses admin yang valid.' });
+      return;
+    }
+
     if (pathname === '/api/stats' && req.method === 'GET') {
       try {
         const walletsCount = db.prepare('SELECT COUNT(*) as count FROM wallets').get().count;

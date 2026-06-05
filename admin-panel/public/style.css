@@ -826,3 +826,64 @@ a {
 .toast.toast-success { border-left: 4px solid var(--color-emerald); }
 .toast.toast-error { border-left: 4px solid var(--color-red); }
 .toast.toast-info { border-left: 4px solid var(--color-primary); }
+
+/* ==========================================================================
+   AUTHENTICATION OVERLAY SCREEN
+   ========================================================================== */
+.auth-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.4s ease, visibility 0.4s;
+}
+
+.auth-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 40px 32px;
+  width: 400px;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-premium);
+  border-top: 4px solid var(--color-emerald);
+  animation: modalSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideIn {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.auth-icon {
+  font-size: 56px;
+  margin-bottom: 20px;
+}
+
+.auth-box h2 {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.auth-box p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

@@ -8,6 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeBackups = [];
 
   // --- Element Selectors ---
+  // Auth Screen elements
+  const authOverlay = document.getElementById('auth-overlay');
+  const authPasscode = document.getElementById('auth-passcode');
+  const authLoginBtn = document.getElementById('auth-login-btn');
+
   // Navigation tabs
   const menuItems = {
     dash: document.getElementById('menu-dash'),
@@ -175,8 +180,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Secure Fetch Wrapper ---
+  async function secureFetch(url, options = {}) {
+    const token = localStorage.getItem('admin_token') || '';
+    if (!options.headers) {
+      options.headers = {};
+    }
+    options.headers['X-Admin-Token'] = token;
+
+    const response = await fetch(url, options);
+    if (response.status === 401) {
+      localStorage.removeItem('admin_token');
+      authOverlay.classList.remove('hidden');
+      showToast('Sesi ditolak! Harap masukkan kode akses admin yang valid.', 'error');
+      throw new Error('Unauthorized');
+    }
+    return response;
+  }
+
   // --- Tab Switcher ---
   function switchTab(activeTabId) {
+    // Stop if not authenticated
+    if (!localStorage.getItem('admin_token')) return;
+
     Object.keys(menuItems).forEach(key => {
       menuItems[key].classList.remove('active');
       sections[key].classList.remove('active');
@@ -213,18 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Handle URL hash on page load
-  const hash = window.location.hash.replace('#', '');
-  if (Object.keys(menuItems).includes(hash)) {
-    switchTab(hash);
-  } else {
-    switchTab('dash');
-  }
-
   // --- API Fetching Functions ---
   async function fetchDashboardStats() {
     try {
-      const res = await fetch('/api/stats');
+      const res = await secureFetch('/api/stats');
       const data = await res.json();
       if (data.success) {
         statWallets.textContent = data.walletsCount.toLocaleString('id-ID');
@@ -242,26 +260,26 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgGodMode.value = data.settings.owner_god_mode === 1 ? '1' : '0';
       }
     } catch (err) {
-      showToast('Koneksi server terputus', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server terputus', 'error');
     }
   }
 
   async function fetchUsers() {
     try {
-      const res = await fetch('/api/users');
+      const res = await secureFetch('/api/users');
       const data = await res.json();
       if (data.success) {
         usersData = data.users;
         renderUsersTable();
       }
     } catch (err) {
-      showToast('Gagal memuat list warga', 'error');
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat list warga', 'error');
     }
   }
 
   async function fetchDetailedStats() {
     try {
-      const res = await fetch('/api/admin/detailed-stats');
+      const res = await secureFetch('/api/admin/detailed-stats');
       const data = await res.json();
       if (data.success) {
         // Detailed Finansial
@@ -290,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function fetchLogs() {
     try {
-      const res = await fetch('/api/logs');
+      const res = await secureFetch('/api/logs');
       const data = await res.json();
       if (data.success) {
         logsList.innerHTML = '';
@@ -314,13 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } catch (err) {
-      showToast('Gagal memuat logs', 'error');
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat logs', 'error');
     }
   }
 
   async function fetchAssets() {
     try {
-      const res = await fetch('/api/assets');
+      const res = await secureFetch('/api/assets');
       const data = await res.json();
       if (data.success) {
         availableAssets = data.items;
@@ -334,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
   saveAbyusBtn.addEventListener('click', async () => {
     saveAbyusBtn.disabled = true;
     try {
-      const response = await fetch('/api/admin/abyus', {
+      const response = await secureFetch('/api/admin/abyus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -352,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal saat menyimpan', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal saat menyimpan', 'error');
     } finally {
       saveAbyusBtn.disabled = false;
     }
@@ -402,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const executeCitizenAction = async (action, additionalData = {}) => {
     const userId = targetUserInp.value;
     try {
-      const res = await fetch('/api/admin/citizen', {
+      const res = await secureFetch('/api/admin/citizen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, ...additionalData })
@@ -416,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
     }
   };
 
@@ -432,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Sub-Panel 3: Pet Tamagotchi Center ---
   async function fetchUsersForPetDropdown() {
     try {
-      const res = await fetch('/api/users');
+      const res = await secureFetch('/api/users');
       const data = await res.json();
       if (data.success) {
         petOwnerSelector.innerHTML = '<option value="">-- Pilih Warga --</option>';
@@ -460,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function fetchAndDisplayPet(userId) {
     try {
-      const res = await fetch(`/api/admin/pet?userId=${userId}`);
+      const res = await secureFetch(`/api/admin/pet?userId=${userId}`);
       const data = await res.json();
       if (data.success && data.pet) {
         const pet = data.pet;
@@ -489,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         petDisplayCard.style.display = 'block';
         petActionsCard.style.display = 'block';
         
-        // Hide stats & specific actions, show spawn custom pet panel
+        // Hide stats & specific actions
         petValHp.textContent = '-';
         petValHunger.textContent = '-';
         petValThirst.textContent = '-';
@@ -501,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         petValStatus.className = 'badge badge-muted';
       }
     } catch (err) {
-      showToast('Gagal memuat info pet', 'error');
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat info pet', 'error');
     }
   }
 
@@ -509,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userId = petOwnerSelector.value;
     if (!userId) return;
     try {
-      const response = await fetch('/api/admin/pet', {
+      const response = await secureFetch('/api/admin/pet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, ...valObject })
@@ -522,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
     }
   };
 
@@ -558,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     giveCustomPetBtn.disabled = true;
     try {
-      const response = await fetch('/api/admin/pet', {
+      const response = await secureFetch('/api/admin/pet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -579,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
     } finally {
       giveCustomPetBtn.disabled = false;
     }
@@ -594,7 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     payoutBansosBtn.disabled = true;
     try {
-      const res = await fetch('/api/admin/economy', {
+      const res = await secureFetch('/api/admin/economy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'bansos', amount })
@@ -608,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
     } finally {
       payoutBansosBtn.disabled = false;
     }
@@ -618,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirm('🚨 PERINGATAN: Aksi ini akan me-reset saldo seluruh dompet warga ke Rp 1.000, menghapus seluruh tabungan, dan menghapus seluruh pinjaman bank! Apakah Anda yakin?')) {
       resetEconomyBtn.disabled = true;
       try {
-        const res = await fetch('/api/admin/economy', {
+        const res = await secureFetch('/api/admin/economy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'reset' })
@@ -631,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast(data.message, 'error');
         }
       } catch (err) {
-        showToast('Koneksi server gagal', 'error');
+        if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
       } finally {
         resetEconomyBtn.disabled = false;
       }
@@ -664,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPrice = prompt(`Set Harga Baru untuk ${stock.stock_ticker} (Harga Saat Ini: Rp ${stock.current_price}):`);
         if (newPrice && !isNaN(newPrice)) {
           try {
-            const response = await fetch('/api/admin/stocks', {
+            const response = await secureFetch('/api/admin/stocks', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -688,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.querySelector('.btn-stock-del').addEventListener('click', async () => {
         if (confirm(`Apakah Anda yakin ingin menghapus emiten saham ${stock.stock_ticker} secara permanen?`)) {
           try {
-            const response = await fetch('/api/admin/stocks', {
+            const response = await secureFetch('/api/admin/stocks', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -724,7 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addStockBtn.disabled = true;
     try {
-      const response = await fetch('/api/admin/stocks', {
+      const response = await secureFetch('/api/admin/stocks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -780,7 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.querySelector('.btn-auc-cancel').addEventListener('click', async () => {
         if (confirm(`Apakah Anda yakin ingin membatalkan lelang ID #${auc.id}?`)) {
           try {
-            const res = await fetch('/api/admin/auctions', {
+            const res = await secureFetch('/api/admin/auctions', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'cancel', auctionId: auc.id })
@@ -813,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hostAuctionBtn.disabled = true;
     try {
-      const response = await fetch('/api/admin/auctions', {
+      const response = await secureFetch('/api/admin/auctions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -863,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
       restoreDbBtn.disabled = true;
       restoreDbBtn.textContent = '💾 Memulihkan...';
       try {
-        const response = await fetch('/api/admin/abyus', {
+        const response = await secureFetch('/api/admin/abyus', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -892,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     backupDbBtn.disabled = true;
     backupDbBtn.textContent = '💾 Mengirim...';
     try {
-      const res = await fetch('/api/db/backup', { method: 'POST' });
+      const res = await secureFetch('/api/db/backup', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         showToast(`Backup berhasil dibuat: ${data.backupFile}`, 'success');
@@ -902,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Gagal mem-backup database: ' + data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server gagal', 'error');
+      if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
     } finally {
       backupDbBtn.disabled = false;
       backupDbBtn.textContent = '💾 Backup SQLite';
@@ -1004,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.textContent = 'GIVING...';
 
     try {
-      const response = await fetch('/api/give', {
+      const response = await secureFetch('/api/give', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1032,7 +1050,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Initial Loading ---
-  fetchDashboardStats();
-  fetchAssets();
+  // --- Auth Verification Handler ---
+  async function checkAuth() {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      authOverlay.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await res.json();
+      if (data.success) {
+        authOverlay.classList.add('hidden');
+        // Initial Loading
+        fetchDashboardStats();
+        fetchAssets();
+      } else {
+        localStorage.removeItem('admin_token');
+        authOverlay.classList.remove('hidden');
+      }
+    } catch {
+      localStorage.removeItem('admin_token');
+      authOverlay.classList.remove('hidden');
+    }
+  }
+
+  authLoginBtn.addEventListener('click', async () => {
+    const passcode = authPasscode.value.trim();
+    if (!passcode) {
+      showToast('Masukkan kode akses admin!', 'error');
+      return;
+    }
+
+    authLoginBtn.disabled = true;
+    authLoginBtn.textContent = 'MEMVERIFIKASI...';
+
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: passcode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('admin_token', passcode);
+        authOverlay.classList.add('hidden');
+        showToast('Login berhasil!', 'success');
+        authPasscode.value = '';
+        
+        // Initial Loading
+        fetchDashboardStats();
+        fetchAssets();
+      } else {
+        showToast('Kode akses admin salah!', 'error');
+      }
+    } catch {
+      showToast('Koneksi server gagal', 'error');
+    } finally {
+      authLoginBtn.disabled = false;
+      authLoginBtn.textContent = 'MASUK DASHBOARD';
+    }
+  });
+
+  // Run passcode auth check on load
+  checkAuth();
 });
