@@ -1991,79 +1991,31 @@ function initStockMarket(client) {
       // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
       else if (customId === 'eco_btn_open_bm_private_perm' || customId === 'eco_btn_open_bm_direct') {
         await interaction.deferReply({ flags: 64 });
-        const bmEmbed = new EmbedBuilder()
-          .setColor(0x1A1A1A)
-          .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
-          .setDescription(
-            `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
-            `**Daftar Peralatan Tersedia:**\n\n` +
-            `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
-            `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
-            `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
-            `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
-            `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
-            `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
-            `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
-            `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
-            `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
-            `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
-            `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
-            `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
-            `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
-          )
-          .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
-          .setTimestamp();
+        try {
+          const bmEmbed = new EmbedBuilder()
+            .setColor(0x1A1A1A)
+            .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
+            .setDescription(
+              `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
+              `**Daftar Peralatan Tersedia:**\n\n` +
+              `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
+              `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
+              `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
+              `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
+              `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
+              `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
+              `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
+              `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+              `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
+              `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
+              `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
+              `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
+              `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
+            )
+            .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+            .setTimestamp();
 
-        const bmSelect = new StringSelectMenuBuilder()
-          .setCustomId('bm_select_buy_items')
-          .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
-          .addOptions(
-            new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
-            new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
-            new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
-            new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
-            new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
-            new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
-          );
-
-        const selectRow = new ActionRowBuilder().addComponents(bmSelect);
-        const exitRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
-        );
-
-        const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [selectRow, exitRow] });
-        const collector = privateMsg.createMessageComponentCollector({ time: 60000 });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
-
-          if (i.customId === 'bm_btn_exit_perm') {
-            collector.stop();
-            await i.update({ content: '👋 Meninggalkan pasar gelap...', embeds: [], components: [] }).catch(() => {});
-            return;
-          }
-
-          if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
-            const itemId = i.values[0];
-            try {
-              const res = bm.buyItem(user.id, guildId, itemId, 1);
-              const successEmb = embeds.successEmbed(
-                'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
-                `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-                `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
-                `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-              );
-              await i.update({ embeds: [successEmb], components: [] });
-              collector.stop();
-            } catch (err) {
-              await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
-            }
-          }
-        });
-
-        collector.on('end', async () => {
-          if (collector.destroyed) return;
-          const disabledSelect = new StringSelectMenuBuilder()
+          const bmSelect = new StringSelectMenuBuilder()
             .setCustomId('bm_select_buy_items')
             .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
             .addOptions(
@@ -2073,20 +2025,72 @@ function initStockMarket(client) {
               new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
               new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
               new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
-            )
-            .setDisabled(true);
+            );
 
-          const disabledExit = new ButtonBuilder()
-            .setCustomId('bm_btn_exit_perm')
-            .setLabel('✖️ Tutup Pasar Gelap')
-            .setStyle(ButtonStyle.Danger)
-            .setDisabled(true);
+          const selectRow = new ActionRowBuilder().addComponents(bmSelect);
+          const exitRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
+          );
 
-          const dRow1 = new ActionRowBuilder().addComponents(disabledSelect);
-          const dRow2 = new ActionRowBuilder().addComponents(disabledExit);
+          const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [selectRow, exitRow] });
+          const collector = privateMsg.createMessageComponentCollector({ time: 60000 });
 
-          await privateMsg.edit({ components: [dRow1, dRow2] }).catch(() => { });
-        });
+          collector.on('collect', async i => {
+            if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
+
+            if (i.customId === 'bm_btn_exit_perm') {
+              collector.stop();
+              await i.update({ content: '👋 Meninggalkan pasar gelap...', embeds: [], components: [] }).catch(() => {});
+              return;
+            }
+
+            if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
+              const itemId = i.values[0];
+              try {
+                const res = bm.buyItem(user.id, guildId, itemId, 1);
+                const successEmb = embeds.successEmbed(
+                  'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+                  `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+                  `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
+                );
+                await i.update({ embeds: [successEmb], components: [] });
+                collector.stop();
+              } catch (err) {
+                await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
+              }
+            }
+          });
+
+          collector.on('end', async () => {
+            if (collector.destroyed) return;
+            const disabledSelect = new StringSelectMenuBuilder()
+              .setCustomId('bm_select_buy_items')
+              .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
+                new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
+                new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
+                new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
+                new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
+                new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
+              )
+              .setDisabled(true);
+
+            const disabledExit = new ButtonBuilder()
+              .setCustomId('bm_btn_exit_perm')
+              .setLabel('✖️ Tutup Pasar Gelap')
+              .setStyle(ButtonStyle.Danger)
+              .setDisabled(true);
+
+            const dRow1 = new ActionRowBuilder().addComponents(disabledSelect);
+            const dRow2 = new ActionRowBuilder().addComponents(disabledExit);
+
+            await privateMsg.edit({ components: [dRow1, dRow2] }).catch(() => { });
+          });
+        } catch (err) {
+          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Black Market!', err.message)] }).catch(() => {});
+        }
       }
 
       // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
@@ -2929,150 +2933,154 @@ function initStockMarket(client) {
       // ── PORTAL PERMANEN: KOSAN (.kos) ──
       else if (customId === 'eco_btn_open_kos_private_perm' || customId === 'eco_btn_open_kos_direct') {
         await interaction.deferReply({ flags: 64 });
-        const kos = require('./kos');
+        try {
+          const kos = require('./kos');
 
-        const getKosDashboardDataPrivate = (targetUserId) => {
-          const wallet = economy.getWallet(targetUserId, guildId);
-          const activeRental = kos.getActiveRental(targetUserId, guildId);
-          const upgrades = kos.getUpgrades(targetUserId, guildId);
-          const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
+          const getKosDashboardDataPrivate = (targetUserId) => {
+            const wallet = economy.getWallet(targetUserId, guildId);
+            const activeRental = kos.getActiveRental(targetUserId, guildId);
+            const upgrades = kos.getUpgrades(targetUserId, guildId);
+            const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
 
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-          );
-
-          return { embeds: [embed], components: [row] };
-        };
-
-        const getSewaPanelDataPrivate = (targetUserId) => {
-          const currentRental = kos.getActiveRental(targetUserId, guildId);
-          const embed = embeds.kosRoomListEmbed(currentRental);
-
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('kos_select_room_perm')
-            .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel('💨 Kamar Kipas Angin (Rp 150)')
-                .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
-                .setValue('KIPAS'),
-              new StringSelectMenuOptionBuilder()
-                .setLabel('❄️ Kamar AC (Rp 350)')
-                .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
-                .setValue('AC'),
-              new StringSelectMenuOptionBuilder()
-                .setLabel('👑 Penthouse Kosan (Rp 800)')
-                .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
-                .setValue('PENTHOUSE')
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
             );
 
-          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-          const backBtn = new ButtonBuilder()
-            .setCustomId('kos_btn_back_dashboard_perm')
-            .setLabel('✖️ Kembali ke Dashboard')
-            .setStyle(ButtonStyle.Secondary);
-          const backRow = new ActionRowBuilder().addComponents(backBtn);
+            return { embeds: [embed], components: [row] };
+          };
 
-          return { embeds: [embed], components: [selectRow, backRow] };
-        };
+          const getSewaPanelDataPrivate = (targetUserId) => {
+            const currentRental = kos.getActiveRental(targetUserId, guildId);
+            const embed = embeds.kosRoomListEmbed(currentRental);
 
-        const getUpgradePanelDataPrivate = (targetUserId) => {
-          const ownedUpgrades = kos.getUpgrades(targetUserId, guildId);
-          const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('kos_select_room_perm')
+              .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('💨 Kamar Kipas Angin (Rp 150)')
+                  .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
+                  .setValue('KIPAS'),
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('❄️ Kamar AC (Rp 350)')
+                  .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
+                  .setValue('AC'),
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('👑 Penthouse Kosan (Rp 800)')
+                  .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
+                  .setValue('PENTHOUSE')
+              );
 
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('kos_select_upgrade_perm')
-            .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const backBtn = new ButtonBuilder()
+              .setCustomId('kos_btn_back_dashboard_perm')
+              .setLabel('✖️ Kembali ke Dashboard')
+              .setStyle(ButtonStyle.Secondary);
+            const backRow = new ActionRowBuilder().addComponents(backBtn);
 
-          const upgradesConfig = config.kos.UPGRADES;
-          Object.keys(upgradesConfig).forEach(key => {
-            const up = upgradesConfig[key];
-            const isOwned = ownedUpgrades.some(o => o.id === up.id);
+            return { embeds: [embed], components: [selectRow, backRow] };
+          };
 
-            selectMenu.addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
-                .setDescription(up.desc.substring(0, 100))
-                .setValue(up.id)
-            );
+          const getUpgradePanelDataPrivate = (targetUserId) => {
+            const ownedUpgrades = kos.getUpgrades(targetUserId, guildId);
+            const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
+
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('kos_select_upgrade_perm')
+              .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
+
+            const upgradesConfig = config.kos.UPGRADES;
+            Object.keys(upgradesConfig).forEach(key => {
+              const up = upgradesConfig[key];
+              const isOwned = ownedUpgrades.some(o => o.id === up.id);
+
+              selectMenu.addOptions(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
+                  .setDescription(up.desc.substring(0, 100))
+                  .setValue(up.id)
+              );
+            });
+
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const backBtn = new ButtonBuilder()
+              .setCustomId('kos_btn_back_dashboard_perm')
+              .setLabel('✖️ Kembali ke Dashboard')
+              .setStyle(ButtonStyle.Secondary);
+            const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+            return { embeds: [embed], components: [selectRow, backRow] };
+          };
+
+          const initialData = getKosDashboardDataPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+          collector.on('collect', async iKos => {
+            if (iKos.user.id !== user.id) return iKos.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (iKos.customId === 'kos_btn_refresh_perm') {
+                await iKos.update(getKosDashboardDataPrivate(user.id));
+              } else if (iKos.customId === 'kos_btn_nav_sewa_perm') {
+                await iKos.update(getSewaPanelDataPrivate(user.id));
+              } else if (iKos.customId === 'kos_btn_nav_upgrade_perm') {
+                await iKos.update(getUpgradePanelDataPrivate(user.id));
+              } else if (iKos.customId === 'kos_btn_back_dashboard_perm') {
+                await iKos.update(getKosDashboardDataPrivate(user.id));
+              } else if (iKos.customId === 'kos_select_room_perm') {
+                const selectedRoom = iKos.values[0];
+                try {
+                  const res = kos.rentRoom(user.id, guildId, selectedRoom);
+                  const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
+
+                  const successEmb = embeds.kosSuccessReceiptEmbed(
+                    'Transaksi Persewaan Kamar Berhasil! 🛌',
+                    `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
+                    `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                    `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
+                    `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                  );
+
+                  await iKos.reply({ embeds: [successEmb], flags: 64 });
+                  await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
+                  await iKos.reply({ embeds: [errorEmb], flags: 64 });
+                }
+              } else if (iKos.customId === 'kos_select_upgrade_perm') {
+                const selectedUpgrade = iKos.values[0];
+                try {
+                  const res = kos.buyUpgrade(user.id, guildId, selectedUpgrade);
+
+                  const successEmb = embeds.kosSuccessReceiptEmbed(
+                    'Transaksi Belanja Fasilitas Berhasil! 🛒',
+                    `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
+                    `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                    `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
+                    `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                  );
+
+                  await iKos.reply({ embeds: [successEmb], flags: 64 });
+                  await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
+                  await iKos.reply({ embeds: [errorEmb], flags: 64 });
+                }
+              }
+            } catch (err) {
+              console.error('Error in Kos permanent collector:', err);
+            }
           });
 
-          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-          const backBtn = new ButtonBuilder()
-            .setCustomId('kos_btn_back_dashboard_perm')
-            .setLabel('✖️ Kembali ke Dashboard')
-            .setStyle(ButtonStyle.Secondary);
-          const backRow = new ActionRowBuilder().addComponents(backBtn);
-
-          return { embeds: [embed], components: [selectRow, backRow] };
-        };
-
-        const initialData = getKosDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
-
-        collector.on('collect', async iKos => {
-          if (iKos.user.id !== user.id) return iKos.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          try {
-            if (iKos.customId === 'kos_btn_refresh_perm') {
-              await iKos.update(getKosDashboardDataPrivate(user.id));
-            } else if (iKos.customId === 'kos_btn_nav_sewa_perm') {
-              await iKos.update(getSewaPanelDataPrivate(user.id));
-            } else if (iKos.customId === 'kos_btn_nav_upgrade_perm') {
-              await iKos.update(getUpgradePanelDataPrivate(user.id));
-            } else if (iKos.customId === 'kos_btn_back_dashboard_perm') {
-              await iKos.update(getKosDashboardDataPrivate(user.id));
-            } else if (iKos.customId === 'kos_select_room_perm') {
-              const selectedRoom = iKos.values[0];
-              try {
-                const res = kos.rentRoom(user.id, guildId, selectedRoom);
-                const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
-
-                const successEmb = embeds.kosSuccessReceiptEmbed(
-                  'Transaksi Persewaan Kamar Berhasil! 🛌',
-                  `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
-                  `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
-                  `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
-                  `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
-                );
-
-                await iKos.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
-                await iKos.reply({ embeds: [errorEmb], flags: 64 });
-              }
-            } else if (iKos.customId === 'kos_select_upgrade_perm') {
-              const selectedUpgrade = iKos.values[0];
-              try {
-                const res = kos.buyUpgrade(user.id, guildId, selectedUpgrade);
-
-                const successEmb = embeds.kosSuccessReceiptEmbed(
-                  'Transaksi Belanja Fasilitas Berhasil! 🛒',
-                  `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
-                  `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
-                  `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
-                  `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
-                );
-
-                await iKos.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
-                await iKos.reply({ embeds: [errorEmb], flags: 64 });
-              }
-            }
-          } catch (err) {
-            console.error('Error in Kos permanent collector:', err);
-          }
-        });
-
-        collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => { });
-        });
+          collector.on('end', async () => {
+            await privateMsg.edit({ components: [] }).catch(() => { });
+          });
+        } catch (err) {
+          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Menu Kosan!', err.message)] }).catch(() => {});
+        }
       }
 
       // ── PORTAL PERMANEN: COZY FLOWER GARDEN ──
@@ -3548,107 +3556,111 @@ function initStockMarket(client) {
       else if (customId === 'pet_btn_open_quests_private_perm') {
         await interaction.deferReply({ flags: 64 });
 
-        const getQuestPanelPrivate = (targetUserId) => {
-          const quests = pet.getOrCreateDailyQuests(targetUserId, guildId);
-          
-          const getQuestEmoji = (progress, target) => {
-            return progress >= target ? '✅' : '⏳';
-          };
+        try {
+          const getQuestPanelPrivate = (targetUserId) => {
+            const quests = pet.getOrCreateDailyQuests(targetUserId, guildId);
+            
+            const getQuestEmoji = (progress, target) => {
+              return progress >= target ? '✅' : '⏳';
+            };
 
-          const getQuestText = (qType, progress, target) => {
-            let descText = '';
-            switch (qType) {
-              case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
-              case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
-              case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
-              case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
-              case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
-              case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
-              case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
-              case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
-              case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
-              case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
-              case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
-              case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
-              case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
-              case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
-              case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
-              default: descText = `Misi Harian`;
-            }
-            return `${descText} (${progress}/${target})`;
-          };
+            const getQuestText = (qType, progress, target) => {
+              let descText = '';
+              switch (qType) {
+                case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
+                case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
+                case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
+                case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
+                case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
+                case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+                case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
+                case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
+                case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
+                case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
+                case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
+                case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
+                case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
+                case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
+                case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
+                default: descText = `Misi Harian`;
+              }
+              return `${descText} (${progress}/${target})`;
+            };
 
-          let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
-          
-          descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
-          descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
-          descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
+            let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+            
+            descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
+            descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
+            descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
 
-          const allCompleted = 
-            quests.quest_1_progress >= quests.quest_1_target &&
-            quests.quest_2_progress >= quests.quest_2_target &&
-            quests.quest_3_progress >= quests.quest_3_target;
+            const allCompleted = 
+              quests.quest_1_progress >= quests.quest_1_target &&
+              quests.quest_2_progress >= quests.quest_2_target &&
+              quests.quest_3_progress >= quests.quest_3_target;
 
-          const row = new ActionRowBuilder();
+            const row = new ActionRowBuilder();
 
-          if (quests.reward_claimed === 1) {
-            descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
-            row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
-          } else {
-            if (allCompleted) {
-              descText += `✨ **Status:** Semua misi selesai! Klik tombol **Klaim Hadiah** di bawah ini untuk mengambil hadiah harian! 🎁`;
-              row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success));
-            } else {
-              descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
+            if (quests.reward_claimed === 1) {
+              descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
               row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
-            }
-          }
-
-          row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
-
-          const questEmbed = new EmbedBuilder()
-            .setColor(0x3498DB)
-            .setTitle(`📋 MISI HARIAN KOSAN 1A — ${user.username}`)
-            .setDescription(descText)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-            .setTimestamp();
-
-          return { embeds: [questEmbed], components: [row] };
-        };
-
-        const privateMsg = await interaction.editReply(getQuestPanelPrivate(user.id));
-        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          try {
-            if (i.customId === 'pet_quests_btn_refresh_perm') {
-              await i.update(getQuestPanelPrivate(user.id));
-            } else if (i.customId === 'pet_quests_btn_claim_perm') {
-              try {
-                const res = pet.claimDailyQuestReward(user.id, guildId);
-                const successEmb = embeds.successEmbed(
-                  'Misi Harian Kosan 1A Selesai! 🎉🎁',
-                  `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
-                  `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
-                  `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
-                  `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
-                );
-                await i.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getQuestPanelPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
+            } else {
+              if (allCompleted) {
+                descText += `✨ **Status:** Semua misi selesai! Klik tombol **Klaim Hadiah** di bawah ini untuk mengambil hadiah harian! 🎁`;
+                row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success));
+              } else {
+                descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
+                row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
               }
             }
-          } catch (err) {
-            console.error("Error in quests private interaction collector:", err);
-          }
-        });
 
-        collector.on('end', async () => {
-          await privateMsg.edit({ components: [] }).catch(() => { });
-        });
+            row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
+
+            const questEmbed = new EmbedBuilder()
+              .setColor(0x3498DB)
+              .setTitle(`📋 MISI HARIAN KOSAN 1A — ${user.username}`)
+              .setDescription(descText)
+              .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+              .setTimestamp();
+
+            return { embeds: [questEmbed], components: [row] };
+          };
+
+          const privateMsg = await interaction.editReply(getQuestPanelPrivate(user.id));
+          const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+          collector.on('collect', async i => {
+            if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (i.customId === 'pet_quests_btn_refresh_perm') {
+                await i.update(getQuestPanelPrivate(user.id));
+              } else if (i.customId === 'pet_quests_btn_claim_perm') {
+                try {
+                  const res = pet.claimDailyQuestReward(user.id, guildId);
+                  const successEmb = embeds.successEmbed(
+                    'Misi Harian Kosan 1A Selesai! 🎉🎁',
+                    `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
+                    `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+                    `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
+                    `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
+                  );
+                  await i.reply({ embeds: [successEmb], flags: 64 });
+                  await privateMsg.edit(getQuestPanelPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
+                }
+              }
+            } catch (err) {
+              console.error("Error in quests private interaction collector:", err);
+            }
+          });
+
+          collector.on('end', async () => {
+            await privateMsg.edit({ components: [] }).catch(() => { });
+          });
+        } catch (err) {
+          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] }).catch(() => {});
+        }
       }
 
     } catch (err) {
