@@ -3580,7 +3580,7 @@ function climbTower(userId, guildId, useSoda) {
       // Cari Soda Energi di inventory
       const sodaQty = getItemQuantity(userId, guildId, 'SODA_ENERGY');
       if (sodaQty > 0) {
-        db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = "SODA_ENERGY"', [userId, guildId]);
+        db.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [userId, guildId]);
       } else {
         // Coba bayar Rp 500
         const wallet = economy.getWallet(userId, guildId);
@@ -3685,11 +3685,11 @@ function climbTower(userId, guildId, useSoda) {
       gotCheckpointReward = true;
       checkpointRewardName = '🎟️ Tiket Gacha Pet';
       // Add ticket to user_inventory
-      const exist = db.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = "TICKET_GACHA"', [userId, guildId]);
+      const exist = db.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'", [userId, guildId]);
       if (exist) {
-        db.run('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = "TICKET_GACHA"', [userId, guildId]);
+        db.run("UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'", [userId, guildId]);
       } else {
-        db.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, "TICKET_GACHA", 1)', [userId, guildId]);
+        db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TICKET_GACHA', 1)", [userId, guildId]);
       }
     }
 
@@ -3875,7 +3875,7 @@ function attackWorldBoss(userId, guildId, useSoda) {
       if (sodaQty <= 0) {
         throw new Error('Anda kehabisan kuota serangan gratis! Anda butuh 🥤 Soda Energi Pet di inventory untuk menambah kuota.');
       }
-      db.run('UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = "SODA_ENERGY"', [userId, guildId]);
+      db.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [userId, guildId]);
     } else {
       throw new Error('Kuota serangan gratis Anda minggu ini telah habis (3/3)! Konfirmasi penggunaan Soda Energi Pet untuk melakukan serangan tambahan.');
     }
