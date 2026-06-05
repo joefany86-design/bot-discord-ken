@@ -2104,7 +2104,11 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
       new StringSelectMenuOptionBuilder()
         .setLabel('🔓 Bebaskan Seluruh Tahanan Lapas')
         .setDescription('Mengeluarkan massal seluruh warga server dari penjara virtual seketika')
-        .setValue('global_free_all_jail')
+        .setValue('global_free_all_jail'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚨 Tahan Massal Seluruh Warga (Modal)')
+        .setDescription('Memasukkan seluruh warga server ke penjara virtual dengan durasi & denda kustom')
+        .setValue('global_jail_all_modal')
     );
 
     const globalRow = new ActionRowBuilder().addComponents(globalSelect);
@@ -2272,6 +2276,94 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
           );
           const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'global_jail_all_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_rob_global_jail_modal')
+            .setTitle('Tahan Massal Seluruh Warga');
+
+          const durationInput = new TextInputBuilder()
+            .setCustomId('global_jail_duration')
+            .setLabel('Durasi Penjara (Menit)')
+            .setPlaceholder('Contoh: 15')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const fineInput = new TextInputBuilder()
+            .setCustomId('global_jail_fine')
+            .setLabel('Denda Uang (Rupiah)')
+            .setPlaceholder('Contoh: 500')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const reasonInput = new TextInputBuilder()
+            .setCustomId('global_jail_reason')
+            .setLabel('Alasan / Dekret (Opsional)')
+            .setPlaceholder('Contoh: Darurat Keamanan / Malam Kudus')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(durationInput),
+            new ActionRowBuilder().addComponents(fineInput),
+            new ActionRowBuilder().addComponents(reasonInput)
+          );
+          await iRob.showModal(modal);
+
+          const sub = await iRob.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_rob_global_jail_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const minutes = parseInt(sub.fields.getTextInputValue('global_jail_duration'), 10);
+            const fine = parseInt(sub.fields.getTextInputValue('global_jail_fine'), 10);
+            const reason = sub.fields.getTextInputValue('global_jail_reason') || 'Tindakan Darurat Global oleh Administrator';
+
+            if (isNaN(minutes) || minutes <= 0) {
+              return sub.reply({ content: '❌ Durasi harus berupa angka bulat positif di atas 0!', flags: 64 });
+            }
+            if (isNaN(fine) || fine < 0) {
+              return sub.reply({ content: '❌ Denda harus berupa angka bulat non-negatif (minimal 0)!', flags: 64 });
+            }
+
+            const wallets = database.all('SELECT user_id, balance FROM wallets WHERE guild_id = ?', [guildId]);
+            const now = Math.floor(Date.now() / 1000);
+            const jailUntil = now + (minutes * 60);
+
+            database.transaction(() => {
+              wallets.forEach(w => {
+                const finalFine = Math.min(w.balance, fine);
+                if (finalFine > 0) {
+                  economy.subtractBalance(w.user_id, guildId, finalFine, 'GLOBAL_JAIL_FINE');
+                }
+                database.run(
+                  'UPDATE wallets SET jail_until = ?, jail_type = ?, jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?',
+                  [jailUntil, reason, w.user_id, guildId]
+                );
+              });
+            })();
+
+            await sub.reply({ content: `🚨 Sukses menjebloskan **${wallets.length} warga** ke Lapas Virtual selama **${minutes} menit** dengan denda **Rp ${fine.toLocaleString('id-ID')}**!`, flags: 64 });
+
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              '🚨 TINDAKAN DARURAT: PENJARA MASSAL',
+              `Seluruh warga server dijebloskan ke tahanan virtual selama **${minutes} menit** dengan denda sebesar **Rp ${fine.toLocaleString('id-ID')}**.\n\n⚠️ **Alasan/Dekret:** *"${reason}"*`,
+              '#e74c3c',
+              [
+                { name: '⏳ Durasi Penjara', value: `${minutes} Menit`, inline: true },
+                { name: '💸 Denda Penyitaan', value: `Rp ${fine.toLocaleString('id-ID')}`, inline: true },
+                { name: '👥 Jumlah Terhukum', value: `${wallets.length} Jiwa`, inline: true }
+              ],
+              true
+            );
+
+            const fresh = getRobberyPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
         }
       }
     } catch (err) {
