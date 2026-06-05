@@ -99,8 +99,10 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
 
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
+    const isOpen = stocks.isMarketOpen();
+
     const detailEmbed = new EmbedBuilder()
-      .setColor(profitRp >= 0 ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR)
+      .setColor(isOpen ? (profitRp >= 0 ? embeds.COLORS.SUCCESS : embeds.COLORS.ERROR) : embeds.COLORS.GREY || 0x7F8C8D)
       .setTitle(`📊 Transaksi Saham: ${activeStock.stock_ticker} — #${activeStock.stock_name}`)
       .setDescription(
         `🏛️ **Harga Saham:** **Rp ${activeStock.current_price.toLocaleString('id-ID')}** per lembar\n` +
@@ -110,9 +112,10 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         `👉 Jumlah Aset: \`${userShares} / ${config.market.MAX_SHARES_HOLD_PER_USER || 100} lembar\` ${userShares >= (config.market.MAX_SHARES_HOLD_PER_USER || 100) ? '⚠️ (Maks)' : ''}\n` +
         `👉 Rata-rata Beli: \`Rp ${avgBuyPrice.toLocaleString('id-ID')}\`\n` +
         `👉 Nilai Valuasi: \`Rp ${currentValue.toLocaleString('id-ID')}\`\n` +
-        `👉 P/L Real-time: ${profitIndicator} **${profitSign}Rp ${profitRp.toLocaleString('id-ID')}** (\`${profitSign}${profitPercent}%\`)`
+        `👉 P/L Real-time: ${profitIndicator} **${profitSign}Rp ${profitRp.toLocaleString('id-ID')}** (\`${profitSign}${profitPercent}%\`)\n\n` +
+        (isOpen ? '' : `⚠️ **Bursa Saham sedang TUTUP.** Jam perdagangan: 08:00 - 23:00 WIB. Anda tidak dapat melakukan transaksi beli/jual saat ini.`)
       )
-      .setFooter({ text: 'Pilih aksi Beli (Success) atau Jual (Danger) di bawah ini!' })
+      .setFooter({ text: isOpen ? 'Pilih aksi Beli (Success) atau Jual (Danger) di bawah ini!' : 'Bursa Tutup • Jam Operasional: 08:00 - 23:00 WIB' })
       .setTimestamp();
 
     const maxHold = config.market.MAX_SHARES_HOLD_PER_USER || 100;
@@ -120,7 +123,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
     // BUY row
     const buySelect = new StringSelectMenuBuilder()
       .setCustomId('eco_trade_select_buy')
-      .setPlaceholder('📥 Aksi Beli (Pilih Jumlah)...')
+      .setPlaceholder(isOpen ? '📥 Aksi Beli (Pilih Jumlah)...' : '🔒 Pembelian Ditutup (Bursa Tutup)')
       .addOptions(
         new StringSelectMenuOptionBuilder().setLabel('Beli 1').setDescription(`Harga: Rp ${activeStock.current_price.toLocaleString('id-ID')}`).setValue('1'),
         new StringSelectMenuOptionBuilder().setLabel('Beli 10').setDescription(`Harga: Rp ${(activeStock.current_price * 10).toLocaleString('id-ID')}`).setValue('10'),
@@ -128,14 +131,14 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         new StringSelectMenuOptionBuilder().setLabel('Beli Max').setDescription('Beli sebanyak mungkin yang bisa dijangkau').setValue('max'),
         new StringSelectMenuOptionBuilder().setLabel('Beli Custom').setDescription('Tentukan jumlah lembar secara kustom').setValue('custom')
       )
-      .setDisabled(wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold);
+      .setDisabled(!isOpen || wallet.balance < activeStock.current_price || activeStock.available_shares < 1 || userShares >= maxHold);
 
     const buyRow = new ActionRowBuilder().addComponents(buySelect);
 
     // SELL row
     const sellSelect = new StringSelectMenuBuilder()
       .setCustomId('eco_trade_select_sell')
-      .setPlaceholder('📤 Aksi Jual (Pilih Jumlah)...')
+      .setPlaceholder(isOpen ? '📤 Aksi Jual (Pilih Jumlah)...' : '🔒 Penjualan Ditutup (Bursa Tutup)')
       .addOptions(
         new StringSelectMenuOptionBuilder().setLabel('Jual 1').setDescription(`Harga: Rp ${activeStock.current_price.toLocaleString('id-ID')}`).setValue('1'),
         new StringSelectMenuOptionBuilder().setLabel('Jual 10').setDescription(`Harga: Rp ${(activeStock.current_price * 10).toLocaleString('id-ID')}`).setValue('10'),
@@ -143,7 +146,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         new StringSelectMenuOptionBuilder().setLabel('Jual Semua').setDescription(`Jual seluruh kepemilikan (${userShares} lembar)`).setValue('all'),
         new StringSelectMenuOptionBuilder().setLabel('Jual Custom').setDescription('Tentukan jumlah lembar secara kustom').setValue('custom')
       )
-      .setDisabled(userShares < 1);
+      .setDisabled(!isOpen || userShares < 1);
 
     const sellRow = new ActionRowBuilder().addComponents(sellSelect);
 
@@ -992,7 +995,7 @@ function initStockMarket(client) {
       }
 
       // ── PORTAL PERMANEN: BURSA SAHAM ──
-      else if (customId === 'eco_btn_open_market_private_perm' || customId === 'eco_btn_open_market_direct') {
+      else if (customId === 'eco_btn_open_market_private_perm') {
         await interaction.deferReply({ flags: 64 });
         const activeStocks = stocks.getStocks(guildId);
         const isOpen = stocks.isMarketOpen();
@@ -1003,7 +1006,7 @@ function initStockMarket(client) {
           new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary)
         );
-        if (activeStocks.length > 0 && isOpen) {
+        if (activeStocks.length > 0) {
           row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
         }
 
@@ -1044,11 +1047,21 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success).setDisabled(true),
             new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary).setDisabled(true)
           );
-          if (activeStocks.length > 0 && isOpen) {
+          if (activeStocks.length > 0) {
             disabledRow.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success).setDisabled(true));
           }
           await privateMsg.edit({ components: [disabledRow] }).catch(() => { });
         });
+      }
+
+      // ── DIRECT TRADING PANEL: BURSA SAHAM ──
+      else if (customId === 'eco_btn_open_market_direct') {
+        await interaction.deferReply({ flags: 64 });
+        const activeStocks = stocks.getStocks(guildId);
+        if (activeStocks.length === 0) {
+          return interaction.editReply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
+        }
+        await sendInteractiveTradePanel(interaction, activeStocks[0].stock_ticker, user, guildId, client);
       }
 
       // ── PORTAL PERMANEN: BANK SENTRAL ──

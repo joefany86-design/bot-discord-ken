@@ -1,62 +1,134 @@
-📢 **PEMBERITAHUAN UPDATE BESAR PET: PET GYM, MENARA UJIAN & WORLD BOSS RAID 🐾⚔️🌋**
-════════════════════════════════════════════════════════════════════════════════════
+╔══════════════════════════════════════════════════════════╗
+    📢  **MAJOR UPDATE: PET RPG BATTLE SYSTEM**  📢
+    ⚔️ Pet Gym • World Boss Raid • Menara Ujian ⚔️
+╚══════════════════════════════════════════════════════════╝
+
 Halo Warga Kosan 1A! 🏠✨
 
-Kandang peliharaan kita kini resmi memasuki era petualangan RPG yang sesungguhnya! Hari ini kami meluncurkan **3 Fitur Combat & Progression Baru** untuk sistem Pet Sentinel Bot. Saatnya melatih stat pet Anda, menantang menara ujian, dan berkolaborasi mengalahkan World Boss mingguan untuk memperebutkan hadiah koin serta item langka! 🛡️🏆
+Pet kalian kini bukan cuma teman peliharaan biasa — mereka resmi jadi **petarung RPG sejati!** 🐉🔥
+Kami meluncurkan **3 fitur besar** yang bikin pet kalian makin kuat, makin berguna, dan makin seru untuk dilatih.
 
-Berikut rincian fitur terbaru yang sudah aktif dan bisa langsung Anda mainkan:
+Yuk, simak penjelasan lengkapnya di bawah ini ⬇️
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### 💪 1. PUSAT KEBUGARAN PET (`.pet gym`)
-Setiap kali pet Anda naik level, mereka kini mendapatkan **Poin Latihan (Training Points / TP)**. Gunakan TP tersebut di **Pet Gym** untuk membentuk stat bertarung pet Anda:
-*   💪 **Strength (STR):** Meningkatkan damage serangan dasar pet sebesar **+2 ATK** per poin STR.
-*   ❤️ **Vitality (VIT):** Meningkatkan kapasitas darah maksimal pet sebesar **+10 HP** per poin VIT.
-*   🛡️ **Defense (DEF):** Mengurangi damage yang diterima pet sebesar **+0.5% DEF** per poin DEF (Maksimal 50%).
-*   ⚡ **Dexterity (DEX):** Meningkatkan peluang serangan kritikal sebesar **+0.5% Crit Rate** per poin DEX (Maksimal 35%). *Critical hit memberikan 1.5x damage!*
-*   🔄 **Reset Stat:** Ingin mengubah gaya bermain? Anda bisa mereset alokasi stat pet kapan saja di panel Gym seharga **Rp 1.500 koin**.
+## 💪 1. PET GYM — Latih Stat Pet Kamu!
+> **Command:** `.pet gym`
 
----
+Setiap kali pet naik level, dia dapat **+3 Poin Latihan (TP)**.
+Gunakan TP untuk melatih 4 stat combat berikut:
 
-### 🏰 2. MENARA UJIAN (TOWER OF TRIALS) — `.pet tower`
-Tantang pet Anda untuk memanjat **50 Lantai Menara Ujian** yang dijaga oleh monster-monster tangguh di setiap lantainya!
+| Stat | Emoji | Efek Per Poin |
+|------|-------|---------------|
+| **Strength (STR)** | 💪 | +2 ATK damage |
+| **Vitality (VIT)** | ❤️ | +3 Max HP |
+| **Defense (DEF)** | 🛡️ | +0.5% Damage Reduction (maks 50%) |
+| **Dexterity (DEX)** | ⚡ | +0.5% Critical Hit (maks 35%) |
 
-*   ⚔️ **Tantang Lantai (Climb):**
-    *   Setiap hari Anda mendapatkan **5 tiket tantangan gratis**.
-    *   Jika tiket gratis habis, Anda dapat menggunakan **🥤 Soda Energi Pet** atau membayar **Rp 500 koin** untuk masuk kembali.
-    *   **Hasil Pertempuran:**
-        *   **Menang:** Naik ke lantai berikutnya, mendapatkan **koin Rupiah & XP pet secara penuh**.
-        *   **Kalah:** HP pet Anda berkurang dan statusnya menjadi **LEMAS (WEAK)** (HP 1). Anda harus mengobati pet Anda terlebih dahulu sebelum bisa bertarung kembali.
-    *   🎁 **Lantai Boss (Kelipatan 5):** Mengalahkan lantai Boss kelipatan 5 menawarkan hadiah checkpoint spesial berupa item/lootbox gratis!
-*   🧹 **Sapu Bersih (Sweep):**
-    *   Sudah mencapai lantai tinggi dan malas memanjat manual? Lakukan **Sweep** sekali sehari!
-    *   Anda akan langsung mendapatkan **10% koin & XP** dari total akumulasi hadiah seluruh lantai yang sudah pernah Anda selesaikan (Maksimal Rp 15.000 koin untuk mencegah inflasi).
-    *   *Syarat: Kondisi pet (Hunger, Thirst, Happiness) harus di atas 50%. Melakukan Sweep memotong -10 Hunger dan -10 Thirst pet Anda.*
+> 💡 **Critical Hit** = Serangan 1.5x damage! Sakit banget!
 
----
+🔄 **Reset Stat:** Salah alokasi? Tenang, bisa direset kapan saja seharga **Rp 1.000 koin**.
 
-### 🌋 3. RAID WORLD BOSS MINGGUAN — `.pet raid`
-Boss raksasa berkekuatan dahsyat dengan HP jutaan telah muncul! Seluruh warga server harus bersatu padu menyerang Boss ini setiap minggunya. Tipe elemen Boss akan berganti secara acak setiap hari Senin (FIRE, WATER, EARTH, DRAGON).
+### Cara Pakai:
+1️⃣ Ketik `.pet gym`
+2️⃣ Klik tombol stat yang mau ditambah (+STR, +VIT, +DEF, +DEX)
+3️⃣ Embed otomatis ter-update secara realtime!
 
-*   ⚔️ **Mekanik Serbuan (Attack):**
-    *   Setiap pemain memiliki **3 kuota serangan gratis per minggu**.
-    *   Gunakan **🥤 Soda Energi Pet** untuk menambah kesempatan menyerang hingga total maksimal **5 kali serangan per minggu**.
-    *   Gunakan pet dengan **keunggulan elemen** dari tipe Boss minggu ini untuk mendapatkan **bonus +25% ATK**!
-*   🎁 **Hadiah Leaderboard Kontribusi (Tiers):**
-    Ketika Boss berhasil dikalahkan atau saat event mingguan berakhir, hadiah akan ditransfer langsung ke dompet dan tas inventory Anda berdasarkan peringkat damage:
-    *   🥇 **Gold Tier (Top 10% Damage):** Hadiah Rp 6.000 - Rp 10.000 koin + 2x Tiket Gacha + **15% peluang mendapatkan Aksesoris Tempur Langka (Pedang/Tameng/Kalung)**. Jika slot aksesoris pet sudah penuh, otomatis diganti kompensasi koin +Rp 1.500.
-    *   🥈 **Silver Tier (Top 30% Damage):** Hadiah Rp 3.000 - Rp 5.000 koin + 1x Tiket Gacha.
-    *   🥉 **Bronze Tier (Partisipan Lain):** Hadiah Rp 1.000 - Rp 2.000 koin + 1x Daging Premium.
-    *   🏆 **Bonus Kemenangan Server:** Tambahan **+Rp 2.000 koin** untuk seluruh warga yang berpartisipasi jika Boss berhasil ditundukkan!
-    *   💥 **Last Hit Bonus:** Pemain yang berhasil mendaratkan serangan terakhir hingga HP Boss menjadi 0 mendapatkan bonus **+Rp 3.000 koin** dan gelar **`(Slayer)`** permanen pada nama pet aktifnya!
+> ⚠️ **Pet harus hidup (BABY/ADULT)** untuk bisa masuk gym. Pet mati atau telur tidak bisa dilatih.
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### 🕹️ PERINTAH BARU YANG BISA DIGUNAKAN:
-*   👉 **`.pet gym`** - Membuka panel latihan kebugaran pet Anda.
-*   👉 **`.pet tower`** - Membuka dashboard Menara Ujian.
-*   👉 **`.pet raid`** - Membuka dashboard World Boss Raid.
-*   👉 **`.pet-admin`** - Panel kontrol khusus Owner/Admin untuk me-reset tiket menara, mengatur lantai, men-spawn, atau mengalahkan World Boss secara instan.
+## 🏰 2. MENARA UJIAN (Tower of Trials) — Tantangan Solo PVE!
+> **Command:** `.pet tower`
 
-════════════════════════════════════════════════════════════════════════════════════
-*Yuk, latih pet terbaik Anda, susun strategi elemen, dan mari bersama-sama tumbangkan World Boss minggu ini! Selamat bertualang dan semoga pet Anda menjadi petarung terkuat di server! 🐉🛡️💥✨*
+Uji kekuatan pet kamu dengan memanjat **50 lantai** menara yang dijaga monster!
+Makin tinggi lantai = makin susah = makin besar hadiahnya! 🎁
+
+### ⚔️ Cara Bermain:
+- Ketik `.pet tower` → klik **"Tantang Lantai"**
+- Pet kamu otomatis bertarung melawan bos lantai
+- **Menang** → naik lantai, dapat koin + XP pet
+- **Kalah** → HP pet berkurang, status jadi LEMAS (HP 1)
+
+### 🎫 Kuota Harian:
+- **5 percobaan gratis** per hari (reset tiap hari)
+- Kuota habis? Gunakan 🥤 **Soda Energi Pet** atau bayar **Rp 500 koin**
+
+### 🎁 Hadiah Lantai:
+
+| Rentang Lantai | Kesulitan | Hadiah Koin |
+|----------------|-----------|-------------|
+| Lantai 1-10 | 🟢 Mudah | Rp 500 - Rp 1.500 |
+| Lantai 11-20 | 🟡 Sedang | Rp 2.000 - Rp 4.500 |
+| Lantai 21-40 | 🔴 Sulit | Rp 5.000 - Rp 12.000 |
+| Lantai 41-50 | 💀 Ekstrim | Rp 15.000 - Rp 50.000 |
+
+> 🌟 **Lantai Boss (kelipatan 5):** Hadiah BONUS spesial berupa **item langka / lootbox gratis!**
+
+### 🧹 Fitur Sapu Bersih (Sweep):
+Males manjat manual? Klik **Sweep** sekali sehari untuk langsung dapat **10% total koin & XP** dari semua lantai yang sudah pernah kamu selesaikan! (Maks Rp 15.000)
+> Syarat: Hunger, Thirst, Happiness pet harus > 50%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🌋 3. WORLD BOSS RAID — Lawan Boss Bareng-Bareng!
+> **Command:** `.pet raid`
+
+Boss raksasa dengan **jutaan HP** muncul tiap minggu! 🔥
+Seluruh warga server harus keroyokan menyerangnya. **Ini bukan solo — ini kerja tim!**
+
+### ⚔️ Cara Bermain:
+- Ketik `.pet raid` → klik **"Serang Boss"**
+- Pet kamu otomatis bertarung **5 turn** melawan Boss
+- Damage kamu terakumulasi di leaderboard kontribusi
+
+### 📋 Info Penting:
+- 🎫 **3 serangan gratis** per minggu
+- 🥤 Bisa tambah kesempatan pakai **Soda Energi Pet** (maks +2)
+- 🔥 Gunakan pet dengan **elemen yang mengalahkan** elemen Boss → bonus **+25% ATK!**
+
+### 🔥 Tabel Elemen:
+| Boss | Elemen | Lemah Terhadap |
+|------|--------|----------------|
+| 🌋 Volcanus | FIRE | 🌊 Pet WATER |
+| ⛰️ Terrasaur | EARTH | 🌋 Pet FIRE |
+| 🌊 Leviathan | WATER | ⛰️ Pet EARTH |
+| 🌀 Aetherius | DRAGON | — (Tidak ada kelemahan) |
+
+### 🎁 Hadiah Berdasarkan Peringkat Damage:
+
+| Tier | Kriteria | Hadiah |
+|------|----------|--------|
+| 🥇 **Gold** | Top 10% Damage | Rp 6.000-10.000 + 2x Gacha + 15% Aksesoris Langka |
+| 🥈 **Silver** | Top 30% Damage | Rp 3.000-5.000 + 1x Gacha |
+| 🥉 **Bronze** | Partisipasi | Rp 1.000-2.000 + 1x Daging Premium |
+
+> 🏆 **Bonus Kemenangan:** Jika Boss berhasil dikalahkan, SEMUA peserta dapat **+Rp 2.000 koin** tambahan!
+> 💥 **Last Hit Bonus:** Pemain yang memberikan serangan terakhir dapat **+Rp 3.000 koin** dan gelar **⚔️ (Slayer)** permanen!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🕹️ RINGKASAN COMMAND BARU
+
+```
+.pet gym     → Buka panel Gym, latih stat pet
+.pet tower   → Buka Menara Ujian, tantang lantai
+.pet raid    → Buka dashboard World Boss Raid
+.pet-admin   → Panel admin (khusus Owner/Admin)
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 💡 TIPS UNTUK PEMULA
+
+1️⃣ **Latih Pet Dulu!** → Buka `.pet gym`, alokasikan stat sebelum bertarung
+2️⃣ **Mulai dari Menara** → `.pet tower` cocok untuk solo grind koin & XP
+3️⃣ **Jangan Lupa Raid!** → Cek `.pet raid` tiap minggu, jangan sampai ketinggalan hadiah
+4️⃣ **Perhatikan Elemen** → Gunakan pet dengan elemen yang tepat untuk bonus damage
+5️⃣ **Rawat Pet Kamu** → Pet lapar/haus/sedih tidak bisa bertarung optimal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+*🐉 Yuk, latih pet terbaik kamu, susun strategi elemen yang tepat, dan mari bersama-sama tumbangkan World Boss minggu ini! Selamat bertualang dan semoga pet kamu jadi yang terkuat di server! 💪⚔️✨*
+
+— **Sentinel Bot Team** 🤖
