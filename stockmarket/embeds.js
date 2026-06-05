@@ -3734,13 +3734,14 @@ module.exports = {
   },
 
   // 42. Cozy Flower Garden Shop Embed
-  gardenShopEmbed(user, wallet) {
+  gardenShopEmbed(user, wallet, statusMessage = '') {
     let desc = `\`\`\`\n` +
       `┌──────────────────────────────┐\n` +
       `│ 🛒 TOKO BENIH KEBUN KOSAN 1A │\n` +
       `│ Persediaan Bibit & Kertas    │\n` +
       `└──────────────────────────────┘\n` +
       `\`\`\`\n` +
+      (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
       `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
       `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +

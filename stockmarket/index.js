@@ -1992,28 +1992,34 @@ function initStockMarket(client) {
       else if (customId === 'eco_btn_open_bm_private_perm' || customId === 'eco_btn_open_bm_direct') {
         await interaction.deferReply({ flags: 64 });
         try {
-          const bmEmbed = new EmbedBuilder()
-            .setColor(0x1A1A1A)
-            .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
-            .setDescription(
-              `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
-              `**Daftar Peralatan Tersedia:**\n\n` +
-              `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
-              `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
-              `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
-              `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
-              `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
-              `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
-              `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
-              `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
-              `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
-              `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
-              `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
-              `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
-              `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
-            )
-            .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
-            .setTimestamp();
+          const getBmPanelData = (targetUserId, statusMsg = '') => {
+            const wallet = economy.getWallet(targetUserId, guildId);
+            const embed = new EmbedBuilder()
+              .setColor(0x1A1A1A)
+              .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
+              .setDescription(
+                `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
+                (statusMsg ? `🔔 **Notifikasi:** ${statusMsg}\n\n` : '') +
+                `💵 **Saldo Rupiah Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
+                `**Daftar Peralatan Tersedia:**\n\n` +
+                `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
+                `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
+                `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
+                `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
+                `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
+                `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
+                `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
+                `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+                `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
+                `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
+                `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
+                `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
+                `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
+              )
+              .setFooter({ text: 'Sentinel Black Market • Kerahasiaan Terjamin' })
+              .setTimestamp();
+            return { embeds: [embed] };
+          };
 
           const bmSelect = new StringSelectMenuBuilder()
             .setCustomId('bm_select_buy_items')
@@ -2032,8 +2038,9 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
           );
 
-          const privateMsg = await interaction.editReply({ embeds: [bmEmbed], components: [selectRow, exitRow] });
-          const collector = privateMsg.createMessageComponentCollector({ time: 60000 });
+          const initialData = getBmPanelData(user.id);
+          const privateMsg = await interaction.editReply({ embeds: initialData.embeds, components: [selectRow, exitRow] });
+          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
 
           collector.on('collect', async i => {
             if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
@@ -2046,18 +2053,54 @@ function initStockMarket(client) {
 
             if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
               const itemId = i.values[0];
-              try {
-                const res = bm.buyItem(user.id, guildId, itemId, 1);
-                const successEmb = embeds.successEmbed(
-                  'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
-                  `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-                  `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
-                  `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-                );
-                await i.update({ embeds: [successEmb], components: [] });
-                collector.stop();
-              } catch (err) {
-                await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
+              const itemNames = {
+                lockpick: '🗝️ Linggis / Lockpick',
+                mask: '🎭 Topeng Samaran',
+                meat: '🥩 Daging Bius',
+                soap: '🧼 Sabun Licin',
+                handcuffs: '👮 Borgol / Handcuffs',
+                brankas: '🛡️ Brankas Anti-Hacker'
+              };
+              const itemName = itemNames[itemId] || itemId;
+
+              const modal = new ModalBuilder()
+                .setCustomId(`bm_modal_buy_${itemId}`)
+                .setTitle(`Beli ${itemName}`);
+
+              const qtyInput = new TextInputBuilder()
+                .setCustomId('buy_qty')
+                .setLabel('Jumlah yang ingin dibeli')
+                .setPlaceholder('Contoh: 5')
+                .setValue('1')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+              await i.showModal(modal);
+
+              const submitted = await i.awaitModalSubmit({
+                filter: (sub) => sub.customId === `bm_modal_buy_${itemId}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                  const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                  const res = bm.buyItem(user.id, guildId, itemId, qty);
+                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                  
+                  const updatedData = getBmPanelData(user.id, statusMsg);
+                  await submitted.update({
+                    embeds: updatedData.embeds,
+                    components: [selectRow, exitRow]
+                  }).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 });
+                }
               }
             }
           });
@@ -3190,9 +3233,9 @@ function initStockMarket(client) {
           return { embeds: [embed], components: [row1, row_manage, row2] };
         };
 
-        const getGardenShopDataPrivate = (targetUserId) => {
+        const getGardenShopDataPrivate = (targetUserId, statusMsg = '') => {
           const walletShop = economy.getWallet(targetUserId, guildId);
-          const embed = embeds.gardenShopEmbed(user, walletShop);
+          const embed = embeds.gardenShopEmbed(user, walletShop, statusMsg);
 
           const shopSelect = new StringSelectMenuBuilder()
             .setCustomId('garden_select_buy_seeds')
@@ -3446,20 +3489,50 @@ function initStockMarket(client) {
 
             else if (i.isStringSelectMenu() && i.customId === 'garden_select_buy_seeds') {
               const itemKey = i.values[0].replace('buy_', '');
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const res = garden.buySeed(user.id, guildId, itemKey, 1);
-                await i.editReply({
-                  embeds: [embeds.successEmbed(
-                    '🛒 Pembelian Berhasil!',
-                    `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
-                    `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-                  )]
-                }).catch(() => { });
+              const itemNames = {
+                rose: 'Benih Mawar',
+                tulip: 'Benih Bunga Tulip',
+                lavender: 'Benih Bunga Lavender',
+                sakura: 'Benih Bunga Sakura',
+                orchid: 'Benih Anggrek Langka',
+                wrapping: 'Kertas Kado'
+              };
+              const itemName = itemNames[itemKey] || itemKey;
 
-                await interaction.editReply(getGardenShopDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
+              const modal = new ModalBuilder()
+                .setCustomId(`garden_modal_buy_${itemKey}`)
+                .setTitle(`Beli ${itemName}`);
+
+              const qtyInput = new TextInputBuilder()
+                .setCustomId('buy_qty')
+                .setLabel('Jumlah yang ingin dibeli')
+                .setPlaceholder('Contoh: 5')
+                .setValue('1')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+              await i.showModal(modal);
+
+              const submitted = await i.awaitModalSubmit({
+                filter: (sub) => sub.customId === `garden_modal_buy_${itemKey}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                  const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                  const res = garden.buySeed(user.id, guildId, itemKey, qty);
+                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
+                  
+                  await submitted.update(getGardenShopDataPrivate(user.id, statusMsg)).catch(() => {});
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                }
               }
             }
 
@@ -6351,25 +6424,54 @@ async function handleGardenCommand(message, client, args, commandName) {
 
         else if (i.customId.startsWith('garden_buy_')) {
           const itemKey = i.customId.replace('garden_buy_', '');
-          await i.deferReply({ flags: 64 }).catch(() => { });
-          try {
-            const res = garden.buySeed(author.id, guildId, itemKey, 1);
+          const itemNames = {
+            rose: 'Benih Mawar',
+            tulip: 'Benih Bunga Tulip',
+            lavender: 'Benih Bunga Lavender',
+            sakura: 'Benih Bunga Sakura',
+            orchid: 'Benih Anggrek Langka',
+            wrapping: 'Kertas Kado'
+          };
+          const itemName = itemNames[itemKey] || itemKey;
 
-            await i.editReply({
-              embeds: [embeds.successEmbed(
-                '🛒 Pembelian Berhasil!',
-                `Anda berhasil membeli **1x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
-                `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-              )]
-            }).catch(() => { });
+          const modal = new ModalBuilder()
+            .setCustomId(`garden_modal_buy_cmd_${itemKey}`)
+            .setTitle(`Beli ${itemName}`);
 
-            const walletShop = economy.getWallet(author.id, guildId);
-            await replyMsg.edit({
-              embeds: [embeds.gardenShopEmbed(author, walletShop)],
-              components: [shopRow1, shopRow2, shopRow3]
-            }).catch(() => { });
-          } catch (err) {
-            await i.editReply({ content: `❌ Gagal membeli: ${err.message}` }).catch(() => { });
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('buy_qty')
+            .setLabel('Jumlah yang ingin dibeli')
+            .setPlaceholder('Contoh: 5')
+            .setValue('1')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(4);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+          await i.showModal(modal);
+
+          const submitted = await i.awaitModalSubmit({
+            filter: (sub) => sub.customId === `garden_modal_buy_cmd_${itemKey}` && sub.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (submitted) {
+            try {
+              const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+              const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+              const res = garden.buySeed(author.id, guildId, itemKey, qty);
+              const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
+              
+              const walletShop = economy.getWallet(author.id, guildId);
+              await submitted.update({
+                embeds: [embeds.gardenShopEmbed(author, walletShop, statusMsg)],
+                components: [shopRow1, shopRow2, shopRow3]
+              }).catch(() => {});
+            } catch (err) {
+              await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+            }
           }
         }
 
