@@ -799,6 +799,18 @@ function initStockMarket(client) {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
     let customId = interaction.customId;
 
+    // Handler interaksi turnamen Admin Cup - Tombol Join/Gabung Publik
+    if (interaction.isButton() && customId === 'cup_btn_join_public') {
+      try {
+        const tournament = require('./tournament');
+        const userPet = tournament.registerParticipant(interaction.user.id, interaction.guildId);
+        await interaction.reply({ content: `✅ Sukses! Pet **${userPet.pet_name}** (Lv.${userPet.level}) Anda telah berhasil didaftarkan ke turnamen Admin Cup.`, flags: 64 });
+      } catch (err) {
+        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
+      }
+      return;
+    }
+
     // Handler interaksi turnamen Admin Cup
     if (interaction.isButton() && customId.startsWith('cup_btn_')) {
       const parts = customId.split('_');
@@ -12165,8 +12177,17 @@ async function handleEconomyCommands(message, client) {
         const minLevel = parseInt(args[2]) || 10;
         const maxLevel = parseInt(args[3]) || 9999;
 
+        let targetChannelId = message.channelId;
+        if (args[4]) {
+          const cleanId = args[4].replace(/[<#>]/g, '');
+          const exists = message.guild.channels.cache.get(cleanId);
+          if (exists) {
+            targetChannelId = cleanId;
+          }
+        }
+
         try {
-          const res = tournament.startTournament(author.id, guildId, message.channelId, durationMins, minLevel, maxLevel);
+          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
           const announceEmbed = new EmbedBuilder()
             .setColor(0x7C4DFF)
             .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
@@ -12175,14 +12196,26 @@ async function handleEconomyCommands(message, client) {
               `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
               `⏱️ **Sisa Waktu Pendaftaran:** ${durationMins} Menit (Pendaftaran ditutup otomatis)\n` +
               `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
-              `👉 Ketik **\`.pet cup register\`** atau **\`.pet cup daftar\`** untuk mendaftarkan pet aktif Anda!\n\n` +
+              `👉 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
               `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
             )
             .setFooter({ text: 'Admin Cup • Registration Phase' })
             .setTimestamp();
 
-          // Kirim pengumuman
-          await message.channel.send({ embeds: [announceEmbed] });
+          const joinRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('cup_btn_join_public')
+              .setLabel('🏆 Gabung Turnamen')
+              .setStyle(ButtonStyle.Success)
+          );
+
+          const targetChannel = message.guild.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
+          if (targetChannel) {
+            await targetChannel.send({ embeds: [announceEmbed], components: [joinRow] });
+            if (targetChannelId !== message.channelId) {
+              await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di <#${targetChannelId}> selama **${durationMins}** menit.`)] });
+            }
+          }
 
           // Jadwalkan penutupan registrasi dan seeding
           setTimeout(() => {
