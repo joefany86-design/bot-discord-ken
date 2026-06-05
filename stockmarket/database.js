@@ -928,6 +928,26 @@ function initSchema() {
     console.error("❌ [Database] Gagal membuat tabel Turnamen Admin Cup:", e.message);
   }
 
+  // 40. Tabel Marketplace / Lelang Warga
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS marketplace_listings (
+        listing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        seller_id TEXT NOT NULL,
+        item_type TEXT NOT NULL, -- 'GARDEN_FLOWER', 'GARDEN_SEED', 'PET_ITEM', 'BM_ITEM', 'PET'
+        item_id TEXT NOT NULL,
+        quantity INTEGER DEFAULT 1,
+        price INTEGER NOT NULL,
+        pet_details TEXT DEFAULT NULL, -- JSON string berisi data pet lengkap jika tipe PET
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+      )
+    `);
+    console.log("⚡ [Database] Tabel 'marketplace_listings' berhasil diverifikasi/dibuat.");
+  } catch (e) {
+    console.error("❌ [Database] Gagal membuat tabel marketplace_listings:", e.message);
+  }
+
   console.log('✅ Skema tabel database Stock Market, Toko Role, Perbankan, Kosan, Sistem Pet, Perampokan, Cozy Flower Garden, Ebyus Settings & Gym Stats berhasil diinisialisasi.');
 }
 

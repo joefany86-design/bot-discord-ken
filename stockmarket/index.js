@@ -749,7 +749,7 @@ function getPortalHubData(client) {
       `Selamat datang di **Portal Hub Bot Kosan 1A**! 🎮\n` +
       `Pusat layanan warga terpadu. Klik tombol di bawah ini untuk mengakses fitur secara **Pribadi & Rahasia (Private)**:\n\n` +
       `💼 **EKONOMI & FINANSIAL**\n` +
-      `• Toko Role • Bursa Saham • Bank Sentral • Black Market • Profil & Aset\n\n` +
+      `• Toko Role • Bursa Saham • Bank Sentral • Black Market • Pasar Lelang • Profil & Aset\n\n` +
       `🐾 **DUNIA PET & GAYA HIDUP**\n` +
       `• Kandang Pet (Pusat Pet) • Sewa Kosan • Cozy Garden • Misi Harian • Lotre Mingguan`
     )
@@ -772,7 +772,11 @@ function getPortalHubData(client) {
     new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
   );
 
-  const components = [row1, row2];
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success)
+  );
+
+  const components = [row1, row2, row3];
   return { embed, components };
 }
 
@@ -831,6 +835,13 @@ function initStockMarket(client) {
     }
     const { guildId, user } = interaction;
     if (!guildId) return;
+
+    // Router interaksi Pasar Lelang Warga (Marketplace P2P)
+    if (customId.startsWith('eco_market_') || customId.startsWith('eco_btn_open_marketplace_')) {
+      const marketplace = require('./marketplace');
+      await marketplace.handleInteraction(interaction, client);
+      return;
+    }
 
     try {
       // Handler untuk tombol prompt membuka portal hub privat
