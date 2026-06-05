@@ -586,6 +586,57 @@ function initSchema() {
           `).run();
         } catch (e) {}
       }
+    },
+    {
+      version: 4,
+      description: "Membuat tabel promo_codes, promo_claims, auction_items, auction_bids",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS promo_codes (
+            code TEXT PRIMARY KEY,
+            reward_coins INTEGER DEFAULT 0,
+            reward_item_id TEXT DEFAULT NULL,
+            reward_item_qty INTEGER DEFAULT 0,
+            max_claims INTEGER DEFAULT -1,
+            current_claims INTEGER DEFAULT 0,
+            expires_at INTEGER DEFAULT 0,
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS promo_claims (
+            code TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            claimed_at INTEGER DEFAULT (strftime('%s','now')),
+            PRIMARY KEY (code, user_id)
+          )
+        `);
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS auction_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            min_bid INTEGER DEFAULT 0,
+            current_bid INTEGER DEFAULT 0,
+            highest_bidder_id TEXT DEFAULT NULL,
+            ends_at INTEGER NOT NULL,
+            status TEXT DEFAULT 'ACTIVE',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS auction_bids (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            auction_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            bid_amount INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+        db.exec("CREATE INDEX IF NOT EXISTS idx_auction_bids_auction ON auction_bids (auction_id)");
+      }
     }
   ];
 
@@ -637,6 +688,16 @@ module.exports = {
    * @param {Function} fn - Fungsi berisi query-query SQL yang akan dijalankan.
    * @returns {Function} Fungsi transaksional yang harus di-invoke/dipanggil.
    */
+  restoreBackup: (backupPath) => {
+    db.close();
+    fs.copyFileSync(backupPath, finalDbPath);
+    db = new Database(finalDbPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    module.exports.db = db;
+    console.log(`✅ Database SQLite dipulihkan dari: ${backupPath}`);
+  },
+
   transaction: (fn) => {
     if (db.inTransaction) {
       if (process.env.NODE_ENV !== 'production') {

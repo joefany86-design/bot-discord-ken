@@ -1,4 +1,6 @@
 // @version v2.1.0 — Select Menu Item (2026-06-04)
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 const database = require('./database');
 const economy = require('./economy');
@@ -1748,7 +1750,15 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
       new StringSelectMenuOptionBuilder()
         .setLabel('🔴 Sita Aset Warga Inaktif (Never Daily)')
         .setDescription('Menyita koin dompet, saldo bank, dan seluruh item warga yang tidak pernah klaim daily')
-        .setValue('global_reclaim_inactive_assets')
+        .setValue('global_reclaim_inactive_assets'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📈 Statistik Sirkulasi & Inflasi')
+        .setDescription('Tampilkan rincian sirkulasi koin, kekayaan rata-rata, dan rasio pasif/aktif')
+        .setValue('global_inflation_stats'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚙️ Sesuaikan Tarif Pajak (Moneter)')
+        .setDescription('Atur persentase pajak transfer koin dan pajak penjualan saham secara instan')
+        .setValue('global_adjust_taxes')
     );
 
     const globalRow = new ActionRowBuilder().addComponents(globalSelect);
@@ -2242,6 +2252,120 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
                 { name: 'Total Item Dihapus', value: `${(totalUserItems + totalPetItems).toLocaleString('id-ID')} unit`, inline: true }
               ]
             );
+
+            const fresh = getBankPanelData(guildId, selectedTargetUserId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'global_inflation_stats') {
+          await iBank.deferReply({ flags: 64 });
+          
+          const totalWalletsRow = database.get('SELECT COUNT(*) as count, SUM(balance) as sum FROM wallets WHERE guild_id = ?', [guildId]);
+          const totalSavingsRow = database.get('SELECT COUNT(*) as count, SUM(balance) as sum FROM bank_savings WHERE guild_id = ?', [guildId]);
+          const activeWalletsRow = database.get("SELECT COUNT(*) as count, SUM(balance) as sum FROM wallets WHERE guild_id = ? AND (last_active_date IS NOT NULL AND last_active_date != '')", [guildId]);
+          const inactiveWalletsRow = database.get("SELECT COUNT(*) as count, SUM(balance) as sum FROM wallets WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date = '')", [guildId]);
+
+          const totalUsers = totalWalletsRow?.count || 0;
+          const walletCoins = totalWalletsRow?.sum || 0;
+          const bankCoins = totalSavingsRow?.sum || 0;
+          const totalCoins = walletCoins + bankCoins;
+          
+          const activeUsers = activeWalletsRow?.count || 0;
+          const activeCoins = (activeWalletsRow?.sum || 0) + bankCoins;
+          
+          const inactiveUsers = inactiveWalletsRow?.count || 0;
+          const inactiveCoins = inactiveWalletsRow?.sum || 0;
+
+          const activeCoinsPercent = totalCoins > 0 ? Math.round((activeCoins / totalCoins) * 100) : 0;
+          const inactiveCoinsPercent = totalCoins > 0 ? Math.round((inactiveCoins / totalCoins) * 100) : 0;
+
+          const activeLoansRow = database.get("SELECT COUNT(*) as count, SUM(total_due) as sum FROM bank_loans WHERE guild_id = ? AND status = 'ACTIVE'", [guildId]);
+          const overdueLoansRow = database.get("SELECT COUNT(*) as count, SUM(total_due + penalty_accumulated) as sum FROM bank_loans WHERE guild_id = ? AND status = 'OVERDUE'", [guildId]);
+          const totalDebt = (activeLoansRow?.sum || 0) + (overdueLoansRow?.sum || 0);
+
+          const inflationEmbed = new EmbedBuilder()
+            .setColor(0xF39C12)
+            .setTitle('📈 LAPORAN STATISTIK INFLASI & SIRKULASI MONETER')
+            .setDescription(
+              `Berikut adalah rangkuman keadaan finansial global server Kosan 1A:\n\n` +
+              `💰 **JUMLAH UANG BEREDAR (MONEY SUPPLY):**\n` +
+              `• Total Sirkulasi Koin: **Rp ${totalCoins.toLocaleString('id-ID')}**\n` +
+              `  ├ Saldo Dompet Warga: \`Rp ${walletCoins.toLocaleString('id-ID')}\`\n` +
+              `  └ Saldo Tabungan Bank: \`Rp ${bankCoins.toLocaleString('id-ID')}\`\n\n` +
+              `👥 **SEGMENTASI WARGA AKTIF VS INAKTIF:**\n` +
+              `• Warga Aktif: **${activeUsers} jiwa** (Koin: **Rp ${activeCoins.toLocaleString('id-ID')}** — \`${activeCoinsPercent}%\` dari supply)\n` +
+              `• Warga Inaktif: **${inactiveUsers} jiwa** (Koin: **Rp ${inactiveCoins.toLocaleString('id-ID')}** — \`${inactiveCoinsPercent}%\` dari supply)\n\n` +
+              `🏛️ **UTANG PIUTANG PERBANKAN:**\n` +
+              `• Total Piutang Bank: **Rp ${totalDebt.toLocaleString('id-ID')}**\n` +
+              `  ├ Pinjaman Lancar: \`Rp ${(activeLoansRow?.sum || 0).toLocaleString('id-ID')}\` (${activeLoansRow?.count || 0} orang)\n` +
+              `  └ Pinjaman Overdue: \`Rp ${(overdueLoansRow?.sum || 0).toLocaleString('id-ID')}\` (${overdueLoansRow?.count || 0} orang)\n\n` +
+              `⚙️ **TARIF PAJAK AKTIF SAAT INI:**\n` +
+              `• Pajak Jual Saham: **${config.market?.TRADE_TAX_PERCENT || 15}%** (Sinks)\n` +
+              `• Pajak Transfer Uang: **${config.economy?.TRANSFER_TAX_PERCENT || 10}%** (Sinks)`
+            )
+            .setTimestamp()
+            .setFooter({ text: 'Sentinel Moneter • Kebijakan Ekonomi Server' });
+
+          await iBank.editReply({ embeds: [inflationEmbed] });
+        }
+        else if (action === 'global_adjust_taxes') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_bank_adjust_taxes_modal')
+            .setTitle('Sesuaikan Tarif Pajak Moneter');
+
+          const transferTaxInput = new TextInputBuilder()
+            .setCustomId('transfer_tax')
+            .setLabel('Pajak Transfer Koin (dalam %)')
+            .setPlaceholder('Bawaan: 10. Masukkan angka 0 s/d 50')
+            .setValue(String(config.economy?.TRANSFER_TAX_PERCENT || 10))
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const tradeTaxInput = new TextInputBuilder()
+            .setCustomId('trade_tax')
+            .setLabel('Pajak Penjualan Saham (dalam %)')
+            .setPlaceholder('Bawaan: 15. Masukkan angka 0 s/d 50')
+            .setValue(String(config.market?.TRADE_TAX_PERCENT || 15))
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(transferTaxInput),
+            new ActionRowBuilder().addComponents(tradeTaxInput)
+          );
+          await iBank.showModal(modal);
+
+          const sub = await iBank.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_bank_adjust_taxes_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const transferTax = parseInt(sub.fields.getTextInputValue('transfer_tax'));
+            const tradeTax = parseInt(sub.fields.getTextInputValue('trade_tax'));
+
+            if (isNaN(transferTax) || transferTax < 0 || transferTax > 50) {
+              return sub.reply({ content: '❌ Pajak transfer harus berupa angka di antara 0% s/d 50%!', flags: 64 });
+            }
+            if (isNaN(tradeTax) || tradeTax < 0 || tradeTax > 50) {
+              return sub.reply({ content: '❌ Pajak penjualan saham harus berupa angka di antara 0% s/d 50%!', flags: 64 });
+            }
+
+            const prevTransferTax = config.economy?.TRANSFER_TAX_PERCENT || 10;
+            const prevTradeTax = config.market?.TRADE_TAX_PERCENT || 15;
+
+            config.economy = config.economy || {};
+            config.market = config.market || {};
+            config.economy.TRANSFER_TAX_PERCENT = transferTax;
+            config.market.TRADE_TAX_PERCENT = tradeTax;
+
+            await sub.reply({
+              content: `⚙️ **TARIF PAJAK BERHASIL DISELARASKAN!**\n\n` +
+                `• Pajak Transfer Koin: **${transferTax}%** (sebelumnya: ${prevTransferTax}%)\n` +
+                `• Pajak Jual Saham: **${tradeTax}%** (sebelumnya: ${prevTradeTax}%)\n\n` +
+                `*Pengaturan pajak baru ini langsung berlaku untuk seluruh transaksi warga saat ini juga!*`,
+              flags: 64
+            });
 
             const fresh = getBankPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => { });
@@ -3425,7 +3549,28 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2] };
+    const sysSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_abyus_select_system')
+      .setPlaceholder('💾 Sistem & Pemeliharaan Database...');
+
+    sysSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💾 Backup Database SQLite')
+        .setDescription('Buat cadangan database ekonomi saat ini')
+        .setValue('system_db_backup'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💾 Restore Database SQLite')
+        .setDescription('Pulihkan database dari cadangan yang tersedia')
+        .setValue('system_db_restore'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('Prune Log Transaksi Lama (>30 hari)')
+        .setDescription('Hapus log transaksi lama untuk menghemat ruang')
+        .setValue('system_db_prune')
+    );
+
+    const sysRow = new ActionRowBuilder().addComponents(sysSelect);
+
+    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2, sysRow] };
   };
 
   const initialData = getAbyusPanelData(guildId);
@@ -3709,6 +3854,102 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           await replyMsg.edit(fresh).catch(() => { });
         }
       }
+      else if (iAbyus.customId === 'admin_abyus_select_system') {
+        const action = iAbyus.values[0];
+
+        if (action === 'system_db_backup') {
+          await iAbyus.deferReply({ flags: 64 });
+          try {
+            const backupsDir = path.join(__dirname, '../backups');
+            if (!fs.existsSync(backupsDir)) {
+              fs.mkdirSync(backupsDir, { recursive: true });
+            }
+            const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').substring(0, 19);
+            const backupFile = path.join(backupsDir, `economy_backup_${timestamp}.db`);
+            
+            fs.copyFileSync(config.DATABASE_PATH, backupFile);
+
+            await iAbyus.editReply({ content: `💾 **BACKUP DATABASE SUKSES!**\n\nDatabase saat ini telah dicadangkan secara aman ke:\n\`${backupFile}\`` });
+          } catch (err) {
+            console.error('Backup database failed:', err);
+            await iAbyus.editReply({ content: `❌ Gagal mem-backup database: ${err.message}` });
+          }
+        }
+        else if (action === 'system_db_restore') {
+          await iAbyus.deferReply({ flags: 64 });
+          const backupsDir = path.join(__dirname, '../backups');
+          if (!fs.existsSync(backupsDir) || fs.readdirSync(backupsDir).length === 0) {
+            return iAbyus.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan database di folder backups.' });
+          }
+
+          const files = fs.readdirSync(backupsDir)
+            .filter(f => f.endsWith('.db'))
+            .sort((a, b) => fs.statSync(path.join(backupsDir, b)).mtimeMs - fs.statSync(path.join(backupsDir, a)).mtimeMs)
+            .slice(0, 5);
+
+          if (files.length === 0) {
+            return iAbyus.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan (.db) di folder backups.' });
+          }
+
+          const restoreSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_abyus_restore_file_select')
+            .setPlaceholder('💾 Pilih Berkas Cadangan untuk Di-restore');
+
+          files.forEach(f => {
+            const size = fs.statSync(path.join(backupsDir, f)).size;
+            const sizeKb = Math.round(size / 1024);
+            restoreSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(f.substring(0, 80))
+                .setDescription(`Ukuran: ${sizeKb} KB`)
+                .setValue(f)
+            );
+          });
+
+          const row = new ActionRowBuilder().addComponents(restoreSelect);
+          const restoreMsg = await iAbyus.editReply({
+            content: '⚠️ **RESTORE DATABASE (KRITIS)** ⚠️\n\nPilih berkas cadangan di bawah ini untuk dipulihkan. Tindakan ini akan menutup koneksi database aktif saat ini dan menimpa database utama!',
+            components: [row]
+          });
+
+          const restoreCollector = restoreMsg.createMessageComponentCollector({ time: 30000 });
+          restoreCollector.on('collect', async iRestore => {
+            if (iRestore.user.id !== author.id) return;
+            const fileToRestore = iRestore.values[0];
+            const backupPath = path.join(backupsDir, fileToRestore);
+
+            const confirmed = await askConfirmation(iRestore, author.id, `RESTORE DATABASE UTAMA MENGGUNAKAN CADANGAN \`${fileToRestore}\``);
+            if (!confirmed) {
+              restoreCollector.stop();
+              return;
+            }
+
+            try {
+              database.restoreBackup(backupPath);
+              await iRestore.followUp({ content: `✅ **RESTORE DATABASE BERHASIL!** Database utama telah dipulihkan menggunakan cadangan \`${fileToRestore}\`.`, flags: 64 });
+            } catch (restoreErr) {
+              console.error('Failed to restore backup:', restoreErr);
+              await iRestore.followUp({ content: `❌ Gagal merestore backup: ${restoreErr.message}`, flags: 64 });
+            }
+
+            restoreCollector.stop();
+            await restoreMsg.delete().catch(() => {});
+          });
+        }
+        else if (action === 'system_db_prune') {
+          const confirmed = await askConfirmation(iAbyus, author.id, "MEMBERSIHKAN LOG TRANSAKSI lama (>30 hari terakhir) untuk optimasi ukuran DB");
+          if (!confirmed) return;
+
+          try {
+            const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 86400;
+            database.run('DELETE FROM transactions WHERE created_at < ?', [thirtyDaysAgo]);
+            await iAbyus.followUp({ content: `🧹 **PRUNING SUKSES!** Berhasil menghapus baris log transaksi lama yang berumur lebih dari 30 hari.`, flags: 64 });
+          } catch (pruneErr) {
+            console.error('Pruning failed:', pruneErr);
+            await iAbyus.followUp({ content: `❌ Gagal melakukan pruning: ${pruneErr.message}`, flags: 64 });
+          }
+        }
+      }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
         collector.stop('transition');
         await handleAdminPanel(iAbyus, client);
@@ -3813,6 +4054,23 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
     const todActionRow = new ActionRowBuilder().addComponents(todActionSelect);
 
+    const auctionActionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_shop_select_auction')
+      .setPlaceholder('🔨 Kelola Lelang Global (Auction House)');
+
+    auctionActionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔨 Mulai Lelang Admin Baru (Modal)')
+        .setDescription('Buka lelang koin/item/pet baru ke seluruh warga')
+        .setValue('auction_host_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔨 Kelola Lelang Aktif & Tutup Lelang')
+        .setDescription('Tinjau bid lelang berjalan dan tutup lelang saat ini')
+        .setValue('auction_list_active')
+    );
+
+    const auctionActionRow = new ActionRowBuilder().addComponents(auctionActionSelect);
+
     const btnRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('admin_shop_btn_back')
@@ -3824,7 +4082,7 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [embed], components: [shopActionRow, todActionRow, btnRow] };
+    return { embeds: [embed], components: [shopActionRow, todActionRow, auctionActionRow, btnRow] };
   };
 
   const initialData = getShopPanelData(guildId);
@@ -4103,6 +4361,242 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
 
             await sub.reply({ content: `✅ Sukses menambahkan pertanyaan **${qType}** (${qCat}) ke database!`, flags: 64 });
           }
+        }
+      }
+      else if (iShop.customId === 'admin_shop_select_auction') {
+        const action = iShop.values[0];
+
+        if (action === 'auction_host_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_shop_auction_host_modal')
+            .setTitle('Mulai Lelang Admin Baru');
+
+          const typeInput = new TextInputBuilder()
+            .setCustomId('item_type')
+            .setLabel('Tipe Aset (GENERAL / PET)')
+            .setPlaceholder('GENERAL atau PET')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const idInput = new TextInputBuilder()
+            .setCustomId('item_id')
+            .setLabel('ID Item / Nama Pet')
+            .setPlaceholder('Contoh: TICKET_GACHA atau LAMBO')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('item_qty')
+            .setLabel('Jumlah')
+            .setPlaceholder('Contoh: 1')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const minBidInput = new TextInputBuilder()
+            .setCustomId('min_bid')
+            .setLabel('Harga Minimum Bid (Koin)')
+            .setPlaceholder('Contoh: 1000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const durationInput = new TextInputBuilder()
+            .setCustomId('duration_hours')
+            .setLabel('Durasi Lelang (dalam Jam)')
+            .setPlaceholder('Contoh: 24')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(typeInput),
+            new ActionRowBuilder().addComponents(idInput),
+            new ActionRowBuilder().addComponents(qtyInput),
+            new ActionRowBuilder().addComponents(minBidInput),
+            new ActionRowBuilder().addComponents(durationInput)
+          );
+          await iShop.showModal(modal);
+
+          const sub = await iShop.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_shop_auction_host_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const iType = sub.fields.getTextInputValue('item_type').toUpperCase().trim();
+            const iId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
+            const iQty = parseInt(sub.fields.getTextInputValue('item_qty'));
+            const iMinBid = parseInt(sub.fields.getTextInputValue('min_bid'));
+            const iDur = parseInt(sub.fields.getTextInputValue('duration_hours'));
+
+            if (!['GENERAL', 'PET'].includes(iType)) {
+              return sub.reply({ content: '❌ Tipe Aset tidak valid! Harus GENERAL atau PET.', flags: 64 });
+            }
+            if (!iId) {
+              return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
+            }
+            if (isNaN(iQty) || iQty <= 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat positif!', flags: 64 });
+            }
+            if (isNaN(iMinBid) || iMinBid < 0) {
+              return sub.reply({ content: '❌ Minimal bid tidak boleh kurang dari 0!', flags: 64 });
+            }
+            if (isNaN(iDur) || iDur <= 0) {
+              return sub.reply({ content: '❌ Durasi lelang harus berupa angka jam positif!', flags: 64 });
+            }
+
+            const endsAt = Math.floor(Date.now() / 1000) + iDur * 3600;
+
+            const auctionRes = database.run(
+              'INSERT INTO auction_items (guild_id, item_type, item_id, quantity, min_bid, current_bid, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [guildId, iType, iId, iQty, iMinBid, iMinBid, endsAt, 'ACTIVE']
+            );
+
+            const auctionEmbed = new EmbedBuilder()
+              .setColor(0xE74C3C)
+              .setTitle('🔨 EVENT LELANG GLOBAL RESMI — KAS NEGARA 🔨')
+              .setDescription(
+                `Kas Negara menyelenggarakan pelelangan umum untuk aset langka berikut:\n\n` +
+                `📦 **Aset Dilelang:** **${iQty}x \`${iId}\`** (Tipe: \`${iType}\`)\n` +
+                `💵 **Minimal Penawaran (Starting Bid):** **Rp ${iMinBid.toLocaleString('id-ID')}**\n` +
+                `⏳ **Masa Penawaran Berakhir:** <t:${endsAt}:F> (<t:${endsAt}:R>)\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `👉 *Ketik perintah \`.bid <id_lelang> <jumlah_koin>\` di channel bot biasa untuk mengajukan penawaran harga secara sah!* (ID Lelang: \`${auctionRes.lastInsertRowid}\`)`
+              )
+              .setTimestamp()
+              .setFooter({ text: 'Sentinel Auction House • Penawaran Tertinggi Menang!' });
+
+            const targetChannelId = config.REPORT_CHANNEL_ID || messageOrInteraction.channelId;
+            const targetChannel = guild.channels.cache.get(targetChannelId) || messageOrInteraction.channel;
+            if (targetChannel) {
+              await targetChannel.send({ content: '@everyone 🔨 **LELANG BARU TELAH DIBUKA!**', embeds: [auctionEmbed] }).catch(() => {});
+            }
+
+            await sub.reply({
+              content: `✅ **SUKSES MEMBUAT LELANG BARU!**\n\n` +
+                `• ID Lelang: \`${auctionRes.lastInsertRowid}\`\n` +
+                `• Item: **${iQty}x ${iId}**\n` +
+                `• Bid Awal: **Rp ${iMinBid.toLocaleString('id-ID')}**\n` +
+                `• Broadcast dikirim ke <#${targetChannel?.id}>.`,
+              flags: 64
+            });
+
+            const fresh = getShopPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'auction_list_active') {
+          await iShop.deferReply({ flags: 64 });
+          const auctions = database.all("SELECT * FROM auction_items WHERE guild_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 5", [guildId]);
+          if (auctions.length === 0) {
+            return iShop.editReply({ content: 'ℹ️ Tidak ada lelang aktif saat ini.' });
+          }
+
+          let listText = '🔨 **DAFTAR LELANG AKTIF SAAT INI:**\n\n';
+          auctions.forEach((a, idx) => {
+            const bidderText = a.highest_bidder_id ? `<@${a.highest_bidder_id}>` : '*Belum ada*';
+            listText += `${idx + 1}. **ID: ${a.id}** — **${a.quantity}x ${a.item_id}**\n` +
+              `   └ 💰 Bid Tertinggi: **Rp ${a.current_bid.toLocaleString('id-ID')}** (${bidderText}) | ⏳ Selesai: <t:${a.ends_at}:R>\n`;
+          });
+
+          const closeSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_shop_auction_close_select')
+            .setPlaceholder('🔨 Tutup Lelang Instan (Tentukan Pemenang)');
+
+          auctions.forEach(a => {
+            closeSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(`Tutup & Menangkan ID: ${a.id}`)
+                .setDescription(`Tutup lelang item ${a.item_id} secara live`)
+                .setValue(String(a.id))
+            );
+          });
+
+          const row = new ActionRowBuilder().addComponents(closeSelect);
+          const listMsg = await iShop.editReply({ content: listText, components: [row] });
+
+          const closeCollector = listMsg.createMessageComponentCollector({ time: 30000 });
+          closeCollector.on('collect', async iClose => {
+            if (iClose.user.id !== author.id) return;
+            const aId = parseInt(iClose.values[0]);
+
+            const freshA = database.get('SELECT * FROM auction_items WHERE id = ?', [aId]);
+            if (!freshA || freshA.status !== 'ACTIVE') {
+              return iClose.reply({ content: '❌ Lelang tersebut tidak aktif atau tidak ditemukan!', flags: 64 });
+            }
+
+            const confirmed = await askConfirmation(iClose, author.id, `TUTUP LELANG ID ${aId} SECARA INSTAN DAN DISTRIBUSIKAN ITEM`);
+            if (!confirmed) {
+              closeCollector.stop();
+              return;
+            }
+
+            let endSuccess = false;
+            let endMsgStr = '';
+            try {
+              database.transaction(() => {
+                database.run("UPDATE auction_items SET status = 'COMPLETED' WHERE id = ?", [aId]);
+                
+                if (freshA.highest_bidder_id) {
+                  const itemId = freshA.item_id;
+                  const qty = freshA.quantity;
+                  const winnerId = freshA.highest_bidder_id;
+                  const bidAmount = freshA.current_bid;
+
+                  const wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [winnerId, guildId]);
+                  const currentBal = wallet ? wallet.balance : 0;
+                  const newBal = Math.max(0, currentBal - bidAmount);
+                  database.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, winnerId, guildId]);
+
+                  const petItemIds = ['FOOD_BASIC', 'FOOD_PREMIUM', 'TOY', 'SODA', 'SOAP', 'MEDICINE', 'AMULET'];
+                  if (petItemIds.includes(itemId)) {
+                    const exist = database.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [winnerId, guildId, itemId]);
+                    if (!exist) {
+                      database.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [winnerId, guildId, itemId, qty]);
+                    } else {
+                      database.run('UPDATE pet_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, winnerId, guildId, itemId]);
+                    }
+                  } else {
+                    const exist = database.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [winnerId, guildId, itemId]);
+                    if (!exist) {
+                      database.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [winnerId, guildId, itemId, qty]);
+                    } else {
+                      database.run('UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, winnerId, guildId, itemId]);
+                    }
+                  }
+
+                  database.run('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)', [winnerId, guildId, 'AUCTION_WIN', -bidAmount]);
+
+                  endMsgStr = `🏆 **LELANG ID ${aId} RESMI DITUTUP!**\n\n` +
+                    `• Pemenang: <@${winnerId}>\n` +
+                    `• Item Didapat: **${qty}x \`${itemId}\`**\n` +
+                    `• Total Bid: **Rp ${bidAmount.toLocaleString('id-ID')}** (Saldo dipotong otomatis).\n\n` +
+                    `*Selamat kepada pemenang! Barang telah didistribusikan ke tas.*`;
+                } else {
+                  endMsgStr = `ℹ️ **LELANG ID ${aId} DITUTUP!**\n\nTidak ada penawar (bidder) pada lelang ini. Item lelang dikembalikan ke kas negara.`;
+                }
+              })();
+              endSuccess = true;
+            } catch (txErr) {
+              console.error('Failed to close auction:', txErr);
+              await iClose.followUp({ content: `❌ Gagal menutup lelang: ${txErr.message}`, flags: 64 });
+            }
+
+            if (endSuccess) {
+              const targetChannelId = config.REPORT_CHANNEL_ID || messageOrInteraction.channelId;
+              const targetChannel = guild.channels.cache.get(targetChannelId) || messageOrInteraction.channel;
+              if (targetChannel) {
+                const reportEmbed = new EmbedBuilder()
+                  .setColor(0xF1C40F)
+                  .setTitle('🔨 HASIL AKHIR EVENT LELANG GLOBAL')
+                  .setDescription(endMsgStr)
+                  .setTimestamp();
+                await targetChannel.send({ embeds: [reportEmbed] }).catch(() => {});
+              }
+              await iClose.followUp({ content: `✅ Lelang ID ${aId} ditutup sukses! Laporan dikirim ke <#${targetChannel?.id}>.`, flags: 64 });
+            }
+
+            closeCollector.stop();
+            await listMsg.delete().catch(() => {});
+          });
         }
       }
     } catch (err) {
@@ -6110,7 +6604,15 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
       new StringSelectMenuOptionBuilder()
         .setLabel('🚨 Reset Pool Tiket Lotre')
         .setDescription('Mereset total jackpot pool dan menghapus seluruh tiket lotre terjual minggu ini')
-        .setValue('lottery_reset_pool')
+        .setValue('lottery_reset_pool'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Buat Kode Promo Baru (Modal)')
+        .setDescription('Membuat kode voucher promo/redeem baru untuk warga')
+        .setValue('gift_create_promo_modal'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Kelola Kode Promo Aktif')
+        .setDescription('Lihat daftar voucher aktif dan hapus voucher')
+        .setValue('gift_promo_list')
     );
 
     const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -6541,6 +7043,149 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
 
           const fresh = getGiftPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'gift_create_promo_modal') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_gift_create_promo_modal')
+            .setTitle('Buat Kode Promo Baru');
+
+          const codeInput = new TextInputBuilder()
+            .setCustomId('promo_code')
+            .setLabel('Kode Promo (Alfanumerik)')
+            .setPlaceholder('Contoh: KOSANMANTAP2026')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const coinsInput = new TextInputBuilder()
+            .setCustomId('promo_coins')
+            .setLabel('Hadiah Koin (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 5000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const itemInput = new TextInputBuilder()
+            .setCustomId('promo_item_id')
+            .setLabel('ID Item Hadiah (Kosongkan jika tidak ada)')
+            .setPlaceholder('Contoh: FOOD_PREMIUM atau LOCKPICK')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('promo_item_qty')
+            .setLabel('Jumlah Item Hadiah (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 3')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const quotaInput = new TextInputBuilder()
+            .setCustomId('promo_quota')
+            .setLabel('Kuota Klaim (-1 untuk tanpa batas)')
+            .setPlaceholder('Contoh: 50')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(codeInput),
+            new ActionRowBuilder().addComponents(coinsInput),
+            new ActionRowBuilder().addComponents(itemInput),
+            new ActionRowBuilder().addComponents(qtyInput),
+            new ActionRowBuilder().addComponents(quotaInput)
+          );
+          await iGift.showModal(modal);
+
+          const sub = await iGift.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_gift_create_promo_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const pCode = sub.fields.getTextInputValue('promo_code').toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+            const pCoins = parseInt(sub.fields.getTextInputValue('promo_coins')) || 0;
+            const pItemId = sub.fields.getTextInputValue('promo_item_id').toUpperCase().trim() || null;
+            const pItemQty = parseInt(sub.fields.getTextInputValue('promo_item_qty')) || 0;
+            const pQuota = parseInt(sub.fields.getTextInputValue('promo_quota'));
+
+            if (!pCode) {
+              return sub.reply({ content: '❌ Kode promo tidak boleh kosong dan harus alfanumerik!', flags: 64 });
+            }
+            if (isNaN(pQuota)) {
+              return sub.reply({ content: '❌ Kuota klaim harus berupa angka bulat (-1 untuk tanpa batas)!', flags: 64 });
+            }
+
+            const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7; // Aktif 7 hari
+
+            // Simpan ke database
+            const exist = database.get('SELECT 1 FROM promo_codes WHERE code = ?', [pCode]);
+            if (exist) {
+              database.run(
+                'UPDATE promo_codes SET reward_coins = ?, reward_item_id = ?, reward_item_qty = ?, max_claims = ?, current_claims = 0, expires_at = ? WHERE code = ?',
+                [pCoins, pItemId, pItemQty, pQuota, expiresAt, pCode]
+              );
+            } else {
+              database.run(
+                'INSERT INTO promo_codes (code, reward_coins, reward_item_id, reward_item_qty, max_claims, current_claims, expires_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+                [pCode, pCoins, pItemId, pItemQty, pQuota, expiresAt]
+              );
+            }
+
+            let rewardStr = '';
+            if (pCoins > 0) rewardStr += `• 🪙 Koin: **Rp ${pCoins.toLocaleString('id-ID')}**\n`;
+            if (pItemId && pItemQty > 0) rewardStr += `• 📦 Item: **${pItemQty}x \`${pItemId}\`**\n`;
+
+            await sub.reply({
+              content: `🎟️ **SUKSES MEMBUAT KODE PROMO!**\n\n` +
+                `• Kode: **${pCode}**\n` +
+                `• Kuota: **${pQuota === -1 ? 'Unlimited' : pQuota + ' orang'}**\n` +
+                `• Berlaku s/d: <t:${expiresAt}:F> (<t:${expiresAt}:R>)\n` +
+                `• Hadiah:\n${rewardStr || '• (Tidak ada hadiah)'}`,
+              flags: 64
+            });
+
+            const fresh = getGiftPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'gift_promo_list') {
+          await iGift.deferReply({ flags: 64 });
+          const promos = database.all('SELECT * FROM promo_codes ORDER BY created_at DESC LIMIT 10');
+          if (promos.length === 0) {
+            return iGift.editReply({ content: 'ℹ️ Belum ada kode promo terdaftar di database.' });
+          }
+
+          let listText = '🎟️ **DAFTAR KODE PROMO AKTIF (10 TERBARU):**\n\n';
+          promos.forEach((p, idx) => {
+            const limitText = p.max_claims === -1 ? 'Unlimited' : `${p.current_claims}/${p.max_claims}`;
+            const timeText = p.expires_at > 0 ? `<t:${p.expires_at}:R>` : '`Abadi`';
+            listText += `${idx + 1}. **${p.code}** — 👥 Klaim: \`${limitText}\` | ⏳ Exp: ${timeText}\n` +
+              `   └ 🎁 Hadiah: Rp ${p.reward_coins.toLocaleString('id-ID')} koin ${p.reward_item_id ? `+ ${p.reward_item_qty}x \`${p.reward_item_id}\`` : ''}\n`;
+          });
+
+          const delSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_gift_promo_delete_select')
+            .setPlaceholder('🗑️ Pilih Kode Promo yang Ingin Dihapus');
+
+          promos.forEach(p => {
+            delSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(`Hapus: ${p.code}`)
+                .setDescription(`Sita kode promo ${p.code}`)
+                .setValue(p.code)
+            );
+          });
+
+          const row = new ActionRowBuilder().addComponents(delSelect);
+          const listMsg = await iGift.editReply({ content: listText, components: [row] });
+
+          const delCollector = listMsg.createMessageComponentCollector({ time: 30000 });
+          delCollector.on('collect', async iDel => {
+            if (iDel.user.id !== author.id) return;
+            const codeToDel = iDel.values[0];
+            database.run('DELETE FROM promo_codes WHERE code = ?', [codeToDel]);
+            database.run('DELETE FROM promo_claims WHERE code = ?', [codeToDel]);
+            await iDel.reply({ content: `🗑️ Kode promo **${codeToDel}** beserta log klaimnya berhasil dihapus permanen!`, flags: 64 });
+            delCollector.stop();
+            await listMsg.delete().catch(() => {});
+          });
         }
       }
     } catch (err) {

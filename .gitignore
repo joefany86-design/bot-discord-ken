@@ -4,3 +4,5 @@ package-lock.json
 .DS_Store
 data/
 *.db*
+admin-panel/server.log
+admin-panel/backups/

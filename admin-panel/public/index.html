@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel Admin Panel — Zero-Typing Control Center</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">🛡️</div>
+        <div class="brand-info">
+          <h1>SENTINEL</h1>
+          <span>Economy Admin Panel</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#dashboard" class="menu-item active" id="menu-dash">
+          <span class="menu-icon">📊</span>
+          <span class="menu-text">Main Dashboard</span>
+        </a>
+        <a href="#users" class="menu-item" id="menu-users">
+          <span class="menu-icon">👥</span>
+          <span class="menu-text">Member Manager</span>
+        </a>
+        <a href="#logs" class="menu-item" id="menu-logs">
+          <span class="menu-icon">📜</span>
+          <span class="menu-text">Activity Logs</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="backup-db-btn" class="btn btn-primary btn-block">💾 Backup SQLite</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Section 1: Dashboard -->
+      <section id="section-dashboard" class="content-section active">
+        <div class="section-header">
+          <h2>📊 Server Economy Dashboard</h2>
+          <p>Statistik ringkas sirkulasi koin dan kontrol bypass server Kosan 1A.</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card card-purple">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-label">Warga Terdaftar</span>
+              <h3 id="stat-wallets">0</h3>
+            </div>
+          </div>
+          <div class="stat-card card-emerald">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <span class="stat-label">Total Uang Beredar</span>
+              <h3 id="stat-coins">Rp 0</h3>
+            </div>
+          </div>
+          <div class="stat-card card-blue">
+            <div class="stat-icon">🐾</div>
+            <div class="stat-info">
+              <span class="stat-label">Pet Aktif</span>
+              <h3 id="stat-pets">0</h3>
+            </div>
+          </div>
+          <div class="stat-card card-gold">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-info">
+              <span class="stat-label">Event Abuse</span>
+              <h3 id="stat-event">Nonaktif</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Config Control panel -->
+        <div class="dashboard-details">
+          <div class="details-card">
+            <h3>⚙️ Config Abyus Settings</h3>
+            <table class="config-table">
+              <thead>
+                <tr>
+                  <th>Nama Config</th>
+                  <th>Value Terkini</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>🎰 Gacha Mode Rarity</td>
+                  <td><span class="badge badge-purple" id="cfg-gacha">NORMAL</span></td>
+                </tr>
+                <tr>
+                  <td>🪙 Chat Coin Multiplier</td>
+                  <td><span class="badge badge-emerald" id="cfg-mult">1x</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Member Manager -->
+      <section id="section-users" class="content-section">
+        <div class="section-header">
+          <h2>👥 Member Management Grid</h2>
+          <p>Kelola saldo dompet, tabungan bank, status blacklist, dan suntikan aset instan.</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" id="member-search" placeholder="Cari ID Warga...">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="members-table">
+            <thead>
+              <tr>
+                <th>ID Warga</th>
+                <th>Koin Dompet</th>
+                <th>Tabungan Bank</th>
+                <th>Total Kekayaan</th>
+                <th>Terakhir Aktif</th>
+                <th>Status Blacklist</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="members-list">
+              <!-- Baris data warga di-inject via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 3: Activity Logs -->
+      <section id="section-logs" class="content-section">
+        <div class="section-header flex-header">
+          <div>
+            <h2>📜 Web Admin Audit Trail</h2>
+            <p>Log pelacakan aktivitas administrator melalui platform web panel.</p>
+          </div>
+          <button id="refresh-logs-btn" class="btn btn-secondary">🔄 Segarkan Log</button>
+        </div>
+
+        <div class="logs-container">
+          <ul class="logs-feed" id="logs-list">
+            <!-- Feed log akan ditambahkan via JS -->
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- QUICK GIVE MODAL POPUP -->
+  <div class="modal-overlay" id="give-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🎁 MODAL QUICK GIVE — ADMIN</h3>
+        <button class="modal-close-btn" id="close-modal-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>🎯 Target Warga (User ID):</label>
+          <input type="text" id="give-target-user" readonly class="form-control">
+        </div>
+
+        <!-- Category selector grid -->
+        <label>📦 Pilih Kategori Aset:</label>
+        <div class="category-grid">
+          <div class="category-card active" data-cat="coin">
+            <span class="cat-icon">🪙</span>
+            <span class="cat-label">Dompet</span>
+          </div>
+          <div class="category-card" data-cat="bank">
+            <span class="cat-icon">🏦</span>
+            <span class="cat-label">Bank</span>
+          </div>
+          <div class="category-card" data-cat="item">
+            <span class="cat-icon">🎒</span>
+            <span class="cat-label">Item Tas</span>
+          </div>
+          <div class="category-card" data-cat="pet_item">
+            <span class="cat-icon">🐾</span>
+            <span class="cat-label">Item Pet</span>
+          </div>
+        </div>
+
+        <!-- Item Selector (Hidden by default, shown for item/pet_item) -->
+        <div class="form-group" id="item-select-group" style="display: none;">
+          <label>🛍️ Pilih Item:</label>
+          <select id="give-item-selector" class="form-control">
+            <!-- Pilihan item di-inject via JS -->
+          </select>
+        </div>
+
+        <!-- Amount selector with presets -->
+        <div class="form-group">
+          <label>🔢 Jumlah / Nominal (Gunakan minus untuk memotong):</label>
+          <input type="number" id="give-amount" value="1000" class="form-control">
+          
+          <div class="presets-container" id="coin-presets">
+            <button class="btn btn-preset" data-val="500">+500</button>
+            <button class="btn btn-preset" data-val="1000">+1.000</button>
+            <button class="btn btn-preset" data-val="5000">+5.000</button>
+            <button class="btn btn-preset" data-val="10000">+10.000</button>
+            <button class="btn btn-preset" data-val="50000">+50.000</button>
+            <button class="btn btn-preset" data-val="-1000">-1.000</button>
+          </div>
+
+          <div class="presets-container" id="item-presets" style="display: none;">
+            <button class="btn btn-preset" data-val="1">+1 pc</button>
+            <button class="btn btn-preset" data-val="5">+5 pcs</button>
+            <button class="btn btn-preset" data-val="10">+10 pcs</button>
+            <button class="btn btn-preset" data-val="-1">-1 pc</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-modal-btn">Batal</button>
+        <button class="btn btn-emerald" id="submit-give-btn">GIVE NOW</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-box"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

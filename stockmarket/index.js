@@ -11244,6 +11244,203 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // Perintah: .claim <code> / .redeem <code>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'claim' || commandName === 'redeem') {
+      const code = args[0]?.trim().toUpperCase();
+      if (!code) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Kode Voucher Tidak Boleh Kosong!', 'Gunakan perintah `.claim <KODE>` atau `.redeem <KODE>` untuk mengklaim kode promo.')]
+        });
+      }
+
+      // Ambil kode promo dari database
+      const promo = database.get('SELECT * FROM promo_codes WHERE code = ?', [code]);
+      if (!promo) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Kode Tidak Valid!', `Kode promo **${code}** tidak ditemukan atau tidak terdaftar.`)]
+        });
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      if (promo.expires_at > 0 && now > promo.expires_at) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Kode Kedaluwarsa!', `Kode promo **${code}** sudah kedaluwarsa pada <t:${promo.expires_at}:F>.`)]
+        });
+      }
+
+      if (promo.max_claims > -1 && promo.current_claims >= promo.max_claims) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Kuota Habis!', `Maaf, kuota klaim untuk kode promo **${code}** telah habis digunakan.`)]
+        });
+      }
+
+      // Periksa apakah user sudah klaim
+      const alreadyClaimed = database.get('SELECT 1 FROM promo_claims WHERE code = ? AND user_id = ?', [code, author.id]);
+      if (alreadyClaimed) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Sudah Diklaim!', `Anda sudah pernah mengklaim kode promo **${code}** sebelumnya.`)]
+        });
+      }
+
+      // Proses klaim di dalam transaksi database
+      let success = false;
+      let rewardText = '';
+      try {
+        database.transaction(() => {
+          // 1. Catat klaim
+          database.run('INSERT INTO promo_claims (code, user_id) VALUES (?, ?)', [code, author.id]);
+          
+          // 2. Increment claims count
+          database.run('UPDATE promo_codes SET current_claims = current_claims + 1 WHERE code = ?', [code]);
+
+          // 3. Berikan koin jika ada
+          if (promo.reward_coins > 0) {
+            const wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
+            if (!wallet) {
+              database.run('INSERT INTO wallets (user_id, guild_id, balance) VALUES (?, ?, ?)', [author.id, guildId, promo.reward_coins]);
+            } else {
+              database.run('UPDATE wallets SET balance = balance + ? WHERE user_id = ? AND guild_id = ?', [promo.reward_coins, author.id, guildId]);
+            }
+            rewardText += `• 🪙 Koin Rupiah: **+Rp ${promo.reward_coins.toLocaleString('id-ID')}**\n`;
+          }
+
+          // 4. Berikan item jika ada
+          if (promo.reward_item_id && promo.reward_item_qty > 0) {
+            const itemId = promo.reward_item_id.toUpperCase();
+            const qty = promo.reward_item_qty;
+
+            const petItemIds = ['FOOD_BASIC', 'FOOD_PREMIUM', 'TOY', 'SODA', 'SOAP', 'MEDICINE', 'AMULET'];
+            if (petItemIds.includes(itemId)) {
+              const exist = database.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [author.id, guildId, itemId]);
+              if (!exist) {
+                database.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [author.id, guildId, itemId, qty]);
+              } else {
+                database.run('UPDATE pet_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, author.id, guildId, itemId]);
+              }
+              rewardText += `• 🐾 Item Pet: **${qty}x \`${itemId}\`**\n`;
+            } else {
+              const exist = database.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [author.id, guildId, itemId]);
+              if (!exist) {
+                database.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [author.id, guildId, itemId, qty]);
+              } else {
+                database.run('UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, author.id, guildId, itemId]);
+              }
+              rewardText += `• 🎒 Item Tas: **${qty}x \`${itemId}\`**\n`;
+            }
+          }
+        })();
+        success = true;
+      } catch (txErr) {
+        console.error('Failed to claim promo code:', txErr);
+        return message.reply({
+          embeds: [embeds.errorEmbed('Gagal Mengklaim!', `Terjadi kesalahan saat memproses klaim voucher: ${txErr.message}`)]
+        });
+      }
+
+      if (success) {
+        const claimEmbed = new EmbedBuilder()
+          .setColor(0x2ECC71) // Emerald Green
+          .setTitle('🎉 REDEEM CODE SUKSES! 🎉')
+          .setThumbnail(author.displayAvatarURL())
+          .setDescription(
+            `Selamat <@${author.id}>! Kode promo **${code}** berhasil diklaim.\n\n` +
+            `🎁 **Hadiah yang Anda Peroleh:**\n${rewardText}\n` +
+            `*Gunakan \`.tas\` atau \`.bal\` untuk memeriksa perolehan hadiah baru Anda!*`
+          )
+          .setTimestamp();
+        await message.reply({ embeds: [claimEmbed] });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah: .bid <id_lelang> <jumlah_koin>
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'bid') {
+      const aId = parseInt(args[0]);
+      const bidAmount = parseInt(args[1]);
+
+      if (isNaN(aId) || isNaN(bidAmount) || bidAmount <= 0) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan perintah `.bid <id_lelang> <jumlah_koin>`.\nContoh: `.bid 1 5000`')]
+        });
+      }
+
+      const auction = database.get("SELECT * FROM auction_items WHERE id = ? AND status = 'ACTIVE'", [aId]);
+      if (!auction) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Lelang Tidak Ditemukan!', `Lelang aktif dengan ID \`${aId}\` tidak ditemukan atau sudah ditutup.`)]
+        });
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      if (now > auction.ends_at) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Lelang Berakhir!', `Masa penawaran untuk lelang ID \`${aId}\` sudah berakhir.`)]
+        });
+      }
+
+      const minRequiredBid = auction.highest_bidder_id ? auction.current_bid + Math.max(10, Math.round(auction.min_bid * 0.05)) : auction.min_bid;
+      if (bidAmount < minRequiredBid) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Penawaran Terlalu Rendah!', `Penawaran minimal berikutnya harus sebesar **Rp ${minRequiredBid.toLocaleString('id-ID')}**!`)]
+        });
+      }
+
+      const wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
+      const currentCoins = wallet ? wallet.balance : 0;
+      if (currentCoins < bidAmount) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Koin Tidak Cukup!', `Koin di dompet Anda (**Rp ${currentCoins.toLocaleString('id-ID')}**) tidak mencukupi untuk melakukan bid sebesar **Rp ${bidAmount.toLocaleString('id-ID')}**!`)]
+        });
+      }
+
+      if (auction.highest_bidder_id === author.id) {
+        return message.reply({
+          embeds: [embeds.warnEmbed('Bid Tertinggi Milik Anda!', `Anda sudah memegang bid tertinggi untuk lelang ini.`)]
+        });
+      }
+
+      let success = false;
+      try {
+        database.transaction(() => {
+          database.run(
+            'UPDATE auction_items SET current_bid = ?, highest_bidder_id = ? WHERE id = ?',
+            [bidAmount, author.id, aId]
+          );
+
+          database.run(
+            'INSERT INTO auction_bids (auction_id, user_id, bid_amount) VALUES (?, ?, ?)',
+            [aId, author.id, bidAmount]
+          );
+        })();
+        success = true;
+      } catch (txErr) {
+        console.error('Failed to submit bid:', txErr);
+        return message.reply({
+          embeds: [embeds.errorEmbed('Gagal Melakukan Bid!', `Terjadi kesalahan internal: ${txErr.message}`)]
+        });
+      }
+
+      if (success) {
+        const bidSuccessEmbed = new EmbedBuilder()
+          .setColor(0x3498DB)
+          .setTitle('🔨 PENAWARAN HARGA DITERIMA!')
+          .setDescription(
+            `Kandidat tertinggi lelang terupdate!\n\n` +
+            `• ID Lelang: \`${aId}\`\n` +
+            `• Barang: **${auction.quantity}x ${auction.item_id}**\n` +
+            `• Bid Baru: **Rp ${bidAmount.toLocaleString('id-ID')}** oleh <@${author.id}>\n\n` +
+            `*Pemberitahuan otomatis akan dikirim ke penawar sebelumnya jika terlampaui.*`
+          )
+          .setTimestamp();
+        await message.reply({ embeds: [bidSuccessEmbed] });
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
     // Perintah: .daily
     // ═══════════════════════════════════════════════════
     if (commandName === 'daily') {
