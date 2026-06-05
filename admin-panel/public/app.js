@@ -1117,6 +1117,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Mobile Menu Toggle Controllers ---
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+  const sidebarElement = document.querySelector('.sidebar');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  if (mobileMenuToggle && sidebarElement && sidebarOverlay) {
+    const toggleSidebar = () => {
+      sidebarElement.classList.toggle('mobile-open');
+      sidebarOverlay.classList.toggle('active');
+    };
+
+    const closeSidebar = () => {
+      sidebarElement.classList.remove('mobile-open');
+      sidebarOverlay.classList.remove('active');
+    };
+
+    mobileMenuToggle.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // Close sidebar menu automatically when navigating tabs on mobile
+    Object.keys(menuItems).forEach(key => {
+      menuItems[key].addEventListener('click', closeSidebar);
+    });
+  }
+
   // Run passcode auth check on load
   checkAuth();
 });
+

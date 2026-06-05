@@ -1039,33 +1039,157 @@ a {
   line-height: 1.6;
 }
 
-/* Responsive Styles for Auth Panel */
+/* Base styles for mobile elements */
+.mobile-header {
+  display: none;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(6, 6, 8, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 990;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS AND DRAWERS
+   ========================================================================== */
 @media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background-color: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 800;
+    height: 60px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .mobile-menu-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-logo-img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .mobile-brand span {
+    font-family: var(--font-title);
+    font-weight: 800;
+    color: var(--color-emerald);
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+
+  .main-content {
+    padding: 20px 16px;
+    width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  /* Responsive Styles for Auth Panel */
   .auth-container {
     flex-direction: column;
     height: auto;
-    width: 400px;
+    width: 100%;
+    margin: 16px;
   }
+
   .auth-visual {
-    height: 150px;
+    height: 140px;
   }
+
   .auth-visual-overlay {
     padding: 20px;
   }
+
   .auth-visual-overlay h3 {
     font-size: 20px;
   }
+
   .auth-form-side {
     padding: 30px 20px;
   }
+
+  /* Main Dash modifications */
   .hero-banner {
     height: auto;
-    min-height: 180px;
+    min-height: 160px;
   }
+
   .hero-content {
-    padding: 24px;
+    padding: 24px 20px;
   }
+
   .hero-content h2 {
     font-size: 22px;
+  }
+
+  /* Form and split grids */
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-actions-grid {
+    grid-template-columns: 1fr;
   }
 }
