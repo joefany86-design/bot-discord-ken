@@ -913,6 +913,35 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // 10. Cron Job: Auto-Clean Channel (ID: 1503324994153873458) setiap 30 menit
+  cron.schedule('*/30 * * * *', async () => {
+    console.log('⏰ [Scheduler] Membersihkan channel 1503324994153873458 secara otomatis...');
+    const targetChannelId = '1503324994153873458';
+    try {
+      const channel = client.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
+      if (channel) {
+        let fetched;
+        do {
+          fetched = await channel.messages.fetch({ limit: 100 }).catch(() => null);
+          if (fetched && fetched.size > 0) {
+            try {
+              await channel.bulkDelete(fetched);
+            } catch (err) {
+              for (const msg of fetched.values()) {
+                await msg.delete().catch(() => {});
+              }
+            }
+          }
+        } while (fetched && fetched.size > 0);
+        console.log(`🧹 [Scheduler] Channel ${targetChannelId} telah dibersihkan.`);
+      }
+    } catch (err) {
+      console.error(`❌ Gagal membersihkan channel ${targetChannelId}:`, err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 
