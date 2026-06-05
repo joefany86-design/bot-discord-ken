@@ -652,8 +652,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             // Batas Maksimum Pet
             if (gRarity === 'MYTHIC') {
               const mythicCountRow = database.get(
-                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = "MYTHIC"',
-                [selectedTargetUserId, guildId]
+                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
+                [selectedTargetUserId, guildId, 'MYTHIC']
               );
               const mythicCount = mythicCountRow ? mythicCountRow.count : 0;
               if (mythicCount >= 2) {
@@ -661,8 +661,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               }
             } else if (gRarity === 'IMMORTAL') {
               const immortalCountRow = database.get(
-                'SELECT COUNT(*) as count FROM user_pets WHERE guild_id = ? AND gacha_rarity = "IMMORTAL"',
-                [guildId]
+                'SELECT COUNT(*) as count FROM user_pets WHERE guild_id = ? AND gacha_rarity = ?',
+                [guildId, 'IMMORTAL']
               );
               const immortalCount = immortalCountRow ? immortalCountRow.count : 0;
               if (immortalCount >= 1) {
