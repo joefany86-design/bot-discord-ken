@@ -462,13 +462,14 @@ function getUserHeistCooldown(userId, guildId) {
  * Menghitung estimasi data heist berdasarkan jumlah anggota
  */
 function getHeistStats(kruCount) {
+  const baseJail = config.robbery.JAIL_HEIST_BASE || 1800;
   if (kruCount <= 1) {
     return {
       successRate: 5,
       minPrize: 1000,
       maxPrize: 2000,
       fine: 1000,                // Denda kru 1 dinaikkan dari Rp 500 ke Rp 1.000
-      jailDurationSeconds: 7200 // 2 Jam
+      jailDurationSeconds: baseJail
     };
   } else if (kruCount === 2) {
     return {
@@ -476,7 +477,7 @@ function getHeistStats(kruCount) {
       minPrize: 2500,
       maxPrize: 4500,
       fine: 1500,                // Denda kru 2 dinaikkan dari Rp 500 ke Rp 1.500
-      jailDurationSeconds: 7200 // 2 Jam
+      jailDurationSeconds: baseJail
     };
   } else if (kruCount === 3) {
     return {
@@ -484,7 +485,7 @@ function getHeistStats(kruCount) {
       minPrize: 5000,
       maxPrize: 8000,
       fine: 2000,                // Denda kru 3 dinaikkan dari Rp 600 ke Rp 2.000
-      jailDurationSeconds: 7200 // 2 Jam
+      jailDurationSeconds: baseJail
     };
   } else if (kruCount === 4) {
     return {
@@ -492,7 +493,7 @@ function getHeistStats(kruCount) {
       minPrize: 9000,
       maxPrize: 14000,
       fine: 2500,                // Denda kru 4 dinaikkan dari Rp 600 ke Rp 2.500
-      jailDurationSeconds: 9000 // 2.5 Jam
+      jailDurationSeconds: baseJail * 2 // 1 Jam
     };
   } else {
     return {
@@ -500,7 +501,7 @@ function getHeistStats(kruCount) {
       minPrize: 10000,
       maxPrize: 16000,
       fine: 3500,                // Denda kru 5+ dinaikkan dari Rp 750 ke Rp 3.500
-      jailDurationSeconds: 7200 // 2 Jam
+      jailDurationSeconds: baseJail * 2 // 1 Jam
     };
   }
 }

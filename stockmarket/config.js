@@ -116,8 +116,8 @@ module.exports = {
 
   // Konfigurasi Sistem Gacha Role Premium (Hard Mode)
   gacha: {
-    COST: 800,                  // Biaya memutar Gacha
-    CASHBACK: 150,              // Cashback jika memenangkan role yang sudah dimiliki
+    COST: 1500,                  // Biaya memutar Gacha
+    CASHBACK: 400,              // Cashback jika memenangkan role yang sudah dimiliki
     ZONK_RATE: 75,              // 75% kemungkinan zonk (seimbang & menantang!)
 
     // Proporsi pemenang di 25% sisa kesempatan (Total = 100% dari pool kemenangan)
@@ -331,21 +331,21 @@ module.exports = {
         name: '💐 Buket Kasih Sayang (Love Bouquet)', 
         desc: 'Dibuat dari 3x Mawar Merah + 1x Kertas Kado.', 
         req: { FLOWER_ROSE: 3, GIFT_WRAPPING: 1 }, 
-        buff: { type: 'daily_bonus', amount: 15, durationSeconds: 24 * 3600 } 
+        buff: { type: 'daily_bonus', amount: 250, durationSeconds: 24 * 3600 } 
       },
       PEACE: { 
         id: 'PEACE', 
         name: '💐 Buket Ketenangan (Peace Bouquet)', 
         desc: 'Dibuat dari 2x Lavender + 2x Tulip + 1x Kertas Kado.', 
         req: { FLOWER_LAVENDER: 2, FLOWER_TULIP: 2, GIFT_WRAPPING: 1 }, 
-        buff: { type: 'daily_bonus', amount: 35, durationSeconds: 24 * 3600 } 
+        buff: { type: 'daily_bonus', amount: 750, durationSeconds: 24 * 3600 } 
       },
       IMPERIAL: { 
         id: 'IMPERIAL', 
         name: '👑 Buket Legendaris (Imperial Bouquet)', 
         desc: 'Dibuat dari 1x Anggrek Langka + 2x Sakura + 1x Kertas Kado.', 
         req: { FLOWER_ORCHID: 1, FLOWER_SAKURA: 2, GIFT_WRAPPING: 1 }, 
-        buff: { type: 'daily_bonus', amount: 80, durationSeconds: 24 * 3600 } 
+        buff: { type: 'daily_bonus', amount: 2200, durationSeconds: 24 * 3600 } 
       }
     }
   }
