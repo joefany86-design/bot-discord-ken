@@ -14,14 +14,24 @@
 
   <!-- AUTH ACCESS OVERLAY -->
   <div class="auth-overlay" id="auth-overlay">
-    <div class="auth-box">
-      <div class="auth-icon">🛡️</div>
-      <h2>SENTINEL SECURITY</h2>
-      <p>Masukkan Kode Akses Admin untuk masuk ke dashboard.</p>
-      <div class="form-group" style="margin-top: 20px;">
-        <input type="password" id="auth-passcode" class="form-control" placeholder="Kode Akses (PIN/Passcode)..." style="text-align: center;">
+    <div class="auth-container">
+      <div class="auth-visual" style="background-image: url('images/building.png');">
+        <div class="auth-visual-overlay">
+          <h3>Kosan A1</h3>
+          <p>Sentinel Smart Management System</p>
+        </div>
       </div>
-      <button id="auth-login-btn" class="btn btn-emerald btn-block" style="margin-top: 12px;">MASUK DASHBOARD</button>
+      <div class="auth-form-side">
+        <div class="auth-box">
+          <img src="images/logo.png" alt="Kosan A1 Logo" class="auth-logo-img">
+          <h2>SENTINEL SECURITY</h2>
+          <p>Masukkan Kode Akses Admin untuk masuk ke dashboard.</p>
+          <div class="form-group" style="margin-top: 24px;">
+            <input type="password" id="auth-passcode" class="form-control" placeholder="Kode Akses (PIN/Passcode)..." style="text-align: center;">
+          </div>
+          <button id="auth-login-btn" class="btn btn-emerald btn-block" style="margin-top: 12px;">MASUK DASHBOARD</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -29,10 +39,10 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-logo">🛡️</div>
+        <img src="images/logo.png" alt="Kosan A1 Logo" class="brand-logo-img">
         <div class="brand-info">
           <h1>SENTINEL</h1>
-          <span>Premium Control Center</span>
+          <span>Kosan A1 Control Center</span>
         </div>
       </div>
 
@@ -77,9 +87,12 @@
       
       <!-- Section 1: Dashboard -->
       <section id="section-dashboard" class="content-section active">
-        <div class="section-header">
-          <h2>📊 Server Economy Dashboard</h2>
-          <p>Statistik sirkulasi koin, kontrol bypass server, dan event global.</p>
+        <div class="hero-banner" style="background-image: linear-gradient(to right, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0.4)), url('images/building.png');">
+          <div class="hero-content">
+            <span class="hero-tag">🛡️ KOSAN A1 CONTROL CENTER</span>
+            <h2>Server Economy Dashboard</h2>
+            <p>Kelola sistem otomasi finansial, Tamagotchi, dan pasar modal secara real-time dari satu portal terpadu.</p>
+          </div>
         </div>
 
         <!-- Stats Grid -->
