@@ -55,6 +55,16 @@ const GACHA_SPECIES = {
   LEVIATHAN:  { id: 'LEVIATHAN',  name: '🌊 Leviathan',  rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'WATER', workBuff: 0.25, desc: 'Naga lautan kuno. Menguasai ombak samudera.' },
   BEHEMOTH:   { id: 'BEHEMOTH',   name: '🦏 Behemoth',   rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'EARTH', workBuff: 0.25, desc: 'Monster bumi tak terkalahkan. Kekuatan tiada batas.' },
   ARCHDRAGON: { id: 'ARCHDRAGON', name: '🐉 Archdragon', rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'DRAGON',workBuff: 0.25, desc: 'Naga purba tertua. Penguasa langit dan bumi.' },
+  // 🔴 Mythic — makhluk mitologi langka, 3 trait bawaan, buff +40%
+  FENRIR:      { id: 'FENRIR',      name: '🐺 Fenrir',      rarity: 'MYTHIC',   emoji: '🔴', baseHP: 200, baseAtk: 35, baseDef: 15, element: 'DRAGON', workBuff: 0.40, desc: 'Serigala pemusnah akhir zaman. Cakarnya merobek dimensi.' },
+  BAHAMUT:     { id: 'BAHAMUT',     name: '🐲 Bahamut',     rarity: 'MYTHIC',   emoji: '🔴', baseHP: 200, baseAtk: 40, baseDef: 10, element: 'FIRE',   workBuff: 0.40, desc: 'Naga kaisar maha-api. Napasnya menguapkan lautan.' },
+  KRAKEN:      { id: 'KRAKEN',      name: '🦑 Kraken',      rarity: 'MYTHIC',   emoji: '🔴', baseHP: 220, baseAtk: 30, baseDef: 20, element: 'WATER',  workBuff: 0.40, desc: 'Raksasa cumi laut abyss. Tentakelnya menghancurkan armada.' },
+  JORMUNGANDR: { id: 'JORMUNGANDR', name: '🐍 Jörmungandr', rarity: 'MYTHIC',   emoji: '🔴', baseHP: 250, baseAtk: 25, baseDef: 25, element: 'EARTH',  workBuff: 0.40, desc: 'Ular dunia yang melingkari bumi. Bisanya meluluhkan gunung.' },
+  // ✨ Immortal — entitas kosmik abadi, 5 trait aktif, God-Mode
+  CHRONOS:     { id: 'CHRONOS',     name: '⏳ Chronos',     rarity: 'IMMORTAL', emoji: '✨', baseHP: 500, baseAtk: 50, baseDef: 30, element: 'DRAGON', workBuff: 0.75, desc: 'Dewa Waktu primordial. Mengendalikan aliran waktu dan nasib.' },
+  OUROBOROS:   { id: 'OUROBOROS',   name: '♾️ Ouroboros',   rarity: 'IMMORTAL', emoji: '✨', baseHP: 999, baseAtk: 30, baseDef: 50, element: 'EARTH',  workBuff: 0.75, desc: 'Ular keabadian abadi. Simbol siklus tanpa akhir.' },
+  AZATHOTH:    { id: 'AZATHOTH',    name: '🌌 Azathoth',    rarity: 'IMMORTAL', emoji: '✨', baseHP: 300, baseAtk: 99, baseDef: 10, element: 'DRAGON', workBuff: 0.75, desc: 'Entitas kosmik. Mimpinya menciptakan dan menghancurkan alam semesta.' },
+  YGGDRASIL:   { id: 'YGGDRASIL',   name: '🌳 Yggdrasil',  rarity: 'IMMORTAL', emoji: '✨', baseHP: 777, baseAtk: 20, baseDef: 77, element: 'EARTH',  workBuff: 0.75, desc: 'Pohon Dunia penopang sembilan alam. Akar menembus dimensi.' },
 };
 
 const GACHA_TRAITS_ALL   = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
@@ -97,6 +107,38 @@ function getStarBonuses(starLevel) {
 // String visual bintang ⭐
 function renderStars(n) {
   return '⭐'.repeat(Math.max(1, Math.min(5, n || 1)));
+}
+
+function isGodPet(pet) {
+  if (!pet) return false;
+  if (pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059') {
+    return true;
+  }
+  const rarity = pet.gacha_rarity || (GACHA_SPECIES[pet.pet_type] ? GACHA_SPECIES[pet.pet_type].rarity : '');
+  return rarity === 'IMMORTAL';
+}
+
+function isMythicPet(pet) {
+  if (!pet) return false;
+  const rarity = pet.gacha_rarity || (GACHA_SPECIES[pet.pet_type] ? GACHA_SPECIES[pet.pet_type].rarity : '');
+  return rarity === 'MYTHIC';
+}
+
+function petHasTrait(pet, traitName) {
+  if (!pet) return false;
+  const rarity = pet.gacha_rarity || (GACHA_SPECIES[pet.pet_type] ? GACHA_SPECIES[pet.pet_type].rarity : '');
+  if (rarity === 'IMMORTAL') {
+    return ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'].includes(traitName);
+  }
+  const traits = [];
+  if (pet.trait) traits.push(pet.trait);
+  if (pet.gacha_trait2) {
+    pet.gacha_trait2.split(',').forEach(t => {
+      const trimmed = t.trim();
+      if (trimmed) traits.push(trimmed);
+    });
+  }
+  return traits.includes(traitName);
 }
 
 // Dapatkan Max HP dinamis berdasarkan spesies dan bintang
@@ -263,9 +305,10 @@ const EXPEDITION_DROPS = [
   { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', table: 'pet_inventory' }
 ];
 
-function getXpNeeded(level, trait) {
+function getXpNeeded(level, petOrTrait) {
   const base = level * 100;
-  if (trait === 'GENIUS') {
+  const hasGenius = typeof petOrTrait === 'string' ? (petOrTrait === 'GENIUS') : petHasTrait(petOrTrait, 'GENIUS');
+  if (hasGenius) {
     return Math.round(base * 0.80); // -20% XP cap (GENIUS leveling bonus!)
   }
   return base;
@@ -281,7 +324,7 @@ function addXp(pet, xpGained, maxHP) {
   let tpGained = 0;
 
   while (true) {
-    const xpNeeded = getXpNeeded(newLevel, pet.trait);
+    const xpNeeded = getXpNeeded(newLevel, pet);
     if (newXp >= xpNeeded) {
       newXp -= xpNeeded;
       newLevel += 1;
@@ -310,9 +353,9 @@ function applyDecay(pet) {
     return pet;
   }
 
-  if (pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059') {
+  if (isGodPet(pet)) {
     const now = Math.floor(Date.now() / 1000);
-    const maxHP = 100;
+    const maxHP = getMaxHP(pet);
     db.run(
       `UPDATE user_pets 
        SET hunger = 100, thirst = 100, happiness = 100, health = ?, status = 'ADULT', last_interaction_at = ?
@@ -366,8 +409,15 @@ function applyDecay(pet) {
   thirstDecayRate = Number((thirstDecayRate * neglectDecayMultiplier).toFixed(2));
   happinessDecayRate = Number((happinessDecayRate * neglectDecayMultiplier).toFixed(2));
 
+  // Mythic: laju decay status berkurang 50% (perkalian 0.50)
+  if (isMythicPet(pet)) {
+    hungerDecayRate = Number((hungerDecayRate * 0.50).toFixed(2));
+    thirstDecayRate = Number((thirstDecayRate * 0.50).toFixed(2));
+    happinessDecayRate = Number((happinessDecayRate * 0.50).toFixed(2));
+  }
+
   // Trait STURDY: mengurangi laju decay status sebesar 40% (perkalian 0.60)
-  if (pet.trait === 'STURDY') {
+  if (petHasTrait(pet, 'STURDY')) {
     hungerDecayRate = Number((hungerDecayRate * 0.60).toFixed(2));
     thirstDecayRate = Number((thirstDecayRate * 0.60).toFixed(2));
     happinessDecayRate = Number((happinessDecayRate * 0.60).toFixed(2));
@@ -456,11 +506,11 @@ function applyDecay(pet) {
 
   // Starvation/Dehydration HP reduction
   let baseHPLossRate = 5;
-  if (pet.trait === 'FRAGILE') {
+  if (petHasTrait(pet, 'FRAGILE')) {
     baseHPLossRate = 10;
   }
   let hpReduction = Math.floor((hungerOverdueHours * baseHPLossRate * neglectHPMultiplier) + (thirstOverdueHours * baseHPLossRate * neglectHPMultiplier));
-  if (pet.trait === 'STURDY') {
+  if (petHasTrait(pet, 'STURDY')) {
     hpReduction = Math.floor(hpReduction / 2);
   }
   newHealth = Math.max(0, newHealth - hpReduction);
@@ -487,7 +537,7 @@ function applyDecay(pet) {
   let newStatus = pet.status;
   let finalAccessory = pet.accessory;
   if (newHealth <= 0) {
-    if (pet.trait === 'SURVIVOR') {
+    if (petHasTrait(pet, 'SURVIVOR')) {
       newHealth = 1;
       newStatus = 'WEAK';
     } else if (pet.accessory === 'LUCKY_AMULET') {
@@ -1017,6 +1067,11 @@ function sendToWork(userId, guildId, member = null) {
     console.error("Gagal membaca rolex untuk pet work cooldown:", e.message);
   }
 
+  // Bypass Cooldown: Cooldown kerja dikurangi 50% untuk pet IMMORTAL
+  if (isGodPet(pet)) {
+    cooldownDuration = Math.round(cooldownDuration * 0.5);
+  }
+
   const nextWorkTime = (pet.last_work_at || 0) + cooldownDuration;
   if (now < nextWorkTime) {
     const timeLeft = nextWorkTime - now;
@@ -1033,8 +1088,15 @@ function sendToWork(userId, guildId, member = null) {
   // Bonus level: +5% pendapatan per level pet (dibatasi di maksimal Level 20 untuk menyeimbangkan ekonomi)
   const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
-  if (pet.trait === 'MUTANT') {
+  if (petHasTrait(pet, 'MUTANT')) {
     finalReward = Math.round(finalReward * 1.15); // Mutant: +15% work earnings
+  }
+
+  // Apply species workBuff if exists
+  const speciesInfo = GACHA_SPECIES[pet.pet_type];
+  const workBuff = speciesInfo ? (speciesInfo.workBuff || 0) : 0;
+  if (workBuff > 0) {
+    finalReward = Math.round(finalReward * (1 + workBuff));
   }
 
   // Gacha Role Bonus untuk Pendapatan & XP Pet Work
@@ -1070,7 +1132,7 @@ function sendToWork(userId, guildId, member = null) {
     const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
-    const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
+    const isGod = isGodPet(pet);
     const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 4);
     const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 4);
     const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 3);
@@ -1113,8 +1175,8 @@ function sendToHunt(userId, guildId, member = null) {
   if (pet.status === 'WEAK') {
     throw new Error(`🤕 **${pet.pet_name}** sangat lemas kelaparan! Beri dia makan/minum terlebih dahulu.`);
   }
-  const isGodPet = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
-  if (!isGodPet && pet.status === 'BABY') {
+  const isGod = isGodPet(pet);
+  if (!isGod && pet.status === 'BABY') {
     throw new Error('Pet Anda masih bayi! Dia harus bertumbuh menjadi dewasa (Level >= 10) terlebih dahulu sebelum bisa berburu.');
   }
 
@@ -1125,7 +1187,10 @@ function sendToHunt(userId, guildId, member = null) {
   if (pet.happiness < 50) {
     throw new Error('Mood pet Anda terlalu buruk untuk berburu (Kebahagiaan < 50)! Ajak bermain.');
   }
-  const cooldownDuration = 30 * 60; // 30 Menit
+  let cooldownDuration = 30 * 60; // 30 Menit
+  if (isGod) {
+    cooldownDuration = Math.round(cooldownDuration * 0.5);
+  }
 
   const nextHuntTime = (pet.last_hunt_at || 0) + cooldownDuration;
   if (now < nextHuntTime) {
@@ -1146,8 +1211,15 @@ function sendToHunt(userId, guildId, member = null) {
 
   const levelBonus = Math.floor(reward * (Math.min(20, pet.level) * 0.05));
   let finalReward = reward + levelBonus;
-  if (pet.trait === 'MUTANT') {
+  if (petHasTrait(pet, 'MUTANT')) {
     finalReward = Math.round(finalReward * 1.15); // Mutant: +15% hunt earnings
+  }
+
+  // Apply species workBuff if exists
+  const speciesInfo = GACHA_SPECIES[pet.pet_type];
+  const workBuff = speciesInfo ? (speciesInfo.workBuff || 0) : 0;
+  if (workBuff > 0) {
+    finalReward = Math.round(finalReward * (1 + workBuff));
   }
 
   // Gacha Role Bonus untuk Pendapatan & XP Pet Hunt
@@ -1211,7 +1283,6 @@ function sendToHunt(userId, guildId, member = null) {
     const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
-    const isGod = pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059';
     const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 6);
     const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 6);
     const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 4);
@@ -1231,27 +1302,27 @@ function sendToHunt(userId, guildId, member = null) {
   return {
     pet: getPet(userId, guildId),
     reward: finalReward,
+    baseReward: reward,
     levelBonus,
     dropItem
   };
 }
 
 /**
- * Menyelesaikan Duel PvP Arena secara Ronde-demi-Ronde (Battle Simulation Engine).
+ * Melakukan pertempuran PvP antar pet di arena taruhan.
  */
 function executePvP(challengerId, opponentId, guildId, betAmount) {
   const challenger = getPet(challengerId, guildId);
   const opponent = getPet(opponentId, guildId);
+  if (!challenger) throw new Error('Anda tidak memiliki pet aktif untuk bertarung!');
+  if (!opponent) throw new Error('Lawan tidak memiliki pet aktif untuk bertarung!');
 
-  if (!challenger) throw new Error('Anda tidak memiliki hewan peliharaan!');
-  if (!opponent) throw new Error('Lawan tidak memiliki hewan peliharaan!');
-
-  const isGodChallenger = challenger.pet_name.toLowerCase() === 'ramzi' && challenger.user_id === '436554535037698059';
+  const isGodChallenger = isGodPet(challenger);
   if (!isGodChallenger && (challenger.status === 'EGG' || challenger.status === 'BABY')) {
     throw new Error('Pet Anda harus berstatus Dewasa (Level >= 10) untuk bertarung di PvP Arena!');
   }
 
-  const isGodOpponent = opponent.pet_name.toLowerCase() === 'ramzi' && opponent.user_id === '436554535037698059';
+  const isGodOpponent = isGodPet(opponent);
   if (!isGodOpponent && (opponent.status === 'EGG' || opponent.status === 'BABY')) {
     throw new Error('Pet lawan masih bayi atau berupa telur! Pertarungan dibatalkan.');
   }
@@ -1275,95 +1346,79 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   // Base Attack = Species Base ATK + Level * 5 + STR * 2
   const chalSpecies = GACHA_SPECIES[challenger.pet_type];
   const chalSpecBaseAtk = chalSpecies ? (chalSpecies.baseAtk || 10) : 10;
-  const chalBaseAtk = isGodChallenger ? 99999 : (chalSpecBaseAtk + challenger.level * 5 + (challenger.stat_str || 0) * 2);
+  let chalBaseAtk = chalSpecBaseAtk + challenger.level * 5 + (challenger.stat_str || 0) * 2;
+  if (isGodChallenger) chalBaseAtk *= 3; // Immortal: 3x ATK
  
   const oppSpecies = GACHA_SPECIES[opponent.pet_type];
   const oppSpecBaseAtk = oppSpecies ? (oppSpecies.baseAtk || 10) : 10;
-  const oppBaseAtk = isGodOpponent ? 99999 : (oppSpecBaseAtk + opponent.level * 5 + (opponent.stat_str || 0) * 2);
+  let oppBaseAtk = oppSpecBaseAtk + opponent.level * 5 + (opponent.stat_str || 0) * 2;
+  if (isGodOpponent) oppBaseAtk *= 3; // Immortal: 3x ATK
  
   let chalAtkMultiplier = challenger.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (challenger.trait === 'WARRIOR') chalAtkMultiplier += 0.15; // Warrior: +15% attack
+  if (petHasTrait(challenger, 'WARRIOR')) chalAtkMultiplier += 0.15; // Warrior: +15% attack
   if (challenger.accessory === 'SWORD_TOY') chalAtkMultiplier += 0.15; // Toy Sword: +15% damage
   chalAtkMultiplier += (challenger.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
  
   let oppAtkMultiplier = opponent.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (opponent.trait === 'WARRIOR') oppAtkMultiplier += 0.15; // Warrior: +15% attack
+  if (petHasTrait(opponent, 'WARRIOR')) oppAtkMultiplier += 0.15; // Warrior: +15% attack
   if (opponent.accessory === 'SWORD_TOY') oppAtkMultiplier += 0.15; // Toy Sword: +15% damage
   oppAtkMultiplier += (opponent.base_atk_bonus_pct || 0.0); // Tambah bonus bintang gacha
  
   // Kalkulasi Reduksi Damage (Defense: base def + Sturdy/Shield + stat_def * 0.5%)
   const chalSpecBaseDef = chalSpecies ? (chalSpecies.baseDef || 0) : 0;
   let chalDefMult = 1.0;
-  if (challenger.trait === 'STURDY') chalDefMult *= 0.85; // Sturdy: -15% damage
+  if (petHasTrait(challenger, 'STURDY')) chalDefMult *= 0.85; // Sturdy: -15% damage
   if (challenger.accessory === 'SHIELD_TOY') chalDefMult *= 0.85; // Toy Shield: -15% damage
   const chalDefGym = Math.min(0.50, (challenger.stat_def || 0) * 0.005);
-  const chalDamageTakenMult = (1.0 - (chalSpecBaseDef / 100)) * chalDefMult * (1.0 - (challenger.base_def_bonus_pct || 0.0)) * (1.0 - chalDefGym);
+  let chalDamageTakenMult = (1.0 - (chalSpecBaseDef / 100)) * chalDefMult * (1.0 - (challenger.base_def_bonus_pct || 0.0)) * (1.0 - chalDefGym);
+  if (isGodChallenger) chalDamageTakenMult *= 0.25; // Immortal: 75% Damage Reduction
  
   const oppSpecBaseDef = oppSpecies ? (oppSpecies.baseDef || 0) : 0;
   let oppDefMult = 1.0;
-  if (opponent.trait === 'STURDY') oppDefMult *= 0.85; // Sturdy: -15% damage
+  if (petHasTrait(opponent, 'STURDY')) oppDefMult *= 0.85; // Sturdy: -15% damage
   if (opponent.accessory === 'SHIELD_TOY') oppDefMult *= 0.85; // Toy Shield: -15% damage
   const oppDefGym = Math.min(0.50, (opponent.stat_def || 0) * 0.005);
-  const oppDamageTakenMult = (1.0 - (oppSpecBaseDef / 100)) * oppDefMult * (1.0 - (opponent.base_def_bonus_pct || 0.0)) * (1.0 - oppDefGym);
+  let oppDamageTakenMult = (1.0 - (oppSpecBaseDef / 100)) * oppDefMult * (1.0 - (opponent.base_def_bonus_pct || 0.0)) * (1.0 - oppDefGym);
+  if (isGodOpponent) oppDamageTakenMult *= 0.25; // Immortal: 75% Damage Reduction
  
   let round = 1;
   const maxRounds = 5;
  
   while (round <= maxRounds && chalHP > 0 && oppHP > 0) {
     // 1. Giliran Challenger menyerang Opponent
-    let chalDmg;
-    if (isGodChallenger) {
-      chalDmg = 999999;
-      oppHP = 0;
-      logs.push(`⚔️ **Ronde ${round} (Serangan):** 🔥 **${challenger.pet_name}** meluncurkan serangan mematikan *Insta-Kill* dan memberikan **${chalDmg} DMG**! (HP Lawan: 0%)`);
-    } else if (isGodOpponent) {
-      chalDmg = 0;
-      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}**, namun serangan memantul sia-sia! **0 DMG** diberikan. (HP Lawan: 100%)`);
-    } else {
-      chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
-      chalDmg = Math.round(chalDmg * oppDamageTakenMult);
-      
-      // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
-      const chalDex = challenger.stat_dex || 0;
-      const chalCritChance = Math.min(0.35, chalDex * 0.005);
-      const isChalCrit = Math.random() < chalCritChance;
-      if (isChalCrit) {
-        chalDmg = Math.round(chalDmg * 1.5);
-      }
-      
-      oppHP = Math.max(0, oppHP - chalDmg);
-      const critText = isChalCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-      logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**!${critText} (HP Lawan: ${oppHP}%)`);
+    let chalDmg = Math.round((chalBaseAtk * chalAtkMultiplier * (0.8 + Math.random() * 0.4))); // Fluktuasi 80%-120%
+    chalDmg = Math.round(chalDmg * oppDamageTakenMult);
+    
+    // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
+    const chalDex = challenger.stat_dex || 0;
+    const chalCritChance = Math.min(0.35, chalDex * 0.005);
+    const isChalCrit = Math.random() < chalCritChance;
+    if (isChalCrit) {
+      chalDmg = Math.round(chalDmg * 1.5);
     }
+    
+    oppHP = Math.max(0, oppHP - chalDmg);
+    const critText = isChalCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+    logs.push(`⚔️ **Ronde ${round} (Serangan):** **${challenger.pet_name}** menyerang **${opponent.pet_name}** dan memberikan **${chalDmg} DMG**!${critText} (HP Lawan: ${oppHP}%)`);
  
     if (oppHP <= 0) break;
  
     // 2. Giliran Opponent menyerang Challenger
-    let oppDmg;
-    if (isGodOpponent) {
-      oppDmg = 999999;
-      chalHP = 0;
-      logs.push(`🛡️ **Ronde ${round} (Balasan):** 🔥 **${opponent.pet_name}** membalas dengan tatapan mematikan *Insta-Kill* sebesar **${oppDmg} DMG**! (HP Anda: 0%)`);
-    } else if (isGodChallenger) {
-      oppDmg = 0;
-      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}**, namun serangan tidak terasa! **0 DMG** diberikan. (HP Anda: 100%)`);
-    } else {
-      oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
-      oppDmg = Math.round(oppDmg * chalDamageTakenMult);
-      
-      // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
-      const oppDex = opponent.stat_dex || 0;
-      const oppCritChance = Math.min(0.35, oppDex * 0.005);
-      const isOppCrit = Math.random() < oppCritChance;
-      if (isOppCrit) {
-        oppDmg = Math.round(oppDmg * 1.5);
-      }
-      
-      chalHP = Math.max(0, chalHP - oppDmg);
-      const critText = isOppCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-      logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**!${critText} (HP Anda: ${chalHP}%)`);
+    let oppDmg = Math.round((oppBaseAtk * oppAtkMultiplier * (0.8 + Math.random() * 0.4)));
+    oppDmg = Math.round(oppDmg * chalDamageTakenMult);
+    
+    // Crit Chance DEX (0.5% per DEX, max 35%, Crit DMG = 1.5x)
+    const oppDex = opponent.stat_dex || 0;
+    const oppCritChance = Math.min(0.35, oppDex * 0.005);
+    const isOppCrit = Math.random() < oppCritChance;
+    if (isOppCrit) {
+      oppDmg = Math.round(oppDmg * 1.5);
     }
-
+    
+    chalHP = Math.max(0, chalHP - oppDmg);
+    const critTextOpp = isOppCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+    logs.push(`🛡️ **Ronde ${round} (Balasan):** **${opponent.pet_name}** membalas serang **${challenger.pet_name}** sebesar **${oppDmg} DMG**!${critTextOpp} (HP Anda: ${chalHP}%)`);
+ 
     round++;
   }
 
@@ -1373,17 +1428,7 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
   let winnerName = '';
   let loserName = '';
 
-  if (isGodChallenger) {
-    winnerId = challengerId;
-    loserId = opponentId;
-    winnerName = challenger.pet_name;
-    loserName = opponent.pet_name;
-  } else if (isGodOpponent) {
-    winnerId = opponentId;
-    loserId = challengerId;
-    winnerName = opponent.pet_name;
-    loserName = challenger.pet_name;
-  } else if (chalHP > oppHP) {
+  if (chalHP > oppHP) {
     winnerId = challengerId;
     loserId = opponentId;
     winnerName = challenger.pet_name;
@@ -1462,7 +1507,7 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     let finalCurseUntil = loserPet.curse_until;
     let injuredTriggered = false;
 
-    const isGodLoser = loserPet.pet_name.toLowerCase() === 'ramzi' && loserPet.user_id === '436554535037698059';
+    const isGodLoser = isGodPet(loserPet);
     if (!isGodLoser && lStatus !== 'DEAD' && Math.random() < 0.15) {
       finalCurseType = 'injured';
       finalCurseUntil = Math.floor(Date.now() / 1000) + 86400 * 7; // Cedera 7 hari
@@ -1734,40 +1779,46 @@ function calculateSuccessRate(guildId, participantIds, mapId, pathChoice = 'SAFE
 
   activePets.forEach(ap => {
     let elementMod = 0;
-    const petEl = ap.pet.gacha_element || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].element : '') || '';
     const petType = ap.pet.pet_type;
+    const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].rarity : '') || '';
 
-    if (selectedMap.id === 1) { // Hutan Pemula (EARTH)
-      if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
-      else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
-    } else if (selectedMap.id === 2) { // Gua Gelap (EARTH)
-      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
-      else if (petType === 'PHOENIX') elementMod = -15;
-    } else if (selectedMap.id === 3) { // Lembah Api (FIRE)
-      if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = 15;
-      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
-    } else if (selectedMap.id === 4) { // Istana Kuno (DRAGON)
-      if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH' || petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
-      else if (petType === 'PHOENIX') elementMod = -15;
-    } else if (selectedMap.id === 5) { // Tundra Beku (WATER)
-      if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
-      else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
-    } else if (selectedMap.id === 6) { // Rawa Petir (FIRE - Kilat)
-      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
-      else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
-    } else if (selectedMap.id === 7) { // Kabut Kematian (DRAGON - Undead)
-      if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
-      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
-    } else if (selectedMap.id === 8) { // Samudera Abyss (WATER)
-      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
-      else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
-    } else if (selectedMap.id === 9) { // Puncak Langit (DRAGON - Holy/Sky)
-      if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'FIRE' || petType === 'PHOENIX' || petEl === 'DRAGON') elementMod = 15;
-      else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
-    } else if (selectedMap.id === 10) { // Dimensi Kosmik (DRAGON - Void)
-      const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].rarity : '') || '';
-      if (petRarity === 'LEGENDARY') elementMod = 15;
-      else if (petRarity === 'COMMON' || !petRarity) elementMod = -15;
+    if (petRarity === 'MYTHIC') {
+      elementMod = 20;
+    } else if (petRarity === 'IMMORTAL') {
+      elementMod = 25;
+    } else {
+      const petEl = ap.pet.gacha_element || (GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].element : '') || '';
+      if (selectedMap.id === 1) { // Hutan Pemula (EARTH)
+        if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+        else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+      } else if (selectedMap.id === 2) { // Gua Gelap (EARTH)
+        if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+        else if (petType === 'PHOENIX') elementMod = -15;
+      } else if (selectedMap.id === 3) { // Lembah Api (FIRE)
+        if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = 15;
+        else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+      } else if (selectedMap.id === 4) { // Istana Kuno (DRAGON)
+        if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH' || petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+        else if (petType === 'PHOENIX') elementMod = -15;
+      } else if (selectedMap.id === 5) { // Tundra Beku (WATER)
+        if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+        else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+      } else if (selectedMap.id === 6) { // Rawa Petir (FIRE - Kilat)
+        if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+        else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+      } else if (selectedMap.id === 7) { // Kabut Kematian (DRAGON - Undead)
+        if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+        else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+      } else if (selectedMap.id === 8) { // Samudera Abyss (WATER)
+        if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+        else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+      } else if (selectedMap.id === 9) { // Puncak Langit (DRAGON - Holy/Sky)
+        if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'FIRE' || petType === 'PHOENIX' || petEl === 'DRAGON') elementMod = 15;
+        else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+      } else if (selectedMap.id === 10) { // Dimensi Kosmik (DRAGON - Void)
+        if (petRarity === 'LEGENDARY') elementMod = 15;
+        else if (petRarity === 'COMMON' || !petRarity) elementMod = -15;
+      }
     }
 
     if (elementMod !== 0) {
@@ -1826,6 +1877,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   const teamPower = calc.teamPower;
   const successRate = calc.successRate;
   const logs = calc.logs;
+
+  const teamHasImmortal = activePets.some(ap => {
+    const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
+    return petRarity === 'IMMORTAL';
+  });
 
   if (activePets.length === 0) {
     throw new Error('Tidak ada pet aktif yang memenuhi syarat ekspedisi!');
@@ -1977,7 +2033,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
-        const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059') || (ap.userId === '436554535037698059' && ownerExpGodMode);
+        const isGod = isGodPet(ap.pet) || (ap.userId === '436554535037698059' && ownerExpGodMode);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 10);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
         const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
@@ -1995,7 +2051,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let isSavedBySurvivor = false;
 
         let deathProb = 0.03;
-        if (membersMap && membersMap[ap.userId]) {
+        const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
+        
+        if (teamHasImmortal || petRarity === 'IMMORTAL' || petRarity === 'MYTHIC') {
+          deathProb = 0.0;
+        } else if (membersMap && membersMap[ap.userId]) {
           const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
           if (gachaTier === 'LEGENDARY') deathProb = 0.01;
           else if (gachaTier === 'MYTHIC') deathProb = 0.0;
@@ -2010,7 +2070,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
             if (finalStatus === 'WEAK') {
               finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
             }
-          } else if (ap.pet.trait === 'SURVIVOR') {
+          } else if (petHasTrait(ap.pet, 'SURVIVOR')) {
             isSavedBySurvivor = true;
             finalHealth = 1;
             finalStatus = 'WEAK';
@@ -2162,7 +2222,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
-        const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059') || (ap.userId === '436554535037698059' && ownerExpGodMode);
+        const isGod = isGodPet(ap.pet) || (ap.userId === '436554535037698059' && ownerExpGodMode);
         const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);
@@ -2180,7 +2240,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let isSavedBySurvivor = false;
 
         let deathProb = 0.03;
-        if (membersMap && membersMap[ap.userId]) {
+        const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
+        
+        if (teamHasImmortal || petRarity === 'IMMORTAL' || petRarity === 'MYTHIC') {
+          deathProb = 0.0;
+        } else if (membersMap && membersMap[ap.userId]) {
           const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
           if (gachaTier === 'LEGENDARY') deathProb = 0.01;
           else if (gachaTier === 'MYTHIC') deathProb = 0.0;
@@ -2195,7 +2259,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
             if (finalStatus === 'WEAK') {
               finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
             }
-          } else if (ap.pet.trait === 'SURVIVOR') {
+          } else if (petHasTrait(ap.pet, 'SURVIVOR')) {
             isSavedBySurvivor = true;
             finalHealth = 1;
             finalStatus = 'WEAK';
@@ -2671,7 +2735,10 @@ function useSodaEnergy(userId, guildId, autoBuy = true, member = null) {
 
     // Jika minum > 2 kali (berarti botol ke-3 dst), ada 35% peluang sakit
     let sicknessRate = 0.35;
-    if (member) {
+    const petRarity = petObj.gacha_rarity || (GACHA_SPECIES[petObj.pet_type] ? GACHA_SPECIES[petObj.pet_type].rarity : '') || '';
+    if (petRarity === 'MYTHIC' || petRarity === 'IMMORTAL') {
+      sicknessRate = 0.0;
+    } else if (member) {
       const gachaTier = economy.getMemberGachaTier(member, guildId);
       if (gachaTier === 'RARE') sicknessRate = 0.25;
       else if (gachaTier === 'EPIC') sicknessRate = 0.15;
@@ -3335,12 +3402,17 @@ function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reas
   const now = Math.floor(Date.now() / 1000);
   const results = [];
 
+  const teamHasImmortal = activePets.some(ap => {
+    const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
+    return petRarity === 'IMMORTAL';
+  });
+
   db.transaction(() => {
     activePets.forEach(ap => {
       // Increment daily expedition count
       checkExpeditionLimit(ap.userId, guildId, false);
 
-      const isGod = (ap.pet.pet_name.toLowerCase() === 'ramzi' && ap.userId === '436554535037698059');
+      const isGod = isGodPet(ap.pet);
       const maxHP = getMaxHP(ap.pet);
 
       // Dampak kegagalan QTE: Lapar -15, Haus -15, Kebahagiaan -30 (Stress tinggi)
@@ -3351,28 +3423,33 @@ function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reas
       // Hitung risiko kematian pet
       // Base: 2%
       let deathProb = 0.02;
+      const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
 
-      // Faktor Level Pet: +(level - 1) * 0.5%
-      deathProb += (ap.pet.level - 1) * 0.005;
+      if (teamHasImmortal || petRarity === 'IMMORTAL' || petRarity === 'MYTHIC') {
+        deathProb = 0.0;
+      } else {
+        // Faktor Level Pet: +(level - 1) * 0.5%
+        deathProb += (ap.pet.level - 1) * 0.005;
 
-      // Faktor Zona Map: +mapId * 2%
-      deathProb += selectedMap.id * 0.02;
+        // Faktor Zona Map: +mapId * 2%
+        deathProb += selectedMap.id * 0.02;
 
-      // Penalti Level Di Bawah Rekomendasi: +(recommLvl - lvl) * 6%
-      const lvlDiff = selectedMap.recommendedLevel - ap.pet.level;
-      if (lvlDiff > 0) {
-        deathProb += lvlDiff * 0.06;
+        // Penalti Level Di Bawah Rekomendasi: +(recommLvl - lvl) * 6%
+        const lvlDiff = selectedMap.recommendedLevel - ap.pet.level;
+        if (lvlDiff > 0) {
+          deathProb += lvlDiff * 0.06;
+        }
+
+        // Gacha tier protection
+        if (membersMap && membersMap[ap.userId]) {
+          const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
+          if (gachaTier === 'LEGENDARY') deathProb = Math.max(0, deathProb - 0.10);
+          else if (gachaTier === 'MYTHIC') deathProb = 0.0;
+        }
+
+        // Limit deathChance to 85% max
+        if (deathProb > 0.85) deathProb = 0.85;
       }
-
-      // Gacha tier protection
-      if (membersMap && membersMap[ap.userId]) {
-        const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
-        if (gachaTier === 'LEGENDARY') deathProb = Math.max(0, deathProb - 0.10);
-        else if (gachaTier === 'MYTHIC') deathProb = 0.0;
-      }
-
-      // Limit deathChance to 85% max
-      if (deathProb > 0.85) deathProb = 0.85;
 
       let finalHealth = isGod ? maxHP : Math.max(5, ap.pet.health - 25);
       let finalStatus = ap.pet.status;
@@ -3391,7 +3468,7 @@ function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reas
           if (finalStatus === 'WEAK') {
             finalStatus = ap.pet.level >= 10 ? 'ADULT' : 'BABY';
           }
-        } else if (ap.pet.trait === 'SURVIVOR') {
+        } else if (petHasTrait(ap.pet, 'SURVIVOR')) {
           isSavedBySurvivor = true;
           finalHealth = 1;
           finalStatus = 'WEAK';
@@ -4131,6 +4208,9 @@ module.exports = {
   renderStars,
   getMaxHP,
   addXp,
+  isGodPet,
+  isMythicPet,
+  petHasTrait,
   // Core
   getPet,
   adoptPet,

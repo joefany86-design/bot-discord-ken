@@ -301,6 +301,40 @@ const PET_ASSETS = {
       'https://img.pokemondb.net/sprites/black-white/anim/normal/rayquaza.gif'
     ]
   },
+  // 🔴 Mythic
+  FENRIR: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/growlithe.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/lucario.gif']
+  },
+  BAHAMUT: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/charmander.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/reshiram.gif']
+  },
+  KRAKEN: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/tentacool.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/kyogre.gif']
+  },
+  JORMUNGANDR: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/ekans.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/steelix.gif']
+  },
+  // ✨ Immortal
+  CHRONOS: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/celebi.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/dialga.gif']
+  },
+  OUROBOROS: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/dunsparce.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/serperior.gif']
+  },
+  AZATHOTH: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/unown.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/giratina-origin.gif']
+  },
+  YGGDRASIL: {
+    BABY: ['https://img.pokemondb.net/sprites/black-white/anim/normal/oddish.gif'],
+    ADULT: ['https://img.pokemondb.net/sprites/black-white/anim/normal/abomasnow.gif']
+  },
   // GIF khusus untuk aksi/interaksi tertentu
   ACTION: {
     WORK: [
@@ -2459,7 +2493,9 @@ module.exports = {
       UNCOMMON: 0x2ECC71,
       RARE: 0x3498DB,
       EPIC: 0x9B59B6,
-      LEGENDARY: 0xF1C40F
+      LEGENDARY: 0xF1C40F,
+      MYTHIC: 0xFF1744,
+      IMMORTAL: 0xFFD700
     };
 
     // Skema warna kartu dinamis berdasarkan elemen atau kasta raritas
@@ -2565,15 +2601,24 @@ module.exports = {
       UNCOMMON: '🟢 UNCOMMON',
       RARE: '🔵 RARE',
       EPIC: '🟣 EPIC',
-      LEGENDARY: '🟡 LEGENDARY'
+      LEGENDARY: '🟡 LEGENDARY',
+      MYTHIC: '🔴 MYTHIC',
+      IMMORTAL: '✨ IMMORTAL'
     };
     const rarityLabel = RARITY_DISPLAY[petRarity] || `✨ ${petRarity}`;
 
     // Get Trait details
     let traitText = '';
     const traitList = [];
-    if (pet.trait) traitList.push(pet.trait.toUpperCase());
-    if (pet.gacha_trait2) traitList.push(pet.gacha_trait2.toUpperCase());
+    if (pet.trait) {
+      traitList.push(pet.trait.toUpperCase().trim());
+    }
+    if (pet.gacha_trait2) {
+      pet.gacha_trait2.split(',').forEach(t => {
+        const trimmed = t.toUpperCase().trim();
+        if (trimmed) traitList.push(trimmed);
+      });
+    }
 
     if (traitList.length > 0) {
       traitText = traitList.map(t => {

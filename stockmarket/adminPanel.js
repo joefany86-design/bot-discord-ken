@@ -333,7 +333,17 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder().setLabel('🐢 Kura-Kura (Turtle)').setDescription('🟣 Epic — Tangguh (+20% HP & DEF)').setValue('TURTLE'),
         new StringSelectMenuOptionBuilder().setLabel('🌊 Leviathan').setDescription('🟡 Legendary — Naga lautan kuno').setValue('LEVIATHAN'),
         new StringSelectMenuOptionBuilder().setLabel('🦏 Behemoth').setDescription('🟡 Legendary — Monster bumi').setValue('BEHEMOTH'),
-        new StringSelectMenuOptionBuilder().setLabel('🐉 Archdragon').setDescription('🟡 Legendary — Naga purba tertua').setValue('ARCHDRAGON')
+        new StringSelectMenuOptionBuilder().setLabel('🐉 Archdragon').setDescription('🟡 Legendary — Naga purba tertua').setValue('ARCHDRAGON'),
+        new StringSelectMenuOptionBuilder().setLabel('━━ MYTHIC ━━').setDescription('🔴 Makhluk mitologi langka').setValue('_separator_mythic').setDefault(false),
+        new StringSelectMenuOptionBuilder().setLabel('🐺 Fenrir').setDescription('🔴 Mythic — Serigala pemusnah akhir zaman').setValue('FENRIR'),
+        new StringSelectMenuOptionBuilder().setLabel('🐲 Bahamut').setDescription('🔴 Mythic — Naga kaisar maha-api').setValue('BAHAMUT'),
+        new StringSelectMenuOptionBuilder().setLabel('🦑 Kraken').setDescription('🔴 Mythic — Raksasa cumi laut abyss').setValue('KRAKEN'),
+        new StringSelectMenuOptionBuilder().setLabel('🐍 Jörmungandr').setDescription('🔴 Mythic — Ular dunia pembelah bumi').setValue('JORMUNGANDR'),
+        new StringSelectMenuOptionBuilder().setLabel('━━ IMMORTAL ━━').setDescription('✨ Entitas kosmik abadi (Admin Only)').setValue('_separator_immortal').setDefault(false),
+        new StringSelectMenuOptionBuilder().setLabel('⏳ Chronos').setDescription('✨ Immortal — Dewa Waktu primordial').setValue('CHRONOS'),
+        new StringSelectMenuOptionBuilder().setLabel('♾️ Ouroboros').setDescription('✨ Immortal — Ular keabadian abadi').setValue('OUROBOROS'),
+        new StringSelectMenuOptionBuilder().setLabel('🌌 Azathoth').setDescription('✨ Immortal — Entitas kosmik pemusnah').setValue('AZATHOTH'),
+        new StringSelectMenuOptionBuilder().setLabel('🌳 Yggdrasil').setDescription('✨ Immortal — Pohon Dunia sembilan alam').setValue('YGGDRASIL')
       );
 
       // Trait Select
@@ -499,7 +509,25 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         if (!statusText) statusText = '*Tidak ada data.*';
 
         let speciesText = '';
-        const speciesMap = { 'SLIME': '🟢 Slime', 'DRAGON': '🔥 Dragon', 'CAT': '🐱 Cat', 'GOLEM': '🧱 Golem' };
+        const speciesMap = {
+          'CAT': '🐱 Cat',
+          'GOLEM': '🧱 Golem',
+          'SLIME': '🟢 Slime',
+          'DRAGON': '🔥 Dragon',
+          'PHOENIX': '🦅 Phoenix',
+          'TURTLE': '🐢 Kura-Kura',
+          'LEVIATHAN': '🌊 Leviathan',
+          'BEHEMOTH': '🦏 Behemoth',
+          'ARCHDRAGON': '🐉 Archdragon',
+          'FENRIR': '🐺 Fenrir',
+          'BAHAMUT': '🐲 Bahamut',
+          'KRAKEN': '🦑 Kraken',
+          'JORMUNGANDR': '🐍 Jörmungandr',
+          'CHRONOS': '⏳ Chronos',
+          'OUROBOROS': '♾️ Ouroboros',
+          'AZATHOTH': '🌌 Azathoth',
+          'YGGDRASIL': '🌳 Yggdrasil'
+        };
         summarySpecies.forEach(row => {
           const label = speciesMap[row.pet_type] || row.pet_type;
           speciesText += `• ${label}: **${row.count} pet**\n`;
@@ -517,7 +545,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       }
       // === Give Custom Pet Sub-Menu Handlers ===
       else if (iPet.customId === 'admin_pet_give_species') {
-        petGiveSpecies = iPet.values[0];
+        const val = iPet.values[0];
+        if (val.startsWith('_separator_')) {
+          return iPet.reply({ content: '❌ Silakan pilih spesies pet yang valid, bukan separator!', flags: 64 });
+        }
+        petGiveSpecies = val;
         const fresh = getPetPanelData(guildId, selectedTargetUserId);
         await iPet.update(fresh);
       }
@@ -605,6 +637,31 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
             }
 
+            const gSource = 'ADMIN';
+            const gRarity = speciesInfo.rarity || 'COMMON';
+            const gElement = speciesInfo.element || '';
+
+            // Batas Maksimum Pet
+            if (gRarity === 'MYTHIC') {
+              const mythicCountRow = database.get(
+                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = "MYTHIC"',
+                [selectedTargetUserId, guildId]
+              );
+              const mythicCount = mythicCountRow ? mythicCountRow.count : 0;
+              if (mythicCount >= 2) {
+                return sub.reply({ content: `❌ Target user <@${selectedTargetUserId}> sudah memiliki batas maksimum pet MYTHIC (maksimal 2 per user)!`, flags: 64 });
+              }
+            } else if (gRarity === 'IMMORTAL') {
+              const immortalCountRow = database.get(
+                'SELECT COUNT(*) as count FROM user_pets WHERE guild_id = ? AND gacha_rarity = "IMMORTAL"',
+                [guildId]
+              );
+              const immortalCount = immortalCountRow ? immortalCountRow.count : 0;
+              if (immortalCount >= 1) {
+                return sub.reply({ content: `❌ Server ini sudah memiliki batas maksimum pet IMMORTAL (maksimal 1 per server)!`, flags: 64 });
+              }
+            }
+
             // Clamping Level & Star
             pLevel = Math.max(1, pLevel);
 
@@ -621,14 +678,22 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             const bonusDefPct = (pStar - 1) * 0.15;
             const maxHP = baseHP + bonusHp;
 
-            const gSource = 'ADMIN';
-            const gRarity = speciesInfo.rarity || 'COMMON';
-            const gElement = speciesInfo.element || '';
-
-            // Auto-assign traits if empty and needed
+            // Auto-assign traits & XP Multiplier
             let finalTrait = pTrait;
             let finalTrait2 = '';
-            if (!finalTrait) {
+            let xpMultiplier = 1.0;
+
+            if (gRarity === 'MYTHIC') {
+              xpMultiplier = 1.5;
+              const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
+              const shuffled = [...allTraits].sort(() => 0.5 - Math.random());
+              finalTrait = shuffled[0];
+              finalTrait2 = shuffled.slice(1, 3).join(',');
+            } else if (gRarity === 'IMMORTAL') {
+              xpMultiplier = 3.0;
+              finalTrait = 'GENIUS';
+              finalTrait2 = 'STURDY,MUTANT,WARRIOR,SURVIVOR';
+            } else if (!finalTrait || finalTrait === 'NONE') {
               const traitsPool = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
               if (gRarity === 'LEGENDARY') {
                 finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
@@ -638,6 +703,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                 finalTrait = 'SURVIVOR';
               } else if (gRarity === 'RARE') {
                 finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
+              } else {
+                finalTrait = '';
               }
             }
 
@@ -646,24 +713,45 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                 user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
                 last_interaction_at, hatch_at, created_at, is_active, trait, 
                 star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
-                gacha_source, gacha_rarity, gacha_element, gacha_trait2
+                gacha_source, gacha_rarity, gacha_element, gacha_trait2, xp_multiplier
               ) VALUES (
                 ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
                 ?, ?, ?, ?, ?, 
                 ?, ?, ?, ?,
-                ?, ?, ?, ?
+                ?, ?, ?, ?, ?
               )`,
               [
                 selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
                 now, hatchAt, now, isActive, finalTrait,
                 pStar, bonusHp, bonusAtkPct, bonusDefPct,
-                gSource, gRarity, gElement, finalTrait2
+                gSource, gRarity, gElement, finalTrait2, xpMultiplier
               ]
             );
 
             const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
             const starText = petModule.renderStars(pStar);
             await sub.reply({ content: `🎁 Sukses memberikan pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${selectedTargetUserId}>!`, flags: 64 });
+
+            // Send global economic announcement for MYTHIC/IMMORTAL
+            if (gRarity === 'MYTHIC' || gRarity === 'IMMORTAL') {
+              const rarityEmoji = gRarity === 'MYTHIC' ? '🔴' : '✨';
+              const rarityColor = gRarity === 'MYTHIC' ? '#FF1744' : '#FFD700';
+              const allTraitsStr = [finalTrait, ...finalTrait2.split(',').filter(Boolean)].join(', ');
+              await sendGlobalEconomyAnnouncement(
+                client,
+                guild,
+                author,
+                `${rarityEmoji} Pemberian Pet Legendaris ${gRarity}`,
+                `🎉 Admin baru saja menciptakan dan menganugerahkan pet kasta teratas **${sanitizedName}** (${pType}) ${rarityEmoji} **${gRarity}** kepada warga kita <@${selectedTargetUserId}>! Pet ini memiliki kemampuan luar biasa dan kekuatan yang sangat dahsyat.`,
+                rarityColor,
+                [
+                  { name: 'Penerima', value: `<@${selectedTargetUserId}>`, inline: true },
+                  { name: 'Spesies', value: `${speciesInfo.name} (${pType})`, inline: true },
+                  { name: 'Bintang', value: petModule.renderStars(pStar), inline: true },
+                  { name: 'Trait Aktif', value: allTraitsStr || 'Tidak ada', inline: false }
+                ]
+              );
+            }
 
             // Reset state and go back to main
             petPanelSubMenu = 'main';
