@@ -44,6 +44,7 @@ client.once('ready', async () => {
         `• 📈 **Bursa Saham** — Investasi saham channel server.\n` +
         `• 🏦 **Bank Sentral** — Simpan uang (tabungan) & pinjam koin.\n` +
         `• 🕵️‍♂️ **Black Market** — Beli peralatan aksi kriminal (rob).\n` +
+        `• ⚖️ **Pasar Lelang** — Bursa jual-beli barang & pet warga.\n` +
         `• 🎒 **Profil & Aset** — Lihat peralatan & barang mewah.\n\n` +
         `🐾 **DUNIA PET & GAYA HIDUP**\n` +
         `• 🐾 **Kandang Pet** — Pusat perawatan, kerja, buru, & kelola pet.\n` +
@@ -72,7 +73,11 @@ client.once('ready', async () => {
       new ButtonBuilder().setCustomId('eco_btn_lottery_hub').setLabel('🎟️ Lotre Mingguan').setStyle(ButtonStyle.Success)
     );
 
-    await channel.send({ embeds: [embed], components: [row1, row2], files: [attachment] });
+    const row3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success)
+    );
+
+    await channel.send({ embeds: [embed], components: [row1, row2, row3], files: [attachment] });
     
     console.log('✅ Portal baru yang super premium berhasil dikirim!');
     process.exit(0);
