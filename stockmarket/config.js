@@ -9,6 +9,34 @@ module.exports = {
   CURRENCY_NAME: 'Rupiah Server Kosan 1A',
   CURRENCY_SYMBOL: 'Rp',
 
+  // Owner & Admin Configuration
+  OWNER_ID: process.env.OWNER_ID || '436554535037698059',
+
+  // Target Guild ID (Guild utama untuk fitur spesifik)
+  TARGET_GUILD_ID: process.env.TARGET_GUILD_ID || '1410239829874053296',
+
+  // Saluran Khusus (Protected Channels)
+  channels: {
+    // Portal Dashboard Shop — hanya untuk panel interaktif
+    SHOP_PORTAL:     process.env.SHOP_CHANNEL_ID || '1510121069783023646',
+    // Saluran Pet Ekspedisi — dikunci saat ekspedisi berjalan
+    PET_EXPEDITION:  process.env.PET_EXPEDITION_CHANNEL_ID || '1509762623917265137',
+    // Saluran yang diblokir dari perintah teks
+    BLOCKED_TEXT_CMD: [
+      process.env.SHOP_CHANNEL_ID || '1510121069783023646',
+      '1422642326798598348',  // 💬┃living-room
+      '1472428770710261952',
+      '1422656689710305381',
+    ],
+    // Saluran yang diperbolehkan untuk perintah bot (fallback)
+    BOT_COMMAND:     process.env.BOT_COMMAND_CHANNEL_ID || '1508417228624887928',
+    // Jail/Thief Leaderboard Channels
+    JAIL_LEADERBOARD:  process.env.JAIL_LEADERBOARD_CHANNEL_ID || '1510474950698602627',
+    THIEF_LEADERBOARD: process.env.THIEF_LEADERBOARD_CHANNEL_ID || '1511017876407058463',
+    // Greeting Channel
+    GREETING:        process.env.GREETING_CHANNEL_ID || '1422642326798598348',
+  },
+
   // Database Path
   // Jika di Railway, user bisa memetakan volume persisten ke /data dan menyetel DATABASE_PATH=/data/economy.db
   DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, '../data/economy.db'),

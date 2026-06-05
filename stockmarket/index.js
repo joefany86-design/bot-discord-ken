@@ -14,10 +14,10 @@ const lottery = require('./lottery');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
-// Owner ID dari environment variable (fallback ke default)
-const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+// Owner ID dari config terpusat
+const OWNER_ID = config.OWNER_ID;
 // ID Channel Portal Shop (#🛍️┃shop) — panel hanya privat di channel ini
-const SHOP_CHANNEL_ID = '1510121069783023646';
+const SHOP_CHANNEL_ID = config.channels.SHOP_PORTAL;
 
 // Helper: Ambil gambar map ekspedisi berdasarkan mapId (1-10)
 function getMapAttachment(mapId) {
@@ -537,6 +537,8 @@ function getFunnyArrestReason(userId) {
  * secara berkala setiap 60 detik di channel masing-masing.
  */
 let leaderboardInterval = null; // Guard: mencegah interval bertumpuk
+const leaderboardMsgCache = new Map(); // Cache ID pesan leaderboard agar tidak fetch 50 pesan berulang-ulang
+
 function startRealtimeLeaderboard(client) {
   console.log('🏆 Memulai Papan Peringkat Realtime (60s)...');
 
@@ -548,16 +550,38 @@ function startRealtimeLeaderboard(client) {
   }
 
   async function updateLeaderboardMsg(channel, embed, keyword) {
+    const cacheKey = `${channel.id}_${keyword}`;
+    const cachedMsgId = leaderboardMsgCache.get(cacheKey);
+    const payload = { embeds: [embed], components: [] };
+
+    if (cachedMsgId) {
+      try {
+        const msg = channel.messages.cache.get(cachedMsgId) || await channel.messages.fetch(cachedMsgId).catch(() => null);
+        if (msg) {
+          await msg.edit(payload);
+          return msg;
+        } else {
+          leaderboardMsgCache.delete(cacheKey);
+        }
+      } catch (e) {
+        leaderboardMsgCache.delete(cacheKey);
+      }
+    }
+
     try {
       const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
       const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
       let matchMsg = botMessages.find(m => m.embeds[0] && m.embeds[0].title && m.embeds[0].title.toLowerCase().includes(keyword.toLowerCase()));
-      const payload = { embeds: [embed], components: [] };
       if (matchMsg) {
+        leaderboardMsgCache.set(cacheKey, matchMsg.id);
         await matchMsg.edit(payload).catch(() => {});
         return matchMsg;
       } else {
-        return await channel.send(payload).catch(() => null);
+        const newMsg = await channel.send(payload).catch(() => null);
+        if (newMsg) {
+          leaderboardMsgCache.set(cacheKey, newMsg.id);
+        }
+        return newMsg;
       }
     } catch (e) {
       console.error(`Error updating leaderboard message for keyword ${keyword}:`, e.message);
@@ -575,6 +599,7 @@ function startRealtimeLeaderboard(client) {
 
         const richData = economy.getLeaderboard(guildId, 10);
         await Promise.all(richData.map(async u => {
+          if (client.users.cache.has(u.userId)) return;
           try { await client.users.fetch(u.userId); } catch (e) { }
         }));
         const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
@@ -583,6 +608,9 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
     }
+
+    // Stagger/delay 5 detik
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     // ── 2. TOP PET EKSPEDISI LEADERBOARD ──
     try {
@@ -606,6 +634,7 @@ function startRealtimeLeaderboard(client) {
         );
 
         await Promise.all(topExpedition.map(async u => {
+          if (client.users.cache.has(u.user_id)) return;
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
 
@@ -616,6 +645,9 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime pet expedition leaderboard:', err);
     }
+
+    // Stagger/delay 5 detik
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     // ── 3. DAILY LEADERBOARD ──
     try {
@@ -637,6 +669,7 @@ function startRealtimeLeaderboard(client) {
         const list = database.all(query, [guildId, todayStr]);
 
         await Promise.all(list.map(async u => {
+          if (client.users.cache.has(u.user_id)) return;
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
         const dailyEmbed = embeds.dailyLeaderboardEmbed(guildName, list, client);
@@ -646,9 +679,13 @@ function startRealtimeLeaderboard(client) {
       console.error('❌ Error updating realtime daily leaderboard:', err);
     }
 
-    // ── 4. TOP JAIL LEADERBOARD (Channel: 1510474950698602627) ──
+    // Stagger/delay 5 detik
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // ── 4. TOP JAIL LEADERBOARD (Channel dari config) ──
     try {
-      const jailChannel = await client.channels.fetch('1510474950698602627').catch(() => null);
+      const jailChanId = config.channels.JAIL_LEADERBOARD || '1510474950698602627';
+      const jailChannel = await client.channels.fetch(jailChanId).catch(() => null);
       if (jailChannel) {
         const guildId = jailChannel.guild.id;
         const guildName = jailChannel.guild.name;
@@ -668,6 +705,7 @@ function startRealtimeLeaderboard(client) {
           );
         } else {
           await Promise.all(topJail.map(async row => {
+            if (client.users.cache.has(row.user_id)) return;
             try { await client.users.fetch(row.user_id); } catch (e) { }
           }));
 
@@ -699,9 +737,13 @@ function startRealtimeLeaderboard(client) {
       console.error('❌ Error updating realtime jail leaderboard:', err);
     }
 
-    // ── 5. TOP THIEF LEADERBOARD (Dynamic & ID-based Channel matching) ──
+    // Stagger/delay 5 detik
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // ── 5. TOP THIEF LEADERBOARD (Channel dari config) ──
     try {
-      let thiefChannel = await client.channels.fetch('1511017876407058463').catch(() => null);
+      const thiefChanId = config.channels.THIEF_LEADERBOARD || '1511017876407058463';
+      let thiefChannel = await client.channels.fetch(thiefChanId).catch(() => null);
       if (!thiefChannel) {
         for (const [_, guild] of client.guilds.cache) {
           const channels = guild.channels.cache;
@@ -726,6 +768,7 @@ function startRealtimeLeaderboard(client) {
 
         const thiefData = economy.getThiefLeaderboard(guildId, 10);
         await Promise.all(thiefData.map(async u => {
+          if (client.users.cache.has(u.user_id)) return;
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
         const thiefEmbed = embeds.thiefLeaderboardEmbed(guildName, thiefData, client);
@@ -853,7 +896,7 @@ function initStockMarket(client) {
 
       // Handler untuk tombol prompt membuka admin panel privat khusus owner
       if (customId === 'eco_btn_open_admin_panel_private') {
-        if (user.id !== '436554535037698059') {
+        if (user.id !== OWNER_ID) {
           return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Owner utama.', flags: 64 });
         }
         const adminPanel = require('./adminPanel');

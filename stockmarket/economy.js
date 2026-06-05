@@ -7,7 +7,7 @@ const config = require('./config');
  */
 function getWallet(userId, guildId) {
   // Cek apakah target adalah bot di guild target
-  const isTargetGuild = guildId === '1410239829874053296';
+  const isTargetGuild = guildId === config.TARGET_GUILD_ID;
   let isBot = false;
   if (isTargetGuild && global.client) {
     const guild = global.client.guilds.cache.get(guildId);
@@ -60,7 +60,7 @@ function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
   if (amount <= 0) return;
 
   // Cek apakah target adalah bot di guild target
-  const isTargetGuild = guildId === '1410239829874053296';
+  const isTargetGuild = guildId === config.TARGET_GUILD_ID;
   let isBot = false;
   if (isTargetGuild && global.client) {
     const guild = global.client.guilds.cache.get(guildId);

@@ -111,8 +111,16 @@ function renderStars(n) {
 
 function isGodPet(pet) {
   if (!pet) return false;
-  if (pet.pet_name.toLowerCase() === 'ramzi' && pet.user_id === '436554535037698059') {
-    return true;
+  // God pet configurable: pet milik Owner dengan nama khusus, atau rarity IMMORTAL
+  const ownerID = config.OWNER_ID || process.env.OWNER_ID;
+  if (ownerID && pet.user_id === ownerID) {
+    // Cek apakah owner_god_mode diaktifkan di ebyus_settings
+    try {
+      const settings = db.get('SELECT owner_god_mode FROM ebyus_settings WHERE guild_id = ?', [pet.guild_id]);
+      if (settings && settings.owner_god_mode === 1) return true;
+    } catch (e) {
+      // Fallback: tetap bukan god pet jika query gagal
+    }
   }
   const rarity = pet.gacha_rarity || (GACHA_SPECIES[pet.pet_type] ? GACHA_SPECIES[pet.pet_type].rarity : '');
   return rarity === 'IMMORTAL';
@@ -624,6 +632,38 @@ function getPet(userId, guildId) {
 }
 
 /**
+ * Membersihkan nama pet dari sebutan Discord, karakter zero-width,
+ * karakter kontrol, backticks, dan spasi berlebih.
+ * Melempar error jika nama tidak valid atau terlalu panjang.
+ * 
+ * @param {string} petName - Nama mentah dari input user.
+ * @returns {string} Nama yang sudah dibersihkan.
+ */
+function sanitizePetName(petName) {
+  if (!petName || typeof petName !== 'string' || petName.trim().length === 0) {
+    throw new Error('Harap berikan nama untuk peliharaan Anda!');
+  }
+  const sanitized = petName
+    .replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '')  // Discord mentions
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')          // Zero-width characters
+    .replace(/[\x00-\x1F\x7F]/g, '')                            // Control characters
+    .replace(/`/g, '')                                           // Backticks (embed escape)
+    .trim();
+    
+  if (sanitized.length === 0) {
+    throw new Error('Nama pet tidak valid setelah dibersihkan dari karakter khusus!');
+  }
+  if (sanitized.length > 25) {
+    throw new Error('Nama pet maksimal 25 karakter!');
+  }
+  // Validasi: setidaknya ada 1 huruf/angka yang terlihat
+  if (!/[a-zA-Z0-9\u00C0-\u024F\u1100-\u11FF\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(sanitized)) {
+    throw new Error('Nama pet harus mengandung setidaknya 1 huruf atau angka yang terlihat!');
+  }
+  return sanitized;
+}
+
+/**
  * Mengadopsi / membeli telur pet baru seharga Rp 1.500.
  */
 function adoptPet(userId, guildId, petName, petType) {
@@ -635,18 +675,8 @@ function adoptPet(userId, guildId, petName, petType) {
   if (!PET_SPECIES[typeUpper]) {
     throw new Error(`Spesies pet tidak valid! Pilihan: ${Object.keys(PET_SPECIES).join(', ')}`);
   }
-  if (!petName || petName.trim().length === 0) {
-    throw new Error('Harap berikan nama untuk peliharaan Anda!');
-  }
   
-  // Sanitasi Nama Pet dari sebutan Discord
-  const sanitizedName = petName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
-  if (sanitizedName.length === 0) {
-    throw new Error('Nama pet tidak valid setelah dibersihkan dari sebutan!');
-  }
-  if (sanitizedName.length > 25) {
-    throw new Error('Nama pet maksimal 25 karakter!');
-  }
+  const sanitizedName = sanitizePetName(petName);
 
   // Hitung jumlah pet yang sudah dimiliki (tetap dihitung untuk menentukan isActive)
   const petsCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
@@ -1623,16 +1653,7 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
   const chalCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [challengerId, guildId]);
   const chalCount = chalCountRow ? chalCountRow.count : 0;
 
-  if (!newPetName || newPetName.trim().length === 0) {
-    throw new Error('Harap tentukan nama untuk bayi pet baru Anda!');
-  }
-  const sanitizedName = newPetName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
-  if (sanitizedName.length === 0) {
-    throw new Error('Nama pet tidak valid setelah dibersihkan dari sebutan!');
-  }
-  if (sanitizedName.length > 25) {
-    throw new Error('Nama pet maksimal 25 karakter!');
-  }
+  const sanitizedName = sanitizePetName(newPetName);
 
   // Cek Nama Duplikat
   const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [challengerId, guildId, sanitizedName.toLowerCase()]);
@@ -3172,13 +3193,7 @@ function _rollOnce() {
  */
 function saveGachaPet(userId, guildId, pullResult, petName) {
   // Sanitasi nama
-  const sanitizedName = petName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
-  if (!sanitizedName || sanitizedName.length === 0) {
-    throw new Error('Nama pet tidak valid!');
-  }
-  if (sanitizedName.length > 25) {
-    throw new Error('Nama pet maksimal 25 karakter!');
-  }
+  const sanitizedName = sanitizePetName(petName);
 
   // Cek slot kandang
   const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);

@@ -34,21 +34,43 @@ try {
 process.env.FFMPEG_BIN = ffmpegPath;
 process.env.FFMPEG_PATH = ffmpegPath;
 
-// Owner ID dari environment variable (fallback ke default)
-const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+// Owner ID dari config terpusat
+const OWNER_ID = config.OWNER_ID;
 
 
 
 // ═══════════════════════════════════════════════════
-// GLOBAL ERROR HANDLERS (mencegah bot crash)
+// GLOBAL ERROR HANDLERS (mencegah bot crash & notifikasi owner)
 // ═══════════════════════════════════════════════════
+async function sendErrorToOwner(error, type) {
+  try {
+    const errorStack = error?.stack || error?.message || error || 'Unknown Error';
+    console.error(`🚨 [System Error] ${type}:`, errorStack);
+    
+    // Kirim DM ke owner jika client sudah siap
+    if (global.client && global.client.isReady() && OWNER_ID) {
+      const owner = await global.client.users.fetch(OWNER_ID).catch(() => null);
+      if (owner) {
+        const embed = new EmbedBuilder()
+          .setColor(0xFF0000) // Danger Red
+          .setTitle(`🚨 Alert Sistem: ${type}`)
+          .setDescription(`\`\`\`js\n${errorStack.substring(0, 1900)}\n\`\`\``)
+          .setTimestamp();
+        await owner.send({ embeds: [embed] }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('❌ Gagal mengirim notifikasi error ke owner:', err.message);
+  }
+}
+
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️ Unhandled Rejection:', reason?.message || reason);
+  sendErrorToOwner(reason, 'Unhandled Rejection');
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('⚠️ Uncaught Exception:', error.message);
-  // Jangan exit agar bot tetap jalan
+  sendErrorToOwner(error, 'Uncaught Exception');
+  // Jangan exit agar bot tetap jalan di VPS, tapi laporkan stack trace lengkap
 });
 
 // ═══════════════════════════════════════════════════
@@ -75,6 +97,18 @@ const os = require('os');
 // State Maps untuk melacak status bot per server (Guild)
 const lockedChannels = new Map();     // ID Voice Channel terkunci per server
 const activeTtsPlayers = new Map();   // AudioPlayer TTS aktif per server
+
+// Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi (O(1) Set lookup)
+const BLOCKED_CMD_CHANNELS_SET = new Set([
+  ...config.channels.BLOCKED_TEXT_CMD,
+  config.REPORT_CHANNEL_ID,
+  config.BANK_REPORT_CHANNEL_ID,
+  config.DAILY_CLAIM_CHANNEL_ID,
+  config.ANNOUNCEMENT_CHANNEL_ID,
+  config.LEADERBOARD_RICH_CHANNEL_ID,
+  config.LEADERBOARD_PET_CHANNEL_ID,
+  config.LEADERBOARD_DAILY_CHANNEL_ID
+].filter(id => id && id !== config.channels.BOT_COMMAND));
 
 // Bagikan state ke client agar bisa diakses oleh sub-modul
 client.activeTtsPlayers = activeTtsPlayers;
@@ -236,6 +270,145 @@ function cleanupResources(guildId) {
   }
 }
 
+// Logika Inti Perintah Join Voice Channel (Shared)
+async function handleVoiceJoin(member, guild, guildId) {
+  const voiceChannel = member?.voice?.channel;
+  if (!voiceChannel) {
+    return { success: false, errorType: 'NO_CHANNEL', message: '🔇 **Anda harus bergabung ke Voice Channel terlebih dahulu!**' };
+  }
+
+  try {
+    lockedChannels.set(guildId, voiceChannel.id);
+
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: guildId,
+      adapterCreator: guild.voiceAdapterCreator,
+      selfDeaf: false,
+    });
+
+    setupConnectionListeners(connection, guildId, guild);
+
+    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+
+    // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
+    speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
+
+    return { success: true, channelName: voiceChannel.name };
+  } catch (error) {
+    console.error('Kesalahan shared voice join:', error);
+    lockedChannels.delete(guildId);
+    return {
+      success: false,
+      errorType: 'EXCEPTION',
+      message: `❌ **Gagal bergabung ke Voice Channel!**\n\n` +
+        `**Kemungkinan penyebab:**\n` +
+        `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap buka port outbound UDP 50000-65535).\n` +
+        `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
+        `3️⃣ **Timeout Jaringan** (Jaringan VPS bermasalah/Discord gateway sibuk, silakan coba lagi).`
+    };
+  }
+}
+
+// Logika Inti Perintah Leave Voice Channel (Shared)
+async function handleVoiceLeave(member, guild, guildId) {
+  const hasLock = lockedChannels.has(guildId);
+  if (!hasLock && !getVoiceConnection(guildId)) {
+    return { success: false, message: '❌ **Bot tidak sedang berada di Voice Channel!**' };
+  }
+
+  const memberVoiceChannel = member?.voice?.channel;
+  const botVoiceChannel = guild.members.me?.voice?.channel;
+  if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
+    return { success: false, message: `❌ **Anda harus bergabung ke Voice Channel** **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!` };
+  }
+
+  try {
+    const channelName = botVoiceChannel?.name || 'Voice Channel';
+    lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
+    cleanupResources(guildId);
+    return { success: true, channelName };
+  } catch (error) {
+    console.error('Kesalahan shared voice leave:', error);
+    return { success: false, message: '❌ **Terjadi kesalahan saat keluar.**' };
+  }
+}
+
+// Logika Inti Perintah Speak (Shared)
+async function handleVoiceSpeak(text, lang, guildId) {
+  const connection = getVoiceConnection(guildId);
+  if (!connection) {
+    return { success: false, message: '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `/join` atau `.join` terlebih dahulu.' };
+  }
+
+  try {
+    await speakText(connection, text, guildId, lang);
+    return { success: true };
+  } catch (error) {
+    console.error('Kesalahan shared voice speak:', error);
+    return { success: false, message: '❌ **Gagal memproses suara TTS.**' };
+  }
+}
+
+// Logika Inti Mengambil Status & Statistik (Shared)
+function getStatusData(guild, guildId, client) {
+  const systemUptime = formatUptime(os.uptime());
+  const botUptime = formatUptime(process.uptime());
+  const memoryUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
+  const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
+  const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
+
+  const connection = getVoiceConnection(guildId);
+  const channelId = lockedChannels.get(guildId);
+  const isLocked = !!channelId;
+  const voiceChanName = channelId ? (guild.channels.cache.get(channelId)?.name || `ID: ${channelId}`) : 'Tidak Terhubung';
+  const connectionState = connection ? 'Tersambung (Ready)' : 'Terputus';
+
+  return {
+    systemUptime,
+    botUptime,
+    memoryUsage,
+    totalMem,
+    freeMem,
+    connectionState,
+    voiceChanName,
+    isLocked
+  };
+}
+
+function buildStatusEmbed(statusData, guild, client) {
+  return new EmbedBuilder()
+    .setColor(0x00E5FF) // Celestial Ice Blue
+    .setTitle('📊 Status Realtime & Statistik Bot')
+    .setThumbnail(client.user.displayAvatarURL())
+    .addFields(
+      {
+        name: '🔒 Status Koneksi & Saluran',
+        value: [
+          `👉 **Status Koneksi**: \`${statusData.connectionState}\``,
+          `👉 **Saluran Terkunci**: \`${statusData.voiceChanName}\` ${statusData.isLocked ? '🔒' : '🔓'}`,
+          `👉 **Status Proteksi**: \`${statusData.isLocked ? 'AKTIF (Terkunci)' : 'NON-AKTIF'}\``
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: '💻 Statistik Sistem & Bot',
+        value: [
+          `👉 **Uptime Bot**: \`${statusData.botUptime}\``,
+          `👉 **Uptime OS**: \`${statusData.systemUptime}\``,
+          `👉 **Penggunaan RAM Bot**: \`${statusData.memoryUsage} MB\``,
+          `👉 **RAM Server**: \`${statusData.freeMem} GB Bebas / ${statusData.totalMem} GB Total\``,
+          `👉 **Platform OS**: \`${os.platform()} (${os.arch()})\``,
+          `👉 **Node.js**: \`${process.version}\``,
+          `👉 **Discord.js**: \`v${require('discord.js').version}\``
+        ].join('\n'),
+        inline: false
+      }
+    )
+    .setFooter({ text: 'Bot Radio Proteksi 2026' })
+    .setTimestamp();
+}
+
 async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, client) {
   // 1. Bangun embed kontrol panel utama
   const mainEmbed = new EmbedBuilder()
@@ -371,8 +544,7 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 
         await i.reply({ embeds: [memberEmbed], flags: 64 });
       } else if (i.customId === 'help_btn_admin') {
-        // Pengecekan perizinan admin
-        const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+        // Pengecekan perizinan admin (menggunakan OWNER_ID dari config terpusat)
         const isOwner = i.user.id === OWNER_ID;
         const isGuildOwner = guild && i.user.id === guild.ownerId;
         const memberObj = i.member || await guild.members.fetch(i.user.id).catch(() => null);
@@ -526,10 +698,11 @@ client.once('clientReady', () => {
   client.user.setActivity('🎙️ .join & /join | Bot Kosan 1A', { type: 2 });
 
   // Cache seluruh member di guild target agar status bot bisa dideteksi secara akurat
-  const targetGuild = client.guilds.cache.get('1410239829874053296');
+  const targetGuildId = config.TARGET_GUILD_ID;
+  const targetGuild = client.guilds.cache.get(targetGuildId);
   if (targetGuild) {
     targetGuild.members.fetch().then(() => {
-      console.log('✅ Berhasil mencache seluruh member guild 1410239829874053296');
+      console.log(`✅ Berhasil mencache seluruh member guild ${targetGuildId}`);
     }).catch(err => {
       console.error('❌ Gagal mencache member guild:', err.message);
     });
@@ -556,9 +729,9 @@ client.on('interactionCreate', async interaction => {
   }
 
   // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
-  if (interaction.channelId === '1510121069783023646') {
+  if (interaction.channelId === config.channels.SHOP_PORTAL) {
     return interaction.reply({
-      content: '⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#1508417228624887928>!',
+      content: `⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>!`,
       flags: 64
     });
   }
@@ -567,43 +740,16 @@ client.on('interactionCreate', async interaction => {
 
   // ── JOIN ──
   if (commandName === 'join') {
-    const voiceChannel = member.voice.channel;
-    if (!voiceChannel) {
-      return interaction.reply({ content: '🔇 Kamu harus bergabung ke Voice Channel terlebih dahulu!', flags: 64 });
-    }
-
-    try {
-      // Set lock channel
-      lockedChannels.set(guildId, voiceChannel.id);
-
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: guildId,
-        adapterCreator: guild.voiceAdapterCreator,
-        selfDeaf: false,
-      });
-
-      setupConnectionListeners(connection, guildId, guild);
-
-      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-
-      // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
-      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
-
+    const res = await handleVoiceJoin(member, guild, guildId);
+    if (res.success) {
       await interaction.reply({
-        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${voiceChannel.name}**!\n` +
+        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${res.channelName}**!\n` +
           `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
         flags: 64
       });
-    } catch (error) {
-      console.error('Kesalahan slash join:', error);
-      lockedChannels.delete(guildId);
+    } else {
       await interaction.reply({
-        content: `❌ **Gagal bergabung ke Voice Channel!**\n\n` +
-          `**Kemungkinan penyebab:**\n` +
-          `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap buka port outbound UDP 50000-65535).\n` +
-          `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
-          `3️⃣ **Timeout Jaringan** (Discord gateway sedang sibuk, silakan coba lagi atau jalankan restart bot di VPS).`,
+        content: res.message,
         flags: 64
       });
     }
@@ -611,24 +757,17 @@ client.on('interactionCreate', async interaction => {
 
   // ── LEAVE ──
   else if (commandName === 'leave') {
-    const hasLock = lockedChannels.has(guildId);
-    if (!hasLock && !getVoiceConnection(guildId)) {
-      return interaction.reply({ content: '❌ Bot tidak sedang berada di Voice Channel!', flags: 64 });
-    }
-
-    const memberVoiceChannel = member?.voice?.channel;
-    const botVoiceChannel = guild.members.me?.voice?.channel;
-    if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
-      return interaction.reply({ content: `❌ Anda harus bergabung ke Voice Channel **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`, flags: 64 });
-    }
-
-    try {
-      lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
-      cleanupResources(guildId);
-      await interaction.reply({ content: '👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel!', flags: 64 });
-    } catch (error) {
-      console.error('Kesalahan leave:', error);
-      await interaction.reply({ content: '❌ Terjadi kesalahan saat keluar.', flags: 64 });
+    const res = await handleVoiceLeave(member, guild, guildId);
+    if (res.success) {
+      await interaction.reply({
+        content: `👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel **${res.channelName}**!`,
+        flags: 64
+      });
+    } else {
+      await interaction.reply({
+        content: res.message,
+        flags: 64
+      });
     }
   }
 
@@ -725,8 +864,8 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung (Channel ID: 1509762623917265137)
-  if (message.channelId === '1509762623917265137') {
+  // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung
+  if (message.channelId === config.channels.PET_EXPEDITION) {
     const activeLobby = client.activeExpeditions;
     const guildHasActiveExpedition = activeLobby && Array.from(activeLobby.values()).some(l => l.guildId === message.guildId);
 
@@ -746,13 +885,13 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Papan Peringkat Realtime
-  const LEADERBOARD_CHANNELS = [
-    config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
-    config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
-    config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662'
-  ];
-  if (LEADERBOARD_CHANNELS.includes(message.channelId)) {
+  // Proteksi Saluran Papan Peringkat Realtime (O(1) Set lookup)
+  const LEADERBOARD_CHANNELS_SET = new Set([
+    config.LEADERBOARD_RICH_CHANNEL_ID,
+    config.LEADERBOARD_PET_CHANNEL_ID,
+    config.LEADERBOARD_DAILY_CHANNEL_ID
+  ].filter(Boolean));
+  if (LEADERBOARD_CHANNELS_SET.has(message.channelId)) {
     const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
 
@@ -771,14 +910,14 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // Proteksi Saluran Laporan / Log / Pengumuman Otomatis
-  const REPORT_AND_LOG_CHANNELS = [
-    config.REPORT_CHANNEL_ID || '1509480324373942272',
+  // Proteksi Saluran Laporan / Log / Pengumuman Otomatis (O(1) Set lookup)
+  const REPORT_AND_LOG_CHANNELS_SET = new Set([
+    config.REPORT_CHANNEL_ID,
     config.BANK_REPORT_CHANNEL_ID,
     config.DAILY_CLAIM_CHANNEL_ID,
     config.ANNOUNCEMENT_CHANNEL_ID
-  ].filter(id => id && id !== '1422642326798598348' && id !== '1508417228624887928' && id !== '1510121069783023646');
-  if (REPORT_AND_LOG_CHANNELS.includes(message.channelId)) {
+  ].filter(id => id && id !== config.channels.GREETING && id !== config.channels.BOT_COMMAND && id !== config.channels.SHOP_PORTAL));
+  if (REPORT_AND_LOG_CHANNELS_SET.has(message.channelId)) {
     const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has('Administrator');
 
@@ -846,23 +985,9 @@ client.on('messageCreate', async message => {
     }
   };
 
-  // Proteksi Saluran: Blokir & bersihkan seluruh perintah teks agar channel tetap rapi
-  const BLOCKED_CMD_CHANNELS = [
-    '1510121069783023646', // #🛍️┃shop (Portal Dashboard)
-    '1422642326798598348', // 💬┃living-room
-    '1472428770710261952',
-    '1422656689710305381',
-    config.REPORT_CHANNEL_ID || '1509480324373942272',
-    config.BANK_REPORT_CHANNEL_ID,
-    config.DAILY_CLAIM_CHANNEL_ID,
-    config.ANNOUNCEMENT_CHANNEL_ID,
-    config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
-    config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
-    config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662'
-  ].filter(id => id && id !== '1508417228624887928');
-  if (BLOCKED_CMD_CHANNELS.includes(message.channelId)) {
+  if (BLOCKED_CMD_CHANNELS_SET.has(message.channelId)) {
     const warnMsg = await message.channel.send({
-      content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#1508417228624887928>! Saluran ini tidak mendukung perintah bot.`
+      content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>! Saluran ini tidak mendukung perintah bot.`
     }).catch(() => null);
     if (warnMsg) {
       setTimeout(() => {
@@ -998,155 +1123,65 @@ client.on('messageCreate', async message => {
     return message.reply({ embeds: [embed] });
   }
 
-  // ── .joinlow ──
-  if (commandName === 'joinlow') {
-    const voiceChannel = member?.voice?.channel;
-    if (!voiceChannel) {
-      return replyEmbed(0xFF3366, '🔇 **Anda harus bergabung ke Voice Channel terlebih dahulu!**');
-    }
-
-    try {
-      lockedChannels.set(guildId, voiceChannel.id);
-
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: guildId,
-        adapterCreator: guild.voiceAdapterCreator,
-        selfDeaf: false,
-      });
-
-      setupConnectionListeners(connection, guildId, guild);
-
-      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-
-      // Mengucapkan halo saat bergabung (TTS) menggantikan musik otomatis
-      speakText(connection, "Halo semuanya! Saya sudah bergabung.", guildId, 'id').catch(() => { });
-
+  // ── .join / .joinlow ──
+  if (commandName === 'join' || commandName === 'joinlow') {
+    const res = await handleVoiceJoin(member, guild, guildId);
+    if (res.success) {
       const embed = new EmbedBuilder()
         .setColor(0x10B981) // Velvet Emerald Green
         .setTitle('🔒 Saluran Terkunci & Bergabung!')
-        .setDescription(`Berhasil bergabung ke Voice Channel **${voiceChannel.name}**.\n\n` +
+        .setDescription(`Berhasil bergabung ke Voice Channel **${res.channelName}**.\n\n` +
           `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.`)
         .setTimestamp();
 
       await message.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error('Kesalahan join prefix:', error);
-      lockedChannels.delete(guildId);
-      await replyEmbed(0xFF3366,
-        `❌ **Gagal bergabung ke Voice Channel!**\n\n` +
-        `**Kemungkinan penyebab:**\n` +
-        `1️⃣ **Port UDP Terblokir** di VPS Rumahweb (Harap minta support VPS untuk membuka port outbound UDP 50000-65535).\n` +
-        `2️⃣ **Izin Kurang** (Pastikan role bot memiliki izin \`Connect\` dan \`Speak\` di VC tersebut).\n` +
-        `3️⃣ **Timeout Jaringan** (Jaringan VPS bermasalah, silakan coba lagi atau jalankan restart bot di VPS).`
-      );
+    } else {
+      await replyEmbed(0xFF3366, res.message);
     }
   }
 
-  // ── .speaklow <teks> ──
-  else if (commandName === 'speaklow') {
-    const connection = getVoiceConnection(guildId);
-    if (!connection) {
-      return replyEmbed(0xFF3366, '❌ **Bot tidak berada di Voice Channel!** Hubungkan bot dengan `.joinlow` terlebih dahulu.');
-    }
-
+  // ── .speak / .speaklow <teks> ──
+  else if (commandName === 'speak' || commandName === 'speaklow') {
     let lang = 'id';
     let text = args.join(' ');
 
-    // Cek apakah argumen pertama adalah kode bahasa yang didukung (id atau en)
     if (args[0] && (args[0].toLowerCase() === 'en' || args[0].toLowerCase() === 'id')) {
       lang = args[0].toLowerCase();
       text = args.slice(1).join(' ');
     }
 
     if (!text) {
-      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speaklow Halo semuanya` (Bahasa Indonesia)\n👉 `.speaklow en Hello everyone` (Bahasa Inggris)');
+      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speak Halo semuanya` (Bahasa Indonesia)\n👉 `.speak en Hello everyone` (Bahasa Inggris)');
     }
 
-    try {
+    const res = await handleVoiceSpeak(text, lang, guildId);
+    if (res.success) {
       await message.react('🗣️').catch(() => { });
-      await speakText(connection, text, guildId, lang);
-    } catch (error) {
-      console.error('Kesalahan speak prefix:', error);
+    } else {
+      await replyEmbed(0xFF3366, res.message);
     }
   }
 
-  // ── .leavelow ──
-  else if (commandName === 'leavelow') {
-    const hasLock = lockedChannels.has(guildId);
-    if (!hasLock && !getVoiceConnection(guildId)) {
-      return replyEmbed(0xFF3366, '❌ **Bot tidak sedang berada di Voice Channel!**');
-    }
-
-    const memberVoiceChannel = member?.voice?.channel;
-    const botVoiceChannel = guild.members.me?.voice?.channel;
-    if (botVoiceChannel && (!memberVoiceChannel || memberVoiceChannel.id !== botVoiceChannel.id)) {
-      return replyEmbed(0xFF3366, `❌ **Anda harus bergabung ke Voice Channel** **${botVoiceChannel.name}** bersama bot untuk menggunakan perintah ini!`);
-    }
-
-    try {
-      lockedChannels.delete(guildId); // Buka kunci terlebih dahulu
-      cleanupResources(guildId);
-
+  // ── .leave / .leavelow ──
+  else if (commandName === 'leave' || commandName === 'leavelow') {
+    const res = await handleVoiceLeave(member, guild, guildId);
+    if (res.success) {
       const embed = new EmbedBuilder()
         .setColor(0xFF3366) // Crimson Rose
         .setTitle('👋 Keluar dari Voice Channel')
-        .setDescription(`Kunci saluran pada **${botVoiceChannel?.name || 'Voice Channel'}** telah dilepas dan bot berhasil keluar secara bersih.`)
+        .setDescription(`Kunci saluran pada **${res.channelName}** telah dilepas dan bot berhasil keluar secara bersih.`)
         .setTimestamp();
 
       await message.reply({ embeds: [embed] });
-    } catch (error) {
-      console.error('Kesalahan leave prefix:', error);
-      await replyEmbed(0xFF3366, '❌ **Terjadi kesalahan saat keluar.**');
+    } else {
+      await replyEmbed(0xFF3366, res.message);
     }
   }
 
-  // ── .statuslow ──
-  else if (commandName === 'statuslow') {
-    const systemUptime = formatUptime(os.uptime());
-    const botUptime = formatUptime(process.uptime());
-    const memoryUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
-    const totalMem = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
-    const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
-
-    // Voice stats
-    const connection = getVoiceConnection(guildId);
-    const channelId = lockedChannels.get(guildId);
-    const isLocked = !!channelId;
-    const voiceChanName = channelId ? (guild.channels.cache.get(channelId)?.name || `ID: ${channelId}`) : 'Tidak Terhubung';
-    const connectionState = connection ? 'Tersambung (Ready)' : 'Terputus';
-
-    const embed = new EmbedBuilder()
-      .setColor(0x00E5FF) // Celestial Ice Blue
-      .setTitle('📊 Status Realtime & Statistik Bot')
-      .setThumbnail(client.user.displayAvatarURL())
-      .addFields(
-        {
-          name: '🔒 Status Koneksi & Saluran',
-          value: [
-            `👉 **Status Koneksi**: \`${connectionState}\``,
-            `👉 **Saluran Terkunci**: \`${voiceChanName}\` ${isLocked ? '🔒' : '🔓'}`,
-            `👉 **Status Proteksi**: \`${isLocked ? 'AKTIF (Terkunci)' : 'NON-AKTIF'}\``
-          ].join('\n'),
-          inline: false
-        },
-        {
-          name: '💻 Statistik Sistem & Bot',
-          value: [
-            `👉 **Uptime Bot**: \`${botUptime}\``,
-            `👉 **Uptime OS**: \`${systemUptime}\``,
-            `👉 **Penggunaan RAM Bot**: \`${memoryUsage} MB\``,
-            `👉 **RAM Server**: \`${freeMem} GB Bebas / ${totalMem} GB Total\``,
-            `👉 **Platform OS**: \`${os.platform()} (${os.arch()})\``,
-            `👉 **Node.js**: \`${process.version}\``,
-            `👉 **Discord.js**: \`v${require('discord.js').version}\``
-          ].join('\n'),
-          inline: false
-        }
-      )
-      .setFooter({ text: 'Bot Radio Proteksi 2026' })
-      .setTimestamp();
-
+  // ── .status / .statuslow ──
+  else if (commandName === 'status' || commandName === 'statuslow') {
+    const statusData = getStatusData(guild, guildId, client);
+    const embed = buildStatusEmbed(statusData, guild, client);
     await message.reply({ embeds: [embed] });
   }
 
