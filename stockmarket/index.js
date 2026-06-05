@@ -2426,25 +2426,25 @@ function initStockMarket(client) {
 
                   if (item.id === 'FOOD_BASIC') {
                     effectDesc = '+30 Kenyangan';
-                    cooldownDesc = ' · Cooldown: 5m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.id === 'FOOD_PREMIUM') {
                     effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
-                    cooldownDesc = ' · Cooldown: 15m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.id === 'WATER') {
                     effectDesc = '+35 Hidrasi';
-                    cooldownDesc = ' · Cooldown: 5m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.id === 'MEDICINE') {
                     effectDesc = '+50 HP, Sembuhkan Sakit';
-                    cooldownDesc = ' · Cooldown: 10m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.id === 'TOY') {
                     effectDesc = '+50 Kebahagiaan';
-                    cooldownDesc = ' · Cooldown: 15m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.id === 'SODA_ENERGY') {
                     effectDesc = 'Reset Cooldown Kerja/Berburu';
                     cooldownDesc = ' · Cooldown: 30m';
                   } else if (item.id === 'SOAP_PET') {
                     effectDesc = 'Mandi Bersih (Hilangkan Bau)';
-                    cooldownDesc = ' · Cooldown: 10m';
+                    cooldownDesc = ' · Bebas Cooldown';
                   } else if (item.multiplier) {
                     effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
                     cooldownDesc = ' · Bebas Cooldown';
@@ -2484,7 +2484,7 @@ function initStockMarket(client) {
 
                     if (selectedItemId === 'SOAP_PET') {
                       result = pet.washPet(user.id, guildId);
-                      detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
+                      detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.`;
                     } else if (selectedItemId === 'SODA_ENERGY') {
                       result = pet.useSodaEnergy(user.id, guildId, false, iItemUse.member);
                       detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
@@ -2496,7 +2496,8 @@ function initStockMarket(client) {
                         detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${result.xpGained} XP**${result.levelUp ? ` (Naik ke Level **${result.pet.level}**! 🎉)` : ''}`;
                       } else {
                         const mins = Math.floor(result.item.cooldown / 60);
-                        detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).\n⏱️ *Cooldown: ${mins} Menit.*`;
+                        const cooldownText = result.item.cooldown > 0 ? `\n⏱️ *Cooldown: ${mins} Menit.*` : '';
+                        detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).${cooldownText}`;
                       }
                     }
 
@@ -5754,25 +5755,25 @@ async function handlePetCommand(message, client, args) {
 
             if (item.id === 'FOOD_BASIC') {
               effectDesc = '+30 Kenyangan';
-              cooldownDesc = ' · Cooldown: 5m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.id === 'FOOD_PREMIUM') {
               effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
-              cooldownDesc = ' · Cooldown: 15m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.id === 'WATER') {
               effectDesc = '+35 Hidrasi';
-              cooldownDesc = ' · Cooldown: 5m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.id === 'MEDICINE') {
               effectDesc = '+50 HP, Sembuhkan Sakit';
-              cooldownDesc = ' · Cooldown: 10m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.id === 'TOY') {
               effectDesc = '+50 Kebahagiaan';
-              cooldownDesc = ' · Cooldown: 15m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.id === 'SODA_ENERGY') {
               effectDesc = 'Reset Cooldown Kerja/Berburu';
               cooldownDesc = ' · Cooldown: 30m';
             } else if (item.id === 'SOAP_PET') {
               effectDesc = 'Mandi Bersih (Hilangkan Bau)';
-              cooldownDesc = ' · Cooldown: 10m';
+              cooldownDesc = ' · Bebas Cooldown';
             } else if (item.multiplier) {
               effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
               cooldownDesc = ' · Bebas Cooldown';
@@ -5812,7 +5813,7 @@ async function handlePetCommand(message, client, args) {
 
               if (selectedItemId === 'SOAP_PET') {
                 result = pet.washPet(author.id, guildId);
-                detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.\n⏱️ *Cooldown: 10 Menit.*`;
+                detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.`;
               } else if (selectedItemId === 'SODA_ENERGY') {
                 result = pet.useSodaEnergy(author.id, guildId, false, iItemUse.member);
                 detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
@@ -5824,7 +5825,8 @@ async function handlePetCommand(message, client, args) {
                   detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!`;
                 } else {
                   const mins = Math.floor(result.item.cooldown / 60);
-                  detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).\n⏱️ *Cooldown: ${mins} Menit.*`;
+                  const cooldownText = result.item.cooldown > 0 ? `\n⏱️ *Cooldown: ${mins} Menit.*` : '';
+                  detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).${cooldownText}`;
                 }
               }
 

@@ -4,13 +4,13 @@ const config = require('./config');
 
 // Konfigurasi Item Kebutuhan Pet
 const PET_ITEMS = {
-  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 80, hunger: 30, thirst: 0, hp: 0, happiness: 0, cooldown: 300, desc: 'Pakan standar untuk mengisi perut pet.' },
-  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 200, hunger: 70, thirst: 0, hp: 10, happiness: 5, cooldown: 900, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
-  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 50, hunger: 0, thirst: 35, hp: 0, happiness: 0, cooldown: 300, desc: 'Air mineral segar untuk hidrasi pet.' },
-  MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, cooldown: 600, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
-  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 120, hunger: 0, thirst: 0, hp: 0, happiness: 50, cooldown: 900, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
+  FOOD_BASIC: { id: 'FOOD_BASIC', name: '🍗 Pakan Pet Biasa', price: 80, hunger: 30, thirst: 0, hp: 0, happiness: 0, cooldown: 0, desc: 'Pakan standar untuk mengisi perut pet.' },
+  FOOD_PREMIUM: { id: 'FOOD_PREMIUM', name: '🥩 Daging Premium', price: 200, hunger: 70, thirst: 0, hp: 10, happiness: 5, cooldown: 0, desc: 'Daging lezat kualitas prima. Menambah Kenyangan & HP.' },
+  WATER: { id: 'WATER', name: '🥤 Air Bersih', price: 50, hunger: 0, thirst: 35, hp: 0, happiness: 0, cooldown: 0, desc: 'Air mineral segar untuk hidrasi pet.' },
+  MEDICINE: { id: 'MEDICINE', name: '💊 Ramuan Kesehatan', price: 500, hunger: 0, thirst: 0, hp: 50, happiness: 0, cures: true, cooldown: 0, desc: 'Ramuan penyembuh untuk pet sakit/pingsan.' },
+  TOY: { id: 'TOY', name: '⚽ Bola Karet', price: 120, hunger: 0, thirst: 0, hp: 0, happiness: 50, cooldown: 0, desc: 'Bola karet elastis untuk meningkatkan mood pet.' },
   SODA_ENERGY: { id: 'SODA_ENERGY', name: '🥤 Soda Energi Pet', price: 150, hunger: 0, thirst: 10, hp: 0, happiness: 10, cooldown: 1800, desc: 'Soda manis berkafein. Menghapus cooldown kerja/berburu secara instan!' },
-  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 50, hunger: 0, thirst: 0, hp: 0, happiness: 5, cooldown: 600, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
+  SOAP_PET: { id: 'SOAP_PET', name: '🧼 Sabun Mandi Pet', price: 50, hunger: 0, thirst: 0, hp: 0, happiness: 5, cooldown: 0, desc: 'Sabun wangi stroberi khusus untuk mandi pet.' },
   COLLAR_IRON: { id: 'COLLAR_IRON', name: '🪮 Kalung Besi', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi laju decay kelaparan/kehausan/kebahagiaan pet sebesar 15%.' },
   SWORD_TOY: { id: 'SWORD_TOY', name: '⚔️ Pedang Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Meningkatkan DMG serangan pet di PvP Arena sebesar +15%.' },
   SHIELD_TOY: { id: 'SHIELD_TOY', name: '🛡️ Tameng Mainan', price: 1500, type: 'ACCESSORY', cooldown: 0, desc: 'Aksesoris Pet: Mengurangi DMG yang diterima pet di PvP Arena sebesar 15%.' },
@@ -788,6 +788,17 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
   const item = PET_ITEMS[itemKey];
   if (!item) {
     throw new Error('Item perawatan tidak valid!');
+  }
+
+  // Cek batas status pet (100% capacity)
+  if (item.hunger > 0 && pet.hunger >= 100) {
+    throw new Error('Pet Anda sudah kenyang!');
+  }
+  if (item.id === 'WATER' && pet.thirst >= 100) {
+    throw new Error('Pet Anda sudah tidak haus!');
+  }
+  if (item.id === 'TOY' && pet.happiness >= 100) {
+    throw new Error('Pet Anda sudah sangat bahagia!');
   }
 
   // Cek cooldown item

@@ -36,7 +36,7 @@ db.prepare("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VAL
 db.prepare("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SOAP_PET', 5)").run(userId, guildId);
 db.prepare("INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'SODA_ENERGY', 5)").run(userId, guildId);
 
-console.log("\n🍗 3. Testing FOOD_BASIC (5 min cooldown)...");
+console.log("\n🍗 3. Testing FOOD_BASIC (0 cooldown, 100% hunger limit)...");
 // Set hunger to 50
 db.prepare("UPDATE user_pets SET hunger = 50 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
 
@@ -46,61 +46,70 @@ console.log(`   ✅ Penggunaan pertama sukses! Hunger pet sekarang: ${use1.pet.h
 
 // Check cooldown remaining
 let cdBasic = pet.getItemCooldown(userId, guildId, 'FOOD_BASIC');
-console.log(`   👉 Sisa Cooldown FOOD_BASIC: ${cdBasic} detik (Expected: ~300)`);
-if (cdBasic <= 290 || cdBasic > 300) throw new Error("Incorrect cooldown set for FOOD_BASIC!");
+console.log(`   👉 Sisa Cooldown FOOD_BASIC: ${cdBasic} detik (Expected: 0)`);
+if (cdBasic !== 0) throw new Error("Incorrect cooldown set for FOOD_BASIC! Expected 0.");
 
-// Second use immediately - should fail
+// Second use - should succeed because hunger (80) is < 100
+let use2 = pet.useItem(userId, guildId, 'FOOD_BASIC', false);
+console.log(`   ✅ Penggunaan kedua sukses! Hunger pet sekarang: ${use2.pet.hunger}%`);
+
+// Third use immediately - should fail because hunger is 100
 try {
   pet.useItem(userId, guildId, 'FOOD_BASIC', false);
-  throw new Error("Should have thrown cooldown error for FOOD_BASIC!");
+  throw new Error("Should have thrown hunger capacity error for FOOD_BASIC!");
 } catch (err) {
-  console.log(`   ✅ Sukses memblokir spam: "${err.message}"`);
-  if (!err.message.includes("sedang cooldown")) throw err;
+  console.log(`   ✅ Sukses memblokir makan karena kenyang: "${err.message}"`);
+  if (!err.message.includes("sudah kenyang")) throw err;
 }
 
-console.log("\n🥩 4. Testing FOOD_PREMIUM (15 min cooldown) is independent...");
+console.log("\n🥩 4. Testing FOOD_PREMIUM (0 cooldown, 100% hunger limit)...");
 // Set hunger to 20
 db.prepare("UPDATE user_pets SET hunger = 20 WHERE user_id = ? AND guild_id = ?").run(userId, guildId);
 
-// First use - should succeed (even though FOOD_BASIC is on cooldown)
+// First use - should succeed
 let usePremium = pet.useItem(userId, guildId, 'FOOD_PREMIUM', false);
 console.log(`   ✅ Penggunaan pertama sukses! Hunger pet sekarang: ${usePremium.pet.hunger}%`);
 
 // Check cooldown remaining
 let cdPremium = pet.getItemCooldown(userId, guildId, 'FOOD_PREMIUM');
-console.log(`   👉 Sisa Cooldown FOOD_PREMIUM: ${cdPremium} detik (Expected: ~900)`);
-if (cdPremium <= 890 || cdPremium > 900) throw new Error("Incorrect cooldown set for FOOD_PREMIUM!");
+console.log(`   👉 Sisa Cooldown FOOD_PREMIUM: ${cdPremium} detik (Expected: 0)`);
+if (cdPremium !== 0) throw new Error("Incorrect cooldown set for FOOD_PREMIUM! Expected 0.");
 
-// Second use immediately - should fail
+// Second use - should succeed because hunger (90) is < 100
+let usePremium2 = pet.useItem(userId, guildId, 'FOOD_PREMIUM', false);
+console.log(`   ✅ Penggunaan kedua sukses! Hunger pet sekarang: ${usePremium2.pet.hunger}%`);
+
+// Third use immediately - should fail because hunger is 100
 try {
   pet.useItem(userId, guildId, 'FOOD_PREMIUM', false);
-  throw new Error("Should have thrown cooldown error for FOOD_PREMIUM!");
+  throw new Error("Should have thrown hunger capacity error for FOOD_PREMIUM!");
 } catch (err) {
-  console.log(`   ✅ Sukses memblokir spam: "${err.message}"`);
+  console.log(`   ✅ Sukses memblokir makan premium karena kenyang: "${err.message}"`);
+  if (!err.message.includes("sudah kenyang")) throw err;
 }
 
-console.log("\n🧼 5. Testing SOAP_PET (10 min cooldown)...");
+console.log("\n🧼 5. Testing SOAP_PET (0 cooldown, smelly curse limits)...");
 // Apply smelly curse first
-const now = Math.floor(Date.now() / 1000);
-db.prepare("UPDATE user_pets SET curse_type = 'smelly', curse_until = ? WHERE user_id = ? AND guild_id = ?").run(now + 3600, userId, guildId);
+const timeNow = Math.floor(Date.now() / 1000);
+db.prepare("UPDATE user_pets SET curse_type = 'smelly', curse_until = ? WHERE user_id = ? AND guild_id = ?").run(timeNow + 3600, userId, guildId);
 
 // First wash - should succeed
 let wash1 = pet.washPet(userId, guildId);
 console.log(`   ✅ Mandi pertama sukses! Kutukan bau pet sekarang: "${wash1.pet.curse_type}"`);
 
-// Check cooldown remaining
-let cdSoap = pet.getItemCooldown(userId, guildId, 'SOAP_PET');
-console.log(`   👉 Sisa Cooldown SOAP_PET: ${cdSoap} detik (Expected: ~600)`);
-if (cdSoap <= 590 || cdSoap > 600) throw new Error("Incorrect cooldown set for SOAP_PET!");
-
-// Reapply curse and try to wash again immediately - should fail due to cooldown
-db.prepare("UPDATE user_pets SET curse_type = 'smelly', curse_until = ? WHERE user_id = ? AND guild_id = ?").run(now + 3600, userId, guildId);
+// Second wash immediately without curse - should fail because already clean
 try {
   pet.washPet(userId, guildId);
-  throw new Error("Should have thrown cooldown error for SOAP_PET!");
+  throw new Error("Should have thrown error because pet is already clean!");
 } catch (err) {
-  console.log(`   ✅ Sukses memblokir spam mandi: "${err.message}"`);
+  console.log(`   ✅ Sukses memblokir mandi pet bersih: "${err.message}"`);
+  if (!err.message.includes("sudah wangi dan bersih")) throw err;
 }
+
+// Reapply curse and try to wash again immediately - should succeed because SOAP_PET cooldown is 0
+db.prepare("UPDATE user_pets SET curse_type = 'smelly', curse_until = ? WHERE user_id = ? AND guild_id = ?").run(timeNow + 3600, userId, guildId);
+let wash2 = pet.washPet(userId, guildId);
+console.log(`   ✅ Mandi kedua sukses setelah kutukan diaplikasikan kembali! Kutukan bau pet sekarang: "${wash2.pet.curse_type}"`);
 
 console.log("\n🥤 6. Testing SODA_ENERGY (30 min cooldown)...");
 // First soda - should succeed
