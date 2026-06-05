@@ -12515,29 +12515,17 @@ async function handleEconomyCommands(message, client) {
       }
 
       try {
-        // Kirim Multi-Embed Pengumuman Premium & Rapi dengan tag @everyone
-        const announcementEmbeds = embeds.updateAnnouncementEmbeds(message.guild);
+        // Kirim Embed Pengumuman Pembaruan Ekonomi & Perpetan Kosan 1A dengan tag @everyone
+        const announcementEmbed = embeds.economyUpdateEmbed(message.guild);
 
-        // Bagi embed menjadi 3 pesan terpisah untuk menghindari batas 6000 karakter Discord
-        // Pesan 1: Hero Header & Voice/Economy
         await targetChannel.send({
-          content: '📢 **PENGUMUMAN RESMI — ENSIKLOPEDIA LENGKAP FITUR & PERINTAH BOT KOSAN 1A 2026!** @everyone\n\n🏠 *Baca seluruh panduan di bawah ini agar kamu tidak ketinggalan fitur apapun!*',
-          embeds: [announcementEmbeds[0], announcementEmbeds[1]],
+          content: '📢 **PENGUMUMAN PEMBARUAN EKONOMI & PERPETAN KOSAN 1A** @everyone\n\n🏠 *Warga Kosan 1A wajib menyimak pembaruan di bawah ini agar tetap kompetitif!*',
+          embeds: [announcementEmbed],
           allowedMentions: { parse: ['everyone'] }
         });
 
-        // Pesan 2: Bursa Saham & Bank/Kosan
-        await targetChannel.send({
-          embeds: [announcementEmbeds[2], announcementEmbeds[3]]
-        });
-
-        // Pesan 3: Pet/Rob & Game/Tips/Penutup
-        await targetChannel.send({
-          embeds: [announcementEmbeds[4], announcementEmbeds[5]]
-        });
-
         if (targetChannel.id !== message.channel.id) {
-          await message.reply(`✅ **Berhasil!** Pengumuman ensiklopedia premium lengkap (**${announcementEmbeds.length} embed** terbagi dalam 3 pesan) telah diposting di channel ${targetChannel}.`);
+          await message.reply(`✅ **Berhasil!** Pengumuman pembaruan ekonomi premium telah diposting di channel ${targetChannel}.`);
         }
       } catch (err) {
         console.error('Error sending announcement:', err);

@@ -1913,6 +1913,63 @@ module.exports = {
     return embeds[0]; // Kembalikan embed pertama saja untuk kompatibilitas lama
   },
 
+  // 16b. Embed Pengumuman Pembaruan Spesifik Ekonomi & Perpetan Kosan 1A
+  economyUpdateEmbed(guild) {
+    const divider = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+    const timestamp = new Date();
+
+    return new EmbedBuilder()
+      .setColor(0xFF4081) // Neon Pink / Cherry Pink
+      .setTitle('📢  PENGUMUMAN PEMBARUAN EKONOMI & PERPETAN KOSAN 1A  📢')
+      .setThumbnail(guild.iconURL({ dynamic: true }) || null)
+      .setDescription(
+        `Halo Warga **${guild.name}**! 👋✨\n\n` +
+        `Kami baru saja melakukan pembaruan besar untuk menyeimbangkan perekonomian, mempersingkat masa penjara, dan memperkenalkan menu kebun secara lengkap. Berikut detail pembaruan yang wajib kalian ketahui:\n\n` +
+        `${divider}`
+      )
+      .addFields(
+        {
+          name: '🌸  1. GARDEN GIFT BUFFED! (BUKET BUNGA JAUH LEBIH BERGUNA)',
+          value:
+            `Kini mengirimkan hadiah buket bunga ke teman/pasangan menjadi sangat berharga! Bonus koin Daily Claim yang diterima oleh penerima hadiah dinaikkan berkali-kali lipat:\n\n` +
+            `🌹 **Love Bouquet:** Memberikan bonus Daily Claim **+Rp 250** (Sebelumnya hanya +Rp 15).\n` +
+            `🪻 **Peace Bouquet:** Memberikan bonus Daily Claim **+Rp 750** (Sebelumnya hanya +Rp 35).\n` +
+            `👑 **Imperial Bouquet:** Memberikan bonus Daily Claim **+Rp 2.200** (Sebelumnya hanya +Rp 80).\n\n` +
+            `👉 *Yuk, rakit buket bunga kalian menggunakan Kertas Kado dan kirim ke warga favorit kalian!*\n` +
+            `─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─`,
+          inline: false
+        },
+        {
+          name: '🎰  2. PENYESUAIAN GACHA ROLE (HIGH STAKES)',
+          value:
+            `Untuk menjaga agar role prestise di toko role tetap bernilai tinggi, tarif gacha role disesuaikan:\n\n` +
+            `🪙 **Biaya Gacha:** Menjadi **Rp 1.500** per spin (Disinkronkan dengan harga gacha telur pet).\n` +
+            `💵 **Cashback Duplikasi:** Dinaikkan menjadi **Rp 400** jika kalian mendapatkan role yang sudah dimiliki (Late-game protection!).\n` +
+            `─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─`,
+          inline: false
+        },
+        {
+          name: '🚨  3. POTONG MASA TAHANAN HEIST (LEBIH RAMAH PEMAIN)',
+          value:
+            `Polisi virtual kini memberikan potongan masa hukuman penjara jika aksi perampokan Bank (\`.heist\`) kalian digagalkan:\n\n` +
+            `👥 **Tim 1 - 3 orang:** Penjara dipotong dari 2 jam menjadi **30 menit** saja!\n` +
+            `👥 **Tim 4+ orang:** Penjara dipotong dari 2.5 jam menjadi **60 menit (1 jam)** saja!\n\n` +
+            `💰 *Catatan: Uang tebusan jaminan bebas instan tetap Rp 2.500.*\n` +
+            `─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─`,
+          inline: false
+        },
+        {
+          name: '📖  4. PEMBARUAN MENU BANTUAN (.help)',
+          value:
+            `Pusat kontrol bot telah dirapikan agar mempermudah kalian:\n\n` +
+            `🌸 Menu **Cozy Flower Garden** kini terdaftar lengkap! Cek cara bertanam via \`.kebun\`, \`.tanam\`, \`.siram\`, \`.panen\`, \`.buket\`, dll.`,
+          inline: false
+        }
+      )
+      .setFooter({ text: '— Tim Developer & Bot Kosan 1A 2026 ❤️', iconURL: guild.iconURL({ dynamic: true }) || null })
+      .setTimestamp(timestamp);
+  },
+
   // 17. Status Event Aktif (.event)
   eventStatusEmbed(activeEvent) {
     const embed = new EmbedBuilder();
