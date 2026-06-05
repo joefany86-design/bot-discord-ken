@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sentinel Admin Panel — Zero-Typing Control Center</title>
+  <title>Sentinel Admin Panel — Premium Zero-Typing Control Center</title>
   <!-- Google Fonts: Inter & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
         <div class="brand-logo">🛡️</div>
         <div class="brand-info">
           <h1>SENTINEL</h1>
-          <span>Economy Admin Panel</span>
+          <span>Premium Control Center</span>
         </div>
       </div>
 
@@ -30,11 +30,27 @@
         </a>
         <a href="#users" class="menu-item" id="menu-users">
           <span class="menu-icon">👥</span>
-          <span class="menu-text">Member Manager</span>
+          <span class="menu-text">Member & Citizen</span>
+        </a>
+        <a href="#pet" class="menu-item" id="menu-pet">
+          <span class="menu-icon">🐾</span>
+          <span class="menu-text">Pet Tamagotchi</span>
+        </a>
+        <a href="#economy" class="menu-item" id="menu-economy">
+          <span class="menu-icon">🏦</span>
+          <span class="menu-text">Finansial & Bansos</span>
+        </a>
+        <a href="#stocks" class="menu-item" id="menu-stocks">
+          <span class="menu-icon">📈</span>
+          <span class="menu-text">Bursa Saham</span>
+        </a>
+        <a href="#auctions" class="menu-item" id="menu-auctions">
+          <span class="menu-icon">🎭</span>
+          <span class="menu-text">Auction House</span>
         </a>
         <a href="#logs" class="menu-item" id="menu-logs">
           <span class="menu-icon">📜</span>
-          <span class="menu-text">Activity Logs</span>
+          <span class="menu-text">Logs & Backups</span>
         </a>
       </nav>
 
@@ -50,7 +66,7 @@
       <section id="section-dashboard" class="content-section active">
         <div class="section-header">
           <h2>📊 Server Economy Dashboard</h2>
-          <p>Statistik ringkas sirkulasi koin dan kontrol bypass server Kosan 1A.</p>
+          <p>Statistik sirkulasi koin, kontrol bypass server, dan event global.</p>
         </div>
 
         <!-- Stats Grid -->
@@ -79,7 +95,7 @@
           <div class="stat-card card-gold">
             <div class="stat-icon">⚡</div>
             <div class="stat-info">
-              <span class="stat-label">Event Abuse</span>
+              <span class="stat-label">Status Event</span>
               <h3 id="stat-event">Nonaktif</h3>
             </div>
           </div>
@@ -88,25 +104,39 @@
         <!-- Config Control panel -->
         <div class="dashboard-details">
           <div class="details-card">
-            <h3>⚙️ Config Abyus Settings</h3>
-            <table class="config-table">
-              <thead>
-                <tr>
-                  <th>Nama Config</th>
-                  <th>Value Terkini</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>🎰 Gacha Mode Rarity</td>
-                  <td><span class="badge badge-purple" id="cfg-gacha">NORMAL</span></td>
-                </tr>
-                <tr>
-                  <td>🪙 Chat Coin Multiplier</td>
-                  <td><span class="badge badge-emerald" id="cfg-mult">1x</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <h3>⚙️ Config Abyus Settings (Global Control)</h3>
+            <div class="control-grid">
+              <div class="form-group">
+                <label>🎰 Gacha Mode Rarity:</label>
+                <select id="abyus-gacha-mode" class="form-control">
+                  <option value="NORMAL">NORMAL</option>
+                  <option value="X2">MULTIPLIER X2</option>
+                  <option value="X5">MULTIPLIER X5</option>
+                  <option value="LEGENDARY">ALWAYS LEGENDARY</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>🪙 Chat Coin Multiplier:</label>
+                <input type="number" id="abyus-coin-multiplier" min="1" max="100" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>🔥 Status Event Abyus:</label>
+                <select id="abyus-event-active" class="form-control">
+                  <option value="1">Aktif (🚀 ON)</option>
+                  <option value="0">Nonaktif (🔴 OFF)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>👑 God Mode Owner (ID 436554535037698059):</label>
+                <select id="abyus-god-mode" class="form-control">
+                  <option value="1">Aktif (🛡️ ON)</option>
+                  <option value="0">Nonaktif (🔴 OFF)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+              <button id="save-abyus-btn" class="btn btn-emerald">💾 Simpan Konfigurasi</button>
+            </div>
           </div>
         </div>
       </section>
@@ -114,8 +144,8 @@
       <!-- Section 2: Member Manager -->
       <section id="section-users" class="content-section">
         <div class="section-header">
-          <h2>👥 Member Management Grid</h2>
-          <p>Kelola saldo dompet, tabungan bank, status blacklist, dan suntikan aset instan.</p>
+          <h2>👥 Member & Citizen Management Grid</h2>
+          <p>Kelola warga, blacklisting, penahanan Lapas, dan reset cooldown kriminal.</p>
         </div>
 
         <div class="toolbar">
@@ -134,7 +164,7 @@
                 <th>Total Kekayaan</th>
                 <th>Terakhir Aktif</th>
                 <th>Status Blacklist</th>
-                <th>Aksi</th>
+                <th>Aksi Cepat Warga</th>
               </tr>
             </thead>
             <tbody id="members-list">
@@ -144,27 +174,341 @@
         </div>
       </section>
 
-      <!-- Section 3: Activity Logs -->
+      <!-- Section 3: Pet Tamagotchi Center -->
+      <section id="section-pet" class="content-section">
+        <div class="section-header">
+          <h2>🐾 Pet Tamagotchi Management Center</h2>
+          <p>Lakukan penyembuhan instan, setting level/bintang, penyesuaian trait, atau spawn custom pet.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <div class="details-card">
+            <h3>👤 Pilih Target Peliharaan</h3>
+            <div class="form-group">
+              <label>Pilih Warga Pemilik Pet:</label>
+              <select id="pet-owner-selector" class="form-control">
+                <option value="">-- Pilih Warga --</option>
+              </select>
+            </div>
+
+            <div id="pet-display-card" class="pet-status-card" style="display: none; margin-top: 16px;">
+              <div class="pet-header">
+                <h4 id="pet-display-name">🐾 Pet Name (Lv. 1 TYPE)</h4>
+                <span id="pet-display-stars">⭐⭐⭐</span>
+              </div>
+              <div class="pet-body">
+                <p>❤️ **HP**: <span id="pet-val-hp">100/100</span></p>
+                <p>🍗 **Kenyang**: <span id="pet-val-hunger">100%</span></p>
+                <p>🥤 **Hidrasi**: <span id="pet-val-thirst">100%</span></p>
+                <p>😊 **Ceria**: <span id="pet-val-happy">100%</span></p>
+                <p>🧬 **Trait**: <span id="pet-val-trait">STURDY</span></p>
+                <p>🏰 **Menara Ujian (Floor)**: <span id="pet-val-floor">Lantai 1</span></p>
+                <p>🔋 **Auto-Feed VIP**: <span id="pet-val-autofeed">Nonaktif</span></p>
+                <p>💀 **Status**: <span id="pet-val-status" class="badge badge-emerald">ALIVE</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-card" id="pet-actions-card" style="display: none;">
+            <h3>🎯 Tindakan Cepat Pet</h3>
+            <div class="pet-actions-grid">
+              <button class="btn btn-emerald" id="pet-act-heal">❤️ Sembuhkan & Kenyangkan</button>
+              <button class="btn btn-primary" id="pet-act-revive">💖 Hidupkan Kembali (Revive)</button>
+              <button class="btn btn-gold" id="pet-act-hatch">🐣 Teteskan Telur Instan</button>
+              <button class="btn btn-secondary" id="pet-act-reset-cooldown">⏳ Reset Cooldown Ekspedisi & Aktivitas</button>
+              <button class="btn btn-purple" id="pet-act-toggle-autofeed">🔋 Toggle VIP Auto-Feed</button>
+              <button class="btn btn-danger" id="pet-act-delete">💀 Hapus Pet Permanen</button>
+            </div>
+
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+
+            <h3>🦁 Modifikasi Properti Pet</h3>
+            <div class="control-grid">
+              <div class="form-group">
+                <label>Set Level Pet:</label>
+                <input type="number" id="pet-set-level" class="form-control" placeholder="Level pet...">
+                <button id="pet-save-level-btn" class="btn btn-secondary btn-sm" style="margin-top: 4px;">Ubah Level</button>
+              </div>
+              <div class="form-group">
+                <label>Ubah Trait Khusus:</label>
+                <select id="pet-set-trait" class="form-control">
+                  <option value="">(Tidak ada trait)</option>
+                  <option value="GENIUS">GENIUS (-20% XP Cap)</option>
+                  <option value="STURDY">STURDY (-40% Decay, -50% Starve Damage)</option>
+                  <option value="MUTANT">MUTANT (+25% TP training)</option>
+                  <option value="WARRIOR">WARRIOR (+20% PvP damage)</option>
+                  <option value="SURVIVOR">SURVIVOR (Tahan mati HP 1)</option>
+                </select>
+                <button id="pet-save-trait-btn" class="btn btn-secondary btn-sm" style="margin-top: 4px;">Ubah Trait</button>
+              </div>
+              <div class="form-group">
+                <label>Force Bintang (1-5):</label>
+                <input type="number" id="pet-set-star" min="1" max="5" class="form-control" placeholder="Bintang...">
+                <button id="pet-save-star-btn" class="btn btn-secondary btn-sm" style="margin-top: 4px;">Ubah Bintang</button>
+              </div>
+              <div class="form-group">
+                <label>Lantai Menara Ujian:</label>
+                <input type="number" id="pet-set-floor" min="1" class="form-control" placeholder="Lantai...">
+                <button id="pet-save-floor-btn" class="btn btn-secondary btn-sm" style="margin-top: 4px;">Ubah Lantai</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create Custom Pet Card -->
+        <div class="details-card" style="margin-top: 20px;">
+          <h3>🎁 Suntik Pet Custom Baru</h3>
+          <div class="control-grid">
+            <div class="form-group">
+              <label>Nama Pet:</label>
+              <input type="text" id="cust-pet-name" class="form-control" placeholder="Nama peliharaan...">
+            </div>
+            <div class="form-group">
+              <label>Spesies:</label>
+              <select id="cust-pet-type" class="form-control">
+                <option value="SLIME">🟢 Slime (Vitalitas tinggi)</option>
+                <option value="DRAGON">🔥 Naga / Dragon (PvP bonus)</option>
+                <option value="CAT">🐱 Kucing / Cat (Hunt bonus)</option>
+                <option value="GOLEM">🧱 Golem (Kerja buff)</option>
+                <option value="PHOENIX">🦅 Phoenix (Epic Fire)</option>
+                <option value="TURTLE">🐢 Kura-Kura (Epic Earth)</option>
+                <option value="CHRONOS">⏳ Chronos (Immortal Time)</option>
+                <option value="OUROBOROS">♾️ Ouroboros (Immortal Infinity)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Level:</label>
+              <input type="number" id="cust-pet-level" value="1" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Bintang:</label>
+              <input type="number" id="cust-pet-star" value="1" min="1" max="5" class="form-control">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top: 16px;">
+            <button id="give-custom-pet-btn" class="btn btn-emerald">🎁 Suntik Pet Custom</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Finansial & Bansos -->
+      <section id="section-economy" class="content-section">
+        <div class="section-header">
+          <h2>🏦 Finansial & Kebijakan Moneter Center</h2>
+          <p>Statistik inflasi, pembagian bantuan sosial (Bansos), dan pengaturan parameter keuangan.</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card card-purple">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <span class="stat-label">Total Uang Dompet</span>
+              <h3 id="eco-total-wallets">Rp 0</h3>
+            </div>
+          </div>
+          <div class="stat-card card-emerald">
+            <div class="stat-icon">🏦</div>
+            <div class="stat-info">
+              <span class="stat-label">Total Uang Tabungan Bank</span>
+              <h3 id="eco-total-savings">Rp 0</h3>
+            </div>
+          </div>
+          <div class="stat-card card-blue">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+              <span class="stat-label">Rasio Akun Aktif</span>
+              <h3 id="eco-active-ratio">0%</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-details">
+          <div class="details-card">
+            <h3>🎁 Pembagian Bantuan Sosial (Bansos Massal)</h3>
+            <p style="color: var(--color-text-muted); font-size: 13px; margin-bottom: 12px;">
+              Aksi ini akan menyuntikkan nominal koin Rupiah secara serentak ke seluruh dompet warga yang tercatat **AKTIF** (pernah mengirim pesan/beraktivitas).
+            </p>
+            <div class="form-inline">
+              <input type="number" id="bansos-amount" class="form-control" placeholder="Nominal bansos (misal: 1000)..." style="width: 300px; display: inline-block;">
+              <button id="payout-bansos-btn" class="btn btn-emerald">🎁 Bagikan Bansos Massal</button>
+            </div>
+          </div>
+
+          <div class="details-card" style="margin-top: 24px; border: 1px solid rgba(248, 81, 73, 0.2);">
+            <h3 style="color: var(--color-red);">⚠️ Emergency Economic Reset</h3>
+            <p style="color: var(--color-text-muted); font-size: 13px; margin-bottom: 12px;">
+              Aksi pembersihan krisis inflasi. Seluruh dompet warga diset ke saldo awal **Rp 1.000**, tabungan bank dikosongkan, dan seluruh beban utang pinjaman dihapus.
+            </p>
+            <button id="reset-economy-btn" class="btn btn-danger">🚨 Reset Ekonomi Server Sekarang</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Bursa Saham -->
+      <section id="section-stocks" class="content-section">
+        <div class="section-header">
+          <h2>📈 Bursa Saham Management Grid</h2>
+          <p>Pantau emiten saham aktif, manipulasi harga, daftarkan emiten baru, atau picu event pasar modal.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <!-- Stock List Table -->
+          <div class="details-card" style="flex: 2;">
+            <h3>📊 Emiten Saham Terdaftar</h3>
+            <div class="table-container" style="margin-top: 12px;">
+              <table class="members-table">
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Nama Emiten</th>
+                    <th>Harga Saat Ini</th>
+                    <th>Harga Sebelumnya</th>
+                    <th>Sisa Lembar Saham</th>
+                    <th>Aksi Emiten</th>
+                  </tr>
+                </thead>
+                <tbody id="stocks-list">
+                  <!-- Inject via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Add new stock -->
+          <div class="details-card">
+            <h3>📈 Daftarkan Emiten Saham Baru</h3>
+            <div class="form-group">
+              <label>Stock Ticker (Contoh: JKON):</label>
+              <input type="text" id="new-stock-ticker" maxlength="4" class="form-control" placeholder="4 Huruf Kapital...">
+            </div>
+            <div class="form-group">
+              <label>Nama Perusahaan:</label>
+              <input type="text" id="new-stock-name" class="form-control" placeholder="Nama Emiten...">
+            </div>
+            <div class="form-group">
+              <label>Harga Perdana (IPO):</label>
+              <input type="number" id="new-stock-price" value="100" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>ID Saluran Teks (Discord Channel ID):</label>
+              <input type="text" id="new-stock-channel" class="form-control" placeholder="Discord Channel ID...">
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+              <button id="add-stock-btn" class="btn btn-emerald btn-block">➕ Daftarkan Saham</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 6: Auction House -->
+      <section id="section-auctions" class="content-section">
+        <div class="section-header">
+          <h2>🎭 Global Auction House & Lelang Manager</h2>
+          <p>Luncurkan lelang barang global secara instan atau batalkan lelang yang sedang berjalan.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <!-- Active auctions list -->
+          <div class="details-card" style="flex: 2;">
+            <h3>🎟️ Lelang Global yang Sedang Aktif</h3>
+            <div class="table-container" style="margin-top: 12px;">
+              <table class="members-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Item Lelang</th>
+                    <th>Jumlah</th>
+                    <th>Bid Awal</th>
+                    <th>Bid Tertinggi</th>
+                    <th>Penawar Tertinggi</th>
+                    <th>Berakhir Pada</th>
+                    <th>Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody id="auctions-list">
+                  <!-- Inject via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Host new auction -->
+          <div class="details-card">
+            <h3>📢 Buka Lelang Baru</h3>
+            <div class="form-group">
+              <label>Pilih Barang Lelang:</label>
+              <select id="auc-item-id" class="form-control">
+                <option value="LOCKPICK">🕵️‍♂️ Lockpick</option>
+                <option value="SOAP">🧼 Soap (Sabun)</option>
+                <option value="LAMBO">🏎️ Lamborgini Kosan</option>
+                <option value="GOLD">👑 Emas Batangan 24K</option>
+                <option value="IPHONE">📱 iPhone 16 Pro Max</option>
+                <option value="TICKET_GACHA">🎫 Tiket Gacha Pet</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Kuantitas / Jumlah:</label>
+              <input type="number" id="auc-qty" value="1" min="1" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Harga Penawaran Minimum (Initial Bid):</label>
+              <input type="number" id="auc-min-bid" value="100" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Durasi Lelang (Jam):</label>
+              <input type="number" id="auc-hours" value="2" min="1" class="form-control">
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+              <button id="host-auction-btn" class="btn btn-emerald btn-block">📢 Luncurkan Lelang</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 7: Logs & Backups -->
       <section id="section-logs" class="content-section">
         <div class="section-header flex-header">
           <div>
-            <h2>📜 Web Admin Audit Trail</h2>
-            <p>Log pelacakan aktivitas administrator melalui platform web panel.</p>
+            <h2>📜 Web Admin Audit Trail & Backups Center</h2>
+            <p>Segarkan log riwayat admin dan kelola pemulihan database SQLite.</p>
           </div>
           <button id="refresh-logs-btn" class="btn btn-secondary">🔄 Segarkan Log</button>
         </div>
 
-        <div class="logs-container">
-          <ul class="logs-feed" id="logs-list">
-            <!-- Feed log akan ditambahkan via JS -->
-          </ul>
+        <div class="control-split-layout">
+          <!-- Audit logs feed -->
+          <div class="details-card" style="flex: 2;">
+            <h3>Log Aktivitas Web Admin</h3>
+            <div class="logs-container" style="margin-top: 12px;">
+              <ul class="logs-feed" id="logs-list">
+                <!-- Feed log ditambahkan via JS -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- DB Backups list & restore -->
+          <div class="details-card">
+            <h3>💾 Pemulihan Database (Database Backups)</h3>
+            <p style="color: var(--color-text-muted); font-size: 12px; margin-bottom: 12px;">
+              Pilih snapshot database kustom di bawah ini untuk dikembalikan sebagai database aktif saat ini.
+            </p>
+            <div class="form-group">
+              <label>Pilih File Backup (.db):</label>
+              <select id="db-backups-selector" class="form-control">
+                <option value="">-- Tidak Ada Backup Terpilih --</option>
+              </select>
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+              <button id="restore-db-btn" class="btn btn-danger btn-block">💾 Pulihkan Database Sekarang</button>
+            </div>
+          </div>
         </div>
       </section>
 
     </main>
   </div>
 
-  <!-- QUICK GIVE MODAL POPUP -->
+  <!-- QUICK GIVE MODAL POPUP (Triggered from Member Manager grid) -->
   <div class="modal-overlay" id="give-modal">
     <div class="modal-box">
       <div class="modal-header">
@@ -198,11 +542,11 @@
           </div>
         </div>
 
-        <!-- Item Selector (Hidden by default, shown for item/pet_item) -->
+        <!-- Item Selector (Hidden by default) -->
         <div class="form-group" id="item-select-group" style="display: none;">
           <label>🛍️ Pilih Item:</label>
           <select id="give-item-selector" class="form-control">
-            <!-- Pilihan item di-inject via JS -->
+            <!-- Inject via JS -->
           </select>
         </div>
 
@@ -225,6 +569,23 @@
             <button class="btn btn-preset" data-val="5">+5 pcs</button>
             <button class="btn btn-preset" data-val="10">+10 pcs</button>
             <button class="btn btn-preset" data-val="-1">-1 pc</button>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 8px 0;">
+
+        <!-- Citizen specific commands inside Quick Give modal -->
+        <label>👮 Tindakan Citizen (Warga):</label>
+        <div class="citizen-actions-row">
+          <button class="btn btn-secondary" id="cit-act-blacklist">👥 Toggle Blacklist</button>
+          <button class="btn btn-secondary" id="cit-act-cooldowns">⏳ Reset Cooldowns</button>
+          <button class="btn btn-secondary" id="cit-act-release">🚓 Bebaskan Lapas</button>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label>Kurung di Lapas (Detik):</label>
+          <div class="form-inline">
+            <input type="number" id="cit-jail-duration" value="3600" class="form-control" style="width: 150px; display: inline-block;">
+            <button class="btn btn-danger" id="cit-act-jail">🚓 Jebloskan ke Lapas</button>
           </div>
         </div>
       </div>

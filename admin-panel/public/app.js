@@ -3,33 +3,117 @@ document.addEventListener('DOMContentLoaded', () => {
   let usersData = [];
   let availableAssets = [];
   let currentCategory = 'coin';
+  let activeStocks = [];
+  let activeAuctions = [];
+  let activeBackups = [];
 
   // --- Element Selectors ---
-  const menuDash = document.getElementById('menu-dash');
-  const menuUsers = document.getElementById('menu-users');
-  const menuLogs = document.getElementById('menu-logs');
+  // Navigation tabs
+  const menuItems = {
+    dash: document.getElementById('menu-dash'),
+    users: document.getElementById('menu-users'),
+    pet: document.getElementById('menu-pet'),
+    economy: document.getElementById('menu-economy'),
+    stocks: document.getElementById('menu-stocks'),
+    auctions: document.getElementById('menu-auctions'),
+    logs: document.getElementById('menu-logs')
+  };
 
-  const secDashboard = document.getElementById('section-dashboard');
-  const secUsers = document.getElementById('section-users');
-  const secLogs = document.getElementById('section-logs');
+  const sections = {
+    dash: document.getElementById('section-dashboard'),
+    users: document.getElementById('section-users'),
+    pet: document.getElementById('section-pet'),
+    economy: document.getElementById('section-economy'),
+    stocks: document.getElementById('section-stocks'),
+    auctions: document.getElementById('section-auctions'),
+    logs: document.getElementById('section-logs')
+  };
 
-  // Dashboard Stats
+  // Dashboard elements
   const statWallets = document.getElementById('stat-wallets');
   const statCoins = document.getElementById('stat-coins');
   const statPets = document.getElementById('stat-pets');
   const statEvent = document.getElementById('stat-event');
-  const cfgGacha = document.getElementById('cfg-gacha');
-  const cfgMult = document.getElementById('cfg-mult');
+  const cfgGacha = document.getElementById('abyus-gacha-mode');
+  const cfgMult = document.getElementById('abyus-coin-multiplier');
+  const cfgActive = document.getElementById('abyus-event-active');
+  const cfgGodMode = document.getElementById('abyus-god-mode');
+  const saveAbyusBtn = document.getElementById('save-abyus-btn');
 
-  // Members Grid
+  // Member Grid elements
   const membersList = document.getElementById('members-list');
   const memberSearch = document.getElementById('member-search');
 
-  // Logs
+  // Pet Tamagotchi elements
+  const petOwnerSelector = document.getElementById('pet-owner-selector');
+  const petDisplayCard = document.getElementById('pet-display-card');
+  const petActionsCard = document.getElementById('pet-actions-card');
+  
+  const petDisplayName = document.getElementById('pet-display-name');
+  const petDisplayStars = document.getElementById('pet-display-stars');
+  const petValHp = document.getElementById('pet-val-hp');
+  const petValHunger = document.getElementById('pet-val-hunger');
+  const petValThirst = document.getElementById('pet-val-thirst');
+  const petValHappy = document.getElementById('pet-val-happy');
+  const petValTrait = document.getElementById('pet-val-trait');
+  const petValFloor = document.getElementById('pet-val-floor');
+  const petValAutofeed = document.getElementById('pet-val-autofeed');
+  const petValStatus = document.getElementById('pet-val-status');
+
+  // Pet Action buttons
+  const petActHeal = document.getElementById('pet-act-heal');
+  const petActRevive = document.getElementById('pet-act-revive');
+  const petActHatch = document.getElementById('pet-act-hatch');
+  const petActResetCooldown = document.getElementById('pet-act-reset-cooldown');
+  const petActToggleAutofeed = document.getElementById('pet-act-toggle-autofeed');
+  const petActDelete = document.getElementById('pet-act-delete');
+
+  // Pet mod forms
+  const petSetLevel = document.getElementById('pet-set-level');
+  const petSaveLevelBtn = document.getElementById('pet-save-level-btn');
+  const petSetTrait = document.getElementById('pet-set-trait');
+  const petSaveTraitBtn = document.getElementById('pet-save-trait-btn');
+  const petSetStar = document.getElementById('pet-set-star');
+  const petSaveStarBtn = document.getElementById('pet-save-star-btn');
+  const petSetFloor = document.getElementById('pet-set-floor');
+  const petSaveFloorBtn = document.getElementById('pet-save-floor-btn');
+
+  // Custom pet spawn form
+  const custPetName = document.getElementById('cust-pet-name');
+  const custPetType = document.getElementById('cust-pet-type');
+  const custPetLevel = document.getElementById('cust-pet-level');
+  const custPetStar = document.getElementById('cust-pet-star');
+  const giveCustomPetBtn = document.getElementById('give-custom-pet-btn');
+
+  // Economy elements
+  const ecoTotalWallets = document.getElementById('eco-total-wallets');
+  const ecoTotalSavings = document.getElementById('eco-total-savings');
+  const ecoActiveRatio = document.getElementById('eco-active-ratio');
+  const bansosAmount = document.getElementById('bansos-amount');
+  const payoutBansosBtn = document.getElementById('payout-bansos-btn');
+  const resetEconomyBtn = document.getElementById('reset-economy-btn');
+
+  // Stock Market elements
+  const stocksList = document.getElementById('stocks-list');
+  const newStockTicker = document.getElementById('new-stock-ticker');
+  const newStockName = document.getElementById('new-stock-name');
+  const newStockPrice = document.getElementById('new-stock-price');
+  const newStockChannel = document.getElementById('new-stock-channel');
+  const addStockBtn = document.getElementById('add-stock-btn');
+
+  // Auction House elements
+  const auctionsList = document.getElementById('auctions-list');
+  const aucItemId = document.getElementById('auc-item-id');
+  const aucQty = document.getElementById('auc-qty');
+  const aucMinBid = document.getElementById('auc-min-bid');
+  const aucHours = document.getElementById('auc-hours');
+  const hostAuctionBtn = document.getElementById('host-auction-btn');
+
+  // Logs & backups
   const logsList = document.getElementById('logs-list');
   const refreshLogsBtn = document.getElementById('refresh-logs-btn');
-
-  // Backup
+  const dbBackupsSelector = document.getElementById('db-backups-selector');
+  const restoreDbBtn = document.getElementById('restore-db-btn');
   const backupDbBtn = document.getElementById('backup-db-btn');
 
   // Modal elements
@@ -45,7 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const coinPresets = document.getElementById('coin-presets');
   const itemPresets = document.getElementById('item-presets');
 
-  // Toast container
+  // Citizen quick actions inside Modal
+  const citActBlacklist = document.getElementById('cit-act-blacklist');
+  const citActCooldowns = document.getElementById('cit-act-cooldowns');
+  const citActRelease = document.getElementById('cit-act-release');
+  const citJailDuration = document.getElementById('cit-jail-duration');
+  const citActJail = document.getElementById('cit-act-jail');
+
+  // Toast Container
   const toastBox = document.getElementById('toast-box');
 
   // --- Toast Alert Helper ---
@@ -86,39 +177,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Tab Switcher ---
   function switchTab(activeTabId) {
-    // Remove active classes
-    [menuDash, menuUsers, menuLogs].forEach(menu => menu.classList.remove('active'));
-    [secDashboard, secUsers, secLogs].forEach(sec => sec.classList.remove('active'));
+    Object.keys(menuItems).forEach(key => {
+      menuItems[key].classList.remove('active');
+      sections[key].classList.remove('active');
+    });
 
-    if (activeTabId === 'dashboard') {
-      menuDash.classList.add('active');
-      secDashboard.classList.add('active');
+    menuItems[activeTabId].classList.add('active');
+    sections[activeTabId].classList.add('active');
+
+    // Trigger API calls depending on selected Tab
+    if (activeTabId === 'dash') {
       fetchDashboardStats();
     } else if (activeTabId === 'users') {
-      menuUsers.classList.add('active');
-      secUsers.classList.add('active');
       fetchUsers();
+    } else if (activeTabId === 'pet') {
+      fetchUsersForPetDropdown();
+    } else if (activeTabId === 'economy') {
+      fetchDetailedStats();
+    } else if (activeTabId === 'stocks') {
+      fetchDetailedStats();
+    } else if (activeTabId === 'auctions') {
+      fetchDetailedStats();
     } else if (activeTabId === 'logs') {
-      menuLogs.classList.add('active');
-      secLogs.classList.add('active');
       fetchLogs();
+      fetchDetailedStats(); // Loads backups selector
     }
   }
 
-  // Listen for sidebar navigation clicks
-  menuDash.addEventListener('click', (e) => { e.preventDefault(); switchTab('dashboard'); });
-  menuUsers.addEventListener('click', (e) => { e.preventDefault(); switchTab('users'); });
-  menuLogs.addEventListener('click', (e) => { e.preventDefault(); switchTab('logs'); });
+  // Set up navigation click event listeners
+  Object.keys(menuItems).forEach(key => {
+    menuItems[key].addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab(key);
+      window.location.hash = key;
+    });
+  });
 
-  // Handle URL Hash if loaded directly
+  // Handle URL hash on page load
   const hash = window.location.hash.replace('#', '');
-  if (['dashboard', 'users', 'logs'].includes(hash)) {
+  if (Object.keys(menuItems).includes(hash)) {
     switchTab(hash);
   } else {
-    switchTab('dashboard');
+    switchTab('dash');
   }
 
-  // --- API Fetch Functions ---
+  // --- API Fetching Functions ---
   async function fetchDashboardStats() {
     try {
       const res = await fetch('/api/stats');
@@ -132,10 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
         statEvent.textContent = isAbyusActive ? 'AKTIF 🚀' : 'Nonaktif';
         statEvent.className = isAbyusActive ? 'emerald-text' : 'muted-text';
         
-        cfgGacha.textContent = data.settings.gacha_mode || 'NORMAL';
-        cfgMult.textContent = (data.settings.coin_multiplier || 1) + 'x';
-      } else {
-        showToast('Gagal memuat statistik: ' + data.message, 'error');
+        // Populate inputs in config details
+        cfgGacha.value = data.settings.gacha_mode || 'NORMAL';
+        cfgMult.value = data.settings.coin_multiplier || 1;
+        cfgActive.value = data.settings.is_active === 1 ? '1' : '0';
+        cfgGodMode.value = data.settings.owner_god_mode === 1 ? '1' : '0';
       }
     } catch (err) {
       showToast('Koneksi server terputus', 'error');
@@ -149,23 +253,38 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         usersData = data.users;
         renderUsersTable();
-      } else {
-        showToast('Gagal memuat data warga: ' + data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server terputus', 'error');
+      showToast('Gagal memuat list warga', 'error');
     }
   }
 
-  async function fetchAssets() {
+  async function fetchDetailedStats() {
     try {
-      const res = await fetch('/api/assets');
+      const res = await fetch('/api/admin/detailed-stats');
       const data = await res.json();
       if (data.success) {
-        availableAssets = data.items;
+        // Detailed Finansial
+        ecoTotalWallets.textContent = formatCurrency(data.totalCirculation);
+        ecoTotalSavings.textContent = formatCurrency(data.bankSavings);
+        const total = data.activeWallets + data.inactiveWallets;
+        const ratio = total > 0 ? Math.round((data.activeWallets / total) * 100) : 0;
+        ecoActiveRatio.textContent = ratio + '%';
+
+        // Stocks
+        activeStocks = data.stocks;
+        renderStocksTable();
+
+        // Auctions
+        activeAuctions = data.auctions;
+        renderAuctionsTable();
+
+        // Backups Selector
+        activeBackups = data.backups;
+        populateBackupsSelector();
       }
     } catch (err) {
-      console.error('Failed to load assets', err);
+      console.error(err);
     }
   }
 
@@ -181,52 +300,79 @@ document.addEventListener('DOMContentLoaded', () => {
           data.logs.forEach(log => {
             const li = document.createElement('li');
             li.textContent = log;
-            // Highlight give vs system logs visually
-            if (log.includes('Gave')) {
+            if (log.includes('Gave') || log.includes('Bansos')) {
               li.style.borderLeftColor = 'var(--color-emerald)';
-            } else if (log.includes('Backup')) {
+            } else if (log.includes('Backup') || log.includes('Restored')) {
               li.style.borderLeftColor = 'var(--color-gold)';
+            } else if (log.includes('Blacklisted') || log.includes('Jailed')) {
+              li.style.borderLeftColor = 'var(--color-red)';
             } else {
               li.style.borderLeftColor = 'var(--color-primary)';
             }
             logsList.appendChild(li);
           });
         }
-      } else {
-        showToast('Gagal memuat riwayat log: ' + data.message, 'error');
       }
     } catch (err) {
-      showToast('Koneksi server terputus', 'error');
+      showToast('Gagal memuat logs', 'error');
     }
   }
 
-  // --- Search and Render Tables ---
+  async function fetchAssets() {
+    try {
+      const res = await fetch('/api/assets');
+      const data = await res.json();
+      if (data.success) {
+        availableAssets = data.items;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- Sub-Panel 1: Save Abyus Settings ---
+  saveAbyusBtn.addEventListener('click', async () => {
+    saveAbyusBtn.disabled = true;
+    try {
+      const response = await fetch('/api/admin/abyus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gachaMode: cfgGacha.value,
+          coinMultiplier: parseInt(cfgMult.value, 10),
+          isActive: parseInt(cfgActive.value, 10),
+          ownerGodMode: parseInt(cfgGodMode.value, 10)
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message || 'Konfigurasi berhasil disimpan!', 'success');
+        fetchDashboardStats();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      showToast('Koneksi server gagal saat menyimpan', 'error');
+    } finally {
+      saveAbyusBtn.disabled = false;
+    }
+  });
+
+  // --- Sub-Panel 2: Users Grid & Citizen Actions ---
   function renderUsersTable() {
     membersList.innerHTML = '';
     const query = memberSearch.value.trim().toLowerCase();
-    
-    const filteredUsers = usersData.filter(user => {
-      return user.user_id.toLowerCase().includes(query);
-    });
+    const filteredUsers = usersData.filter(user => user.user_id.toLowerCase().includes(query));
 
     if (filteredUsers.length === 0) {
-      membersList.innerHTML = `
-        <tr>
-          <td colspan="7" style="text-align: center; color: var(--color-text-muted);">
-            Tidak ada warga ditemukan.
-          </td>
-        </tr>
-      `;
+      membersList.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--color-text-muted);">Tidak ada warga ditemukan.</td></tr>`;
       return;
     }
 
     filteredUsers.forEach(user => {
       const totalWealth = user.wallet_balance + user.bank_balance;
       const tr = document.createElement('tr');
-      
-      const blacklistBadge = user.is_blacklisted > 0 
-        ? '<span class="badge badge-red">BLACKLISTED</span>' 
-        : '<span class="badge badge-muted">AMAN</span>';
+      const blBadge = user.is_blacklisted > 0 ? '<span class="badge badge-red">BLACKLISTED</span>' : '<span class="badge badge-muted">AMAN</span>';
 
       tr.innerHTML = `
         <td style="font-weight: 500; font-family: monospace;">${user.user_id}</td>
@@ -234,15 +380,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${formatCurrency(user.bank_balance)}</td>
         <td style="font-weight: 600; color: var(--color-text-light);">${formatCurrency(totalWealth)}</td>
         <td style="color: var(--color-text-muted); font-size: 13px;">${formatDate(user.last_active_date)}</td>
-        <td>${blacklistBadge}</td>
+        <td>${blBadge}</td>
         <td>
-          <button class="btn btn-primary btn-give" data-userid="${user.user_id}">🎁 Quick Give</button>
+          <button class="btn btn-primary btn-give btn-sm" data-userid="${user.user_id}">⚙️ Kelola Aset & Warga</button>
         </td>
       `;
 
-      // Event listener for Quick Give button
       tr.querySelector('.btn-give').addEventListener('click', () => {
-        openQuickGiveModal(user.user_id);
+        targetUserInp.value = user.user_id;
+        giveModal.classList.add('active');
+        setGiveCategory('coin');
       });
 
       membersList.appendChild(tr);
@@ -250,9 +397,497 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   memberSearch.addEventListener('input', renderUsersTable);
-  refreshLogsBtn.addEventListener('click', fetchLogs);
 
-  // --- Backup Operation ---
+  // Bind citizen controls inside modal
+  const executeCitizenAction = async (action, additionalData = {}) => {
+    const userId = targetUserInp.value;
+    try {
+      const res = await fetch('/api/admin/citizen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action, ...additionalData })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        giveModal.classList.remove('active');
+        fetchUsers();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      showToast('Koneksi server gagal', 'error');
+    }
+  };
+
+  citActBlacklist.addEventListener('click', (e) => { e.preventDefault(); executeCitizenAction('blacklist'); });
+  citActCooldowns.addEventListener('click', (e) => { e.preventDefault(); executeCitizenAction('reset_cooldowns'); });
+  citActRelease.addEventListener('click', (e) => { e.preventDefault(); executeCitizenAction('release'); });
+  citActJail.addEventListener('click', (e) => {
+    e.preventDefault();
+    const duration = parseInt(citJailDuration.value, 10);
+    executeCitizenAction('jail', { duration });
+  });
+
+  // --- Sub-Panel 3: Pet Tamagotchi Center ---
+  async function fetchUsersForPetDropdown() {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (data.success) {
+        petOwnerSelector.innerHTML = '<option value="">-- Pilih Warga --</option>';
+        data.users.forEach(user => {
+          const opt = document.createElement('option');
+          opt.value = user.user_id;
+          opt.textContent = `Warga: ${user.user_id}`;
+          petOwnerSelector.appendChild(opt);
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  petOwnerSelector.addEventListener('change', async () => {
+    const userId = petOwnerSelector.value;
+    if (!userId) {
+      petDisplayCard.style.display = 'none';
+      petActionsCard.style.display = 'none';
+      return;
+    }
+    fetchAndDisplayPet(userId);
+  });
+
+  async function fetchAndDisplayPet(userId) {
+    try {
+      const res = await fetch(`/api/admin/pet?userId=${userId}`);
+      const data = await res.json();
+      if (data.success && data.pet) {
+        const pet = data.pet;
+        petDisplayName.textContent = `🐾 ${pet.pet_name} (Lv. ${pet.level} ${pet.pet_type})`;
+        petDisplayStars.textContent = '⭐'.repeat(pet.star_level || 1);
+        petValHp.textContent = `${pet.health} HP`;
+        petValHunger.textContent = `${pet.hunger}%`;
+        petValThirst.textContent = `${pet.thirst}%`;
+        petValHappy.textContent = `${pet.happiness}%`;
+        petValTrait.textContent = pet.trait || 'Tidak Ada Trait';
+        petValFloor.textContent = `Lantai ${data.tower.current_floor || 1} (Max: ${data.tower.max_floor || 1})`;
+        petValAutofeed.textContent = pet.auto_feed === 2 ? '👑 VIP (Aktif)' : '❌ Nonaktif';
+        petValStatus.textContent = pet.status;
+        petValStatus.className = `badge ${pet.status === 'DEAD' ? 'badge-red' : 'badge-emerald'}`;
+
+        // Populate update forms
+        petSetLevel.value = pet.level;
+        petSetTrait.value = pet.trait || '';
+        petSetStar.value = pet.star_level;
+        petSetFloor.value = data.tower.current_floor || 1;
+
+        petDisplayCard.style.display = 'block';
+        petActionsCard.style.display = 'block';
+      } else {
+        petDisplayName.textContent = 'Pet tidak ditemukan';
+        petDisplayCard.style.display = 'block';
+        petActionsCard.style.display = 'block';
+        
+        // Hide stats & specific actions, show spawn custom pet panel
+        petValHp.textContent = '-';
+        petValHunger.textContent = '-';
+        petValThirst.textContent = '-';
+        petValHappy.textContent = '-';
+        petValTrait.textContent = '-';
+        petValFloor.textContent = '-';
+        petValAutofeed.textContent = '-';
+        petValStatus.textContent = 'TIADA';
+        petValStatus.className = 'badge badge-muted';
+      }
+    } catch (err) {
+      showToast('Gagal memuat info pet', 'error');
+    }
+  }
+
+  const executePetAction = async (action, valObject = {}) => {
+    const userId = petOwnerSelector.value;
+    if (!userId) return;
+    try {
+      const response = await fetch('/api/admin/pet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action, ...valObject })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        fetchAndDisplayPet(userId);
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      showToast('Koneksi server gagal', 'error');
+    }
+  };
+
+  petActHeal.addEventListener('click', () => executePetAction('heal'));
+  petActRevive.addEventListener('click', () => executePetAction('revive'));
+  petActHatch.addEventListener('click', () => executePetAction('hatch'));
+  petActResetCooldown.addEventListener('click', () => executePetAction('reset_cooldown'));
+  petActToggleAutofeed.addEventListener('click', () => executePetAction('toggle_autofeed'));
+  petActDelete.addEventListener('click', () => {
+    if (confirm('Apakah Anda yakin ingin menghapus pet ini secara permanen dari database?')) {
+      executePetAction('delete');
+    }
+  });
+
+  // Save changes buttons
+  petSaveLevelBtn.addEventListener('click', () => executePetAction('level', { level: parseInt(petSetLevel.value, 10) }));
+  petSaveTraitBtn.addEventListener('click', () => executePetAction('trait', { trait: petSetTrait.value }));
+  petSaveStarBtn.addEventListener('click', () => executePetAction('star', { star: parseInt(petSetStar.value, 10) }));
+  petSaveFloorBtn.addEventListener('click', () => executePetAction('floor', { floor: parseInt(petSetFloor.value, 10) }));
+
+  // Spawn new custom pet form
+  giveCustomPetBtn.addEventListener('click', async () => {
+    const userId = petOwnerSelector.value;
+    if (!userId) {
+      showToast('Harap pilih warga terlebih dahulu!', 'error');
+      return;
+    }
+    const petName = custPetName.value.trim();
+    if (!petName) {
+      showToast('Nama pet harus diisi!', 'error');
+      return;
+    }
+
+    giveCustomPetBtn.disabled = true;
+    try {
+      const response = await fetch('/api/admin/pet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          action: 'give_custom',
+          petName: petName,
+          petType: custPetType.value,
+          level: parseInt(custPetLevel.value, 10),
+          star: parseInt(custPetStar.value, 10)
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        custPetName.value = '';
+        fetchAndDisplayPet(userId);
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      showToast('Koneksi server gagal', 'error');
+    } finally {
+      giveCustomPetBtn.disabled = false;
+    }
+  });
+
+  // --- Sub-Panel 4: Finansial & Bansos ---
+  payoutBansosBtn.addEventListener('click', async () => {
+    const amount = parseInt(bansosAmount.value, 10);
+    if (isNaN(amount) || amount <= 0) {
+      showToast('Nominal bansos tidak valid!', 'error');
+      return;
+    }
+    payoutBansosBtn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/economy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bansos', amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        bansosAmount.value = '';
+        fetchDetailedStats();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      showToast('Koneksi server gagal', 'error');
+    } finally {
+      payoutBansosBtn.disabled = false;
+    }
+  });
+
+  resetEconomyBtn.addEventListener('click', async () => {
+    if (confirm('🚨 PERINGATAN: Aksi ini akan me-reset saldo seluruh dompet warga ke Rp 1.000, menghapus seluruh tabungan, dan menghapus seluruh pinjaman bank! Apakah Anda yakin?')) {
+      resetEconomyBtn.disabled = true;
+      try {
+        const res = await fetch('/api/admin/economy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          fetchDetailedStats();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (err) {
+        showToast('Koneksi server gagal', 'error');
+      } finally {
+        resetEconomyBtn.disabled = false;
+      }
+    }
+  });
+
+  // --- Sub-Panel 5: Bursa Saham Control ---
+  function renderStocksTable() {
+    stocksList.innerHTML = '';
+    if (activeStocks.length === 0) {
+      stocksList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--color-text-muted);">Tidak ada saham terdaftar.</td></tr>';
+      return;
+    }
+    activeStocks.forEach(stock => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight: 600; color: var(--color-primary);">${stock.stock_ticker}</td>
+        <td>${stock.stock_name}</td>
+        <td style="font-weight: 500;">${formatCurrency(stock.current_price)}</td>
+        <td style="color: var(--color-text-muted);">${formatCurrency(stock.previous_price)}</td>
+        <td>${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm btn-stock-price" data-ticker="${stock.stock_ticker}">💸 Set Harga</button>
+          <button class="btn btn-danger btn-sm btn-stock-del" data-ticker="${stock.stock_ticker}">❌ Hapus</button>
+        </td>
+      `;
+
+      // Set price logic
+      tr.querySelector('.btn-stock-price').addEventListener('click', async () => {
+        const newPrice = prompt(`Set Harga Baru untuk ${stock.stock_ticker} (Harga Saat Ini: Rp ${stock.current_price}):`);
+        if (newPrice && !isNaN(newPrice)) {
+          try {
+            const response = await fetch('/api/admin/stocks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'set_price',
+                ticker: stock.stock_ticker,
+                price: parseInt(newPrice, 10)
+              })
+            });
+            const d = await response.json();
+            if (d.success) {
+              showToast(d.message, 'success');
+              fetchDetailedStats();
+            }
+          } catch {
+            showToast('Gagal memproses perubahan harga', 'error');
+          }
+        }
+      });
+
+      // Delete stock logic
+      tr.querySelector('.btn-stock-del').addEventListener('click', async () => {
+        if (confirm(`Apakah Anda yakin ingin menghapus emiten saham ${stock.stock_ticker} secara permanen?`)) {
+          try {
+            const response = await fetch('/api/admin/stocks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'delete',
+                ticker: stock.stock_ticker
+              })
+            });
+            const d = await response.json();
+            if (d.success) {
+              showToast(d.message, 'success');
+              fetchDetailedStats();
+            }
+          } catch {
+            showToast('Gagal menghapus emiten', 'error');
+          }
+        }
+      });
+
+      stocksList.appendChild(tr);
+    });
+  }
+
+  addStockBtn.addEventListener('click', async () => {
+    const ticker = newStockTicker.value.trim().toUpperCase();
+    const name = newStockName.value.trim();
+    const price = parseInt(newStockPrice.value, 10);
+    const channel = newStockChannel.value.trim();
+
+    if (!ticker || !name || isNaN(price) || !channel) {
+      showToast('Semua input data saham harus diisi lengkap!', 'error');
+      return;
+    }
+
+    addStockBtn.disabled = true;
+    try {
+      const response = await fetch('/api/admin/stocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add',
+          ticker,
+          stockName: name,
+          price,
+          channelId: channel
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        newStockTicker.value = '';
+        newStockName.value = '';
+        newStockPrice.value = '100';
+        newStockChannel.value = '';
+        fetchDetailedStats();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch {
+      showToast('Koneksi server gagal', 'error');
+    } finally {
+      addStockBtn.disabled = false;
+    }
+  });
+
+  // --- Sub-Panel 6: Auction House Control ---
+  function renderAuctionsTable() {
+    auctionsList.innerHTML = '';
+    if (activeAuctions.length === 0) {
+      auctionsList.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--color-text-muted);">Tidak ada lelang aktif.</td></tr>';
+      return;
+    }
+    activeAuctions.forEach(auc => {
+      const tr = document.createElement('tr');
+      const timeText = new Date(auc.ends_at * 1000).toLocaleString('id-ID');
+      
+      tr.innerHTML = `
+        <td style="font-family: monospace;">#${auc.id}</td>
+        <td style="font-weight: 500;">${auc.item_id}</td>
+        <td>${auc.quantity}</td>
+        <td>${formatCurrency(auc.min_bid)}</td>
+        <td style="color: var(--color-emerald); font-weight: 600;">${formatCurrency(auc.current_bid)}</td>
+        <td style="font-family: monospace;">${auc.highest_bidder_id || '-'}</td>
+        <td style="font-size: 12px; color: var(--color-text-muted);">${timeText}</td>
+        <td>
+          <button class="btn btn-danger btn-sm btn-auc-cancel" data-id="${auc.id}">❌ Batalkan</button>
+        </td>
+      `;
+
+      tr.querySelector('.btn-auc-cancel').addEventListener('click', async () => {
+        if (confirm(`Apakah Anda yakin ingin membatalkan lelang ID #${auc.id}?`)) {
+          try {
+            const res = await fetch('/api/admin/auctions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'cancel', auctionId: auc.id })
+            });
+            const d = await res.json();
+            if (d.success) {
+              showToast(d.message, 'success');
+              fetchDetailedStats();
+            }
+          } catch {
+            showToast('Gagal membatalkan lelang', 'error');
+          }
+        }
+      });
+
+      auctionsList.appendChild(tr);
+    });
+  }
+
+  hostAuctionBtn.addEventListener('click', async () => {
+    const itemId = aucItemId.value;
+    const qty = parseInt(aucQty.value, 10);
+    const minBid = parseInt(aucMinBid.value, 10);
+    const hours = parseInt(aucHours.value, 10);
+
+    if (isNaN(qty) || qty <= 0 || isNaN(minBid) || minBid <= 0 || isNaN(hours) || hours <= 0) {
+      showToast('Kuantitas, bid, dan durasi harus berupa angka positif!', 'error');
+      return;
+    }
+
+    hostAuctionBtn.disabled = true;
+    try {
+      const response = await fetch('/api/admin/auctions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'host',
+          itemId,
+          amount: qty,
+          minBid,
+          hours
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        aucQty.value = '1';
+        aucMinBid.value = '100';
+        aucHours.value = '2';
+        fetchDetailedStats();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch {
+      showToast('Koneksi server gagal', 'error');
+    } finally {
+      hostAuctionBtn.disabled = false;
+    }
+  });
+
+  // --- Sub-Panel 7: Backups Database ---
+  function populateBackupsSelector() {
+    dbBackupsSelector.innerHTML = '<option value="">-- Pilih File Backup --</option>';
+    activeBackups.forEach(backup => {
+      const opt = document.createElement('option');
+      opt.value = backup;
+      opt.textContent = backup;
+      dbBackupsSelector.appendChild(opt);
+    });
+  }
+
+  restoreDbBtn.addEventListener('click', async () => {
+    const file = dbBackupsSelector.value;
+    if (!file) {
+      showToast('Harap pilih file database backup terlebih dahulu!', 'error');
+      return;
+    }
+
+    if (confirm(`🚨 PERINGATAN KERAS: Aksi ini akan menimpa basis data aktif saat ini dengan cadangan file "${file}"! Bot Discord Anda akan di-reset koneksinya secara dinamis. Apakah Anda yakin?`)) {
+      restoreDbBtn.disabled = true;
+      restoreDbBtn.textContent = '💾 Memulihkan...';
+      try {
+        const response = await fetch('/api/admin/abyus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'restore',
+            backupFile: file
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          showToast(data.message || 'Database berhasil dipulihkan!', 'success');
+          fetchLogs();
+          fetchDashboardStats();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch {
+        showToast('Koneksi server gagal', 'error');
+      } finally {
+        restoreDbBtn.disabled = false;
+        restoreDbBtn.textContent = '💾 Pulihkan Database Sekarang';
+      }
+    }
+  });
+
   backupDbBtn.addEventListener('click', async () => {
     backupDbBtn.disabled = true;
     backupDbBtn.textContent = '💾 Mengirim...';
@@ -262,6 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         showToast(`Backup berhasil dibuat: ${data.backupFile}`, 'success');
         fetchLogs();
+        fetchDetailedStats();
       } else {
         showToast('Gagal mem-backup database: ' + data.message, 'error');
       }
@@ -273,15 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Modal Controllers ---
-  function openQuickGiveModal(userId) {
-    targetUserInp.value = userId;
-    giveModal.classList.add('active');
-    
-    // Set default category to coin
-    setGiveCategory('coin');
-  }
-
+  // --- Modal Controllers (Quick Give) ---
   function closeQuickGiveModal() {
     giveModal.classList.remove('active');
   }
@@ -294,7 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Category selection card switcher
   categoryCards.forEach(card => {
     card.addEventListener('click', () => {
       const selectedCat = card.getAttribute('data-cat');
@@ -305,7 +932,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function setGiveCategory(category) {
     currentCategory = category;
 
-    // Reset card active styles
     categoryCards.forEach(c => {
       if (c.getAttribute('data-cat') === category) {
         c.classList.add('active');
@@ -314,30 +940,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Toggle dropdown & preset visibility
     if (category === 'coin' || category === 'bank') {
       itemSelectGroup.style.display = 'none';
       coinPresets.style.display = 'flex';
       itemPresets.style.display = 'none';
-      
-      // Default amount for money
       amountInp.value = '1000';
     } else {
       itemSelectGroup.style.display = 'block';
       coinPresets.style.display = 'none';
       itemPresets.style.display = 'flex';
-      
-      // Default amount for items
       amountInp.value = '1';
-      
-      // Filter assets & populate items select
       populateAssetDropdown(category);
     }
   }
 
   function populateAssetDropdown(category) {
     itemSelector.innerHTML = '';
-    // Map categories: 'item' -> 'general', 'pet_item' -> 'pet'
     const targetType = category === 'item' ? 'general' : 'pet';
     const filtered = availableAssets.filter(item => item.category === targetType);
     
@@ -354,7 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Preset Button Addition Logic
+  // Preset Addition Logic
   const allPresetButtons = document.querySelectorAll('.btn-preset');
   allPresetButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -362,7 +980,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = parseInt(btn.getAttribute('data-val'), 10);
       let currentVal = parseInt(amountInp.value, 10);
       if (isNaN(currentVal)) currentVal = 0;
-      
       amountInp.value = currentVal + val;
     });
   });
@@ -389,9 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('/api/give', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: userId,
           category: currentCategory,
@@ -404,14 +1019,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (resData.success) {
         showToast(resData.message || 'Quick Give berhasil dieksekusi!', 'success');
         closeQuickGiveModal();
-        
-        // Refresh users list and dashboard stats to show updated wallet values
         fetchUsers();
         fetchDashboardStats();
       } else {
         showToast('Gagal mengeksekusi Quick Give: ' + resData.message, 'error');
       }
-    } catch (err) {
+    } catch {
       showToast('Terjadi kesalahan koneksi saat mengirim data', 'error');
     } finally {
       submitBtn.disabled = false;
@@ -422,6 +1035,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initial Loading ---
   fetchDashboardStats();
   fetchAssets();
-  // Set up periodic dashboard stats refresh every 30 seconds
-  setInterval(fetchDashboardStats, 30000);
 });
