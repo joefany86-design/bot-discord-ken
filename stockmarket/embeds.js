@@ -3044,61 +3044,146 @@ module.exports = {
   },
 
   // 29. Embed Battle Arena PvP
-  petBattleEmbed(challengerUser, opponentUser, result) {
-    const embed = new EmbedBuilder()
-      .setTitle('⚔️ PVP PET ARENA: HASIL PERTEMPURAN MEMBARA ⚔️')
-      .setTimestamp();
+  petBattleEmbed(challengerUser, opponentUser, result, guildId) {
+    const { getPet, renderStars, getMaxHP, isGodPet } = require('./pet');
+    
+    // Fetch pets (safely default if not found)
+    const challengerPet = guildId ? getPet(challengerUser.id, guildId) : null;
+    const opponentPet = guildId ? getPet(opponentUser.id, guildId) : null;
+
+    const PET_EMOJIS = {
+      CAT: '🐱',
+      GOLEM: '🧱',
+      SLIME: '🟢',
+      DRAGON: '🔥',
+      PHOENIX: '🦅',
+      TURTLE: '🐢',
+      LEVIATHAN: '🌊',
+      BEHEMOTH: '🦏',
+      ARCHDRAGON: '🐉'
+    };
+    const TRAIT_EMOJIS = {
+      WARRIOR: '⚔️',
+      STURDY: '🛡️',
+      MUTANT: '☣️',
+      GENIUS: '🧠',
+      SURVIVOR: '🩹',
+      FRAGILE: '🥀'
+    };
+    const ACC_EMOJIS = {
+      SWORD_TOY: '🗡️',
+      SHIELD_TOY: '🛡️',
+      LUCKY_AMULET: '🧿'
+    };
+
+    function renderMiniHpBar(value, max) {
+      const percent = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
+      const totalSegments = 8;
+      const filledSegments = Math.round((percent / 100) * totalSegments);
+      
+      let indicator = '🟢';
+      if (percent <= 25) {
+        indicator = '🔴';
+      } else if (percent <= 50) {
+        indicator = '🟡';
+      }
+      
+      const bar = '█'.repeat(filledSegments) + '░'.repeat(totalSegments - filledSegments);
+      return `\`[${bar}]\` **${percent}%** ${indicator}`;
+    }
+
+    function formatPetCard(user, pet, finalHP) {
+      if (!pet) return '🐾 *Hewan Peliharaan tidak terdeteksi*';
+      
+      const speciesEmoji = PET_EMOJIS[pet.pet_type.toUpperCase()] || '🐾';
+      const starText = renderStars(pet.star_level || 1);
+      const maxHP = getMaxHP(pet);
+      
+      const traitText = pet.trait ? `${TRAIT_EMOJIS[pet.trait] || '🧠'} ${pet.trait}` : '❌ *Tidak Ada*';
+      const accText = pet.accessory ? `${ACC_EMOJIS[pet.accessory] || '🎒'} ${pet.accessory.replace('_', ' ')}` : '❌ *Tidak Ada*';
+      
+      const hpBar = renderMiniHpBar(finalHP, maxHP);
+      
+      return (
+        `👤 **Owner:** <@${user.id}>\n` +
+        `${speciesEmoji} **Nama:** **${pet.pet_name}** \`(${pet.pet_type})\`\n` +
+        `🧬 **Rarity:** \`${pet.gacha_rarity || 'COMMON'}\`\n` +
+        `🌟 **Tingkat:** Lvl ${pet.level} · ${starText}\n` +
+        `🧠 **Trait:** ${traitText}\n` +
+        `🛡️ **Equip:** ${accText}\n` +
+        `❤️ **HP Akhir:** ${hpBar} \`${finalHP}/${maxHP}\` HP`
+      );
+    }
+
+    const embed = new EmbedBuilder().setTimestamp();
 
     if (result.draw) {
       embed
         .setColor(COLORS.GOLD)
+        .setTitle('⚔️ PVP ARENA: PERTANDINGAN SEIMBANG (DRAW) ⚔️')
         .setDescription(
-          `\`\`\`\n` +
-          `┌─────────────────────────────┐\n` +
-          `│  ⚔️ ARENA HASIL SEIMBANG ⚔️  │\n` +
-          `│    PVP Pet Arena Draw       │\n` +
-          `└─────────────────────────────┘\n` +
-          `\`\`\`\n` +
-          `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berjalan sangat sengit hingga waktu habis!\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `📊 **STATUS HP AKHIR PERTEMPURAN:**\n` +
-          `┊ ⚔️ **${result.challengerName}** (Challenger): \`${result.challengerHP}%\` HP\n` +
-          `┊ 🛡️ **${result.opponentName}** (Opponent): \`${result.opponentHP}%\` HP\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `🪙 **Taruhan Kembalian:** Seluruh koin dikembalikan penuh ke dompet masing-masing!`
+          `### 🤝 KEKUATAN SETARA\n` +
+          `Pertarungan sengit antara pet milik **${challengerUser.username}** (**${result.challengerName}**) melawan pet milik **${opponentUser.username}** (**${result.opponentName}**) berakhir dengan kekuatan seimbang hingga ronde akhir!\n\n` +
+          `🪙 **Taruhan Kembalian:** Seluruh koin taruhan dikembalikan penuh ke dompet masing-masing!\n` +
+          `─── ⋆⋅☆⋅⋆ ───`
         );
     } else {
       const isChalWinner = result.winnerId === challengerUser.id;
       const winnerUser = isChalWinner ? challengerUser : opponentUser;
       const loserUser = isChalWinner ? opponentUser : challengerUser;
+      const winnerPet = isChalWinner ? challengerPet : opponentPet;
+      const loserPet = isChalWinner ? opponentPet : challengerPet;
+
+      const winnerSpeciesEmoji = winnerPet ? (PET_EMOJIS[winnerPet.pet_type.toUpperCase()] || '🐾') : '🐾';
+      
+      let deadWarning = '';
+      if (loserPet && (loserPet.status === 'DEAD' || (winnerPet && isGodPet(winnerPet)))) {
+        deadWarning = `\n\n☠️ **DEATH BLOW:** Pet **${loserPet.pet_name}** tewas mengenaskan akibat serangan mematikan Dewa Pet! Revive segera dengan \`.pet revive\`!`;
+      } else if (result.logs.some(line => line.includes('Cedera Tempur'))) {
+        deadWarning = `\n\n🤕 **INJURED NOTICE:** Pet **${loserPet?.pet_name}** menderita cedera serius akibat duel ini!`;
+      }
 
       embed
         .setColor(COLORS.FIERY)
+        .setTitle(`🏆 PVP ARENA: ${result.winnerName.toUpperCase()} MENANG MUTLAK! 🏆`)
+        .setThumbnail(winnerUser.displayAvatarURL({ dynamic: true }))
         .setDescription(
-          `\`\`\`\n` +
-          `┌─────────────────────────────┐\n` +
-          `│  🏆 PEMENANG BATTLE ARENA 🏆 │\n` +
-          `│    PVP Pet Arena Victory    │\n` +
-          `└─────────────────────────────┘\n` +
-          `\`\`\`\n` +
-          `🔥 **${result.winnerName.toUpperCase()}** (Peliharaan milik **${winnerUser.username}**)\n` +
-          `💥 Sukses menumbangkan **${result.loserName}** (Peliharaan milik **${loserUser.username}**)\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `### 👑 MAHKOTA KEMENANGAN ARENA\n` +
+          `🔥 **${result.winnerName}** (${winnerSpeciesEmoji}) milik **${winnerUser.username}** berhasil menumbangkan pet tangguh **${result.loserName}** milik **${loserUser.username}**!\n\n` +
           `💰 **JARAHAN PERTEMPURAN (JACKPOT):**\n` +
-          `┊ 🎁 **Hadiah Bersih** : **\`${formatCurrency(result.prizePool)}\`**\n` +
-          `┊ 🏛️ **Pajak Arena** : \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `📈 *XP & Level pet pemenang telah ditambahkan secara otomatis.*`
+          `┣ 🎁 **Hadiah Bersih:** **\`${formatCurrency(result.prizePool)}\`**\n` +
+          `┗ 🏛️ **Pajak Arena:** \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n\n` +
+          `📈 **PROGRES PERTUMBUHAN:**\n` +
+          `┣ 🎉 **${result.winnerName}** mendapatkan **+50 XP**\n` +
+          `┗ 💤 **${result.loserName}** mendapatkan **+20 XP**` +
+          deadWarning +
+          `\n─── ⋆⋅☆⋅⋆ ───`
         );
     }
 
-    // Log pertempuran ronde-demi-ronde
-    const battleLog = result.logs.join('\n');
+    // Add contenders as side-by-side fields
+    embed.addFields(
+      {
+        name: '🔺 PENANTANG (CHALLENGER)',
+        value: formatPetCard(challengerUser, challengerPet, result.challengerHP),
+        inline: true
+      },
+      {
+        name: '🔹 LAWAN (OPPONENT)',
+        value: formatPetCard(opponentUser, opponentPet, result.opponentHP),
+        inline: true
+      }
+    );
+
+    // Format the logs nicely with blockquotes instead of code blocks to make it look super premium and readable
+    const formattedLogs = result.logs.map(line => `> ${line}`).join('\n');
     embed.addFields({
       name: '📝 Transkrip Jalannya Pertempuran',
-      value: `\`\`\`markdown\n${battleLog}\n\`\`\``,
+      value: formattedLogs || '> *Tidak ada log pertempuran tercatat*',
       inline: false
     });
+
+    embed.setFooter({ text: 'Rupiah Server PvP Arena • Kosan 1A RPG Series' });
 
     return embed;
   },

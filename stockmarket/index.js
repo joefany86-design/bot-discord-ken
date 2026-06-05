@@ -8005,7 +8005,7 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
         try {
           // Eksekusi PvP
           const result = pet.executePvP(author.id, opponent.id, guildId, bet);
-          const battleReport = embeds.petBattleEmbed(author, opponent, result);
+          const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
 
           await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport] });
         } catch (err) {
