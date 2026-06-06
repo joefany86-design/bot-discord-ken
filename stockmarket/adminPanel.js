@@ -3686,6 +3686,37 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           [guildId]
         );
 
+        // Ambil daftar kode promo aktif untuk dilampirkan di embed broadcast
+        const activePromos = database.all(
+          `SELECT * FROM promo_codes 
+           WHERE (max_claims = -1 OR current_claims < max_claims) 
+             AND (expires_at = 0 OR expires_at > ?)`,
+          [nowUnix]
+        );
+
+        let activePromosText = '';
+        if (activePromos.length > 0) {
+          activePromosText += `\n\n🎟️ **KODE VOUCHER / PROMO AKTIF:**`;
+          for (const p of activePromos) {
+            let rewards = [];
+            if (p.reward_coins > 0) {
+              rewards.push(`Rp ${p.reward_coins.toLocaleString('id-ID')}`);
+            }
+            if (p.reward_item_qty !== 0 && p.reward_item_id) {
+              if (p.reward_item_qty > 0) {
+                rewards.push(`${p.reward_item_qty}x \`${p.reward_item_id}\``);
+              } else {
+                rewards.push(`Penarikan: ${Math.abs(p.reward_item_qty)}x \`${p.reward_item_id}\``);
+              }
+            }
+            const rewardStr = rewards.length > 0 ? rewards.join(' + ') : 'Tanpa Hadiah';
+            const quotaStr = p.max_claims === -1 ? 'Tanpa Batas' : `${p.max_claims - p.current_claims} Klaim Tersisa`;
+            const expiryStr = p.expires_at > 0 ? `(Berakhir <t:${p.expires_at}:R>)` : '';
+            activePromosText += `\n  👉 **\`${p.code}\`** (Hadiah: ${rewardStr} | Kuota: ${quotaStr}) ${expiryStr}`;
+          }
+          activePromosText += `\n\n*👉 Klaim voucher Anda dengan mengetik:* **\`.claim <KODE>\`** *di channel obrolan bot!*`;
+        }
+
         const broadcastEmb = embeds.ebyusBroadcastEmbed(
           guild,
           settings.gacha_mode,
@@ -3695,7 +3726,8 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           includeResetCds,
           distributedCoins,
           distributedItemName,
-          distributedItemQty
+          distributedItemQty,
+          activePromosText
         );
 
         const targetChannelId = config.ANNOUNCEMENT_CHANNEL_ID || '1422642326798598348';

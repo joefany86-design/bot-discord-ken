@@ -3733,7 +3733,7 @@ module.exports = {
       .setTimestamp();
   },
 
-  ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt, freeAll = false, resetCds = false, giftCoins = 0, giftItemId = '', giftItemQty = 0) {
+  ebyusBroadcastEmbed(guild, mode, multiplier, expiresAt, freeAll = false, resetCds = false, giftCoins = 0, giftItemId = '', giftItemQty = 0, activePromosText = '') {
     const gachaDesc =
       mode === 'ABUSE' ? '🔥 **0% ZONK! (100% PASTI MENANG ROLE)**' :
         mode === 'SUPER_EASY' ? '✨ **SANGAT MUDAH (Hanya 15% Zonk)**' :
@@ -3779,6 +3779,7 @@ module.exports = {
         `🪙 **MULTIPLIER KOIN CHAT:**\n  👉 ${coinDesc}` +
         `${giftTexts}` +
         `${extraTexts}` +
+        `${activePromosText}` +
         `${durationText}\n\n` +
         `**👉 *Jangan sia-siakan kesempatan emas ini! Segera kirim chat aktif di channel publik dan putar \`.gacha-role\` Anda sebanyak-banyaknya sebelum sistem ditutup kembali oleh sistem pusat!* ** 🎰🪙💸`
       )
