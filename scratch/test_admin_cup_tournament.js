@@ -42,7 +42,10 @@ const mockChannel = {
             edit: async (d) => {
               console.log('✏️ [THREAD MSG EDITED]');
               console.log('--- Description:', d.embeds[0].data.description.replace(/\n\n/g, '\n'));
-            } 
+            },
+            delete: async () => {
+              console.log('🗑️ [THREAD MSG DELETED]');
+            }
           };
         },
         messages: {
@@ -51,6 +54,9 @@ const mockChannel = {
               edit: async (d) => {
                 console.log('✏️ [THREAD MSG EDITED via messages.fetch]');
                 console.log('--- Description:', d.embeds[0].data.description.replace(/\n\n/g, '\n'));
+              },
+              delete: async () => {
+                console.log('🗑️ [THREAD MSG DELETED via messages.fetch]');
               }
             };
           }

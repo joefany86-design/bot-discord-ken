@@ -12468,16 +12468,12 @@ async function handleEconomyCommands(message, client) {
         const minLevel = parseInt(args[2]) || 10;
         const maxLevel = parseInt(args[3]) || 9999;
 
-        let targetChannelId = message.channelId;
-        if (args[4]) {
-          const cleanId = args[4].replace(/[<#>]/g, '');
-          const exists = message.guild.channels.cache.get(cleanId);
-          if (exists) {
-            targetChannelId = cleanId;
-          }
-        }
+        const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan dan membuat channel turnamen otomatis. Mohon tunggu...')] }).catch(() => null);
 
         try {
+          const targetChannelObj = await tournament.createTournamentChannel(message.guild);
+          const targetChannelId = targetChannelObj.id;
+
           const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
           const announceEmbed = new EmbedBuilder()
             .setColor(0x7C4DFF)
@@ -12500,12 +12496,12 @@ async function handleEconomyCommands(message, client) {
               .setStyle(ButtonStyle.Success)
           );
 
-          const targetChannel = message.guild.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
-          if (targetChannel) {
-            await targetChannel.send({ embeds: [announceEmbed], components: [joinRow] });
-            if (targetChannelId !== message.channelId) {
-              await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di <#${targetChannelId}> selama **${durationMins}** menit.`)] });
-            }
+          await targetChannelObj.send({ embeds: [announceEmbed], components: [joinRow] });
+
+          if (statusMsg) {
+            await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel otomatis <#${targetChannelId}> selama **${durationMins}** menit.`)] }).catch(() => {});
+          } else {
+            await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel otomatis <#${targetChannelId}> selama **${durationMins}** menit.`)] }).catch(() => {});
           }
 
           // Jadwalkan penutupan registrasi dan seeding
@@ -12515,13 +12511,23 @@ async function handleEconomyCommands(message, client) {
 
           return true;
         } catch (err) {
-          return message.reply({ embeds: [embeds.errorEmbed('Gagal Memulai Turnamen!', err.message)] });
+          const errMsg = embeds.errorEmbed('Gagal Memulai Turnamen!', err.message);
+          if (statusMsg) {
+            return statusMsg.edit({ embeds: [errMsg] }).catch(() => {});
+          }
+          return message.reply({ embeds: [errMsg] }).catch(() => {});
         }
       }
 
       if (action === 'stop' || action === 'force-end' || action === 'batal') {
         try {
-          tournament.stopTournament(guildId);
+          const active = tournament.stopTournament(guildId);
+          if (active && active.channel_id) {
+            const channel = message.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
+            if (channel) {
+              await channel.delete().catch(() => {});
+            }
+          }
           return message.reply({ embeds: [embeds.successEmbed('Turnamen Dibatalkan!', 'Turnamen Admin Cup aktif berhasil dibatalkan dan semua data pendaftaran telah dibersihkan.')] });
         } catch (err) {
           return message.reply({ embeds: [embeds.errorEmbed('Gagal Membatalkan Turnamen!', err.message)] });

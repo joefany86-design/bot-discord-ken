@@ -989,6 +989,45 @@ async function updateBattleEmbed(matchId, client) {
   }
 }
 
+/**
+ * Otomatis membuat channel baru 🏆┃pvp-cup untuk turnamen.
+ * Menghapus channel dengan nama yang sama terlebih dahulu jika sudah ada.
+ */
+async function createTournamentChannel(guild) {
+  const { ChannelType, PermissionFlagsBits } = require('discord.js');
+  
+  // Cari dan hapus channel turnamen pvp cup lama jika ada
+  const oldChannel = guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+  if (oldChannel) {
+    await oldChannel.delete().catch((err) => {
+      console.error(`Gagal menghapus channel turnamen lama: ${err.message}`);
+    });
+  }
+
+  const FACILITIES_CATEGORY_ID = '1410239831023288451'; // #🍷 FACILITIES :
+  const parentId = guild.channels.cache.has(FACILITIES_CATEGORY_ID) ? FACILITIES_CATEGORY_ID : null;
+
+  // Buat channel baru
+  const channel = await guild.channels.create({
+    name: '🏆┃pvp-cup',
+    type: ChannelType.GuildText,
+    parent: parentId,
+    topic: '🏆 Saluran Resmi Turnamen PvP Cup! Bersiaplah dan ikuti keseruannya!',
+    permissionOverwrites: [
+      {
+        id: guild.roles.everyone.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.EmbedLinks
+        ]
+      }
+    ]
+  });
+  return channel;
+}
+
 module.exports = {
   startTournament,
   stopTournament,
@@ -997,5 +1036,6 @@ module.exports = {
   executeNextMatch,
   processTurn,
   endMatch,
-  endTournament
+  endTournament,
+  createTournamentChannel
 };
