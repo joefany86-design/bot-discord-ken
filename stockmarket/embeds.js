@@ -4053,6 +4053,7 @@ module.exports = {
         `👥 **Anggota Tim:** ${crewMentions}\n\n` +
         `*⏳ Menunggu koordinasi kru pet... Pastikan pet Anda siap bertempur!*`
       )
+      .setImage('attachment://expedition_loading.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Memulai petualangan...' })
       .setTimestamp();
   },
@@ -4117,6 +4118,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(0xD50000) // Vibrant Red
       .setTitle(`🏰 EKSPEDISI GAGAL: BOS PERTEMPURAN KACAU!`)
+      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `💥 **ALARM PENJAGA BERBUNYI! TIM DIPAKSA MUNDUR!** 💥\n\n` +
         `🔍 **Penyebab Kekalahan:**\n${causeText}\n\n` +

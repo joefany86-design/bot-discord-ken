@@ -5178,7 +5178,7 @@ async function handlePetCommand(message, client, args) {
           const loadingImg = new AttachmentBuilder('./assets/expedition_loading.png', { name: 'expedition_loading.png' });
           loadingFiles.push(loadingImg);
         } catch (err) {}
-        const loadingOpts = { embeds: [loadingEmbed], components: [] };
+        const loadingOpts = { embeds: [loadingEmbed], components: [], attachments: [] };
         if (loadingFiles.length > 0) loadingOpts.files = loadingFiles;
         await replyMsg.edit(loadingOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 3000)); // Loading screen 3 detik
@@ -5186,7 +5186,7 @@ async function handlePetCommand(message, client, args) {
         // ⭐ STAGE 1 TRANSITION: Animasi transisi ke Stage 1
         const s1TransEmbed = embeds.petExpeditionStageTransitionEmbed(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
         const s1TransAtt = getMapAttachment(mapChoice);
-        const s1TransOpts = { embeds: [s1TransEmbed], components: [] };
+        const s1TransOpts = { embeds: [s1TransEmbed], components: [], attachments: [] };
         if (s1TransAtt) s1TransOpts.files = [s1TransAtt];
         await replyMsg.edit(s1TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
@@ -5233,7 +5233,7 @@ async function handlePetCommand(message, client, args) {
           new ButtonBuilder().setCustomId('exp_path_swamp').setLabel('🌲 Rawa Beracun').setStyle(ButtonStyle.Danger)
         );
 
-        const s1EditOpts = { embeds: [stage1Embed], components: [stage1Row] };
+        const s1EditOpts = { embeds: [stage1Embed], components: [stage1Row], attachments: [] };
         const s1Att = getMapAttachment(mapChoice);
         if (s1Att) s1EditOpts.files = [s1Att];
         await replyMsg.edit(s1EditOpts).catch(() => {});
@@ -5310,7 +5310,7 @@ async function handlePetCommand(message, client, args) {
           .setTimestamp();
 
         const s1dAtt = getMapAttachment(mapChoice);
-        const s1dOpts = { embeds: [pathSelectedEmbed], components: [] };
+        const s1dOpts = { embeds: [pathSelectedEmbed], components: [], attachments: [] };
         if (s1dAtt) s1dOpts.files = [s1dAtt];
         await replyMsg.edit(s1dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000));
@@ -5318,7 +5318,7 @@ async function handlePetCommand(message, client, args) {
         // ⭐ STAGE 2 TRANSITION: Animasi transisi ke Stage 2
         const s2TransEmbed = embeds.petExpeditionStageTransitionEmbed(2, 'Kejadian Acak', selectedMap, mapChoice);
         const s2TransAtt = getMapAttachment(mapChoice);
-        const s2TransOpts = { embeds: [s2TransEmbed], components: [] };
+        const s2TransOpts = { embeds: [s2TransEmbed], components: [], attachments: [] };
         if (s2TransAtt) s2TransOpts.files = [s2TransAtt];
         await replyMsg.edit(s2TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
@@ -5377,7 +5377,7 @@ async function handlePetCommand(message, client, args) {
           );
 
           const s2cAtt = getMapAttachment(mapChoice);
-          const s2cOpts = { embeds: [chestEmbed], components: [chestRow] };
+          const s2cOpts = { embeds: [chestEmbed], components: [chestRow], attachments: [] };
           if (s2cAtt) s2cOpts.files = [s2cAtt];
           await replyMsg.edit(s2cOpts).catch(() => {});
 
@@ -5468,7 +5468,7 @@ async function handlePetCommand(message, client, args) {
           );
 
           const s2wAtt = getMapAttachment(mapChoice);
-          const s2wOpts = { embeds: [waterfallEmbed], components: [waterfallRow] };
+          const s2wOpts = { embeds: [waterfallEmbed], components: [waterfallRow], attachments: [] };
           if (s2wAtt) s2wOpts.files = [s2wAtt];
           await replyMsg.edit(s2wOpts).catch(() => {});
 
@@ -5527,7 +5527,7 @@ async function handlePetCommand(message, client, args) {
           .setTimestamp();
 
         const s2dAtt = getMapAttachment(mapChoice);
-        const s2dOpts = { embeds: [eventSelectedEmbed], components: [] };
+        const s2dOpts = { embeds: [eventSelectedEmbed], components: [], attachments: [] };
         if (s2dAtt) s2dOpts.files = [s2dAtt];
         await replyMsg.edit(s2dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000));
@@ -5535,7 +5535,7 @@ async function handlePetCommand(message, client, args) {
         // ⭐ STAGE 3 TRANSITION: Animasi transisi ke Boss Battle
         const s3TransEmbed = embeds.petExpeditionStageTransitionEmbed(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
         const s3TransAtt = getMapAttachment(mapChoice);
-        const s3TransOpts = { embeds: [s3TransEmbed], components: [] };
+        const s3TransOpts = { embeds: [s3TransEmbed], components: [], attachments: [] };
         if (s3TransAtt) s3TransOpts.files = [s3TransAtt];
         await replyMsg.edit(s3TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
@@ -5567,7 +5567,7 @@ async function handlePetCommand(message, client, args) {
           );
 
           const qteAtt = getMapAttachment(mapChoice);
-          const qteOpts = { embeds: [qteEmbed], components: [qteRow] };
+          const qteOpts = { embeds: [qteEmbed], components: [qteRow], attachments: [] };
           if (qteAtt) qteOpts.files = [qteAtt];
           await replyMsg.edit(qteOpts).catch(() => {});
 
@@ -5636,12 +5636,14 @@ async function handlePetCommand(message, client, args) {
             content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
             embeds: [failEmbed],
             components: [],
-            files: failFiles
+            files: failFiles,
+            attachments: []
           };
           await replyMsg.edit(failOpts).catch(async () => {
             await message.channel.send({
               content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
-              embeds: [failEmbed]
+              embeds: [failEmbed],
+              files: failFiles
             });
           });
           // Release expedition lock
@@ -5717,20 +5719,21 @@ async function handlePetCommand(message, client, args) {
         if (resAtt) resFiles.push(resAtt);
         try {
           const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
-          const volcanic = new AttachmentBuilder('./assets/volcanic_expedition.png', { name: 'volcanic_expedition.png' });
-          resFiles.push(petExplorer, volcanic);
+          resFiles.push(petExplorer);
         } catch (err) {}
 
         const resOpts = {
           content: `⚔️ **EKSPEDISI PET SELESAI!**`,
           embeds: [resultEmbed],
           components: [],
-          files: resFiles
+          files: resFiles,
+          attachments: []
         };
         await replyMsg.edit(resOpts).catch(async () => {
           await message.channel.send({
             content: `⚔️ **EKSPEDISI PET SELESAI!**`,
-            embeds: [resultEmbed]
+            embeds: [resultEmbed],
+            files: resFiles
           });
         });
         // Release expedition lock setelah selesai
@@ -5812,7 +5815,7 @@ async function handlePetCommand(message, client, args) {
             joinFiles.push(petExplorer);
           } catch (err) {}
 
-          const joinOpts = { embeds: [updatedEmbed] };
+          const joinOpts = { embeds: [updatedEmbed], attachments: [] };
           if (joinFiles.length > 0) joinOpts.files = joinFiles;
           await replyMsg.edit(joinOpts).catch(() => { });
         }
