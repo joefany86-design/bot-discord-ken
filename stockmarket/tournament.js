@@ -1101,26 +1101,36 @@ async function endTournament(guildId, championId, runnerUpId, client) {
   const config = require('./config');
   const guild = channel ? channel.guild : (client.guilds.cache.get(guildId));
 
-  // 1. Kirim pengumuman juara ke channel announcement_event dengan @everyone
+  // 1. Kirim pengumuman juara ke channel announcement_event dengan @everyone, dan salinan ke catalog
   const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID || '1511871394210779247';
-  if (guild && announceChanId) {
-    const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
-    if (announceChan) {
-      const celebrationEmbed = new EmbedBuilder()
-        .setColor(0xFFD700)
-        .setTitle('👑 CHAMPION OF ADMIN CUP 👑')
-        .setDescription(
-          `🏆 **Turnamen Admin Cup Resmi Berakhir!** 🏆\n\n` +
-          `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
-          (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
-          `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
-          (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
-          `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
-        )
-        .setFooter({ text: 'Admin Cup • Tournament Completed' })
-        .setTimestamp();
+  const catalogChanId = '1510138369923874958';
 
-      await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => {});
+  const celebrationEmbed = new EmbedBuilder()
+    .setColor(0xFFD700)
+    .setTitle('👑 CHAMPION OF ADMIN CUP 👑')
+    .setDescription(
+      `🏆 **Turnamen Admin Cup Resmi Berakhir!** 🏆\n\n` +
+      `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
+      (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
+      `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
+      (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
+      `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
+    )
+    .setFooter({ text: 'Admin Cup • Tournament Completed' })
+    .setTimestamp();
+
+  if (guild) {
+    if (announceChanId) {
+      const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
+      if (announceChan) {
+        await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => {});
+      }
+    }
+    if (catalogChanId) {
+      const catalogChan = guild.channels.cache.get(catalogChanId) || await guild.channels.fetch(catalogChanId).catch(() => null);
+      if (catalogChan) {
+        await catalogChan.send({ embeds: [celebrationEmbed] }).catch(() => {});
+      }
     }
   }
 
