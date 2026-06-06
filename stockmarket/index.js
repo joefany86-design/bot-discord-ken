@@ -834,7 +834,7 @@ function getPortalHubData(client) {
  * @param {function} [onCancel] - Callback opsional saat transaksi dibatalkan.
  */
 async function promptPaymentMethod(target, userId, guildId, itemLabel, price, onConfirm, onCancel = null) {
-  const isInteraction = typeof target.reply === 'function' && target.applicationId !== undefined;
+  const isInteraction = typeof target.editReply === 'function';
   
   // Ambil saldo dompet dan bank
   const wallet = economy.getWallet(userId, guildId);
