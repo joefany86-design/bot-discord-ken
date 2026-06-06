@@ -346,12 +346,21 @@ async function executeNextMatch(guildId, client) {
     const dex2 = combatData.player2.stat_dex;
     combatData.activePlayer = dex1 >= dex2 ? combatData.player1 : combatData.player2;
 
+    // Set timestamp batas waktu turn pertama
+    combatData.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
+
     client.activeCupMatches.set(match.match_id, combatData);
 
     // Kirim embed tempur pertama
     const combatMsg = await thread.send(getBattleEmbedData(combatData)).catch(() => null);
     if (combatMsg) {
       combatData.messageId = combatMsg.id;
+    }
+
+    // Kirim ping turn pertama untuk giliran pemain aktif
+    const pingMsg = await thread.send(`👉 Giliranmu untuk bertindak, <@${combatData.activePlayer.user_id}>!`).catch(() => null);
+    if (pingMsg) {
+      combatData.lastPingMessageId = pingMsg.id;
     }
 
     // Set timer timeout 45 detik
@@ -695,6 +704,9 @@ function processTurn(matchId, playerId, actionType, client) {
   match.activePlayer = defender;
   match.turnCount++;
 
+  // Set timestamp turn berikutnya
+  match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
+
   // Dot Terbakar di awal turn
   if (match.activePlayer.burnTurns > 0) {
     const burnDmg = 8;
@@ -730,6 +742,17 @@ async function endMatch(matchId, winnerId, reason, client) {
   if (match.timer) {
     clearTimeout(match.timer);
     match.timer = null;
+  }
+
+  // Hapus ping terakhir agar tidak berantakan
+  if (match.lastPingMessageId) {
+    const threadChannel = client.channels.cache.get(match.threadId) || await client.channels.fetch(match.threadId).catch(() => null);
+    if (threadChannel) {
+      const prevPing = await threadChannel.messages.fetch(match.lastPingMessageId).catch(() => null);
+      if (prevPing) {
+        await prevPing.delete().catch(() => {});
+      }
+    }
   }
 
   const winner = match.player1.user_id === winnerId ? match.player1 : match.player2;
@@ -827,6 +850,34 @@ async function endTournament(guildId, championId, runnerUpId, client) {
 }
 
 /**
+ * Helper untuk memformat log pertempuran dengan escape code ANSI berwarna untuk Discord code block.
+ */
+function formatLogToAnsi(log) {
+  // Bersihkan penanda bold markdown asterisks
+  let cleanLog = log.replace(/\*\*/g, '');
+  
+  let ansiColor = '\u001b[0m'; // Reset (White/Gray)
+  
+  if (cleanLog.includes('CRITICAL STRIKE') || cleanLog.includes('🚨') || cleanLog.includes('FORFEIT') || cleanLog.includes('AFK')) {
+    ansiColor = '\u001b[1;31m'; // Bold Red
+  } else if (cleanLog.includes('⚔️') || cleanLog.includes('DMG') || cleanLog.includes('🔥') || cleanLog.includes('TERBAKAR') || cleanLog.includes('meleset') || cleanLog.includes('lambat bertindak')) {
+    ansiColor = '\u001b[0;31m'; // Red
+  } else if (cleanLog.includes('🌀') || cleanLog.includes('memulihkan') || (cleanLog.includes('HP') && cleanLog.includes('+'))) {
+    ansiColor = '\u001b[1;32m'; // Bold Green
+  } else if (cleanLog.includes('🛡️') || cleanLog.includes('BERTAHAN') || cleanLog.includes('Perisai') || cleanLog.includes('zirah') || cleanLog.includes('menghindar') || cleanLog.includes('💨')) {
+    ansiColor = '\u001b[1;36m'; // Bold Cyan
+  } else if (cleanLog.includes('⚡') || cleanLog.includes('💥') || cleanLog.includes('Ultimate') || cleanLog.includes('Jurus Pamungkas') || cleanLog.includes('elemen') || cleanLog.includes('kebal')) {
+    ansiColor = '\u001b[1;35m'; // Bold Magenta
+  } else if (cleanLog.includes('⚠️') || cleanLog.includes('Batas Waktu Habis')) {
+    ansiColor = '\u001b[1;33m'; // Bold Yellow
+  } else if (cleanLog.includes('dimulai')) {
+    ansiColor = '\u001b[1;34m'; // Bold Blue
+  }
+  
+  return `${ansiColor}${cleanLog}\u001b[0m`;
+}
+
+/**
  * Helper untuk membuat struktur Embed dan Komponen Tombol Pertempuran.
  */
 function getBattleEmbedData(match) {
@@ -838,14 +889,20 @@ function getBattleEmbedData(match) {
   const renderHPBar = (hp, max) => {
     const ratio = Math.max(0, Math.min(1, hp / max));
     const filled = Math.round(ratio * barSize);
-    return '🟩'.repeat(filled) + '🟥'.repeat(barSize - filled);
+    let emoji = '🟩';
+    if (ratio <= 0.2) emoji = '🟥';
+    else if (ratio <= 0.5) emoji = '🟨';
+    return emoji.repeat(filled) + '⬛'.repeat(barSize - filled);
   };
 
   const renderSPBar = (energy) => {
     const ratio = Math.max(0, Math.min(1, energy / 100));
-    const filled = Math.round(ratio * 5);
-    return '⚡'.repeat(filled) + '░'.repeat(5 - filled);
+    const filled = Math.round(ratio * barSize);
+    return '🔵'.repeat(filled) + '⬛'.repeat(barSize - filled);
   };
+
+  // Format battle logs to ANSI
+  const ansiLogs = match.logs.slice(-3).map(formatLogToAnsi).join('\n');
 
   // Embed premium layout
   const embed = new EmbedBuilder()
@@ -864,9 +921,11 @@ function getBattleEmbedData(match) {
       
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📜 **Log Jalannya Duel:**\n` +
-      match.logs.slice(-3).map(l => `• ${l}`).join('\n') + `\n\n` +
+      `\`\`\`ansi\n` +
+      (ansiLogs || 'Belum ada log.') + '\n' +
+      `\`\`\`\n` +
       `👉 Giliran sekarang: **${active.pet_name}** (<@${active.user_id}>)\n` +
-      `⏱️ *Batas waktu memilih aksi: 45 detik!*`
+      `⏳ **Batas Waktu**: <t:${match.turnEndUnix || Math.floor(Date.now() / 1000 + 45)}:R>`
     )
     .setFooter({ text: `Turn ${match.turnCount} • Admin Cup` })
     .setTimestamp();
@@ -904,11 +963,28 @@ async function updateBattleEmbed(matchId, client) {
   if (!match) return;
 
   const threadChannel = client.channels.cache.get(match.threadId) || await client.channels.fetch(match.threadId).catch(() => null);
-  if (threadChannel && match.messageId) {
-    const msg = await threadChannel.messages.fetch(match.messageId).catch(() => null);
-    if (msg) {
-      const data = getBattleEmbedData(match);
-      await msg.edit(data).catch(() => {});
+  if (threadChannel) {
+    if (match.messageId) {
+      const msg = await threadChannel.messages.fetch(match.messageId).catch(() => null);
+      if (msg) {
+        const data = getBattleEmbedData(match);
+        await msg.edit(data).catch(() => {});
+      }
+    }
+
+    // Hapus ping sebelumnya jika ada
+    if (match.lastPingMessageId) {
+      const prevPing = await threadChannel.messages.fetch(match.lastPingMessageId).catch(() => null);
+      if (prevPing) {
+        await prevPing.delete().catch(() => {});
+      }
+      match.lastPingMessageId = null;
+    }
+
+    // Kirim ping baru untuk giliran pemain aktif
+    const pingMsg = await threadChannel.send(`👉 Giliranmu untuk bertindak, <@${match.activePlayer.user_id}>!`).catch(() => null);
+    if (pingMsg) {
+      match.lastPingMessageId = pingMsg.id;
     }
   }
 }
