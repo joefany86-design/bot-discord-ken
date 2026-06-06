@@ -13186,11 +13186,14 @@ async function handleEconomyCommands(message, client) {
         const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan turnamen. Mohon tunggu...')] }).catch(() => null);
 
         try {
-          const targetChannelId = '1512842270062416026';
-          const targetChannelObj = message.guild.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
+          let targetChannelObj = message.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
           if (!targetChannelObj) {
-            throw new Error('Channel PvP Cup tidak ditemukan! Pastikan channel dengan ID `1512842270062416026` ada di server ini.');
+            targetChannelObj = await tournament.createTournamentChannel(message.guild).catch(() => null);
           }
+          if (!targetChannelObj) {
+            throw new Error('Gagal menemukan atau membuat channel 🏆┃pvp-cup. Silakan periksa izin bot.');
+          }
+          const targetChannelId = targetChannelObj.id;
 
           const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, rewardDesc);
           const endRegAt = res.registrationEndAt;
