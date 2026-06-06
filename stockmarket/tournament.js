@@ -311,24 +311,19 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
   })();
 
   if (channel) {
+    const visualBracket = getVisualBracketString(guildId);
+    const queueText = getMatchQueueString(guildId);
+
     const bracketEmbed = new EmbedBuilder()
       .setColor(0x7C4DFF)
       .setTitle('📊 BAGAN PERTANDINGAN — ADMIN CUP 📊')
       .setDescription(
         `Pendaftaran telah ditutup otomatis! Sebanyak **${N} pet** telah diacak masuk ke dalam bagan turnamen.\n\n` +
-        `**Pertandingan Babak Pertama (Round 1):**\n` +
-        db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND round_number = 1', [guildId])
-          .map((m, idx) => {
-            if (m.player_2_id) {
-              const p1Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_1_id]);
-              const p2Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_2_id]);
-              return `• **Match ${idx + 1}:** ${p1Pet.pet_name} (<@${m.player_1_id}>) vs ${p2Pet.pet_name} (<@${m.player_2_id}>)`;
-            } else {
-              const p1Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_1_id]);
-              return `• **Match ${idx + 1}:** ${p1Pet.pet_name} (<@${m.player_1_id}>) mendapatkan **[ BYE ]** (Lolos otomatis)`;
-            }
-          }).join('\n') +
-        `\n\n📢 *Semua pertandingan akan dijalankan berurutan satu per satu. Bersiaplah!*`
+        `\`\`\`text\n` +
+        visualBracket + `\n` +
+        `\`\`\`\n\n` +
+        queueText +
+        `\n📢 *Semua pertandingan akan dijalankan berurutan satu per satu. Bersiaplah!*`
       )
       .setFooter({ text: 'Admin Cup • Tournament Bracket' })
       .setTimestamp();
@@ -349,6 +344,11 @@ async function executeNextMatch(guildId, client) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'PLAYING\'', [guildId]);
   if (!event) return;
 
+  if (event.is_paused === 1) {
+    console.log(`[Tournament] Tournament in guild ${guildId} is paused. Skipping execution.`);
+    return;
+  }
+
   const channel = client.channels.cache.get(event.channel_id) || await client.channels.fetch(event.channel_id).catch(() => null);
   if (!channel) return;
 
@@ -359,9 +359,6 @@ async function executeNextMatch(guildId, client) {
   );
 
   if (match) {
-    // Set match aktif
-    db.run('UPDATE tournament_matches SET match_status = \'ACTIVE\' WHERE match_id = ?', [match.match_id]);
-
     // Fetch data pet
     const p1Pet = getRegisteredPet(match.player_1_id, guildId);
     const p2Pet = getRegisteredPet(match.player_2_id, guildId);
@@ -385,20 +382,29 @@ async function executeNextMatch(guildId, client) {
       return channel;
     });
 
+    // Set match aktif dan simpan thread_id
+    db.run(
+      'UPDATE tournament_matches SET match_status = \'ACTIVE\', thread_id = ? WHERE match_id = ?',
+      [thread.id, match.match_id]
+    );
+
     await thread.send(`⚔️ **Pertandingan Dimulai!** <@${match.player_1_id}> vs <@${match.player_2_id}>\nSilakan bertarung di sini!`).catch(() => {});
 
-    // Kirim pengumuman dan mention pemain di channel utama turnamen
+    // Kirim pengumuman di channel utama turnamen tanpa ping spam
     if (thread.id !== channel.id) {
       const matchAnnounce = new EmbedBuilder()
         .setColor(0xFF5722)
-        .setTitle('\u2694\uFE0F PERTANDINGAN DIMULAI!')
+        .setTitle('⚔️ PERTANDINGAN DIMULAI!')
         .setDescription(
           `**${p1Pet.pet_name}** (<@${match.player_1_id}>) vs **${p2Pet.pet_name}** (<@${match.player_2_id}>)\n\n` +
-          `\uD83D\uDD17 Saksikan pertarungan di: <#${thread.id}>`
+          `🔗 Saksikan pertarungan di: <#${thread.id}>`
         )
         .setTimestamp();
-      await channel.send({ content: `<@${match.player_1_id}> <@${match.player_2_id}>`, embeds: [matchAnnounce] }).catch(() => {});
+      await channel.send({ embeds: [matchAnnounce] }).catch(() => {});
     }
+
+    // Update panel admin
+    updateAdminPanel(guildId, client).catch(() => {});
 
     // Inisialisasi status tempur di memori
     client.activeCupMatches = client.activeCupMatches || new Map();
@@ -558,26 +564,21 @@ async function executeNextMatch(guildId, client) {
       })();
 
       // Beritahu bagan baru
-      const roundNames = ['QUARTER-FINALS', 'SEMI-FINALS', 'FINALS'];
       const roundLabel = nextRound === event.current_round + 1 && winners.length === 2 ? '🏆 GRAND FINALS 🏆' : `ROUND ${nextRound}`;
       
+      const visualBracket = getVisualBracketString(guildId);
+      const queueText = getMatchQueueString(guildId);
+
       const newBracketEmbed = new EmbedBuilder()
         .setColor(0x7C4DFF)
         .setTitle(`📊 BAGAN PERTANDINGAN — ${roundLabel} 📊`)
         .setDescription(
           `Babak **Ronde ${event.current_round}** selesai!\n` +
-          `Berikut adalah daftar pertandingan untuk babak selanjutnya:\n\n` +
-          db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND round_number = ?', [guildId, nextRound])
-            .map((m, idx) => {
-              if (m.player_2_id) {
-                const p1Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_1_id]);
-                const p2Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_2_id]);
-                return `• **Match ${idx + 1}:** ${p1Pet.pet_name} (<@${m.player_1_id}>) vs ${p2Pet.pet_name} (<@${m.player_2_id}>)`;
-              } else {
-                const p1Pet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, m.player_1_id]);
-                return `• **Match ${idx + 1}:** ${p1Pet.pet_name} (<@${m.player_1_id}>) mendapatkan **[ BYE ]** (Lolos otomatis)`;
-              }
-            }).join('\n') +
+          `Berikut adalah bagan pertandingan untuk babak selanjutnya:\n\n` +
+          `\`\`\`text\n` +
+          visualBracket + `\n` +
+          `\`\`\`\n\n` +
+          queueText +
           `\n\n⏱️ *Pertandingan pertama ronde baru dimulai dalam 1 menit (Jeda Istirahat).*`
         )
         .setFooter({ text: 'Admin Cup • Tournament Seeding' })
@@ -1027,7 +1028,7 @@ async function endMatch(matchId, winnerId, reason, client) {
     );
   })();
 
-  const threadChannel = client.channels.cache.get(match.threadId) || await client.channels.fetch(match.threadId).catch(() => null);
+  const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
     const victoryEmbed = new EmbedBuilder()
       .setColor(0x10B981)
@@ -1041,12 +1042,41 @@ async function endMatch(matchId, winnerId, reason, client) {
 
     await threadChannel.send({ embeds: [victoryEmbed] });
 
-    // Lock thread agar bersih
-    if (threadChannel.isThread && threadChannel.setLocked) {
-      await threadChannel.setLocked(true).catch(() => {});
-      await threadChannel.setArchived(true).catch(() => {});
+    // Rename thread, lock dan archive agar bersih
+    if (threadChannel.isThread) {
+      await threadChannel.setName(`[SELESAI] Match ${match.matchId} - Winner: ${winner.pet_name}`).catch(() => {});
+      if (threadChannel.setLocked) {
+        await threadChannel.setLocked(true).catch(() => {});
+        await threadChannel.setArchived(true).catch(() => {});
+      }
     }
   }
+
+  // Kirim update bagan & antrean ke channel utama
+  const eventChan = db.get('SELECT channel_id FROM tournament_events WHERE guild_id = ?', [match.guildId]);
+  if (eventChan) {
+    const channel = client.channels.cache.get(eventChan.channel_id) || await client.channels.fetch(eventChan.channel_id).catch(() => null);
+    if (channel) {
+      const visualBracket = getVisualBracketString(match.guildId);
+      const queueText = getMatchQueueString(match.guildId);
+
+      const updateEmbed = new EmbedBuilder()
+        .setColor(0x7C4DFF)
+        .setTitle('📊 UPDATE BAGAN & ANTRIAN TURNAMEN 📊')
+        .setDescription(
+          `Match #${match.matchId} selesai!\n\n` +
+          `\`\`\`text\n` +
+          visualBracket + `\n` +
+          `\`\`\`\n\n` +
+          queueText
+        )
+        .setTimestamp();
+      await channel.send({ embeds: [updateEmbed] }).catch(() => {});
+    }
+  }
+
+  // Update panel admin
+  updateAdminPanel(match.guildId, client).catch(() => {});
 
   // Hapus dari map memori
   client.activeCupMatches.delete(matchId);
@@ -1095,6 +1125,22 @@ async function endTournament(guildId, championId, runnerUpId, client) {
         (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
         `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
       ).catch(() => {});
+    }
+
+    // Perbarui panel admin dengan status selesai
+    if (event.admin_panel_message_id && event.admin_panel_channel_id) {
+      const adminChan = client.channels.cache.get(event.admin_panel_channel_id) || await client.channels.fetch(event.admin_panel_channel_id).catch(() => null);
+      if (adminChan) {
+        const adminMsg = await adminChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
+        if (adminMsg) {
+          const completedEmbed = new EmbedBuilder()
+            .setColor(0xFFD700)
+            .setTitle('🏆 TURNAMEN SELESAI!')
+            .setDescription(`Turnamen Admin Cup telah selesai dengan sukses!\nJuara 1: <@${championId}>\nJuara 2: ${runnerUpId ? `<@${runnerUpId}>` : '-'}`)
+            .setTimestamp();
+          await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => {});
+        }
+      }
     }
   }
 
@@ -1293,6 +1339,453 @@ async function createTournamentChannel(guild) {
   return channel;
 }
 
+/**
+ * Membuat visual bracket tree berbasis ASCII text.
+ */
+function getVisualBracketString(guildId) {
+  const matches = db.all(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? ORDER BY round_number, match_id',
+    [guildId]
+  );
+  if (matches.length === 0) return 'Belum ada bagan pertandingan.';
+
+  const participants = db.all(
+    'SELECT * FROM tournament_participants WHERE guild_id = ?',
+    [guildId]
+  );
+  const participantMap = new Map();
+  participants.forEach(p => {
+    const petInfo = db.get(
+      'SELECT level, pet_type FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [p.user_id, guildId, p.pet_name]
+    ) || { level: 10, pet_type: 'CAT' };
+    participantMap.set(p.user_id, {
+      pet_name: p.pet_name,
+      level: petInfo.level,
+      pet_type: petInfo.pet_type
+    });
+  });
+
+  const getPlayerLabel = (userId) => {
+    if (!userId) return '[ BYE ]';
+    const info = participantMap.get(userId);
+    if (!info) return `User:${userId.slice(0, 6)}`;
+    return `${info.pet_name} (Lv.${info.level})`;
+  };
+
+  const rounds = {};
+  let maxRound = 1;
+  matches.forEach(m => {
+    if (!rounds[m.round_number]) rounds[m.round_number] = [];
+    rounds[m.round_number].push(m);
+    if (m.round_number > maxRound) maxRound = m.round_number;
+  });
+
+  const r1Matches = rounds[1] || [];
+  const numR1Matches = r1Matches.length;
+  if (numR1Matches === 0) return 'Belum ada bagan ronde 1.';
+
+  const gridHeight = numR1Matches * 4;
+  const colWidth = 26;
+  const gridWidth = maxRound * colWidth + 30;
+  const grid = Array.from({ length: gridHeight }, () => Array(gridWidth).fill(' '));
+
+  const writeAt = (x, y, str) => {
+    if (y < 0 || y >= gridHeight) return;
+    for (let i = 0; i < str.length; i++) {
+      if (x + i < gridWidth) {
+        grid[y][x + i] = str[i];
+      }
+    }
+  };
+
+  for (let r = 1; r <= maxRound; r++) {
+    const roundMatches = rounds[r] || [];
+    const colX = (r - 1) * colWidth;
+    const d = Math.pow(2, r - 1);
+
+    roundMatches.forEach((m, j) => {
+      const y1 = j * d * 4 + (d - 1);
+      const y2 = j * d * 4 + (d - 1) + d * 2;
+      const yc = j * d * 4 + (d - 1) + d;
+
+      let p1Label = '';
+      let p2Label = '';
+
+      if (r === 1) {
+        p1Label = getPlayerLabel(m.player_1_id);
+        p2Label = getPlayerLabel(m.player_2_id);
+      } else {
+        p1Label = m.player_1_id ? getPlayerLabel(m.player_1_id) : 'TBD';
+        p2Label = m.player_2_id ? getPlayerLabel(m.player_2_id) : 'TBD';
+      }
+
+      if (m.winner_id) {
+        if (m.winner_id === m.player_1_id) p1Label += ' ✅';
+        else if (m.winner_id === m.player_2_id) p2Label += ' ✅';
+      } else if (m.match_status === 'ACTIVE') {
+        p1Label += ' 🔴';
+        p2Label += ' 🔴';
+      }
+
+      writeAt(colX + 3, y1, p1Label);
+      writeAt(colX + 3, y2, p2Label);
+
+      writeAt(colX, y1, '┌─');
+      for (let y = y1 + 1; y < y2; y++) {
+        writeAt(colX, y, '│');
+      }
+      writeAt(colX, yc, '├─');
+      writeAt(colX, y2, '└─');
+
+      for (let x = colX + 2; x < colX + colWidth - 1; x++) {
+        writeAt(x, yc, '─');
+      }
+    });
+  }
+
+  const dLast = Math.pow(2, maxRound - 1);
+  const ycFinal = dLast - 1 + dLast;
+  const colXFinal = (maxRound - 1) * colWidth;
+  const finalMatch = (rounds[maxRound] || [])[0];
+  let champLabel = '🏆 CHAMPION: TBD';
+  if (finalMatch && finalMatch.winner_id && finalMatch.match_status === 'COMPLETED') {
+    champLabel = `🏆 JUARA: ${getPlayerLabel(finalMatch.winner_id)}`;
+  }
+  writeAt(colXFinal + colWidth, ycFinal, `──> ${champLabel}`);
+
+  const lines = grid.map(row => row.join('').trimEnd());
+  let firstNonEmpty = 0;
+  while (firstNonEmpty < lines.length && lines[firstNonEmpty] === '') firstNonEmpty++;
+  let lastNonEmpty = lines.length - 1;
+  while (lastNonEmpty >= 0 && lines[lastNonEmpty] === '') lastNonEmpty--;
+
+  if (firstNonEmpty > lastNonEmpty) return 'Bagan kosong.';
+  return lines.slice(firstNonEmpty, lastNonEmpty + 1).join('\n');
+}
+
+/**
+ * Menyusun daftar antrean match dengan tautan thread-nya.
+ */
+function getMatchQueueString(guildId) {
+  const event = db.get('SELECT current_round FROM tournament_events WHERE guild_id = ?', [guildId]);
+  if (!event) return '';
+
+  const activeMatches = db.all(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\'',
+    [guildId]
+  );
+  
+  const pendingMatches = db.all(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'PENDING\' ORDER BY round_number, match_id',
+    [guildId]
+  );
+
+  const getPetName = (userId) => {
+    if (!userId) return '[ BYE ]';
+    const participant = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
+    return participant ? participant.pet_name : `<@${userId}>`;
+  };
+
+  let queueText = '📋 **ANTREAN PERTANDINGAN:**\n';
+  let hasActive = false;
+  activeMatches.forEach(m => {
+    hasActive = true;
+    const p1 = getPetName(m.player_1_id);
+    const p2 = getPetName(m.player_2_id);
+    queueText += `🔴 **Match #${m.match_id} (LIVE):** **${p1}** vs **${p2}** ──> Saksikan di: <#${m.thread_id || ''}>\n`;
+  });
+
+  if (!hasActive && pendingMatches.length > 0) {
+    queueText += `🟢 **Match Berikutnya (Segera Mulai):** Bersiap-siap...\n`;
+  }
+
+  if (pendingMatches.length === 0 && !hasActive) {
+    queueText += `*Tidak ada pertandingan dalam antrean.*`;
+  } else {
+    pendingMatches.slice(0, 3).forEach((m, idx) => {
+      const p1 = getPetName(m.player_1_id);
+      const p2 = getPetName(m.player_2_id);
+      queueText += `⏳ **Match #${m.match_id} (Ronde ${m.round_number}):** **${p1}** vs **${p2}**\n`;
+    });
+    if (pendingMatches.length > 3) {
+      queueText += `> *...dan ${pendingMatches.length - 3} pertandingan lainnya.*`;
+    }
+  }
+  return queueText;
+}
+
+/**
+ * Menyusun data panel kontrol admin.
+ */
+function getAdminPanelData(guildId) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
+  if (!event) {
+    return {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xFF0000)
+          .setTitle('❌ TURNAMEN TIDAK AKTIF')
+          .setDescription('Tidak ada turnamen aktif di server ini saat ini.')
+      ],
+      components: []
+    };
+  }
+
+  const isPaused = event.is_paused === 1;
+  const statusLabel = event.status;
+
+  const activeMatch = db.get(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+    [guildId]
+  );
+
+  let activeMatchText = '*Tidak ada pertandingan aktif saat ini.*';
+  if (activeMatch) {
+    const p1 = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, activeMatch.player_1_id]);
+    const p2 = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, activeMatch.player_2_id]);
+    activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}** (Thread: <#${activeMatch.thread_id}>)`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(isPaused ? 0xFF9800 : 0x7C4DFF)
+    .setTitle('🛠️ ADMIN CUP TOURNAMENT DASHBOARD')
+    .setDescription(
+      `📶 **Status Turnamen:** \`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}\n` +
+      `📅 **Ronde Aktif:** Ronde \`${event.current_round}\`\n\n` +
+      `⚔️ **Pertandingan Aktif:**\n${activeMatchText}\n\n` +
+      `👉 Gunakan tombol di bawah ini untuk mengontrol jalannya turnamen.`
+    )
+    .setFooter({ text: 'Admin Cup Panel • Staff Only' })
+    .setTimestamp();
+
+  const row1 = new ActionRowBuilder();
+  if (isPaused) {
+    row1.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`cup_admin_resume`)
+        .setLabel('▶️ Lanjutkan (Resume)')
+        .setStyle(ButtonStyle.Success)
+    );
+  } else {
+    row1.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`cup_admin_pause`)
+        .setLabel('⏸️ Jeda (Pause)')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  row1.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`cup_admin_reroll`)
+      .setLabel('🔄 Re-roll')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(!activeMatch),
+    new ButtonBuilder()
+      .setCustomId(`cup_admin_dq`)
+      .setLabel('⚠️ DQ Player')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!activeMatch),
+    new ButtonBuilder()
+      .setCustomId(`cup_admin_forcewin`)
+      .setLabel('👑 Force Win')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(!activeMatch)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`cup_admin_extend`)
+      .setLabel('⏱️ Perpanjang Registrasi')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(statusLabel !== 'REGISTERING'),
+    new ButtonBuilder()
+      .setCustomId(`cup_admin_stop`)
+      .setLabel('❌ Batalkan Turnamen')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  return { embeds: [embed], components: [row1, row2] };
+}
+
+/**
+ * Memperbarui tampilan panel admin.
+ */
+async function updateAdminPanel(guildId, client) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
+  if (!event || !event.admin_panel_message_id || !event.admin_panel_channel_id) return;
+
+  const channel = client.channels.cache.get(event.admin_panel_channel_id) || await client.channels.fetch(event.admin_panel_channel_id).catch(() => null);
+  if (!channel) return;
+
+  const msg = await channel.messages.fetch(event.admin_panel_message_id).catch(() => null);
+  if (!msg) return;
+
+  const data = getAdminPanelData(guildId);
+  await msg.edit(data).catch(() => {});
+}
+
+/**
+ * Menjeda turnamen.
+ */
+async function pauseTournament(guildId, client) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
+  if (!event) throw new Error('Tidak ada turnamen aktif.');
+  db.run('UPDATE tournament_events SET is_paused = 1 WHERE guild_id = ?', [guildId]);
+  await updateAdminPanel(guildId, client).catch(() => {});
+}
+
+/**
+ * Melanjutkan turnamen.
+ */
+async function resumeTournament(guildId, client) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
+  if (!event) throw new Error('Tidak ada turnamen aktif.');
+  db.run('UPDATE tournament_events SET is_paused = 0 WHERE guild_id = ?', [guildId]);
+  await updateAdminPanel(guildId, client).catch(() => {});
+
+  if (event.status === 'PLAYING') {
+    const activeMatch = db.get('SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\'', [guildId]);
+    if (!activeMatch) {
+      executeNextMatch(guildId, client);
+    }
+  }
+}
+
+/**
+ * Diskualifikasi pemain.
+ */
+async function dqPlayer(guildId, playerId, client) {
+  const match = db.get(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+    [guildId]
+  );
+  if (!match) throw new Error('Tidak ada pertandingan aktif untuk diskualifikasi.');
+
+  const winnerId = match.player_1_id === playerId ? match.player_2_id : match.player_1_id;
+  if (!winnerId) throw new Error('Lawan tidak ditemukan.');
+
+  const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
+  if (threadChannel) {
+    await threadChannel.send(`⚠️ <@${playerId}> **telah didiskualifikasi oleh Admin!**`).catch(() => {});
+  }
+
+  await endMatch(match.match_id, winnerId, 'defeat', client);
+  await updateAdminPanel(guildId, client).catch(() => {});
+}
+
+/**
+ * Menangkan paksa pemain.
+ */
+async function forceWinPlayer(guildId, playerId, client) {
+  const match = db.get(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+    [guildId]
+  );
+  if (!match) throw new Error('Tidak ada pertandingan aktif untuk dimenangkan paksa.');
+
+  if (match.player_1_id !== playerId && match.player_2_id !== playerId) {
+    throw new Error('Pemain terpilih bukan bagian dari pertandingan aktif.');
+  }
+
+  const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
+  if (threadChannel) {
+    await threadChannel.send(`⚠️ Admin memberikan **kemenangan paksa** kepada <@${playerId}>!`).catch(() => {});
+  }
+
+  await endMatch(match.match_id, playerId, 'defeat', client);
+  await updateAdminPanel(guildId, client).catch(() => {});
+}
+
+/**
+ * Reset ulang pertandingan aktif.
+ */
+async function rerollMatch(guildId, client) {
+  const matchRow = db.get(
+    'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+    [guildId]
+  );
+  if (!matchRow) throw new Error('Tidak ada pertandingan aktif untuk di-reset.');
+
+  const matchId = matchRow.match_id;
+  const match = client.activeCupMatches.get(matchId);
+  if (!match) throw new Error('Data pertarungan aktif tidak ditemukan di memori.');
+
+  if (match.timer) {
+    clearTimeout(match.timer);
+    match.timer = null;
+  }
+
+  const p1Pet = getRegisteredPet(matchRow.player_1_id, guildId);
+  const p2Pet = getRegisteredPet(matchRow.player_2_id, guildId);
+
+  const maxHp1 = pet.getMaxHP(p1Pet);
+  const maxHp2 = pet.getMaxHP(p2Pet);
+
+  match.turnCount = 1;
+  match.logs = [`🔄 Pertandingan di-reset oleh Admin! Memulai ulang duel antara **${p1Pet.pet_name}** dan **${p2Pet.pet_name}**.`];
+  
+  match.player1.hp = maxHp1;
+  match.player1.maxHP = maxHp1;
+  match.player1.energy = 30;
+  match.player1.timeouts = 0;
+  match.player1.elemCooldown = 0;
+  match.player1.hasUsedUltimate = false;
+  match.player1.isDefending = false;
+  match.player1.burnTurns = 0;
+  match.player1.shieldTurns = 0;
+  match.player1.chosenAction = null;
+
+  match.player2.hp = maxHp2;
+  match.player2.maxHP = maxHp2;
+  match.player2.energy = 30;
+  match.player2.timeouts = 0;
+  match.player2.elemCooldown = 0;
+  match.player2.hasUsedUltimate = false;
+  match.player2.isDefending = false;
+  match.player2.burnTurns = 0;
+  match.player2.shieldTurns = 0;
+  match.player2.chosenAction = null;
+
+  match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
+
+  const threadChannel = client.channels.cache.get(match.threadId) || await client.channels.fetch(match.threadId).catch(() => null);
+  if (threadChannel) {
+    await threadChannel.send(`🔄 **Pertandingan di-reset oleh Admin!** Memulai ulang dari awal...`).catch(() => {});
+  }
+
+  await updateBattleEmbed(matchId, client);
+  startTurnTimer(matchId, client);
+  await updateAdminPanel(guildId, client).catch(() => {});
+}
+
+/**
+ * Perpanjang waktu pendaftaran.
+ */
+async function extendRegistration(guildId, mins, client) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'', [guildId]);
+  if (!event) throw new Error('Pendaftaran turnamen tidak sedang aktif.');
+
+  const newEndRegAt = event.registration_end_at + (mins * 60);
+  db.run('UPDATE tournament_events SET registration_end_at = ? WHERE guild_id = ?', [guildId]);
+
+  await updateRegistrationEmbed(guildId, client);
+
+  if (client.tournamentTimers && client.tournamentTimers.has(guildId)) {
+    clearTimeout(client.tournamentTimers.get(guildId));
+  }
+
+  client.tournamentTimers = client.tournamentTimers || new Map();
+  const remainingTimeMs = (newEndRegAt - Math.floor(Date.now() / 1000)) * 1000;
+  const newTimer = setTimeout(() => {
+    closeRegistrationAndGenerateBracket(guildId, client);
+  }, Math.max(0, remainingTimeMs));
+  
+  client.tournamentTimers.set(guildId, newTimer);
+  await updateAdminPanel(guildId, client).catch(() => {});
+}
+
 module.exports = {
   startTournament,
   stopTournament,
@@ -1307,5 +1800,15 @@ module.exports = {
   processTurn,
   endMatch,
   endTournament,
-  createTournamentChannel
+  createTournamentChannel,
+  getVisualBracketString,
+  getMatchQueueString,
+  getAdminPanelData,
+  updateAdminPanel,
+  pauseTournament,
+  resumeTournament,
+  dqPlayer,
+  forceWinPlayer,
+  rerollMatch,
+  extendRegistration
 };

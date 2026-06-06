@@ -675,6 +675,15 @@ function initSchema() {
       run: () => {
         addColumn('tournament_events', 'reward_desc', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 9,
+      description: "Menambahkan kolom is_paused dan admin_panel_message_id ke tournament_events untuk fitur Pause/Resume dan Dashboard",
+      run: () => {
+        addColumn('tournament_events', 'is_paused', 'INTEGER DEFAULT 0');
+        addColumn('tournament_events', 'admin_panel_message_id', 'TEXT DEFAULT NULL');
+        addColumn('tournament_events', 'admin_panel_channel_id', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

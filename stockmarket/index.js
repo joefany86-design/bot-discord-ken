@@ -1148,6 +1148,111 @@ function initStockMarket(client) {
       }
       return;
     }
+
+    // Handler interaksi panel admin turnamen
+    if (interaction.isButton() && customId.startsWith('cup_admin_')) {
+      const isOwner = interaction.user.id === OWNER_ID;
+      const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
+      const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
+      }
+
+      const tournament = require('./tournament');
+      const parts = customId.split('_');
+      const adminAction = parts[2];
+
+      try {
+        if (adminAction === 'pause') {
+          await tournament.pauseTournament(interaction.guildId, client);
+          await interaction.reply({ content: '⏸️ Turnamen dijeda sementara oleh Admin!', flags: 64 });
+        } else if (adminAction === 'resume') {
+          await tournament.resumeTournament(interaction.guildId, client);
+          await interaction.reply({ content: '▶️ Turnamen dilanjutkan kembali oleh Admin!', flags: 64 });
+        } else if (adminAction === 'stop') {
+          const active = tournament.stopTournament(interaction.guildId);
+          if (active && active.channel_id) {
+            const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
+            if (channel) {
+              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+            }
+          }
+          await interaction.reply({ content: '✅ Turnamen berhasil dibatalkan dan dibersihkan.', flags: 64 });
+          if (interaction.message) {
+            await interaction.message.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => {});
+          }
+        } else if (adminAction === 'reroll') {
+          await tournament.rerollMatch(interaction.guildId, client);
+          await interaction.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
+        } else if (adminAction === 'dq' || adminAction === 'forcewin') {
+          const dbModule = require('./database');
+          const match = dbModule.get(
+            'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+            [interaction.guildId]
+          );
+          if (!match) {
+            return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+          }
+
+          const p1Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_1_id]);
+          const p2Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_2_id]);
+
+          const actionRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_1_id}`)
+              .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p1Pet?.pet_name || 'Player 1'}`)
+              .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_2_id}`)
+              .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p2Pet?.pet_name || 'Player 2'}`)
+              .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success)
+          );
+
+          const desc = adminAction === 'dq' 
+            ? '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**' 
+            : '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**';
+
+          await interaction.reply({ content: desc, components: [actionRow], flags: 64 });
+        } else if (adminAction === 'extend') {
+          const actionRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_5`)
+              .setLabel('+5 Menit')
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_10`)
+              .setLabel('+10 Menit')
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_15`)
+              .setLabel('+15 Menit')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          await interaction.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
+        } else if (adminAction === 'act') {
+          const subAction = parts[3];
+
+          if (subAction === 'dq') {
+            const targetPlayerId = parts[5];
+            await tournament.dqPlayer(interaction.guildId, targetPlayerId, client);
+            await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => {});
+          } else if (subAction === 'fw') {
+            const targetPlayerId = parts[5];
+            await tournament.forceWinPlayer(interaction.guildId, targetPlayerId, client);
+            await interaction.update({ content: `✅ Kemenangan paksa diberikan kepada <@${targetPlayerId}>!`, components: [] }).catch(() => {});
+          } else if (subAction === 'ext') {
+            const targetGuildId = parts[4];
+            const mins = parseInt(parts[5]);
+            await tournament.extendRegistration(targetGuildId, mins, client);
+            await interaction.update({ content: `✅ Waktu pendaftaran berhasil diperpanjang sebesar **+${mins} menit**!`, components: [] }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+      return;
+    }
+
     if (interaction.isStringSelectMenu() && customId === 'eco_select_portal_hub_navigation') {
       customId = interaction.values[0];
     }
@@ -13125,10 +13230,25 @@ async function handleEconomyCommands(message, client) {
             await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});
           }
 
-          // Jadwalkan penutupan registrasi dan seeding
-          setTimeout(() => {
+          // Kirim Dashboard Admin Control Panel
+          const adminPanelData = tournament.getAdminPanelData(guildId);
+          const adminPanelMsg = await message.channel.send(adminPanelData).catch(() => null);
+          if (adminPanelMsg) {
+            database.run(
+              'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
+              [adminPanelMsg.id, message.channel.id, guildId]
+            );
+          }
+
+          // Jadwalkan penutupan registrasi dan seeding dan simpan timer
+          client.tournamentTimers = client.tournamentTimers || new Map();
+          if (client.tournamentTimers.has(guildId)) {
+            clearTimeout(client.tournamentTimers.get(guildId));
+          }
+          const regTimer = setTimeout(() => {
             tournament.closeRegistrationAndGenerateBracket(guildId, client);
           }, durationMins * 60 * 1000);
+          client.tournamentTimers.set(guildId, regTimer);
 
           return true;
         } catch (err) {
@@ -13137,6 +13257,37 @@ async function handleEconomyCommands(message, client) {
             return statusMsg.edit({ embeds: [errMsg] }).catch(() => {});
           }
           return message.reply({ embeds: [errMsg] }).catch(() => {});
+        }
+      }
+
+      if (action === 'panel' || action === 'dashboard' || action === 'control') {
+        try {
+          const event = database.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
+          if (!event) {
+            return message.reply({ embeds: [embeds.warnEmbed('Tidak Ada Turnamen!', 'Tidak ada turnamen aktif di server ini.')] });
+          }
+
+          if (event.admin_panel_message_id && event.admin_panel_channel_id) {
+            const oldChan = client.channels.cache.get(event.admin_panel_channel_id) || await client.channels.fetch(event.admin_panel_channel_id).catch(() => null);
+            if (oldChan) {
+              const oldMsg = await oldChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
+              if (oldMsg) {
+                await oldMsg.delete().catch(() => {});
+              }
+            }
+          }
+
+          const adminPanelData = tournament.getAdminPanelData(guildId);
+          const adminPanelMsg = await message.channel.send(adminPanelData).catch(() => null);
+          if (adminPanelMsg) {
+            database.run(
+              'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
+              [adminPanelMsg.id, message.channel.id, guildId]
+            );
+          }
+          return true;
+        } catch (err) {
+          return message.reply({ embeds: [embeds.errorEmbed('Gagal Mengirim Panel!', err.message)] });
         }
       }
 
@@ -13149,13 +13300,24 @@ async function handleEconomyCommands(message, client) {
               await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
             }
           }
+
+          if (active && active.admin_panel_message_id && active.admin_panel_channel_id) {
+            const adminChan = client.channels.cache.get(active.admin_panel_channel_id) || await client.channels.fetch(active.admin_panel_channel_id).catch(() => null);
+            if (adminChan) {
+              const adminMsg = await adminChan.messages.fetch(active.admin_panel_message_id).catch(() => null);
+              if (adminMsg) {
+                await adminMsg.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => {});
+              }
+            }
+          }
+
           return message.reply({ embeds: [embeds.successEmbed('Turnamen Dibatalkan!', 'Turnamen Admin Cup aktif berhasil dibatalkan dan semua data pendaftaran telah dibersihkan.')] });
         } catch (err) {
           return message.reply({ embeds: [embeds.errorEmbed('Gagal Membatalkan Turnamen!', err.message)] });
         }
       }
 
-      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.admincup start [durasi_menit] [min_level] [max_level]\`\n👉 \`.admincup stop\`')] });
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.admincup start [durasi_menit] [min_level] [max_level]\`\n👉 \`.admincup panel\`\n👉 \`.admincup stop\`')] });
     }
 
 
