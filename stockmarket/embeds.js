@@ -1387,6 +1387,37 @@ module.exports = {
       .setTimestamp();
   },
 
+  // 10b. Embed Status Penjara (.jail)
+  jailStatusEmbed(user, remainingSeconds, bailAmount, jailType) {
+    const formatDuration = (seconds) => {
+      if (seconds <= 0) return 'Bebas';
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hrs > 0) return `${hrs} jam ${mins} menit`;
+      if (mins > 0) return `${mins} menit ${secs} detik`;
+      return `${secs} detik`;
+    };
+
+    const timeString = formatDuration(remainingSeconds);
+    const freeAtUnix = Math.floor(Date.now() / 1000) + remainingSeconds;
+
+    return new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setTitle(`🚨 LAPAS VIRTUAL KOSAN 1A — ${user.username.toUpperCase()}`)
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
+      .setDescription(
+        `👮 **Anda sedang mendekam di Penjara Virtual!**\n` +
+        `Aktivitas ekonomi Anda (mencuri, bekerja, berburu, trade, dll) ditangguhkan sementara waktu.\n\n` +
+        `• 🕒 **Sisa Hukuman:** \`${timeString}\` *(Bebas <t:${freeAtUnix}:R>)*\n` +
+        `• 📂 **Tipe Penjara:** \`${jailType === 'heist' ? 'Perampokan Bank (Heist)' : 'Pencurian (Solo Rob)'}\`\n` +
+        `• 🪙 **Biaya Jaminan Tebus:** **${formatCurrency(bailAmount)}**\n\n` +
+        `*Anda dapat menunggu sisa hukuman selesai atau membayar jaminan tebus menggunakan tombol di bawah ini!*`
+      )
+      .setFooter({ text: 'Bot Ketertiban Lapas Kosan 1A' })
+      .setTimestamp();
+  },
+
   // 11. Embed Akses Ditolak (Owner Only)
   accessDeniedEmbed(ownerId) {
     return new EmbedBuilder()
@@ -1407,18 +1438,12 @@ module.exports = {
       .setColor(COLORS.PURPLE)
       .setTitle('🎮 TOKO ROLE PRESTISE — RUPIAH SERVER')
       .setDescription(
-        `\`\`\`\n` +
-        `┌───────────────────────────┐\n` +
-        `│  🎰 ROLE MARKET KOSAN 1A 🎰 │\n` +
-        `│    Tukar Koin = Prestige    │\n` +
-        `└───────────────────────────┘\n` +
-        `\`\`\`\n` +
+        `🎰 **ROLE MARKET KOSAN 1A** — Tukar Koin = Prestige\n\n` +
         `> 💵 **Saldo Anda:** **${formatCurrency(wallet.balance)}**\n` +
         `> 🎲 **Gacha Roll:** \`.gacha-role\` seharga **${formatCurrency(config.gacha.COST || 250)}**\n\n` +
         `📊 **Peluang Gacha (Rarity Rates):**\n` +
-        `┊ 🟢 COMMON \`70%\` · 🔵 RARE \`22%\` · 🟣 EPIC \`6.8%\`\n` +
-        `┊ 👑 LEGENDARY \`1.1%\` · 🌟 MYTHIC \`0.1%\` · 🗑️ ZONK \`???\`\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `• 🟢 COMMON \`70%\` · 🔵 RARE \`22%\` · 🟣 EPIC \`6.8%\`\n` +
+        `• 👑 LEGENDARY \`1.1%\` · 🌟 MYTHIC \`0.1%\` · 🗑️ ZONK \`???\``
       );
 
     const TIER_EMOJIS = {
@@ -1457,13 +1482,12 @@ module.exports = {
               }
             }
 
-            const gachaStatus = item.is_gacha ? '🎲 `Tersedia di Gacha`' : '🔒 `Pembelian Langsung Only`';
-            const desc = item.description ? `\n   └─ 💬 *“${item.description}”*` : '';
+            const gachaStatus = item.is_gacha ? '🎲 Tersedia di Gacha' : '🔒 Pembelian Langsung';
+            const desc = item.description ? `\n   • 💬 *“${item.description}”*` : '';
 
-            content += `🆔 **\`ID: ${item.id}\`**  |  ${emoji} **${item.role_name}**\n` +
-              `   ├─ 💵 **Harga** : **${formatCurrency(item.price)}**\n` +
-              `   ├─ 📦 **Stok**  : ${stockInfo}\n` +
-              `   ├─ 🎲 **Gacha** : ${gachaStatus}` +
+            content += `🆔 **\`ID: ${item.id}\`** | ${emoji} **${item.role_name}**\n` +
+              `   • 💵 **Harga:** **${formatCurrency(item.price)}** · 📦 **Stok:** ${stockInfo}\n` +
+              `   • 🎲 **Gacha:** ${gachaStatus}` +
               `${desc}\n\n`;
           });
 
