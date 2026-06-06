@@ -3954,15 +3954,18 @@ async function handleEconomyChat(message) {
     message.react('🥤').catch(() => { });
   }
 
+  const displayName = message.member?.displayName || author.displayName || author.username;
+  const username = author.username;
+
   // 4. Tambahkan saldo koin & catat log message timestamp
   const nowUnix = Math.floor(Date.now() / 1000);
   database.transaction(() => {
     economy.addBalance(author.id, guildId, totalEarned, 'EARN', channelId);
 
-    // Simpan timestamp pesan terakhir untuk cooldown anti-spam
+    // Simpan timestamp pesan terakhir untuk cooldown anti-spam beserta update nama
     database.run(
-      'UPDATE wallets SET last_message_at = ? WHERE user_id = ? AND guild_id = ?',
-      [nowUnix, author.id, guildId]
+      'UPDATE wallets SET last_message_at = ?, username = ?, display_name = ? WHERE user_id = ? AND guild_id = ?',
+      [nowUnix, username, displayName, author.id, guildId]
     );
   })();
 
@@ -5049,6 +5052,14 @@ async function handlePetCommand(message, client, args) {
 
     // Siapkan gambar map
     const mapAttachment = getMapAttachment(mapChoice);
+    const lobbyFiles = [];
+    if (mapAttachment) lobbyFiles.push(mapAttachment);
+    try {
+      const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+      lobbyFiles.push(petExplorer);
+    } catch (err) {
+      console.warn("Gagal memuat pet_explorer.png:", err.message);
+    }
 
     const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
     const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
@@ -5069,7 +5080,7 @@ async function handlePetCommand(message, client, args) {
     );
 
     const replyMsgOpts = { content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] };
-    if (mapAttachment) replyMsgOpts.files = [mapAttachment];
+    if (lobbyFiles.length > 0) replyMsgOpts.files = lobbyFiles;
     const replyMsg = await message.reply(replyMsgOpts);
 
     lobby.timeout = setTimeout(async () => {
@@ -5493,12 +5504,19 @@ async function handlePetCommand(message, client, args) {
           const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults, mapChoice);
           
           const failAtt = getMapAttachment(mapChoice);
+          const failFiles = [];
+          if (failAtt) failFiles.push(failAtt);
+          try {
+            const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+            failFiles.push(petExplorer);
+          } catch (err) {}
+
           const failOpts = {
             content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
             embeds: [failEmbed],
-            components: []
+            components: [],
+            files: failFiles
           };
-          if (failAtt) failOpts.files = [failAtt];
           await replyMsg.edit(failOpts).catch(async () => {
             await message.channel.send({
               content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
@@ -5574,12 +5592,20 @@ async function handlePetCommand(message, client, args) {
         const resultEmbed = embeds.petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice);
 
         const resAtt = getMapAttachment(mapChoice);
+        const resFiles = [];
+        if (resAtt) resFiles.push(resAtt);
+        try {
+          const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+          const volcanic = new AttachmentBuilder('./assets/volcanic_expedition.png', { name: 'volcanic_expedition.png' });
+          resFiles.push(petExplorer, volcanic);
+        } catch (err) {}
+
         const resOpts = {
           content: `⚔️ **EKSPEDISI PET SELESAI!**`,
           embeds: [resultEmbed],
-          components: []
+          components: [],
+          files: resFiles
         };
-        if (resAtt) resOpts.files = [resAtt];
         await replyMsg.edit(resOpts).catch(async () => {
           await message.channel.send({
             content: `⚔️ **EKSPEDISI PET SELESAI!**`,
@@ -5658,8 +5684,15 @@ async function handlePetCommand(message, client, args) {
           );
 
           const joinAtt = getMapAttachment(mapChoice);
+          const joinFiles = [];
+          if (joinAtt) joinFiles.push(joinAtt);
+          try {
+            const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+            joinFiles.push(petExplorer);
+          } catch (err) {}
+
           const joinOpts = { embeds: [updatedEmbed] };
-          if (joinAtt) joinOpts.files = [joinAtt];
+          if (joinFiles.length > 0) joinOpts.files = joinFiles;
           await replyMsg.edit(joinOpts).catch(() => { });
         }
 

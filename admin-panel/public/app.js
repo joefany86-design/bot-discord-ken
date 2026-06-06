@@ -6,6 +6,381 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeStocks = [];
   let activeAuctions = [];
   let activeBackups = [];
+  let currentFilter = 'all';
+
+  // --- Web Audio SFX Synthesizer ---
+  const SoundEffects = {
+    ctx: null,
+    init() {
+      if (!this.ctx) {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    },
+    playCoin() {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    },
+    playJail() {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(100, now);
+      osc1.frequency.linearRampToValueAtTime(40, now + 0.4);
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(125, now);
+      osc2.frequency.linearRampToValueAtTime(30, now + 0.4);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.5);
+      osc2.stop(now + 0.5);
+    },
+    playHeal() {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    },
+    playWarning() {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.15);
+      osc.frequency.setValueAtTime(180, now + 0.15);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.3);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    },
+    playSuccess() {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+      notes.forEach((freq, index) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + index * 0.08);
+        gain.gain.setValueAtTime(0.12, now + index * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.3);
+        osc.start(now + index * 0.08);
+        osc.stop(now + index * 0.08 + 0.3);
+      });
+    }
+  };
+
+  // --- Confetti System ---
+  function triggerConfetti() {
+    const colors = ['#388bfd', '#10b981', '#f59e0b', '#f85149', '#8e44ad', '#ecf0f1'];
+    for (let i = 0; i < 60; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = '-10px';
+      p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      p.style.width = Math.random() * 8 + 6 + 'px';
+      p.style.height = Math.random() * 12 + 6 + 'px';
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      const duration = Math.random() * 1.5 + 1.5;
+      p.style.transition = `transform ${duration}s linear, top ${duration}s cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+      document.body.appendChild(p);
+      setTimeout(() => {
+        p.style.top = '105vh';
+        p.style.transform = `rotate(${Math.random() * 720 - 360}deg) translate(${Math.random() * 100 - 50}px)`;
+      }, 50);
+      setTimeout(() => { p.remove(); }, duration * 1000 + 100);
+    }
+  }
+
+  // --- Circular Progress Ring Updater ---
+  function setRingValue(circleElement, value, maxVal = 100) {
+    if (!circleElement) return;
+    const radius = 24; // Circle 'r' value in HTML
+    const circumference = 2 * Math.PI * radius;
+    circleElement.style.strokeDasharray = `${circumference} ${circumference}`;
+    const percent = Math.min(Math.max(0, value), maxVal) / maxVal;
+    const offset = circumference - (percent * circumference);
+    circleElement.style.strokeDashoffset = offset;
+  }
+
+  // --- Pet Avatar SVG Renderer ---
+  function getPetAvatarSVG(petType, status, hpPercent) {
+    const isDead = status === 'DEAD' || hpPercent <= 0;
+    const animateClass = isDead ? 'animate-dead' : `animate-${petType.toLowerCase()}`;
+    const shakeClass = (!isDead && hpPercent < 30) ? 'shake-critical' : '';
+    let color = '#3498db';
+    let detailColor = '#2980b9';
+    
+    if (petType === 'SLIME') { color = '#2ecc71'; detailColor = '#27ae60'; }
+    else if (petType === 'DRAGON') { color = '#e74c3c'; detailColor = '#c0392b'; }
+    else if (petType === 'CAT') { color = '#f39c12'; detailColor = '#d35400'; }
+    else if (petType === 'GOLEM') { color = '#7f8c8d'; detailColor = '#95a5a6'; }
+    else if (petType === 'PHOENIX') { color = '#e67e22'; detailColor = '#d35400'; }
+    else if (petType === 'TURTLE') { color = '#16a085'; detailColor = '#11806a'; }
+    else if (petType === 'CHRONOS') { color = '#9b59b6'; detailColor = '#8e44ad'; }
+    else if (petType === 'OUROBOROS') { color = '#1abc9c'; detailColor = '#16a085'; }
+    
+    if (isDead) {
+      return `
+        <svg viewBox="0 0 100 100" class="pet-svg ${animateClass}">
+          <ellipse cx="50" cy="85" rx="35" ry="8" fill="rgba(0,0,0,0.3)"/>
+          <path d="M25,85 L25,45 C25,25 75,25 75,45 L75,85 Z" fill="#7f8c8d" stroke="#5d6d7e" stroke-width="2"/>
+          <rect x="20" y="80" width="60" height="8" rx="2" fill="#5d6d7e"/>
+          <rect x="47" y="40" width="6" height="25" fill="#34495e"/>
+          <rect x="37" y="47" width="26" height="6" fill="#34495e"/>
+          <text x="50" y="75" fill="#2c3e50" font-family="var(--font-title)" font-size="10" font-weight="700" text-anchor="middle">R.I.P</text>
+        </svg>
+      `;
+    }
+
+    let shapes = '';
+    if (petType === 'SLIME') {
+      shapes = `
+        <path d="M15,70 Q15,40 50,30 Q85,40 85,70 Q85,85 50,85 Q15,85 15,70 Z" fill="${color}"/>
+        <path d="M30,75 Q50,80 70,75" fill="none" stroke="${detailColor}" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="50" cy="55" r="8" fill="${detailColor}" opacity="0.6"/>
+        <circle cx="40" cy="50" r="4" fill="#111"/>
+        <circle cx="60" cy="50" r="4" fill="#111"/>
+        <circle cx="39" cy="48" r="1.5" fill="#fff"/>
+        <circle cx="59" cy="48" r="1.5" fill="#fff"/>
+        <circle cx="34" cy="54" r="3" fill="#ff7675" opacity="0.8"/>
+        <circle cx="66" cy="54" r="3" fill="#ff7675" opacity="0.8"/>
+      `;
+    } 
+    else if (petType === 'DRAGON') {
+      shapes = `
+        <path d="M50,55 L20,35 Q10,50 25,65 Z" fill="${detailColor}"/>
+        <path d="M50,55 L80,35 Q90,50 75,65 Z" fill="${detailColor}"/>
+        <circle cx="50" cy="55" r="28" fill="${color}"/>
+        <path d="M30,35 L40,42 L50,22 L60,42 L70,35 L65,55 L35,55 Z" fill="${detailColor}"/>
+        <circle cx="50" cy="52" r="22" fill="${color}"/>
+        <ellipse cx="50" cy="60" rx="12" ry="7" fill="${detailColor}"/>
+        <circle cx="46" cy="58" r="1.5" fill="#111"/>
+        <circle cx="54" cy="58" r="1.5" fill="#111"/>
+        <circle cx="42" cy="46" r="4.5" fill="#ffeaa7"/>
+        <circle cx="58" cy="46" r="4.5" fill="#ffeaa7"/>
+        <circle cx="42" cy="46" r="2" fill="#d63031"/>
+        <circle cx="58" cy="46" r="2" fill="#d63031"/>
+      `;
+    }
+    else if (petType === 'CAT') {
+      shapes = `
+        <path d="M72,60 Q85,45 80,30" fill="none" stroke="${detailColor}" stroke-width="8" stroke-linecap="round"/>
+        <polygon points="25,35 40,50 20,55" fill="${detailColor}"/>
+        <polygon points="75,35 60,50 80,55" fill="${detailColor}"/>
+        <circle cx="50" cy="62" r="26" fill="${color}"/>
+        <circle cx="50" cy="48" r="20" fill="${color}"/>
+        <polygon points="27,39 37,49 24,51" fill="#ff7675"/>
+        <polygon points="73,39 63,49 76,51" fill="#ff7675"/>
+        <ellipse cx="42" cy="45" rx="3.5" ry="5" fill="#111"/>
+        <ellipse cx="58" cy="45" rx="3.5" ry="5" fill="#111"/>
+        <circle cx="41" cy="43" r="1.2" fill="#fff"/>
+        <circle cx="57" cy="43" r="1.2" fill="#fff"/>
+        <polygon points="50,51 47,49 53,49" fill="#ff7675"/>
+        <path d="M47,53 Q50,56 53,53" fill="none" stroke="#111" stroke-width="2"/>
+        <line x1="28" y1="49" x2="16" y2="47" stroke="${detailColor}" stroke-width="2" stroke-linecap="round"/>
+        <line x1="28" y1="53" x2="14" y2="54" stroke="${detailColor}" stroke-width="2" stroke-linecap="round"/>
+        <line x1="72" y1="49" x2="84" y2="47" stroke="${detailColor}" stroke-width="2" stroke-linecap="round"/>
+        <line x1="72" y1="53" x2="86" y2="54" stroke="${detailColor}" stroke-width="2" stroke-linecap="round"/>
+      `;
+    }
+    else if (petType === 'GOLEM') {
+      shapes = `
+        <rect x="15" y="45" width="70" height="20" rx="6" fill="${detailColor}"/>
+        <rect x="12" y="52" width="16" height="25" rx="4" fill="${color}"/>
+        <rect x="72" y="52" width="16" height="25" rx="4" fill="${color}"/>
+        <rect x="28" y="55" width="44" height="30" rx="4" fill="${color}"/>
+        <rect x="36" y="60" width="28" height="15" fill="${detailColor}" opacity="0.8"/>
+        <rect x="38" y="25" width="24" height="22" rx="4" fill="${color}"/>
+        <rect x="42" y="32" width="16" height="4" rx="1" fill="#74b9ff"/>
+      `;
+    }
+    else {
+      shapes = `
+        <circle cx="50" cy="50" r="32" fill="none" stroke="${detailColor}" stroke-width="4" stroke-dasharray="10 5" opacity="0.6"/>
+        <circle cx="50" cy="50" r="22" fill="${color}"/>
+        <path d="M32,50 L68,50 M50,32 L50,68" stroke="${detailColor}" stroke-width="2"/>
+        <circle cx="50" cy="50" r="10" fill="#fff" opacity="0.8"/>
+        <circle cx="28" cy="28" r="2" fill="#fff"/>
+        <circle cx="72" cy="28" r="2" fill="#fff"/>
+        <circle cx="28" cy="72" r="2" fill="#fff"/>
+        <circle cx="72" cy="72" r="2" fill="#fff"/>
+      `;
+    }
+
+    return `
+      <svg viewBox="0 0 100 100" class="pet-svg ${animateClass} ${shakeClass}">
+        <ellipse cx="50" cy="88" rx="26" ry="6" fill="rgba(0,0,0,0.3)"/>
+        ${shapes}
+      </svg>
+    `;
+  }
+
+  // --- Canvas Sparkline Painter ---
+  function paintSparkline(canvas, history) {
+    if (!canvas || !history || history.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    
+    const maxVal = Math.max(...history);
+    const minVal = Math.min(...history);
+    const valRange = maxVal === minVal ? 1 : maxVal - minVal;
+    
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    const lastPrice = history[history.length - 1];
+    const prevPrice = history[history.length - 2] || lastPrice;
+    
+    let strokeColor = '#388bfd';
+    let fillColorStart = 'rgba(56, 139, 253, 0.2)';
+    if (lastPrice > prevPrice) {
+      strokeColor = '#10b981';
+      fillColorStart = 'rgba(16, 185, 129, 0.2)';
+    } else if (lastPrice < prevPrice) {
+      strokeColor = '#f85149';
+      fillColorStart = 'rgba(248, 81, 73, 0.2)';
+    }
+    
+    gradient.addColorStop(0, fillColorStart);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    const points = [];
+    const stepX = w / (history.length - 1);
+    history.forEach((val, i) => {
+      const x = i * stepX;
+      const y = h - 4 - ((val - minVal) / valRange) * (h - 8);
+      points.push({ x, y });
+    });
+    
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      const cpX = (points[i-1].x + points[i].x) / 2;
+      ctx.quadraticCurveTo(points[i-1].x, points[i-1].y, cpX, (points[i-1].y + points[i].y) / 2);
+    }
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    const lastPoint = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPoint.x - 2, lastPoint.y, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = strokeColor;
+    ctx.fill();
+  }
+
+  // --- Donut Chart & Inflation Status ---
+  function updateEconomyCharts(totalWallet, totalBank) {
+    const donutSegmentWallet = document.getElementById('donut-segment-wallet');
+    const donutSegmentBank = document.getElementById('donut-segment-bank');
+    const donutValTotal = document.getElementById('donut-val-total');
+    const chartLblWallet = document.getElementById('chart-lbl-wallet');
+    const chartLblBank = document.getElementById('chart-lbl-bank');
+    
+    const totalAset = totalWallet + totalBank;
+    if (donutValTotal) donutValTotal.textContent = formatCurrency(totalAset);
+    if (chartLblWallet) chartLblWallet.textContent = formatCurrency(totalWallet);
+    if (chartLblBank) chartLblBank.textContent = formatCurrency(totalBank);
+    
+    if (totalAset === 0) return;
+    
+    const circumference = 314.15;
+    const walletPct = totalWallet / totalAset;
+    const bankPct = totalBank / totalAset;
+    
+    const walletOffset = circumference - (walletPct * circumference);
+    if (donutSegmentWallet) {
+      donutSegmentWallet.style.strokeDashoffset = walletOffset;
+    }
+    
+    const bankOffset = circumference - (bankPct * circumference);
+    if (donutSegmentBank) {
+      donutSegmentBank.style.strokeDashoffset = bankOffset;
+      donutSegmentBank.style.transform = `rotate(${walletPct * 360}deg)`;
+      donutSegmentBank.style.transformOrigin = '75px 75px';
+    }
+    
+    updateInflationDetector(totalWallet, usersData.length);
+  }
+  
+  function updateInflationDetector(totalWalletCoins, totalUsers) {
+    const inflationBox = document.getElementById('inflation-box');
+    const inflationStatusText = document.getElementById('inflation-status-text');
+    if (!inflationBox || !inflationStatusText || totalUsers === 0) return;
+    
+    const avgCoins = totalWalletCoins / totalUsers;
+    let status = 'STABIL 🟢';
+    let bgColor = 'rgba(16, 185, 129, 0.15)';
+    let borderClr = 'rgba(16, 185, 129, 0.3)';
+    let textClr = 'var(--color-emerald)';
+    
+    if (avgCoins > 20000) {
+      status = 'INFLASI EKSTRIM 🚨';
+      bgColor = 'rgba(248, 81, 73, 0.15)';
+      borderClr = 'rgba(248, 81, 73, 0.3)';
+      textClr = 'var(--color-red)';
+    } else if (avgCoins > 8000) {
+      status = 'INFLASI MODERAT ⚠️';
+      bgColor = 'rgba(245, 158, 11, 0.15)';
+      borderClr = 'rgba(245, 158, 11, 0.3)';
+      textClr = 'var(--color-gold)';
+    }
+    
+    inflationBox.style.backgroundColor = bgColor;
+    inflationBox.style.borderColor = borderClr;
+    inflationStatusText.textContent = status;
+    inflationStatusText.style.color = textClr;
+  }
 
   // --- Element Selectors ---
   // Auth Screen elements
@@ -21,7 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
     economy: document.getElementById('menu-economy'),
     stocks: document.getElementById('menu-stocks'),
     auctions: document.getElementById('menu-auctions'),
-    logs: document.getElementById('menu-logs')
+    logs: document.getElementById('menu-logs'),
+    promos: document.getElementById('menu-promos')
   };
 
   const sections = {
@@ -31,7 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
     economy: document.getElementById('section-economy'),
     stocks: document.getElementById('section-stocks'),
     auctions: document.getElementById('section-auctions'),
-    logs: document.getElementById('section-logs')
+    logs: document.getElementById('section-logs'),
+    promos: document.getElementById('section-promos')
   };
 
   // Dashboard elements
@@ -97,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const bansosAmount = document.getElementById('bansos-amount');
   const payoutBansosBtn = document.getElementById('payout-bansos-btn');
   const resetEconomyBtn = document.getElementById('reset-economy-btn');
+  const resetAllBtn = document.getElementById('reset-all-btn');
 
   // Stock Market elements
   const stocksList = document.getElementById('stocks-list');
@@ -227,6 +605,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (activeTabId === 'logs') {
       fetchLogs();
       fetchDetailedStats(); // Loads backups selector
+    } else if (activeTabId === 'promos') {
+      fetchPromos();
     }
   }
 
@@ -271,6 +651,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         usersData = data.users;
         renderUsersTable();
+        
+        // Populate Richest Citizen insight leaderboard card
+        const valRichestUser = document.getElementById('val-richest-user');
+        const valRichestAmount = document.getElementById('val-richest-amount');
+        if (usersData.length > 0 && valRichestUser && valRichestAmount) {
+          const richest = usersData[0];
+          const richestAset = richest.wallet_balance + richest.bank_balance;
+          const rName = richest.display_name ? `${richest.display_name} (@${richest.username || ''})` : richest.user_id;
+          valRichestUser.textContent = `Warga: ${rName}`;
+          valRichestAmount.textContent = formatCurrency(richestAset);
+        } else if (valRichestUser && valRichestAmount) {
+          valRichestUser.textContent = '-';
+          valRichestAmount.textContent = 'Rp 0';
+        }
       }
     } catch (err) {
       if (err.message !== 'Unauthorized') showToast('Gagal memuat list warga', 'error');
@@ -288,6 +682,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = data.activeWallets + data.inactiveWallets;
         const ratio = total > 0 ? Math.round((data.activeWallets / total) * 100) : 0;
         ecoActiveRatio.textContent = ratio + '%';
+
+        // Call helper to render wealth distribution Donut Chart & Inflation Status
+        updateEconomyCharts(data.totalCirculation, data.bankSavings);
+
+        // Populate Strongest Pet Insight Card
+        const valStrongestPet = document.getElementById('val-strongest-pet');
+        const valStrongestDesc = document.getElementById('val-strongest-desc');
+        if (valStrongestPet && valStrongestDesc) {
+          if (data.strongestPet) {
+            const pOwner = data.strongestPet.display_name ? `${data.strongestPet.display_name} (@${data.strongestPet.username || ''})` : data.strongestPet.user_id;
+            valStrongestPet.textContent = `Warga: ${pOwner}`;
+            valStrongestDesc.textContent = `🐾 ${data.strongestPet.pet_name} (Lv. ${data.strongestPet.level} ${data.strongestPet.pet_type})`;
+          } else {
+            valStrongestPet.textContent = '-';
+            valStrongestDesc.textContent = 'Tidak ada pet aktif';
+          }
+        }
+
+        // Populate Jailed User Insight Card
+        const valJailedUser = document.getElementById('val-jailed-user');
+        const valJailedTime = document.getElementById('val-jailed-time');
+        if (valJailedUser && valJailedTime) {
+          if (data.longestJail) {
+            const jName = data.longestJail.display_name ? `${data.longestJail.display_name} (@${data.longestJail.username || ''})` : data.longestJail.user_id;
+            valJailedUser.textContent = `Warga: ${jName}`;
+            const durationSec = data.longestJail.jail_until - Math.floor(Date.now() / 1000);
+            const mins = Math.max(0, Math.round(durationSec / 60));
+            valJailedTime.textContent = `Sisa: ${mins} menit`;
+          } else {
+            valJailedUser.textContent = '-';
+            valJailedTime.textContent = 'Bebas Lapas';
+          }
+        }
 
         // Stocks
         activeStocks = data.stocks;
@@ -365,9 +792,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       if (data.success) {
         showToast(data.message || 'Konfigurasi berhasil disimpan!', 'success');
+        SoundEffects.playSuccess();
+        triggerConfetti();
         fetchDashboardStats();
       } else {
         showToast(data.message, 'error');
+        SoundEffects.playWarning();
       }
     } catch (err) {
       if (err.message !== 'Unauthorized') showToast('Koneksi server gagal saat menyimpan', 'error');
@@ -380,20 +810,48 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderUsersTable() {
     membersList.innerHTML = '';
     const query = memberSearch.value.trim().toLowerCase();
-    const filteredUsers = usersData.filter(user => user.user_id.toLowerCase().includes(query));
+    let filteredUsers = usersData.filter(user => {
+      const uId = (user.user_id || '').toLowerCase();
+      const uName = (user.username || '').toLowerCase();
+      const dName = (user.display_name || '').toLowerCase();
+      return uId.includes(query) || uName.includes(query) || dName.includes(query);
+    });
+
+    // Client-side Filter tabs logic
+    if (currentFilter === 'jail') {
+      const nowUnix = Math.floor(Date.now() / 1000);
+      filteredUsers = filteredUsers.filter(user => user.jail_until && user.jail_until > nowUnix);
+    } else if (currentFilter === 'blacklist') {
+      filteredUsers = filteredUsers.filter(user => user.is_blacklisted > 0);
+    } else if (currentFilter === 'rich') {
+      filteredUsers = filteredUsers.filter(user => (user.wallet_balance + user.bank_balance) >= 20000);
+    } else if (currentFilter === 'dead_pet') {
+      filteredUsers = filteredUsers.filter(user => user.has_dead_pet > 0);
+    }
 
     if (filteredUsers.length === 0) {
-      membersList.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--color-text-muted);">Tidak ada warga ditemukan.</td></tr>`;
+      membersList.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-text-muted);">Tidak ada warga ditemukan.</td></tr>`;
       return;
     }
 
     filteredUsers.forEach(user => {
       const totalWealth = user.wallet_balance + user.bank_balance;
       const tr = document.createElement('tr');
-      const blBadge = user.is_blacklisted > 0 ? '<span class="badge badge-red">BLACKLISTED</span>' : '<span class="badge badge-muted">AMAN</span>';
+      
+      let blBadge = '<span class="badge badge-muted">AMAN</span>';
+      if (user.is_blacklisted > 0) {
+        blBadge = '<span class="badge badge-red">BLACKLISTED</span>';
+      } else if (user.jail_until && user.jail_until > Math.floor(Date.now() / 1000)) {
+        blBadge = '<span class="badge badge-purple">👮 LAPAS</span>';
+      }
+
+      const citizenName = user.display_name 
+        ? `<div style="font-weight: 600; color: var(--color-text-light);">${user.display_name}</div><div style="font-size: 11px; color: var(--color-text-muted);">@${user.username || ''}</div>`
+        : `<div style="font-weight: 600; color: var(--color-text-muted);">@${user.username || 'Warga'}</div>`;
 
       tr.innerHTML = `
-        <td style="font-weight: 500; font-family: monospace;">${user.user_id}</td>
+        <td style="font-weight: 500; font-family: monospace; font-size: 12px; color: var(--color-text-muted);">${user.user_id}</td>
+        <td>${citizenName}</td>
         <td>${formatCurrency(user.wallet_balance)}</td>
         <td>${formatCurrency(user.bank_balance)}</td>
         <td style="font-weight: 600; color: var(--color-text-light);">${formatCurrency(totalWealth)}</td>
@@ -429,6 +887,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         showToast(data.message, 'success');
         giveModal.classList.remove('active');
+        if (action === 'jail') SoundEffects.playJail();
+        else if (action === 'blacklist') SoundEffects.playWarning();
+        else SoundEffects.playSuccess();
         fetchUsers();
       } else {
         showToast(data.message, 'error');
@@ -457,7 +918,8 @@ document.addEventListener('DOMContentLoaded', () => {
         data.users.forEach(user => {
           const opt = document.createElement('option');
           opt.value = user.user_id;
-          opt.textContent = `Warga: ${user.user_id}`;
+          const uText = user.display_name ? `${user.display_name} (@${user.username || ''})` : `@${user.username || user.user_id || 'Warga'}`;
+          opt.textContent = `${uText} (${user.user_id})`;
           petOwnerSelector.appendChild(opt);
         });
       }
@@ -480,19 +942,39 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await secureFetch(`/api/admin/pet?userId=${userId}`);
       const data = await res.json();
+      const petAvatarWrapper = document.getElementById('pet-avatar-wrapper');
+      
       if (data.success && data.pet) {
         const pet = data.pet;
         petDisplayName.textContent = `🐾 ${pet.pet_name} (Lv. ${pet.level} ${pet.pet_type})`;
         petDisplayStars.textContent = '⭐'.repeat(pet.star_level || 1);
-        petValHp.textContent = `${pet.health} HP`;
-        petValHunger.textContent = `${pet.hunger}%`;
-        petValThirst.textContent = `${pet.thirst}%`;
-        petValHappy.textContent = `${pet.happiness}%`;
+        
+        // Calculate Max HP to show correct percentage in ring
+        const vit = pet.stat_vit || 0;
+        const maxHP = (pet.pet_type === 'TURTLE' ? 120 : (pet.pet_type === 'SLIME' ? 120 : 100)) + (pet.star_level - 1) * 15 + vit * 3;
+        
+        // Update circular progress rings
+        setRingValue(document.getElementById('ring-hp'), pet.health, maxHP);
+        setRingValue(document.getElementById('ring-hunger'), pet.hunger);
+        setRingValue(document.getElementById('ring-thirst'), pet.thirst);
+        setRingValue(document.getElementById('ring-happy'), pet.happiness);
+        
+        // Update stats labels inside rings
+        document.getElementById('pet-val-hp').textContent = `${Math.round((pet.health / maxHP) * 100)}%`;
+        document.getElementById('pet-val-hunger').textContent = `${pet.hunger}%`;
+        document.getElementById('pet-val-thirst').textContent = `${pet.thirst}%`;
+        document.getElementById('pet-val-happy').textContent = `${pet.happiness}%`;
+
         petValTrait.textContent = pet.trait || 'Tidak Ada Trait';
         petValFloor.textContent = `Lantai ${data.tower.current_floor || 1} (Max: ${data.tower.max_floor || 1})`;
         petValAutofeed.textContent = pet.auto_feed === 2 ? '👑 VIP (Aktif)' : '❌ Nonaktif';
         petValStatus.textContent = pet.status;
         petValStatus.className = `badge ${pet.status === 'DEAD' ? 'badge-red' : 'badge-emerald'}`;
+
+        // Render visual SVG avatar
+        if (petAvatarWrapper) {
+          petAvatarWrapper.innerHTML = getPetAvatarSVG(pet.pet_type, pet.status, pet.health);
+        }
 
         // Populate update forms
         petSetLevel.value = pet.level;
@@ -508,15 +990,25 @@ document.addEventListener('DOMContentLoaded', () => {
         petActionsCard.style.display = 'block';
         
         // Hide stats & specific actions
-        petValHp.textContent = '-';
-        petValHunger.textContent = '-';
-        petValThirst.textContent = '-';
-        petValHappy.textContent = '-';
+        setRingValue(document.getElementById('ring-hp'), 0);
+        setRingValue(document.getElementById('ring-hunger'), 0);
+        setRingValue(document.getElementById('ring-thirst'), 0);
+        setRingValue(document.getElementById('ring-happy'), 0);
+        
+        document.getElementById('pet-val-hp').textContent = '-';
+        document.getElementById('pet-val-hunger').textContent = '-';
+        document.getElementById('pet-val-thirst').textContent = '-';
+        document.getElementById('pet-val-happy').textContent = '-';
+        
         petValTrait.textContent = '-';
         petValFloor.textContent = '-';
         petValAutofeed.textContent = '-';
         petValStatus.textContent = 'TIADA';
         petValStatus.className = 'badge badge-muted';
+
+        if (petAvatarWrapper) {
+          petAvatarWrapper.innerHTML = '<span style="font-size: 40px; opacity: 0.3;">📭</span>';
+        }
       }
     } catch (err) {
       if (err.message !== 'Unauthorized') showToast('Gagal memuat info pet', 'error');
@@ -535,6 +1027,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       if (data.success) {
         showToast(data.message, 'success');
+        if (action === 'heal' || action === 'revive' || action === 'hatch') {
+          SoundEffects.playHeal();
+        } else if (action === 'delete') {
+          SoundEffects.playWarning();
+        } else {
+          SoundEffects.playSuccess();
+        }
         fetchAndDisplayPet(userId);
       } else {
         showToast(data.message, 'error');
@@ -621,6 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         showToast(data.message, 'success');
         bansosAmount.value = '';
+        SoundEffects.playSuccess();
+        triggerConfetti();
         fetchDetailedStats();
       } else {
         showToast(data.message, 'error');
@@ -631,6 +1132,40 @@ document.addEventListener('DOMContentLoaded', () => {
       payoutBansosBtn.disabled = false;
     }
   });
+
+  // Taxation button trigger
+  const payoutTaxBtn = document.getElementById('payout-tax-btn');
+  const taxPercent = document.getElementById('tax-percent');
+  if (payoutTaxBtn && taxPercent) {
+    payoutTaxBtn.addEventListener('click', async () => {
+      const percent = parseFloat(taxPercent.value);
+      if (isNaN(percent) || percent <= 0 || percent > 90) {
+        showToast('Persentase pajak harus antara 1% dan 90%!', 'error');
+        return;
+      }
+      payoutTaxBtn.disabled = true;
+      try {
+        const res = await secureFetch('/api/admin/economy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'tax', percent })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          SoundEffects.playWarning();
+          fetchDetailedStats();
+          fetchUsers();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (err) {
+        if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
+      } finally {
+        payoutTaxBtn.disabled = false;
+      }
+    });
+  }
 
   resetEconomyBtn.addEventListener('click', async () => {
     if (confirm('🚨 PERINGATAN: Aksi ini akan me-reset saldo seluruh dompet warga ke Rp 1.000, menghapus seluruh tabungan, dan menghapus seluruh pinjaman bank! Apakah Anda yakin?')) {
@@ -644,6 +1179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (data.success) {
           showToast(data.message, 'success');
+          SoundEffects.playWarning();
           fetchDetailedStats();
         } else {
           showToast(data.message, 'error');
@@ -656,11 +1192,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Sub-Panel 5: Bursa Saham Control ---
+  resetAllBtn.addEventListener('click', async () => {
+    if (confirm('💀 PERINGATAN KERAS: Aksi ini akan me-reset total seluruh data server! Semua peliharaan (pets), barang/inventory, kebun, portofolio saham, turnamen, dan data finansial warga akan dihapus secara permanen. Apakah Anda yakin ingin melakukan WIPE OUT?')) {
+      if (confirm('🚨 KONFIRMASI KEDUA: Apakah Anda benar-benar yakin? Tindakan ini TIDAK BISA DIBATALKAN dan seluruh riwayat warga akan hilang!')) {
+        resetAllBtn.disabled = true;
+        try {
+          const res = await secureFetch('/api/admin/economy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'reset_all' })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast(data.message, 'success');
+            SoundEffects.playWarning();
+            fetchDetailedStats();
+            fetchUsers();
+          } else {
+            showToast(data.message, 'error');
+          }
+        } catch (err) {
+          if (err.message !== 'Unauthorized') showToast('Koneksi server gagal', 'error');
+        } finally {
+          resetAllBtn.disabled = false;
+        }
+      }
+    }
+  });
+
   function renderStocksTable() {
     stocksList.innerHTML = '';
     if (activeStocks.length === 0) {
-      stocksList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--color-text-muted);">Tidak ada saham terdaftar.</td></tr>';
+      stocksList.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--color-text-muted);">Tidak ada saham terdaftar.</td></tr>';
       return;
     }
     activeStocks.forEach(stock => {
@@ -671,6 +1234,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="font-weight: 500;">${formatCurrency(stock.current_price)}</td>
         <td style="color: var(--color-text-muted);">${formatCurrency(stock.previous_price)}</td>
         <td>${stock.available_shares.toLocaleString('id-ID')} / ${stock.total_shares.toLocaleString('id-ID')}</td>
+        <td>
+          <canvas class="sparkline-canvas" width="90" height="28" id="spark-${stock.stock_ticker}"></canvas>
+        </td>
         <td>
           <button class="btn btn-secondary btn-sm btn-stock-price" data-ticker="${stock.stock_ticker}">💸 Set Harga</button>
           <button class="btn btn-danger btn-sm btn-stock-del" data-ticker="${stock.stock_ticker}">❌ Hapus</button>
@@ -726,6 +1292,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       stocksList.appendChild(tr);
+
+      // Paint Sparkline Chart
+      const canvas = tr.querySelector(`#spark-${stock.stock_ticker}`);
+      if (canvas && stock.history) {
+        paintSparkline(canvas, stock.history);
+      }
     });
   }
 
@@ -782,13 +1354,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const tr = document.createElement('tr');
       const timeText = new Date(auc.ends_at * 1000).toLocaleString('id-ID');
       
+      const bidderText = auc.bidder_display_name 
+        ? `${auc.bidder_display_name} (@${auc.bidder_username})` 
+        : (auc.highest_bidder_id ? auc.highest_bidder_id : '-');
+
       tr.innerHTML = `
         <td style="font-family: monospace;">#${auc.id}</td>
         <td style="font-weight: 500;">${auc.item_id}</td>
         <td>${auc.quantity}</td>
         <td>${formatCurrency(auc.min_bid)}</td>
         <td style="color: var(--color-emerald); font-weight: 600;">${formatCurrency(auc.current_bid)}</td>
-        <td style="font-family: monospace;">${auc.highest_bidder_id || '-'}</td>
+        <td style="font-size: 13px;">${bidderText}</td>
         <td style="font-size: 12px; color: var(--color-text-muted);">${timeText}</td>
         <td>
           <button class="btn btn-danger btn-sm btn-auc-cancel" data-id="${auc.id}">❌ Batalkan</button>
@@ -848,6 +1424,8 @@ document.addEventListener('DOMContentLoaded', () => {
         aucQty.value = '1';
         aucMinBid.value = '100';
         aucHours.value = '2';
+        SoundEffects.playSuccess();
+        triggerConfetti();
         fetchDetailedStats();
       } else {
         showToast(data.message, 'error');
@@ -892,6 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         if (data.success) {
           showToast(data.message || 'Database berhasil dipulihkan!', 'success');
+          SoundEffects.playSuccess();
           fetchLogs();
           fetchDashboardStats();
         } else {
@@ -914,6 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data.success) {
         showToast(`Backup berhasil dibuat: ${data.backupFile}`, 'success');
+        SoundEffects.playSuccess();
         fetchLogs();
         fetchDetailedStats();
       } else {
@@ -1036,6 +1616,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const resData = await response.json();
       if (resData.success) {
         showToast(resData.message || 'Quick Give berhasil dieksekusi!', 'success');
+        
+        // SFX and visual effects
+        if (currentCategory === 'coin' || currentCategory === 'bank') {
+          SoundEffects.playCoin();
+        } else {
+          SoundEffects.playSuccess();
+        }
+        triggerConfetti();
+
         closeQuickGiveModal();
         fetchUsers();
         fetchDashboardStats();
@@ -1117,6 +1706,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Warga Filter Tabs click listeners ---
+  const filterTabs = document.querySelectorAll('.badge-tab');
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      filterTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.getAttribute('data-filter');
+      renderUsersTable();
+      SoundEffects.playCoin(); // click feedback
+    });
+  });
+
+  // --- Market Event Control bindings ---
+  const btnMarketBull = document.getElementById('btn-market-bull');
+  const btnMarketBear = document.getElementById('btn-market-bear');
+  const btnMarketReset = document.getElementById('btn-market-reset');
+  const marketEventHours = document.getElementById('market-event-hours');
+
+  const triggerMarketEvent = async (eventType) => {
+    const hours = marketEventHours ? parseInt(marketEventHours.value, 10) : 1;
+    if (isNaN(hours) || hours <= 0) {
+      showToast('Durasi event tidak valid!', 'error');
+      return;
+    }
+    
+    try {
+      const response = await secureFetch('/api/admin/stocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'market_event',
+          eventType,
+          hours
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        if (eventType === 'BULL') {
+          SoundEffects.playSuccess();
+          triggerConfetti();
+        } else if (eventType === 'BEAR') {
+          SoundEffects.playWarning();
+        } else {
+          SoundEffects.playSuccess();
+        }
+        fetchDetailedStats();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch {
+      showToast('Koneksi server gagal memproses event', 'error');
+    }
+  };
+
+  if (btnMarketBull) btnMarketBull.addEventListener('click', () => triggerMarketEvent('BULL'));
+  if (btnMarketBear) btnMarketBear.addEventListener('click', () => triggerMarketEvent('BEAR'));
+  if (btnMarketReset) btnMarketReset.addEventListener('click', () => triggerMarketEvent('RESET'));
+
   // --- Mobile Menu Toggle Controllers ---
   const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
   const sidebarElement = document.querySelector('.sidebar');
@@ -1139,6 +1788,138 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close sidebar menu automatically when navigating tabs on mobile
     Object.keys(menuItems).forEach(key => {
       menuItems[key].addEventListener('click', closeSidebar);
+    });
+  }
+
+  // --- Promo Voucher Management Logic ---
+  const promosTableBody = document.getElementById('promos-table-body');
+  const createPromoForm = document.getElementById('create-promo-form');
+  const promoCodeInput = document.getElementById('promo-code-input');
+  const promoCoinsInput = document.getElementById('promo-coins-input');
+  const promoItemSelect = document.getElementById('promo-item-select');
+  const promoItemQtyInput = document.getElementById('promo-item-qty-input');
+  const promoQuotaInput = document.getElementById('promo-quota-input');
+  const promoExpiresInput = document.getElementById('promo-expires-input');
+
+  async function fetchPromos() {
+    if (!promosTableBody) return;
+    try {
+      const res = await secureFetch('/api/admin/promos');
+      const data = await res.json();
+      if (data.success) {
+        renderPromos(data.promos);
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat kode promo', 'error');
+    }
+  }
+
+  function renderPromos(promos) {
+    if (promos.length === 0) {
+      promosTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+            ℹ️ Belum ada kode promo terdaftar di database.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    promosTableBody.innerHTML = promos.map(p => {
+      const rewardCoins = p.reward_coins > 0 ? formatCurrency(p.reward_coins) : '-';
+      const rewardItem = (p.reward_item_id && p.reward_item_qty > 0) ? `🎁 ${p.reward_item_qty}x ${p.reward_item_id}` : '-';
+      
+      let expiryText = '-';
+      if (p.expires_at > 0) {
+        const d = new Date(p.expires_at * 1000);
+        const now = Date.now() / 1000;
+        const expired = now > p.expires_at;
+        expiryText = `<span class="${expired ? 'danger-text' : 'emerald-text'}">${d.toLocaleDateString('id-ID')} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}${expired ? ' (Expired)' : ''}</span>`;
+      }
+
+      return `
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 10px; font-weight: bold; font-family: monospace;">${p.code}</td>
+          <td style="padding: 10px;">${rewardCoins}</td>
+          <td style="padding: 10px;">${rewardItem}</td>
+          <td style="padding: 10px;">${p.current_claims} / ${p.max_claims === -1 ? '∞' : p.max_claims}</td>
+          <td style="padding: 10px;">${expiryText}</td>
+          <td style="padding: 10px; text-align: center;">
+            <button class="btn btn-danger btn-sm delete-promo-btn" data-code="${p.code}">🗑️ Hapus</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Bind delete buttons
+    document.querySelectorAll('.delete-promo-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const code = e.target.getAttribute('data-code');
+        if (confirm(`Apakah Anda yakin ingin menghapus voucher "${code}" beserta log klaimnya?`)) {
+          try {
+            const res = await secureFetch('/api/admin/promos', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'delete', code })
+            });
+            const data = await res.json();
+            if (data.success) {
+              showToast(data.message, 'success');
+              if (window.SoundEffects) SoundEffects.playSuccess();
+              fetchPromos();
+            } else {
+              showToast(data.message, 'error');
+            }
+          } catch (err) {
+            if (err.message !== 'Unauthorized') showToast('Gagal menghapus kode promo', 'error');
+          }
+        }
+      });
+    });
+  }
+
+  if (createPromoForm) {
+    createPromoForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = promoCodeInput.value.trim();
+      const coins = parseInt(promoCoinsInput.value, 10) || 0;
+      const itemId = promoItemSelect.value || null;
+      const itemQty = parseInt(promoItemQtyInput.value, 10) || 0;
+      const quota = parseInt(promoQuotaInput.value, 10) || -1;
+      const expiresHours = parseInt(promoExpiresInput.value, 10) || 0;
+
+      if (!code) {
+        showToast('Kode promo tidak boleh kosong!', 'error');
+        return;
+      }
+
+      try {
+        const res = await secureFetch('/api/admin/promos', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'create',
+            code,
+            coins,
+            itemId,
+            itemQty,
+            quota,
+            expiresHours
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          if (window.SoundEffects) SoundEffects.playSuccess();
+          createPromoForm.reset();
+          fetchPromos();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (err) {
+        if (err.message !== 'Unauthorized') showToast('Gagal membuat kode promo', 'error');
+      }
     });
   }
 

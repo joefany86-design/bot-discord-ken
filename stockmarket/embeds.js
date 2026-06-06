@@ -3294,6 +3294,7 @@ module.exports = {
     return new EmbedBuilder()
       .setColor('#D50000') // Bright Red
       .setTitle('☠️ EXPEDITION FAIL: TIM TERPENTAL KELUAR! ☠️')
+      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `### 💥 Bos Zona Mengamuk!\n` +
         `Formasi pertahanan tim pet hancur and terpental keluar dari zona pertarungan!\n\n` +
@@ -4147,12 +4148,16 @@ module.exports = {
     const isChallenging = selectedMap.recommendedLevel >= 25;
     const embedColor = isChallenging ? 0x990000 : 0xFFB800; // Crimson / Gold Premium
 
+    const successBar = '🟩'.repeat(Math.round(successRate / 10)) + '⬛'.repeat(10 - Math.round(successRate / 10));
+    const difficultyBar = '🟥'.repeat(Math.round(selectedMap.difficulty)) + '⬛'.repeat(10 - Math.round(selectedMap.difficulty));
+
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
+      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
-        `*Persiapkan pet terkuat Anda untuk menghadapi ancaman bos penjaga zona!*\n\n` +
+        `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang dan bahaya nyata. Akankah pet kesayanganmu kembali membawa harta karun legendaris, atau terkubur di bawah panasnya magma?*\n\n` +
         `─── ⋆⋅☆⋅⋆ ───\n\n` +
         `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
@@ -4160,13 +4165,14 @@ module.exports = {
       )
       .addFields(
         {
-          name: '🦖 Kru Pet Saat Ini',
+          name: '🐾 KRU PET SAAT INI',
           value: petListText || '*Belum ada peserta*',
           inline: false
         },
         {
-          name: '🎯 Peluang & Sinergi Elemen',
-          value: `• **Peluang Sukses Tim:** **\`${successRate}%\`**\n` +
+          name: '🎯 PELUANG & SINERGI ELEMEN',
+          value: `• **Peluang Sukses Tim**: \`[${successBar}]\` (**${successRate}%**)\n` +
+                 `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
                  `• **Sinergi Elemen:**\n${elementalLogsText}`,
           inline: false
         },
@@ -4182,7 +4188,7 @@ module.exports = {
         }
       )
       .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
-      .setFooter({ text: 'Kosan 1A PVE Pet Expedition • Klik tombol di bawah untuk bergabung!' })
+      .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },
 
@@ -4217,14 +4223,15 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
+      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `### 🧭 Chronology Petualangan\n` +
         reportDesc + `\n` +
         `─── ⋆⋅☆⋅⋆ ───`
       )
       .addFields(fields)
-      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
-      .setFooter({ text: 'Kosan 1A RPG' })
+      .setImage(res.success ? 'attachment://volcanic_expedition.png' : (mapChoice ? `attachment://map${mapChoice}.png` : null))
+      .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }
 };

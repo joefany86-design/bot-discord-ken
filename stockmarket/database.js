@@ -637,6 +637,14 @@ function initSchema() {
         `);
         db.exec("CREATE INDEX IF NOT EXISTS idx_auction_bids_auction ON auction_bids (auction_id)");
       }
+    },
+    {
+      version: 5,
+      description: "Menambahkan kolom username dan display_name di tabel wallets",
+      run: () => {
+        addColumn('wallets', 'username', "TEXT DEFAULT ''");
+        addColumn('wallets', 'display_name', "TEXT DEFAULT ''");
+      }
     }
   ];
 

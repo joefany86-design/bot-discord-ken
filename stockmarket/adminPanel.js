@@ -3616,7 +3616,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const distributedItemQty = settings.gift_item_qty || 0;
 
         // Distribusikan hadiah secara massal jika dikonfigurasi
-        if (distributedCoins > 0 || distributedItemQty > 0) {
+        if (distributedCoins > 0 || distributedItemQty !== 0) {
           const memberIds = await getAllGuildMembers(guild, guildId);
           if (memberIds.length > 0) {
             database.transaction(() => {
@@ -3649,7 +3649,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
                 }
 
                 // 2. Bagikan item
-                if (distributedItemQty > 0 && distributedItemName) {
+                if (distributedItemQty !== 0 && distributedItemName) {
                   updateAdminInventory(memberId, guildId, distributedItemName, distributedItemQty);
                 }
               }
@@ -3808,41 +3808,58 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_give_item') {
-        const modal = new ModalBuilder()
-          .setCustomId('admin_abyus_give_item_modal')
-          .setTitle('Bagi Item Massal (Abyus)');
+        const itemSelect = new StringSelectMenuBuilder()
+          .setCustomId('admin_abyus_select_item_to_give')
+          .setPlaceholder('🎒 Pilih item yang ingin dibagikan...');
 
-        const itemIdInput = new TextInputBuilder()
-          .setCustomId('item_id')
-          .setLabel('ID Item (LOCKPICK, SOAP, LAMBO, dll)')
-          .setPlaceholder('Contoh: LOCKPICK')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
+        const items = [
+          { id: 'LOCKPICK', name: '🕵️‍♂️ Lockpick', description: 'Alat membobol rumah/kosan warga' },
+          { id: 'SOAP', name: '🧼 Soap (Sabun)', description: 'Sabun licin untuk melarikan diri' },
+          { id: 'LAMBO', name: '🏎️ Lamborgini Kosan', description: 'Mobil sports prestise sultan kos' },
+          { id: 'GOLD', name: '👑 Emas Batangan 24K', description: 'Pajangan laci kos penahan inflasi' },
+          { id: 'IPHONE', name: '📱 iPhone 16 Pro Max', description: 'Hp sultan meskipun layar retak' },
+          { id: 'TICKET_GACHA', name: '🎫 Tiket Gacha Pet', description: 'Tiket memutar gacha peliharaan' },
+          { id: 'FOOD_PREMIUM', name: '🥩 Pakan Premium Pet', description: 'Makanan bernutrisi tinggi untuk pet' },
+          { id: 'MEDICINE', name: '💊 Obat Pet Sakit', description: 'Sembuhkan HP pet yang terluka parah' },
+          { id: 'AMULET', name: '📿 Amulet Proteksi Pet', description: 'Amulet mistis penangkal kematian pet' }
+        ];
+
+        items.forEach(it => {
+          itemSelect.addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel(it.name)
+              .setDescription(it.description)
+              .setValue(it.id)
+          );
+        });
+
+        const selectRow = new ActionRowBuilder().addComponents(itemSelect);
+        await iAbyus.reply({ content: 'Pilih item dari daftar di bawah ini untuk disetel sebagai hadiah massal:', components: [selectRow], flags: 64 });
+      }
+      else if (iAbyus.customId === 'admin_abyus_select_item_to_give') {
+        const itemId = iAbyus.values[0];
+
+        const modal = new ModalBuilder()
+          .setCustomId(`admin_abyus_give_item_qty_modal_${itemId}`)
+          .setTitle(`Jumlah Hadiah Massal (${itemId})`);
 
         const qtyInput = new TextInputBuilder()
           .setCustomId('item_qty')
-          .setLabel('Jumlah per Member (Bisa minus)')
+          .setLabel(`Jumlah ${itemId} per Member (Bisa minus)`)
           .setPlaceholder('Contoh: 5 atau -2')
           .setStyle(TextInputStyle.Short)
           .setRequired(true);
 
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(itemIdInput),
-          new ActionRowBuilder().addComponents(qtyInput)
-        );
+        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
         await iAbyus.showModal(modal);
 
         const sub = await iAbyus.awaitModalSubmit({
-          filter: (s) => s.customId === 'admin_abyus_give_item_modal' && s.user.id === author.id,
+          filter: (s) => s.customId === `admin_abyus_give_item_qty_modal_${itemId}` && s.user.id === author.id,
           time: 60000
         }).catch(() => null);
 
         if (sub) {
-          const itemId = sub.fields.getTextInputValue('item_id').toUpperCase().trim();
           const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
-          if (!itemId) {
-            return sub.reply({ content: '❌ ID Item tidak boleh kosong!', flags: 64 });
-          }
           if (isNaN(qty) || qty === 0) {
             return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
           }

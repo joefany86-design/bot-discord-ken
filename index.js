@@ -689,7 +689,7 @@ async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, clie
 // ═══════════════════════════════════════════════════
 // BOT READY EVENT
 // ═══════════════════════════════════════════════════
-client.once('clientReady', () => {
+client.once('ready', () => {
   console.log(`══════════════════════════════════════`);
   console.log(`  Bot online sebagai ${client.user.tag}`);
   console.log(`  Servers: ${client.guilds.cache.size}`);
@@ -701,8 +701,33 @@ client.once('clientReady', () => {
   const targetGuildId = config.TARGET_GUILD_ID;
   const targetGuild = client.guilds.cache.get(targetGuildId);
   if (targetGuild) {
-    targetGuild.members.fetch().then(() => {
+    targetGuild.members.fetch().then(async (members) => {
       console.log(`✅ Berhasil mencache seluruh member guild ${targetGuildId}`);
+      
+      // Sinkronisasi nama warga ke database
+      try {
+        const { db } = require('./stockmarket/database');
+        const wallets = db.prepare('SELECT user_id FROM wallets WHERE guild_id = ?').all(targetGuildId);
+        console.log(`🔄 Mensinkronisasi nama untuk ${wallets.length} warga di database...`);
+        
+        const updateStmt = db.prepare('UPDATE wallets SET username = ?, display_name = ? WHERE user_id = ? AND guild_id = ?');
+        let syncCount = 0;
+        
+        db.transaction(() => {
+          for (const row of wallets) {
+            const memberObj = members.get(row.user_id);
+            if (memberObj) {
+              const username = memberObj.user.username;
+              const displayName = memberObj.displayName;
+              updateStmt.run(username, displayName, row.user_id, targetGuildId);
+              syncCount++;
+            }
+          }
+        })();
+        console.log(`✅ Berhasil sinkronisasi ${syncCount} nama warga ke database.`);
+      } catch (syncErr) {
+        console.error('❌ Gagal mensinkronisasi nama warga ke database:', syncErr.message);
+      }
     }).catch(err => {
       console.error('❌ Gagal mencache member guild:', err.message);
     });

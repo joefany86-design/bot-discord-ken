@@ -75,6 +75,10 @@
           <span class="menu-icon">📜</span>
           <span class="menu-text">Logs & Backups</span>
         </a>
+        <a href="#promos" class="menu-item" id="menu-promos">
+          <span class="menu-icon">🎟️</span>
+          <span class="menu-text">Voucher & Promo</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -187,9 +191,44 @@
           <p>Kelola warga, blacklisting, penahanan Lapas, dan reset cooldown kriminal.</p>
         </div>
 
-        <div class="toolbar">
+        <!-- Leaderboard Insights Grid -->
+        <div class="insights-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+          <div class="insight-card" id="insight-richest">
+            <span class="insight-icon">👑</span>
+            <div class="insight-info">
+              <span class="insight-label">Warga Terkaya</span>
+              <h4 id="val-richest-user">-</h4>
+              <p id="val-richest-amount">Rp 0</p>
+            </div>
+          </div>
+          <div class="insight-card" id="insight-jailed">
+            <span class="insight-icon">🚓</span>
+            <div class="insight-info">
+              <span class="insight-label">Tahanan Terlama</span>
+              <h4 id="val-jailed-user">-</h4>
+              <p id="val-jailed-time">-</p>
+            </div>
+          </div>
+          <div class="insight-card" id="insight-strongest">
+            <span class="insight-icon">🐾</span>
+            <div class="insight-info">
+              <span class="insight-label">Pet Terkuat</span>
+              <h4 id="val-strongest-pet">-</h4>
+              <p id="val-strongest-desc">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
+          <div class="filter-badges-container" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="badge-tab active" data-filter="all">Semua Warga</button>
+            <button class="badge-tab" data-filter="jail">🚓 Lapas</button>
+            <button class="badge-tab" data-filter="blacklist">🚫 Blacklist</button>
+            <button class="badge-tab" data-filter="rich">👑 Terkaya</button>
+            <button class="badge-tab" data-filter="dead_pet">🪦 Pet Mati</button>
+          </div>
           <div class="search-box">
-            <input type="text" id="member-search" placeholder="Cari ID Warga...">
+            <input type="text" id="member-search" placeholder="Cari ID atau Nama Warga..." style="width: 100%; max-width: 320px;">
           </div>
         </div>
 
@@ -198,6 +237,7 @@
             <thead>
               <tr>
                 <th>ID Warga</th>
+                <th>Nama Warga</th>
                 <th>Koin Dompet</th>
                 <th>Tabungan Bank</th>
                 <th>Total Kekayaan</th>
@@ -235,15 +275,74 @@
                 <h4 id="pet-display-name">🐾 Pet Name (Lv. 1 TYPE)</h4>
                 <span id="pet-display-stars">⭐⭐⭐</span>
               </div>
-              <div class="pet-body">
-                <p>❤️ **HP**: <span id="pet-val-hp">100/100</span></p>
-                <p>🍗 **Kenyang**: <span id="pet-val-hunger">100%</span></p>
-                <p>🥤 **Hidrasi**: <span id="pet-val-thirst">100%</span></p>
-                <p>😊 **Ceria**: <span id="pet-val-happy">100%</span></p>
-                <p>🧬 **Trait**: <span id="pet-val-trait">STURDY</span></p>
-                <p>🏰 **Menara Ujian (Floor)**: <span id="pet-val-floor">Lantai 1</span></p>
-                <p>🔋 **Auto-Feed VIP**: <span id="pet-val-autofeed">Nonaktif</span></p>
-                <p>💀 **Status**: <span id="pet-val-status" class="badge badge-emerald">ALIVE</span></p>
+              <div class="pet-display-grid">
+                <!-- Visual Avatar Simulator Window -->
+                <div class="pet-avatar-window">
+                  <div class="pet-avatar-container" id="pet-avatar-wrapper">
+                    <!-- SVG injected via JS -->
+                  </div>
+                  <div style="text-align: center; margin-top: 8px;">
+                    <span id="pet-val-status" class="badge badge-emerald">ALIVE</span>
+                  </div>
+                </div>
+
+                <!-- Circular Progress Rings -->
+                <div class="pet-rings-container">
+                  <div class="ring-stat-box">
+                    <svg class="progress-ring" width="60" height="60">
+                      <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.05)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                      <circle class="progress-ring-circle" id="ring-hp" stroke="var(--color-red)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                    </svg>
+                    <div class="ring-label">
+                      <span class="ring-icon">❤️</span>
+                      <span class="ring-text" id="pet-val-hp">-</span>
+                      <span class="ring-sub">HP</span>
+                    </div>
+                  </div>
+                  
+                  <div class="ring-stat-box">
+                    <svg class="progress-ring" width="60" height="60">
+                      <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.05)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                      <circle class="progress-ring-circle" id="ring-hunger" stroke="var(--color-gold)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                    </svg>
+                    <div class="ring-label">
+                      <span class="ring-icon">🍗</span>
+                      <span class="ring-text" id="pet-val-hunger">-</span>
+                      <span class="ring-sub">Lapar</span>
+                    </div>
+                  </div>
+
+                  <div class="ring-stat-box">
+                    <svg class="progress-ring" width="60" height="60">
+                      <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.05)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                      <circle class="progress-ring-circle" id="ring-thirst" stroke="var(--color-primary)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                    </svg>
+                    <div class="ring-label">
+                      <span class="ring-icon">🥤</span>
+                      <span class="ring-text" id="pet-val-thirst">-</span>
+                      <span class="ring-sub">Haus</span>
+                    </div>
+                  </div>
+
+                  <div class="ring-stat-box">
+                    <svg class="progress-ring" width="60" height="60">
+                      <circle class="progress-ring-bg" stroke="rgba(255,255,255,0.05)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                      <circle class="progress-ring-circle" id="ring-happy" stroke="var(--color-purple)" stroke-width="4" fill="transparent" r="24" cx="30" cy="30"/>
+                    </svg>
+                    <div class="ring-label">
+                      <span class="ring-icon">😊</span>
+                      <span class="ring-text" id="pet-val-happy">-</span>
+                      <span class="ring-sub">Ceria</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- General Pet Details -->
+              <div class="pet-body-text" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <p>🧬 <strong>Trait</strong>: <span id="pet-val-trait">STURDY</span></p>
+                <p>🏰 <strong>Menara</strong>: <span id="pet-val-floor">Lantai 1</span></p>
+                <p>🔋 <strong>Auto-Feed VIP</strong>: <span id="pet-val-autofeed">Nonaktif</span></p>
               </div>
             </div>
           </div>
@@ -361,7 +460,60 @@
           </div>
         </div>
 
-        <div class="dashboard-details">
+        <!-- Split Layout for Charts & Controls -->
+        <div class="control-split-layout" style="margin-top: 24px;">
+          <!-- Donut Chart Card -->
+          <div class="details-card" style="flex: 1.2;">
+            <h3>📊 Distribusi Kekayaan Moneter</h3>
+            <div style="display: flex; align-items: center; justify-content: space-around; gap: 20px; flex-wrap: wrap; margin-top: 16px;">
+              <!-- Donut SVG -->
+              <div class="donut-chart-wrapper" style="position: relative; width: 150px; height: 150px;">
+                <svg width="150" height="150" viewBox="0 0 150 150" style="transform: rotate(-90deg);">
+                  <circle cx="75" cy="75" r="50" fill="transparent" stroke="var(--border-color)" stroke-width="18" />
+                  <circle id="donut-segment-wallet" cx="75" cy="75" r="50" fill="transparent" stroke="var(--color-primary)" stroke-width="18" stroke-dasharray="314.15" stroke-dashoffset="314.15" />
+                  <circle id="donut-segment-bank" cx="75" cy="75" r="50" fill="transparent" stroke="var(--color-emerald)" stroke-width="18" stroke-dasharray="314.15" stroke-dashoffset="314.15" />
+                </svg>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%;">
+                  <span style="font-size: 10px; color: var(--color-text-muted); display: block; text-transform: uppercase; letter-spacing: 0.5px;">Total Aset</span>
+                  <span id="donut-val-total" style="font-family: var(--font-title); font-size: 13px; font-weight: 700; color: var(--color-text-light);">Rp 0</span>
+                </div>
+              </div>
+              
+              <!-- Legend -->
+              <div class="chart-legend" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background-color: var(--color-primary);"></span>
+                  <span style="font-size: 13px; color: var(--color-text-main);">Dompet: <strong id="chart-lbl-wallet">Rp 0</strong></span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background-color: var(--color-emerald);"></span>
+                  <span style="font-size: 13px; color: var(--color-text-main);">Bank: <strong id="chart-lbl-bank">Rp 0</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inflation Detector & Mass Tax -->
+          <div class="details-card">
+            <h3>🛡️ Detektor & Pengendali Inflasi</h3>
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+              <div class="inflation-status-box" id="inflation-box" style="padding: 12px 20px; border-radius: 8px; font-weight: 700; font-family: var(--font-title); text-align: center; width: 100%; font-size: 14px; background-color: rgba(255,255,255,0.05); border: 1px solid var(--border-color);">
+                STATUS INFLASI: <span id="inflation-status-text">MENGHITUNG...</span>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Pajak Kekayaan Massal (% Saldo Dompet):</label>
+              <div class="form-inline">
+                <input type="number" id="tax-percent" value="5" min="1" max="90" class="form-control" style="width: 100px; display: inline-block;">
+                <button id="payout-tax-btn" class="btn btn-danger">💸 Tarik Pajak</button>
+              </div>
+              <p style="color: var(--color-text-muted); font-size: 11px; margin-top: 6px;">Pajak memotong saldo warga secara merata. Batas minimum saldo dompet tersisa adalah Rp 1.000.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-details" style="margin-top: 24px;">
           <div class="details-card">
             <h3>🎁 Pembagian Bantuan Sosial (Bansos Massal)</h3>
             <p style="color: var(--color-text-muted); font-size: 13px; margin-bottom: 12px;">
@@ -380,6 +532,14 @@
             </p>
             <button id="reset-economy-btn" class="btn btn-danger">🚨 Reset Ekonomi Server Sekarang</button>
           </div>
+
+          <div class="details-card" style="margin-top: 24px; border: 1px solid rgba(248, 81, 73, 0.5); background-color: rgba(248, 81, 73, 0.02);">
+            <h3 style="color: var(--color-red);">💀 Reset Total Semua Data Server (Wipe Out)</h3>
+            <p style="color: var(--color-text-muted); font-size: 13px; margin-bottom: 12px;">
+              Aksi pembersihan total server. Semua saldo warga diset ke Rp 1.000, tabungan/pinjaman dihapus, semua item di tas & pakan pet dihapus, semua peliharaan (pets) & menara tower dihapus, portofolio saham, kebun, lelang, serta listing marketplace dikosongkan secara permanen.
+            </p>
+            <button id="reset-all-btn" class="btn btn-danger" style="background-color: #d9383a; border-color: #d9383a;">🚨 WIPE OUT & RESET TOTAL SEKARANG</button>
+          </div>
         </div>
       </section>
 
@@ -387,7 +547,7 @@
       <section id="section-stocks" class="content-section">
         <div class="section-header">
           <h2>📈 Bursa Saham Management Grid</h2>
-          <p>Pantau emiten saham aktif, manipulasi harga, daftarkan emiten baru, atau picu event pasar modal.</p>
+          <p>Pantau emiten saham aktif, manipulasi harga, daftarkan emiten baru, atau picu event pasar modal secara langsung.</p>
         </div>
 
         <div class="control-split-layout">
@@ -403,6 +563,7 @@
                     <th>Harga Saat Ini</th>
                     <th>Harga Sebelumnya</th>
                     <th>Sisa Lembar Saham</th>
+                    <th>Tren Harga (Sparkline)</th>
                     <th>Aksi Emiten</th>
                   </tr>
                 </thead>
@@ -413,27 +574,45 @@
             </div>
           </div>
 
-          <!-- Add new stock -->
-          <div class="details-card">
-            <h3>📈 Daftarkan Emiten Saham Baru</h3>
-            <div class="form-group">
-              <label>Stock Ticker (Contoh: JKON):</label>
-              <input type="text" id="new-stock-ticker" maxlength="4" class="form-control" placeholder="4 Huruf Kapital...">
+          <!-- Right Sidebar: Add Emiten & Market Events -->
+          <div style="display: flex; flex-direction: column; gap: 20px; flex: 1; width: 100%;">
+            <!-- Market Event Controls -->
+            <div class="details-card">
+              <h3>🚨 Market Event Triggers</h3>
+              <p style="color: var(--color-text-muted); font-size: 12px; margin-bottom: 12px;">Picu tren pasar modal global secara paksa. Efek akan memodifikasi force_trend emiten saham.</p>
+              <div class="form-group">
+                <label>Durasi Event (Jam):</label>
+                <input type="number" id="market-event-hours" value="1" min="1" class="form-control">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button id="btn-market-bull" class="btn btn-emerald btn-block">🚀 Picu Bull Run (+PUMP)</button>
+                <button id="btn-market-bear" class="btn btn-danger btn-block">💥 Picu Market Crash (-DUMP)</button>
+                <button id="btn-market-reset" class="btn btn-secondary btn-block">🔄 Reset Normal (NONE)</button>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Nama Perusahaan:</label>
-              <input type="text" id="new-stock-name" class="form-control" placeholder="Nama Emiten...">
-            </div>
-            <div class="form-group">
-              <label>Harga Perdana (IPO):</label>
-              <input type="number" id="new-stock-price" value="100" class="form-control">
-            </div>
-            <div class="form-group">
-              <label>ID Saluran Teks (Discord Channel ID):</label>
-              <input type="text" id="new-stock-channel" class="form-control" placeholder="Discord Channel ID...">
-            </div>
-            <div class="form-actions" style="margin-top: 16px;">
-              <button id="add-stock-btn" class="btn btn-emerald btn-block">➕ Daftarkan Saham</button>
+
+            <!-- Add new stock -->
+            <div class="details-card">
+              <h3>📈 Daftarkan Emiten Saham Baru</h3>
+              <div class="form-group">
+                <label>Stock Ticker (Contoh: JKON):</label>
+                <input type="text" id="new-stock-ticker" maxlength="4" class="form-control" placeholder="4 Huruf Kapital...">
+              </div>
+              <div class="form-group">
+                <label>Nama Perusahaan:</label>
+                <input type="text" id="new-stock-name" class="form-control" placeholder="Nama Emiten...">
+              </div>
+              <div class="form-group">
+                <label>Harga Perdana (IPO):</label>
+                <input type="number" id="new-stock-price" value="100" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>ID Saluran Teks (Discord Channel ID):</label>
+                <input type="text" id="new-stock-channel" class="form-control" placeholder="Discord Channel ID...">
+              </div>
+              <div class="form-actions" style="margin-top: 16px;">
+                <button id="add-stock-btn" class="btn btn-emerald btn-block">➕ Daftarkan Saham</button>
+              </div>
             </div>
           </div>
         </div>
@@ -539,6 +718,87 @@
             </div>
             <div class="form-actions" style="margin-top: 16px;">
               <button id="restore-db-btn" class="btn btn-danger btn-block">💾 Pulihkan Database Sekarang</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: Voucher & Promo -->
+      <section id="section-promos" class="content-section">
+        <div class="section-header">
+          <h2>🎟️ Voucher & Promo Code Management</h2>
+          <p>Buat kode voucher promo untuk warga, atur hadiah koin, item, kuota klaim, dan masa kedaluwarsa.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <!-- Form to create a promo code -->
+          <div class="details-card">
+            <h3>🎟️ Buat Kode Promo Baru</h3>
+            <form id="create-promo-form" style="margin-top: 15px;">
+              <div class="form-group">
+                <label>Kode Promo (Alfanumerik, Kapital):</label>
+                <input type="text" id="promo-code-input" class="form-control" placeholder="Contoh: KOSANRAMADHAN" required>
+              </div>
+              <div class="form-group">
+                <label>Hadiah Koin (Rp):</label>
+                <input type="number" id="promo-coins-input" class="form-control" placeholder="0" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Hadiah Item:</label>
+                <select id="promo-item-select" class="form-control">
+                  <option value="">-- Tanpa Item --</option>
+                  <option value="LOCKPICK">🕵️‍♂️ Lockpick</option>
+                  <option value="SOAP">🧼 Soap (Sabun)</option>
+                  <option value="LAMBO">🏎️ Lamborgini Kosan</option>
+                  <option value="GOLD">👑 Emas Batangan 24K</option>
+                  <option value="IPHONE">📱 iPhone 16 Pro Max</option>
+                  <option value="TICKET_GACHA">🎫 Tiket Gacha Pet</option>
+                  <option value="FOOD_PREMIUM">🥩 Pakan Premium Pet</option>
+                  <option value="MEDICINE">💊 Obat Pet Sakit</option>
+                  <option value="AMULET">📿 Amulet Proteksi Pet</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Jumlah Item:</label>
+                <input type="number" id="promo-item-qty-input" class="form-control" placeholder="0" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Kuota Klaim (Maksimal Pengguna):</label>
+                <input type="number" id="promo-quota-input" class="form-control" placeholder="Contoh: 50" min="1" required value="50">
+              </div>
+              <div class="form-group">
+                <label>Masa Berlaku (Jam dari sekarang, 0 untuk permanen):</label>
+                <input type="number" id="promo-expires-input" class="form-control" placeholder="0" min="0" value="0">
+              </div>
+              <div class="form-actions" style="margin-top: 20px;">
+                <button type="submit" class="btn btn-success btn-block">➕ Buat & Aktifkan Voucher</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- List of active promo codes -->
+          <div class="details-card" style="flex: 2;">
+            <h3>🎟️ Daftar Voucher / Kode Promo Aktif</h3>
+            <div class="table-responsive" style="margin-top: 15px;">
+              <table class="table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="text-align: left; border-bottom: 2px solid var(--color-border);">
+                    <th style="padding: 10px;">Kode</th>
+                    <th style="padding: 10px;">Hadiah Koin</th>
+                    <th style="padding: 10px;">Hadiah Item</th>
+                    <th style="padding: 10px;">Klaim (Saat ini/Maks)</th>
+                    <th style="padding: 10px;">Kedaluwarsa</th>
+                    <th style="padding: 10px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="promos-table-body">
+                  <tr>
+                    <td colspan="6" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+                      Memuat data kode promo...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

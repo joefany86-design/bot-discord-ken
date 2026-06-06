@@ -30,6 +30,19 @@ try {
   console.log(`✅ Web Server SQLite connected at fallback: ${DB_PATH}`);
 }
 
+// Ensure wallets columns exist
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(wallets)").all();
+  const hasUsername = tableInfo.some(col => col.name === 'username');
+  if (!hasUsername) {
+    db.prepare("ALTER TABLE wallets ADD COLUMN username TEXT DEFAULT ''").run();
+    db.prepare("ALTER TABLE wallets ADD COLUMN display_name TEXT DEFAULT ''").run();
+    console.log("✅ Web Server migrated wallets table with username & display_name columns.");
+  }
+} catch (migErr) {
+  console.error("⚠️ Web Server wallets table migration safeguard failed:", migErr.message);
+}
+
 const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -135,10 +148,14 @@ const server = http.createServer((req, res) => {
         const users = db.prepare(`
           SELECT 
             w.user_id, 
+            w.username,
+            w.display_name,
             w.balance as wallet_balance,
             COALESCE(bs.balance, 0) as bank_balance,
             w.last_active_date,
-            (SELECT COUNT(*) FROM bot_blacklist b WHERE b.user_id = w.user_id) as is_blacklisted
+            w.jail_until,
+            (SELECT COUNT(*) FROM bot_blacklist b WHERE b.user_id = w.user_id) as is_blacklisted,
+            (SELECT COUNT(*) FROM user_pets up WHERE up.user_id = w.user_id AND up.status = 'DEAD' AND up.is_active = 1) as has_dead_pet
           FROM wallets w
           LEFT JOIN bank_savings bs ON w.user_id = bs.user_id AND w.guild_id = bs.guild_id
           WHERE w.guild_id = ?
@@ -259,10 +276,41 @@ const server = http.createServer((req, res) => {
         const inactiveWallets = db.prepare('SELECT COUNT(*) as count FROM wallets WHERE last_active_date = "" AND guild_id = ?').get(config.TARGET_GUILD_ID).count;
         
         const stocks = db.prepare('SELECT * FROM stocks WHERE guild_id = ?').all(config.TARGET_GUILD_ID);
-        const auctions = db.prepare('SELECT * FROM auction_items WHERE guild_id = ?').all(config.TARGET_GUILD_ID);
+        for (const stock of stocks) {
+          const historyRows = db.prepare(`
+            SELECT price 
+            FROM price_history 
+            WHERE channel_id = ? AND guild_id = ? 
+            ORDER BY recorded_at DESC LIMIT 10
+          `).all(stock.channel_id, config.TARGET_GUILD_ID);
+          stock.history = historyRows.map(h => h.price).reverse();
+        }
+        
+        const auctions = db.prepare(`
+          SELECT ai.*, w.username as bidder_username, w.display_name as bidder_display_name
+          FROM auction_items ai
+          LEFT JOIN wallets w ON ai.highest_bidder_id = w.user_id AND ai.guild_id = w.guild_id
+          WHERE ai.guild_id = ?
+        `).all(config.TARGET_GUILD_ID);
         
         const backupsDir = path.join(__dirname, 'backups');
         const backups = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir).filter(f => f.endsWith('.db')) : [];
+
+        const strongestPet = db.prepare(`
+          SELECT up.user_id, up.pet_name, up.level, up.star_level, up.pet_type,
+                 w.username, w.display_name
+          FROM user_pets up
+          LEFT JOIN wallets w ON up.user_id = w.user_id AND up.guild_id = w.guild_id
+          WHERE up.is_active = 1 AND up.status != 'DEAD' AND up.guild_id = ?
+          ORDER BY up.level DESC, up.star_level DESC LIMIT 1
+        `).get(config.TARGET_GUILD_ID) || null;
+
+        const longestJail = db.prepare(`
+          SELECT user_id, jail_until, username, display_name
+          FROM wallets 
+          WHERE jail_until > ? AND guild_id = ?
+          ORDER BY jail_until DESC LIMIT 1
+        `).get(Math.floor(Date.now() / 1000), config.TARGET_GUILD_ID) || null;
 
         sendJSON(res, 200, {
           success: true,
@@ -272,7 +320,9 @@ const server = http.createServer((req, res) => {
           inactiveWallets,
           stocks,
           auctions,
-          backups
+          backups,
+          strongestPet,
+          longestJail
         });
       } catch (err) {
         sendJSON(res, 500, { success: false, message: err.message });
@@ -486,7 +536,7 @@ const server = http.createServer((req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
         try {
-          const { action, amount } = JSON.parse(body);
+          const { action, amount, percent } = JSON.parse(body);
           if (!action) {
             return sendJSON(res, 400, { success: false, message: 'Missing action' });
           }
@@ -497,6 +547,19 @@ const server = http.createServer((req, res) => {
             appendLog(`Distributed bansos of ${amount} to all active users`);
             sendJSON(res, 200, { success: true, message: `Bansos Rp ${amount.toLocaleString('id-ID')} berhasil dibagikan!` });
           }
+          else if (action === 'tax' && percent) {
+            const taxPct = parseFloat(percent);
+            if (isNaN(taxPct) || taxPct <= 0 || taxPct > 100) {
+              return sendJSON(res, 400, { success: false, message: 'Persentase pajak tidak valid!' });
+            }
+            db.prepare(`
+              UPDATE wallets 
+              SET balance = MAX(1000, CAST(balance * (1.0 - (? / 100.0)) AS INTEGER)) 
+              WHERE guild_id = ?
+            `).run(taxPct, config.TARGET_GUILD_ID);
+            appendLog(`Applied mass wealth tax of ${taxPct}% on wallets`);
+            sendJSON(res, 200, { success: true, message: `Pajak massal sebesar ${taxPct}% berhasil ditarik!` });
+          }
           else if (action === 'reset') {
             db.transaction(() => {
               db.prepare('UPDATE wallets SET balance = 1000, total_earned = 0, total_invested = 0 WHERE guild_id = ?').run(config.TARGET_GUILD_ID);
@@ -505,6 +568,66 @@ const server = http.createServer((req, res) => {
             })();
             appendLog('Reset all wallet and bank balances to defaults');
             sendJSON(res, 200, { success: true, message: 'Semua keuangan warga berhasil di-reset!' });
+          }
+          else if (action === 'reset_all') {
+            db.transaction(() => {
+              const guildId = config.TARGET_GUILD_ID;
+              
+              // 1. Reset wallets to default values and clear activity indicators/cooldowns
+              db.prepare(`
+                UPDATE wallets 
+                SET balance = 1000, total_earned = 0, total_invested = 0, streak_days = 0, 
+                    last_active_date = '', daily_expedition_count = 0, last_expedition_date = '', 
+                    expedition_cooldown_until = 0, last_water_at = 0, last_rob_at = 0, 
+                    wanted_until = 0, wanted_bounty = 0, last_heist_at = 0, curse_type = '', 
+                    curse_until = 0, jail_until = 0, jail_type = '', jail_count = 0 
+                WHERE guild_id = ?
+              `).run(guildId);
+              
+              // 2. Clear economic, rental, and transaction data
+              db.prepare('DELETE FROM bank_savings WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM bank_loans WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM portfolios WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM transactions WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM kos_rentals WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM kos_upgrades WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM bail_debts WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM heist_cooldown WHERE guild_id = ?').run(guildId);
+              
+              // 3. Clear inventories
+              db.prepare('DELETE FROM user_inventory WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM pet_inventory WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM pet_item_cooldowns WHERE guild_id = ?').run(guildId);
+              
+              // 4. Clear pets & pet tower progress
+              db.prepare('DELETE FROM user_pets WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM user_pet_tower WHERE guild_id = ?').run(guildId);
+              
+              // 5. Clear activities (garden, quests, lottery, robberies)
+              db.prepare('DELETE FROM garden_slots WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM user_daily_quests WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM lottery_pool WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM lottery_tickets WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM robbery_attempts WHERE guild_id = ?').run(guildId);
+              
+              // 6. Clear bosses & tournaments
+              db.prepare('DELETE FROM world_boss WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM world_boss_participants WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM tournament_events WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM tournament_participants WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM tournament_matches WHERE guild_id = ?').run(guildId);
+              
+              // 7. Clear marketplace & auctions
+              db.prepare('DELETE FROM marketplace_listings WHERE guild_id = ?').run(guildId);
+              db.prepare('DELETE FROM auction_bids WHERE auction_id IN (SELECT id FROM auction_items WHERE guild_id = ?)').run(guildId);
+              db.prepare('DELETE FROM auction_items WHERE guild_id = ?').run(guildId);
+              
+              // 8. Clear user promo claims
+              db.prepare('DELETE FROM promo_claims WHERE user_id IN (SELECT user_id FROM wallets WHERE guild_id = ?)').run(guildId);
+            })();
+            
+            appendLog('Wiped out all guild user data and reset systems to clean state');
+            sendJSON(res, 200, { success: true, message: 'Seluruh data warga, inventory, pet, bursa, kebun, dan turnamen berhasil di-wipe!' });
           }
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });
@@ -516,7 +639,7 @@ const server = http.createServer((req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
         try {
-          const { action, ticker, price, stockName, channelId } = JSON.parse(body);
+          const { action, ticker, price, stockName, channelId, eventType, hours } = JSON.parse(body);
           if (!action) {
             return sendJSON(res, 400, { success: false, message: 'Missing action' });
           }
@@ -537,6 +660,27 @@ const server = http.createServer((req, res) => {
               .run(price, ticker.toUpperCase(), config.TARGET_GUILD_ID);
             appendLog(`Set price of ${ticker} to ${price}`);
             sendJSON(res, 200, { success: true, message: `Harga saham ${ticker} disetel ke Rp ${price}!` });
+          }
+          else if (action === 'market_event' && eventType) {
+            const duration = hours ? parseInt(hours, 10) * 3600 : 3600;
+            const forceUntil = Math.floor(Date.now() / 1000) + duration;
+            let trend = 'NONE';
+            if (eventType === 'BULL') trend = 'PUMP';
+            if (eventType === 'BEAR') trend = 'DUMP';
+            if (eventType === 'CRASH') trend = 'DUMP_MIN';
+            if (eventType === 'PUMP_MAX') trend = 'PUMP_MAX';
+            if (eventType === 'RESET') trend = 'NONE';
+
+            db.prepare('UPDATE stocks SET force_trend = ?, force_until = ? WHERE guild_id = ?')
+              .run(trend, trend === 'NONE' ? 0 : forceUntil, config.TARGET_GUILD_ID);
+
+            appendLog(`Market event triggered: ${eventType} (trend=${trend}) for ${duration}s`);
+            sendJSON(res, 200, { 
+              success: true, 
+              message: trend === 'NONE' 
+                ? 'Bursa saham dikembalikan ke pergerakan normal.' 
+                : `Event ${eventType} berhasil dipicu untuk semua emiten saham!` 
+            });
           }
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });
@@ -564,6 +708,76 @@ const server = http.createServer((req, res) => {
             db.prepare('UPDATE auction_items SET status = "CANCELLED" WHERE id = ?').run(auctionId);
             appendLog(`Cancelled auction ID ${auctionId}`);
             sendJSON(res, 200, { success: true, message: 'Lelang berhasil dibatalkan!' });
+          }
+        } catch (err) {
+          sendJSON(res, 500, { success: false, message: err.message });
+        }
+      });
+    }
+    else if (pathname === '/api/admin/promos' && req.method === 'GET') {
+      try {
+        const promos = db.prepare('SELECT * FROM promo_codes ORDER BY created_at DESC').all();
+        sendJSON(res, 200, { success: true, promos });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
+    else if (pathname === '/api/admin/promos' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const { action, code, coins, itemId, itemQty, quota, expiresHours } = JSON.parse(body);
+          if (!action) {
+            return sendJSON(res, 400, { success: false, message: 'Missing action' });
+          }
+
+          if (action === 'create') {
+            if (!code) {
+              return sendJSON(res, 400, { success: false, message: 'Kode promo wajib diisi!' });
+            }
+            const cleanCode = code.toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+            if (!cleanCode) {
+              return sendJSON(res, 400, { success: false, message: 'Kode promo harus alfanumerik!' });
+            }
+
+            const pCoins = parseInt(coins, 10) || 0;
+            const pItemId = itemId ? itemId.toUpperCase().trim() : null;
+            const pItemQty = parseInt(itemQty, 10) || 0;
+            const pQuota = parseInt(quota, 10) || -1;
+            
+            let pExpiresAt = 0;
+            const pExpiresHours = parseInt(expiresHours, 10) || 0;
+            if (pExpiresHours > 0) {
+              pExpiresAt = Math.floor(Date.now() / 1000) + (pExpiresHours * 3600);
+            }
+
+            // Check if exists
+            const exist = db.prepare('SELECT 1 FROM promo_codes WHERE code = ?').get(cleanCode);
+            if (exist) {
+              db.prepare('UPDATE promo_codes SET reward_coins = ?, reward_item_id = ?, reward_item_qty = ?, max_claims = ?, expires_at = ? WHERE code = ?')
+                .run(pCoins, pItemId, pItemQty, pQuota, pExpiresAt, cleanCode);
+              appendLog(`Updated promo code ${cleanCode}`);
+            } else {
+              db.prepare('INSERT INTO promo_codes (code, reward_coins, reward_item_id, reward_item_qty, max_claims, current_claims, expires_at) VALUES (?, ?, ?, ?, ?, 0, ?)')
+                .run(cleanCode, pCoins, pItemId, pItemQty, pQuota, pExpiresAt);
+              appendLog(`Created promo code ${cleanCode}`);
+            }
+
+            sendJSON(res, 200, { success: true, message: `Kode promo ${cleanCode} berhasil dibuat/diperbarui!` });
+          }
+          else if (action === 'delete') {
+            if (!code) {
+              return sendJSON(res, 400, { success: false, message: 'Missing code' });
+            }
+            const cleanCode = code.toUpperCase().trim();
+            db.prepare('DELETE FROM promo_codes WHERE code = ?').run(cleanCode);
+            db.prepare('DELETE FROM promo_claims WHERE code = ?').run(cleanCode);
+            appendLog(`Deleted promo code ${cleanCode}`);
+            sendJSON(res, 200, { success: true, message: `Kode promo ${cleanCode} berhasil dihapus!` });
+          }
+          else {
+            sendJSON(res, 400, { success: false, message: 'Invalid action' });
           }
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });
