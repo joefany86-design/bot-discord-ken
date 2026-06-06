@@ -14376,6 +14376,21 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // Perintah Admin: Panel Turnamen (.admin-tournament / .panel-tournament / .admin-turnamen / .panel-turnamen)
+    // ═══════════════════════════════════════════════════
+    if (['admin-tournament', 'panel-tournament', 'tournament-panel', 'admin-turnamen', 'panel-turnamen', 'turnamen-panel'].includes(commandName)) {
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      }
+
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminTournamentPanel(message, client);
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
     // Perintah Admin: Panel Pet (.admin-pet / .panel-pet)
     // ═══════════════════════════════════════════════════
     if (['admin-pet', 'panel-pet', 'pet-panel'].includes(commandName)) {

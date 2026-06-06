@@ -283,15 +283,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder()
           .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
           .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
-          .setValue('action_set_custom_image_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('🏆 Mulai Turnamen Admin Cup (Modal)')
-          .setDescription('Mulai pendaftaran turnamen adu pet interaktif server')
-          .setValue('action_admincup_start_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('🏆 Batalkan Turnamen Admin Cup')
-          .setDescription('Membatalkan turnamen Admin Cup aktif di server')
-          .setValue('action_admincup_stop')
+          .setValue('action_set_custom_image_modal')
       );
 
       const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -1508,167 +1500,6 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           const fresh = getPetPanelData(guildId, selectedTargetUserId);
           await replyMsg.edit(fresh).catch(() => { });
         }
-        else if (action === 'action_admincup_start_modal') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_pet_admincup_start_modal')
-            .setTitle('Mulai Turnamen Admin Cup');
-
-          const durationInput = new TextInputBuilder()
-            .setCustomId('cup_duration')
-            .setLabel('Durasi Registrasi (Menit)')
-            .setValue('30')
-            .setPlaceholder('Contoh: 30')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const minLevelInput = new TextInputBuilder()
-            .setCustomId('cup_min_level')
-            .setLabel('Level Minimal Pet')
-            .setValue('10')
-            .setPlaceholder('Contoh: 10')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const maxLevelInput = new TextInputBuilder()
-            .setCustomId('cup_max_level')
-            .setLabel('Level Maksimal Pet')
-            .setValue('9999')
-            .setPlaceholder('Contoh: 9999')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const rewardInput = new TextInputBuilder()
-            .setCustomId('cup_reward')
-            .setLabel('Hadiah Turnamen (Opsional)')
-            .setPlaceholder('Contoh: 5,000,000 Koin + Role Champion')
-            .setStyle(TextInputStyle.Paragraph)
-            .setRequired(false);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(durationInput),
-            new ActionRowBuilder().addComponents(minLevelInput),
-            new ActionRowBuilder().addComponents(maxLevelInput),
-            new ActionRowBuilder().addComponents(rewardInput)
-          );
-
-          await iPet.showModal(modal);
-
-          const sub = await iPet.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_pet_admincup_start_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
-            const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
-            const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
-            const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
-            const finalReward = rewardDesc !== '' ? rewardDesc : null;
-
-            if (isNaN(durationMins) || durationMins <= 0) {
-              return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
-            }
-            if (isNaN(minLevel) || minLevel < 1) {
-              return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
-            }
-            if (isNaN(maxLevel) || maxLevel < minLevel) {
-              return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
-            }
-
-            const tournament = require('./tournament');
-            try {
-              await sub.deferReply({ flags: 64 });
-
-              const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
-              let targetChannelObj = iPet.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await iPet.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
-              if (!targetChannelObj) {
-                targetChannelObj = iPet.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
-              }
-              if (!targetChannelObj) {
-                targetChannelObj = await tournament.createTournamentChannel(iPet.guild).catch(() => null);
-              }
-              if (!targetChannelObj) {
-                throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
-              }
-              const targetChannelId = targetChannelObj.id;
-
-              const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
-              const endRegAt = res.registrationEndAt;
-
-              const announceEmbed = new EmbedBuilder()
-                .setColor(0x4F46E5) // Premium Indigo
-                .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
-                .setDescription(
-                  `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
-                  `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
-                  `▬`.repeat(15)
-                )
-                .addFields(
-                  { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-                  { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
-                  { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
-                  { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
-                )
-                .setFooter({ text: 'Pet PvP League • Registration Phase' })
-                .setTimestamp();
-
-              const joinRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                  .setCustomId('cup_btn_join_public')
-                  .setLabel('🏆 Gabung / Ganti Pet')
-                  .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                  .setCustomId('cup_btn_leave_public')
-                  .setLabel('❌ Keluar Turnamen')
-                  .setStyle(ButtonStyle.Danger)
-              );
-
-              const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
-              tournament.saveAnnounceMessageId(guildId, announceMsg.id);
-
-              client.tournamentTimers = client.tournamentTimers || new Map();
-              if (client.tournamentTimers.has(guildId)) {
-                clearTimeout(client.tournamentTimers.get(guildId));
-              }
-              const regTimer = setTimeout(() => {
-                tournament.closeRegistrationAndGenerateBracket(guildId, client);
-              }, durationMins * 60 * 1000);
-              client.tournamentTimers.set(guildId, regTimer);
-
-              const adminPanelData = tournament.getAdminPanelData(guildId, client);
-              const adminPanelMsg = await sub.channel.send(adminPanelData).catch(() => null);
-              if (adminPanelMsg) {
-                database.run(
-                  'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
-                  [adminPanelMsg.id, sub.channel.id, guildId]
-                );
-              }
-
-              await sub.followUp({ content: `🏆 Sukses memulai pendaftaran Liga Pet di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
-              const fresh = getPetPanelData(guildId, selectedTargetUserId);
-              await replyMsg.edit(fresh).catch(() => { });
-            } catch (err) {
-              return sub.followUp({ content: `❌ Gagal memulai turnamen: ${err.message}`, flags: 64 }).catch(() => {});
-            }
-          }
-        }
-        else if (action === 'action_admincup_stop') {
-          const tournament = require('./tournament');
-          try {
-            const active = tournament.stopTournament(guildId);
-            if (active && active.channel_id) {
-              const channel = iPet.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
-              if (channel) {
-                await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
-              }
-            }
-            await iPet.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });
-            const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => { });
-          } catch (err) {
-            await iPet.reply({ content: `❌ Gagal membatalkan turnamen: ${err.message}`, flags: 64 });
-          }
-        }
       }
     } catch (err) {
       console.error('Error in Pet Panel Interaction:', err);
@@ -1680,6 +1511,448 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     if (reason === 'transition') return;
     try {
       const fresh = getPetPanelData(guildId, selectedTargetUserId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
+  });
+
+  return true;
+}
+
+/**
+ * 🏆 12. SUB-PANEL TURNAMEN PET (ADMIN CUP)
+ */
+async function handleAdminTournamentPanel(messageOrInteraction, client) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+  const guild = messageOrInteraction.guild;
+
+  const isOwner = author.id === '436554535037698059';
+  const isAdmin = messageOrInteraction.member && messageOrInteraction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+  if (!isOwner && !isAdmin) {
+    if (isInteraction) {
+      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    } else {
+      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.' });
+    }
+  }
+
+  if (!guildId) return false;
+
+  const getTournamentPanelData = (gId) => {
+    const tournament = require('./tournament');
+    const event = database.get('SELECT * FROM tournament_events WHERE guild_id = ?', [gId]);
+
+    let embed = new EmbedBuilder()
+      .setColor(0x4F46E5) // Premium Indigo
+      .setThumbnail(client.user.displayAvatarURL())
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Pengelolaan Turnamen PvP Pet' });
+
+    if (!event) {
+      embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
+        .setDescription(
+          `Tidak ada turnamen PvP Pet yang aktif di server saat ini.\n\n` +
+          `Silakan klik tombol **🏆 Mulai Turnamen** di bawah untuk membuka pendaftaran liga baru.`
+        );
+
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_start')
+          .setLabel('🏆 Mulai Turnamen')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_back')
+          .setLabel('🔙 Kembali ke Hub')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_close')
+          .setLabel('❌ Tutup Panel')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      return { embeds: [embed], components: [btnRow] };
+    }
+
+    const isPaused = event.is_paused === 1;
+    const statusLabel = event.status;
+
+    const activeMatch = database.get(
+      'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+      [gId]
+    );
+
+    let activeMatchText = '*Tidak ada pertandingan aktif saat ini.*';
+    if (activeMatch) {
+      const p1 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_1_id]);
+      const p2 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_2_id]);
+      activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}**\nStadium: <#${activeMatch.thread_id}>`;
+
+      if (client && client.activeCupMatches) {
+        const combat = client.activeCupMatches.get(activeMatch.match_id);
+        if (combat) {
+          activeMatchText += `\n⏳ **Status Duel (Turn ${combat.turnCount}):**\n` +
+            `• 🔴 Challenger HP: \`${combat.player1.hp}/${combat.player1.maxHP}\`\n` +
+            `• 🔵 Opponent HP: \`${combat.player2.hp}/${combat.player2.maxHP}\``;
+        }
+      }
+    }
+
+    embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
+      .setColor(isPaused ? 0xF59E0B : 0x10B981)
+      .setDescription(
+        `Kelola jalannya turnamen/liga PvP Pet server secara real-time:\n\n` +
+        `📶 **STATUS LIGA:**\n` +
+        `• Status: \`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}\n` +
+        `• Ronde Aktif: Ronde **${event.current_round}**\n\n` +
+        `⚔️ **PERTANDINGAN AKTIF:**\n${activeMatchText}`
+      );
+
+    const btnRow1 = new ActionRowBuilder();
+    if (isPaused) {
+      btnRow1.addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_resume')
+          .setLabel('▶️ Resume')
+          .setStyle(ButtonStyle.Success)
+      );
+    } else {
+      btnRow1.addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_pause')
+          .setLabel('⏸️ Pause')
+          .setStyle(ButtonStyle.Secondary)
+      );
+    }
+
+    btnRow1.addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_reroll')
+        .setLabel('🔄 Re-roll Match')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!activeMatch),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_dq')
+        .setLabel('⚠️ DQ Player')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!activeMatch),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_forcewin')
+        .setLabel('👑 Force Win')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(!activeMatch)
+    );
+
+    const btnRow2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_extend')
+        .setLabel('⏱️ Perpanjang Registrasi')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(statusLabel !== 'REGISTERING'),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_stop')
+        .setLabel('❌ Batalkan Turnamen')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [btnRow1, btnRow2] };
+  };
+
+  const initialData = getTournamentPanelData(guildId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector();
+
+  collector.on('collect', async iTour => {
+    const isOwner = iTour.user.id === '436554535037698059';
+    const isAdmin = iTour.member && iTour.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iTour.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      const tournament = require('./tournament');
+
+      if (iTour.customId === 'admin_tournament_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iTour, client);
+      }
+      else if (iTour.customId === 'admin_tournament_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => { });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_pause') {
+        await tournament.pauseTournament(guildId, client);
+        await iTour.reply({ content: '⏸️ Turnamen berhasil dijeda sementara!', flags: 64 });
+        const fresh = getTournamentPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => { });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_resume') {
+        await tournament.resumeTournament(guildId, client);
+        await iTour.reply({ content: '▶️ Turnamen berhasil dilanjutkan kembali!', flags: 64 });
+        const fresh = getTournamentPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => { });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_reroll') {
+        await tournament.rerollMatch(guildId, client);
+        await iTour.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
+        const fresh = getTournamentPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => { });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_dq') {
+        const match = database.get(
+          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+          [guildId]
+        );
+        if (!match) {
+          return iTour.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+        }
+
+        const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
+        const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
+
+        const actionRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_1_id}`)
+            .setLabel(`DQ ${p1Pet?.pet_name || 'Player 1'}`)
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_2_id}`)
+            .setLabel(`DQ ${p2Pet?.pet_name || 'Player 2'}`)
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        await iTour.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components: [actionRow], flags: 64 });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_forcewin') {
+        const match = database.get(
+          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+          [guildId]
+        );
+        if (!match) {
+          return iTour.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+        }
+
+        const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
+        const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
+
+        const actionRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_1_id}`)
+            .setLabel(`Menangkan ${p1Pet?.pet_name || 'Player 1'}`)
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_2_id}`)
+            .setLabel(`Menangkan ${p2Pet?.pet_name || 'Player 2'}`)
+            .setStyle(ButtonStyle.Success)
+        );
+
+        await iTour.reply({ content: '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**', components: [actionRow], flags: 64 });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_extend') {
+        const actionRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_ext_${guildId}_5`)
+            .setLabel('+5 Menit')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_ext_${guildId}_10`)
+            .setLabel('+10 Menit')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(`cup_admin_act_ext_${guildId}_15`)
+            .setLabel('+15 Menit')
+            .setStyle(ButtonStyle.Secondary)
+        );
+        await iTour.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_stop') {
+        if (client.tournamentTimers && client.tournamentTimers.has(guildId)) {
+          clearTimeout(client.tournamentTimers.get(guildId));
+          client.tournamentTimers.delete(guildId);
+        }
+        const active = tournament.stopTournament(guildId);
+        if (active && active.channel_id) {
+          await tournament.createTournamentChannel(iTour.guild).catch(() => null);
+
+          const channel = iTour.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
+          if (channel && typeof channel.send === 'function') {
+            await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+          }
+        }
+        await iTour.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });
+        const fresh = getTournamentPanelData(guildId);
+        await replyMsg.edit(fresh).catch(() => { });
+      }
+      else if (iTour.customId === 'admin_tournament_btn_start') {
+        const modal = new ModalBuilder()
+          .setCustomId('admin_tournament_start_modal')
+          .setTitle('Mulai Turnamen Admin Cup');
+
+        const durationInput = new TextInputBuilder()
+          .setCustomId('cup_duration')
+          .setLabel('Durasi Registrasi (Menit)')
+          .setValue('30')
+          .setPlaceholder('Contoh: 30')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const minLevelInput = new TextInputBuilder()
+          .setCustomId('cup_min_level')
+          .setLabel('Level Minimal Pet')
+          .setValue('10')
+          .setPlaceholder('Contoh: 10')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const maxLevelInput = new TextInputBuilder()
+          .setCustomId('cup_max_level')
+          .setLabel('Level Maksimal Pet')
+          .setValue('9999')
+          .setPlaceholder('Contoh: 9999')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        const rewardInput = new TextInputBuilder()
+          .setCustomId('cup_reward')
+          .setLabel('Hadiah Turnamen (Opsional)')
+          .setPlaceholder('Contoh: 5,000,000 Koin + Role Champion')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(durationInput),
+          new ActionRowBuilder().addComponents(minLevelInput),
+          new ActionRowBuilder().addComponents(maxLevelInput),
+          new ActionRowBuilder().addComponents(rewardInput)
+        );
+
+        await iTour.showModal(modal);
+
+        const sub = await iTour.awaitModalSubmit({
+          filter: (s) => s.customId === 'admin_tournament_start_modal' && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
+          const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
+          const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
+          const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
+          const finalReward = rewardDesc !== '' ? rewardDesc : null;
+
+          if (isNaN(durationMins) || durationMins <= 0) {
+            return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
+          }
+          if (isNaN(minLevel) || minLevel < 1) {
+            return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
+          }
+          if (isNaN(maxLevel) || maxLevel < minLevel) {
+            return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
+          }
+
+          try {
+            await sub.deferReply({ flags: 64 });
+
+            const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
+            let targetChannelObj = iTour.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await iTour.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
+            if (!targetChannelObj) {
+              targetChannelObj = iTour.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+            }
+            if (!targetChannelObj) {
+              targetChannelObj = await tournament.createTournamentChannel(iTour.guild).catch(() => null);
+            }
+            if (!targetChannelObj) {
+              throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
+            }
+            const targetChannelId = targetChannelObj.id;
+
+            const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
+            const endRegAt = res.registrationEndAt;
+
+            const announceEmbed = new EmbedBuilder()
+              .setColor(0x4F46E5) // Premium Indigo
+              .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
+              .setDescription(
+                `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
+                `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
+                `▬`.repeat(15)
+              )
+              .addFields(
+                { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
+                { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
+                { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+                { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
+              )
+              .setFooter({ text: 'Pet PvP League • Registration Phase' })
+              .setTimestamp();
+
+            const joinRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId('cup_btn_join_public')
+                .setLabel('🏆 Gabung / Ganti Pet')
+                .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId('cup_btn_leave_public')
+                .setLabel('❌ Keluar Turnamen')
+                .setStyle(ButtonStyle.Danger)
+            );
+
+            const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
+            tournament.saveAnnounceMessageId(guildId, announceMsg.id);
+
+            client.tournamentTimers = client.tournamentTimers || new Map();
+            if (client.tournamentTimers.has(guildId)) {
+              clearTimeout(client.tournamentTimers.get(guildId));
+            }
+            const regTimer = setTimeout(() => {
+              tournament.closeRegistrationAndGenerateBracket(guildId, client);
+            }, durationMins * 60 * 1000);
+            client.tournamentTimers.set(guildId, regTimer);
+
+            const adminPanelData = tournament.getAdminPanelData(guildId, client);
+            const adminPanelMsg = await sub.channel.send(adminPanelData).catch(() => null);
+            if (adminPanelMsg) {
+              database.run(
+                'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
+                [adminPanelMsg.id, sub.channel.id, guildId]
+              );
+            }
+
+            await sub.followUp({ content: `🏆 Sukses memulai pendaftaran Liga Pet di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
+            const fresh = getTournamentPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          } catch (err) {
+            await sub.followUp({ content: `❌ Gagal memulai turnamen: ${err.message}`, flags: 64 }).catch(() => {});
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error in Tournament Panel Interaction:', err);
+      await iTour.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getTournamentPanelData(guildId);
       fresh.components = [];
       await replyMsg.edit(fresh).catch(() => { });
     } catch (e) { }
@@ -5504,6 +5777,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setValue('panel_pet')
         .setEmoji('🐾'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('🏆 Turnamen Pet')
+        .setDescription('Mulai turnamen Admin Cup, batalkan turnamen aktif, atau atur jalannya laga')
+        .setValue('panel_tournament')
+        .setEmoji('🏆'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('🏦 Bank & Finansial')
         .setDescription('Suntik/potong koin, reset ekonomi, hapus pinjaman, bansos')
         .setValue('panel_bank')
@@ -5759,6 +6037,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
           collector.stop('transition');
 
           if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
+          else if (val === 'panel_tournament') await handleAdminTournamentPanel(iHub, client);
           else if (val === 'panel_bank') await handleAdminBankPanel(iHub, client);
           else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
           else if (val === 'panel_saham') await handleAdminSahamPanel(iHub, client);
@@ -7465,6 +7744,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
 
 module.exports = {
   handleAdminPanel,
+  handleAdminTournamentPanel,
   handleAdminPetPanel,
   handleAdminBankPanel,
   handleAdminRobberyPanel,
