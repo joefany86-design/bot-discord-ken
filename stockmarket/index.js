@@ -1176,9 +1176,12 @@ function initStockMarket(client) {
           }
           const active = tournament.stopTournament(interaction.guildId);
           if (active && active.channel_id) {
+            // Bersihkan channel secara otomatis agar bersih dari tombol join dll.
+            await tournament.createTournamentChannel(interaction.guild).catch(() => null);
+
             const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
-            if (channel) {
-              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+            if (channel && typeof channel.send === 'function') {
+              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
             }
           }
           await interaction.reply({ content: '✅ Turnamen berhasil dibatalkan dan dibersihkan.', flags: 64 });
@@ -13312,9 +13315,12 @@ async function handleEconomyCommands(message, client) {
           }
           const active = tournament.stopTournament(guildId);
           if (active && active.channel_id) {
+            // Bersihkan channel secara otomatis
+            await tournament.createTournamentChannel(message.guild).catch(() => null);
+
             const channel = message.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
-            if (channel) {
-              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+            if (channel && typeof channel.send === 'function') {
+              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
             }
           }
 
