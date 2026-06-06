@@ -1101,8 +1101,8 @@ async function endTournament(guildId, championId, runnerUpId, client) {
   const config = require('./config');
   const guild = channel ? channel.guild : (client.guilds.cache.get(guildId));
 
-  // 1. Kirim pengumuman juara ke channel announcement_event (config.ANNOUNCEMENT_CHANNEL_ID) dengan @everyone
-  const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID;
+  // 1. Kirim pengumuman juara ke channel announcement_event dengan @everyone
+  const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID || '1511871394210779247';
   if (guild && announceChanId) {
     const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
     if (announceChan) {
