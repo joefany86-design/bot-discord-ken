@@ -652,23 +652,31 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             const gElement = speciesInfo.element || '';
 
             // Batas Maksimum Pet
+            // Check if target is admin
+            const targetMember = await guild.members.fetch(selectedTargetUserId).catch(() => null);
+            const isTargetAdmin = (selectedTargetUserId === '436554535037698059') || 
+                                  (config.OWNER_ID && selectedTargetUserId === config.OWNER_ID) ||
+                                  (targetMember && targetMember.permissions.has(PermissionsBitField.Flags.Administrator));
+
             if (gRarity === 'MYTHIC') {
               const mythicCountRow = database.get(
                 'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
                 [selectedTargetUserId, guildId, 'MYTHIC']
               );
               const mythicCount = mythicCountRow ? mythicCountRow.count : 0;
-              if (mythicCount >= 2) {
-                return sub.reply({ content: `❌ Target user <@${selectedTargetUserId}> sudah memiliki batas maksimum pet MYTHIC (maksimal 2 per user)!`, flags: 64 });
+              const maxMythic = isTargetAdmin ? 999 : 2;
+              if (mythicCount >= maxMythic) {
+                return sub.reply({ content: `❌ Target user <@${selectedTargetUserId}> sudah memiliki batas maksimum pet MYTHIC (maksimal ${maxMythic} per user)!`, flags: 64 });
               }
             } else if (gRarity === 'IMMORTAL') {
               const immortalCountRow = database.get(
-                'SELECT COUNT(*) as count FROM user_pets WHERE guild_id = ? AND gacha_rarity = ?',
-                [guildId, 'IMMORTAL']
+                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
+                [selectedTargetUserId, guildId, 'IMMORTAL']
               );
               const immortalCount = immortalCountRow ? immortalCountRow.count : 0;
-              if (immortalCount >= 1) {
-                return sub.reply({ content: `❌ Server ini sudah memiliki batas maksimum pet IMMORTAL (maksimal 1 per server)!`, flags: 64 });
+              const maxImmortal = isTargetAdmin ? 999 : 5;
+              if (immortalCount >= maxImmortal) {
+                return sub.reply({ content: `❌ Target user <@${selectedTargetUserId}> sudah memiliki batas maksimum pet IMMORTAL (maksimal ${maxImmortal} per user)!`, flags: 64 });
               }
             }
 
