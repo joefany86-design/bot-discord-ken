@@ -3756,13 +3756,15 @@ module.exports = {
     }
 
     let giftTexts = '';
-    if (giftCoins > 0 || (giftItemQty > 0 && giftItemId)) {
-      giftTexts += `\n\n🎁 **HADIAH EVENT DIKIRIMKAN MASSAL:**`;
+    if (giftCoins > 0 || (giftItemQty !== 0 && giftItemId)) {
+      giftTexts += `\n\n🎁 **HADIAH & PENYESUAIAN MASSAL:**`;
       if (giftCoins > 0) {
         giftTexts += `\n  👉 **Koin Gratis:** Rp ${giftCoins.toLocaleString('id-ID')} telah dikirimkan ke dompet seluruh warga!`;
       }
       if (giftItemQty > 0 && giftItemId) {
         giftTexts += `\n  👉 **Item Gratis:** ${giftItemQty}x \`${giftItemId}\` telah dimasukkan ke inventaris seluruh warga!`;
+      } else if (giftItemQty < 0 && giftItemId) {
+        giftTexts += `\n  👉 **Penarikan Item:** ${Math.abs(giftItemQty)}x \`${giftItemId}\` telah ditarik dari inventaris seluruh warga!`;
       }
     }
 
