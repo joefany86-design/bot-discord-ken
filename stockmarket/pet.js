@@ -615,6 +615,7 @@ function getPet(userId, guildId) {
       "UPDATE user_pets SET status = 'BABY', last_interaction_at = ?, trait = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
       [now, hatchedTrait, userId, guildId, pet.pet_name]
     );
+    db.logPetAction(guildId, userId, null, pet.pet_name, 'HATCH', `Telur menetas menjadi BABY ${pet.pet_type}${hatchedTrait ? ` dengan trait ${hatchedTrait}` : ''}`);
     pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   }
 
@@ -624,6 +625,7 @@ function getPet(userId, guildId) {
       "UPDATE user_pets SET status = 'ADULT', last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?",
       [now, userId, guildId, pet.pet_name]
     );
+    db.logPetAction(guildId, userId, null, pet.pet_name, 'GROWTH', `Pet tumbuh menjadi ADULT (Level ${pet.level})`);
     pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   }
 
@@ -720,6 +722,8 @@ function adoptPet(userId, guildId, petName, petType, paymentSource = 'pocket') {
        VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, ?)`,
       [userId, guildId, sanitizedName, typeUpper, now, hatchAt, now, isActive]
     );
+
+    db.logPetAction(guildId, userId, null, sanitizedName, 'ADOPT', `Mengadopsi telur pet ${typeUpper} seharga Rp 1.500 lewat ${paymentSource}`);
   })();
 
   return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sanitizedName]);
@@ -1024,6 +1028,7 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
   })();
 
   const updatedPet = getPet(userId, guildId);
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'USE_ITEM', `Menggunakan item ${item.name}${didAutoBuy ? ' (Auto-buy)' : ''}. XP: +${xpGained}${levelUp ? ` (Naik ke Level ${updatedPet.level}!)` : ''}`);
   return {
     pet: updatedPet,
     item,
@@ -1076,7 +1081,9 @@ function playWithPet(userId, guildId) {
     incrementQuestProgress(userId, guildId, 'PLAY', 1);
   })();
 
-  return getPet(userId, guildId);
+  const updatedPet = getPet(userId, guildId);
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'PLAY', `Bermain dengan pet. Kebahagiaan menjadi ${updatedPet.happiness}%.`);
+  return updatedPet;
 }
 
 /**
@@ -1208,6 +1215,7 @@ function sendToWork(userId, guildId, member = null) {
     incrementQuestProgress(userId, guildId, 'WORK', 1);
   })();
 
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'WORK', `Bekerja dan menghasilkan Rp ${finalReward.toLocaleString('id-ID')}.`);
   return {
     pet: getPet(userId, guildId),
     reward: finalReward,
@@ -1359,6 +1367,7 @@ function sendToHunt(userId, guildId, member = null) {
     incrementQuestProgress(userId, guildId, 'HUNT', 1);
   })();
 
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'HUNT', `Berburu dan menghasilkan Rp ${finalReward.toLocaleString('id-ID')}.${dropItem ? ` Mendapatkan item drop: ${dropItem.name}` : ''}`);
   return {
     pet: getPet(userId, guildId),
     reward: finalReward,
@@ -1500,6 +1509,8 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     loserName = challenger.pet_name;
   } else {
     // Seri, potong taruhan dikembalikan utuh (tanpa pemenang)
+    db.logPetAction(guildId, challengerId, null, challenger.pet_name, 'PVP_BATTLE', `PvP seri melawan ${opponent.pet_name} (milik <@${opponentId}>). Taruhan: Rp ${betAmount}`);
+    db.logPetAction(guildId, opponentId, null, opponent.pet_name, 'PVP_BATTLE', `PvP seri melawan ${challenger.pet_name} (milik <@${challengerId}>). Taruhan: Rp ${betAmount}`);
     return {
       draw: true,
       logs,
@@ -1589,6 +1600,9 @@ function executePvP(challengerId, opponentId, guildId, betAmount) {
     }
   })();
 
+  db.logPetAction(guildId, winnerId, null, winnerName, 'PVP_BATTLE', `Menang PvP melawan ${loserName} (milik <@${loserId}>). Taruhan: Rp ${betAmount}, Bersih: Rp ${prizePool}`);
+  db.logPetAction(guildId, loserId, null, loserName, 'PVP_BATTLE', `Kalah PvP melawan ${winnerName} (milik <@${winnerId}>). Taruhan: Rp ${betAmount}`);
+
   return {
     draw: false,
     winnerId,
@@ -1619,6 +1633,7 @@ function switchActivePet(userId, guildId, petName) {
     db.run('UPDATE user_pets SET is_active = 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, pet.pet_name]);
   })();
   
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'SWITCH_ACTIVE', `Mengaktifkan pet ${pet.pet_name} the ${pet.pet_type}.`);
   return pet;
 }
 
@@ -1732,6 +1747,9 @@ function breedPets(challengerId, partnerId, guildId, newPetName) {
       [challengerId, guildId, sanitizedName, childType, now, hatchAt, now, trait]
     );
   })();
+
+  db.logPetAction(guildId, challengerId, null, challenger.pet_name, 'BREED', `Mengawinkan dengan pet ${partner.pet_name} (milik <@${partnerId}>). Telur: ${sanitizedName} (${childType})`);
+  db.logPetAction(guildId, partnerId, null, partner.pet_name, 'BREED', `Mengawinkan dengan pet ${challenger.pet_name} (milik <@${challengerId}>). Telur: ${sanitizedName} (${childType})`);
 
   return {
     childName: sanitizedName,
@@ -2186,6 +2204,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
       `💥 Dengan koordinasi yang apik, bos zona berhasil ditaklukan dan tumpukan koin jarahan disita!`
     );
 
+    rewards.forEach(r => {
+      const details = `Ekspedisi sukses ke ${zoneName}. Koin: Rp ${r.koin.toLocaleString('id-ID')}, XP: +${r.xpGained}${r.levelUp ? ` (Naik ke Level ${r.newLevel}!)` : ''}${r.dropItem ? `, Drop: ${r.dropItem}` : ''}${r.statusText ? `, Status: ${r.statusText}` : ''}`;
+      db.logPetAction(guildId, r.userId, null, r.petName, 'EXPEDITION', details);
+    });
+
     return {
       success: true,
       zoneName,
@@ -2362,6 +2385,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
       `💥 **Penyebab Kegagalan:**\n${selectedScenario.reason}`,
       `🩸 Seluruh pet menderita luka-luka ringan dan stress, tapi membawa pulang sedikit pengalaman tempur.`
     );
+
+    rewards.forEach(r => {
+      const details = `Ekspedisi gagal ke ${zoneName}. XP: +${r.xpGained}${r.levelUp ? ` (Naik ke Level ${r.newLevel}!)` : ''}${r.statusText ? `, Status: ${r.statusText}` : ''}`;
+      db.logPetAction(guildId, r.userId, null, r.petName, 'EXPEDITION', details);
+    });
 
     return {
       success: false,
@@ -3036,7 +3064,9 @@ function allocateStat(userId, guildId, statName) {
     );
   })();
 
-  return getPet(userId, guildId);
+  const updatedPet = getPet(userId, guildId);
+  db.logPetAction(guildId, userId, null, petObj.pet_name, 'ALLOCATE_STAT', `Meningkatkan stat ${sName.toUpperCase()} sebesar +1. Sisa TP: ${updatedPet.unused_tp}`);
+  return updatedPet;
 }
 
 /**
@@ -3083,6 +3113,7 @@ function resetGymStats(userId, guildId) {
     );
   })();
 
+  db.logPetAction(guildId, userId, null, petObj.pet_name, 'RESET_STATS', `Mereset latihan Gym pet. Mengembalikan ${totalAllocated} TP. Biaya: Rp ${resetCost.toLocaleString('id-ID')}`);
   return {
     pet: getPet(userId, guildId),
     cost: resetCost,
@@ -3260,6 +3291,7 @@ function saveGachaPet(userId, guildId, pullResult, petName) {
      pullResult.trait, pullResult.rarity, pullResult.element, pullResult.trait2]
   );
 
+  db.logPetAction(guildId, userId, null, sanitizedName, 'GACHA_SAVE', `Menyimpan pet hasil gacha: ${pullResult.speciesId} (${pullResult.rarity}). Element: ${pullResult.element || 'None'}, Trait: ${pullResult.trait || 'None'}`);
   return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sanitizedName]);
 }
 
@@ -3291,6 +3323,7 @@ function recyclePet(userId, guildId, petName) {
     }
   })();
 
+  db.logPetAction(guildId, userId, null, petRow.pet_name, 'RECYCLE', `Mendaur ulang pet ${petRow.pet_name} (${petRow.pet_type}) seharga Rp ${recycleReward.toLocaleString('id-ID')}.`);
   return { petName: petRow.pet_name, reward: recycleReward };
 }
 
@@ -3409,6 +3442,7 @@ function upgradePetStar(userId, guildId, mainPetName, sacrificeNames) {
   })();
 
   const updatedPet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, mainPet.pet_name]);
+  db.logPetAction(guildId, userId, null, mainPet.pet_name, 'STAR_UPGRADE', `Meningkatkan bintang pet ke ⭐${newStar} dengan mengorbankan: ${sacrificePets.map(s => s.pet_name).join(', ')}. Biaya: Rp ${req.coinCost.toLocaleString('id-ID')}`);
   return {
     pet:         updatedPet,
     newStar,
@@ -3436,6 +3470,7 @@ function forceSetStar(userId, guildId, petName, starLevel) {
      WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
     [star, bonuses.hpBonus, bonuses.atkBonusPct, bonuses.defBonusPct, userId, guildId, petRow.pet_name]
   );
+  db.logPetAction(guildId, userId, null, petRow.pet_name, 'ADMIN_FORCE_STAR', `Admin mengubah bintang pet secara paksa menjadi ⭐${star}`);
   return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petRow.pet_name]);
 }
 
@@ -3560,6 +3595,7 @@ function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reas
         isSavedByAmulet,
         isSavedBySurvivor
       });
+      db.logPetAction(guildId, ap.userId, null, ap.pet.pet_name, 'EXPEDITION_QTE_FAIL', `QTE gagal (gagal oleh <@${failedUserId}>) di ${selectedMap.name}. Status: ${statusText.replace(/\*\*|__/g, '')}`);
     });
   })();
 
@@ -4120,6 +4156,7 @@ function attackWorldBoss(userId, guildId, useSoda) {
     distributeResult = distributeWorldBossRewards(guildId, userId, weekStart);
   }
 
+  db.logPetAction(guildId, userId, null, petObj.pet_name, 'WORLD_BOSS_ATTACK', `Menyerang World Boss ${boss.boss_name}. Damage: ${totalDmgDealt}. Boss Mati: ${bossKilled ? 'Ya' : 'Tidak'}`);
   return {
     bossName: boss.boss_name,
     totalDmgDealt,
@@ -4238,6 +4275,7 @@ function distributeWorldBossRewards(guildId, lastHitUserId = null, targetWeekSta
       items: itemsGained.map(i => `${i.quantity > 0 ? `${i.quantity}x ` : ''}${i.name}`).join(', '),
       isLastHit
     });
+    db.logPetAction(guildId, p.user_id, null, p.pet_name, 'WORLD_BOSS_REWARD', `Menerima hadiah World Boss ${boss.boss_name} (${tier}). Koin: Rp ${rewardCoins.toLocaleString('id-ID')}${isLastHit ? ' (LAST HIT!)' : ''}. Hadiah: ${itemsGained.map(i => `${i.quantity > 0 ? `${i.quantity}x ` : ''}${i.name}`).join(', ')}`);
   });
 
   return {

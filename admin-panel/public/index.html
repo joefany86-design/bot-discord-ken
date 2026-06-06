@@ -59,6 +59,10 @@
           <span class="menu-icon">🐾</span>
           <span class="menu-text">Pet Tamagotchi</span>
         </a>
+        <a href="#pet-logs" class="menu-item" id="menu-pet-logs">
+          <span class="menu-icon">📜</span>
+          <span class="menu-text">Log Aktivitas Pet</span>
+        </a>
         <a href="#economy" class="menu-item" id="menu-economy">
           <span class="menu-icon">🏦</span>
           <span class="menu-text">Finansial & Bansos</span>
@@ -430,6 +434,76 @@
           <div class="form-actions" style="margin-top: 16px;">
             <button id="give-custom-pet-btn" class="btn btn-emerald">🎁 Suntik Pet Custom</button>
           </div>
+        </div>
+      </section>
+
+      <!-- Section: Log Aktivitas Pet -->
+      <section id="section-pet-logs" class="content-section">
+        <div class="section-header flex-header">
+          <div>
+            <h2>📜 Log Aktivitas Pet Player</h2>
+            <p>Pantau semua log aktivitas peliharaan member, seperti adopsi, penetasan, memberi makan/minum, latihan, pertarungan PvP, ekspedisi, hingga tindakan admin secara real-time.</p>
+          </div>
+          <button id="refresh-pet-logs-btn" class="btn btn-primary">🔄 Segarkan Log</button>
+        </div>
+
+        <div class="toolbar" style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+            <label style="margin-bottom: 6px; font-size: 12px;">Filter Aksi:</label>
+            <select id="pet-log-action-filter" class="form-control">
+              <option value="">-- Semua Aksi --</option>
+              <option value="ADOPT">ADOPT (Adopsi Telur)</option>
+              <option value="HATCH">HATCH (Telur Menetas)</option>
+              <option value="GROWTH">GROWTH (Pertumbuhan Baby ke Adult)</option>
+              <option value="USE_ITEM">USE_ITEM (Penggunaan Item Perawatan)</option>
+              <option value="WORK">WORK (Pekerjaan Pet)</option>
+              <option value="HUNT">HUNT (Berburu Liar)</option>
+              <option value="PLAY">PLAY (Bermain/Interaksi)</option>
+              <option value="PVP_BATTLE">PVP_BATTLE (Arena PvP)</option>
+              <option value="BREED">BREED (Kawin Silang)</option>
+              <option value="EXPEDITION">EXPEDITION (Ekspedisi PVE)</option>
+              <option value="EXPEDITION_QTE_FAIL">EXPEDITION_QTE_FAIL (Gagal QTE)</option>
+              <option value="WORLD_BOSS_ATTACK">WORLD_BOSS_ATTACK (Serang Boss)</option>
+              <option value="WORLD_BOSS_REWARD">WORLD_BOSS_REWARD (Hadiah Boss)</option>
+              <option value="ALLOCATE_STAT">ALLOCATE_STAT (Latihan Gym/TP)</option>
+              <option value="RESET_STATS">RESET_STATS (Reset Gym Stats)</option>
+              <option value="STAR_UPGRADE">STAR_UPGRADE (Fusion Bintang)</option>
+              <option value="GACHA_SAVE">GACHA_SAVE (Simpan Gacha)</option>
+              <option value="RECYCLE">RECYCLE (Daur Ulang)</option>
+              <option value="SWITCH_ACTIVE">SWITCH_ACTIVE (Ganti Pet Aktif)</option>
+              <option value="ADMIN_HEAL">ADMIN_HEAL (Heal Admin)</option>
+              <option value="ADMIN_FORCE_STAR">ADMIN_FORCE_STAR (Force Bintang Admin)</option>
+              <option value="ADMIN_ACTION">ADMIN_ACTION (Aksi Admin Lainnya)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0; flex-grow: 1; min-width: 250px;">
+            <label style="margin-bottom: 6px; font-size: 12px;">Cari (Username, Nama Pet, Detail):</label>
+            <input type="text" id="pet-log-search-input" class="form-control" placeholder="Ketik kata kunci pencarian...">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="members-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Waktu</th>
+                <th style="width: 20%;">Pemilik (User)</th>
+                <th style="width: 15%;">Nama Pet</th>
+                <th style="width: 15%;">Jenis Aksi</th>
+                <th style="width: 35%;">Detail Aktivitas</th>
+              </tr>
+            </thead>
+            <tbody id="pet-logs-tbody">
+              <!-- Inject via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+          <button id="pet-log-prev-btn" class="btn btn-secondary" disabled>◀️ Sebelumnya</button>
+          <span id="pet-log-page-indicator" style="font-size: 14px; font-weight: 500;">Halaman 1</span>
+          <button id="pet-log-next-btn" class="btn btn-secondary">Berikutnya ▶️</button>
         </div>
       </section>
 

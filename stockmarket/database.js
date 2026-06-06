@@ -684,6 +684,27 @@ function initSchema() {
         addColumn('tournament_events', 'admin_panel_message_id', 'TEXT DEFAULT NULL');
         addColumn('tournament_events', 'admin_panel_channel_id', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 10,
+      description: "Membuat tabel user_pet_logs untuk tracking aktivitas pet player",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS user_pet_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            username TEXT DEFAULT '',
+            pet_name TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            details TEXT DEFAULT '',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+        db.exec("CREATE INDEX IF NOT EXISTS idx_user_pet_logs_guild ON user_pet_logs (guild_id)");
+        db.exec("CREATE INDEX IF NOT EXISTS idx_user_pet_logs_user ON user_pet_logs (user_id)");
+        db.exec("CREATE INDEX IF NOT EXISTS idx_user_pet_logs_created_at ON user_pet_logs (created_at)");
+      }
     }
   ];
 
@@ -722,6 +743,26 @@ module.exports = {
   run: (sql, params = []) => db.prepare(sql).run(...params),
   get: (sql, params = []) => db.prepare(sql).get(...params),
   all: (sql, params = []) => db.prepare(sql).all(...params),
+
+  logPetAction: (guildId, userId, username, petName, actionType, details) => {
+    try {
+      let finalUsername = username;
+      if (!finalUsername) {
+        const row = db.prepare('SELECT username FROM wallets WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
+        if (row && row.username) {
+          finalUsername = row.username;
+        } else {
+          finalUsername = '';
+        }
+      }
+      db.prepare(`
+        INSERT INTO user_pet_logs (guild_id, user_id, username, pet_name, action_type, details)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(guildId, userId, finalUsername, petName || '', actionType, details || '');
+    } catch (err) {
+      console.error('❌ [Database] Gagal mencatat log pet:', err.message);
+    }
+  },
 
   /**
    * Helper untuk menjalankan transaksi database (Better-SQLite3).

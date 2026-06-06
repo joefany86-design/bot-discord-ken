@@ -393,6 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dash: document.getElementById('menu-dash'),
     users: document.getElementById('menu-users'),
     pet: document.getElementById('menu-pet'),
+    petLogs: document.getElementById('menu-pet-logs'),
     economy: document.getElementById('menu-economy'),
     stocks: document.getElementById('menu-stocks'),
     auctions: document.getElementById('menu-auctions'),
@@ -405,6 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dash: document.getElementById('section-dashboard'),
     users: document.getElementById('section-users'),
     pet: document.getElementById('section-pet'),
+    petLogs: document.getElementById('section-pet-logs'),
     economy: document.getElementById('section-economy'),
     stocks: document.getElementById('section-stocks'),
     auctions: document.getElementById('section-auctions'),
@@ -544,6 +546,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
 
+  // --- Pet Logs Pagination & State ---
+  let petLogCurrentPage = 1;
+  const petLogLimit = 15;
+
   // --- Formatting Helpers ---
   function formatCurrency(amount) {
     return 'Rp ' + amount.toLocaleString('id-ID');
@@ -611,6 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchPromos();
     } else if (activeTabId === 'broadcast') {
       fetchBroadcasts();
+    } else if (activeTabId === 'petLogs') {
+      fetchPetLogs();
     }
   }
 
@@ -622,6 +630,53 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.hash = key;
     });
   });
+
+  // --- Pet Logs Event Listeners ---
+  const petLogActionFilter = document.getElementById('pet-log-action-filter');
+  const petLogSearchInput = document.getElementById('pet-log-search-input');
+  const refreshPetLogsBtn = document.getElementById('refresh-pet-logs-btn');
+  const petLogPrevBtn = document.getElementById('pet-log-prev-btn');
+  const petLogNextBtn = document.getElementById('pet-log-next-btn');
+
+  if (petLogActionFilter) {
+    petLogActionFilter.addEventListener('change', () => {
+      petLogCurrentPage = 1;
+      fetchPetLogs();
+    });
+  }
+
+  let searchTimeout = null;
+  if (petLogSearchInput) {
+    petLogSearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        petLogCurrentPage = 1;
+        fetchPetLogs();
+      }, 400);
+    });
+  }
+
+  if (refreshPetLogsBtn) {
+    refreshPetLogsBtn.addEventListener('click', () => {
+      fetchPetLogs();
+    });
+  }
+
+  if (petLogPrevBtn) {
+    petLogPrevBtn.addEventListener('click', () => {
+      if (petLogCurrentPage > 1) {
+        petLogCurrentPage--;
+        fetchPetLogs();
+      }
+    });
+  }
+
+  if (petLogNextBtn) {
+    petLogNextBtn.addEventListener('click', () => {
+      petLogCurrentPage++;
+      fetchPetLogs();
+    });
+  }
 
   // --- API Fetching Functions ---
   async function fetchDashboardStats() {
@@ -764,6 +819,99 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       if (err.message !== 'Unauthorized') showToast('Gagal memuat logs', 'error');
+    }
+  }
+
+  async function fetchPetLogs() {
+    const actionFilter = petLogActionFilter ? petLogActionFilter.value : '';
+    const searchVal = petLogSearchInput ? petLogSearchInput.value.trim() : '';
+    const offset = (petLogCurrentPage - 1) * petLogLimit;
+
+    try {
+      const url = `/api/admin/pet-logs?limit=${petLogLimit}&offset=${offset}&actionType=${encodeURIComponent(actionFilter)}&search=${encodeURIComponent(searchVal)}`;
+      const res = await secureFetch(url);
+      const data = await res.json();
+
+      if (data.success) {
+        renderPetLogsTable(data.logs);
+        updatePetLogsPagination(data.totalCount);
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat log pet', 'error');
+    }
+  }
+
+  function renderPetLogsTable(logs) {
+    const tbody = document.getElementById('pet-logs-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (logs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+            Belum ada log pet yang tercatat.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    logs.forEach(log => {
+      const tr = document.createElement('tr');
+
+      // Badge style based on action
+      let badgeClass = 'badge-muted';
+      if (['ADOPT', 'HATCH', 'GROWTH'].includes(log.action_type)) {
+        badgeClass = 'badge-emerald';
+      } else if (['RECYCLE', 'DEAD', 'EXPEDITION_QTE_FAIL', 'DELETE', 'ADMIN_DELETE'].includes(log.action_type)) {
+        badgeClass = 'badge-red';
+      } else if (['WORK', 'HUNT', 'PVP_BATTLE', 'EXPEDITION', 'WORLD_BOSS_ATTACK'].includes(log.action_type)) {
+        badgeClass = 'badge-purple';
+      } else if (['WORLD_BOSS_REWARD', 'STAR_UPGRADE', 'ADMIN_FORCE_STAR'].includes(log.action_type)) {
+        badgeClass = 'badge-gold';
+      }
+
+      // Convert Unix timestamp to readable date
+      const timestamp = formatDate(new Date(log.created_at * 1000));
+
+      // Details containing discord user mention formatting replace
+      let detailText = log.details || '';
+      // Replace <@12345> with bold userId
+      detailText = detailText.replace(/<@(\d+)>/g, (match, p1) => {
+        return `<strong>Warga ${p1}</strong>`;
+      });
+
+      tr.innerHTML = `
+        <td style="font-size: 12px; white-space: nowrap; color: var(--color-text-muted);">${timestamp}</td>
+        <td>
+          <div style="font-weight: 500;">${log.username || 'Warga'}</div>
+          <div style="font-size: 11px; color: var(--color-text-muted);" class="mono">${log.user_id}</div>
+        </td>
+        <td><strong style="color: var(--color-text-light);">${log.pet_name || '-'}</strong></td>
+        <td><span class="badge ${badgeClass}">${log.action_type}</span></td>
+        <td style="font-size: 13px; color: var(--color-text-main);">${detailText}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updatePetLogsPagination(totalCount) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / petLogLimit));
+    const prevBtn = document.getElementById('pet-log-prev-btn');
+    const nextBtn = document.getElementById('pet-log-next-btn');
+    const pageIndicator = document.getElementById('pet-log-page-indicator');
+
+    if (pageIndicator) {
+      pageIndicator.textContent = `Halaman ${petLogCurrentPage} dari ${totalPages} (Total: ${totalCount})`;
+    }
+    if (prevBtn) {
+      prevBtn.disabled = petLogCurrentPage <= 1;
+    }
+    if (nextBtn) {
+      nextBtn.disabled = petLogCurrentPage >= totalPages;
     }
   }
 

@@ -81,6 +81,19 @@ function appendLog(action) {
   }
 }
 
+function logPetAction(guildId, userId, petName, actionType, details) {
+  try {
+    const wallet = db.prepare('SELECT username FROM wallets WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
+    const username = wallet ? (wallet.username || '') : '';
+    db.prepare(`
+      INSERT INTO user_pet_logs (guild_id, user_id, username, pet_name, action_type, details)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(guildId, userId, username, petName || '', actionType, details || '');
+  } catch (err) {
+    console.error('Failed to log pet action from admin panel:', err);
+  }
+}
+
 // Helper to send JSON response
 function sendJSON(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -449,6 +462,57 @@ const server = http.createServer((req, res) => {
         sendJSON(res, 500, { success: false, message: err.message });
       }
     }
+    else if (pathname === '/api/admin/pet-logs' && req.method === 'GET') {
+      try {
+        const limit = parseInt(parsedUrl.searchParams.get('limit') || '15', 10);
+        const offset = parseInt(parsedUrl.searchParams.get('offset') || '0', 10);
+        const actionType = parsedUrl.searchParams.get('actionType') || '';
+        const search = parsedUrl.searchParams.get('search') || '';
+
+        let query = `
+          SELECT id, guild_id, user_id, username, pet_name, action_type, details, created_at 
+          FROM user_pet_logs 
+          WHERE guild_id = ?
+        `;
+        const params = [config.TARGET_GUILD_ID];
+
+        if (actionType) {
+          query += ` AND action_type = ?`;
+          params.push(actionType);
+        }
+        if (search) {
+          query += ` AND (username LIKE ? OR user_id LIKE ? OR pet_name LIKE ? OR details LIKE ?)`;
+          params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const logs = db.prepare(query).all(...params);
+
+        let countQuery = `
+          SELECT COUNT(*) as count 
+          FROM user_pet_logs 
+          WHERE guild_id = ?
+        `;
+        const countParams = [config.TARGET_GUILD_ID];
+
+        if (actionType) {
+          countQuery += ` AND action_type = ?`;
+          countParams.push(actionType);
+        }
+        if (search) {
+          countQuery += ` AND (username LIKE ? OR user_id LIKE ? OR pet_name LIKE ? OR details LIKE ?)`;
+          countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        const totalCount = db.prepare(countQuery).get(...countParams).count;
+
+        sendJSON(res, 200, { success: true, logs, totalCount });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
     else if (pathname === '/api/admin/pet' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
@@ -471,6 +535,7 @@ const server = http.createServer((req, res) => {
             db.prepare('UPDATE user_pets SET health = ?, hunger = 100, thirst = 100, happiness = 100 WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(maxHP, userId, config.TARGET_GUILD_ID);
             appendLog(`Healed pet of user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_HEAL', 'Admin menyembuhkan dan mengenyangkan pet');
             sendJSON(res, 200, { success: true, message: 'Pet berhasil disembuhkan dan dikenyangkan!' });
           }
           else if (action === 'revive') {
@@ -480,12 +545,14 @@ const server = http.createServer((req, res) => {
             db.prepare('UPDATE user_pets SET status = ?, health = ?, hunger = 100, thirst = 100, happiness = 100, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(newStatus, maxHP, Math.floor(Date.now() / 1000), userId, config.TARGET_GUILD_ID);
             appendLog(`Revived pet of user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_REVIVE', 'Admin menghidupkan kembali pet');
             sendJSON(res, 200, { success: true, message: 'Pet berhasil dihidupkan kembali!' });
           }
           else if (action === 'hatch') {
             db.prepare('UPDATE user_pets SET status = "BABY", hatch_at = 0, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(Math.floor(Date.now() / 1000), userId, config.TARGET_GUILD_ID);
             appendLog(`Hatched pet egg of user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_HATCH', 'Admin meneteskan telur pet instan');
             sendJSON(res, 200, { success: true, message: 'Telur pet berhasil ditetaskan!' });
           }
           else if (action === 'reset_cooldown') {
@@ -494,24 +561,28 @@ const server = http.createServer((req, res) => {
             db.prepare('UPDATE user_pets SET last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(Math.floor(Date.now() / 1000), userId, config.TARGET_GUILD_ID);
             appendLog(`Reset activity cooldowns for user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_RESET_COOLDOWN', 'Admin mereset cooldown ekspedisi dan aktivitas pet');
             sendJSON(res, 200, { success: true, message: 'Cooldown pet berhasil di-reset!' });
           }
           else if (action === 'level' && level) {
             db.prepare('UPDATE user_pets SET level = ?, unused_tp = unused_tp + ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(level, Math.max(0, (level - pet.level) * 3), userId, config.TARGET_GUILD_ID);
             appendLog(`Set pet level of user ${userId} to ${level}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_ACTION', `Admin mengubah level pet menjadi Level ${level}`);
             sendJSON(res, 200, { success: true, message: `Level pet berhasil diubah ke ${level}!` });
           }
           else if (action === 'trait' && trait) {
             db.prepare('UPDATE user_pets SET trait = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(trait, userId, config.TARGET_GUILD_ID);
             appendLog(`Changed pet trait of user ${userId} to ${trait}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_ACTION', `Admin mengubah trait pet menjadi ${trait}`);
             sendJSON(res, 200, { success: true, message: `Trait pet berhasil diubah ke ${trait}!` });
           }
           else if (action === 'star' && star) {
             db.prepare('UPDATE user_pets SET star_level = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(star, userId, config.TARGET_GUILD_ID);
             appendLog(`Forced pet star of user ${userId} to ${star}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_FORCE_STAR', `Admin mengubah bintang pet secara paksa menjadi ⭐${star}`);
             sendJSON(res, 200, { success: true, message: `Bintang pet berhasil diubah ke ${star}!` });
           }
           else if (action === 'toggle_autofeed') {
@@ -519,12 +590,14 @@ const server = http.createServer((req, res) => {
             db.prepare('UPDATE user_pets SET auto_feed = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(newFeed, userId, config.TARGET_GUILD_ID);
             appendLog(`Toggled VIP auto-feed for user ${userId} to ${newFeed}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_ACTION', `Admin mengubah status VIP auto-feed pet menjadi ${newFeed === 2 ? 'Aktif' : 'Nonaktif'}`);
             sendJSON(res, 200, { success: true, message: `VIP Auto-feed disetel ke ${newFeed === 2 ? 'Aktif' : 'Nonaktif'}!` });
           }
           else if (action === 'delete') {
             db.prepare('DELETE FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1')
               .run(userId, config.TARGET_GUILD_ID);
             appendLog(`Deleted pet of user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet.pet_name, 'ADMIN_DELETE', `Admin menghapus pet ${pet.pet_name} dari kandang`);
             sendJSON(res, 200, { success: true, message: 'Pet berhasil dihapus dari kandang!' });
           }
           else if (action === 'give_custom' && petName && petType) {
@@ -535,12 +608,14 @@ const server = http.createServer((req, res) => {
               VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, ?, 1, ?)
             `).run(userId, config.TARGET_GUILD_ID, petName, petType, level || 1, now, star || 1, now);
             appendLog(`Gave custom pet ${petName} (${petType}) to user ${userId}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, petName, 'ADMIN_GIVE_CUSTOM', `Admin menyuntikkan pet custom baru: ${petName} (${petType})`);
             sendJSON(res, 200, { success: true, message: 'Pet custom berhasil diberikan!' });
           }
           else if (action === 'floor' && floor) {
             db.prepare('INSERT OR REPLACE INTO user_pet_tower (user_id, guild_id, current_floor, max_floor, daily_attempts, updated_at) VALUES (?, ?, ?, ?, 0, ?)')
               .run(userId, config.TARGET_GUILD_ID, floor, Math.max(floor, pet.max_floor || 1), Math.floor(Date.now() / 1000));
             appendLog(`Set pet tower floor of user ${userId} to ${floor}`);
+            logPetAction(config.TARGET_GUILD_ID, userId, pet ? pet.pet_name : '', 'ADMIN_ACTION', `Admin mengubah progress lantai menara ujian pet menjadi Lantai ${floor}`);
             sendJSON(res, 200, { success: true, message: `Lantai menara diubah ke ${floor}!` });
           }
         } catch (err) {
