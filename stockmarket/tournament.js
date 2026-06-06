@@ -1098,50 +1098,65 @@ async function endTournament(guildId, championId, runnerUpId, client) {
   const champPet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, championId]);
   const runnerPet = runnerUpId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, runnerUpId]) : null;
 
-  if (channel) {
-    const celebrationEmbed = new EmbedBuilder()
-      .setColor(0xFFD700)
-      .setTitle('👑 CHAMPION OF ADMIN CUP 👑')
-      .setDescription(
-        `🏆 **Turnamen Admin Cup Resmi Berakhir!** 🏆\n\n` +
-        `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
-        (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
-        `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
-        (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
-        `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
-      )
-      .setFooter({ text: 'Admin Cup • Tournament Completed' })
-      .setTimestamp();
+  const config = require('./config');
+  const guild = channel ? channel.guild : (client.guilds.cache.get(guildId));
 
-    await channel.send({ embeds: [celebrationEmbed] });
+  // 1. Kirim pengumuman juara ke channel announcement_event (config.ANNOUNCEMENT_CHANNEL_ID) dengan @everyone
+  const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID;
+  if (guild && announceChanId) {
+    const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
+    if (announceChan) {
+      const celebrationEmbed = new EmbedBuilder()
+        .setColor(0xFFD700)
+        .setTitle('👑 CHAMPION OF ADMIN CUP 👑')
+        .setDescription(
+          `🏆 **Turnamen Admin Cup Resmi Berakhir!** 🏆\n\n` +
+          `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
+          (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
+          `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
+          (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
+          `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
+        )
+        .setFooter({ text: 'Admin Cup • Tournament Completed' })
+        .setTimestamp();
 
-    // Alert admin via DM jika memungkinkan
-    const adminUser = client.users.cache.get(event.admin_id) || await client.users.fetch(event.admin_id).catch(() => null);
-    if (adminUser) {
-      await adminUser.send(
-        `🏆 **Turnamen Admin Cup di server Anda telah selesai!**\n\n` +
-        `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet.pet_name}**)\n` +
-        (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet.pet_name}**)\n` : '') +
-        (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
-        `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
-      ).catch(() => {});
+      await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => {});
     }
+  }
 
-    // Perbarui panel admin dengan status selesai
-    if (event.admin_panel_message_id && event.admin_panel_channel_id) {
-      const adminChan = client.channels.cache.get(event.admin_panel_channel_id) || await client.channels.fetch(event.admin_panel_channel_id).catch(() => null);
-      if (adminChan) {
-        const adminMsg = await adminChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
-        if (adminMsg) {
-          const completedEmbed = new EmbedBuilder()
-            .setColor(0xFFD700)
-            .setTitle('🏆 TURNAMEN SELESAI!')
-            .setDescription(`Turnamen Admin Cup telah selesai dengan sukses!\nJuara 1: <@${championId}>\nJuara 2: ${runnerUpId ? `<@${runnerUpId}>` : '-'}`)
-            .setTimestamp();
-          await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => {});
-        }
+  // 2. Alert admin via DM jika memungkinkan
+  const adminUser = client.users.cache.get(event.admin_id) || await client.users.fetch(event.admin_id).catch(() => null);
+  if (adminUser) {
+    await adminUser.send(
+      `🏆 **Turnamen Admin Cup di server Anda telah selesai!**\n\n` +
+      `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet.pet_name}**)\n` +
+      (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet.pet_name}**)\n` : '') +
+      (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
+      `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
+    ).catch(() => {});
+  }
+
+  // 3. Perbarui panel admin dengan status selesai
+  if (event.admin_panel_message_id && event.admin_panel_channel_id) {
+    const adminChan = client.channels.cache.get(event.admin_panel_channel_id) || await client.channels.fetch(event.admin_panel_channel_id).catch(() => null);
+    if (adminChan) {
+      const adminMsg = await adminChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
+      if (adminMsg) {
+        const completedEmbed = new EmbedBuilder()
+          .setColor(0xFFD700)
+          .setTitle('🏆 TURNAMEN SELESAI!')
+          .setDescription(`Turnamen Admin Cup telah selesai dengan sukses!\nJuara 1: <@${championId}>\nJuara 2: ${runnerUpId ? `<@${runnerUpId}>` : '-'}`)
+          .setTimestamp();
+        await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => {});
       }
     }
+  }
+
+  // 4. Riset/buat ulang channel pvp-cup agar bersih
+  if (guild) {
+    await createTournamentChannel(guild).catch((err) => {
+      console.error(`Gagal mereset channel turnamen: ${err.message}`);
+    });
   }
 
   // Bersihkan data event di database
