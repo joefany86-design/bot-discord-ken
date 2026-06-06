@@ -2888,7 +2888,7 @@ module.exports = {
 
   petRaidEmbed(user, pet, boss, participant) {
     const hpPercent = Math.round((boss.current_hp / boss.max_hp) * 100);
-    
+
     // Build HP Bar (10 segments)
     const filledBars = Math.max(0, Math.min(10, Math.round(hpPercent / 10)));
     const emptyBars = 10 - filledBars;
@@ -3013,10 +3013,10 @@ module.exports = {
   petShopEmbed(wallet, inventory, statusMessage = '') {
     const { PET_ITEMS } = require('./pet');
     const desc = `Jaga kelangsungan hidup pet Anda dengan berbelanja supplies berkualitas!\n\n` +
-                 (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
-                 `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
-                 `📦 **Persediaan Anda Saat Ini:**\n` +
-                 inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
+      (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
+      `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
+      `📦 **Persediaan Anda Saat Ini:**\n` +
+      inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
       .setTitle('🎒 TOKO PERSEDIAAN PET TAMAGOTCHI')
@@ -3046,7 +3046,7 @@ module.exports = {
   // 29. Embed Battle Arena PvP
   petBattleEmbed(challengerUser, opponentUser, result, guildId) {
     const { getPet, renderStars, getMaxHP, isGodPet } = require('./pet');
-    
+
     // Fetch pets (safely default if not found)
     const challengerPet = guildId ? getPet(challengerUser.id, guildId) : null;
     const opponentPet = guildId ? getPet(opponentUser.id, guildId) : null;
@@ -3080,30 +3080,30 @@ module.exports = {
       const percent = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
       const totalSegments = 8;
       const filledSegments = Math.round((percent / 100) * totalSegments);
-      
+
       let indicator = '🟢';
       if (percent <= 25) {
         indicator = '🔴';
       } else if (percent <= 50) {
         indicator = '🟡';
       }
-      
+
       const bar = '█'.repeat(filledSegments) + '░'.repeat(totalSegments - filledSegments);
       return `\`[${bar}]\` **${percent}%** ${indicator}`;
     }
 
     function formatPetCard(user, pet, finalHP) {
       if (!pet) return '🐾 *Hewan Peliharaan tidak terdeteksi*';
-      
+
       const speciesEmoji = PET_EMOJIS[pet.pet_type.toUpperCase()] || '🐾';
       const starText = renderStars(pet.star_level || 1);
       const maxHP = getMaxHP(pet);
-      
+
       const traitText = pet.trait ? `${TRAIT_EMOJIS[pet.trait] || '🧠'} ${pet.trait}` : '❌ *Tidak Ada*';
       const accText = pet.accessory ? `${ACC_EMOJIS[pet.accessory] || '🎒'} ${pet.accessory.replace('_', ' ')}` : '❌ *Tidak Ada*';
-      
+
       const hpBar = renderMiniHpBar(finalHP, maxHP);
-      
+
       return (
         `👤 **Owner:** <@${user.id}>\n` +
         `${speciesEmoji} **Nama:** **${pet.pet_name}** \`(${pet.pet_type})\`\n` +
@@ -3135,7 +3135,7 @@ module.exports = {
       const loserPet = isChalWinner ? opponentPet : challengerPet;
 
       const winnerSpeciesEmoji = winnerPet ? (PET_EMOJIS[winnerPet.pet_type.toUpperCase()] || '🐾') : '🐾';
-      
+
       let deadWarning = '';
       if (loserPet && (loserPet.status === 'DEAD' || (winnerPet && isGodPet(winnerPet)))) {
         deadWarning = `\n\n☠️ **DEATH BLOW:** Pet **${loserPet.pet_name}** tewas mengenaskan akibat serangan mematikan Dewa Pet! Revive segera dengan \`.pet revive\`!`;
@@ -3188,190 +3188,31 @@ module.exports = {
     return embed;
   },
 
-  // 30. Jail Status Embed (.jail)
-  jailStatusEmbed(user, secondsRemaining, bailAmount, jailType = '') {
-    const now = Math.floor(Date.now() / 1000);
-    const releaseTime = now + secondsRemaining;
-
-    let description = '';
-    let color = COLORS.ERROR;
-    let title = '🚨 TAHANAN VIRTUAL 👮';
-    let thumbnail = 'https://cdn-icons-png.flaticon.com/512/3233/3233481.png';
-    let footerText = 'Klik "🔓 Tebus Jaminan" untuk bebas instan!';
-
-    if (jailType === 'troll') {
-      title = '⛓️ TROLL ADMIN: SEL VIP KERTAS ⛓️';
-      color = 0x95A5A6;
-      thumbnail = 'https://cdn-icons-png.flaticon.com/512/2996/2996172.png';
-      footerText = '😜 Nikmati masa tenang Anda di sel VIP!';
-      description =
-        `\`\`\`\n┌───────────────────────┐\n│  😜 KENA TROLL ADMIN 😜 │\n└───────────────────────┘\n\`\`\`\n` +
-        `⚠️ **${user.username}** dimasukkan ke **Sel VIP Kertas** oleh Admin!\n\n` +
-        `┊ 🔒 **Status:** \`KENA PRANK\`\n` +
-        `┊ 🛋️ **Fasilitas:** \`Kipas Karatan, Nyamuk Raksasa, Kasur Kardus\`\n` +
-        `┊ ⏳ **Bebas:** <t:${releaseTime}:R>\n` +
-        `┊ 💰 **Tebusan:** \`Gratis\` *(Tapi harus nunggu!)*\n\n` +
-        `> *Seluruh aktivitas ekonomi dibekukan demi kenyamanan perenungan.*`;
-    } else {
-      description =
-        `\`\`\`\n┌───────────────────────┐\n│  🔒 PENJARA VIRTUAL 🔒  │\n└───────────────────────┘\n\`\`\`\n` +
-        `⚠️ **${user.username}** sedang ditahan di Penjara Virtual!\n\n` +
-        `┊ 🔒 **Status:** \`JAILED\`\n` +
-        `┊ ⏳ **Bebas:** <t:${releaseTime}:t> (<t:${releaseTime}:R>)\n` +
-        `┊ 💰 **Bail:** \`${formatCurrency(bailAmount)}\` untuk bebas instan\n\n` +
-        `> *Seluruh aktivitas ekonomi dibekukan selama di penjara.*`;
-    }
-
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setTitle(title)
-      .setDescription(description)
-      .setThumbnail(thumbnail)
-      .setFooter({ text: footerText })
-      .setTimestamp();
-
-    return embed;
-  },
-
-  // 30b. Pet Expedition QTE Step Embed
-  petExpeditionStepEmbed(guild, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix, mapId) {
-    const petName = petObj ? petObj.pet_name : 'Unknown Pet';
-    const petType = petObj ? petObj.pet_type : 'Normal';
-    const petLvl = petObj ? petObj.level : 1;
-
-    return new EmbedBuilder()
-      .setColor('#FFD600') // Electric Gold
-      .setTitle('⚔️ EXPEDITION BATTLE: GILIRAN SERANG! ⚔️')
-      .setDescription(
-        `### ⚡ FASE COMBAT ACTIVE QTE ⚡\n` +
-        `*Langkah **${stepNumber}** dari **${totalSteps}** Giliran Kru*\n\n` +
-        `👾 **BOS PENJAGA:** **${bossName}**\n` +
-        `*Bos bersiap melepaskan serangan balik mematikan! Lakukan tindakan cepat!*\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
-      )
-      .addFields(
-        {
-          name: '🎯 Target Giliran Pet',
-          value: `🦖 **${petName}** (Lv. ${petLvl} ${petType})\n👤 Owner: <@${targetUserId}>`,
-          inline: false
-        },
-        {
-          name: '⏳ Sisa Waktu Reaksi',
-          value: `<t:${endTimeUnix}:R> *(Batas waktu 6 detik)*`,
-          inline: false
-        },
-        {
-          name: '⚠️ Peringatan Keras',
-          value: `*Hanya <@${targetUserId}> yang boleh mengeklik tombol skill pet di bawah! Kru lain yang menekan tombol di luar giliran akan menggagalkan seluruh ekspedisi secara instan!*`,
-          inline: false
-        }
-      )
-      .setImage(mapId ? `attachment://map${mapId}.png` : null)
-      .setFooter({ text: 'Kosan 1A RPG • Jaga fokus, pimpin pet Anda!' })
-      .setTimestamp();
-  },
-
-  // 30c. Pet Expedition QTE Failure Embed
-  petExpeditionQteFailureEmbed(guild, zoneName, failedUserId, reasonType, participants, results, mapId) {
-    const crewList = participants.map(p => `<@${p}>`).join(', ');
-    let causeText = '';
-
-    if (reasonType === 'Timeout') {
-      causeText = `🔴 **Kru <@${failedUserId}> lambat bereaksi!** Melewati batas waktu reaksi 6 detik. Pet terdiam membingungkan sehingga Bos menghantam pertahanan tim!`;
-    } else {
-      causeText = `🚨 **Kru <@${failedUserId}> menekan tombol di luar giliran!** Gelombang energi pet yang bertabrakan mengacaukan sinergi pertempuran tim!`;
-    }
-
-    let statusLines = '';
-    if (results && results.length > 0) {
-      results.forEach(r => {
-        statusLines += `• <@${r.userId}> (Pet: **${r.petName}**): ${r.statusText || 'Terluka parah (-25 HP) & Stress tinggi 🩹'}\n`;
-      });
-    } else {
-      statusLines = '*Seluruh pet kru terluka parah (-25 HP) & Stress bertambah (+30 Stress).*';
-    }
-
-    return new EmbedBuilder()
-      .setColor('#D50000') // Bright Red
-      .setTitle('☠️ EXPEDITION FAIL: TIM TERPENTAL KELUAR! ☠️')
-      .setThumbnail('attachment://pet_explorer.png')
-      .setDescription(
-        `### 💥 Bos Zona Mengamuk!\n` +
-        `Formasi pertahanan tim pet hancur and terpental keluar dari zona pertarungan!\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
-      )
-      .addFields(
-        {
-          name: '🗺️ Zona Ekspedisi',
-          value: `• **Peta:** **${zoneName}**\n• **Kru Terlibat:** ${crewList}`,
-          inline: false
-        },
-        {
-          name: '🔍 Penyebab Kegagalan',
-          value: causeText,
-          inline: false
-        },
-        {
-          name: '🩹 Rekapitulasi Konsekuensi Pet',
-          value: statusLines,
-          inline: false
-        }
-      )
-      .setImage(mapId ? `attachment://map${mapId}.png` : null)
-      .setFooter({ text: 'Kosan 1A Pet Expedition • Hubungi dokter pet (.pet dokter) jika pet Anda tewas' })
-      .setTimestamp();
-  },
-
+  // 31. Heist Lobby Embed (.heist) - Premium Revamped
   // 31. Heist Lobby Embed (.heist) - Premium Revamped
   heistLobbyEmbed(guild, initiator, participants, endTimeUnix, successRate, minPrize, maxPrize, prepFee) {
     const listKru = participants.map((p, idx) => {
       const roles = ['🕶️ Otak Kriminal', '💻 Peretas Keamanan', '🧨 Ahli Peledak', '🔫 Jaga Sandera', '👜 Pembawa Jarahan', '🚗 Pembalap Pelarian'];
       const roleStr = roles[idx] || '👥 Anggota Kru Backup';
-      return `> • **${idx + 1}️⃣** <@${p}> · \`${roleStr}\``;
+      return `• **${idx + 1}️⃣** <@${p}> · *${roleStr}*`;
     }).join('\n');
 
-    const crewListStr = listKru ? listKru : '> *Menunggu kru bergabung...*';
-
-    // Premium progress bars
+    const crewListStr = listKru ? listKru : '_Menunggu kru bergabung..._';
     const successFilled = Math.round(successRate / 10);
     const successBarStr = '▰'.repeat(successFilled) + '▱'.repeat(10 - successFilled);
 
     return new EmbedBuilder()
-      .setColor(0xD50000) // Vibrant Red
+      .setColor(0xD50000)
       .setTitle(`🚨 CENTRAL BANK HEIST ━━ LOBI OPERASI`)
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2823/2823864.png')
       .setDescription(
-        `\`\`\`ansi\n` +
-        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m   \u001b[1;37m🚨  CENTRAL BANK HEIST LOBBY  🚨\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m       \u001b[0;36mAssembling Elite Crew...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\`\n` +
-        `> *Inisiator criminal mastermind <@${initiator.id}> sedang merancang rencana pembobolan brankas utama Bank Server. Siapkan perlengkapan Black Market Anda, pastikan sinergi pet kru aktif, dan bersiaplah!*`
-      )
-      .addFields(
-        {
-          name: '👥 ═══ TIM OPERASI PERAMPOK ═══',
-          value: crewListStr,
-          inline: false
-        },
-        {
-          name: '📊 ANALISIS RISIKO & PROSPEK',
-          value:
-            `\`\`\`\n` +
-            `┌─────────────────────────────┐\n` +
-            `│ ✅ Peluang [${successBarStr}] ${String(successRate).padStart(3)}% │\n` +
-            `└─────────────────────────────┘\n` +
-            `\`\`\`\n` +
-            `> 💰 **Estimasi Jarahan:** \`${formatCurrency(minPrize)}\` - \`${formatCurrency(maxPrize)}\`\n` +
-            `> 💵 **Biaya Ransum/Prep:** \`${formatCurrency(prepFee)}\` /orang`,
-          inline: false
-        },
-        {
-          name: '⏳ Operasi Dimulai',
-          value: `<t:${endTimeUnix}:R>`,
-          inline: true
-        }
+        `*Mastermind <@${initiator.id}> sedang merancang rencana pembobolan brankas utama Bank Server. Siapkan perlengkapan Black Market Anda, pastikan sinergi pet kru aktif, dan bersiaplah!*\n\n` +
+        `👥 **TIM OPERASI PERAMPOK:**\n${crewListStr}\n\n` +
+        `📊 **ANALISIS RISIKO & PROSPEK:**\n` +
+        `• ✅ **Peluang Sukses:** \`[${successBarStr}] ${successRate}%\`\n` +
+        `• 💰 **Estimasi Jarahan:** \`${formatCurrency(minPrize)}\` - \`${formatCurrency(maxPrize)}\`\n` +
+        `• 💵 **Biaya Ransum/Prep:** \`${formatCurrency(prepFee)}\` /orang\n\n` +
+        `⏳ **OPERASI DIMULAI:** <t:${endTimeUnix}:R>`
       )
       .setImage('attachment://heist_loading.png')
       .setFooter({ text: 'Bot Kosan 1A • Klik tombol di bawah untuk bergabung!' })
@@ -3387,22 +3228,10 @@ module.exports = {
       .setTitle('🚨 BREACHING CENTRAL BANK VAULT...')
       .setThumbnail('https://media.tenor.com/Fow-2d_r8eMAAAAd/cyber-hacking.gif')
       .setDescription(
-        `\`\`\`ansi\n` +
-        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m  \u001b[1;33m🚨  BREACHING BANK SYSTEM...  🚨\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m   \u001b[0;36mBypassing Main Firewall...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\`\n\n` +
-        `> 🕵️ *Kru telah menyebar di posisinya masing-masing. Hacker mulai meretas gerbang digital, demolition bersiap dengan C4, dan driver bersiap di kemudi...*\n\n` +
-        `\`\`\`\n` +
-        `┌─────────────────────────────────┐\n` +
-        `│  SYSTEM BREACH STATUS: RUNNING   │\n` +
-        `│  Breaching Vault Security...    │\n` +
-        `└─────────────────────────────────┘\n` +
-        `\`\`\`\n\n` +
-        `> 🕶️ **Otak Kriminal:** <@${initiator.id}>\n` +
-        `> 👥 **Kru Elit:** ${crewMentions}\n\n` +
-        `*⏳ Mempersiapkan medan pertempuran QTE...*`
+        `⚡ **Mempersiapkan medan pertempuran QTE...**\n\n` +
+        `🕶️ **Otak Kriminal:** <@${initiator.id}>\n` +
+        `👥 **Kru Elit:** ${crewMentions}\n\n` +
+        `*Hacker sedang memutus firewall keamanan bank, demolition bersiap dengan C4, dan driver bersiap di kemudi pelarian...*`
       )
       .setImage('attachment://heist_loading.png')
       .setFooter({ text: 'Bot Kosan 1A Heist • Siapkan jari Anda di tombol!' })
@@ -3411,40 +3240,21 @@ module.exports = {
 
   // 31b. Heist Step QTE Embed - Premium Revamped
   heistStepEmbed(guild, stepNumber, totalSteps, stepTitle, stepDesc, targetUserId, endTimeUnix) {
-    const turnBar = '█'.repeat(stepNumber) + '░'.repeat(totalSteps - stepNumber);
+    const successFilled = stepNumber;
+    const progressIcons = '🟩'.repeat(successFilled) + '⬜'.repeat(totalSteps - successFilled);
 
     return new EmbedBuilder()
       .setColor(0xFF9100) // Vibrant Orange
-      .setTitle(`⚡ FASE EKSEKUSI QTE ━━ STEP ${stepNumber}/${totalSteps}`)
+      .setTitle(`⚡ FASE EKSEKUSI QTE: TAHAP ${stepNumber}/${totalSteps}`)
       .setDescription(
-        `\`\`\`ansi\n` +
-        `\u001b[1;33m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;33m║\u001b[0m  \u001b[1;31m⚡ ACTIVE HEIST ACTION REQUIRED ⚡\u001b[0m  \u001b[1;33m║\u001b[0m\n` +
-        `\u001b[1;33m║\u001b[0m       \u001b[1;37mReact now or get BUSTED!\u001b[0m     \u001b[1;33m║\u001b[0m\n` +
-        `\u001b[1;33m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\`\n\n` +
-        `> **Peran Aktif:** **${stepTitle}**\n` +
-        `> *Kru harus menekan tombol aksi peran yang benar sebelum alarm berbunyi!*\n\n` +
-        `\`\`\`\n` +
-        `HEIST PROGRESS [${turnBar}] ${stepNumber}/${totalSteps}\n` +
-        `\`\`\``
-      )
-      .addFields(
-        {
-          name: '🎯 ═══ TUGAS KRU ═══',
-          value: 
-            `> ${stepDesc}\n` +
-            `> 👤 **Target Giliran:** <@${targetUserId}>\n` +
-            `> ⏳ **Batas Reaksi:** <t:${endTimeUnix}:R> *(6 detik)*`,
-          inline: false
-        },
-        {
-          name: '🚨 PERINGATAN KERAS',
-          value:
-            `> ⚠️ **HANYA** <@${targetUserId}> **yang boleh mengeklik tombol peran!**\n` +
-            `> Kru lain yang mengeklik = **INTERFERENCE PENALTY & HEIST GAGAL TOTAL!**`,
-          inline: false
-        }
+        `🚨 **AKSI CEPAT DIPERLUKAN!** 🚨\n` +
+        `Sistem keamanan mendeteksi aktivitas mencurigakan. Segera ambil tindakan!\n\n` +
+        `👤 **Giliran Target:** <@${targetUserId}>\n` +
+        `🎮 **Peran Aktif:** **${stepTitle}**\n` +
+        `📝 **Tugas:** *${stepDesc}*\n\n` +
+        `⏳ **Batas Waktu:** <t:${endTimeUnix}:R> *(6 detik)*\n` +
+        `📈 **Kemajuan:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
+        `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh berinteraksi! Salah klik atau klik oleh kru lain akan memicu alarm (Interference Penalty) dan operasi gagal total!*`
       )
       .setImage('attachment://heist_loading.png')
       .setFooter({ text: 'Bot Kosan 1A Heist • Fokus, perhatikan giliran Anda!' })
@@ -3457,39 +3267,22 @@ module.exports = {
     let causeText = '';
 
     if (reasonType === 'Timeout') {
-      causeText = `> 🔴 **Kru <@${failedUserId}> lambat bereaksi!**\n> Batas waktu 6 detik habis sebelum menekan tombol perannya. Tim keamanan langsung membunyikan sirene alarm!`;
+      causeText = `🔴 **<@${failedUserId}> lambat bereaksi!** Batas waktu 6 detik habis sebelum menekan tombol perannya. Tim keamanan membunyikan sirene alarm!`;
     } else {
-      causeText = `> 🚨 **Kru <@${failedUserId}> menekan tombol di luar gilirannya!**\n> Pergerakan ceroboh ini memutus sensor inframerah keamanan bank secara instan!`;
+      causeText = `🚨 **<@${failedUserId}> salah klik (Interferensi)!** Menekan tombol di luar gilirannya memicu sensor inframerah bank secara instan!`;
     }
 
     return new EmbedBuilder()
       .setColor(0xD50000) // Vibrant Red
-      .setTitle('👮 HEIST GAGAL ━━ POLISI MEMBLOKADE AREA')
+      .setTitle('👮 OPERASI HEIST GAGAL TOTAL!')
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
       .setDescription(
-        `\`\`\`ansi\n` +
-        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m  \u001b[1;31m👮   SWAT TEAM RAID - ARRESTED  👮\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m       \u001b[0;33mThe alarm is screaming...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\``
-      )
-      .addFields(
-        {
-          name: '🔍 ═══ PENYEBAB KEGAGALAN ═══',
-          value: causeText,
-          inline: false
-        },
-        {
-          name: '👥 ═══ KRU YANG TERTANGKAP ═══',
-          value: `> ${crewList}`,
-          inline: false
-        },
-        {
-          name: '👮 KONSEKUENSI HUKUM',
-          value: `> 💸 **Denda Kerugian** dibebankan ke masing-masing kru.\n> 🔒 **Hukuman Penjara Virtual** diaktifkan seketika. Gunakan \`.jail\` untuk menebus jaminan bebas.`,
-          inline: false
-        }
+        `🚨 **ALARM BERBUNYI! TIM SWAT MENGEPUNG BANK!** 🚨\n\n` +
+        `🔍 **Penyebab Kegagalan:**\n${causeText}\n\n` +
+        `👥 **Kru yang Tertangkap:**\n${crewList}\n\n` +
+        `⚖️ **Konsekuensi Hukum:**\n` +
+        `• 💸 **Denda Kerugian** dibebankan ke masing-masing kru.\n` +
+        `• 🔒 **Hukuman Penjara Virtual** diaktifkan seketika. Gunakan \`.jail\` untuk membayar jaminan bebas.`
       )
       .setImage('attachment://heist_loading.png')
       .setFooter({ text: 'Bot Kosan 1A Heist Failure • Selalu fokus di lain waktu!' })
@@ -3499,10 +3292,10 @@ module.exports = {
   // 32. Heist Result Embed - Premium Revamped
   heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
-    const logText = logs.map(l => ` • ${l}`).join('\n');
+    const logText = logs.map(l => `• ${l}`).join('\n');
 
     let desc = '';
-    
+
     // Add Pet Synergy Detail if present
     if (extraData.petDetails && extraData.petDetails.length > 0) {
       desc += `🧬 **Sinergi Pet Aktif:**\n` + extraData.petDetails.map(d => `> • ${d}`).join('\n') + `\n\n`;
@@ -3513,28 +3306,22 @@ module.exports = {
       desc += `🗝️ **Perlengkapan Pasar Gelap:**\n` + extraData.bmDetails.map(d => `> • ${d}`).join('\n') + `\n\n`;
     }
 
-    desc += `📝 **Kronologi Operasi (Logs):**\n\`\`\`\n${logText || 'Tidak ada log aktivitas.'}\n\`\`\`\n`;
+    if (logText) {
+      desc += `📝 **Kronologi Operasi (Logs):**\n\`\`\`\n${logText}\n\`\`\`\n`;
+    }
 
     const embed = new EmbedBuilder()
       .setTimestamp();
 
     if (success) {
-      const headerArt = 
-        `\`\`\`ansi\n` +
-        `\u001b[1;32m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;32m║\u001b[0m  \u001b[1;33m🏆   HEIST SUCCESSFUL!  🏆\u001b[0m       \u001b[1;32m║\u001b[0m\n` +
-        `\u001b[1;32m║\u001b[0m     \u001b[0;36mStole cash from Server Bank!\u001b[0m     \u001b[1;32m║\u001b[0m\n` +
-        `\u001b[1;32m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\``;
-
       embed.setColor(0x2ECC71) // Emerald Green
         .setTitle('🏆 OPERASI BANK HEIST SUKSES BESAR!')
         .setThumbnail('https://cdn-icons-png.flaticon.com/512/2953/2953363.png');
 
-      let rewardDetails = 
-        `### 💰 Rekapitulasi Hasil Jarahan\n` +
-        `🏦 **Total Kas Tercuri:** \`${formatCurrency(totalReward)}\`\n` +
-        `👉 **Gaji per Kru (Bersih):** **\`${formatCurrency(rewardPerPerson)}\`**\n\n` +
+      let rewardDetails =
+        `💰 **Hasil Jarahan:**\n` +
+        `• 🏦 **Total Kas Tercuri:** \`${formatCurrency(totalReward)}\`\n` +
+        `• 👉 **Gaji per Kru (Bersih):** **\`${formatCurrency(rewardPerPerson)}\`**\n\n` +
         `👥 **Kru Sukses:** ${crewList}`;
 
       if (extraData.maskedUsers && extraData.maskedUsers.length > 0) {
@@ -3545,27 +3332,24 @@ module.exports = {
       if (stolenFromPlayers > 0 && deductionLogs.length > 0) {
         const victimList = deductionLogs.map(dl => ` • <@${dl.userId}>: -\`${formatCurrency(dl.amount)}\``).join('\n');
         rewardDetails += `\n\n💸 **Rekening Nasabah Korban:**\n${victimList}\n` +
-                         `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
+          `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
       }
 
-      embed.setDescription(headerArt + '\n' + desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + rewardDetails);
+      embed.setDescription(
+        `🎉 **Misi Selesai dengan Sempurna!**\n\n` +
+        desc +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        rewardDetails
+      );
     } else {
-      const headerArt = 
-        `\`\`\`ansi\n` +
-        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m   \u001b[1;31m☠️  OPERATION FAILED  ☠️\u001b[0m       \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m║\u001b[0m      \u001b[0;33mBusted by Virtual Police!\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
-        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
-        `\`\`\``;
-
       embed.setColor(0xE74C3C) // Crimson Red
-        .setTitle('🚓 OPERASI GAGAL: TIM ARRESTED & SWEEP!')
+        .setTitle('🚓 OPERASI GAGAL: TIM TERTANGKAP!')
         .setThumbnail('https://cdn-icons-png.flaticon.com/512/1022/1022332.png');
 
-      let penaltyDetails = 
-        `### 🚨 Konsekuensi Aparat Hukum\n` +
-        `💸 **Denda Kerugian:** \`${formatCurrency(fineAmount)}\` per orang\n` +
-        `🔒 **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!\n\n` +
+      let penaltyDetails =
+        `🚨 **Konsekuensi Hukum:**\n` +
+        `• 💸 **Denda Kerugian:** \`${formatCurrency(fineAmount)}\` per orang\n` +
+        `• 🔒 **Hukuman Penjara:** \`${jailHours.toFixed(1)} Jam\` di Penjara Virtual!\n\n` +
         `👥 **Kru Tertangkap:** ${crewList}`;
 
       if (extraData.dodgedJailUsers && extraData.dodgedJailUsers.length > 0) {
@@ -3573,7 +3357,12 @@ module.exports = {
         penaltyDetails += `\n\n🟢 **Dodge Jail!** ${dodgeList} berhasil melarikan diri menggunakan kelicinan pet **Slime**!`;
       }
 
-      embed.setDescription(headerArt + '\n' + desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + penaltyDetails);
+      embed.setDescription(
+        `☠️ **Rencana Bocor! Polisi Virtual mengamankan seluruh perimeter.**\n\n` +
+        desc +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        penaltyDetails
+      );
     }
 
     if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
@@ -4282,8 +4071,8 @@ module.exports = {
         {
           name: '🎯 PELUANG & SINERGI ELEMEN',
           value: `• **Peluang Sukses Tim**: \`[${successBar}]\` (**${successRate}%**)\n` +
-                 `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
-                 `• **Sinergi Elemen:**\n${elementalLogsText}`,
+            `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
+            `• **Sinergi Elemen:**\n${elementalLogsText}`,
           inline: false
         },
         {
