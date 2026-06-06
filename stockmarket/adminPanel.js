@@ -1579,12 +1579,16 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             try {
               await sub.deferReply({ flags: 64 });
 
-              let targetChannelObj = iPet.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+              const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
+              let targetChannelObj = iPet.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await iPet.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
+              if (!targetChannelObj) {
+                targetChannelObj = iPet.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+              }
               if (!targetChannelObj) {
                 targetChannelObj = await tournament.createTournamentChannel(iPet.guild).catch(() => null);
               }
               if (!targetChannelObj) {
-                throw new Error('Gagal menemukan atau membuat channel 🏆┃pvp-cup. Silakan periksa izin bot.');
+                throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
               }
               const targetChannelId = targetChannelObj.id;
 
@@ -1592,18 +1596,20 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const endRegAt = res.registrationEndAt;
 
               const announceEmbed = new EmbedBuilder()
-                .setColor(0x7C4DFF)
-                .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
+                .setColor(0x4F46E5) // Premium Indigo
+                .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
                 .setDescription(
-                  `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
-                  `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-                  `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
-                  `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
-                  `👉 Klik tombol **🏆 Gabung / Ganti Pet** di bawah untuk mendaftar atau mengubah pet terdaftar Anda.\n` +
-                  `👉 Klik tombol **❌ Keluar Turnamen** untuk membatalkan pendaftaran.\n\n` +
-                  (finalReward ? `🎁 **Hadiah Turnamen:** ${finalReward}` : `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`)
+                  `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
+                  `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
+                  `▬`.repeat(15)
                 )
-                .setFooter({ text: 'Admin Cup • Registration Phase' })
+                .addFields(
+                  { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
+                  { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
+                  { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+                  { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
+                )
+                .setFooter({ text: 'Pet PvP League • Registration Phase' })
                 .setTimestamp();
 
               const joinRow = new ActionRowBuilder().addComponents(
@@ -1620,11 +1626,25 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
               tournament.saveAnnounceMessageId(guildId, announceMsg.id);
 
-              setTimeout(() => {
+              client.tournamentTimers = client.tournamentTimers || new Map();
+              if (client.tournamentTimers.has(guildId)) {
+                clearTimeout(client.tournamentTimers.get(guildId));
+              }
+              const regTimer = setTimeout(() => {
                 tournament.closeRegistrationAndGenerateBracket(guildId, client);
               }, durationMins * 60 * 1000);
+              client.tournamentTimers.set(guildId, regTimer);
 
-              await sub.followUp({ content: `🏆 Sukses memulai pendaftaran turnamen Admin Cup di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
+              const adminPanelData = tournament.getAdminPanelData(guildId, client);
+              const adminPanelMsg = await sub.channel.send(adminPanelData).catch(() => null);
+              if (adminPanelMsg) {
+                database.run(
+                  'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
+                  [adminPanelMsg.id, sub.channel.id, guildId]
+                );
+              }
+
+              await sub.followUp({ content: `🏆 Sukses memulai pendaftaran Liga Pet di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
               await replyMsg.edit(fresh).catch(() => { });
             } catch (err) {

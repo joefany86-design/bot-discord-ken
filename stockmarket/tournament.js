@@ -1341,19 +1341,43 @@ async function updateBattleEmbed(matchId, client) {
 async function createTournamentChannel(guild) {
   const { ChannelType, PermissionFlagsBits } = require('discord.js');
   
-  // Cari dan hapus channel turnamen pvp cup lama jika ada
+  const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
+  let channel = guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
+  
+  if (channel) {
+    // Bersihkan pesan di channel ini tanpa menghapusnya agar ID tidak berubah
+    try {
+      let deleted;
+      do {
+        deleted = await channel.bulkDelete(100, true).catch(() => null);
+        if (!deleted || deleted.size === 0) break;
+      } while (deleted.size >= 10);
+    } catch (err) {
+      console.error(`Gagal membersihkan pesan di channel turnamen ID ${TOURNAMENT_CHANNEL_ID}: ${err.message}`);
+    }
+    return channel;
+  }
+
+  // Cari dan bersihkan channel turnamen lama jika ada by name
   const oldChannel = guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
   if (oldChannel) {
-    await oldChannel.delete().catch((err) => {
-      console.error(`Gagal menghapus channel turnamen lama: ${err.message}`);
-    });
+    try {
+      let deleted;
+      do {
+        deleted = await oldChannel.bulkDelete(100, true).catch(() => null);
+        if (!deleted || deleted.size === 0) break;
+      } while (deleted.size >= 10);
+    } catch (err) {
+      console.error(`Gagal membersihkan pesan di channel turnamen lama: ${err.message}`);
+    }
+    return oldChannel;
   }
 
   const FACILITIES_CATEGORY_ID = '1410239831023288451'; // #🍷 FACILITIES :
   const parentId = guild.channels.cache.has(FACILITIES_CATEGORY_ID) ? FACILITIES_CATEGORY_ID : null;
 
-  // Buat channel baru
-  const channel = await guild.channels.create({
+  // Buat channel baru jika tidak ada
+  channel = await guild.channels.create({
     name: '🏆┃pvp-cup',
     type: ChannelType.GuildText,
     parent: parentId,

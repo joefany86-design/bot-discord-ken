@@ -13190,12 +13190,16 @@ async function handleEconomyCommands(message, client) {
         const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan turnamen. Mohon tunggu...')] }).catch(() => null);
 
         try {
-          let targetChannelObj = message.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+          const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
+          let targetChannelObj = message.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await message.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
+          if (!targetChannelObj) {
+            targetChannelObj = message.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+          }
           if (!targetChannelObj) {
             targetChannelObj = await tournament.createTournamentChannel(message.guild).catch(() => null);
           }
           if (!targetChannelObj) {
-            throw new Error('Gagal menemukan atau membuat channel 🏆┃pvp-cup. Silakan periksa izin bot.');
+            throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
           }
           const targetChannelId = targetChannelObj.id;
 
@@ -13203,18 +13207,20 @@ async function handleEconomyCommands(message, client) {
           const endRegAt = res.registrationEndAt;
 
           const announceEmbed = new EmbedBuilder()
-            .setColor(0x7C4DFF)
-            .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
+            .setColor(0x4F46E5) // Premium Indigo
+            .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
             .setDescription(
-              `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
-              `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-              `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
-              `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
-              `👉 Klik tombol **🏆 Gabung / Ganti Pet** di bawah untuk mendaftar atau mengubah pet terdaftar Anda.\n` +
-              `👉 Klik tombol **❌ Keluar Turnamen** untuk membatalkan pendaftaran.\n\n` +
-              (rewardDesc ? `🎁 **Hadiah Turnamen:** ${rewardDesc}` : `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`)
+              `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
+              `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
+              `▬`.repeat(15)
             )
-            .setFooter({ text: 'Admin Cup • Registration Phase' })
+            .addFields(
+              { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
+              { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
+              { name: '🎁 Hadiah Liga', value: rewardDesc ? `**${rewardDesc}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+              { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
+            )
+            .setFooter({ text: 'Pet PvP League • Registration Phase' })
             .setTimestamp();
 
           const joinRow = new ActionRowBuilder().addComponents(
