@@ -487,13 +487,7 @@ module.exports = {
     if (activeTab === 'dashboard') {
       footerText = '💡 Halaman 1/5 · Gunakan tombol di bawah untuk berpindah tab';
 
-      desc += `💼 **FINANCIAL DASHBOARD** · ${tier.emoji} **${tier.name} MEMBER**\n`;
-      desc += `\`\`\`\n`;
-      desc += `┌───────────────────────┐\n`;
-      desc += `│${centerText('FINANCIAL DASHBOARD', 23)}│\n`;
-      desc += `│${centerText(`${tier.name} TIER`, 23)}│\n`;
-      desc += `└───────────────────────┘\n`;
-      desc += `\`\`\`\n`;
+      desc += `${tier.emoji} **FINANCIAL DASHBOARD** · **${tier.name} MEMBER**\n\n`;
 
       desc += `> 💵 **Saldo Dompet**\n`;
       desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
@@ -520,38 +514,38 @@ module.exports = {
       }
       if (statusEffects.length > 0) {
         desc += `⚠️ **Efek Status Aktif**\n`;
-        statusEffects.forEach(s => { desc += `┊ ${s}\n`; });
+        statusEffects.forEach(s => { desc += `• ${s}\n`; });
         desc += `\n`;
       }
 
       // Statistik
       const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
       desc += `${streakEmoji} **Statistik Ringkas**\n`;
-      desc += `┊ 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
-      desc += `┊ 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
-      desc += `┊ 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
-      desc += `┊ 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
+      desc += `• 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
+      desc += `• 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
+      desc += `• 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
+      desc += `• 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
 
       // Badges
       if (luxuryBadges.length > 0) {
-        desc += `🏆 **Lencana Status Mewah**\n┊ ${luxuryBadges}\n\n`;
+        desc += `🏆 **Lencana Status Mewah**\n${luxuryBadges}\n\n`;
       }
 
       // Status ringkas lainnya
       desc += `ℹ️ **Sekilas Status**\n`;
       if (pet) {
         const petStatusText = pet.status === 'EGG' ? '🥚 Telur' : pet.status === 'DEAD' ? '🪦 Mati' : `Lv.${pet.level} ${pet.pet_type}`;
-        desc += `┊ 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
+        desc += `• 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
       } else {
-        desc += `┊ 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
+        desc += `• 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
       }
 
       if (extraData.kosRental) {
         const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
           extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
-        desc += `┊ 🏠 Kamar Kos: **${roomName}**\n`;
+        desc += `• 🏠 Kamar Kos: **${roomName}**\n`;
       } else {
-        desc += `┊ 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
+        desc += `• 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
       }
 
     } else if (activeTab === 'assets') {
@@ -576,8 +570,8 @@ module.exports = {
           const profitVal = `${sign}Rp ${Math.abs(item.profitRp).toLocaleString('id-ID')}`;
           const plDetail = item.profitRp !== 0 ? `${plPercent} (${profitVal})` : '0%';
 
-          desc += `┊ ${emoji} **${item.ticker}** · \`${item.shares} lbr\`\n`;
-          desc += `┊    Harga: \`Rp ${item.currentPrice.toLocaleString('id-ID')}\` · PnL: \`${arrow} ${plDetail}\`\n`;
+          desc += `${emoji} **${item.ticker}** · \`${item.shares} lbr\`\n`;
+          desc += `  Harga: \`Rp ${item.currentPrice.toLocaleString('id-ID')}\` · PnL: \`${arrow} ${plDetail}\`\n`;
         });
 
         const totalPL = totalCurrent - totalInvested;
@@ -585,23 +579,23 @@ module.exports = {
         const totalPLArrow = totalPL > 0 ? '▲' : totalPL < 0 ? '▼' : '─';
         const totalPLEmoji = totalPL > 0 ? '🟢' : totalPL < 0 ? '🔴' : '⚪';
 
-        desc += `┊ ──\n`;
-        desc += `┊ ${totalPLEmoji} **Total Valuasi**: \`Rp ${totalCurrent.toLocaleString('id-ID')}\`\n`;
+        desc += `━━━━━━━━━━━━━━━━━━\n`;
+        desc += `${totalPLEmoji} **Total Valuasi**: \`Rp ${totalCurrent.toLocaleString('id-ID')}\`\n`;
         const totalPLSign = totalPL > 0 ? '+' : '';
         const totalPLDetail = totalPL !== 0 ? `${totalPLSign}${totalPLPct}% (${totalPLSign}Rp ${Math.abs(totalPL).toLocaleString('id-ID')})` : '0%';
-        desc += `┊    Estimasi PnL: \`${totalPLArrow} ${totalPLDetail}\`\n\n`;
+        desc += `  Estimasi PnL: \`${totalPLArrow} ${totalPLDetail}\`\n\n`;
       } else {
         desc += `📊 **Portofolio Saham** (0 aset)\n`;
-        desc += `┊ *Belum memiliki aset saham.*\n`;
-        desc += `┊ *Beli saham aktif di \`.market\` atau \`.trade\`*\n\n`;
+        desc += `*Belum memiliki aset saham.*\n`;
+        desc += `*Beli saham aktif di \`.market\` atau \`.trade\`*\n\n`;
       }
 
       if (activeLoan) {
         const totalDebt = activeLoan.total_due + (activeLoan.penalty_accumulated || 0);
         const status = activeLoan.status === 'OVERDUE' ? '🚨 JATUH TEMPO' : '⏳ Aktif';
         desc += `🏛️ **Utang Bank** — ${status}\n`;
-        desc += `┊ 💸 Sisa Tagihan: **Rp ${totalDebt.toLocaleString('id-ID')}**\n`;
-        desc += `┊ 📅 Tanggal Tempo: <t:${activeLoan.due_at}:d> (<t:${activeLoan.due_at}:R>)\n\n`;
+        desc += `• 💸 Sisa Tagihan: **Rp ${totalDebt.toLocaleString('id-ID')}**\n`;
+        desc += `• 📅 Tanggal Tempo: <t:${activeLoan.due_at}:d> (<t:${activeLoan.due_at}:R>)\n\n`;
       }
 
       if (bailDebts) {
@@ -611,12 +605,12 @@ module.exports = {
           desc += `🤝 **Hutang & Piutang Teman**\n`;
           if (debts && debts.length > 0) {
             debts.forEach(d => {
-              desc += `┊ 🔴 Hutang → <@${d.creditor_id}>: **Rp ${d.amount.toLocaleString('id-ID')}**\n`;
+              desc += `• 🔴 Hutang → <@${d.creditor_id}>: **Rp ${d.amount.toLocaleString('id-ID')}**\n`;
             });
           }
           if (receivables && receivables.length > 0) {
             receivables.forEach(r => {
-              desc += `┊ 🟢 Piutang ← <@${r.debtor_id}>: **Rp ${r.amount.toLocaleString('id-ID')}**\n`;
+              desc += `• 🟢 Piutang ← <@${r.debtor_id}>: **Rp ${r.amount.toLocaleString('id-ID')}**\n`;
             });
           }
           desc += `\n`;
@@ -632,14 +626,14 @@ module.exports = {
         thumbnailURL = getPetImage(pet) || user.displayAvatarURL({ dynamic: true, size: 256 });
 
         if (pet.status === 'EGG') {
-          desc += `┊ 🥚 Status: **Menunggu Menetas**\n`;
-          desc += `┊ Menetas <t:${pet.hatch_at}:R>\n`;
-          desc += `┊ Nama Pet: **${pet.pet_name}**\n`;
-          desc += `┊ Spesies : **${pet.pet_type}**\n`;
+          desc += `• 🥚 Status: **Menunggu Menetas**\n`;
+          desc += `• Menetas <t:${pet.hatch_at}:R>\n`;
+          desc += `• Nama Pet: **${pet.pet_name}**\n`;
+          desc += `• Spesies: **${pet.pet_type}**\n`;
         } else if (pet.status === 'DEAD') {
-          desc += `┊ 🪦 Status: **MENINGGAL DUNIA**\n`;
-          desc += `┊ Nama Pet: **${pet.pet_name}**\n`;
-          desc += `┊ *Ketik \`.pet reset\` untuk adopsi kembali.*\n`;
+          desc += `• 🪦 Status: **MENINGGAL DUNIA**\n`;
+          desc += `• Nama Pet: **${pet.pet_name}**\n`;
+          desc += `• *Ketik \`.pet reset\` untuk adopsi kembali.*\n`;
         } else {
           const typeEmoji = pet.pet_type === 'SLIME' ? '🟢' : pet.pet_type === 'DRAGON' ? '🔥' : pet.pet_type === 'CAT' ? '🐱' : pet.pet_type === 'GOLEM' ? '🧱' : '🐾';
           const traitEmojis = {
@@ -669,32 +663,32 @@ module.exports = {
           }
 
           desc += `🐾 **Identitas Peliharaan**:\n`;
-          desc += `┊ Nama Pet  : **${pet.pet_name}**\n`;
-          desc += `┊ Spesies   : ${typeEmoji} **${pet.pet_type}** (Lv.**${pet.level}**)\n`;
-          desc += `┊ Rarity    : **${pet.gacha_rarity || 'COMMON'}**\n`;
-          desc += `┊ Elemen    : **${pet.gacha_element || 'EARTH'}**\n`;
-          desc += `┊ Bintang   : **${'★'.repeat(pet.star_level || 1)}**\n`;
-          desc += `┊ Aksesori  : **${pet.accessory || 'Tanpa Aksesori'}**\n`;
-          desc += `┊ Karakter  : ${traitLabel}\n\n`;
+          desc += `• Nama: **${pet.pet_name}**\n`;
+          desc += `• Spesies: ${typeEmoji} **${pet.pet_type}** (Lv.**${pet.level}**)\n`;
+          desc += `• Rarity: **${pet.gacha_rarity || 'COMMON'}**\n`;
+          desc += `• Elemen: **${pet.gacha_element || 'EARTH'}**\n`;
+          desc += `• Bintang: **${'★'.repeat(pet.star_level || 1)}**\n`;
+          desc += `• Aksesori: **${pet.accessory || 'Tanpa Aksesori'}**\n`;
+          desc += `• Karakter: ${traitLabel}\n\n`;
 
           desc += `📊 **Kondisi Fisik**:\n`;
-          desc += `┊ ❤️ Darah   : \`[${hpBar}]\` \`${Math.round(pet.health)}%\`\n`;
-          desc += `┊ 🍖 Kenyang : \`[${hungerBar}]\` \`${Math.round(pet.hunger)}%\`\n`;
-          desc += `┊ 💧 Hidrasi : \`[${thirstBar}]\` \`${Math.round(pet.thirst)}%\`\n`;
-          desc += `┊ ⚽ Senang  : \`[${happyBar}]\` \`${Math.round(pet.happiness)}%\`\n`;
-          desc += `┊ 📈 XP      : \`[${xpBar}]\` \`${pet.xp}/${xpNeeded}\`\n\n`;
+          desc += `• ❤️ HP: \`[${hpBar}]\` \`${Math.round(pet.health)}%\`\n`;
+          desc += `• 🍖 Kenyang: \`[${hungerBar}]\` \`${Math.round(pet.hunger)}%\`\n`;
+          desc += `• 💧 Hidrasi: \`[${thirstBar}]\` \`${Math.round(pet.thirst)}%\`\n`;
+          desc += `• ⚽ Senang: \`[${happyBar}]\` \`${Math.round(pet.happiness)}%\`\n`;
+          desc += `• 📈 XP: \`[${xpBar}]\` \`${pet.xp}/${xpNeeded}\`\n\n`;
 
           desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
-          desc += `┊ ⚔️ Rekor PvP : **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
+          desc += `• ⚔️ Rekor PvP: **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
           const autoFeedLabel = pet.auto_feed === 1 ? '🟢 Makan Otomatis' : pet.auto_feed === 2 ? '🔵 Makan & Minum Otomatis' : '🔴 Nonaktif';
-          desc += `┊ 🤖 Auto-Feed : **${autoFeedLabel}**\n`;
+          desc += `• 🤖 Auto-Feed: **${autoFeedLabel}**\n`;
           if (pet.curse_until && pet.curse_until > nowSec) {
-            desc += `┊ 💀 Kutukan   : **${pet.curse_type || 'Curse'}** sisa <t:${pet.curse_until}:R>\n`;
+            desc += `• 💀 Kutukan: **${pet.curse_type || 'Curse'}** sisa <t:${pet.curse_until}:R>\n`;
           }
         }
       } else {
-        desc += `┊ *Belum memiliki peliharaan aktif.*\n`;
-        desc += `┊ *Ketik \`.pet buy <nama> <spesies>\` untuk mengadopsi!*`;
+        desc += `*Belum memiliki peliharaan aktif.*\n`;
+        desc += `*Ketik \`.pet buy <nama> <spesies>\` untuk mengadopsi!*`;
       }
 
     } else if (activeTab === 'property') {
@@ -707,10 +701,10 @@ module.exports = {
         const { room_tier, ends_at } = extraData.kosRental;
         const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
           room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-        desc += `┊ Kamar Aktif: **${roomName}**\n`;
-        desc += `┊ Masa Sewa  : <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
+        desc += `• Kamar Aktif: **${roomName}**\n`;
+        desc += `• Masa Sewa: <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
       } else {
-        desc += `┊ Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos sewa\`)*\n`;
+        desc += `• Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos sewa\`)*\n`;
       }
 
       // Upgrade kamar
@@ -723,9 +717,9 @@ module.exports = {
           DISPENSER: '🚰 Dispenser Air'
         };
         const list = extraData.kosUpgrades.map(u => upgradeNames[u.upgrade_id.toUpperCase()] || u.upgrade_id).join(', ');
-        desc += `┊ Upgrade    : **${list}**\n\n`;
+        desc += `• Upgrade: **${list}**\n\n`;
       } else {
-        desc += `┊ Upgrade    : *Belum ada upgrade kamar*\n\n`;
+        desc += `• Upgrade: *Belum ada upgrade kamar*\n\n`;
       }
 
       desc += `🌸 **Cozy Garden**\n`;
@@ -756,13 +750,13 @@ module.exports = {
             const statusText = isReady ? '✨ **SIAP PANEN!**' : `🌱 Tumbuh (Siap <t:${readyAt}:R>)`;
             const waterStatus = slot.last_watered_at > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
 
-            desc += `┊ Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
+            desc += `• Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
           } else {
-            desc += `┊ Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
+            desc += `• Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
           }
         });
       } else {
-        desc += `┊ *Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
+        desc += `*Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
       }
 
     } else if (activeTab === 'quests') {
@@ -784,7 +778,7 @@ module.exports = {
           const name = questNames[type.toUpperCase()] || type;
           const bar = generateProgressBar(progress, target, 6);
           const isDone = progress >= target;
-          return `┊ ${isDone ? '✅' : '⏳'} **${name}**: \`[${bar}]\` \`${progress}/${target}\``;
+          return `${isDone ? '✅' : '⏳'} **${name}**: \`[${bar}]\` \`${progress}/${target}\``;
         };
 
         desc += renderQuestLine(dq.quest_1_type, dq.quest_1_progress, dq.quest_1_target) + '\n';
@@ -792,25 +786,25 @@ module.exports = {
         desc += renderQuestLine(dq.quest_3_type, dq.quest_3_progress, dq.quest_3_target) + '\n';
 
         if (dq.reward_claimed === 1) {
-          desc += `┊ Status Misi: 🎁 **Hadiah Harian Telah Diklaim!**\n\n`;
+          desc += `• Status Misi: 🎁 **Hadiah Harian Telah Diklaim!**\n\n`;
         } else {
           const isAllDone = dq.quest_1_progress >= dq.quest_1_target &&
             dq.quest_2_progress >= dq.quest_2_target &&
             dq.quest_3_progress >= dq.quest_3_target;
-          desc += `┊ Status Misi: ${isAllDone ? '🎉 **Siap Klaim! (Ketik `.pet quest claim`)**' : '❌ Belum menyelesaikan semua misi harian'}\n\n`;
+          desc += `• Status Misi: ${isAllDone ? '🎉 **Siap Klaim! (Ketik `.pet quest claim`)**' : '❌ Belum menyelesaikan semua misi harian'}\n\n`;
         }
       } else {
-        desc += `┊ *Belum ada misi harian aktif hari ini.*\n\n`;
+        desc += `*Belum ada misi harian aktif hari ini.*\n\n`;
       }
 
       desc += `🎟️ **Lotre Mingguan**\n`;
       const tickets = extraData.lotteryTickets || 0;
       const pool = extraData.lotteryPool || { total_pool: 0, total_tickets: 0 };
       const winChance = pool.total_tickets > 0 ? ((tickets / pool.total_tickets) * 100).toFixed(2) : '0.00';
-      desc += `┊ Tiket Anda  : **${tickets} tiket** (Peluang: \`${winChance}%\`)\n`;
-      desc += `┊ Pool Hadiah : **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n`;
-      desc += `┊ Total Tiket : **${pool.total_tickets} tiket** terjual di server\n`;
-      desc += `┊ Jadwal Undian: Setiap Minggu pukul 21:00 WIB\n`;
+      desc += `• Tiket Anda: **${tickets} tiket** (Peluang: \`${winChance}%\`)\n`;
+      desc += `• Pool Hadiah: **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n`;
+      desc += `• Total Tiket: **${pool.total_tickets} tiket** terjual di server\n`;
+      desc += `• Jadwal Undian: Setiap Minggu pukul 21:00 WIB\n`;
     }
 
     // Role Prestise (ditampilkan di bagian bawah semua tab jika ada, kecuali untuk menghemat tempat)
@@ -826,7 +820,7 @@ module.exports = {
 
       if (owned.length > 0) {
         desc += `\n🎭 **Role Prestise** (${owned.length}/${shopItems.length})\n`;
-        owned.forEach(r => { desc += `┊ ${r}\n`; });
+        owned.forEach(r => { desc += `• ${r}\n`; });
       }
     }
 
@@ -898,20 +892,14 @@ module.exports = {
       .setColor(isMarketOpen ? COLORS.SUCCESS : COLORS.ERROR)
       .setTitle(`📈 BURSA EFEK KOSAN 1A — ${statusIcon} ${statusText}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌─────────────────────────────┐\n` +
-        `│   ⚡ STOCK EXCHANGE LIVE ⚡  │\n` +
-        `│     RUPIAH SERVER 2026      │\n` +
-        `└─────────────────────────────┘\n` +
-        `\`\`\`\n` +
+        `⚡ **STOCK EXCHANGE LIVE** — Rupiah Server 2026\n\n` +
         `> 💹 Investasikan koin **${config.CURRENCY_NAME}** ke channel teraktif!\n` +
         `> *Harga ter-update otomatis setiap 2 jam.*\n\n` +
         `📜 **Regulasi Anti-Hoarding:**\n` +
-        `┊ ⏳ Hold minimal **24 jam** sebelum jual\n` +
-        `┊ 📥 Maks **10 transaksi** beli/hari\n` +
-        `┊ 👤 Maks **100 lembar** per saham\n` +
-        `┊ 📤 Maks **100 lembar** per penjualan\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `• ⏳ Hold minimal **24 jam** sebelum jual\n` +
+        `• 📥 Maks **10 transaksi** beli/hari\n` +
+        `• 👤 Maks **100 lembar** per saham\n` +
+        `• 📤 Maks **100 lembar** per penjualan`
       );
 
     if (stocks.length === 0) {
@@ -1070,15 +1058,11 @@ module.exports = {
       .setTitle(`💼 PORTOFOLIO INVESTASI — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setDescription(
-        `\`\`\`\n` +
-        `┌─────────────────────────┐\n` +
-        `│  📊 INVESTMENT SUMMARY  │\n` +
-        `└─────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `> 💵 **Saldo Dompet** : **${formatCurrency(wallet.balance)}**\n` +
-        `> 📊 **Valuasi Saham** : **${formatCurrency(portfolio.totalPortfolioValue)}**\n` +
-        `> 💎 **Total Kekayaan** : **${formatCurrency(totalWealth)}**\n` +
-        `> ${profitEmoji} **P/L Total** : **${profitTotal >= 0 ? '+' : ''}${formatCurrency(profitTotal)}**`
+        `📊 **INVESTMENT SUMMARY**\n\n` +
+        `> 💵 **Saldo Dompet**: **${formatCurrency(wallet.balance)}**\n` +
+        `> 📊 **Valuasi Saham**: **${formatCurrency(portfolio.totalPortfolioValue)}**\n` +
+        `> 💎 **Total Kekayaan**: **${formatCurrency(totalWealth)}**\n` +
+        `> ${profitEmoji} **P/L Total**: **${profitTotal >= 0 ? '+' : ''}${formatCurrency(profitTotal)}**`
       );
 
     if (portfolio.items.length === 0) {
@@ -1091,9 +1075,9 @@ module.exports = {
         embed.addFields({
           name: `${trendEmoji} **${item.ticker}** — #${item.name}`,
           value:
-            `┊ 📦 **Aset** : **${item.shares}** lembar *(Avg: ${formatCurrency(item.avgPrice)})*\n` +
-            `┊ 💰 **Valuasi** : \`${formatCurrency(item.currentValue)}\`\n` +
-            `┊ ${trendEmoji} **P/L** : **${profitSign}${formatCurrency(item.profitRp)}** *(${profitSign}${item.profitPercent}%)*`,
+            `• 📦 **Aset**: **${item.shares}** lembar *(Avg: ${formatCurrency(item.avgPrice)})*\n` +
+            `• 💰 **Valuasi**: \`${formatCurrency(item.currentValue)}\`\n` +
+            `• ${trendEmoji} **P/L**: **${profitSign}${formatCurrency(item.profitRp)}** *(${profitSign}${item.profitPercent}%)*`,
           inline: false
         });
       });
@@ -1113,25 +1097,25 @@ module.exports = {
     if (isBuy) {
       embed.setDescription(
         `🎉 **${user.username}** berhasil membeli saham!\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `┊ 📈 **Saham** : **${details.ticker}** *(#${details.stockName})*\n` +
-        `┊ 📦 **Lembar** : \`${details.shares} lembar\`\n` +
-        `┊ 💵 **Harga** : \`${formatCurrency(details.pricePerShare)}\` /lembar\n` +
-        `┊ 💰 **Total Biaya** : **${formatCurrency(details.totalPrice)}**\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `• 📈 **Saham**: **${details.ticker}** *(#${details.stockName})*\n` +
+        `• 📦 **Lembar**: \`${details.shares} lembar\`\n` +
+        `• 💵 **Harga**: \`${formatCurrency(details.pricePerShare)}\` /lembar\n` +
+        `• 💰 **Total Biaya**: **${formatCurrency(details.totalPrice)}**\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
         `*📊 Pantau pergerakan di \`.stock ${details.ticker}\`*`
       );
     } else {
       embed.setDescription(
         `💰 **${user.username}** berhasil menjual saham!\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `┊ 📉 **Saham** : **${details.ticker}** *(#${details.stockName})*\n` +
-        `┊ 📦 **Lembar** : \`${details.shares} lembar\`\n` +
-        `┊ 💵 **Harga** : \`${formatCurrency(details.pricePerShare)}\` /lembar\n` +
-        `┊ 💸 **Bruto** : \`${formatCurrency(details.rawRevenue)}\`\n` +
-        `┊ 🏛️ **Pajak** : \`-${formatCurrency(details.tax)}\` *(5%)*\n` +
-        `┊ ✅ **Netto** : **${formatCurrency(details.finalRevenue)}**\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `• 📉 **Saham**: **${details.ticker}** *(#${details.stockName})*\n` +
+        `• 📦 **Lembar**: \`${details.shares} lembar\`\n` +
+        `• 💵 **Harga**: \`${formatCurrency(details.pricePerShare)}\` /lembar\n` +
+        `• 💸 **Bruto**: \`${formatCurrency(details.rawRevenue)}\`\n` +
+        `• 🏛️ **Pajak**: \`-${formatCurrency(details.tax)}\` *(5%)*\n` +
+        `• ✅ **Netto**: **${formatCurrency(details.finalRevenue)}**\n` +
+        `━━━━━━━━━━━━━━━━━━`
       );
     }
 
@@ -1147,14 +1131,8 @@ module.exports = {
       .setColor(COLORS.GOLD) // Vibrant Gold
       .setTitle(`🏆 HALL OF WEALTH — ${guildName.toUpperCase()}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌───────────────────────────┐\n` +
-        `│  👑 KONGLOMERAT KOSAN 1A 👑 │\n` +
-        `│     RUPIAH SERVER 2026     │\n` +
-        `└───────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `> *10 warga terhormat dengan total aset (Dompet + Saham + Bank) tertinggi.*\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `👑 **KONGLOMERAT KOSAN 1A** — Rupiah Server 2026\n\n` +
+        `> *10 warga terhormat dengan total aset (Dompet + Saham + Bank) tertinggi.*`
       );
 
     if (iconUrl) {
@@ -1172,12 +1150,10 @@ module.exports = {
         const crownEmoji = idx === 0 ? ' 👑' : '';
 
         ranks += `${medal} ${name}${crownEmoji}\n` +
-          `┊ 💵 Dompet: \`${formatCurrency(user.balance)}\`\n` +
-          `┊ 📊 Saham : \`${formatCurrency(user.portfolioValue)}\`\n` +
-          `┊ 🏦 Bank  : \`${formatCurrency(user.bankBalance)}\`\n` +
-          `└─ 💎 **Aset  : ${formatCurrency(user.totalWealth)}**\n\n`;
+          `  💵 Dompet: \`${formatCurrency(user.balance)}\` · 📊 Saham: \`${formatCurrency(user.portfolioValue)}\` · 🏦 Bank: \`${formatCurrency(user.bankBalance)}\`\n` +
+          `  💎 **Aset: ${formatCurrency(user.totalWealth)}**\n\n`;
       });
-      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
 
     return embed.setFooter({ text: '🏆 Rupiah Server Wealth Rankings' }).setTimestamp();
@@ -1192,14 +1168,8 @@ module.exports = {
       .setColor(COLORS.ERROR)
       .setTitle(`🎯 TARGET ROB: BELUM KLAIM DAILY — ${guildName.toUpperCase()}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌─────────────────────────────┐\n` +
-        `│  🎯 DAFTAR TARGET RAMPOK 🎯 │\n` +
-        `│   BELUM KLAIM GAJI HARIAN   │\n` +
-        `└─────────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `> ⚠️ *Mereka yang belum klaim \`.daily\` punya peluang **dirampok 50%**!*\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `🎯 **DAFTAR TARGET RAMPOK** — Belum Klaim Gaji Harian\n\n` +
+        `> ⚠️ *Mereka yang belum klaim \`.daily\` punya peluang **dirampok 50%**!*`
       );
 
     if (iconUrl) {
@@ -1217,11 +1187,9 @@ module.exports = {
         const klaim = user.last_active_date || 'Belum Pernah';
 
         ranks += `${medal} ${name} 🔓\n` +
-          `┊ 💵 Saldo  : \`${formatCurrency(user.balance)}\`\n` +
-          `┊ 📅 Terakhir: \`${klaim}\`\n` +
-          `└─ 🔥 Streak  : \`${user.streak_days} Hari\`\n\n`;
+          `  💵 Saldo: \`${formatCurrency(user.balance)}\` · 📅 Terakhir: \`${klaim}\` · 🔥 Streak: \`${user.streak_days} Hari\`\n\n`;
       });
-      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
 
     return embed.setFooter({ text: '🎯 Gunakan .rob @user untuk merampok target!' }).setTimestamp();
@@ -1236,14 +1204,8 @@ module.exports = {
       .setColor(COLORS.DARK) // Dark Onyx
       .setTitle(`🕵️ MOST WANTED: TOP PENCURI — ${guildName.toUpperCase()}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌────────────────────────────┐\n` +
-        `│  🚨 BURONAN KELAS KAKAP 🚨 │\n` +
-        `│   KOMPLOTAN KRIMINAL 2026   │\n` +
-        `└────────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `> *10 pencuri tersukses berdasarkan total jarahan (Solo + Heist).*\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `🕵️ **BURONAN KELAS KAKAP** — Komplotan Kriminal 2026\n\n` +
+        `> *10 pencuri tersukses berdasarkan total jarahan (Solo + Heist).*`
       );
 
     if (iconUrl) {
@@ -1263,11 +1225,10 @@ module.exports = {
         const topMark = idx === 0 ? ' 🔥' : '';
 
         ranks += `${medal} ${name}${topMark}\n` +
-          `┊ 💸 **Jarahan**: \`${formatCurrency(user.total_stolen)}\` (Solo: \`${formatCurrency(user.solo_stolen)}\`)\n` +
-          `┊ 👥 Heist  : \`${formatCurrency(user.heist_stolen)}\`\n` +
-          `└─ ✅ Sukses : \`${user.success_count}x\` · 👮 Penjara: \`${user.jail_count}x\`\n\n`;
+          `  💸 **Jarahan**: \`${formatCurrency(user.total_stolen)}\` *(Solo: ${formatCurrency(user.solo_stolen)} | Heist: ${formatCurrency(user.heist_stolen)})*\n` +
+          `  ✅ Sukses: \`${user.success_count}x\` · 👮 Penjara: \`${user.jail_count}x\`\n\n`;
       });
-      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
 
     return embed.setFooter({ text: '🕵️ Rupiah Server Criminal Records' }).setTimestamp();
@@ -1282,14 +1243,8 @@ module.exports = {
       .setColor(COLORS.GOLD) // Imperial Gold
       .setTitle(`🗺️ EXPEDITION LEADERBOARD — ${guildName.toUpperCase()}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌───────────────────────────┐\n` +
-        `│  🗺️ TOP PENJELAJAH PET 🗺️ │\n` +
-        `│    Pet Expedition 2026    │\n` +
-        `└───────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `> *10 penjelajah pet yang paling banyak meraup koin dari misi ekspedisi.*\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `🗺️ **TOP PENJELAJAH PET** — Pet Expedition 2026\n\n` +
+        `> *10 penjelajah pet yang paling banyak meraup koin dari misi ekspedisi.*`
       );
 
     if (iconUrl) {
@@ -1307,11 +1262,10 @@ module.exports = {
         const petInfo = u.pet_name ? `🐾 **${u.pet_name}** the *${u.pet_type}* (\`Lv.${u.level}\`)` : '🐾 *Tidak ada pet aktif*';
 
         ranks += `${medal} ${ownerName}\n` +
-          `┊ ${petInfo}\n` +
-          `┊ 💰 Koin: \`Rp ${u.total_earned.toLocaleString('id-ID')}\`\n` +
-          `└─ 🗺️ Misi: \`${u.total_runs}x\` selesai\n\n`;
+          `  ${petInfo}\n` +
+          `  💰 Koin: \`Rp ${u.total_earned.toLocaleString('id-ID')}\` · 🗺️ Misi: \`${u.total_runs}x\` selesai\n\n`;
       });
-      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
 
     return embed.setFooter({ text: 'Ikuti ekspedisi pet bersama teman! Ketik .pet expedition' }).setTimestamp();
@@ -1336,13 +1290,7 @@ module.exports = {
       .setColor(COLORS.SUCCESS)
       .setTitle(`🏆 PET HALL OF FAME — ${guildName.toUpperCase()}`)
       .setDescription(
-        `\`\`\`\n` +
-        `┌───────────────────────────┐\n` +
-        `│  🦁 TOP PET TERHEBAT 🦁  │\n` +
-        `│    Kategori: ${catName.padEnd(13)}│\n` +
-        `└───────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━`
+        `🦁 **TOP PET TERHEBAT** — Kategori: **${catName}**`
       );
 
     if (iconUrl) {
@@ -1395,10 +1343,10 @@ module.exports = {
         const happyVal = Math.round(p.happiness || 0);
 
         ranks += `${medal} **${p.pet_name}** — *Milik ${ownerName}*\n` +
-          `┗ 🐾 *${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}* • ${categoryDetail}\n` +
-          `┗ 🧬 ❤️\`${hpVal}%\` 🍖\`${hungerVal}%\` 💧\`${thirstVal}%\` ⚽\`${happyVal}%\` • \`${getTierLabel(p.level)}\` • \`🟢 ${p.status.toUpperCase()}\`\n\n`;
+          `  • 🐾 *${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}* • ${categoryDetail}\n` +
+          `  • 🧬 ❤️\`${hpVal}%\` 🍖\`${hungerVal}%\` 💧\`${thirstVal}%\` ⚽\`${happyVal}%\` • \`${getTierLabel(p.level)}\` • \`🟢 ${p.status.toUpperCase()}\`\n\n`;
       });
-      embed.setDescription(embed.data.description + '\n\n' + ranks + '━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
 
     embed.setFooter({ text: `🐾 ${catFooter}` });
@@ -2207,12 +2155,7 @@ module.exports = {
       .setTitle(`🏦 CENTRAL BANK — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setDescription(
-        `\`\`\`\n` +
-        `┌─────────────────────────┐\n` +
-        `│  🏦 CENTRAL BANK KOSAN 🏦 │\n` +
-        `│    Tabungan & Pinjaman    │\n` +
-        `└─────────────────────────┘\n` +
-        `\`\`\``
+        `🏛️ **CENTRAL BANK KOSAN 1A** — Tabungan & Pinjaman`
       )
       .addFields(
         {
@@ -2230,10 +2173,10 @@ module.exports = {
     embed.addFields({
       name: `🏢 Kamar: ${roomName}`,
       value:
-        `┊ 📥 Deposit \`${depositTax}%\` · 📤 Penarikan \`${withdrawTax}%\`\n` +
-        `┊ 🛡️ Biaya Keamanan: \`${feeConfig.flat > 0 || feeConfig.percent > 0 ? `Rp ${feeConfig.flat} + ${feeConfig.percent}%` : 'Bebas (Rp 0)'}\` *(${formatCurrency(securityFeeAmount)} malam ini)*\n` +
-        `┊ 📈 Bunga Maks Kasta: \`+${maxInterest.toFixed(1)}%\` · Chat 24h: **${activeMsgs}** pesan *(${statusKeaktifan})*\n` +
-        `┊ 📊 **Proyeksi Net 00:00:** **${netProjection >= 0 ? `+${formatCurrency(netProjection)}` : `-${formatCurrency(Math.abs(netProjection))}`}**`,
+        `• 📥 Deposit: \`${depositTax}%\` · 📤 Penarikan: \`${withdrawTax}%\`\n` +
+        `• 🛡️ Biaya Keamanan: \`${feeConfig.flat > 0 || feeConfig.percent > 0 ? `Rp ${feeConfig.flat} + ${feeConfig.percent}%` : 'Bebas (Rp 0)'}\` *(${formatCurrency(securityFeeAmount)} malam ini)*\n` +
+        `• 📈 Bunga Maks Kasta: \`+${maxInterest.toFixed(1)}%\` · Chat 24h: **${activeMsgs}** pesan *(${statusKeaktifan})*\n` +
+        `• 📊 **Proyeksi Net 00:00:** **${netProjection >= 0 ? `+${formatCurrency(netProjection)}` : `-${formatCurrency(Math.abs(netProjection))}`}**`,
       inline: false
     });
 
@@ -2360,12 +2303,7 @@ module.exports = {
       .setTitle(`🏠 KAMAR KOSAN — ${user.username}`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .setDescription(
-        `\`\`\`\n` +
-        `┌─────────────────────────┐\n` +
-        `│  🏠 PANEL KONTROL KOSAN 🏠 │\n` +
-        `│    Atur Hunian & Buffs    │\n` +
-        `└─────────────────────────┘\n` +
-        `\`\`\`\n` +
+        `🏠 **PANEL KONTROL KOSAN** — Atur Hunian & Buffs\n\n` +
         `> 💵 **Saldo Dompet:** **${formatCurrency(wallet.balance)}**`
       );
 
@@ -2832,21 +2770,21 @@ module.exports = {
     embed.setDescription(
       `*${flavorText}*\n\n` +
       `🧬 **KARTU TRAINER**\n` +
-      `┊ 👤 Owner : <@${pet.user_id}>\n` +
-      `┊ 🧪 Elemen: \`${elementText}\` · 🌟 Rarity: \`${rarityLabel}\`\n` +
-      `┊ 🧠 Trait : ${traitText}\n` +
-      `┊ 🛡️ Equip : ${accText}\n` +
-      `┊ 🔋 Auto  : \`${pet.auto_feed === 2 ? 'VIP (Gratis)' : (pet.auto_feed === 1 ? 'Aktif' : 'Nonaktif')}\` · ⚡ Boost: \`${multText}\`\n\n` +
+      `• 👤 Owner: <@${pet.user_id}>\n` +
+      `• 🧪 Elemen: \`${elementText}\` · 🌟 Rarity: \`${rarityLabel}\`\n` +
+      `• 🧠 Trait: ${traitText}\n` +
+      `• 🛡️ Equip: ${accText}\n` +
+      `• 🔋 Auto: \`${pet.auto_feed === 2 ? 'VIP (Gratis)' : (pet.auto_feed === 1 ? 'Aktif' : 'Nonaktif')}\` · ⚡ Boost: \`${multText}\`\n\n` +
       `📊 **STATUS VITALITAS**\n` +
-      `┊ ❤️ HP   : ${pbarHp} ${isSick ? '⚠️ **[Kritis]**' : ''}\n` +
-      `┊ ✨ XP   : ${pbarXp}\n` +
-      `┊ 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
+      `• ❤️ HP: ${pbarHp} ${isSick ? '⚠️ **[Kritis]**' : ''}\n` +
+      `• ✨ XP: ${pbarXp}\n` +
+      `• 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
       `⚔️ **JURUS TEMPUR**\n` +
-      `┊ 💥 ATK : **${moveInfo.attack}** ➔ \`${finalAtkMin}-${finalAtkMax} DMG\`\n` +
-      `┊ 🛡️ DEF : **${moveInfo.defense}** ➔ \`${defDesc}\`\n\n` +
+      `• 💥 ATK: **${moveInfo.attack}** ➔ \`${finalAtkMin}-${finalAtkMax} DMG\`\n` +
+      `• 🛡️ DEF: **${moveInfo.defense}** ➔ \`${defDesc}\`\n\n` +
       `⏱️ **STATUS AKTIVITAS (CD)**\n` +
-      `┊ 💼 Kerja: ${workCdText} · 🏹 Buru: ${huntCdText}\n` +
-      `└─ ⚽ Main : ${playCdText} · 🗺️ Eksp: 🟢 **Siap!** · 🏰 Menara: Lantai **${(() => {
+      `• 💼 Kerja: ${workCdText} · 🏹 Buru: ${huntCdText}\n` +
+      `• ⚽ Main: ${playCdText} · 🗺️ Eksp: 🟢 **Siap!** · 🏰 Menara: Lantai **${(() => {
         let floorLabel = 1;
         try {
           const tower = db.get('SELECT current_floor FROM user_pet_tower WHERE user_id = ? AND guild_id = ?', [pet.user_id, pet.guild_id]);
@@ -2986,7 +2924,7 @@ module.exports = {
 
         embed.addFields({
           name: `${idx + 1}. ${pet.pet_name} the ${typeLabel} (${activeLabel})`,
-          value: `╰ Status: ${statusText}`,
+          value: `• Status: ${statusText}`,
           inline: false
         });
       });
@@ -3151,11 +3089,11 @@ module.exports = {
           `### 👑 MAHKOTA KEMENANGAN ARENA\n` +
           `🔥 **${result.winnerName}** (${winnerSpeciesEmoji}) milik **${winnerUser.username}** berhasil menumbangkan pet tangguh **${result.loserName}** milik **${loserUser.username}**!\n\n` +
           `💰 **JARAHAN PERTEMPURAN (JACKPOT):**\n` +
-          `┣ 🎁 **Hadiah Bersih:** **\`${formatCurrency(result.prizePool)}\`**\n` +
-          `┗ 🏛️ **Pajak Arena:** \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n\n` +
+          `• 🎁 **Hadiah Bersih:** **\`${formatCurrency(result.prizePool)}\`**\n` +
+          `• 🏛️ **Pajak Arena:** \`Rp ${result.tax.toLocaleString('id-ID')}\` *(5% kas server)*\n\n` +
           `📈 **PROGRES PERTUMBUHAN:**\n` +
-          `┣ 🎉 **${result.winnerName}** mendapatkan **+50 XP**\n` +
-          `┗ 💤 **${result.loserName}** mendapatkan **+20 XP**` +
+          `• 🎉 **${result.winnerName}** mendapatkan **+50 XP**\n` +
+          `• 💤 **${result.loserName}** mendapatkan **+20 XP**` +
           deadWarning +
           `\n─── ⋆⋅☆⋅⋆ ───`
         );
@@ -3769,15 +3707,10 @@ module.exports = {
       waterStatusText = `💦 **Ember Air:** ⏳ Mengisi Ulang (**${minsLeft}m ${secsLeft}s**)`;
     }
 
-    let desc = `\`\`\`\n` +
-      `┌──────────────────────────────┐\n` +
-      `│     🌸 KEBUN BUNGA COZY 🌸    │\n` +
-      `│  Sistem Kebun Raya Kosan 1A  │\n` +
-      `└──────────────────────────────┘\n` +
-      `\`\`\`\n` +
+    let desc = `🌸 **KEBUN BUNGA COZY** — Sistem Kebun Raya Kosan 1A\n\n` +
       `Selamat datang di kebun bunga virtualmu, **${user.username}**! 🌸\n` +
       `Rawatlah benih tanamanmu hingga mekar penuh, panen bunga segarnya, dan rangkai menjadi buket indah berpita untuk dihadiahkan kepada warga lain!\n\n` +
-      `┊ ${waterStatusText}\n` +
+      `• ${waterStatusText}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `🏡 **DAFTAR TANAH AKTIF (3 SLOT):**\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -3794,19 +3727,19 @@ module.exports = {
 
         if (slot.growthProgress >= 100) {
           desc += `🌺 **SLOT #${slot.slot_index}: ${slot.flowerName}** (Matang!)\n` +
-            `┊ ${pbar}\n` +
-            `┊ Status: ${rarityEmoji} **MEKAR SEMPURNA**\n` +
-            `┊ 👉 *Bunga siap dipanen! klik tombol **Panen** di bawah.*\n`;
+            `• ${pbar}\n` +
+            `• Status: ${rarityEmoji} **MEKAR SEMPURNA**\n` +
+            `• 👉 *Bunga siap dipanen! klik tombol **Panen** di bawah.*\n`;
         } else {
           desc += `🌱 **SLOT #${slot.slot_index}: ${slot.flowerName}**\n` +
-            `┊ ${pbar} (Sisa: \`${timeText}\`)\n` +
-            `┊ Status: ${rarityEmoji} **${slot.growthStatus}**\n` +
-            `┊ Penyiraman: 💦 Sudah disiram **${slot.water_count}x**\n`;
+            `• ${pbar} (Sisa: \`${timeText}\`)\n` +
+            `• Status: ${rarityEmoji} **${slot.growthStatus}**\n` +
+            `• Penyiraman: 💦 Sudah disiram **${slot.water_count}x**\n`;
         }
       } else {
         desc += `🟫 **SLOT #${slot.slot_index}: KOSONG**\n` +
-          `┊ *Tanah gembur siap ditanami benih bunga baru!*\n` +
-          `┊ 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
+          `• *Tanah gembur siap ditanami benih bunga baru!*\n` +
+          `• 👉 *Ketik* \`.tanam ${slot.slot_index} <nama_bunga>\` *atau klik tombol Toko Benih.*\n`;
       }
       desc += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     });
@@ -3822,30 +3755,25 @@ module.exports = {
 
   // 42. Cozy Flower Garden Shop Embed
   gardenShopEmbed(user, wallet, statusMessage = '') {
-    let desc = `\`\`\`\n` +
-      `┌──────────────────────────────┐\n` +
-      `│ 🛒 TOKO BENIH KEBUN KOSAN 1A │\n` +
-      `│ Persediaan Bibit & Kertas    │\n` +
-      `└──────────────────────────────┘\n` +
-      `\`\`\`\n` +
+    let desc = `🛒 **TOKO BENIH KEBUN KOSAN 1A** — Persediaan Bibit & Kertas\n\n` +
       (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
       `Halo **${user.username}**, silakan beli benih bunga segar dan perlengkapan merangkai buket di sini!\n\n` +
       `💰 **Saldo Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
       `🌱 **BENIH BUNGA YANG TERSEDIA:**\n\n` +
       `1. **🌹 Benih Mawar Merah** (\`mawar\`)\n` +
-      `   ┊ Harga: \`Rp 80\` | Waktu: \`30 Menit\` | Jual: \`Rp 105\` *(Common)*\n` +
+      `   • Harga: \`Rp 80\` | Waktu: \`30 Menit\` | Jual: \`Rp 105\` *(Common)*\n` +
       `2. **🌷 Benih Bunga Tulip** (\`tulip\`)\n` +
-      `   ┊ Harga: \`Rp 150\` | Waktu: \`1 Jam\` | Jual: \`Rp 200\` *(Common)*\n` +
+      `   • Harga: \`Rp 150\` | Waktu: \`1 Jam\` | Jual: \`Rp 200\` *(Common)*\n` +
       `3. **🪻 Benih Bunga Lavender** (\`lavender\`)\n` +
-      `   ┊ Harga: \`Rp 250\` | Waktu: \`2 Jam\` | Jual: \`Rp 350\` *(Rare)*\n` +
+      `   • Harga: \`Rp 250\` | Waktu: \`2 Jam\` | Jual: \`Rp 350\` *(Rare)*\n` +
       `4. **🌸 Benih Bunga Sakura** (\`sakura\`)\n` +
-      `   ┊ Harga: \`Rp 500\` | Waktu: \`4 Jam\` | Jual: \`Rp 750\` *(Rare)*\n` +
+      `   • Harga: \`Rp 500\` | Waktu: \`4 Jam\` | Jual: \`Rp 750\` *(Rare)*\n` +
       `5. **🪻 Benih Anggrek Langka** (\`anggrek\`)\n` +
-      `   ┊ Harga: \`Rp 1.200\` | Waktu: \`8 Jam\` | Jual: \`Rp 2.000\` *(Epic)*\n\n` +
+      `   • Harga: \`Rp 1.200\` | Waktu: \`8 Jam\` | Jual: \`Rp 2.000\` *(Epic)*\n\n` +
       `🎗️ **PERLENGKAPAN BUKET:**\n\n` +
       `• **🎗️ Kertas Kado Premium** (\`wrapping\`)\n` +
-      `  ┊ Harga: \`Rp 100\` *(Bahan wajib untuk merangkai buket bunga)*\n\n` +
+      `  • Harga: \`Rp 100\` *(Bahan wajib untuk merangkai buket bunga)*\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `👉 **Cara Membeli:** Ketik \`.toko-kebun beli <nama_benih> <jumlah>\`\n` +
       `*Contoh:* \`.toko-kebun beli mawar 3\` atau \`.toko-kebun beli wrapping 1\``;
@@ -3880,31 +3808,26 @@ module.exports = {
     const qtyOrchid = getQty('FLOWER_ORCHID');
     const qtyWrapping = getQty('GIFT_WRAPPING');
 
-    let desc = `\`\`\`\n` +
-      `┌──────────────────────────────┐\n` +
-      `│ 💐 MEJA MERANGKAI BUKET 💐    │\n` +
-      `│    Kerajinan Buket Premium   │\n` +
-      `└──────────────────────────────┘\n` +
-      `\`\`\`\n` +
+    let desc = `💐 **MEJA MERANGKAI BUKET** — Kerajinan Buket Premium\n\n` +
       `Halo **${user.username}**, di sini Anda dapat merangkai bunga segar hasil panen menjadi buket bunga indah berpita yang memiliki efek pasif **Daily Claim Buff** melimpah saat dihadiahkan ke warga lain!\n\n` +
       `🎒 **INVENTORY BAHAN ANDA:**\n` +
-      `┊ 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
-      `┊ 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
-      `┊ 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
-      `┊ 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
-      `┊ 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
-      `┊ 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
+      `• 🌹 Mawar Merah: \`${qtyRose} kuntum\`\n` +
+      `• 🌷 Bunga Tulip: \`${qtyTulip} kuntum\`\n` +
+      `• 🪻 Lavender: \`${qtyLavender} kuntum\`\n` +
+      `• 🌸 Sakura: \`${qtySakura} kuntum\`\n` +
+      `• 🪻 Anggrek Langka: \`${qtyOrchid} kuntum\`\n` +
+      `• 🎗️ Kertas Kado Premium: \`${qtyWrapping} buah\`\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📜 **RESEP BUKET BUNGA YANG TERSEDIA:**\n\n` +
       `1. **💐 Buket Kasih Sayang** (\`love\`)\n` +
-      `   ┊ **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
-      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `   • **Bahan:** \`3x Mawar Merah\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 15** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
       `2. **💐 Buket Ketenangan** (\`peace\`)\n` +
-      `   ┊ **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
-      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `   • **Bahan:** \`2x Lavender\` + \`2x Tulip\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 35** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
       `3. **👑 Buket Legendaris (Imperial)** (\`imperial\`)\n` +
-      `   ┊ **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
-      `   ┊ **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
+      `   • **Bahan:** \`1x Anggrek Langka\` + \`2x Sakura\` + \`1x Kertas Kado\`\n` +
+      `   • **Efek Hadiah:** Penerima mendapat **+Rp 80** pada Daily Claim harian (Aktif 24 Jam)\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `👉 **Cara Merangkai:** Ketik \`.buket <jenis>\`\n` +
       `*Contoh:* \`.buket love\``;
@@ -3925,17 +3848,11 @@ module.exports = {
       .setTitle(`💝 KADO BUKET BUNGA PENUH KASIH SAYANG 💝`)
       .setThumbnail(receiver.displayAvatarURL({ dynamic: true }) || null)
       .setDescription(
-        `\`\`\`\n` +
-        `┌──────────────────────────────┐\n` +
-        `│ 💝 KADO BUKET BUNGA 💝       │\n` +
-        `│    Kiriman Spesial Kosan 1A  │\n` +
-        `└──────────────────────────────┘\n` +
-        `\`\`\`\n` +
         `### 💐 Ada Kiriman Hadiah Manis Untukmu! 💐\n\n` +
         `**<@${sender.id}>** baru saja mengirimkan buket bunga yang sangat indah untuk **<@${receiver.id}>**!\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `┊ 📦 **Buket Hadiah:** **${bouquetName}**\n` +
-        `┊ 💌 **Pesan Manis:**\n*“ ${messageText} ”*\n` +
+        `• 📦 **Buket Hadiah:** **${bouquetName}**\n` +
+        `• 💌 **Pesan Manis:**\n*“ ${messageText} ”*\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `✨ **Efek Pasif Aktif:**\n` +
         `**<@${receiver.id}>** mendapatkan tambahan pasif harian koin kado saat mengklaim daily selama **24 jam** ke depan! 🎉`
@@ -3961,9 +3878,6 @@ module.exports = {
       .setColor(colorHex || '#7C4DFF')
       .setTitle(isLaw ? '🚨 PENGUMUMAN REGULASI HUKUM GLOBAL' : '📢 PENGUMUMAN TINDAKAN EKONOMI GLOBAL')
       .setDescription(
-        `\`\`\`\n` +
-        headerBox +
-        `\`\`\`\n` +
         `📊 **Kebijakan ${isLaw ? 'Hukum & Ketertiban' : 'Keuangan & Ekonomi'} baru saja diberlakukan secara menyeluruh:**\n\n` +
         `⚙️ **Kategori:** ${actionName}\n` +
         `📝 **Keterangan:** ${actionDescription}`
@@ -3996,14 +3910,9 @@ module.exports = {
       .setThumbnail(senderUser.displayAvatarURL({ dynamic: true, size: 256 }))
       .setDescription(
         `Halo ${targetMention}, Anda telah menerima kiriman dana ke rekening tabungan bank Anda!\n\n` +
-        `\`\`\`\n` +
-        `┌──────────────────────────────┐\n` +
-        `│    DETAIL TRANSAKSI MASUK    │\n` +
-        `└──────────────────────────────┘\n` +
-        `\`\`\`\n` +
-        `┊ 👤 **Pengirim:** ${senderMention}\n` +
-        `┊ 📥 **Jumlah Bersih:** **${amountStr}**\n` +
-        `┊ 📂 **Kategori:** \`${transactionType}\` ${transactionEmoji}\n\n` +
+        `• 👤 **Pengirim:** ${senderMention}\n` +
+        `• 📥 **Jumlah Bersih:** **${amountStr}**\n` +
+        `• 📂 **Kategori:** \`${transactionType}\` ${transactionEmoji}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `*Catatan: Koin sudah bersih dipotong pajak transfer/sistem dan telah ditambahkan secara otomatis ke saldo tabungan bank Anda.*`
       )
@@ -4021,12 +3930,6 @@ module.exports = {
       .setTitle('👮 OPERASI BOT KOSAN 1A: PENJARA MASSAL PERAMPOK KAKAP! 🚨')
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
       .setDescription(
-        `\`\`\`\n` +
-        `┌───────────────────────────────────────────┐\n` +
-        `│  🚨 DEKRET HUKUM DARURAT BOT KOSAN 1A 🚨  │\n` +
-        `│       Lapas/Ketertiban Kosan 1A           │\n` +
-        `└───────────────────────────────────────────┘\n` +
-        `\`\`\`\n` +
         `### 📢 Operasi Pembersihan Kriminalitas Aktif!\n` +
         `Mata-mata intelijen kepolisian virtual mendeteksi tingkat kejahatan perampokan yang merajalela. Untuk menjaga stabilitas ekonomi dan keamanan kosan, seluruh warga yang terbukti memiliki catatan kriminal **merampok lebih dari 10 kali** resmi disergap dan dimasukkan ke Lapas Virtual secara massal!\n\n` +
         `⚠️ **Dekret / Titah Administrator:**\n` +
