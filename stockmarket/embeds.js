@@ -3983,7 +3983,7 @@ module.exports = {
       .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
-        `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang dan bahaya nyata. Akankah pet kesayanganmu kembali membawa harta karun legendaris, atau terkubur di bawah panasnya magma?*\n\n` +
+        `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang and bahaya nyata. Akankah pet kesayanganmu kembali membawa harta karun legendaris, atau terkubur di bawah panasnya magma?*\n\n` +
         `─── ⋆⋅☆⋅⋆ ───\n\n` +
         `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
@@ -4013,6 +4013,7 @@ module.exports = {
           inline: true
         }
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },
@@ -4050,6 +4051,7 @@ module.exports = {
         `Memasuki wilayah **${selectedMap.name}** bagian dalam...\n\n` +
         `*Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: `Kosan 1A RPG Pet Expedition • Tahap ${stageNum}` })
       .setTimestamp();
   },
@@ -4073,6 +4075,7 @@ module.exports = {
         `📈 **Progres QTE:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
         `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh menekan tombol! Salah klik oleh kru lain akan memicu penalti interferensi.*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG • Fokus dan bersiaplah!' })
       .setTimestamp();
   },
@@ -4099,6 +4102,7 @@ module.exports = {
         `🐾 **Dampak Kondisi Kru Pet:**\n${rekapPetList}\n\n` +
         `⚠️ *Dampak kegagalan QTE: Seluruh pet kehilangan status HP/kesehatan, lapar/haus meningkat, dan kebahagiaan menurun drastis.*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition Failure • Coba lagi setelah cooldown selesai!' })
       .setTimestamp();
   },
@@ -4141,6 +4145,7 @@ module.exports = {
         `─── ⋆⋅☆⋅⋆ ───`
       )
       .addFields(fields)
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }
