@@ -1206,7 +1206,7 @@ function getBattleEmbedData(match) {
   const p1 = match.player1;
   const p2 = match.player2;
 
-  const barSize = 10;
+  const barSize = 8;
   const renderHPBar = (hp, max) => {
     const ratio = Math.max(0, Math.min(1, hp / max));
     const filled = Math.round(ratio * barSize);
@@ -1243,9 +1243,8 @@ function getBattleEmbedData(match) {
           `👤 Pawang: <@${p1.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP}\`\n` +
           `⚡ SP: \`[${renderSPBar(p1.energy)}]\` \`${p1.energy}/100\`\n` +
-          `🔰 Status: ${p1.burnTurns > 0 ? '🔥 Terbakar' : p1.shieldTurns > 0 ? '🛡️ Perisai' : p1.isDefending ? '🛡️ Bertahan' : 'Normal'}\n` +
-          `⌛ Aksi: ${p1Status}`,
-        inline: true
+          `🔰 Status: ${p1.burnTurns > 0 ? '🔥 Terbakar' : p1.shieldTurns > 0 ? '🛡️ Perisai' : p1.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p1Status}`,
+        inline: false
       },
       {
         name: `🔵 Opponent: ${p2.pet_name} (Lv.${p2.level})`,
@@ -1253,9 +1252,8 @@ function getBattleEmbedData(match) {
           `👤 Pawang: <@${p2.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP}\`\n` +
           `⚡ SP: \`[${renderSPBar(p2.energy)}]\` \`${p2.energy}/100\`\n` +
-          `🔰 Status: ${p2.burnTurns > 0 ? '🔥 Terbakar' : p2.shieldTurns > 0 ? '🛡️ Perisai' : p2.isDefending ? '🛡️ Bertahan' : 'Normal'}\n` +
-          `⌛ Aksi: ${p2Status}`,
-        inline: true
+          `🔰 Status: ${p2.burnTurns > 0 ? '🔥 Terbakar' : p2.shieldTurns > 0 ? '🛡️ Perisai' : p2.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p2Status}`,
+        inline: false
       },
       {
         name: '📜 Log Jalannya Duel',
@@ -1896,15 +1894,15 @@ function getLeagueStandingsString(guildId) {
 
   // Buat tabel klasemen
   let table = '🏆 KLASEMEN LIGA PET 🏆\n';
-  table += '┌────┬──────────────────────┬────┬────┬────┬─────┐\n';
-  table += '│ Pos│ Pet (Pawang)         │ M  │ S  │ K  │ Pts │\n';
-  table += '├────┼──────────────────────┼────┼────┼────┼─────┤\n';
+  table += '┌────┬──────────────┬────┬────┬────┬─────┐\n';
+  table += '│ Pos│ Pet (Pawang) │ M  │ S  │ K  │ Pts │\n';
+  table += '├────┼──────────────┼────┼────┼────┼─────┤\n';
   
   standings.forEach((s, idx) => {
     const pos = String(idx + 1).padStart(2, ' ');
     let name = s.petName;
-    if (name.length > 20) name = name.slice(0, 17) + '...';
-    const nameCol = name.padEnd(20, ' ');
+    if (name.length > 12) name = name.slice(0, 9) + '...';
+    const nameCol = name.padEnd(12, ' ');
     const m = String(s.played).padStart(2, ' ');
     const w = String(s.won).padStart(2, ' ');
     const l = String(s.lost).padStart(2, ' ');
@@ -1912,7 +1910,7 @@ function getLeagueStandingsString(guildId) {
     table += `│ ${pos} │ ${nameCol} │ ${m} │ ${w} │ ${l} │ ${pts} │\n`;
   });
   
-  table += '└────┴──────────────────────┴────┴────┴────┴─────┘';
+  table += '└────┴──────────────┴────┴────┴────┴─────┘';
   return table;
 }
 
