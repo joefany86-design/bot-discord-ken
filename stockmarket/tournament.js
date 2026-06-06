@@ -36,7 +36,7 @@ function getUltimateName(element) {
 /**
  * Memulai event turnamen baru di database (Admin-only).
  */
-function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 10, maxLevel = 9999) {
+function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 10, maxLevel = 9999, rewardDesc = null) {
   const active = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status != \'COMPLETED\'', [guildId]);
   if (active) {
     throw new Error('Ada turnamen yang sedang berjalan di server ini! Harap batalkan terlebih dahulu sebelum memulai baru.');
@@ -53,9 +53,9 @@ function startTournament(adminId, guildId, channelId, durationMins = 30, minLeve
 
     // Insert event baru
     db.run(
-      `INSERT INTO tournament_events (guild_id, status, admin_id, channel_id, registration_end_at, current_round, min_level, max_level, created_at)
-       VALUES (?, 'REGISTERING', ?, ?, ?, 1, ?, ?, ?)`,
-      [guildId, adminId, channelId, endRegAt, minLevel, maxLevel, now]
+      `INSERT INTO tournament_events (guild_id, status, admin_id, channel_id, registration_end_at, current_round, min_level, max_level, created_at, reward_desc)
+       VALUES (?, 'REGISTERING', ?, ?, ?, 1, ?, ?, ?, ?)`,
+      [guildId, adminId, channelId, endRegAt, minLevel, maxLevel, now, rewardDesc]
     );
   })();
 
@@ -65,7 +65,8 @@ function startTournament(adminId, guildId, channelId, durationMins = 30, minLeve
     channelId,
     registrationEndAt: endRegAt,
     minLevel,
-    maxLevel
+    maxLevel,
+    rewardDesc
   };
 }
 
@@ -88,57 +89,105 @@ function stopTournament(guildId) {
 }
 
 /**
+ * Mendapatkan pet yang didaftarkan user dalam turnamen ini.
+ * Mengembalikan data pet (dengan decay ter-update) berdasarkan namanya.
+ */
+function getRegisteredPet(userId, guildId) {
+  const participant = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
+  const pets = pet.getPetsList(userId, guildId);
+  if (participant) {
+    const found = pets.find(p => p.pet_name.toLowerCase() === participant.pet_name.toLowerCase());
+    if (found) return found;
+  }
+  // Fallback ke pet aktif jika tidak ditemukan
+  return pet.getPet(userId, guildId);
+}
+
+/**
  * Mendaftarkan pet user ke dalam turnamen.
+ * Kompatibel dengan versi lama.
  */
 function registerParticipant(userId, guildId, petName) {
+  if (!petName || petName.trim() === '') {
+    const userPet = pet.getPet(userId, guildId);
+    if (!userPet) {
+      throw new Error('Anda tidak memiliki hewan peliharaan aktif di server ini!');
+    }
+    petName = userPet.pet_name;
+  }
+  return registerOrUpdateParticipant(userId, guildId, petName);
+}
+
+/**
+ * Mendaftarkan atau memperbarui pet yang didaftarkan user ke turnamen.
+ */
+function registerOrUpdateParticipant(userId, guildId, petName) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'', [guildId]);
+  if (!event) {
+    throw new Error('Pendaftaran turnamen Admin Cup sedang tutup atau tidak aktif.');
+  }
+
+  if (!petName || typeof petName !== 'string' || petName.trim() === '') {
+    throw new Error('Harap tentukan nama pet yang ingin didaftarkan.');
+  }
+
+  // Dapatkan semua pet milik user dengan decay
+  const userPets = pet.getPetsList(userId, guildId);
+  const targetPet = userPets.find(p => p.pet_name.toLowerCase() === petName.trim().toLowerCase());
+  if (!targetPet) {
+    throw new Error(`Pet dengan nama "${petName}" tidak ditemukan di kandang Anda!`);
+  }
+
+  // Validasi Status & Kelayakan
+  if (targetPet.status === 'DEAD') {
+    throw new Error('Hewan peliharaan Anda sudah meninggal 🪦! Sembuhkan/hidupkan kembali terlebih dahulu.');
+  }
+  if (targetPet.status === 'EGG') {
+    throw new Error('Pet Anda masih berupa telur 🥚! Tunggu menetas untuk mendaftar.');
+  }
+  if (targetPet.level < 10) {
+    throw new Error('Pet Anda masih bayi! Tingkat level minimal untuk bertanding adalah **Level 10**.');
+  }
+
+  // Level range validation
+  if (targetPet.level < event.min_level || targetPet.level > event.max_level) {
+    throw new Error(`Level pet Anda (Lv.${targetPet.level}) tidak memenuhi kriteria level turnamen ini (${event.min_level} s/d ${event.max_level})!`);
+  }
+
+  // HP validation
+  if (targetPet.health < 50) {
+    throw new Error(`Kondisi HP pet Anda terlalu lelah (HP ${targetPet.health}%). Pulihkan HP pet minimal hingga **50%** sebelum mendaftar.`);
+  }
+
+  db.transaction(() => {
+    // Hapus pendaftaran lama jika ada
+    db.run('DELETE FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
+    // Masukkan pendaftaran baru
+    db.run(
+      'INSERT INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES (?, ?, ?, \'ACTIVE\')',
+      [guildId, userId, targetPet.pet_name]
+    );
+  })();
+
+  return targetPet;
+}
+
+/**
+ * Mengeluarkan pendaftaran user dari turnamen.
+ */
+function unregisterParticipant(userId, guildId) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'', [guildId]);
   if (!event) {
     throw new Error('Pendaftaran turnamen Admin Cup sedang tutup atau tidak aktif.');
   }
 
   const alreadyReg = db.get('SELECT * FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
-  if (alreadyReg) {
-    throw new Error(`Anda sudah terdaftar di turnamen ini dengan pet **"${alreadyReg.pet_name}"**!`);
+  if (!alreadyReg) {
+    throw new Error('Anda belum terdaftar dalam turnamen ini!');
   }
 
-  // Get active pet
-  const userPet = pet.getPet(userId, guildId);
-  if (!userPet) {
-    throw new Error('Anda tidak memiliki hewan peliharaan aktif di server ini!');
-  }
-
-  // Validasi nama jika dispesifikasi, jika tidak gunakan pet aktif
-  if (petName && userPet.pet_name.toLowerCase() !== petName.toLowerCase()) {
-    throw new Error(`Pendaftaran gagal! Pet aktif Anda saat ini bernama **"${userPet.pet_name}"**, bukan "${petName}". Aktifkan terlebih dahulu pet tersebut jika ingin menggunakannya.`);
-  }
-
-  // Validasi Status & Kelayakan
-  if (userPet.status === 'DEAD') {
-    throw new Error('Hewan peliharaan Anda sudah meninggal 🪦! Sembuhkan/hidupkan kembali terlebih dahulu.');
-  }
-  if (userPet.status === 'EGG') {
-    throw new Error('Pet Anda masih berupa telur 🥚! Tunggu menetas untuk mendaftar.');
-  }
-  if (userPet.level < 10) {
-    throw new Error('Pet Anda masih bayi! Tingkat level minimal untuk bertanding adalah **Level 10**.');
-  }
-
-  // Level range validation
-  if (userPet.level < event.min_level || userPet.level > event.max_level) {
-    throw new Error(`Level pet Anda (Lv.${userPet.level}) tidak memenuhi kriteria level turnamen ini (${event.min_level} s/d ${event.max_level})!`);
-  }
-
-  // HP validation
-  if (userPet.health < 50) {
-    throw new Error(`Kondisi HP pet Anda terlalu lelah (HP ${userPet.health}%). Pulihkan HP pet minimal hingga **50%** sebelum mendaftar.`);
-  }
-
-  db.run(
-    'INSERT INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES (?, ?, ?, \'ACTIVE\')',
-    [guildId, userId, userPet.pet_name]
-  );
-
-  return userPet;
+  db.run('DELETE FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
+  return alreadyReg;
 }
 
 /**
@@ -165,7 +214,7 @@ async function updateRegistrationEmbed(guildId, client) {
     participantList = '*Belum ada peserta yang mendaftar.*';
   } else {
     participantList = participants.map((p, idx) => {
-      const userPet = pet.getPet(p.user_id, guildId);
+      const userPet = getRegisteredPet(p.user_id, guildId);
       const level = userPet ? userPet.level : '?';
       const petEmoji = userPet ? (pet.GACHA_SPECIES[userPet.pet_type]?.emoji || '\uD83D\uDC3E') : '\uD83D\uDC3E';
       return `**${idx + 1}.** ${petEmoji} ${p.pet_name} (Lv.${level}) \u2014 <@${p.user_id}>`;
@@ -176,17 +225,18 @@ async function updateRegistrationEmbed(guildId, client) {
 
   const announceEmbed = new EmbedBuilder()
     .setColor(0x7C4DFF)
-    .setTitle('\uD83C\uDFC6 ADMIN CUP PET TOURNAMENT \uD83C\uDFC6')
+    .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
     .setDescription(
-      `\uD83D\uDCE2 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
+      `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
       `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-      `\u23F1\uFE0F **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
-      `\uD83D\uDCC8 **Kriteria Level:** Level ${event.min_level} s/d ${event.max_level}\n\n` +
-      `\uD83D\uDC65 **Peserta Terdaftar (${participants.length}):**\n${participantList}\n\n` +
-      `\uD83D\uDC49 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
-      `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
+      `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
+      `📈 **Kriteria Level:** Level ${event.min_level} s/d ${event.max_level}\n\n` +
+      `👥 **Peserta Terdaftar (${participants.length}):**\n${participantList}\n\n` +
+      `👉 Klik tombol **🏆 Gabung / Ganti Pet** di bawah untuk mendaftar atau mengubah pet terdaftar Anda.\n` +
+      `👉 Klik tombol **❌ Keluar Turnamen** untuk membatalkan pendaftaran.\n\n` +
+      (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}` : `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`)
     )
-    .setFooter({ text: 'Admin Cup \u2022 Registration Phase' })
+    .setFooter({ text: 'Admin Cup • Registration Phase' })
     .setTimestamp();
 
   try {
@@ -313,8 +363,8 @@ async function executeNextMatch(guildId, client) {
     db.run('UPDATE tournament_matches SET match_status = \'ACTIVE\' WHERE match_id = ?', [match.match_id]);
 
     // Fetch data pet
-    const p1Pet = pet.getPet(match.player_1_id, guildId);
-    const p2Pet = pet.getPet(match.player_2_id, guildId);
+    const p1Pet = getRegisteredPet(match.player_1_id, guildId);
+    const p2Pet = getRegisteredPet(match.player_2_id, guildId);
 
     // Ambil data user Discord untuk display name
     const member1 = await channel.guild.members.fetch(match.player_1_id).catch(() => null);
@@ -891,6 +941,7 @@ async function endTournament(guildId, championId, runnerUpId, client) {
         `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
         (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
         `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
+        (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
         `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
       )
       .setFooter({ text: 'Admin Cup • Tournament Completed' })
@@ -905,6 +956,7 @@ async function endTournament(guildId, championId, runnerUpId, client) {
         `🏆 **Turnamen Admin Cup di server Anda telah selesai!**\n\n` +
         `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet.pet_name}**)\n` +
         (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet.pet_name}**)\n` : '') +
+        (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
         `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
       ).catch(() => {});
     }
@@ -1101,6 +1153,9 @@ module.exports = {
   startTournament,
   stopTournament,
   registerParticipant,
+  getRegisteredPet,
+  registerOrUpdateParticipant,
+  unregisterParticipant,
   saveAnnounceMessageId,
   updateRegistrationEmbed,
   closeRegistrationAndGenerateBracket,

@@ -668,6 +668,13 @@ function initSchema() {
       run: () => {
         addColumn('tournament_events', 'announce_message_id', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 8,
+      description: "Menambahkan kolom reward_desc ke tournament_events untuk menyimpan deskripsi hadiah turnamen",
+      run: () => {
+        addColumn('tournament_events', 'reward_desc', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

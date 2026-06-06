@@ -1537,10 +1537,18 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
+          const rewardInput = new TextInputBuilder()
+            .setCustomId('cup_reward')
+            .setLabel('Hadiah Turnamen (Opsional)')
+            .setPlaceholder('Contoh: 5,000,000 Koin + Role Champion')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false);
+
           modal.addComponents(
             new ActionRowBuilder().addComponents(durationInput),
             new ActionRowBuilder().addComponents(minLevelInput),
-            new ActionRowBuilder().addComponents(maxLevelInput)
+            new ActionRowBuilder().addComponents(maxLevelInput),
+            new ActionRowBuilder().addComponents(rewardInput)
           );
 
           await iPet.showModal(modal);
@@ -1554,6 +1562,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
             const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
             const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
+            const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
+            const finalReward = rewardDesc !== '' ? rewardDesc : null;
 
             if (isNaN(durationMins) || durationMins <= 0) {
               return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
@@ -1575,7 +1585,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                 throw new Error('Channel PvP Cup tidak ditemukan! Pastikan channel dengan ID `1512842270062416026` ada di server ini.');
               }
 
-              const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
+              const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
               const endRegAt = res.registrationEndAt;
 
               const announceEmbed = new EmbedBuilder()
@@ -1586,8 +1596,9 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                   `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
                   `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
                   `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
-                  `👉 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
-                  `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
+                  `👉 Klik tombol **🏆 Gabung / Ganti Pet** di bawah untuk mendaftar atau mengubah pet terdaftar Anda.\n` +
+                  `👉 Klik tombol **❌ Keluar Turnamen** untuk membatalkan pendaftaran.\n\n` +
+                  (finalReward ? `🎁 **Hadiah Turnamen:** ${finalReward}` : `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`)
                 )
                 .setFooter({ text: 'Admin Cup • Registration Phase' })
                 .setTimestamp();
@@ -1595,8 +1606,12 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               const joinRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                   .setCustomId('cup_btn_join_public')
-                  .setLabel('🏆 Gabung Turnamen')
-                  .setStyle(ButtonStyle.Success)
+                  .setLabel('🏆 Gabung / Ganti Pet')
+                  .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                  .setCustomId('cup_btn_leave_public')
+                  .setLabel('❌ Keluar Turnamen')
+                  .setStyle(ButtonStyle.Danger)
               );
 
               const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
