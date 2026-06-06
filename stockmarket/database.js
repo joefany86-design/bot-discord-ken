@@ -661,6 +661,13 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 7,
+      description: "Menambahkan kolom announce_message_id ke tournament_events untuk live update embed registrasi",
+      run: () => {
+        addColumn('tournament_events', 'announce_message_id', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

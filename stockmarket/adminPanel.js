@@ -1567,13 +1567,16 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
             const tournament = require('./tournament');
             try {
-              // Defer reply karena pembuatan & penghapusan channel dapat memakan waktu > 3 detik
               await sub.deferReply({ flags: 64 });
 
-              const targetChannelObj = await tournament.createTournamentChannel(iPet.guild);
-              const targetChannelId = targetChannelObj.id;
+              const targetChannelId = '1512842270062416026';
+              const targetChannelObj = iPet.guild.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
+              if (!targetChannelObj) {
+                throw new Error('Channel PvP Cup tidak ditemukan! Pastikan channel dengan ID `1512842270062416026` ada di server ini.');
+              }
 
-              tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
+              const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
+              const endRegAt = res.registrationEndAt;
 
               const announceEmbed = new EmbedBuilder()
                 .setColor(0x7C4DFF)
@@ -1581,7 +1584,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                 .setDescription(
                   `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
                   `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-                  `⏱️ **Sisa Waktu Pendaftaran:** ${durationMins} Menit (Pendaftaran ditutup otomatis)\n` +
+                  `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
                   `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
                   `👉 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
                   `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
@@ -1596,13 +1599,14 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
                   .setStyle(ButtonStyle.Success)
               );
 
-              await targetChannelObj.send({ embeds: [announceEmbed], components: [joinRow] });
+              const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
+              tournament.saveAnnounceMessageId(guildId, announceMsg.id);
 
               setTimeout(() => {
                 tournament.closeRegistrationAndGenerateBracket(guildId, client);
               }, durationMins * 60 * 1000);
 
-              await sub.followUp({ content: `🏆 Sukses memulai pendaftaran turnamen Admin Cup selama **${durationMins}** menit di channel otomatis <#${targetChannelId}>!`, flags: 64 });
+              await sub.followUp({ content: `🏆 Sukses memulai pendaftaran turnamen Admin Cup di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
               const fresh = getPetPanelData(guildId, selectedTargetUserId);
               await replyMsg.edit(fresh).catch(() => { });
             } catch (err) {
@@ -1617,7 +1621,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             if (active && active.channel_id) {
               const channel = iPet.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
               if (channel) {
-                await channel.delete().catch(() => {});
+                await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
               }
             }
             await iPet.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });

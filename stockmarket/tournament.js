@@ -142,6 +142,62 @@ function registerParticipant(userId, guildId, petName) {
 }
 
 /**
+ * Menyimpan ID pesan pengumuman turnamen ke database.
+ */
+function saveAnnounceMessageId(guildId, messageId) {
+  db.run('UPDATE tournament_events SET announce_message_id = ? WHERE guild_id = ?', [messageId, guildId]);
+}
+
+/**
+ * Memperbarui embed pengumuman registrasi dengan daftar peserta terbaru (live update).
+ */
+async function updateRegistrationEmbed(guildId, client) {
+  const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'', [guildId]);
+  if (!event || !event.announce_message_id) return;
+
+  const channel = client.channels.cache.get(event.channel_id) || await client.channels.fetch(event.channel_id).catch(() => null);
+  if (!channel) return;
+
+  const participants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ? AND status = \'ACTIVE\'', [guildId]);
+
+  let participantList = '';
+  if (participants.length === 0) {
+    participantList = '*Belum ada peserta yang mendaftar.*';
+  } else {
+    participantList = participants.map((p, idx) => {
+      const userPet = pet.getPet(p.user_id, guildId);
+      const level = userPet ? userPet.level : '?';
+      const petEmoji = userPet ? (pet.GACHA_SPECIES[userPet.pet_type]?.emoji || '\uD83D\uDC3E') : '\uD83D\uDC3E';
+      return `**${idx + 1}.** ${petEmoji} ${p.pet_name} (Lv.${level}) \u2014 <@${p.user_id}>`;
+    }).join('\n');
+  }
+
+  const endRegAt = event.registration_end_at;
+
+  const announceEmbed = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('\uD83C\uDFC6 ADMIN CUP PET TOURNAMENT \uD83C\uDFC6')
+    .setDescription(
+      `\uD83D\uDCE2 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
+      `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
+      `\u23F1\uFE0F **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
+      `\uD83D\uDCC8 **Kriteria Level:** Level ${event.min_level} s/d ${event.max_level}\n\n` +
+      `\uD83D\uDC65 **Peserta Terdaftar (${participants.length}):**\n${participantList}\n\n` +
+      `\uD83D\uDC49 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
+      `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
+    )
+    .setFooter({ text: 'Admin Cup \u2022 Registration Phase' })
+    .setTimestamp();
+
+  try {
+    const msg = await channel.messages.fetch(event.announce_message_id).catch(() => null);
+    if (msg) {
+      await msg.edit({ embeds: [announceEmbed] }).catch(() => {});
+    }
+  } catch (e) {}
+}
+
+/**
  * Menutup pendaftaran dan mengacak bagan tanding.
  */
 async function closeRegistrationAndGenerateBracket(guildId, client) {
@@ -280,6 +336,19 @@ async function executeNextMatch(guildId, client) {
     });
 
     await thread.send(`⚔️ **Pertandingan Dimulai!** <@${match.player_1_id}> vs <@${match.player_2_id}>\nSilakan bertarung di sini!`).catch(() => {});
+
+    // Kirim pengumuman dan mention pemain di channel utama turnamen
+    if (thread.id !== channel.id) {
+      const matchAnnounce = new EmbedBuilder()
+        .setColor(0xFF5722)
+        .setTitle('\u2694\uFE0F PERTANDINGAN DIMULAI!')
+        .setDescription(
+          `**${p1Pet.pet_name}** (<@${match.player_1_id}>) vs **${p2Pet.pet_name}** (<@${match.player_2_id}>)\n\n` +
+          `\uD83D\uDD17 Saksikan pertarungan di: <#${thread.id}>`
+        )
+        .setTimestamp();
+      await channel.send({ content: `<@${match.player_1_id}> <@${match.player_2_id}>`, embeds: [matchAnnounce] }).catch(() => {});
+    }
 
     // Inisialisasi status tempur di memori
     client.activeCupMatches = client.activeCupMatches || new Map();
@@ -1032,6 +1101,8 @@ module.exports = {
   startTournament,
   stopTournament,
   registerParticipant,
+  saveAnnounceMessageId,
+  updateRegistrationEmbed,
   closeRegistrationAndGenerateBracket,
   executeNextMatch,
   processTurn,

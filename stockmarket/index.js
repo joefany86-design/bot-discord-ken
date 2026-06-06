@@ -1028,6 +1028,8 @@ function initStockMarket(client) {
         const tournament = require('./tournament');
         const userPet = tournament.registerParticipant(interaction.user.id, interaction.guildId);
         await interaction.reply({ content: `✅ Sukses! Pet **${userPet.pet_name}** (Lv.${userPet.level}) Anda telah berhasil didaftarkan ke turnamen Admin Cup.`, flags: 64 });
+        // Update embed pengumuman dengan daftar peserta terbaru
+        tournament.updateRegistrationEmbed(interaction.guildId, client);
       } catch (err) {
         await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
       }
@@ -4662,6 +4664,8 @@ async function handlePetCommand(message, client, args) {
       try {
         const tournament = require('./tournament');
         const userPet = tournament.registerParticipant(author.id, guildId, petName);
+        // Update embed pengumuman dengan daftar peserta terbaru
+        tournament.updateRegistrationEmbed(guildId, client);
         const successEmb = embeds.successEmbed(
           'Pendaftaran Admin Cup Sukses! 🏆🐾',
           `Pet aktif Anda **${userPet.pet_name}** (Lv.${userPet.level}) berhasil didaftarkan ke Turnamen Admin Cup!\n\n` +
@@ -12962,20 +12966,25 @@ async function handleEconomyCommands(message, client) {
         const minLevel = parseInt(args[2]) || 10;
         const maxLevel = parseInt(args[3]) || 9999;
 
-        const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan dan membuat channel turnamen otomatis. Mohon tunggu...')] }).catch(() => null);
+        const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan turnamen. Mohon tunggu...')] }).catch(() => null);
 
         try {
-          const targetChannelObj = await tournament.createTournamentChannel(message.guild);
-          const targetChannelId = targetChannelObj.id;
+          const targetChannelId = '1512842270062416026';
+          const targetChannelObj = message.guild.channels.cache.get(targetChannelId) || await client.channels.fetch(targetChannelId).catch(() => null);
+          if (!targetChannelObj) {
+            throw new Error('Channel PvP Cup tidak ditemukan! Pastikan channel dengan ID `1512842270062416026` ada di server ini.');
+          }
 
           const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel);
+          const endRegAt = res.registrationEndAt;
+
           const announceEmbed = new EmbedBuilder()
             .setColor(0x7C4DFF)
             .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
             .setDescription(
               `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
               `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-              `⏱️ **Sisa Waktu Pendaftaran:** ${durationMins} Menit (Pendaftaran ditutup otomatis)\n` +
+              `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
               `📈 **Kriteria Level:** Level ${minLevel} s/d ${maxLevel}\n\n` +
               `👉 Ketik **\`.pet cup register\`** atau klik tombol ** Gabung Turnamen ** di bawah ini untuk mendaftarkan pet aktif Anda!\n\n` +
               `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`
@@ -12990,12 +12999,13 @@ async function handleEconomyCommands(message, client) {
               .setStyle(ButtonStyle.Success)
           );
 
-          await targetChannelObj.send({ embeds: [announceEmbed], components: [joinRow] });
+          const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
+          tournament.saveAnnounceMessageId(guildId, announceMsg.id);
 
           if (statusMsg) {
-            await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel otomatis <#${targetChannelId}> selama **${durationMins}** menit.`)] }).catch(() => {});
+            await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});
           } else {
-            await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel otomatis <#${targetChannelId}> selama **${durationMins}** menit.`)] }).catch(() => {});
+            await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});
           }
 
           // Jadwalkan penutupan registrasi dan seeding
@@ -13019,7 +13029,7 @@ async function handleEconomyCommands(message, client) {
           if (active && active.channel_id) {
             const channel = message.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
             if (channel) {
-              await channel.delete().catch(() => {});
+              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen Admin Cup telah dibatalkan oleh Administrator.\nSemua data pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
             }
           }
           return message.reply({ embeds: [embeds.successEmbed('Turnamen Dibatalkan!', 'Turnamen Admin Cup aktif berhasil dibatalkan dan semua data pendaftaran telah dibersihkan.')] });
