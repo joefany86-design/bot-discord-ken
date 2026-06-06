@@ -3842,7 +3842,21 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         });
 
         const selectRow = new ActionRowBuilder().addComponents(itemSelect);
-        await iAbyus.reply({ content: 'Pilih item dari daftar di bawah ini untuk disetel sebagai hadiah massal:', components: [selectRow], flags: 64 });
+        const backBtnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('admin_abyus_btn_item_give_cancel')
+            .setLabel('🔙 Kembali')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await iAbyus.update({
+          content: '🎒 **PILIH ITEM YANG INGIN DIBAGIKAN MASSAL:**',
+          components: [selectRow, backBtnRow]
+        });
+      }
+      else if (iAbyus.customId === 'admin_abyus_btn_item_give_cancel') {
+        const fresh = getAbyusPanelData(guildId);
+        await iAbyus.update(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_select_item_to_give') {
         const itemId = iAbyus.values[0];
