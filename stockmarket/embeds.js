@@ -2888,6 +2888,27 @@ module.exports = {
     return embed;
   },
 
+  petRaidSpawnAnnouncementEmbed(boss) {
+    const hpPercent = 100;
+    const hpBarStr = '🟥'.repeat(10);
+    return new EmbedBuilder()
+      .setColor(COLORS.FIERY)
+      .setTitle(`🌋 WORLD BOSS RAID TELAH DI-SPAWN! 🌋`)
+      .setDescription(
+        `🚨 **ANCAMAN WORLD BOSS BARU MINGGU INI!** 🚨\n` +
+        `Seekor monster raksasa penunggu wilayah terlarang telah terbangun dari tidurnya. Seluruh warga server dipanggil untuk berjuang bersama melumpuhkannya sebelum terlambat!\n\n` +
+        `👹 **Nama Boss:** **${boss.boss_name}**\n` +
+        `🧬 **Elemen:** **${boss.boss_type}** *(WATER > FIRE > EARTH > WATER)*\n` +
+        `❤️ **HP Boss:** ${hpBarStr} **${boss.max_hp.toLocaleString('id-ID')} / ${boss.max_hp.toLocaleString('id-ID')} HP** (${hpPercent}%)\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👉 **Cara Ikut Raid:**\n` +
+        `Ketik **\`.pet raid\`** untuk membuka dashboard pertempuran dan serang Boss bersama Pet Anda!\n` +
+        `*Setiap pemain memiliki 3 kali kesempatan menyerang gratis.*`
+      )
+      .setFooter({ text: 'World Boss Raid • Kosan 1A Pet System' })
+      .setTimestamp();
+  },
+
   petBattleLogEmbed(title, logs, isWin) {
     const embed = new EmbedBuilder()
       .setColor(isWin ? COLORS.SUCCESS : COLORS.ERROR)

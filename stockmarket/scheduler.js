@@ -7,9 +7,46 @@ const { EmbedBuilder } = require('discord.js');
 let voiceEarnInterval = null;
 
 /**
+ * Helper: Memastikan channel 🌋┃boss-raid ada di server, buat jika belum ada.
+ */
+async function ensureBossRaidChannel(guild) {
+  const { ChannelType, PermissionFlagsBits } = require('discord.js');
+  let channel = guild.channels.cache.find(c => c.name === '🌋┃boss-raid' || c.name === 'boss-raid');
+  if (channel) return channel;
+
+  const FACILITIES_CATEGORY_ID = '1410239831023288451'; // #🍷 FACILITIES :
+  const parentId = guild.channels.cache.has(FACILITIES_CATEGORY_ID) ? FACILITIES_CATEGORY_ID : null;
+
+  try {
+    channel = await guild.channels.create({
+      name: '🌋┃boss-raid',
+      type: ChannelType.GuildText,
+      parent: parentId,
+      topic: '🌋 Saluran Resmi Pemanggilan & Pertempuran Raid World Boss Mingguan! Ketik .pet raid untuk bertarung!',
+      permissionOverwrites: [
+        {
+          id: guild.roles.everyone.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.EmbedLinks]
+        }
+      ]
+    });
+    console.log(`✅ Berhasil membuat channel #🌋┃boss-raid di guild: ${guild.name}`);
+    return channel;
+  } catch (err) {
+    console.error(`❌ Gagal membuat channel #🌋┃boss-raid di guild ${guild.name}:`, err.message);
+    return null;
+  }
+}
+
+/**
  * Inisialisasi seluruh cron scheduler untuk otomasi bursa saham.
  */
 function initScheduler(client) {
+  // Memastikan channel boss raid tersedia di seluruh guild saat startup
+  client.guilds.cache.forEach(async guild => {
+    await ensureBossRaidChannel(guild).catch(() => {});
+  });
+
   // 1. Cron Job: Update harga saham setiap 2 jam (08:00 - 22:00 WIB)
   // Menit 0, setiap 2 jam, dari pukul 08:00 s/d 22:00 WIB
   cron.schedule('0 8-22/2 * * *', async () => {
@@ -938,6 +975,78 @@ function initScheduler(client) {
     } catch (err) {
       console.error(`❌ Gagal membersihkan channel ${targetChannelId}:`, err.message);
     }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 11. Cron Job: World Boss Auto-Spawn & Announcement (Setiap Sabtu pukul 20:00 WIB)
+  cron.schedule('0 20 * * 6', async () => {
+    console.log('⏰ [Scheduler] Menjalankan auto-spawn World Boss...');
+    const pet = require('./pet');
+    const embeds = require('./embeds');
+
+    client.guilds.cache.forEach(async guild => {
+      try {
+        const boss = pet.getOrCreateWorldBoss(guild.id);
+        const targetChannel = await ensureBossRaidChannel(guild);
+
+        if (targetChannel && boss) {
+          const spawnEmbed = embeds.petRaidSpawnAnnouncementEmbed(boss);
+          await targetChannel.send({ embeds: [spawnEmbed] }).catch(() => {});
+        }
+      } catch (err) {
+        console.error(`❌ Gagal memicu auto-spawn World Boss di guild ${guild.name}:`, err.message);
+      }
+    });
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 12. Cron Job: World Boss Auto-Distribute Rewards & Closing (Setiap Minggu pukul 20:00 WIB)
+  cron.schedule('0 20 * * 0', async () => {
+    console.log('⏰ [Scheduler] Menjalankan auto-distribusi hadiah World Boss...');
+    const pet = require('./pet');
+    const database = require('./database');
+    const embeds = require('./embeds');
+
+    const weekStart = pet.getWeekStartString();
+
+    client.guilds.cache.forEach(async guild => {
+      try {
+        const boss = database.get('SELECT * FROM world_boss WHERE guild_id = ? AND week_start = ?', [guild.id, weekStart]);
+        if (!boss || boss.status === 'DISTRIBUTED') return;
+
+        // Tutup boss jika masih aktif
+        if (boss.status === 'ACTIVE') {
+          database.run("UPDATE world_boss SET status = 'EXPIRED' WHERE guild_id = ? AND week_start = ?", [guild.id, weekStart]);
+        }
+
+        // Distribusikan
+        const distResult = pet.distributeWorldBossRewards(guild.id, null, weekStart);
+        const targetChannel = await ensureBossRaidChannel(guild);
+
+        if (targetChannel && distResult && distResult.totalRewarded > 0) {
+          const rewardText = distResult.rewards.map(r => `• <@${r.userId}>: **${r.damage.toLocaleString('id-ID')} DMG** ➔ Rp ${r.coins.toLocaleString('id-ID')} + ${r.items}`).join('\n');
+          
+          const endEmbed = new EmbedBuilder()
+            .setColor(0x990000)
+            .setTitle(`🌋 EVENT RAID WORLD BOSS BERAKHIR 🌋`)
+            .setDescription(
+              `⚠️ **Waktu pertempuran dengan ${distResult.bossName} telah habis!** ⚠️\n` +
+              `Gerbang wilayah terlarang ditutup kembali. Berikut adalah rekapitulasi kontribusi dan pembagian hadiah bagi para petualang:\n\n` +
+              `📊 **DAFTAR HADIAH PEMAIN:**\n` +
+              `${rewardText.substring(0, 1500)}\n\n` +
+              `*Hadiah koin telah dikirim langsung ke dompet dan item ke inventory masing-masing!*`
+            )
+            .setFooter({ text: 'World Boss Raid • Sampai jumpa di pertempuran berikutnya!' })
+            .setTimestamp();
+
+          await targetChannel.send({ embeds: [endEmbed] }).catch(() => {});
+        }
+      } catch (err) {
+        console.error(`❌ Gagal mendistribusikan hadiah World Boss di guild ${guild.name}:`, err.message);
+      }
+    });
   }, {
     timezone: 'Asia/Jakarta'
   });
