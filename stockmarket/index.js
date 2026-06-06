@@ -5196,12 +5196,8 @@ async function handlePetCommand(message, client, args) {
           .setColor('#FF9100')
           .setTitle('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM')
           .setDescription(
-            `\`\`\`ansi\n` +
-            `\u001b[1;33m╔══════════════════════════════════╗\u001b[0m\n` +
-            `\u001b[1;33m║\u001b[0m  \u001b[1;37m🧭 CHOOSE YOUR PATH  🧭\u001b[0m       \u001b[1;33m║\u001b[0m\n` +
-            `\u001b[1;33m║\u001b[0m    \u001b[0;36mDecide wisely, Commander\u001b[0m    \u001b[1;33m║\u001b[0m\n` +
-            `\u001b[1;33m╚══════════════════════════════════╝\u001b[0m\n` +
-            `\`\`\`\n\n` +
+            `### 🧭 CHOOSE YOUR PATH\n` +
+            `*“Decide wisely, Commander, for every path holds its own fortune and peril...”*\n\n` +
             `> <@${author.id}> selaku **Komandan Perjalanan**, pilih jalur ekspedisi:\n\n` +
             `━━━━━━━━━━━━━━━━━━━━━━━━━━`
           )
@@ -5339,12 +5335,8 @@ async function handlePetCommand(message, client, args) {
             .setColor('#E040FB')
             .setTitle('📦 STAGE 2 ━━ PETI KUNO TERKUNCI')
             .setDescription(
-              `\`\`\`ansi\n` +
-              `\u001b[1;35m╔══════════════════════════════════╗\u001b[0m\n` +
-              `\u001b[1;35m║\u001b[0m  \u001b[1;33m📦  ANCIENT CHEST FOUND!  📦\u001b[0m  \u001b[1;35m║\u001b[0m\n` +
-              `\u001b[1;35m║\u001b[0m    \u001b[0;36mWhat will you do?\u001b[0m          \u001b[1;35m║\u001b[0m\n` +
-              `\u001b[1;35m╚══════════════════════════════════╝\u001b[0m\n` +
-              `\`\`\`\n\n` +
+              `### 📦 ANCIENT CHEST FOUND!\n` +
+              `*“A dusty relic of the past lies before you. What secrets or traps does it hold?”*\n\n` +
               `> *Di tengah petualangan, tim menemukan peti kuno berdebu dengan gembok besi besar yang kokoh...*\n\n` +
               `━━━━━━━━━━━━━━━━━━━━━━━━━━`
             )
@@ -5438,12 +5430,8 @@ async function handlePetCommand(message, client, args) {
             .setColor('#00E5FF')
             .setTitle('💧 STAGE 2 ━━ AIR TERJUN SUCI')
             .setDescription(
-              `\`\`\`ansi\n` +
-              `\u001b[1;36m╔══════════════════════════════════╗\u001b[0m\n` +
-              `\u001b[1;36m║\u001b[0m  \u001b[1;37m💧 SACRED WATERFALL FOUND! 💧\u001b[0m \u001b[1;36m║\u001b[0m\n` +
-              `\u001b[1;36m║\u001b[0m   \u001b[0;33mA blessing in disguise...\u001b[0m   \u001b[1;36m║\u001b[0m\n` +
-              `\u001b[1;36m╚══════════════════════════════════╝\u001b[0m\n` +
-              `\`\`\`\n\n` +
+              `### 💧 SACRED WATERFALL FOUND!\n` +
+              `*“A crystal-clear spring of magical waters, offering rejuvenation to weary travelers.”*\n\n` +
               `> *Tim menemukan mata air suci tersembunyi yang jernih, sejuk, dan memancarkan aura magis...*\n\n` +
               `━━━━━━━━━━━━━━━━━━━━━━━━━━`
             )
