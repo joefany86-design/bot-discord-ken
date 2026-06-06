@@ -134,11 +134,15 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   const isTargetOwner = targetId === OWNER_ID || targetId === '436554535037698059';
   if (isTargetOwner && isOwnerProtectionActive(guildId)) {
     const jailDuration = 36000; // 10 jam (36000 detik)
-    const fine = Math.min(thiefWallet.balance, 10000);
+    const thiefSavings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 };
+    const combinedBalance = thiefWallet.balance + thiefSavings.balance;
+    const fine = Math.min(combinedBalance, 10000);
     
+    let actualFine = 0;
     db.transaction(() => {
       if (fine > 0) {
-        economy.subtractBalance(userId, guildId, fine, 'ROB_SULTAN_FINE');
+        const resFine = economy.deductFine(userId, guildId, fine, 'ROB_SULTAN_FINE');
+        actualFine = resFine.totalDeducted;
       }
       const jailUntil = Math.floor(Date.now() / 1000) + jailDuration;
       db.run(
@@ -154,7 +158,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 
     return {
       success: false,
-      fine,
+      fine: actualFine,
       compensation: 0,
       hasCctv: false,
       caughtBySecurity: false,
@@ -903,9 +907,11 @@ function executeHeist(guildId) {
     db.transaction(() => {
       participants.forEach(p => {
         const wallet = economy.getWallet(p, guildId);
-        const finalFine = Math.min(wallet.balance, fineAmt);
+        const savings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [p, guildId]) || { balance: 0 };
+        const combinedBalance = wallet.balance + savings.balance;
+        const finalFine = Math.min(combinedBalance, fineAmt);
         if (finalFine > 0) {
-          economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
+          economy.deductFine(p, guildId, finalFine, 'HEIST_FAILED_FINE');
         }
 
         // Slime Perk: 10% peluang melarikan diri (dodge jail)
@@ -998,9 +1004,11 @@ function executeHeistQteFailure(guildId, failedUserId, reasonType) {
   db.transaction(() => {
     participants.forEach(p => {
       const wallet = economy.getWallet(p, guildId);
-      const finalFine = Math.min(wallet.balance, fineAmt);
+      const savings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [p, guildId]) || { balance: 0 };
+      const combinedBalance = wallet.balance + savings.balance;
+      const finalFine = Math.min(combinedBalance, fineAmt);
       if (finalFine > 0) {
-        economy.subtractBalance(p, guildId, finalFine, 'HEIST_FAILED_FINE');
+        economy.deductFine(p, guildId, finalFine, 'HEIST_FAILED_FINE');
       }
 
       // Slime Perk: 10% peluang melarikan diri (dodge jail)
@@ -1170,10 +1178,12 @@ function arrestBuronan(hunterId, targetId, guildId, hunterMember) {
       petHpLeft = newHp;
     } else {
       const hunterWallet = economy.getWallet(hunterId, guildId);
-      const actualFine = Math.min(hunterWallet.balance, fineAmount);
+      const hunterSavings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [hunterId, guildId]) || { balance: 0 };
+      const combinedBalance = hunterWallet.balance + hunterSavings.balance;
+      const actualFine = Math.min(combinedBalance, fineAmount);
       if (actualFine > 0) {
         db.transaction(() => {
-          economy.subtractBalance(hunterId, guildId, actualFine, 'ARREST_FAILED_FINE');
+          economy.deductFine(hunterId, guildId, actualFine, 'ARREST_FAILED_FINE');
           economy.addBalance(targetId, guildId, actualFine, 'ARREST_FAILED_COMPENSATION');
         })();
       }

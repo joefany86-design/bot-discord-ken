@@ -95,11 +95,37 @@ function addBalance(userId, guildId, amount, type = 'EARN', channelId = null) {
 }
 
 /**
- * Mengurangi saldo dari dompet user beserta pencatatan riwayat transaksi.
+ * Mengurangi saldo dari dompet atau bank savings user beserta pencatatan riwayat transaksi.
  * Melempar error jika saldo tidak cukup.
  */
-function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = null) {
+function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = null, paymentSource = 'pocket') {
   if (amount <= 0) return;
+
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    const currentSavings = Math.round(savings.balance);
+    if (currentSavings < amount) {
+      throw new Error('Saldo bank tidak mencukupi!');
+    }
+
+    db.transaction(() => {
+      db.run(
+        `UPDATE bank_savings 
+         SET balance = balance - ? 
+         WHERE user_id = ? AND guild_id = ?`,
+        [amount, userId, guildId]
+      );
+
+      db.run(
+        `INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, guildId, type + '_BANK', channelId, -amount]
+      );
+    })();
+
+    return getWallet(userId, guildId);
+  }
 
   const wallet = getWallet(userId, guildId);
   // Bulatkan saldo untuk menghindari masalah presisi desimal mengambang (float)
@@ -124,6 +150,78 @@ function subtractBalance(userId, guildId, amount, type = 'SPEND', channelId = nu
   })();
 
   return getWallet(userId, guildId);
+}
+
+/**
+ * Mengurangi denda dari dompet user. Jika saldo dompet tidak mencukupi,
+ * sisanya akan dipotong dari saldo tabungan bank.
+ * Mengembalikan detail pemotongan.
+ */
+function deductFine(userId, guildId, amount, type = 'FINE', channelId = null) {
+  if (amount <= 0) return { totalDeducted: 0, walletDeducted: 0, bankDeducted: 0 };
+
+  // Pastikan user memiliki wallet dan tabungan bank terinisialisasi
+  const wallet = getWallet(userId, guildId);
+  
+  // Ambil saldo bank tanpa memanggil modul bank jika memungkinkan untuk mencegah sirkular dependency
+  let bankSavings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  if (!bankSavings) {
+    const bank = require('./bank');
+    bankSavings = bank.getSavings(userId, guildId);
+  }
+
+  const walletBalance = Math.round(wallet.balance);
+  const bankBalance = Math.round(bankSavings.balance);
+
+  let remainingToDeduct = amount;
+  let walletDeducted = 0;
+  let bankDeducted = 0;
+
+  if (walletBalance > 0) {
+    walletDeducted = Math.min(walletBalance, remainingToDeduct);
+    remainingToDeduct -= walletDeducted;
+  }
+
+  if (remainingToDeduct > 0 && bankBalance > 0) {
+    bankDeducted = Math.min(bankBalance, remainingToDeduct);
+    remainingToDeduct -= bankDeducted;
+  }
+
+  const totalDeducted = walletDeducted + bankDeducted;
+
+  if (totalDeducted > 0) {
+    db.transaction(() => {
+      if (walletDeducted > 0) {
+        db.run(
+          `UPDATE wallets SET balance = balance - ? WHERE user_id = ? AND guild_id = ?`,
+          [walletDeducted, userId, guildId]
+        );
+        db.run(
+          `INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) VALUES (?, ?, ?, ?, ?)`,
+          [userId, guildId, type, channelId, -walletDeducted]
+        );
+      }
+
+      if (bankDeducted > 0) {
+        db.run(
+          `UPDATE bank_savings SET balance = balance - ? WHERE user_id = ? AND guild_id = ?`,
+          [bankDeducted, userId, guildId]
+        );
+        db.run(
+          `INSERT INTO transactions (user_id, guild_id, type, channel_id, amount) VALUES (?, ?, ?, ?, ?)`,
+          [userId, guildId, type + '_BANK', channelId, -bankDeducted]
+        );
+      }
+    })();
+  }
+
+  return {
+    totalDeducted,
+    walletDeducted,
+    bankDeducted,
+    walletBalance: getWallet(userId, guildId).balance,
+    bankBalance: (db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 }).balance
+  };
 }
 
 /**
@@ -462,6 +560,7 @@ module.exports = {
   getWallet,
   addBalance,
   subtractBalance,
+  deductFine,
   claimDaily,
   transferBalance,
   getLeaderboard,

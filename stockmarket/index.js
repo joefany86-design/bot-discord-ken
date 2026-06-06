@@ -824,6 +824,112 @@ function getPortalHubData(client) {
 }
 
 /**
+ * Menampilkan pilihan pembayaran (Dompet atau Bank) kepada pengguna.
+ * @param {Object} target - Objek Message atau Interaction dari Discord.
+ * @param {string} userId - ID pengguna Discord yang melakukan transaksi.
+ * @param {string} guildId - ID guild/server Discord.
+ * @param {string} itemLabel - Label/nama item yang ingin dibeli.
+ * @param {number} price - Harga item.
+ * @param {function} onConfirm - Callback saat konfirmasi pembayaran dipilih. Parameter: (paymentSource, iConfirm)
+ * @param {function} [onCancel] - Callback opsional saat transaksi dibatalkan.
+ */
+async function promptPaymentMethod(target, userId, guildId, itemLabel, price, onConfirm, onCancel = null) {
+  const isInteraction = typeof target.reply === 'function' && target.applicationId !== undefined;
+  
+  // Ambil saldo dompet dan bank
+  const wallet = economy.getWallet(userId, guildId);
+  const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 };
+  
+  const walletBalance = wallet.balance;
+  const bankBalance = bankSavings.balance;
+
+  // Jika tidak memiliki cukup uang sama sekali
+  if (walletBalance < price && bankBalance < price) {
+    const embed = embeds.warnEmbed(
+      'Saldo Tidak Cukup!',
+      `Anda memerlukan **Rp ${price.toLocaleString('id-ID')}** untuk membeli **${itemLabel}**.\n\n` +
+      `• Saldo Dompet: **Rp ${walletBalance.toLocaleString('id-ID')}**\n` +
+      `• Saldo Bank: **Rp ${bankBalance.toLocaleString('id-ID')}**`
+    );
+    if (isInteraction) {
+      if (target.deferred || target.replied) {
+        return target.followUp({ embeds: [embed], flags: 64 });
+      }
+      return target.reply({ embeds: [embed], flags: 64 });
+    }
+    return target.reply({ embeds: [embed] });
+  }
+
+  // Siapkan tombol
+  const pocketBtn = new ButtonBuilder()
+    .setCustomId(`pay_pocket_${userId}`)
+    .setLabel(`🪙 Dompet (Rp ${walletBalance.toLocaleString('id-ID')})`)
+    .setStyle(ButtonStyle.Success)
+    .setDisabled(walletBalance < price);
+
+  const bankBtn = new ButtonBuilder()
+    .setCustomId(`pay_bank_${userId}`)
+    .setLabel(`🏦 Bank (Rp ${bankBalance.toLocaleString('id-ID')})`)
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(bankBalance < price);
+
+  const cancelBtn = new ButtonBuilder()
+    .setCustomId(`pay_cancel_${userId}`)
+    .setLabel('❌ Batal')
+    .setStyle(ButtonStyle.Danger);
+
+  const row = new ActionRowBuilder().addComponents(pocketBtn, bankBtn, cancelBtn);
+
+  const embed = new EmbedBuilder()
+    .setColor(embeds.COLORS.PURPLE)
+    .setTitle('🛒 Konfirmasi Pembayaran')
+    .setDescription(
+      `Pilih metode pembayaran untuk membeli **${itemLabel}** seharga **Rp ${price.toLocaleString('id-ID')}**:\n\n` +
+      `• **Dompet**: Rp ${walletBalance.toLocaleString('id-ID')}\n` +
+      `• **Bank**: Rp ${bankBalance.toLocaleString('id-ID')}`
+    )
+    .setFooter({ text: 'Konfirmasi otomatis batal dalam 45 detik.' });
+
+  let promptMsg;
+  if (isInteraction) {
+    if (target.deferred || target.replied) {
+      promptMsg = await target.followUp({ embeds: [embed], components: [row], flags: 64, fetchReply: true });
+    } else {
+      promptMsg = await target.reply({ embeds: [embed], components: [row], flags: 64, fetchReply: true });
+    }
+  } else {
+    promptMsg = await target.reply({ embeds: [embed], components: [row] });
+  }
+
+  const filter = (i) => i.user.id === userId && i.customId.startsWith('pay_');
+  const collector = promptMsg.createMessageComponentCollector({ filter, time: 45000, max: 1 });
+
+  collector.on('collect', async (i) => {
+    if (i.customId.startsWith(`pay_pocket_`)) {
+      await onConfirm('pocket', i);
+    } else if (i.customId.startsWith(`pay_bank_`)) {
+      await onConfirm('bank', i);
+    } else {
+      const cancelEmb = embeds.warnEmbed('Transaksi Dibatalkan', 'Pembelian telah dibatalkan oleh pengguna.');
+      await i.update({ embeds: [cancelEmb], components: [] }).catch(() => {});
+      if (onCancel) onCancel();
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'time' && collected.size === 0) {
+      const timeoutEmb = embeds.warnEmbed('Waktu Habis', 'Waktu konfirmasi pembayaran telah habis.');
+      if (isInteraction) {
+        await target.editReply({ embeds: [timeoutEmb], components: [] }).catch(() => {});
+      } else {
+        await promptMsg.edit({ embeds: [timeoutEmb], components: [] }).catch(() => {});
+      }
+      if (onCancel) onCancel();
+    }
+  });
+}
+
+/**
  * Auto-refresh permanent admin panels on bot startup.
  * Ini membersihkan channel panel admin dan mengirim ulang panel agar tombolnya selalu aktif setelah restart/deploy.
  */
@@ -1033,71 +1139,83 @@ function initStockMarket(client) {
               const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
               await i.editReply({ embeds: [profileEmbed] });
             } else if (i.customId === 'eco_btn_gacha') {
-              await executeGachaRoll({
-                replyTarget: i,
-                user,
-                guild: i.guild,
-                guildId,
-                client,
-                isInteraction: true,
-                member: i.member
+              const gachaCost = config.gacha.COST || 250;
+              await promptPaymentMethod(i, user.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
+                await executeGachaRoll({
+                  replyTarget: iConfirm,
+                  user,
+                  guild: iConfirm.guild,
+                  guildId,
+                  client,
+                  isInteraction: true,
+                  member: iConfirm.member,
+                  paymentSource
+                });
+                // Perbarui embed utama setelah gacha
+                const wallet2 = economy.getWallet(user.id, guildId);
+                const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+                const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+                await privateMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
               });
-              // Perbarui embed utama setelah gacha
-              const wallet2 = economy.getWallet(user.id, guildId);
-              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-              await privateMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
             } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
               const itemId = parseInt(i.values[0]);
-              await executeRolePurchase({
-                replyTarget: i,
-                user,
-                guild: i.guild,
-                guildId,
-                itemId,
-                isInteraction: true,
-                member: i.member
-              });
-              // Perbarui embed utama setelah pembelian role
-              const wallet2 = economy.getWallet(user.id, guildId);
-              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-              
-              // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
-              const updatedComponents = [];
-              const freshBtnRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
-              );
-              updatedComponents.push(freshBtnRow);
-
-              if (items2.length > 0) {
-                const selectMenu = new StringSelectMenuBuilder()
-                  .setCustomId('eco_select_buy_role')
-                  .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
-
-                const TIER_EMOJIS = {
-                  COMMON: '🟢',
-                  RARE: '🔵',
-                  EPIC: '🟣',
-                  LEGENDARY: '👑',
-                  MYTHIC: '🌟'
-                };
-
-                const options = items2.slice(0, 25).map(item => {
-                  const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-                  const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
-                  return new StringSelectMenuOptionBuilder()
-                    .setLabel(`${emoji} ${item.role_name}`)
-                    .setValue(item.id.toString())
-                    .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
-                });
-
-                selectMenu.addOptions(options);
-                updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+              const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
+              if (!item) {
+                const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role tersebut tidak terdaftar.');
+                return i.reply({ embeds: [emb], flags: 64 });
               }
+              await promptPaymentMethod(i, user.id, guildId, `Role ${item.role_name}`, item.price, async (paymentSource, iConfirm) => {
+                await executeRolePurchase({
+                  replyTarget: iConfirm,
+                  user,
+                  guild: iConfirm.guild,
+                  guildId,
+                  itemId,
+                  isInteraction: true,
+                  member: iConfirm.member,
+                  paymentSource
+                });
+                // Perbarui embed utama setelah pembelian role
+                const wallet2 = economy.getWallet(user.id, guildId);
+                const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+                const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+                
+                // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
+                const updatedComponents = [];
+                const freshBtnRow = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+                  new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+                );
+                updatedComponents.push(freshBtnRow);
 
-              await privateMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+                if (items2.length > 0) {
+                  const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('eco_select_buy_role')
+                    .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+                  const TIER_EMOJIS = {
+                    COMMON: '🟢',
+                    RARE: '🔵',
+                    EPIC: '🟣',
+                    LEGENDARY: '👑',
+                    MYTHIC: '🌟'
+                  };
+
+                  const options = items2.slice(0, 25).map(item => {
+                    const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+                    const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+                    return new StringSelectMenuOptionBuilder()
+                      .setLabel(`${emoji} ${item.role_name}`)
+                      .setValue(item.id.toString())
+                      .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+                  });
+
+                  selectMenu.addOptions(options);
+                  updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+                }
+
+                await privateMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+              });
             }
           } catch (err) {
             console.error('Error handling interaction in shop portal:', err);
@@ -2198,14 +2316,28 @@ function initStockMarket(client) {
                   const qtyStr = submitted.fields.getTextInputValue('buy_qty');
                   const qty = Math.max(1, parseInt(qtyStr) || 1);
 
-                  const res = bm.buyItem(user.id, guildId, itemId, qty);
-                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                  
-                  const updatedData = getBmPanelData(user.id, statusMsg);
-                  await submitted.update({
-                    embeds: updatedData.embeds,
-                    components: [selectRow, exitRow]
-                  }).catch(() => {});
+                  const itemInfo = bm.BM_ITEMS[itemId.toUpperCase()];
+                  if (!itemInfo) throw new Error('Item tidak ditemukan di pasar gelap!');
+                  const totalPrice = itemInfo.price * qty;
+
+                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = bm.buyItem(user.id, guildId, itemId, qty, paymentSource);
+                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                      
+                      const updatedData = getBmPanelData(user.id, statusMsg);
+                      await interaction.editReply({
+                        embeds: updatedData.embeds,
+                        components: [selectRow, exitRow]
+                      }).catch(() => {});
+
+                      const successEmb = embeds.successEmbed('Pembelian Berhasil!', statusMsg);
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 });
                 }
@@ -2496,25 +2628,56 @@ function initStockMarket(client) {
                   try {
                     const pName = submitted.fields.getTextInputValue('pet_name');
                     const pType = submitted.fields.getTextInputValue('pet_type');
-                    const res = pet.adoptPet(user.id, guildId, pName, pType);
-                    await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)], flags: 64 });
-                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+
+                    const eggPrice = 1500;
+                    await promptPaymentMethod(submitted, user.id, guildId, `Adopsi Telur Pet ${pName}`, eggPrice, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
+                        const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
+                        await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
+                        await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                      }
+                    });
                   } catch (err) {
                     await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
                   }
                 }
               } else if (selectedValue === 'pet_manage_revive') {
                 try {
-                  const res = pet.revivePet(user.id, guildId);
-                  const successEmb = embeds.successEmbed(
-                    'Pet Berhasil Dihidupkan! 🏥✨',
-                    `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-                    `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-                    `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-                    `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-                  );
-                  await iPet.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                  const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
+                  if (!petObj) {
+                    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+                  }
+                  const cost = 500 * petObj.level;
+
+                  await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = pet.revivePet(user.id, guildId, paymentSource);
+                      let sisaText = '';
+                      if (paymentSource === 'bank') {
+                        const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                        sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                      } else {
+                        sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                      }
+
+                      const successEmb = embeds.successEmbed(
+                        'Pet Berhasil Dihidupkan! 🏥✨',
+                        `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                        `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                        `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                        `📉 Sisa saldo ${sisaText}.`
+                      );
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                      await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
                 }
@@ -2649,16 +2812,35 @@ function initStockMarket(client) {
               collector.stop();
             } else if (iPet.customId === 'pet_btn_revive') {
               try {
-                const res = pet.revivePet(user.id, guildId);
-                const successEmb = embeds.successEmbed(
-                  'Pet Berhasil Dihidupkan! 🏥✨',
-                  `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-                  `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-                  `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-                  `📉 Sisa dompetmu: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-                );
-                await iPet.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
+                if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+                const cost = 500 * petObj.level;
+
+                await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+                  try {
+                    const res = pet.revivePet(user.id, guildId, paymentSource);
+                    let sisaText = '';
+                    if (paymentSource === 'bank') {
+                      const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                      sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                    } else {
+                      sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                    }
+
+                    const successEmb = embeds.successEmbed(
+                      'Pet Berhasil Dihidupkan! 🏥✨',
+                      `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                      `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                      `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                      `📉 Sisa saldo ${sisaText}.`
+                    );
+                    await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+                    await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                  }
+                });
               } catch (err) {
                 await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
               }
@@ -2967,10 +3149,25 @@ function initStockMarket(client) {
                 try {
                   const qtyStr = submitted.fields.getTextInputValue('buy_qty');
                   const qty = Math.max(1, parseInt(qtyStr) || 1);
-                  
-                  const res = pet.buyItem(user.id, guildId, selectedItemId, qty);
-                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                  await submitted.update(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+
+                  const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                  if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+                  const totalPrice = itemInfo.price * qty;
+
+                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
+                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                      
+                      await privateMsg.edit(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+
+                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
                 }
@@ -3010,9 +3207,19 @@ function initStockMarket(client) {
                 try {
                   const pName = submitted.fields.getTextInputValue('pet_name');
                   const pType = submitted.fields.getTextInputValue('pet_type');
-                  const res = pet.adoptPet(user.id, guildId, pName, pType);
-                  await submitted.reply({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`)], flags: 64 });
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+
+                  const eggPrice = 1500;
+                  await promptPaymentMethod(submitted, user.id, guildId, `Adopsi Telur Pet ${pName}`, eggPrice, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
+                      const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
+                      await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
+                      await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
                 }
@@ -3092,9 +3299,24 @@ function initStockMarket(client) {
                   const qtyStr = submitted.fields.getTextInputValue('buy_qty');
                   const qty = Math.max(1, parseInt(qtyStr) || 1);
                   
-                  const res = pet.buyItem(user.id, guildId, selectedItemId, qty);
-                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                  await submitted.update(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+                  const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                  if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+                  const totalPrice = itemInfo.price * qty;
+
+                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
+                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                      
+                      await privateMsg.edit(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+
+                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
                 }
@@ -3610,10 +3832,34 @@ function initStockMarket(client) {
                   const qtyStr = submitted.fields.getTextInputValue('buy_qty');
                   const qty = Math.max(1, parseInt(qtyStr) || 1);
 
-                  const res = garden.buySeed(user.id, guildId, itemKey, qty);
-                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
-                  
-                  await submitted.update(getGardenShopDataPrivate(user.id, statusMsg)).catch(() => {});
+                  const key = itemKey.toUpperCase();
+                  let pricePerItem = 0;
+                  let itemName = '';
+                  if (key === 'WRAPPING') {
+                    pricePerItem = config.garden.GIFT_WRAPPING_PRICE;
+                    itemName = '🎗️ Kertas Kado Premium';
+                  } else {
+                    const flowerConf = config.garden.FLOWERS[key];
+                    if (!flowerConf) throw new Error('Item tidak valid!');
+                    pricePerItem = flowerConf.seedPrice;
+                    itemName = `🌱 Benih ${flowerConf.name}`;
+                  }
+                  const totalPrice = pricePerItem * qty;
+
+                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemName}`, totalPrice, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = garden.buySeed(user.id, guildId, itemKey, qty, paymentSource);
+                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
+                      
+                      await interaction.editReply(getGardenShopDataPrivate(user.id, statusMsg)).catch(() => {});
+
+                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                    }
+                  });
                 } catch (err) {
                   await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
                 }
@@ -3743,15 +3989,33 @@ function initStockMarket(client) {
           else if (iLot.customId === 'lottery_btn_buy_50') qty = 50;
 
           try {
-            const res = lottery.buyTickets(user.id, guildId, qty);
-            const successEmb = embeds.successEmbed(
-              'Tiket Lotre Berhasil Dibeli! 🎟️✨',
-              `Anda telah membeli **${res.quantity} tiket** seharga **Rp ${res.totalCost.toLocaleString('id-ID')}**!\n` +
-              `📦 Tiket terdaftar atas nama Anda.\n\n` +
-              `💵 Sisa dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**.`
-            );
-            await iLot.reply({ embeds: [successEmb], flags: 64 });
-            await interaction.editReply(getLotteryPanelPrivate(user.id)).catch(() => { });
+            const ticketPrice = config.lottery.TICKET_PRICE || 100;
+            const totalCost = ticketPrice * qty;
+
+            await promptPaymentMethod(iLot, user.id, guildId, `${qty} Tiket Lotre`, totalCost, async (paymentSource, iConfirm) => {
+              try {
+                const res = lottery.buyTickets(user.id, guildId, qty, paymentSource);
+                let sisaText = '';
+                if (paymentSource === 'bank') {
+                  const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                  sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                } else {
+                  sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                }
+
+                const successEmb = embeds.successEmbed(
+                  'Tiket Lotre Berhasil Dibeli! 🎟️✨',
+                  `Anda telah membeli **${res.quantity} tiket** seharga **Rp ${res.totalCost.toLocaleString('id-ID')}**!\n` +
+                  `📦 Tiket terdaftar atas nama Anda.\n\n` +
+                  `📊 Sisa saldo ${sisaText}.`
+                );
+                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                await interaction.editReply(getLotteryPanelPrivate(user.id)).catch(() => { });
+              } catch (err) {
+                const errEmb = embeds.errorEmbed('Pembelian Tiket Gagal!', err.message);
+                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+              }
+            });
           } catch (err) {
             await iLot.reply({ embeds: [embeds.errorEmbed('Pembelian Tiket Gagal!', err.message)], flags: 64 });
           }
@@ -4724,9 +4988,17 @@ async function handlePetCommand(message, client, args) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet buy <nama> <slime/dragon/cat/golem>`\nContoh: `.pet buy Ciko Dragon`')] });
     }
     try {
-      const res = pet.adoptPet(author.id, guildId, petName, petType);
-      const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil dibeli seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>. Ketik \`.pet\` untuk merawat.`);
-      return message.reply({ embeds: [successEmb] });
+      const eggPrice = 1500;
+      await promptPaymentMethod(message, author.id, guildId, `Adopsi Telur Pet ${petName}`, eggPrice, async (paymentSource, iConfirm) => {
+        try {
+          const res = pet.adoptPet(author.id, guildId, petName, petType, paymentSource);
+          const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil dibeli seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>. Ketik \`.pet\` untuk merawat.`);
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+        } catch (err) {
+          const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+        }
+      });
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)] });
     }
@@ -4828,9 +5100,20 @@ async function handlePetCommand(message, client, args) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet buy-item <item_id> [jumlah]`\nContoh: `.pet buy-item water 3`')] });
     }
     try {
-      const res = pet.buyItem(author.id, guildId, itemId, qty);
-      const successEmb = embeds.successEmbed('Pembelian Sukses! 🛒', `Berhasil membeli **${qty} pcs ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Persediaan Anda saat ini: \`${res.newInventoryQty} pcs\`.`);
-      return message.reply({ embeds: [successEmb] });
+      const itemInfo = pet.PET_ITEMS[itemId.toUpperCase()];
+      if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+      const totalPrice = itemInfo.price * qty;
+
+      await promptPaymentMethod(message, author.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+        try {
+          const res = pet.buyItem(author.id, guildId, itemId, qty, paymentSource);
+          const successEmb = embeds.successEmbed('Pembelian Sukses! 🛒', `Berhasil membeli **${qty} pcs ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Persediaan Anda saat ini: \`${res.newInventoryQty} pcs\`.`);
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+        } catch (err) {
+          const errEmb = embeds.errorEmbed('Pembelian Gagal!', err.message);
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+        }
+      });
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Pembelian Gagal!', err.message)] });
     }
@@ -4917,15 +5200,34 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: DOKTER / REVIVE ──
   if (subCommand === 'dokter' || subCommand === 'revive' || subCommand === 'sembuh') {
     try {
-      const res = pet.revivePet(author.id, guildId);
-      const successEmb = embeds.successEmbed(
-        'Pet Berhasil Dihidupkan! 🏥✨',
-        `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-        `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-        `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
-      );
-      return message.reply({ embeds: [successEmb] });
+      const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [author.id, guildId]);
+      if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+      const cost = 500 * petObj.level;
+
+      await promptPaymentMethod(message, author.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+        try {
+          const res = pet.revivePet(author.id, guildId, paymentSource);
+          let sisaText = '';
+          if (paymentSource === 'bank') {
+            const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [author.id, guildId]) || { balance: 0 };
+            sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+          } else {
+            sisaText = `Dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**`;
+          }
+
+          const successEmb = embeds.successEmbed(
+            'Pet Berhasil Dihidupkan! 🏥✨',
+            `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+            `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+            `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+            `📉 Sisa saldo ${sisaText}.`
+          );
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+        } catch (err) {
+          const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+        }
+      });
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)] });
     }
@@ -6092,17 +6394,36 @@ async function handlePetCommand(message, client, args) {
       }
 
       else if (iPet.customId === 'pet_btn_revive') {
-        collector.stop();
         try {
-          const res = pet.revivePet(author.id, guildId);
-          const successEmb = embeds.successEmbed(
-            'Pet Berhasil Dihidupkan! 🏥✨',
-            `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-            `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-            `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-            `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
-          );
-          await iPet.update({ embeds: [successEmb], components: [] });
+          const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [author.id, guildId]);
+          if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+          const cost = 500 * petObj.level;
+
+          await promptPaymentMethod(iPet, author.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+            try {
+              const res = pet.revivePet(author.id, guildId, paymentSource);
+              let sisaText = '';
+              if (paymentSource === 'bank') {
+                const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [author.id, guildId]) || { balance: 0 };
+                sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+              } else {
+                sisaText = `Dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**`;
+              }
+
+              const successEmb = embeds.successEmbed(
+                'Pet Berhasil Dihidupkan! 🏥✨',
+                `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                `📉 Sisa saldo ${sisaText}.`
+              );
+              await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+              collector.stop();
+            } catch (err) {
+              const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+            }
+          });
         } catch (err) {
           await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
         }
@@ -6222,12 +6543,20 @@ async function handlePetCommand(message, client, args) {
             const pName = submitted.fields.getTextInputValue('pet_name');
             const pType = submitted.fields.getTextInputValue('pet_type');
 
-            const res = pet.adoptPet(author.id, guildId, pName, pType);
-            const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
+            const eggPrice = 1500;
+            await promptPaymentMethod(submitted, author.id, guildId, `Adopsi Telur Pet ${pName}`, eggPrice, async (paymentSource, iConfirm) => {
+              try {
+                const res = pet.adoptPet(author.id, guildId, pName, pType, paymentSource);
+                const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
 
-            await submitted.reply({ embeds: [successEmb], flags: 64 });
-            collector.stop();
-            await replyMsg.delete().catch(() => { });
+                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                collector.stop();
+                await replyMsg.delete().catch(() => { });
+              } catch (err) {
+                const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
+                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+              }
+            });
           } catch (err) {
             await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
           }
@@ -6575,14 +6904,38 @@ async function handleGardenCommand(message, client, args, commandName) {
               const qtyStr = submitted.fields.getTextInputValue('buy_qty');
               const qty = Math.max(1, parseInt(qtyStr) || 1);
 
-              const res = garden.buySeed(author.id, guildId, itemKey, qty);
-              const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
-              
-              const walletShop = economy.getWallet(author.id, guildId);
-              await submitted.update({
-                embeds: [embeds.gardenShopEmbed(author, walletShop, statusMsg)],
-                components: [shopRow1, shopRow2, shopRow3]
-              }).catch(() => {});
+              const key = itemKey.toUpperCase();
+              let pricePerItem = 0;
+              let itemName = '';
+              if (key === 'WRAPPING') {
+                pricePerItem = config.garden.GIFT_WRAPPING_PRICE;
+                itemName = '🎗️ Kertas Kado Premium';
+              } else {
+                const flowerConf = config.garden.FLOWERS[key];
+                if (!flowerConf) throw new Error('Item tidak valid!');
+                pricePerItem = flowerConf.seedPrice;
+                itemName = `🌱 Benih ${flowerConf.name}`;
+              }
+              const totalPrice = pricePerItem * qty;
+
+              await promptPaymentMethod(submitted, author.id, guildId, `${qty}x ${itemName}`, totalPrice, async (paymentSource, iConfirm) => {
+                try {
+                  const res = garden.buySeed(author.id, guildId, itemKey, qty, paymentSource);
+                  const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
+                  
+                  const walletShop = economy.getWallet(author.id, guildId);
+                  await replyMsg.edit({
+                    embeds: [embeds.gardenShopEmbed(author, walletShop, statusMsg)],
+                    components: [shopRow1, shopRow2, shopRow3]
+                  }).catch(() => {});
+
+                  const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                  await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                } catch (err) {
+                  const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                  await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                }
+              });
             } catch (err) {
               await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
             }
@@ -6669,15 +7022,41 @@ async function handleGardenCommand(message, client, args, commandName) {
       }
 
       try {
-        const res = garden.buySeed(author.id, guildId, seedName, qty);
-        return message.reply({
-          embeds: [
-            embeds.successEmbed(
+        const key = seedName.toUpperCase();
+        let pricePerItem = 0;
+        let itemName = '';
+        if (key === 'WRAPPING') {
+          pricePerItem = config.garden.GIFT_WRAPPING_PRICE;
+          itemName = '🎗️ Kertas Kado Premium';
+        } else {
+          const flowerConf = config.garden.FLOWERS[key];
+          if (!flowerConf) throw new Error(`Benih '${seedName}' tidak valid! Pilihan benih: mawar, tulip, lavender, sakura, anggrek, atau wrapping (kertas kado).`);
+          pricePerItem = flowerConf.seedPrice;
+          itemName = `🌱 Benih ${flowerConf.name}`;
+        }
+        const totalPrice = pricePerItem * qty;
+
+        await promptPaymentMethod(message, author.id, guildId, `${qty}x ${itemName}`, totalPrice, async (paymentSource, iConfirm) => {
+          try {
+            const res = garden.buySeed(author.id, guildId, seedName, qty, paymentSource);
+            let sisaText = '';
+            if (paymentSource === 'bank') {
+              const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [author.id, guildId]) || { balance: 0 };
+              sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+            } else {
+              sisaText = `Dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**`;
+            }
+
+            const successEmb = embeds.successEmbed(
               '🛒 Pembelian Berhasil!',
               `Anda berhasil membeli **${res.quantityBought}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
-              `💰 Saldo tersisa: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-            )
-          ]
+              `💰 Saldo tersisa: ${sisaText}.`
+            );
+            await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+          } catch (err) {
+            const errEmb = embeds.errorEmbed('Pembelian Gagal!', err.message);
+            await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+          }
         });
       } catch (err) {
         return message.reply({ embeds: [embeds.errorEmbed('Pembelian Gagal!', err.message)] });
@@ -6886,18 +7265,35 @@ async function handleBlackMarketCommand(message, client, args) {
       return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.bm buy <lockpick/mask/meat/soap/brankas> [jumlah]`')] });
     }
 
-    try {
-      const res = bm.buyItem(author.id, guildId, itemId, qtyInput);
-      const successEmb = embeds.successEmbed(
-        'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
-        `Berhasil membeli **${res.quantity}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-        `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
-        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
-      );
-      return message.reply({ embeds: [successEmb] });
-    } catch (err) {
-      return message.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)] });
+    const itemInfo = bm.BM_ITEMS[itemId.toUpperCase()];
+    if (!itemInfo) {
+      return message.reply({ embeds: [embeds.errorEmbed('Item Tidak Ditemukan!', `Barang **${itemId}** tidak tersedia di pasar gelap.`)] });
     }
+    const totalPrice = itemInfo.price * qtyInput;
+
+    await promptPaymentMethod(message, author.id, guildId, `${qtyInput}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+      try {
+        const res = bm.buyItem(author.id, guildId, itemId, qtyInput, paymentSource);
+        let sisaText = '';
+        if (paymentSource === 'bank') {
+          const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [author.id, guildId]) || { balance: 0 };
+          sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+        } else {
+          sisaText = `Dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**`;
+        }
+
+        const successEmb = embeds.successEmbed(
+          'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+          `Berhasil membeli **${res.quantity}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+          `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+          `📉 Sisa saldo ${sisaText}.`
+        );
+        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+      } catch (err) {
+        const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
+        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+      }
+    });
   }
 
   if (subCommand === 'inv' || subCommand === 'inventory') {
@@ -6966,19 +7362,36 @@ async function handleBlackMarketCommand(message, client, args) {
     if (i.customId === 'bm_btn_buy_soap') itemId = 'soap';
     if (i.customId === 'bm_btn_buy_brankas') itemId = 'brankas';
 
-    try {
-      const res = bm.buyItem(author.id, guildId, itemId, 1);
-      const successEmb = embeds.successEmbed(
-        'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
-        `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
-        `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
-        `📉 Sisa dompetmu: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**.`
-      );
-      await i.update({ embeds: [successEmb], components: [] });
-      collector.stop();
-    } catch (err) {
-      await i.reply({ content: `❌ Transaksi Gagal: ${err.message}`, flags: 64 });
+    const itemInfo = bm.BM_ITEMS[itemId.toUpperCase()];
+    if (!itemInfo) {
+      return i.reply({ content: `❌ Item tidak ditemukan!`, flags: 64 });
     }
+    const totalPrice = itemInfo.price;
+
+    await promptPaymentMethod(i, author.id, guildId, `1x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+      try {
+        const res = bm.buyItem(author.id, guildId, itemId, 1, paymentSource);
+        let sisaText = '';
+        if (paymentSource === 'bank') {
+          const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [author.id, guildId]) || { balance: 0 };
+          sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+        } else {
+          sisaText = `Dompet Anda: **Rp ${economy.getWallet(author.id, guildId).balance.toLocaleString('id-ID')}**`;
+        }
+
+        const successEmb = embeds.successEmbed(
+          'Transaksi Pasar Gelap Sukses! 🛒🕵️‍♂️',
+          `Berhasil membeli **1x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n` +
+          `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
+          `📉 Sisa saldo ${sisaText}.`
+        );
+        await iConfirm.update({ embeds: [successEmb], components: [] });
+        collector.stop();
+      } catch (err) {
+        const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
+        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+      }
+    });
   });
 
   collector.on('end', async () => {
@@ -8032,9 +8445,24 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
             const qtyStr = submitted.fields.getTextInputValue('buy_qty');
             const qty = Math.max(1, parseInt(qtyStr) || 1);
             
-            const res = pet.buyItem(author.id, guildId, selectedItemId, qty);
-            const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-            await submitted.update(getShopPanelData(author.id, guildId, statusMsg)).catch(() => {});
+            const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+            if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+            const totalPrice = itemInfo.price * qty;
+
+            await promptPaymentMethod(submitted, author.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+              try {
+                const res = pet.buyItem(author.id, guildId, selectedItemId, qty, paymentSource);
+                const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+                
+                await replyMsg.edit(getShopPanelData(author.id, guildId, statusMsg)).catch(() => {});
+
+                const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+              } catch (err) {
+                const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+              }
+            });
           } catch (err) {
             await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
           }
@@ -8349,12 +8777,20 @@ async function handlePetAdminCommand(message, client, args) {
  * @param {boolean} params.isInteraction - Apakah ini dari interaksi tombol
  * @param {Object} [params.member] - Member Discord (opsional, akan di-fetch jika tidak ada)
  */
-async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isInteraction, member }) {
+async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isInteraction, member, paymentSource = 'pocket' }) {
   const gachaCost = config.gacha.COST || 250;
-  const wallet = economy.getWallet(user.id, guildId);
+  
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+    balance = bankSavings.balance;
+  } else {
+    const wallet = economy.getWallet(user.id, guildId);
+    balance = wallet.balance;
+  }
 
-  if (wallet.balance < gachaCost) {
-    const warnEmb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
+  if (balance < gachaCost) {
+    const warnEmb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${balance.toLocaleString('id-ID')}**.`);
     if (isInteraction) {
       return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
     }
@@ -8420,14 +8856,20 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (roll < zonkRate) {
     // ZONK!
     database.transaction(() => {
-      economy.subtractBalance(user.id, guildId, gachaCost, 'GACHA_SPEND', null);
+      economy.subtractBalance(user.id, guildId, gachaCost, 'GACHA_SPEND', null, paymentSource);
     })();
-    const finalWallet = economy.getWallet(user.id, guildId);
+    let finalBalance;
+    if (paymentSource === 'bank') {
+      const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+      finalBalance = bankSavings.balance;
+    } else {
+      finalBalance = economy.getWallet(user.id, guildId).balance;
+    }
 
     const trashItems = config.gacha.TRASH_ITEMS || [{ name: 'Batu Kali', desc: 'Hanya batu biasa.' }];
     const selectedTrash = trashItems[Math.floor(Math.random() * trashItems.length)];
 
-    const zonkEmbed = embeds.gachaResultEmbed(user, selectedTrash, gachaCost, finalWallet.balance, false);
+    const zonkEmbed = embeds.gachaResultEmbed(user, selectedTrash, gachaCost, finalBalance, false);
     await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [zonkEmbed] });
 
     client.emit('playTtsEvent', {
@@ -8490,17 +8932,23 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (alreadyHas) {
     database.transaction(() => {
       const netCost = gachaCost - cashbackAmount;
-      economy.subtractBalance(user.id, guildId, netCost, 'GACHA_SPEND_CASHBACK', null);
+      economy.subtractBalance(user.id, guildId, netCost, 'GACHA_SPEND_CASHBACK', null, paymentSource);
     })();
-    finalWallet = economy.getWallet(user.id, guildId);
+    let finalBalance;
+    if (paymentSource === 'bank') {
+      const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+      finalBalance = bankSavings.balance;
+    } else {
+      finalBalance = economy.getWallet(user.id, guildId).balance;
+    }
 
-    const winEmbed = embeds.gachaResultEmbed(user, selectedItem, gachaCost, finalWallet.balance, true);
+    const winEmbed = embeds.gachaResultEmbed(user, selectedItem, gachaCost, finalBalance, true);
     winEmbed.setDescription(
       `**${user.username}** baru saja melakukan roll Gacha seharga **Rp ${gachaCost.toLocaleString('id-ID')}**!\n\n` +
       `🎰 **HASIL ROLL:**\n` +
       `🌟 **${selectedItem.role_name}** (\`${selectedItem.tier}\`)\n\n` +
       `💸 **DUPLIKAT CASHBACK!** Karena Anda sudah memiliki role ini, Anda mendapatkan **cashback Rp ${cashbackAmount}**! Saldo Anda dikembalikan sebagian.\n` +
-      `📉 Sisa saldo Anda: **Rp ${finalWallet.balance.toLocaleString('id-ID')}**`
+      `📉 Sisa saldo Anda: **Rp ${finalBalance.toLocaleString('id-ID')}**`
     );
 
     await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
@@ -8513,20 +8961,26 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
       return;
     }
 
+    let finalBalance;
     try {
       database.transaction(() => {
-        economy.subtractBalance(user.id, guildId, gachaCost, 'GACHA_WIN', null);
+        economy.subtractBalance(user.id, guildId, gachaCost, 'GACHA_WIN', null, paymentSource);
         if (selectedItem.stock !== -1) {
           database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [selectedItem.id, guildId]);
         }
       })();
-      finalWallet = economy.getWallet(user.id, guildId);
+      if (paymentSource === 'bank') {
+        const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+        finalBalance = bankSavings.balance;
+      } else {
+        finalBalance = economy.getWallet(user.id, guildId).balance;
+      }
     } catch (dbErr) {
       await memberObj.roles.remove(discordRole).catch(() => { });
       throw dbErr;
     }
 
-    const winEmbed = embeds.gachaResultEmbed(user, selectedItem, gachaCost, finalWallet.balance, true);
+    const winEmbed = embeds.gachaResultEmbed(user, selectedItem, gachaCost, finalBalance, true);
     await editRolling({ content: '🎰 **[ GACHA SELESAI! ]**', embeds: [winEmbed] });
 
     // Broadcast Heboh jika Legendary / Epic / Mythic
@@ -8559,13 +9013,18 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
  * Membeli role dari toko secara langsung.
  * Bisa dipanggil dari text command (.buy-role) maupun select menu interaktif.
  */
-async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, isInteraction, member }) {
+async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, isInteraction, member, paymentSource = 'pocket' }) {
   const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
   const isEphemeral = isInteraction && replyTarget.channelId === SHOP_CHANNEL_ID;
 
   if (!item) {
     const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role atau ID tersebut tidak terdaftar di toko server ini.');
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+    if (isInteraction) {
+      if (replyTarget.deferred || replyTarget.replied) {
+        return replyTarget.followUp({ embeds: [emb], flags: 64 });
+      }
+      return replyTarget.reply({ embeds: [emb], flags: 64 });
+    }
     return replyTarget.reply({ embeds: [emb] });
   }
 
@@ -8595,10 +9054,22 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
     return replyTarget.reply({ embeds: [emb] });
   }
 
-  const wallet = economy.getWallet(user.id, guildId);
-  if (wallet.balance < item.price) {
-    const emb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${wallet.balance.toLocaleString('id-ID')}**.`);
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+    balance = bankSavings.balance;
+  } else {
+    const wallet = economy.getWallet(user.id, guildId);
+    balance = wallet.balance;
+  }
+  if (balance < item.price) {
+    const emb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${balance.toLocaleString('id-ID')}**.`);
+    if (isInteraction) {
+      if (replyTarget.deferred || replyTarget.replied) {
+        return replyTarget.followUp({ embeds: [emb], flags: 64 });
+      }
+      return replyTarget.reply({ embeds: [emb], flags: 64 });
+    }
     return replyTarget.reply({ embeds: [emb] });
   }
 
@@ -8613,24 +9084,33 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   }
 
   // Kurangi koin & stok di database
-  let finalWallet;
+  let finalBalance;
   try {
     database.transaction(() => {
-      economy.subtractBalance(user.id, guildId, item.price, 'SHOP_BUY', null);
+      economy.subtractBalance(user.id, guildId, item.price, 'SHOP_BUY', null, paymentSource);
       if (item.stock !== -1) {
         database.run('UPDATE shop_items SET stock = stock - 1 WHERE id = ? AND guild_id = ?', [item.id, guildId]);
       }
     })();
-    finalWallet = economy.getWallet(user.id, guildId);
+    if (paymentSource === 'bank') {
+      const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+      finalBalance = bankSavings.balance;
+    } else {
+      finalBalance = economy.getWallet(user.id, guildId).balance;
+    }
   } catch (dbErr) {
     // Rollback role jika database gagal
     await memberObj.roles.remove(discordRole).catch(() => { });
     throw dbErr;
   }
 
-  const successEmbed = embeds.rolePurchaseSuccessEmbed(user, item.role_name, item.price, finalWallet.balance, item.tier);
+  const successEmbed = embeds.rolePurchaseSuccessEmbed(user, item.role_name, item.price, finalBalance, item.tier);
   if (isInteraction) {
-    await replyTarget.reply({ embeds: [successEmbed], flags: 64 });
+    if (replyTarget.deferred || replyTarget.replied) {
+      await replyTarget.followUp({ embeds: [successEmbed], flags: 64 });
+    } else {
+      await replyTarget.reply({ embeds: [successEmbed], flags: 64 });
+    }
   } else {
     await replyTarget.reply({ embeds: [successEmbed] });
   }
@@ -9252,15 +9732,12 @@ async function handleEconomyCommands(message, client) {
             finalFine = Math.floor(res.fine * 0.5);
             finalCompensation = Math.round(finalFine * 0.75);
 
-            const rWallet = economy.getWallet(author.id, guildId);
-            const actualFine = Math.min(rWallet.balance, finalFine);
+            const resFine = economy.deductFine(author.id, guildId, finalFine, 'ROB_CHASE_FINE');
+            const actualFine = resFine.totalDeducted;
 
             database.transaction(() => {
-              if (actualFine > 0) {
-                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
-                if (finalCompensation > 0) {
-                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
-                }
+              if (actualFine > 0 && finalCompensation > 0) {
+                economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
               }
               // Log attempt
               database.run(
@@ -9273,7 +9750,7 @@ async function handleEconomyCommands(message, client) {
             resultDesc =
               toolText +
               `Anda melarikan diri lewat **${routeName}** dan berhasil mengecoh kejaran polisi virtual!\n\n` +
-              `💸 **Denda Dipotong 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet Anda)\n` +
+              `💸 **Denda Dipotong 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda)\n` +
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
               `🔒 **Status Tahanan:** Anda bebas dan tidak masuk penjara!`;
           } else {
@@ -9281,15 +9758,12 @@ async function handleEconomyCommands(message, client) {
             finalFine = Math.floor(res.fine * 1.5);
             finalCompensation = Math.round(finalFine * 0.75);
 
-            const rWallet = economy.getWallet(author.id, guildId);
-            const actualFine = Math.min(rWallet.balance, finalFine);
+            const resFine = economy.deductFine(author.id, guildId, finalFine, 'ROB_CHASE_FINE');
+            const actualFine = resFine.totalDeducted;
 
             database.transaction(() => {
-              if (actualFine > 0) {
-                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
-                if (finalCompensation > 0) {
-                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
-                }
+              if (actualFine > 0 && finalCompensation > 0) {
+                economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
               }
               const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
               database.run(
@@ -9309,7 +9783,7 @@ async function handleEconomyCommands(message, client) {
               (res.soapUsed ? '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n' : '') +
               (res.lamboUsed ? '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n' : '') +
               `Anda mencoba melarikan diri lewat **${routeName}**, namun polisi telah memblokade jalan dan langsung menyergap Anda!\n\n` +
-              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}**\n` +
+              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda)\n` +
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
               `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
           }
@@ -9327,15 +9801,12 @@ async function handleEconomyCommands(message, client) {
             const finalFine = Math.floor(res.fine * 1.5);
             const finalCompensation = Math.round(finalFine * 0.75);
 
-            const rWallet = economy.getWallet(author.id, guildId);
-            const actualFine = Math.min(rWallet.balance, finalFine);
+            const resFine = economy.deductFine(author.id, guildId, finalFine, 'ROB_CHASE_FINE');
+            const actualFine = resFine.totalDeducted;
 
             database.transaction(() => {
-              if (actualFine > 0) {
-                economy.subtractBalance(author.id, guildId, actualFine, 'ROB_CHASE_FINE');
-                if (finalCompensation > 0) {
-                  economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
-                }
+              if (actualFine > 0 && finalCompensation > 0) {
+                economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
               }
               const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
               database.run(
@@ -9355,7 +9826,7 @@ async function handleEconomyCommands(message, client) {
               (res.soapUsed ? '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n' : '') +
               (res.lamboUsed ? '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n' : '') +
               `Anda ragu-ragu menentukan arah pelarian, polisi virtual mengepung dan langsung menyergap Anda di tempat!\n\n` +
-              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}**\n` +
+              `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda)\n` +
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
               `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
 
@@ -9475,12 +9946,11 @@ async function handleEconomyCommands(message, client) {
           alarmCollector.stop();
 
           const fine = 400;
-          const rWallet = economy.getWallet(author.id, guildId);
-          const actualFine = Math.min(rWallet.balance, fine);
+          const resFine = economy.deductFine(author.id, guildId, fine, 'ROB_ALARM_FINE');
+          const actualFine = resFine.totalDeducted;
 
           database.transaction(() => {
             if (actualFine > 0) {
-              economy.subtractBalance(author.id, guildId, actualFine, 'ROB_ALARM_FINE');
               economy.addBalance(targetUser.id, guildId, actualFine, 'ROB_ALARM_COMPENSATION');
             }
             const jailUntil = Math.floor(Date.now() / 1000) + 36000;
@@ -9497,7 +9967,7 @@ async function handleEconomyCommands(message, client) {
           const caughtEmb = embeds.errorEmbed(
             '👮 Maling Berhasil Diringkus! 🚓',
             `🚨 <@${iAlarm.user.id}> beraksi cepat dan meringkus <@${author.id}> yang sedang menyelinap!\n\n` +
-            `💸 **Denda Langsung:** **Rp ${actualFine.toLocaleString('id-ID')}** (Dikompensasikan penuh ke korban <@${targetUser.id}>)\n` +
+            `💸 **Denda Langsung:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda & dikompensasikan penuh ke korban <@${targetUser.id}>)\n` +
             `🔒 **Hukuman Penjara:** Dijebloskan ke **sel selama 10 jam**!`
           );
 
@@ -11644,23 +12114,33 @@ async function handleEconomyCommands(message, client) {
         }
 
         try {
-          const res = lottery.buyTickets(author.id, guildId, qty);
-          const successEmbed = new EmbedBuilder()
-            .setColor(embeds.COLORS?.SUCCESS || 0x00FF88)
-            .setTitle('🎟️ Pembelian Tiket Lotre Berhasil!')
-            .setDescription(
-              `🎉 **Terima kasih telah berpartisipasi dalam lotre mingguan!**\n\n` +
-              `👤 **Pembeli:** <@${author.id}>\n` +
-              `🎫 Tiket Dibeli: **${res.quantity} tiket**\n` +
-              `💰 Total Biaya: **Rp ${res.totalCost.toLocaleString('id-ID')}**\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `📊 **Status Lotre Anda:**\n` +
-              `┊ 🎫 Total Tiket Anda: **${res.userTotalTickets} tiket**\n` +
-              `┊ 💰 Total Pool Server: **Rp ${res.pool.total_pool.toLocaleString('id-ID')}** (dari **${res.pool.total_tickets} tiket** terjual)\n\n` +
-              `💡 *Undian otomatis dilakukan setiap hari Minggu pukul 21:00 WIB.*`
-            )
-            .setTimestamp();
-          return message.reply({ embeds: [successEmbed] });
+          const ticketPrice = config.lottery.TICKET_PRICE || 100;
+          const totalCost = ticketPrice * qty;
+
+          await promptPaymentMethod(message, author.id, guildId, `${qty} Tiket Lotre`, totalCost, async (paymentSource, iConfirm) => {
+            try {
+              const res = lottery.buyTickets(author.id, guildId, qty, paymentSource);
+              const successEmbed = new EmbedBuilder()
+                .setColor(embeds.COLORS?.SUCCESS || 0x00FF88)
+                .setTitle('🎟️ Pembelian Tiket Lotre Berhasil!')
+                .setDescription(
+                  `🎉 **Terima kasih telah berpartisipasi dalam lotre mingguan!**\n\n` +
+                  `👤 **Pembeli:** <@${author.id}>\n` +
+                  `🎫 Tiket Dibeli: **${res.quantity} tiket**\n` +
+                  `💰 Total Biaya: **Rp ${res.totalCost.toLocaleString('id-ID')}** (dipotong dari ${paymentSource === 'bank' ? 'Bank' : 'Dompet'})\n` +
+                  `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                  `📊 **Status Lotre Anda:**\n` +
+                  `┊ 🎫 Total Tiket Anda: **${res.userTotalTickets} tiket**\n` +
+                  `┊ 💰 Total Pool Server: **Rp ${res.pool.total_pool.toLocaleString('id-ID')}** (dari **${res.pool.total_tickets} tiket** terjual)\n\n` +
+                  `💡 *Undian otomatis dilakukan setiap hari Minggu pukul 21:00 WIB.*`
+                )
+                .setTimestamp();
+              await iConfirm.update({ embeds: [successEmbed], components: [] }).catch(() => {});
+            } catch (err) {
+              const errEmb = embeds.errorEmbed('Gagal Membeli Tiket Lotre', err.message);
+              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+            }
+          });
         } catch (err) {
           return message.reply({
             embeds: [embeds.errorEmbed('Gagal Membeli Tiket Lotre', err.message)]
@@ -11811,14 +12291,18 @@ async function handleEconomyCommands(message, client) {
             const shopEmbed = embeds.shopEmbed(items, wallet);
             await i.reply({ embeds: [shopEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
-            await executeGachaRoll({
-              replyTarget: i,
-              user: author,
-              guild,
-              guildId,
-              client,
-              isInteraction: true,
-              member: i.member
+            const gachaCost = config.gacha.COST || 250;
+            await promptPaymentMethod(i, author.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
+              await executeGachaRoll({
+                replyTarget: iConfirm,
+                user: author,
+                guild,
+                guildId,
+                client,
+                isInteraction: true,
+                member: iConfirm.member,
+                paymentSource
+              });
             });
           } else if (i.customId === 'eco_btn_trade') {
             const latestStocks = stocks.getStocks(guildId);
@@ -12134,71 +12618,83 @@ async function handleEconomyCommands(message, client) {
             const profileEmbed = embeds.profileEmbed(author, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, bailDebts, porto.items);
             await i.reply({ embeds: [profileEmbed] });
           } else if (i.customId === 'eco_btn_gacha') {
-            await executeGachaRoll({
-              replyTarget: i,
-              user: author,
-              guild,
-              guildId,
-              client,
-              isInteraction: true,
-              member: i.member
+            const gachaCost = config.gacha.COST || 250;
+            await promptPaymentMethod(i, author.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
+              await executeGachaRoll({
+                replyTarget: iConfirm,
+                user: author,
+                guild,
+                guildId,
+                client,
+                isInteraction: true,
+                member: iConfirm.member,
+                paymentSource
+              });
+              // Perbarui embed utama setelah gacha
+              const wallet2 = economy.getWallet(author.id, guildId);
+              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+              await shopMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
             });
-            // Perbarui embed utama setelah gacha
-            const wallet2 = economy.getWallet(author.id, guildId);
-            const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-            await shopMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
           } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
             const itemId = parseInt(i.values[0]);
-            await executeRolePurchase({
-              replyTarget: i,
-              user: author,
-              guild,
-              guildId,
-              itemId,
-              isInteraction: true,
-              member: i.member
-            });
-            // Perbarui embed utama setelah pembelian role
-            const wallet2 = economy.getWallet(author.id, guildId);
-            const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-            
-            // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
-            const updatedComponents = [];
-            const freshBtnRow = new ActionRowBuilder().addComponents(
-              new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
-              new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
-            );
-            updatedComponents.push(freshBtnRow);
-
-            if (items2.length > 0) {
-              const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('eco_select_buy_role')
-                .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
-
-              const TIER_EMOJIS = {
-                COMMON: '🟢',
-                RARE: '🔵',
-                EPIC: '🟣',
-                LEGENDARY: '👑',
-                MYTHIC: '🌟'
-              };
-
-              const options = items2.slice(0, 25).map(item => {
-                const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-                const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
-                return new StringSelectMenuOptionBuilder()
-                  .setLabel(`${emoji} ${item.role_name}`)
-                  .setValue(item.id.toString())
-                  .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
-              });
-
-              selectMenu.addOptions(options);
-              updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+            const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
+            if (!item) {
+              const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role tersebut tidak terdaftar.');
+              return i.reply({ embeds: [emb], flags: 64 });
             }
+            await promptPaymentMethod(i, author.id, guildId, `Role ${item.role_name}`, item.price, async (paymentSource, iConfirm) => {
+              await executeRolePurchase({
+                replyTarget: iConfirm,
+                user: author,
+                guild,
+                guildId,
+                itemId,
+                isInteraction: true,
+                member: iConfirm.member,
+                paymentSource
+              });
+              // Perbarui embed utama setelah pembelian role
+              const wallet2 = economy.getWallet(author.id, guildId);
+              const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+              
+              // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
+              const updatedComponents = [];
+              const freshBtnRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+              );
+              updatedComponents.push(freshBtnRow);
 
-            await shopMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+              if (items2.length > 0) {
+                const selectMenu = new StringSelectMenuBuilder()
+                  .setCustomId('eco_select_buy_role')
+                  .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+                const TIER_EMOJIS = {
+                  COMMON: '🟢',
+                  RARE: '🔵',
+                  EPIC: '🟣',
+                  LEGENDARY: '👑',
+                  MYTHIC: '🌟'
+                };
+
+                const options = items2.slice(0, 25).map(item => {
+                  const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+                  const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+                  return new StringSelectMenuOptionBuilder()
+                    .setLabel(`${emoji} ${item.role_name}`)
+                    .setValue(item.id.toString())
+                    .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+                });
+
+                selectMenu.addOptions(options);
+                updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+              }
+
+              await shopMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+            });
           }
         } catch (err) {
           console.error('Error handling interaction in shop text command:', err);
@@ -12275,24 +12771,27 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ embeds: [embeds.warnEmbed('Item Tidak Ditemukan!', `Item role atau ID tersebut tidak terdaftar di toko server ini.`)] });
       }
 
-      await executeRolePurchase({
-        replyTarget: message,
-        user: author,
-        guild,
-        guildId,
-        itemId: item.id,
-        isInteraction: false,
-        member: message.member
-      });
-
-      // Picu suara TTS jika bot tersambung di voice channel & jika tier tinggi
-      if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
-        client.emit('playTtsEvent', {
+      await promptPaymentMethod(message, author.id, guildId, `Role ${item.role_name}`, item.price, async (paymentSource, iConfirm) => {
+        await executeRolePurchase({
+          replyTarget: iConfirm,
+          user: author,
+          guild,
           guildId,
-          text: `Perhatian semuanya! Sultan ${author.username} baru saja membeli role ${item.tier} ${item.role_name}! Mari berikan penghormatan tinggi!`,
-          lang: 'id'
+          itemId: item.id,
+          isInteraction: true,
+          member: message.member,
+          paymentSource
         });
-      }
+
+        // Picu suara TTS jika bot tersambung di voice channel & jika tier tinggi
+        if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
+          client.emit('playTtsEvent', {
+            guildId,
+            text: `Perhatian semuanya! Sultan ${author.username} baru saja membeli role ${item.tier} ${item.role_name}! Mari berikan penghormatan tinggi!`,
+            lang: 'id'
+          });
+        }
+      });
       return true;
     }
 
@@ -12300,14 +12799,18 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .gacha-role
     // ═══════════════════════════════════════════════════
     if (commandName === 'gacha-role') {
-      await executeGachaRoll({
-        replyTarget: message,
-        user: author,
-        guild,
-        guildId,
-        client,
-        isInteraction: false,
-        member: message.member
+      const gachaCost = config.gacha.COST || 250;
+      await promptPaymentMethod(message, author.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
+        await executeGachaRoll({
+          replyTarget: iConfirm,
+          user: author,
+          guild,
+          guildId,
+          client,
+          isInteraction: true,
+          member: message.member,
+          paymentSource
+        });
       });
       return true;
     }

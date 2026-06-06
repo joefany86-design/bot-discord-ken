@@ -666,7 +666,7 @@ function sanitizePetName(petName) {
 /**
  * Mengadopsi / membeli telur pet baru seharga Rp 1.500.
  */
-function adoptPet(userId, guildId, petName, petType) {
+function adoptPet(userId, guildId, petName, petType, paymentSource = 'pocket') {
   // Validasi input
   if (!petType || typeof petType !== 'string') {
     throw new Error('Jenis pet harus berupa teks yang valid!');
@@ -690,20 +690,37 @@ function adoptPet(userId, guildId, petName, petType) {
 
   // Kurangi saldo koin Rp 1.500
   const eggPrice = 1500;
-  economy.subtractBalance(userId, guildId, eggPrice, 'PET_ADOPT');
+  
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
 
-  const now = Math.floor(Date.now() / 1000);
-  const hatchDuration = 1 * 3600; // 1 Jam menetaskan telur
-  const hatchAt = now + hatchDuration;
+  if (balance < eggPrice) {
+    throw new Error(`Saldo koin Anda tidak mencukupi untuk mengadopsi telur pet seharga Rp ${eggPrice.toLocaleString('id-ID')}!`);
+  }
 
-  // Jika ini pet pertama, set is_active = 1, jika tidak set 0
-  const isActive = petsCount === 0 ? 1 : 0;
+  db.transaction(() => {
+    economy.subtractBalance(userId, guildId, eggPrice, 'PET_ADOPT', null, paymentSource);
 
-  db.run(
-    `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active)
-     VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, ?)`,
-    [userId, guildId, sanitizedName, typeUpper, now, hatchAt, now, isActive]
-  );
+    const now = Math.floor(Date.now() / 1000);
+    const hatchDuration = 1 * 3600; // 1 Jam menetaskan telur
+    const hatchAt = now + hatchDuration;
+
+    // Jika ini pet pertama, set is_active = 1, jika tidak set 0
+    const isActive = petsCount === 0 ? 1 : 0;
+
+    db.run(
+      `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active)
+       VALUES (?, ?, ?, ?, 'EGG', 1, 0, 100, 100, 100, 100, ?, ?, ?, ?)`,
+      [userId, guildId, sanitizedName, typeUpper, now, hatchAt, now, isActive]
+    );
+  })();
 
   return db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, sanitizedName]);
 }
@@ -773,7 +790,7 @@ function getItemQuantity(userId, guildId, itemId) {
 /**
  * Membeli item supplies pet dari pet shop.
  */
-function buyItem(userId, guildId, itemId, quantity = 1) {
+function buyItem(userId, guildId, itemId, quantity = 1, paymentSource = 'pocket') {
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) {
     throw new Error('Jumlah pembelian harus minimal 1!');
@@ -785,6 +802,19 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
   }
 
   const totalPrice = item.price * qty;
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
+
+  if (balance < totalPrice) {
+    throw new Error(`Saldo koin Anda tidak mencukupi untuk membeli ${qty}x ${item.name} seharga Rp ${totalPrice.toLocaleString('id-ID')}!`);
+  }
 
   if (item.type === 'ACCESSORY') {
     if (qty !== 1) {
@@ -804,7 +834,7 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
 
     db.transaction(() => {
       // Kurangi koin
-      economy.subtractBalance(userId, guildId, totalPrice, 'PET_ACCESSORY_BUY');
+      economy.subtractBalance(userId, guildId, totalPrice, 'PET_ACCESSORY_BUY', null, paymentSource);
 
       // Pasang ke pet
       db.run(
@@ -824,7 +854,7 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
 
   db.transaction(() => {
     // Kurangi koin
-    economy.subtractBalance(userId, guildId, totalPrice, 'PET_SHOP_BUY');
+    economy.subtractBalance(userId, guildId, totalPrice, 'PET_SHOP_BUY', null, paymentSource);
 
     // Tambah kuantitas ke inventory pet
     const exist = db.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, item.id]);
@@ -2848,7 +2878,7 @@ function trainPet(userId, guildId) {
   };
 }
 
-function revivePet(userId, guildId) {
+function revivePet(userId, guildId, paymentSource = 'pocket') {
   const petObj = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
   if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
   if (petObj.status !== 'DEAD') {
@@ -2856,9 +2886,18 @@ function revivePet(userId, guildId) {
   }
 
   const cost = 500 * petObj.level;
-  const wallet = economy.getWallet(userId, guildId);
-  if (wallet.balance < cost) {
-    throw new Error(`Saldo dompet tidak mencukupi! Menghidupkan kembali pet Lv. ${petObj.level} membutuhkan Rp ${cost.toLocaleString('id-ID')} (saldo Anda: Rp ${wallet.balance.toLocaleString('id-ID')}).`);
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
+
+  if (balance < cost) {
+    throw new Error(`Saldo tidak mencukupi! Menghidupkan kembali pet Lv. ${petObj.level} membutuhkan Rp ${cost.toLocaleString('id-ID')} (saldo Anda: Rp ${balance.toLocaleString('id-ID')}).`);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -2866,7 +2905,7 @@ function revivePet(userId, guildId) {
 
   db.transaction(() => {
     // Kurangi koin
-    economy.subtractBalance(userId, guildId, cost, 'PET_REVIVE');
+    economy.subtractBalance(userId, guildId, cost, 'PET_REVIVE', null, paymentSource);
 
     // Revive pet
     db.run(

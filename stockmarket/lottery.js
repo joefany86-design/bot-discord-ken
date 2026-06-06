@@ -50,7 +50,7 @@ function getUserTickets(userId, guildId) {
 /**
  * Membeli tiket lotre.
  */
-function buyTickets(userId, guildId, quantity) {
+function buyTickets(userId, guildId, quantity, paymentSource = 'pocket') {
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) {
     throw new Error('Jumlah tiket harus minimal 1!');
@@ -59,16 +59,25 @@ function buyTickets(userId, guildId, quantity) {
   const ticketPrice = config.lottery.TICKET_PRICE || 100;
   const totalCost = ticketPrice * qty;
 
-  const wallet = economy.getWallet(userId, guildId);
-  if (wallet.balance < totalCost) {
-    throw new Error(`❌ Saldo dompet tidak mencukupi! Anda butuh Rp ${totalCost.toLocaleString('id-ID')} untuk membeli ${qty} tiket (@ Rp ${ticketPrice.toLocaleString('id-ID')}/tiket). Saldo Anda saat ini Rp ${wallet.balance.toLocaleString('id-ID')}.`);
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
+
+  if (balance < totalCost) {
+    throw new Error(`❌ Saldo tidak mencukupi! Anda butuh Rp ${totalCost.toLocaleString('id-ID')} untuk membeli ${qty} tiket (@ Rp ${ticketPrice.toLocaleString('id-ID')}/tiket). Saldo Anda saat ini Rp ${balance.toLocaleString('id-ID')}.`);
   }
 
   const weekStart = getCurrentWeekStart();
 
   db.transaction(() => {
     // Kurangi saldo dompet
-    economy.subtractBalance(userId, guildId, totalCost, 'LOTTERY_BUY');
+    economy.subtractBalance(userId, guildId, totalCost, 'LOTTERY_BUY', null, paymentSource);
 
     // Update pool
     const existPool = db.get(

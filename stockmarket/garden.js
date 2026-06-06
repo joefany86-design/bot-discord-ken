@@ -359,7 +359,7 @@ function sellFlowers(userId, guildId, flowerKeyInput, quantityInput) {
 /**
  * Membeli benih bunga dari toko kebun.
  */
-function buySeed(userId, guildId, seedKeyInput, quantityInput) {
+function buySeed(userId, guildId, seedKeyInput, quantityInput, paymentSource = 'pocket') {
   const seedKey = seedKeyInput.toUpperCase();
   
   let targetItem = null;
@@ -386,15 +386,23 @@ function buySeed(userId, guildId, seedKeyInput, quantityInput) {
   }
 
   const totalCost = qty * pricePerItem;
-  const wallet = economy.getWallet(userId, guildId);
+  let balance = 0;
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
 
-  if (wallet.balance < totalCost) {
-    throw new Error(`Saldo dompet tidak mencukupi! Total biaya: Rp ${totalCost.toLocaleString('id-ID')}. Saldo Anda: Rp ${wallet.balance.toLocaleString('id-ID')}`);
+  if (balance < totalCost) {
+    throw new Error(`Saldo tidak mencukupi! Total biaya: Rp ${totalCost.toLocaleString('id-ID')}. Saldo Anda: Rp ${balance.toLocaleString('id-ID')}`);
   }
 
   db.transaction(() => {
     // Potong koin
-    economy.subtractBalance(userId, guildId, totalCost, 'GARDEN_BUY');
+    economy.subtractBalance(userId, guildId, totalCost, 'GARDEN_BUY', null, paymentSource);
     // Tambah benih ke inventory
     updateInventory(userId, guildId, targetItem, qty);
   })();

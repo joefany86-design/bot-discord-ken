@@ -49,7 +49,7 @@ function getItemQty(userId, guildId, itemId) {
 /**
  * Membeli barang Black Market.
  */
-function buyItem(userId, guildId, itemId, quantity = 1) {
+function buyItem(userId, guildId, itemId, quantity = 1, paymentSource = 'pocket') {
   const qty = parseInt(quantity);
   if (isNaN(qty) || qty <= 0) {
     throw new Error('Jumlah pembelian harus minimal 1!');
@@ -72,16 +72,25 @@ function buyItem(userId, guildId, itemId, quantity = 1) {
     }
   }
 
-  const wallet = economy.getWallet(userId, guildId);
   const totalPrice = item.price * qty;
+  let balance = 0;
 
-  if (wallet.balance < totalPrice) {
+  if (paymentSource === 'bank') {
+    const bank = require('./bank');
+    const savings = bank.getSavings(userId, guildId);
+    balance = savings.balance;
+  } else {
+    const wallet = economy.getWallet(userId, guildId);
+    balance = wallet.balance;
+  }
+
+  if (balance < totalPrice) {
     throw new Error(`Saldo koin Anda tidak mencukupi untuk membeli ${qty}x ${item.name} seharga Rp ${totalPrice.toLocaleString('id-ID')}!`);
   }
 
   db.transaction(() => {
     // Kurangi Koin
-    economy.subtractBalance(userId, guildId, totalPrice, 'BM_BUY');
+    economy.subtractBalance(userId, guildId, totalPrice, 'BM_BUY', null, paymentSource);
 
     // Masukkan ke Inventory
     const exist = db.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, item.id]);
