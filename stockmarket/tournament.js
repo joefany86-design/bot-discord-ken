@@ -1108,13 +1108,13 @@ async function endTournament(guildId, championId, runnerUpId, client) {
   if (guild) {
     if (announceChanId) {
       const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
-      if (announceChan) {
+      if (announceChan && typeof announceChan.send === 'function') {
         await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => {});
       }
     }
     if (catalogChanId) {
       const catalogChan = guild.channels.cache.get(catalogChanId) || await guild.channels.fetch(catalogChanId).catch(() => null);
-      if (catalogChan) {
+      if (catalogChan && typeof catalogChan.send === 'function') {
         await catalogChan.send({ embeds: [celebrationEmbed] }).catch(() => {});
       }
     }
