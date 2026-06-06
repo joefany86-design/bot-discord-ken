@@ -397,7 +397,8 @@ document.addEventListener('DOMContentLoaded', () => {
     stocks: document.getElementById('menu-stocks'),
     auctions: document.getElementById('menu-auctions'),
     logs: document.getElementById('menu-logs'),
-    promos: document.getElementById('menu-promos')
+    promos: document.getElementById('menu-promos'),
+    broadcast: document.getElementById('menu-broadcast')
   };
 
   const sections = {
@@ -408,7 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
     stocks: document.getElementById('section-stocks'),
     auctions: document.getElementById('section-auctions'),
     logs: document.getElementById('section-logs'),
-    promos: document.getElementById('section-promos')
+    promos: document.getElementById('section-promos'),
+    broadcast: document.getElementById('section-broadcast')
   };
 
   // Dashboard elements
@@ -607,6 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchDetailedStats(); // Loads backups selector
     } else if (activeTabId === 'promos') {
       fetchPromos();
+    } else if (activeTabId === 'broadcast') {
+      fetchBroadcasts();
     }
   }
 
@@ -866,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
         targetUserInp.value = user.user_id;
         giveModal.classList.add('active');
         setGiveCategory('coin');
+        fetchAndDisplayInventory(user.user_id);
       });
 
       membersList.appendChild(tr);
@@ -1920,6 +1925,218 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         if (err.message !== 'Unauthorized') showToast('Gagal membuat kode promo', 'error');
       }
+    });
+  }
+
+  // --- Broadcast Terminal Logic ---
+  const broadcastForm = document.getElementById('broadcast-form');
+  const bcChannelPreset = document.getElementById('bc-channel-preset');
+  const bcChannelIdInput = document.getElementById('bc-channel-id-input');
+  const bcMessageInput = document.getElementById('bc-message-input');
+  const broadcastsTableBody = document.getElementById('broadcasts-table-body');
+
+  if (bcChannelPreset && bcChannelIdInput) {
+    bcChannelPreset.addEventListener('change', () => {
+      if (bcChannelPreset.value) {
+        bcChannelIdInput.value = bcChannelPreset.value;
+      }
+    });
+  }
+
+  async function fetchBroadcasts() {
+    if (!broadcastsTableBody) return;
+    try {
+      const res = await secureFetch('/api/admin/broadcast');
+      const data = await res.json();
+      if (data.success) {
+        renderBroadcasts(data.broadcasts);
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') showToast('Gagal memuat riwayat broadcast', 'error');
+    }
+  }
+
+  function renderBroadcasts(broadcasts) {
+    if (broadcasts.length === 0) {
+      broadcastsTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+            ℹ️ Belum ada riwayat broadcast di database.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    broadcastsTableBody.innerHTML = broadcasts.map(b => {
+      const dateText = formatDate(new Date(b.created_at * 1000).toISOString());
+      let statusBadge = '';
+      if (b.status === 'PENDING') {
+        statusBadge = '<span class="badge badge-gold">⏳ PENDING</span>';
+      } else if (b.status === 'SENT') {
+        statusBadge = '<span class="badge badge-emerald">✅ SENT</span>';
+      } else {
+        statusBadge = '<span class="badge badge-red">❌ FAILED</span>';
+      }
+
+      return `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 10px; font-size: 12px; color: var(--color-text-muted);">${dateText}</td>
+          <td style="padding: 10px; font-family: monospace; font-size: 12px;">${b.channel_id}</td>
+          <td style="padding: 10px; font-size: 13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${b.message}">${b.message}</td>
+          <td style="padding: 10px;">${statusBadge}</td>
+          <td style="padding: 10px; font-size: 12px; color: var(--color-red);">${b.error_message || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (broadcastForm) {
+    broadcastForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const channelId = bcChannelIdInput.value.trim();
+      const message = bcMessageInput.value.trim();
+
+      if (!channelId || !message) {
+        showToast('ID Saluran dan Pesan tidak boleh kosong!', 'error');
+        return;
+      }
+
+      const submitBtn = broadcastForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'MENGIRIM BROADCAST...';
+
+      try {
+        const res = await secureFetch('/api/admin/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelId, message })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          if (window.SoundEffects) SoundEffects.playSuccess();
+          bcMessageInput.value = '';
+          fetchBroadcasts();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (err) {
+        if (err.message !== 'Unauthorized') showToast('Gagal mengirim broadcast', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '⚡ KIRIM BROADCAST SEKARANG';
+      }
+    });
+  }
+
+  // --- Citizen Inventory Manager Logic ---
+  const citizenInventoryList = document.getElementById('citizen-inventory-list');
+
+  async function fetchAndDisplayInventory(userId) {
+    if (!citizenInventoryList) return;
+    citizenInventoryList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--color-text-muted); padding: 8px;">Memuat inventory...</td></tr>';
+    
+    try {
+      const res = await secureFetch(`/api/admin/inventory?userId=${userId}`);
+      const data = await res.json();
+      if (data.success) {
+        renderInventoryList(userId, data.userInventory, data.petInventory);
+      } else {
+        citizenInventoryList.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--color-red); padding: 8px;">Gagal memuat: ${data.message}</td></tr>`;
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') {
+        citizenInventoryList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--color-red); padding: 8px;">Koneksi error memuat inventory.</td></tr>';
+      }
+    }
+  }
+
+  function renderInventoryList(userId, userInv, petInv) {
+    citizenInventoryList.innerHTML = '';
+    
+    if (userInv.length === 0 && petInv.length === 0) {
+      citizenInventoryList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--color-text-muted); padding: 8px;">Tas warga kosong (0 item).</td></tr>';
+      return;
+    }
+
+    const allRows = [];
+
+    const getAssetName = (id) => {
+      const asset = availableAssets.find(a => a.id === id);
+      return asset ? asset.name : id;
+    };
+
+    userInv.forEach(item => {
+      allRows.push({
+        id: item.item_id,
+        name: getAssetName(item.item_id),
+        type: '🎒 Tas Warga',
+        category: 'item',
+        quantity: item.quantity
+      });
+    });
+
+    petInv.forEach(item => {
+      allRows.push({
+        id: item.item_id,
+        name: getAssetName(item.item_id),
+        type: '🐾 Item Pet',
+        category: 'pet_item',
+        quantity: item.quantity
+      });
+    });
+
+    allRows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border-color)';
+      tr.innerHTML = `
+        <td style="padding: 6px 10px; font-weight: 500; color: var(--color-text-light);">${row.name}</td>
+        <td style="padding: 6px 10px; color: var(--color-text-muted);">${row.type}</td>
+        <td style="padding: 6px 10px; text-align: center; font-weight: bold;">${row.quantity}</td>
+        <td style="padding: 6px 10px; text-align: center;">
+          <button class="btn btn-secondary btn-sm btn-inv-adjust" data-change="-1" style="padding: 2px 6px; font-size: 10px; min-width: 20px;">-</button>
+          <button class="btn btn-secondary btn-sm btn-inv-adjust" data-change="1" style="padding: 2px 6px; font-size: 10px; min-width: 20px;">+</button>
+        </td>
+      `;
+
+      tr.querySelectorAll('.btn-inv-adjust').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const change = parseInt(btn.getAttribute('data-change'), 10);
+          
+          btn.disabled = true;
+          try {
+            const response = await secureFetch('/api/give', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: userId,
+                category: row.category,
+                target: row.id,
+                amount: change
+              })
+            });
+
+            const resData = await response.json();
+            if (resData.success) {
+              showToast(`${row.name} berhasil diubah!`, 'success');
+              if (window.SoundEffects) SoundEffects.playSuccess();
+              fetchAndDisplayInventory(userId);
+            } else {
+              showToast(resData.message, 'error');
+              btn.disabled = false;
+            }
+          } catch {
+            showToast('Gagal mengubah kuantitas item', 'error');
+            btn.disabled = false;
+          }
+        });
+      });
+
+      citizenInventoryList.appendChild(tr);
     });
   }
 

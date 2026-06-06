@@ -1507,3 +1507,77 @@ a {
   border-radius: 2px;
 }
 
+/* Additional Custom Badges & Status */
+.badge-gold {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-gold);
+}
+
+/* Broadcast Terminal & Custom UI Elements */
+#bc-message-input {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: #58a6ff;
+  line-height: 1.5;
+}
+
+#bc-message-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+#bc-message-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+/* Inventory Manager Modal layout */
+#citizen-inventory-manager .table-container::-webkit-scrollbar {
+  width: 4px;
+}
+#citizen-inventory-manager .table-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+#citizen-inventory-list tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+#citizen-inventory-list td {
+  padding: 8px 12px;
+}
+
+.btn-inv-adjust {
+  transition: transform 0.1s ease;
+}
+
+.btn-inv-adjust:active {
+  transform: scale(0.9);
+}
+
+/* Micro animations for tabs */
+.menu-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s ease-in-out;
+}
+
+.menu-item:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+

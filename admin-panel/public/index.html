@@ -79,6 +79,10 @@
           <span class="menu-icon">🎟️</span>
           <span class="menu-text">Voucher & Promo</span>
         </a>
+        <a href="#broadcast" class="menu-item" id="menu-broadcast">
+          <span class="menu-icon">💬</span>
+          <span class="menu-text">Broadcast Terminal</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -804,6 +808,71 @@
         </div>
       </section>
 
+      <!-- Section 9: Broadcast Terminal -->
+      <section id="section-broadcast" class="content-section">
+        <div class="section-header">
+          <h2>💬 Interactive Bot Broadcast & Chat Terminal</h2>
+          <p>Kirim pesan pengumuman atau chatting atas nama bot ke channel Discord target secara instan.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <!-- Form to send a message -->
+          <div class="details-card">
+            <h3>💬 Kirim Pesan Baru</h3>
+            <form id="broadcast-form" style="margin-top: 15px;">
+              <div class="form-group">
+                <label>Pilih Saluran Discord (Preset):</label>
+                <select id="bc-channel-preset" class="form-control">
+                  <option value="">-- Saluran Kustom --</option>
+                  <option value="1510121069783023646">🛍️ Portal Toko (SHOP_PORTAL)</option>
+                  <option value="1509762623917265137">🐾 Ekspedisi Pet (PET_EXPEDITION)</option>
+                  <option value="1508417228624887928">🤖 Perintah Bot (BOT_COMMAND)</option>
+                  <option value="1422642326798598348">👋 Sambutan Warga (GREETING)</option>
+                  <option value="1509480324373942272">📢 Laporan Harian (REPORT_CHANNEL)</option>
+                  <option value="1510230591860113418">👑 Leaderboard Kaya (LEADERBOARD_RICH)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>ID Saluran Discord (Channel ID) Kustom:</label>
+                <input type="text" id="bc-channel-id-input" class="form-control" placeholder="Contoh: 1508417228624887928" required>
+              </div>
+              <div class="form-group">
+                <label>Pesan Broadcast (Mendukung Format Discord / Markdown):</label>
+                <textarea id="bc-message-input" class="form-control" rows="6" placeholder="Tulis pesan Anda di sini... Gunakan @everyone atau formatting text jika diperlukan." required style="resize: vertical; min-height: 120px; font-family: monospace;"></textarea>
+              </div>
+              <div class="form-actions" style="margin-top: 20px;">
+                <button type="submit" class="btn btn-emerald btn-block">⚡ KIRIM BROADCAST SEKARANG</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- History of broadcasts -->
+          <div class="details-card" style="flex: 1.5;">
+            <h3>📜 Riwayat Broadcast Terkini</h3>
+            <div class="table-container" style="margin-top: 15px;">
+              <table class="members-table">
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Saluran</th>
+                    <th>Pesan</th>
+                    <th>Status</th>
+                    <th>Detail / Error</th>
+                  </tr>
+                </thead>
+                <tbody id="broadcasts-table-body">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 20px; color: var(--color-text-muted);">
+                      Memuat data riwayat broadcast...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -868,6 +937,31 @@
             <button class="btn btn-preset" data-val="5">+5 pcs</button>
             <button class="btn btn-preset" data-val="10">+10 pcs</button>
             <button class="btn btn-preset" data-val="-1">-1 pc</button>
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 8px 0;">
+
+        <!-- Citizen Inventory Manager Section -->
+        <label>🎒 Manajemen Inventory Warga:</label>
+        <div id="citizen-inventory-manager" style="margin-top: 4px; margin-bottom: 12px;">
+          <div style="font-size: 11px; color: var(--color-text-muted); margin-bottom: 6px;">Item Tas & Item Pet Aktif Saat Ini:</div>
+          <div class="table-container" style="max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px; margin-bottom: 0;">
+            <table class="members-table" style="font-size: 12px; width: 100%;">
+              <thead>
+                <tr style="background: rgba(0,0,0,0.3);">
+                  <th style="padding: 6px 10px; font-size: 11px;">Nama Aset</th>
+                  <th style="padding: 6px 10px; font-size: 11px;">Jenis</th>
+                  <th style="padding: 6px 10px; font-size: 11px; text-align: center;">Jumlah</th>
+                  <th style="padding: 6px 10px; font-size: 11px; text-align: center;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="citizen-inventory-list">
+                <tr>
+                  <td colspan="4" style="text-align: center; color: var(--color-text-muted); padding: 8px;">Memuat inventory...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

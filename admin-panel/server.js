@@ -43,6 +43,23 @@ try {
   console.error("⚠️ Web Server wallets table migration safeguard failed:", migErr.message);
 }
 
+// Ensure bot_broadcasts table exists
+try {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS bot_broadcasts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      channel_id TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'PENDING',
+      error_message TEXT DEFAULT '',
+      created_at INTEGER DEFAULT (strftime('%s','now'))
+    )
+  `).run();
+  console.log("✅ Web Server verified bot_broadcasts table schema.");
+} catch (broadErr) {
+  console.error("⚠️ Web Server bot_broadcasts safeguard failed:", broadErr.message);
+}
+
 const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -779,6 +796,45 @@ const server = http.createServer((req, res) => {
           else {
             sendJSON(res, 400, { success: false, message: 'Invalid action' });
           }
+        } catch (err) {
+          sendJSON(res, 500, { success: false, message: err.message });
+        }
+      });
+    }
+    else if (pathname === '/api/admin/inventory' && req.method === 'GET') {
+      try {
+        const userId = parsedUrl.searchParams.get('userId');
+        if (!userId) {
+          return sendJSON(res, 400, { success: false, message: 'Missing userId parameter' });
+        }
+        const userInventory = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ?').all(userId, config.TARGET_GUILD_ID);
+        const petInventory = db.prepare('SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ?').all(userId, config.TARGET_GUILD_ID);
+        sendJSON(res, 200, { success: true, userInventory, petInventory });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
+    else if (pathname === '/api/admin/broadcast' && req.method === 'GET') {
+      try {
+        const broadcasts = db.prepare('SELECT * FROM bot_broadcasts ORDER BY created_at DESC LIMIT 30').all();
+        sendJSON(res, 200, { success: true, broadcasts });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
+    else if (pathname === '/api/admin/broadcast' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const { channelId, message } = JSON.parse(body);
+          if (!channelId || !message) {
+            return sendJSON(res, 400, { success: false, message: 'Missing channelId or message' });
+          }
+          db.prepare('INSERT INTO bot_broadcasts (channel_id, message, status) VALUES (?, ?, ?)')
+            .run(channelId, message, 'PENDING');
+          appendLog(`Queued broadcast to channel ${channelId}`);
+          sendJSON(res, 200, { success: true, message: 'Broadcast queued successfully!' });
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });
         }

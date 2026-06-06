@@ -645,6 +645,22 @@ function initSchema() {
         addColumn('wallets', 'username', "TEXT DEFAULT ''");
         addColumn('wallets', 'display_name', "TEXT DEFAULT ''");
       }
+    },
+    {
+      version: 6,
+      description: "Membuat tabel bot_broadcasts untuk fitur chat/broadcast terminal",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS bot_broadcasts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel_id TEXT NOT NULL,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'PENDING',
+            error_message TEXT DEFAULT '',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+      }
     }
   ];
 

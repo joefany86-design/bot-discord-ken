@@ -841,6 +841,29 @@ function initStockMarket(client) {
   // Jalankan realtime leaderboard untuk channel 1510230591860113418
   startRealtimeLeaderboard(client);
 
+  // Polling table bot_broadcasts for PENDING broadcasts
+  setInterval(async () => {
+    try {
+      const dbModule = require('./database');
+      const pendingBroadcasts = dbModule.db.prepare("SELECT * FROM bot_broadcasts WHERE status = 'PENDING'").all();
+      for (const bc of pendingBroadcasts) {
+        try {
+          const channel = await client.channels.fetch(bc.channel_id).catch(() => null);
+          if (channel) {
+            await channel.send(bc.message);
+            dbModule.db.prepare("UPDATE bot_broadcasts SET status = 'SENT' WHERE id = ?").run(bc.id);
+          } else {
+            dbModule.db.prepare("UPDATE bot_broadcasts SET status = 'FAILED', error_message = 'Channel not found or bot lacks access' WHERE id = ?").run(bc.id);
+          }
+        } catch (err) {
+          dbModule.db.prepare("UPDATE bot_broadcasts SET status = 'FAILED', error_message = ? WHERE id = ?").run(err.message, bc.id);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error polling bot_broadcasts:', err);
+    }
+  }, 5000);
+
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
@@ -5101,35 +5124,60 @@ async function handlePetCommand(message, client, args) {
         // Hapus tombol dari pesan lobi saat ini
         await replyMsg.edit({ components: [] }).catch(() => {});
 
+        // ⭐ LOADING SCREEN: Animasi transisi premium sebelum pertandingan dimulai
+        const loadingEmbed = embeds.petExpeditionLoadingEmbed(selectedMap, author.id, currentLobby.participants);
+        const loadingFiles = [];
+        try {
+          const loadingImg = new AttachmentBuilder('./assets/expedition_loading.png', { name: 'expedition_loading.png' });
+          loadingFiles.push(loadingImg);
+        } catch (err) {}
+        const loadingOpts = { embeds: [loadingEmbed], components: [] };
+        if (loadingFiles.length > 0) loadingOpts.files = loadingFiles;
+        await replyMsg.edit(loadingOpts).catch(() => {});
+        await new Promise(r => setTimeout(r, 3000)); // Loading screen 3 detik
+
+        // ⭐ STAGE 1 TRANSITION: Animasi transisi ke Stage 1
+        const s1TransEmbed = embeds.petExpeditionStageTransitionEmbed(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
+        const s1TransAtt = getMapAttachment(mapChoice);
+        const s1TransOpts = { embeds: [s1TransEmbed], components: [] };
+        if (s1TransAtt) s1TransOpts.files = [s1TransAtt];
+        await replyMsg.edit(s1TransOpts).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
+
         // 🧭 STAGE 1: PEMILIHAN JALUR TIM (Voting / Otak Ekspedisi)
         const stage1Embed = new EmbedBuilder()
-          .setColor('#FF9100') // Vibrant Orange
-          .setTitle('🧭 STAGE 1: PEMILIHAN JALUR TIM 🧭')
+          .setColor('#FF9100')
+          .setTitle('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM')
           .setDescription(
-            `### Jalur mana yang akan ditempuh tim pet?\n` +
-            `<@${author.id}> selaku **Pemimpin Perjalanan**, silakan pilih jalur di bawah ini:\n\n` +
-            `─── ⋆⋅☆⋅⋆ ───`
+            `\`\`\`ansi\n` +
+            `\u001b[1;33m╔══════════════════════════════════╗\u001b[0m\n` +
+            `\u001b[1;33m║\u001b[0m  \u001b[1;37m🧭 CHOOSE YOUR PATH  🧭\u001b[0m       \u001b[1;33m║\u001b[0m\n` +
+            `\u001b[1;33m║\u001b[0m    \u001b[0;36mDecide wisely, Commander\u001b[0m    \u001b[1;33m║\u001b[0m\n` +
+            `\u001b[1;33m╚══════════════════════════════════╝\u001b[0m\n` +
+            `\`\`\`\n\n` +
+            `> <@${author.id}> selaku **Komandan Perjalanan**, pilih jalur ekspedisi:\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━`
           )
           .addFields(
             {
-              name: '🗺️ Informasi Wilayah',
-              value: `• **Peta:** **${selectedMap.name}**\n• **Pemimpin:** <@${author.id}>`,
+              name: '🗺️ Info Wilayah',
+              value: `> **Peta:** **${selectedMap.name}**\n> **Komandan:** <@${author.id}>`,
               inline: false
             },
             {
-              name: '🛣️ Pilihan Jalur',
+              name: '🛣️ ═══ PILIHAN JALUR ═══',
               value: 
-                `• **[Jalur Aman]**\n` +
-                `  └─ Perjalanan lancar tanpa risiko ekstra. (**+0%** Peluang Sukses)\n\n` +
-                `• **🧗 [Jalur Pintas Terjal]**\n` +
-                `  └─ Mendaki tebing terjal. Sukses **+15%**, seluruh pet kelelahan (**-15 HP**).\n\n` +
-                `• **🌲 [Rawa Beracun]**\n` +
-                `  └─ Rawa berlumpur. Sukses **+25%**, risiko **30% terkena bau/terluka** (1 jam).`,
+                `> 🛣️ **[Jalur Aman]**\n` +
+                `> └─ Perjalanan lancar tanpa risiko ekstra. (**+0%** Sukses)\n\n` +
+                `> 🧗 **[Jalur Pintas Terjal]**\n` +
+                `> └─ Mendaki tebing terjal. Sukses **+15%**, pet kelelahan (**-15 HP**)\n\n` +
+                `> 🌲 **[Rawa Beracun]**\n` +
+                `> └─ Rawa berlumpur. Sukses **+25%**, risiko **30%** terkena efek negatif`,
               inline: false
             }
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Batas pengambilan keputusan: 15 detik' })
+          .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
           .setTimestamp();
 
         const stage1Row = new ActionRowBuilder().addComponents(
@@ -5201,24 +5249,32 @@ async function handlePetCommand(message, client, args) {
         });
 
         const pathSelectedEmbed = new EmbedBuilder()
-          .setColor('#FF9100') // Vibrant Orange
-          .setTitle('🧭 STAGE 1 SELESAI: JALUR DIPILIH 🧭')
+          .setColor('#FF9100')
+          .setTitle('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅')
           .setDescription(
-            `📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
-            `─── ⋆⋅☆⋅⋆ ───\n\n` +
-            `• **Peta:** **${selectedMap.name}**\n` +
-            `• **Pemimpin:** <@${author.id}>\n\n` +
-            `*Menghubungkan ke Stage 2, harap bersiap... ⏳*`
+            `> 📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `> 🗺️ **Peta:** **${selectedMap.name}**\n` +
+            `> 👤 **Komandan:** <@${author.id}>\n\n` +
+            `*⏳ Menghubungkan ke Stage 2...*`
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Kosan 1A Pet Expedition' })
+          .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
           .setTimestamp();
 
         const s1dAtt = getMapAttachment(mapChoice);
         const s1dOpts = { embeds: [pathSelectedEmbed], components: [] };
         if (s1dAtt) s1dOpts.files = [s1dAtt];
         await replyMsg.edit(s1dOpts).catch(() => {});
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 2000));
+
+        // ⭐ STAGE 2 TRANSITION: Animasi transisi ke Stage 2
+        const s2TransEmbed = embeds.petExpeditionStageTransitionEmbed(2, 'Kejadian Acak', selectedMap, mapChoice);
+        const s2TransAtt = getMapAttachment(mapChoice);
+        const s2TransOpts = { embeds: [s2TransEmbed], components: [] };
+        if (s2TransAtt) s2TransOpts.files = [s2TransAtt];
+        await replyMsg.edit(s2TransOpts).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
         // 📦 STAGE 2: KEJADIAN ACAK (Random Encounter Event)
         const isChest = Math.random() < 0.5;
@@ -5233,33 +5289,38 @@ async function handlePetCommand(message, client, args) {
           const hasLockpick = lockpickRow && lockpickRow.quantity > 0;
 
           const chestEmbed = new EmbedBuilder()
-            .setColor('#E040FB') // Vibrant Magenta
-            .setTitle('📦 STAGE 2: KEJADIAN ACAK - PETI KUNO 📦')
+            .setColor('#E040FB')
+            .setTitle('📦 STAGE 2 ━━ PETI KUNO TERKUNCI')
             .setDescription(
-              `### 🧭 Temuan Peti Kuno Terkunci!\n` +
-              `Di tengah petualangan, tim menemukan peti kuno berdebu dengan gembok besi besar yang kokoh.\n\n` +
-              `─── ⋆⋅☆⋅⋆ ───`
+              `\`\`\`ansi\n` +
+              `\u001b[1;35m╔══════════════════════════════════╗\u001b[0m\n` +
+              `\u001b[1;35m║\u001b[0m  \u001b[1;33m📦  ANCIENT CHEST FOUND!  📦\u001b[0m  \u001b[1;35m║\u001b[0m\n` +
+              `\u001b[1;35m║\u001b[0m    \u001b[0;36mWhat will you do?\u001b[0m          \u001b[1;35m║\u001b[0m\n` +
+              `\u001b[1;35m╚══════════════════════════════════╝\u001b[0m\n` +
+              `\`\`\`\n\n` +
+              `> *Di tengah petualangan, tim menemukan peti kuno berdebu dengan gembok besi besar yang kokoh...*\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━`
             )
             .addFields(
               {
-                name: '🗝️ Opsi Tindakan Pemimpin',
+                name: '🗝️ ═══ OPSI TINDAKAN ═══',
                 value: 
-                  `• **[Gunakan Lockpick]**\n` +
-                  `  └─ Membuka peti secara aman. (Menjamin 1 item langka acak untuk salah satu kru).\n\n` +
-                  `• **💥 [Dobrak Paksa]**\n` +
-                  `  └─ **40%** sukses membuka peti, **60%** memicu ledakan (**-15 HP** seluruh pet).\n\n` +
-                  `• **🏃 [Lewati]**\n` +
-                  `  └─ Tinggalkan peti dan lanjut dengan aman.`,
+                  `> 🗝️ **[Gunakan Lockpick]**\n` +
+                  `> └─ Membuka peti aman. Dijamin 1 item langka acak!\n\n` +
+                  `> 💥 **[Dobrak Paksa]**\n` +
+                  `> └─ **40%** sukses, **60%** ledakan (**-15 HP** semua pet)\n\n` +
+                  `> 🏃 **[Lewati]**\n` +
+                  `> └─ Tinggalkan peti dan lanjut aman`,
                 inline: false
               },
               {
-                name: '🎒 Inventaris Pemimpin',
-                value: `• **Lockpick:** ${hasLockpick ? '🟢 **Tersedia** *(1x digunakan)*' : '🔴 **Tidak Ada**'}`,
+                name: '🎒 Inventaris Komandan',
+                value: `> **Lockpick:** ${hasLockpick ? '🟢 **Tersedia** *(1x)*' : '🔴 **Tidak Ada**'}`,
                 inline: false
               }
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: 'Batas waktu pengambilan keputusan: 15 detik' })
+            .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
             .setTimestamp();
 
           const chestRow = new ActionRowBuilder().addComponents(
@@ -5327,26 +5388,31 @@ async function handlePetCommand(message, client, args) {
         } else {
           // Air Terjun Suci
           const waterfallEmbed = new EmbedBuilder()
-            .setColor('#00E5FF') // Vibrant Cyan
-            .setTitle('💧 STAGE 2: KEJADIAN ACAK - AIR TERJUN SUCI 💧')
+            .setColor('#00E5FF')
+            .setTitle('💧 STAGE 2 ━━ AIR TERJUN SUCI')
             .setDescription(
-              `### 🧭 Temuan Air Terjun Suci!\n` +
-              `Tim menemukan mata air suci tersembunyi yang sangat jernih, sejuk, dan memancarkan aura magis.\n\n` +
-              `─── ⋆⋅☆⋅⋆ ───`
+              `\`\`\`ansi\n` +
+              `\u001b[1;36m╔══════════════════════════════════╗\u001b[0m\n` +
+              `\u001b[1;36m║\u001b[0m  \u001b[1;37m💧 SACRED WATERFALL FOUND! 💧\u001b[0m \u001b[1;36m║\u001b[0m\n` +
+              `\u001b[1;36m║\u001b[0m   \u001b[0;33mA blessing in disguise...\u001b[0m   \u001b[1;36m║\u001b[0m\n` +
+              `\u001b[1;36m╚══════════════════════════════════╝\u001b[0m\n` +
+              `\`\`\`\n\n` +
+              `> *Tim menemukan mata air suci tersembunyi yang jernih, sejuk, dan memancarkan aura magis...*\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━`
             )
             .addFields(
               {
-                name: '⛲ Opsi Tindakan Pemimpin',
+                name: '⛲ ═══ OPSI TINDAKAN ═══',
                 value: 
-                  `• **[Minum Bersama]**\n` +
-                  `  └─ Seluruh pet kru memulihkan **+20 HP & +20 Hidrasi**.\n\n` +
-                  `• **🏃 [Lewati]**\n` +
-                  `  └─ Lanjut perjalanan tanpa mengambil istirahat.`,
+                  `> 💧 **[Minum Bersama]**\n` +
+                  `> └─ Seluruh pet memulihkan **+20 HP & +20 Hidrasi**\n\n` +
+                  `> 🏃 **[Lewati]**\n` +
+                  `> └─ Lanjut perjalanan tanpa istirahat`,
                 inline: false
               }
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: 'Batas waktu pengambilan keputusan: 15 detik' })
+            .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
             .setTimestamp();
 
           const waterfallRow = new ActionRowBuilder().addComponents(
@@ -5402,22 +5468,30 @@ async function handlePetCommand(message, client, args) {
 
         const eventSelectedEmbed = new EmbedBuilder()
           .setColor(isChest ? '#E040FB' : '#00E5FF')
-          .setTitle('📦 STAGE 2 SELESAI: KEJADIAN AKHIR 📦')
+          .setTitle('📦 STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅')
           .setDescription(
-            `📢 **Keputusan Kejadian:** Tim memilih **${eventText}**\n\n` +
-            `─── ⋆⋅☆⋅⋆ ───\n\n` +
-            `• **Pemimpin:** <@${author.id}>\n\n` +
-            `*Gerbang Bos Akhir terbuka! Menghubungkan ke Stage 3... ⚔️*`
+            `> 📢 **Keputusan:** Tim memilih **${eventText}**\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `> 👤 **Komandan:** <@${author.id}>\n\n` +
+            `*⏳ Gerbang Bos Akhir terbuka...*`
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: 'Kosan 1A Pet Expedition' })
+          .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
           .setTimestamp();
 
         const s2dAtt = getMapAttachment(mapChoice);
         const s2dOpts = { embeds: [eventSelectedEmbed], components: [] };
         if (s2dAtt) s2dOpts.files = [s2dAtt];
         await replyMsg.edit(s2dOpts).catch(() => {});
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 2000));
+
+        // ⭐ STAGE 3 TRANSITION: Animasi transisi ke Boss Battle
+        const s3TransEmbed = embeds.petExpeditionStageTransitionEmbed(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
+        const s3TransAtt = getMapAttachment(mapChoice);
+        const s3TransOpts = { embeds: [s3TransEmbed], components: [] };
+        if (s3TransAtt) s3TransOpts.files = [s3TransAtt];
+        await replyMsg.edit(s3TransOpts).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
         // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (QTE Turn-Based & Hasil)
         const bossName = selectedMap.boss || 'Giga Guardian';
@@ -9488,10 +9562,12 @@ async function handleEconomyCommands(message, client) {
               .setStyle(ButtonStyle.Danger)
           );
 
+          const heistLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
           const replyMsg = await message.reply({
             content: `🚨 **OPERASI PERAMPOKAN BANK DIMULAI!** 🚨`,
             embeds: [lobbyEmbed],
-            components: [row]
+            components: [row],
+            files: [heistLoadingImg]
           });
 
           // Helper function to shuffle array elements
@@ -9509,6 +9585,16 @@ async function handleEconomyCommands(message, client) {
             try {
               const currentLobby = robbery.activeHeists.get(guildId);
               if (!currentLobby) return;
+
+              // ⭐ LOADING SCREEN: Animasi transisi peretasan bank sebelum aksi dimulai
+              const lobbyLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+              const loadingEmbed = embeds.heistLoadingEmbed(author, currentLobby.participants);
+              await replyMsg.edit({
+                embeds: [loadingEmbed],
+                components: [],
+                files: [lobbyLoadingImg]
+              }).catch(() => {});
+              await new Promise(r => setTimeout(r, 3000)); // Loading screen selama 3 detik
 
               const participants = currentLobby.participants;
               const kruCount = participants.length;
@@ -9733,11 +9819,13 @@ async function handleEconomyCommands(message, client) {
                     .setStyle(ButtonStyle.Danger)
                 );
 
-                await replyMsg.edit({
-                  content: `🚨 **TAHAPAN ${stepNumber}/${steps.length} SEDANG BERJALAN!**`,
-                  embeds: [stepEmbed],
-                  components: [stepRow]
-                }).catch(() => {});
+                  const stepLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+                  await replyMsg.edit({
+                    content: `🚨 **TAHAPAN ${stepNumber}/${steps.length} SEDANG BERJALAN!**`,
+                    embeds: [stepEmbed],
+                    components: [stepRow],
+                    files: [stepLoadingImg]
+                  }).catch(() => {});
 
                 // Buat collector QTE selama 6 detik
                 const qteCollector = replyMsg.createMessageComponentCollector({
@@ -9764,12 +9852,14 @@ async function handleEconomyCommands(message, client) {
                         // Heist gagal instan karena salah klik
                         const res = robbery.executeHeistQteFailure(guildId, iQte.user.id, 'Interference');
                         const failEmbed = embeds.heistQteFailureEmbed(guild, iQte.user.id, 'Interference', participants);
+                        const failLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
                         
                         await iQte.reply({ content: `🚨 Anda memicu alarm karena menekan tombol di luar giliran!`, flags: 64 });
                         await replyMsg.edit({
                           content: `❌ **HEIST GAGAL: OPERASI DIGAGALKAN OLEH KRU!**`,
                           embeds: [failEmbed],
-                          components: []
+                          components: [],
+                          files: [failLoadingImg]
                         }).catch(() => {});
                         
                         resolveQte();
@@ -9794,11 +9884,13 @@ async function handleEconomyCommands(message, client) {
                       
                       const res = robbery.executeHeistQteFailure(guildId, step.targetUserId, 'Timeout');
                       const failEmbed = embeds.heistQteFailureEmbed(guild, step.targetUserId, 'Timeout', participants);
+                      const failLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
                       
                       await replyMsg.edit({
                         content: `❌ **HEIST GAGAL: WAKTU REAKSI TIM HABIS!**`,
                         embeds: [failEmbed],
-                        components: []
+                        components: [],
+                        files: [failLoadingImg]
                       }).catch(() => {});
                     }
                     resolveQte();
@@ -9838,16 +9930,19 @@ async function handleEconomyCommands(message, client) {
                   contentMsg += `\n🧼 **Sabun Licin Terpakai!** ${mentions} menggunakan Sabun Licin untuk memotong waktu penjara heist sebesar 50%!`;
                 }
 
-                await replyMsg.edit({
-                  content: contentMsg,
-                  embeds: [resultEmbed],
-                  components: []
-                }).catch(async () => {
-                  await message.channel.send({
+                  const resultLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+                  await replyMsg.edit({
                     content: contentMsg,
-                    embeds: [resultEmbed]
+                    embeds: [resultEmbed],
+                    components: [],
+                    files: [resultLoadingImg]
+                  }).catch(async () => {
+                    await message.channel.send({
+                      content: contentMsg,
+                      embeds: [resultEmbed],
+                      files: [resultLoadingImg]
+                    });
                   });
-                });
               }
 
             } catch (err) {

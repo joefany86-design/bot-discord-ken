@@ -3322,91 +3322,181 @@ module.exports = {
       .setTimestamp();
   },
 
-  // 31. Heist Lobby Embed (.heist)
+  // 31. Heist Lobby Embed (.heist) - Premium Revamped
   heistLobbyEmbed(guild, initiator, participants, endTimeUnix, successRate, minPrize, maxPrize, prepFee) {
     const listKru = participants.map((p, idx) => {
       const roles = ['🕶️ Otak Kriminal', '💻 Peretas Keamanan', '🧨 Ahli Peledak', '🔫 Jaga Sandera', '👜 Pembawa Jarahan', '🚗 Pembalap Pelarian'];
       const roleStr = roles[idx] || '👥 Anggota Kru Backup';
-      return `  ├─ ${idx + 1}. <@${p}> (${roleStr})`;
+      return `> • **${idx + 1}️⃣** <@${p}> · \`${roleStr}\``;
     }).join('\n');
 
-    const crewListStr = listKru ? `${listKru}\n  └─ *Kru bersiap di posisi masing-masing!*` : '  └─ *Menunggu kru bergabung...*';
+    const crewListStr = listKru ? listKru : '> *Menunggu kru bergabung...*';
+
+    // Premium progress bars
+    const successFilled = Math.round(successRate / 10);
+    const successBarStr = '▰'.repeat(successFilled) + '▱'.repeat(10 - successFilled);
 
     return new EmbedBuilder()
-      .setColor(COLORS.FIERY || 0xE74C3C)
-      .setTitle('🚨 OPERASI CRITICAL: CENTRAL BANK HEIST 🚨')
+      .setColor(0xD50000) // Vibrant Red
+      .setTitle(`🚨 CENTRAL BANK HEIST ━━ LOBI OPERASI`)
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2823/2823864.png')
       .setDescription(
-        `### 🏛️ MISI PERAMPOKAN BANK PUSAT\n` +
-        `💥 **${initiator.username}** merekrut tim elit untuk membobol brankas utama Bank Server!\n\n` +
-        `💵 **Biaya Persiapan:** \`${formatCurrency(prepFee)}\` per orang\n` +
-        `⏳ **Batas Waktu Lobi:** <t:${endTimeUnix}:T> (<t:${endTimeUnix}:R>)\n\n` +
-        `👥 **DAFTAR KRU PERAMPOK (${participants.length}):**\n` +
-        `${crewListStr}\n\n` +
-        `⚠️ *Perhatian: Urutan giliran (QTE) dan peran kru akan diacak secara otomatis saat operasi dimulai. Semua kru wajib berpartisipasi dan fokus!*`
+        `\`\`\`ansi\n` +
+        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m   \u001b[1;37m🚨  CENTRAL BANK HEIST LOBBY  🚨\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m       \u001b[0;36mAssembling Elite Crew...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\`\n` +
+        `> *Inisiator criminal mastermind <@${initiator.id}> sedang merancang rencana pembobolan brankas utama Bank Server. Siapkan perlengkapan Black Market Anda, pastikan sinergi pet kru aktif, dan bersiaplah!*`
       )
       .addFields(
         {
-          name: '📊 ANALISIS RISIKO & PROSPEK JARAHAN',
-          value: `📈 **Peluang Sukses Dasar:** \`${successRate}%\`\n` +
-                 `💰 **Estimasi Hasil Jarahan:** \`${formatCurrency(minPrize)}\` s/d \`${formatCurrency(maxPrize)}\` *(belum termasuk tabungan nasabah)*`,
+          name: '👥 ═══ TIM OPERASI PERAMPOK ═══',
+          value: crewListStr,
+          inline: false
+        },
+        {
+          name: '📊 ANALISIS RISIKO & PROSPEK',
+          value:
+            `\`\`\`\n` +
+            `┌─────────────────────────────┐\n` +
+            `│ ✅ Peluang [${successBarStr}] ${String(successRate).padStart(3)}% │\n` +
+            `└─────────────────────────────┘\n` +
+            `\`\`\`\n` +
+            `> 💰 **Estimasi Jarahan:** \`${formatCurrency(minPrize)}\` - \`${formatCurrency(maxPrize)}\`\n` +
+            `> 💵 **Biaya Ransum/Prep:** \`${formatCurrency(prepFee)}\` /orang`,
+          inline: false
+        },
+        {
+          name: '⏳ Operasi Dimulai',
+          value: `<t:${endTimeUnix}:R>`,
+          inline: true
+        }
+      )
+      .setImage('attachment://heist_loading.png')
+      .setFooter({ text: 'Bot Kosan 1A • Klik tombol di bawah untuk bergabung!' })
+      .setTimestamp();
+  },
+
+  // 31a. Heist Loading Screen Embed (Premium Animated)
+  heistLoadingEmbed(initiator, participants) {
+    const crewMentions = participants.map(p => `<@${p}>`).join(' • ');
+
+    return new EmbedBuilder()
+      .setColor(0xE74C3C)
+      .setTitle('🚨 BREACHING CENTRAL BANK VAULT...')
+      .setThumbnail('https://media.tenor.com/Fow-2d_r8eMAAAAd/cyber-hacking.gif')
+      .setDescription(
+        `\`\`\`ansi\n` +
+        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m  \u001b[1;33m🚨  BREACHING BANK SYSTEM...  🚨\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m   \u001b[0;36mBypassing Main Firewall...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\`\n\n` +
+        `> 🕵️ *Kru telah menyebar di posisinya masing-masing. Hacker mulai meretas gerbang digital, demolition bersiap dengan C4, dan driver bersiap di kemudi...*\n\n` +
+        `\`\`\`\n` +
+        `┌─────────────────────────────────┐\n` +
+        `│  SYSTEM BREACH STATUS: RUNNING   │\n` +
+        `│  Breaching Vault Security...    │\n` +
+        `└─────────────────────────────────┘\n` +
+        `\`\`\`\n\n` +
+        `> 🕶️ **Otak Kriminal:** <@${initiator.id}>\n` +
+        `> 👥 **Kru Elit:** ${crewMentions}\n\n` +
+        `*⏳ Mempersiapkan medan pertempuran QTE...*`
+      )
+      .setImage('attachment://heist_loading.png')
+      .setFooter({ text: 'Bot Kosan 1A Heist • Siapkan jari Anda di tombol!' })
+      .setTimestamp();
+  },
+
+  // 31b. Heist Step QTE Embed - Premium Revamped
+  heistStepEmbed(guild, stepNumber, totalSteps, stepTitle, stepDesc, targetUserId, endTimeUnix) {
+    const turnBar = '█'.repeat(stepNumber) + '░'.repeat(totalSteps - stepNumber);
+
+    return new EmbedBuilder()
+      .setColor(0xFF9100) // Vibrant Orange
+      .setTitle(`⚡ FASE EKSEKUSI QTE ━━ STEP ${stepNumber}/${totalSteps}`)
+      .setDescription(
+        `\`\`\`ansi\n` +
+        `\u001b[1;33m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;33m║\u001b[0m  \u001b[1;31m⚡ ACTIVE HEIST ACTION REQUIRED ⚡\u001b[0m  \u001b[1;33m║\u001b[0m\n` +
+        `\u001b[1;33m║\u001b[0m       \u001b[1;37mReact now or get BUSTED!\u001b[0m     \u001b[1;33m║\u001b[0m\n` +
+        `\u001b[1;33m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\`\n\n` +
+        `> **Peran Aktif:** **${stepTitle}**\n` +
+        `> *Kru harus menekan tombol aksi peran yang benar sebelum alarm berbunyi!*\n\n` +
+        `\`\`\`\n` +
+        `HEIST PROGRESS [${turnBar}] ${stepNumber}/${totalSteps}\n` +
+        `\`\`\``
+      )
+      .addFields(
+        {
+          name: '🎯 ═══ TUGAS KRU ═══',
+          value: 
+            `> ${stepDesc}\n` +
+            `> 👤 **Target Giliran:** <@${targetUserId}>\n` +
+            `> ⏳ **Batas Reaksi:** <t:${endTimeUnix}:R> *(6 detik)*`,
+          inline: false
+        },
+        {
+          name: '🚨 PERINGATAN KERAS',
+          value:
+            `> ⚠️ **HANYA** <@${targetUserId}> **yang boleh mengeklik tombol peran!**\n` +
+            `> Kru lain yang mengeklik = **INTERFERENCE PENALTY & HEIST GAGAL TOTAL!**`,
           inline: false
         }
       )
-      .setFooter({ text: 'Klik tombol "🤝 Gabung Heist" di bawah untuk mendaftar!' })
+      .setImage('attachment://heist_loading.png')
+      .setFooter({ text: 'Bot Kosan 1A Heist • Fokus, perhatikan giliran Anda!' })
       .setTimestamp();
   },
 
-  // 31b. Heist Step QTE Embed
-  heistStepEmbed(guild, stepNumber, totalSteps, stepTitle, stepDesc, targetUserId, endTimeUnix) {
-    return new EmbedBuilder()
-      .setColor(0xFF9800) // Vibrant Orange
-      .setTitle(`⚡ FASE EKSEKUSI QTE: ${stepTitle} ⚡`)
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/3233/3233483.png')
-      .setDescription(
-        `### 🚀 Rantai Aksi Tim (Langkah ${stepNumber} dari ${totalSteps})\n` +
-        `*Operasi sedang berlangsung! Selesaikan tugas peran Anda sebelum alarm berbunyi!*\n\n` +
-        `📢 **Instruksi Peran:**\n` +
-        `> ${stepDesc}\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n` +
-        `🎯 **Target Giliran:** <@${targetUserId}>\n` +
-        `⏳ **Batas Reaksi:** <t:${endTimeUnix}:R> *(Waktu tipis!)*\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n\n` +
-        `🚨 **Peringatan Keras:** Hanya <@${targetUserId}> yang boleh mengeklik tombol peran di bawah! Jika kru lain mengeklik di luar giliran, alarm akan aktif dan operasi **gagal seketika** (Interference Penalti)!`
-      )
-      .setFooter({ text: 'Bot Kosan 1A Co-op RPG • Jaga fokus, perhatikan giliran Anda!' })
-      .setTimestamp();
-  },
-
-  // 31c. Heist QTE Failure Embed
+  // 31c. Heist QTE Failure Embed - Premium Revamped
   heistQteFailureEmbed(guild, failedUserId, reasonType, participants) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     let causeText = '';
 
     if (reasonType === 'Timeout') {
-      causeText = `🔴 **Penyebab Kegagalan:** Kru <@${failedUserId}> terlambat mengambil tindakan tepat waktu hingga batas **6 detik habis**! Tim keamanan menyadari kelalaian ini.`;
+      causeText = `> 🔴 **Kru <@${failedUserId}> lambat bereaksi!**\n> Batas waktu 6 detik habis sebelum menekan tombol perannya. Tim keamanan langsung membunyikan sirene alarm!`;
     } else {
-      causeText = `🚨 **Penyebab Kegagalan:** Kru <@${failedUserId}> menekan tombol aksi **di luar gilirannya**! Pergerakan acak ini langsung memicu sensor laser keamanan bank!`;
+      causeText = `> 🚨 **Kru <@${failedUserId}> menekan tombol di luar gilirannya!**\n> Pergerakan ceroboh ini memutus sensor inframerah keamanan bank secara instan!`;
     }
 
     return new EmbedBuilder()
-      .setColor(0xE74C3C) // Crimson Red
-      .setTitle('🚓 HEIST DIGAGALKAN: TIM SWEEP & TANGKAP! 👮')
+      .setColor(0xD50000) // Vibrant Red
+      .setTitle('👮 HEIST GAGAL ━━ POLISI MEMBLOKADE AREA')
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/1395/1395427.png')
       .setDescription(
-        `### 💥 Alarm Bank Berbunyi Nyaring!\n` +
-        `Operasi dihentikan paksa. Seluruh area bank diblokade total oleh unit kepolisian!\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n` +
-        `${causeText}\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n\n` +
-        `👥 **Kru yang Tertangkap:** ${crewList}\n` +
-        `👮 **Konsekuensi:** Seluruh kru dijebloskan ke penjara virtual dan dikenakan denda biaya pembersihan TKP!`
+        `\`\`\`ansi\n` +
+        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m  \u001b[1;31m👮   SWAT TEAM RAID - ARRESTED  👮\u001b[0m  \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m       \u001b[0;33mThe alarm is screaming...\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\``
       )
-      .setFooter({ text: 'Bot Kosan 1A Heist Failure • Hubungi inisiator untuk merencanakan ulang.' })
+      .addFields(
+        {
+          name: '🔍 ═══ PENYEBAB KEGAGALAN ═══',
+          value: causeText,
+          inline: false
+        },
+        {
+          name: '👥 ═══ KRU YANG TERTANGKAP ═══',
+          value: `> ${crewList}`,
+          inline: false
+        },
+        {
+          name: '👮 KONSEKUENSI HUKUM',
+          value: `> 💸 **Denda Kerugian** dibebankan ke masing-masing kru.\n> 🔒 **Hukuman Penjara Virtual** diaktifkan seketika. Gunakan \`.jail\` untuk menebus jaminan bebas.`,
+          inline: false
+        }
+      )
+      .setImage('attachment://heist_loading.png')
+      .setFooter({ text: 'Bot Kosan 1A Heist Failure • Selalu fokus di lain waktu!' })
       .setTimestamp();
   },
 
-  // 32. Heist Result Embed
+  // 32. Heist Result Embed - Premium Revamped
   heistResultEmbed(guild, success, participants, logs, totalReward, rewardPerPerson, fineAmount, jailHours, stolenFromPlayers = 0, deductionLogs = [], extraData = {}) {
     const crewList = participants.map(p => `<@${p}>`).join(', ');
     const logText = logs.map(l => ` • ${l}`).join('\n');
@@ -3415,22 +3505,30 @@ module.exports = {
     
     // Add Pet Synergy Detail if present
     if (extraData.petDetails && extraData.petDetails.length > 0) {
-      desc += `🧬 **Sinergi Pet Aktif:**\n` + extraData.petDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
+      desc += `🧬 **Sinergi Pet Aktif:**\n` + extraData.petDetails.map(d => `> • ${d}`).join('\n') + `\n\n`;
     }
 
     // Add Black Market Gear Detail if present
     if (extraData.bmDetails && extraData.bmDetails.length > 0) {
-      desc += `🗝️ **Perlengkapan Pasar Gelap:**\n` + extraData.bmDetails.map(d => ` • ${d}`).join('\n') + `\n\n`;
+      desc += `🗝️ **Perlengkapan Pasar Gelap:**\n` + extraData.bmDetails.map(d => `> • ${d}`).join('\n') + `\n\n`;
     }
 
-    desc += `📝 **Kronologi Kejadian (Logs):**\n\`\`\`\n${logText || 'Tidak ada log aktivitas.'}\n\`\`\`\n`;
+    desc += `📝 **Kronologi Operasi (Logs):**\n\`\`\`\n${logText || 'Tidak ada log aktivitas.'}\n\`\`\`\n`;
 
     const embed = new EmbedBuilder()
       .setTimestamp();
 
     if (success) {
+      const headerArt = 
+        `\`\`\`ansi\n` +
+        `\u001b[1;32m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;32m║\u001b[0m  \u001b[1;33m🏆   HEIST SUCCESSFUL!  🏆\u001b[0m       \u001b[1;32m║\u001b[0m\n` +
+        `\u001b[1;32m║\u001b[0m     \u001b[0;36mStole cash from Server Bank!\u001b[0m     \u001b[1;32m║\u001b[0m\n` +
+        `\u001b[1;32m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\``;
+
       embed.setColor(0x2ECC71) // Emerald Green
-        .setTitle('🏆 OPERASI BANK HEIST SUKSES BESAR! 💰')
+        .setTitle('🏆 OPERASI BANK HEIST SUKSES BESAR!')
         .setThumbnail('https://cdn-icons-png.flaticon.com/512/2953/2953363.png');
 
       let rewardDetails = 
@@ -3450,10 +3548,18 @@ module.exports = {
                          `🏦 **Total Tabungan Disedot:** \`${formatCurrency(stolenFromPlayers)}\``;
       }
 
-      embed.setDescription(desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + rewardDetails);
+      embed.setDescription(headerArt + '\n' + desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + rewardDetails);
     } else {
+      const headerArt = 
+        `\`\`\`ansi\n` +
+        `\u001b[1;31m╔══════════════════════════════════╗\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m   \u001b[1;31m☠️  OPERATION FAILED  ☠️\u001b[0m       \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m║\u001b[0m      \u001b[0;33mBusted by Virtual Police!\u001b[0m     \u001b[1;31m║\u001b[0m\n` +
+        `\u001b[1;31m╚══════════════════════════════════╝\u001b[0m\n` +
+        `\`\`\``;
+
       embed.setColor(0xE74C3C) // Crimson Red
-        .setTitle('🚓 OPERASI GAGAL: TIM SWEEP & PENJARA! 👮')
+        .setTitle('🚓 OPERASI GAGAL: TIM ARRESTED & SWEEP!')
         .setThumbnail('https://cdn-icons-png.flaticon.com/512/1022/1022332.png');
 
       let penaltyDetails = 
@@ -3467,7 +3573,7 @@ module.exports = {
         penaltyDetails += `\n\n🟢 **Dodge Jail!** ${dodgeList} berhasil melarikan diri menggunakan kelicinan pet **Slime**!`;
       }
 
-      embed.setDescription(desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + penaltyDetails);
+      embed.setDescription(headerArt + '\n' + desc + `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` + penaltyDetails);
     }
 
     if (extraData.brokenLockpicks && extraData.brokenLockpicks.length > 0) {
@@ -3478,6 +3584,7 @@ module.exports = {
       });
     }
 
+    embed.setImage('attachment://heist_loading.png');
     return embed;
   },
 
