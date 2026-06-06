@@ -4013,7 +4013,6 @@ module.exports = {
           inline: true
         }
       )
-      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },
@@ -4032,7 +4031,6 @@ module.exports = {
         `👥 **Anggota Tim:** ${crewMentions}\n\n` +
         `*⏳ Menunggu koordinasi kru pet... Pastikan pet Anda siap bertempur!*`
       )
-      .setImage('attachment://expedition_loading.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Memulai petualangan...' })
       .setTimestamp();
   },
@@ -4052,7 +4050,6 @@ module.exports = {
         `Memasuki wilayah **${selectedMap.name}** bagian dalam...\n\n` +
         `*Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!*`
       )
-      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
       .setFooter({ text: `Kosan 1A RPG Pet Expedition • Tahap ${stageNum}` })
       .setTimestamp();
   },
@@ -4076,7 +4073,6 @@ module.exports = {
         `📈 **Progres QTE:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
         `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh menekan tombol! Salah klik oleh kru lain akan memicu penalti interferensi.*`
       )
-      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
       .setFooter({ text: 'Kosan 1A RPG • Fokus dan bersiaplah!' })
       .setTimestamp();
   },
@@ -4103,7 +4099,6 @@ module.exports = {
         `🐾 **Dampak Kondisi Kru Pet:**\n${rekapPetList}\n\n` +
         `⚠️ *Dampak kegagalan QTE: Seluruh pet kehilangan status HP/kesehatan, lapar/haus meningkat, dan kebahagiaan menurun drastis.*`
       )
-      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition Failure • Coba lagi setelah cooldown selesai!' })
       .setTimestamp();
   },
@@ -4146,7 +4141,6 @@ module.exports = {
         `─── ⋆⋅☆⋅⋆ ───`
       )
       .addFields(fields)
-      .setImage(res.success ? 'attachment://volcanic_expedition.png' : (mapChoice ? `attachment://map${mapChoice}.png` : null))
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }
