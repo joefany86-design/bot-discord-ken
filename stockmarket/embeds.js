@@ -4130,6 +4130,57 @@ module.exports = {
       .setTimestamp();
   },
 
+  // 30ec. Pet Expedition Step QTE Embed (Premium)
+  petExpeditionStepEmbed(guildId, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix, mapChoice) {
+    const successFilled = stepNumber;
+    const progressIcons = '🟩'.repeat(successFilled) + '⬜'.repeat(totalSteps - successFilled);
+    const petName = petObj ? petObj.pet_name : 'Pet';
+    const petType = petObj ? petObj.pet_type : 'Hewan';
+
+    return new EmbedBuilder()
+      .setColor(0xFF9100) // Vibrant Orange
+      .setTitle(`⚔️ EKSPEDISI: BOS BATLLE ━━ TAHAP ${stepNumber}/${totalSteps}`)
+      .setDescription(
+        `🚨 **SERANGAN BERSAMA KEPADA ${bossName.toUpperCase()}!** 🚨\n` +
+        `Bos mengeluarkan serangan pemungkas. Segera perintahkan pet Anda untuk bertahan/menyerang balik!\n\n` +
+        `👤 **Giliran Target:** <@${targetUserId}>\n` +
+        `🦖 **Pet Aktif:** **${petName}** (Lv. ${petObj?.level || 1} ${petType})\n\n` +
+        `⏳ **Batas Waktu Reaksi:** <t:${endTimeUnix}:R> *(6 detik)*\n` +
+        `📈 **Progres QTE:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
+        `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh menekan tombol! Salah klik oleh kru lain akan memicu penalti interferensi.*`
+      )
+      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
+      .setFooter({ text: 'Kosan 1A RPG • Fokus dan bersiaplah!' })
+      .setTimestamp();
+  },
+
+  // 30ed. Pet Expedition QTE Failure Embed (Premium)
+  petExpeditionQteFailureEmbed(guildId, mapName, failedUserId, reasonType, participants, failResults, mapChoice) {
+    let causeText = '';
+    if (reasonType === 'Timeout') {
+      causeText = `🔴 **<@${failedUserId}> lambat mengambil keputusan!** Batas waktu 6 detik habis saat pertarungan memanas. Tim kehilangan momentum!`;
+    } else {
+      causeText = `🚨 **<@${failedUserId}> salah merespon (Interferensi)!** Mengklik tombol skill pet di luar giliran merusak koordinasi tim secara instan!`;
+    }
+
+    const rekapPetList = failResults.map(r => {
+      return `• <@${r.userId}> · 🦖 **${r.petName}**\n  └─ ${r.statusText}`;
+    }).join('\n');
+
+    return new EmbedBuilder()
+      .setColor(0xD50000) // Vibrant Red
+      .setTitle(`🏰 EKSPEDISI GAGAL: BOS PERTEMPURAN KACAU!`)
+      .setDescription(
+        `💥 **ALARM PENJAGA BERBUNYI! TIM DIPAKSA MUNDUR!** 💥\n\n` +
+        `🔍 **Penyebab Kekalahan:**\n${causeText}\n\n` +
+        `🐾 **Dampak Kondisi Kru Pet:**\n${rekapPetList}\n\n` +
+        `⚠️ *Dampak kegagalan QTE: Seluruh pet kehilangan status HP/kesehatan, lapar/haus meningkat, dan kebahagiaan menurun drastis.*`
+      )
+      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
+      .setFooter({ text: 'Kosan 1A RPG Pet Expedition Failure • Coba lagi setelah cooldown selesai!' })
+      .setTimestamp();
+  },
+
   // 30e. Pet Expedition Result Embed (Premium)
   petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice) {
     const embedColor = res.success ? 0x00E676 : 0xD50000; // Emerald Green / Bright Red
