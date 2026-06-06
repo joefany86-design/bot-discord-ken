@@ -4091,6 +4091,45 @@ module.exports = {
       .setTimestamp();
   },
 
+  // 30ea. Pet Expedition Loading Screen Embed (Premium)
+  petExpeditionLoadingEmbed(selectedMap, leaderId, participants) {
+    const crewMentions = participants.map(p => `<@${p}>`).join(' • ');
+
+    return new EmbedBuilder()
+      .setColor(0x00E5FF) // Cyber Cyan Premium
+      .setTitle(`🧭 MEMPERSIAPKAN EKSPEDISI: ${selectedMap.name.toUpperCase()}...`)
+      .setThumbnail('https://media.tenor.com/Fow-2d_r8eMAAAAd/cyber-hacking.gif')
+      .setDescription(
+        `🛡️ **Mempersiapkan Perlengkapan & Ransum...**\n\n` +
+        `👤 **Pemimpin Perjalanan:** <@${leaderId}>\n` +
+        `👥 **Anggota Tim:** ${crewMentions}\n\n` +
+        `*⏳ Menunggu koordinasi kru pet... Pastikan pet Anda siap bertempur!*`
+      )
+      .setImage('attachment://expedition_loading.png')
+      .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Memulai petualangan...' })
+      .setTimestamp();
+  },
+
+  // 30eb. Pet Expedition Stage Transition Embed (Premium)
+  petExpeditionStageTransitionEmbed(stageNum, stageTitle, selectedMap, mapChoice) {
+    let stageIcon = '🗺️';
+    if (stageNum === 1) stageIcon = '🧭';
+    if (stageNum === 2) stageIcon = '🎲';
+    if (stageNum === 3) stageIcon = '⚔️';
+
+    return new EmbedBuilder()
+      .setColor(0xFFB800) // Gold Premium
+      .setTitle(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`)
+      .setDescription(
+        `## **${stageTitle.toUpperCase()}**\n` +
+        `Memasuki wilayah **${selectedMap.name}** bagian dalam...\n\n` +
+        `*Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!*`
+      )
+      .setImage(mapChoice ? `attachment://map${mapChoice}.png` : null)
+      .setFooter({ text: `Kosan 1A RPG Pet Expedition • Tahap ${stageNum}` })
+      .setTimestamp();
+  },
+
   // 30e. Pet Expedition Result Embed (Premium)
   petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice) {
     const embedColor = res.success ? 0x00E676 : 0xD50000; // Emerald Green / Bright Red
