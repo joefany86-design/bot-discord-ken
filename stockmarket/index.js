@@ -824,6 +824,50 @@ function getPortalHubData(client) {
 }
 
 /**
+ * Auto-refresh permanent admin panels on bot startup.
+ * Ini membersihkan channel panel admin dan mengirim ulang panel agar tombolnya selalu aktif setelah restart/deploy.
+ */
+async function refreshAdminPanels(client) {
+  try {
+    const dbModule = require('./database');
+    const guildsSettings = dbModule.db.prepare('SELECT guild_id, admin_panel_channel_id FROM ebyus_settings WHERE admin_panel_channel_id IS NOT NULL').all();
+    
+    for (const settings of guildsSettings) {
+      const guild = client.guilds.cache.get(settings.guild_id);
+      if (!guild) continue;
+      
+      const adminChannel = guild.channels.cache.get(settings.admin_panel_channel_id) || await guild.channels.fetch(settings.admin_panel_channel_id).catch(() => null);
+      if (!adminChannel) continue;
+      
+      console.log(`[AdminPanel] Membersihkan dan mengirim ulang panel di channel ${adminChannel.name} (${adminChannel.id}) untuk guild ${guild.name}...`);
+      
+      // Purge all messages in the channel to clean it up
+      let fetched;
+      do {
+        fetched = await adminChannel.messages.fetch({ limit: 100 }).catch(() => null);
+        if (fetched && fetched.size > 0) {
+          try {
+            await adminChannel.bulkDelete(fetched);
+          } catch (err) {
+            for (const msg of fetched.values()) {
+              await msg.delete().catch(() => {});
+            }
+          }
+        }
+      } while (fetched && fetched.size > 0);
+
+      // Send one persistent admin panel there
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminPanel(adminChannel, client).catch((err) => {
+        console.error(`[AdminPanel] Gagal mengirim ulang panel di channel ${adminChannel.id}:`, err);
+      });
+    }
+  } catch (err) {
+    console.error('[AdminPanel] Gagal melakukan auto-refresh admin panels pada startup:', err);
+  }
+}
+
+/**
  * Inisialisasi Modul Stock Market.
  * Mengaktifkan scheduler otomatis saat bot siap.
  */
@@ -863,6 +907,9 @@ function initStockMarket(client) {
       console.error('❌ Error polling bot_broadcasts:', err);
     }
   }, 5000);
+
+  // Auto-refresh permanent admin panels on startup
+  refreshAdminPanels(client);
 
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
