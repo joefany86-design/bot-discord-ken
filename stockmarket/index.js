@@ -1142,8 +1142,7 @@ function initStockMarket(client) {
 
       try {
         const tournament = require('./tournament');
-        tournament.processTurn(matchId, interaction.user.id, actionType, client);
-        await interaction.deferUpdate().catch(() => {});
+        await tournament.processTurn(matchId, interaction.user.id, actionType, client, interaction);
       } catch (err) {
         await interaction.reply({ content: `❌ ${err.message}`, flags: 64 }).catch(() => {});
       }

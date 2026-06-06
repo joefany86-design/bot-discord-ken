@@ -434,7 +434,8 @@ async function executeNextMatch(guildId, client) {
         hasUsedUltimate: false,
         isDefending: false,
         burnTurns: 0,
-        shieldTurns: 0
+        shieldTurns: 0,
+        chosenAction: null
       },
       player2: {
         user_id: match.player_2_id,
@@ -456,14 +457,10 @@ async function executeNextMatch(guildId, client) {
         hasUsedUltimate: false,
         isDefending: false,
         burnTurns: 0,
-        shieldTurns: 0
+        shieldTurns: 0,
+        chosenAction: null
       }
     };
-
-    // Giliran pertama berdasarkan DEX
-    const dex1 = combatData.player1.stat_dex;
-    const dex2 = combatData.player2.stat_dex;
-    combatData.activePlayer = dex1 >= dex2 ? combatData.player1 : combatData.player2;
 
     // Set timestamp batas waktu turn pertama
     combatData.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
@@ -476,8 +473,8 @@ async function executeNextMatch(guildId, client) {
       combatData.messageId = combatMsg.id;
     }
 
-    // Kirim ping turn pertama untuk giliran pemain aktif
-    const pingMsg = await thread.send(`👉 Giliranmu untuk bertindak, <@${combatData.activePlayer.user_id}>!`).catch(() => null);
+    // Kirim ping turn pertama untuk giliran kedua pemain
+    const pingMsg = await thread.send(`👉 Giliranmu untuk bertindak, <@${combatData.player1.user_id}> & <@${combatData.player2.user_id}>!`).catch(() => null);
     if (pingMsg) {
       combatData.lastPingMessageId = pingMsg.id;
     }
@@ -604,63 +601,252 @@ function startTurnTimer(matchId, client) {
   if (!match) return;
 
   match.timer = setTimeout(() => {
-    handleTimeout(matchId, match.activePlayer.user_id, client);
+    handleTimeout(matchId, client);
   }, 45000);
 }
 
 /**
  * Menangani timeout ketika player tidak klik tombol dalam 45 detik.
  */
-async function handleTimeout(matchId, activePlayerId, client) {
+async function handleTimeout(matchId, client) {
   const match = client.activeCupMatches.get(matchId);
   if (!match) return;
 
-  match.activePlayer.timeouts++;
+  const p1 = match.player1;
+  const p2 = match.player2;
 
-  if (match.activePlayer.timeouts === 1) {
-    // Timeout pertama: Auto Attack
-    match.logs.push(`⚠️ **Batas Waktu Habis!** **${match.activePlayer.pet_name}** lambat bertindak! Bot mengambil keputusan otomatis untuk meluncurkan serangan biasa.`);
-    try {
-      processTurn(matchId, activePlayerId, 'atk', client);
-    } catch (e) {
-      console.error('Error auto-turn timeout:', e.message);
+  const p1TimedOut = !p1.chosenAction;
+  const p2TimedOut = !p2.chosenAction;
+
+  if (p1TimedOut) p1.timeouts++;
+  if (p2TimedOut) p2.timeouts++;
+
+  const forfeitP1 = p1.timeouts >= 2;
+  const forfeitP2 = p2.timeouts >= 2;
+
+  if (forfeitP1 && forfeitP2) {
+    match.logs.push(`🚨 **Batas Waktu Habis!** Kedua pemain tidak aktif (AFK) sebanyak 2 kali berturut-turut. Pertandingan diselesaikan berdasarkan sisa HP.`);
+    if (p1.hp === p2.hp) {
+      await endMatch(matchId, p2.user_id, 'defeat', client);
+    } else if (p1.hp > p2.hp) {
+      await endMatch(matchId, p1.user_id, 'defeat', client);
+    } else {
+      await endMatch(matchId, p2.user_id, 'defeat', client);
     }
-  } else if (match.activePlayer.timeouts >= 2) {
-    // Timeout kedua: Forfeit!
-    const defender = match.activePlayer === match.player1 ? match.player2 : match.player1;
-    match.logs.push(`🚨 **Batas Waktu Habis Lagi!** **${match.activePlayer.pet_name}** tidak aktif (AFK) sebanyak 2 kali berturut-turut. Pertandingan dibatalkan dengan status **FORFEIT**.`);
-    
-    await endMatch(matchId, defender.user_id, 'forfeit', client);
+    return;
+  }
+
+  if (forfeitP1) {
+    match.logs.push(`🚨 **Batas Waktu Habis!** **${p1.pet_name}** tidak aktif (AFK) sebanyak 2 kali berturut-turut. Pertandingan selesai dengan status **FORFEIT**.`);
+    await endMatch(matchId, p2.user_id, 'forfeit', client);
+    return;
+  }
+
+  if (forfeitP2) {
+    match.logs.push(`🚨 **Batas Waktu Habis!** **${p2.pet_name}** tidak aktif (AFK) sebanyak 2 kali berturut-turut. Pertandingan selesai dengan status **FORFEIT**.`);
+    await endMatch(matchId, p1.user_id, 'forfeit', client);
+    return;
+  }
+
+  if (p1TimedOut) {
+    p1.chosenAction = 'atk';
+    match.logs.push(`⚠️ **Batas Waktu Habis!** **${p1.pet_name}** lambat bertindak! Bot memilih tindakan serang otomatis.`);
+  }
+
+  if (p2TimedOut) {
+    p2.chosenAction = 'atk';
+    match.logs.push(`⚠️ **Batas Waktu Habis!** **${p2.pet_name}** lambat bertindak! Bot memilih tindakan serang otomatis.`);
+  }
+
+  // Clear timer
+  if (match.timer) {
+    clearTimeout(match.timer);
+    match.timer = null;
+  }
+
+  await resolveSimultaneousTurn(matchId, client);
+}
+
+function getActionName(actionType) {
+  switch (actionType) {
+    case 'atk': return '⚔️ Serang';
+    case 'def': return '🛡️ Bertahan';
+    case 'elem': return '⚡ Elemen';
+    case 'ult': return '💥 Ultimate';
+    default: return 'Tindakan';
   }
 }
 
 /**
  * Memproses aksi tempur interaktif dari pemain.
  */
-function processTurn(matchId, playerId, actionType, client) {
+async function processTurn(matchId, playerId, actionType, client, interaction) {
+  const match = client.activeCupMatches.get(matchId);
+  if (!match) {
+    throw new Error('Pertandingan tidak ditemukan atau telah berakhir!');
+  }
+
+  let actor, opponent;
+  if (match.player1.user_id === playerId) {
+    actor = match.player1;
+    opponent = match.player2;
+  } else if (match.player2.user_id === playerId) {
+    actor = match.player2;
+    opponent = match.player1;
+  } else {
+    throw new Error('Anda bukan peserta pertandingan ini!');
+  }
+
+  if (actor.chosenAction) {
+    throw new Error('Anda sudah menentukan pilihan untuk giliran ini! Menunggu lawan...');
+  }
+
+  // Validasi Aksi
+  if (actionType === 'elem') {
+    if (actor.energy < 20) throw new Error('Energi (SP) tidak cukup! Butuh 20 SP.');
+    if (actor.elemCooldown > 0) throw new Error(`Skill Elemen sedang cooldown! Tersisa ${actor.elemCooldown} turn lagi.`);
+  } else if (actionType === 'ult') {
+    if (actor.energy < 50) throw new Error('Energi (SP) tidak cukup! Butuh 50 SP.');
+    if (actor.hasUsedUltimate) throw new Error('Ultimate Skill hanya dapat digunakan 1 kali per pertandingan!');
+  }
+
+  actor.chosenAction = actionType;
+
+  if (opponent.chosenAction) {
+    // Clear timeout active
+    if (match.timer) {
+      clearTimeout(match.timer);
+      match.timer = null;
+    }
+
+    // Inform the user ephemerally
+    if (interaction) {
+      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Memproses giliran...`, flags: 64 }).catch(() => {});
+    }
+
+    // Resolve turn
+    await resolveSimultaneousTurn(matchId, client);
+  } else {
+    // Inform the user ephemerally
+    if (interaction) {
+      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Menunggu lawan menentukan tindakan...`, flags: 64 }).catch(() => {});
+    }
+
+    // Update battle embed status to SIAP
+    await updateBattleEmbed(matchId, client);
+  }
+}
+
+/**
+ * Menyelesaikan turn pertarungan secara simultan.
+ */
+async function resolveSimultaneousTurn(matchId, client) {
   const match = client.activeCupMatches.get(matchId);
   if (!match) return;
 
-  // Proteksi turn
-  if (match.activePlayer.user_id !== playerId) {
-    throw new Error('Bukan giliran Anda!');
+  const p1 = match.player1;
+  const p2 = match.player2;
+
+  // 1. Reset status bertahan untuk giliran baru
+  p1.isDefending = false;
+  p2.isDefending = false;
+
+  // Kurangi cooldown elemen sebelum aksi diproses
+  if (p1.elemCooldown > 0) p1.elemCooldown--;
+  if (p2.elemCooldown > 0) p2.elemCooldown--;
+
+  // 2. Terapkan pertahanan terlebih dahulu agar berlaku untuk turn ini
+  if (p1.chosenAction === 'def') {
+    p1.isDefending = true;
+    p1.energy = Math.min(100, p1.energy + 20);
+    match.logs.push(`🛡️ **${p1.pet_name}** memasang kuda-kuda bertahan!`);
+  }
+  if (p2.chosenAction === 'def') {
+    p2.isDefending = true;
+    p2.energy = Math.min(100, p2.energy + 20);
+    match.logs.push(`🛡️ **${p2.pet_name}** memasang kuda-kuda bertahan!`);
   }
 
-  // Clear timeout active
-  if (match.timer) {
-    clearTimeout(match.timer);
-    match.timer = null;
+  // 3. Tentukan urutan aksi menyerang berdasarkan DEX
+  let first = p1;
+  let second = p2;
+  if (p2.stat_dex > p1.stat_dex) {
+    first = p2;
+    second = p1;
+  } else if (p1.stat_dex === p2.stat_dex) {
+    if (Math.random() < 0.5) {
+      first = p2;
+      second = p1;
+    }
   }
 
-  // Reset timeout counter untuk pemain aktif
-  match.activePlayer.timeouts = 0;
+  // Aksi First Player
+  if (first.hp > 0 && ['atk', 'elem', 'ult'].includes(first.chosenAction)) {
+    executeSingleAction(first, second, first.chosenAction, match);
+  }
 
-  const attacker = match.activePlayer;
-  const defender = match.activePlayer === match.player1 ? match.player2 : match.player1;
+  // Aksi Second Player (hanya jika masih hidup)
+  if (second.hp > 0 && ['atk', 'elem', 'ult'].includes(second.chosenAction)) {
+    executeSingleAction(second, first, second.chosenAction, match);
+  }
 
-  // Bersihkan defending stance penyerang saat gilirannya menyerang
-  attacker.isDefending = false;
+  // 4. Cek kekalahan instan setelah aksi bertarung
+  if (p1.hp <= 0 && p2.hp <= 0) {
+    // Keduanya mati bersamaan: pemenang ditentukan dari DEX tertinggi
+    const winner = p1.stat_dex >= p2.stat_dex ? p1 : p2;
+    await endMatch(matchId, winner.user_id, 'defeat', client);
+    return;
+  } else if (p1.hp <= 0) {
+    await endMatch(matchId, p2.user_id, 'defeat', client);
+    return;
+  } else if (p2.hp <= 0) {
+    await endMatch(matchId, p1.user_id, 'defeat', client);
+    return;
+  }
 
+  // 5. Terapkan DoT Terbakar & update perisai di akhir giliran
+  for (const player of [p1, p2]) {
+    if (player.burnTurns > 0) {
+      const burnDmg = 8;
+      player.hp = Math.max(1, player.hp - burnDmg); // Sisakan HP minimal 1
+      match.logs.push(`🔥 **${player.pet_name}** menderita kerusakan terbakar bara **-${burnDmg} HP**!`);
+      player.burnTurns--;
+    }
+    if (player.shieldTurns > 0) {
+      player.shieldTurns--;
+    }
+  }
+
+  // Cek kekalahan lagi setelah DoT terbakar
+  if (p1.hp <= 0 && p2.hp <= 0) {
+    const winner = p1.stat_dex >= p2.stat_dex ? p1 : p2;
+    await endMatch(matchId, winner.user_id, 'defeat', client);
+    return;
+  } else if (p1.hp <= 0) {
+    await endMatch(matchId, p2.user_id, 'defeat', client);
+    return;
+  } else if (p2.hp <= 0) {
+    await endMatch(matchId, p1.user_id, 'defeat', client);
+    return;
+  }
+
+  // 6. Reset pilihan aksi & naikkan turnCount
+  p1.chosenAction = null;
+  p2.chosenAction = null;
+  match.turnCount++;
+
+  // Set timestamp turn berikutnya
+  match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
+
+  // Update Tampilan & Restart Timer 45s
+  updateBattleEmbed(matchId, client);
+  startTurnTimer(matchId, client);
+}
+
+/**
+ * Mengeksekusi aksi tunggal dari satu pet ke pet lain.
+ */
+function executeSingleAction(attacker, defender, actionType, match) {
   let damage = 0;
   let logMsg = '';
   let isCrit = false;
@@ -691,12 +877,6 @@ function processTurn(matchId, playerId, actionType, client) {
   const dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
   const critChance = Math.min(0.35, (attacker.stat_dex || 0) * 0.005);
 
-  // Cooldown decrement
-  if (attacker.elemCooldown > 0) {
-    attacker.elemCooldown--;
-  }
-
-  // ── PROSES AKSI ──
   if (actionType === 'atk') {
     isDodged = Math.random() < dodgeChance;
     if (isDodged) {
@@ -723,15 +903,7 @@ function processTurn(matchId, playerId, actionType, client) {
     }
     attacker.energy = Math.min(100, attacker.energy + 10);
 
-  } else if (actionType === 'def') {
-    attacker.isDefending = true;
-    attacker.energy = Math.min(100, attacker.energy + 20);
-    logMsg = `🛡️ **${attacker.pet_name}** memasang kuda-kuda bertahan! Damage yang diterima turn depan berkurang 50% & Dodge Chance +20%.`;
-
   } else if (actionType === 'elem') {
-    if (attacker.energy < 20) throw new Error('Energi (SP) tidak cukup! Butuh 20 SP.');
-    if (attacker.elemCooldown > 0) throw new Error(`Skill Elemen sedang cooldown! Tersisa ${attacker.elemCooldown} turn lagi.`);
-
     isDodged = Math.random() < (dodgeChance * 0.8);
     if (isDodged) {
       logMsg = `💨 **${attacker.pet_name}** meluncurkan skill elemennya, tetapi **${defender.pet_name}** berhasil menghindar!`;
@@ -762,9 +934,6 @@ function processTurn(matchId, playerId, actionType, client) {
     attacker.elemCooldown = 3; // 1 giliran aktif + 2 cooldown
 
   } else if (actionType === 'ult') {
-    if (attacker.energy < 50) throw new Error('Energi (SP) tidak cukup! Butuh 50 SP.');
-    if (attacker.hasUsedUltimate) throw new Error('Ultimate Skill hanya dapat digunakan 1 kali per pertandingan!');
-
     isDodged = Math.random() < (dodgeChance * 0.5);
     if (isDodged) {
       logMsg = `💨 **${attacker.pet_name}** meluncurkan Jurus Pamungkas, tetapi meleset menghindari zirah **${defender.pet_name}**!`;
@@ -801,7 +970,7 @@ function processTurn(matchId, playerId, actionType, client) {
           attacker.shieldTurns = 2; // Kebal turn lawan depan
           effectText = `\n🛡️ **${attacker.pet_name}** melingkari dirinya dengan zirah **Perisai Kokoh** kebal kerusakan!`;
         } else if (elem === 'DRAGON') {
-          defenderDEF = Math.round(defenderDEF * 0.5);
+          defender.stat_def = Math.round(defender.stat_def * 0.5);
           effectText = `\n💥 Zirah pertahanan **${defender.pet_name}** pecah! DEF berkurang 50% untuk sisa laga turnamen!`;
         }
 
@@ -812,42 +981,9 @@ function processTurn(matchId, playerId, actionType, client) {
     attacker.hasUsedUltimate = true;
   }
 
-  match.logs.push(logMsg);
-
-  if (defender.hp <= 0) {
-    endMatch(matchId, attacker.user_id, 'defeat', client);
-    return;
+  if (logMsg) {
+    match.logs.push(logMsg);
   }
-
-  // Ganti giliran ke defender
-  match.activePlayer = defender;
-  match.turnCount++;
-
-  // Set timestamp turn berikutnya
-  match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
-
-  // Dot Terbakar di awal turn
-  if (match.activePlayer.burnTurns > 0) {
-    const burnDmg = 8;
-    match.activePlayer.hp = Math.max(1, match.activePlayer.hp - burnDmg); // Sisakan HP minimal 1
-    match.logs.push(`🔥 **${match.activePlayer.pet_name}** menderita kerusakan terbakar bara **-${burnDmg} HP**!`);
-    match.activePlayer.burnTurns--;
-  }
-
-  // Kurangi durasi perisai pelindung
-  if (match.activePlayer.shieldTurns > 0) {
-    match.activePlayer.shieldTurns--;
-  }
-
-  if (match.activePlayer.hp <= 0) {
-    // Mati akibat burn dot
-    endMatch(matchId, attacker.user_id, 'defeat', client);
-    return;
-  }
-
-  // Update Tampilan & Restart Timer 45s
-  updateBattleEmbed(matchId, client);
-  startTurnTimer(matchId, client);
 }
 
 /**
@@ -1004,7 +1140,6 @@ function formatLogToAnsi(log) {
 function getBattleEmbedData(match) {
   const p1 = match.player1;
   const p2 = match.player2;
-  const active = match.activePlayer;
 
   const barSize = 10;
   const renderHPBar = (hp, max) => {
@@ -1025,27 +1160,32 @@ function getBattleEmbedData(match) {
   // Format battle logs to ANSI
   const ansiLogs = match.logs.slice(-3).map(formatLogToAnsi).join('\n');
 
+  const p1Status = p1.chosenAction ? '✔️ **SIAP**' : '⏳ **MEMILIH...**';
+  const p2Status = p2.chosenAction ? '✔️ **SIAP**' : '⏳ **MEMILIH...**';
+
   // Embed premium layout
   const embed = new EmbedBuilder()
-    .setColor(active.user_id === p1.user_id ? 0xFF5722 : 0x00E5FF)
+    .setColor(0x7C4DFF)
     .setTitle(`⚔️ ARENA ADMIN CUP — MATCH #${match.matchId} ⚔️`)
     .setDescription(
-      `🔴 **[Challenger] ${p1.pet_name}** (Lv.${p1.level})\n` +
+      `🔴 **[Challenger] ${p1.pet_name}** (Lv.${p1.level}) — <@${p1.user_id}>\n` +
       `HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP} (${Math.round((p1.hp / p1.maxHP) * 100)}%)\`\n` +
       `SP: \`[${renderSPBar(p1.energy)}]\` \`${p1.energy}/100 Energy\`\n` +
-      `Status: ${p1.burnTurns > 0 ? '🔥 TERBAKAR' : p1.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p1.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n\n` +
+      `Efek: ${p1.burnTurns > 0 ? '🔥 TERBAKAR' : p1.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p1.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n` +
+      `Status: ${p1Status}\n\n` +
       
-      `🔵 **[Opponent] ${p2.pet_name}** (Lv.${p2.level})\n` +
+      `🔵 **[Opponent] ${p2.pet_name}** (Lv.${p2.level}) — <@${p2.user_id}>\n` +
       `HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP} (${Math.round((p2.hp / p2.maxHP) * 100)}%)\`\n` +
       `SP: \`[${renderSPBar(p2.energy)}]\` \`${p2.energy}/100 Energy\`\n` +
-      `Status: ${p2.burnTurns > 0 ? '🔥 TERBAKAR' : p2.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p2.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n\n` +
+      `Efek: ${p2.burnTurns > 0 ? '🔥 TERBAKAR' : p2.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p2.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n` +
+      `Status: ${p2Status}\n\n` +
       
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📜 **Log Jalannya Duel:**\n` +
       `\`\`\`ansi\n` +
       (ansiLogs || 'Belum ada log.') + '\n' +
       `\`\`\`\n` +
-      `👉 Giliran sekarang: **${active.pet_name}** (<@${active.user_id}>)\n` +
+      `👉 **Kedua pemain silakan menentukan tindakan Anda menggunakan tombol di bawah!**\n` +
       `⏳ **Batas Waktu**: <t:${match.turnEndUnix || Math.floor(Date.now() / 1000 + 45)}:R>`
     )
     .setFooter({ text: `Turn ${match.turnCount} • Admin Cup` })
@@ -1064,13 +1204,11 @@ function getBattleEmbedData(match) {
     new ButtonBuilder()
       .setCustomId(`cup_btn_elem_${match.matchId}`)
       .setLabel('⚡ Elemen')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(active.energy < 20 || active.elemCooldown > 0),
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`cup_btn_ult_${match.matchId}`)
       .setLabel('💥 Ultimate')
       .setStyle(ButtonStyle.Danger)
-      .setDisabled(active.energy < 50 || active.hasUsedUltimate)
   );
 
   return { embeds: [embed], components: [row] };
@@ -1102,10 +1240,16 @@ async function updateBattleEmbed(matchId, client) {
       match.lastPingMessageId = null;
     }
 
-    // Kirim ping baru untuk giliran pemain aktif
-    const pingMsg = await threadChannel.send(`👉 Giliranmu untuk bertindak, <@${match.activePlayer.user_id}>!`).catch(() => null);
-    if (pingMsg) {
-      match.lastPingMessageId = pingMsg.id;
+    // Kirim ping baru untuk giliran pemain yang belum memilih
+    const pendingUsers = [];
+    if (!match.player1.chosenAction) pendingUsers.push(`<@${match.player1.user_id}>`);
+    if (!match.player2.chosenAction) pendingUsers.push(`<@${match.player2.user_id}>`);
+
+    if (pendingUsers.length > 0) {
+      const pingMsg = await threadChannel.send(`👉 Giliranmu untuk bertindak, ${pendingUsers.join(' & ')}!`).catch(() => null);
+      if (pingMsg) {
+        match.lastPingMessageId = pingMsg.id;
+      }
     }
   }
 }
