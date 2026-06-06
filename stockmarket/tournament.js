@@ -224,19 +224,20 @@ async function updateRegistrationEmbed(guildId, client) {
   const endRegAt = event.registration_end_at;
 
   const announceEmbed = new EmbedBuilder()
-    .setColor(0x7C4DFF)
-    .setTitle('🏆 ADMIN CUP PET TOURNAMENT 🏆')
+    .setColor(0x4F46E5) // Premium Indigo
+    .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
     .setDescription(
-      `📢 **Pendaftaran turnamen adu pet telah dibuka oleh Admin!**\n` +
-      `Siapkan pet terkuat Anda untuk merebut gelar juara server!\n\n` +
-      `⏱️ **Pendaftaran Ditutup:** <t:${endRegAt}:R> (<t:${endRegAt}:T>)\n` +
-      `📈 **Kriteria Level:** Level ${event.min_level} s/d ${event.max_level}\n\n` +
-      `👥 **Peserta Terdaftar (${participants.length}):**\n${participantList}\n\n` +
-      `👉 Klik tombol **🏆 Gabung / Ganti Pet** di bawah untuk mendaftar atau mengubah pet terdaftar Anda.\n` +
-      `👉 Klik tombol **❌ Keluar Turnamen** untuk membatalkan pendaftaran.\n\n` +
-      (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}` : `*Pemenang akan mendapatkan hadiah istimewa yang akan diberikan langsung oleh Admin secara manual setelah turnamen selesai!*`)
+      `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
+      `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
+      `▬`.repeat(15)
     )
-    .setFooter({ text: 'Admin Cup • Registration Phase' })
+    .addFields(
+      { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
+      { name: '📈 Kriteria Level Pet', value: `Level **${event.min_level}** s/d **${event.max_level}**`, inline: true },
+      { name: '🎁 Hadiah Liga', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+      { name: `👥 Peserta Terdaftar (${participants.length})`, value: participantList, inline: false }
+    )
+    .setFooter({ text: 'Pet PvP League • Registration Phase' })
     .setTimestamp();
 
   try {
@@ -261,7 +262,7 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
     db.run('DELETE FROM tournament_events WHERE guild_id = ?', [guildId]);
     db.run('DELETE FROM tournament_participants WHERE guild_id = ?', [guildId]);
     if (channel) {
-      await channel.send('❌ **Turnamen Admin Cup dibatalkan** karena jumlah pendaftar kurang dari 2 orang.');
+      await channel.send('❌ **Liga Pet dibatalkan** karena jumlah pendaftar kurang dari 2 orang.');
     }
     return;
   }
@@ -273,59 +274,43 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
   participants.sort(() => Math.random() - 0.5);
 
   const N = participants.length;
-  // Cari pangkat 2 terkecil yang >= N (misal N=3, P=4; N=5, P=8)
-  let P = 2;
-  while (P < N) {
-    P *= 2;
-  }
-
-  // Jumlah pertandingan di Ronde 1 = N - (P / 2) ?
-  // Sebenarnya jika P = N, semua tanding. Jika P > N, ada BYE.
-  // Jumlah pertandingan nyata = N - (P / 2)
-  // Sisa pemain yang lolos otomatis (BYE) = P - N
-  const numMatches = N - (P / 2);
-  const numByes = P - N;
+  const userIds = participants.map(p => p.user_id);
 
   db.transaction(() => {
-    // 1. Buat match nyata untuk pemain pertama
-    let playerIdx = 0;
-    for (let i = 0; i < numMatches; i++) {
-      const p1 = participants[playerIdx++];
-      const p2 = participants[playerIdx++];
-      db.run(
-        `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, match_status)
-         VALUES (?, 1, ?, ?, 'PENDING')`,
-        [guildId, p1.user_id, p2.user_id]
-      );
-    }
-
-    // 2. Buat match BYE untuk sisa pemain agar lolos ke Ronde 2
-    for (let i = 0; i < numByes; i++) {
-      const p = participants[playerIdx++];
-      db.run(
-        `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, winner_id, match_status)
-         VALUES (?, 1, ?, NULL, ?, 'COMPLETED')`,
-        [guildId, p.user_id, p.user_id]
-      );
+    const matches = generateRoundRobinMatches(userIds);
+    for (const m of matches) {
+      if (m.winner) {
+        db.run(
+          `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, winner_id, match_status)
+           VALUES (?, ?, ?, NULL, ?, 'COMPLETED')`,
+          [guildId, m.round, m.p1 || m.p2, m.winner]
+        );
+      } else {
+        db.run(
+          `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, match_status)
+           VALUES (?, ?, ?, ?, 'PENDING')`,
+          [guildId, m.round, m.p1, m.p2]
+        );
+      }
     }
   })();
 
   if (channel) {
-    const visualBracket = getVisualBracketString(guildId);
+    const standingsText = getLeagueStandingsString(guildId);
     const queueText = getMatchQueueString(guildId);
 
     const bracketEmbed = new EmbedBuilder()
-      .setColor(0x7C4DFF)
-      .setTitle('📊 BAGAN PERTANDINGAN — ADMIN CUP 📊')
+      .setColor(0x6366F1)
+      .setTitle('📊 LIGA PET — JADWAL & KLASEMEN AWAL 📊')
       .setDescription(
-        `Pendaftaran telah ditutup otomatis! Sebanyak **${N} pet** telah diacak masuk ke dalam bagan turnamen.\n\n` +
-        `\`\`\`text\n` +
-        visualBracket + `\n` +
-        `\`\`\`\n\n` +
-        queueText +
-        `\n📢 *Semua pertandingan akan dijalankan berurutan satu per satu. Bersiaplah!*`
+        `Pendaftaran telah ditutup! Sebanyak **${N} pet** siap bersaing di liga dan saling berhadapan.\n` +
+        `▬`.repeat(15)
       )
-      .setFooter({ text: 'Admin Cup • Tournament Bracket' })
+      .addFields(
+        { name: '🏆 Klasemen Awal (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+        { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
+      )
+      .setFooter({ text: 'Pet PvP League • Round Robin Seeding' })
       .setTimestamp();
 
     await channel.send({ embeds: [bracketEmbed] });
@@ -393,12 +378,18 @@ async function executeNextMatch(guildId, client) {
     // Kirim pengumuman di channel utama turnamen tanpa ping spam
     if (thread.id !== channel.id) {
       const matchAnnounce = new EmbedBuilder()
-        .setColor(0xFF5722)
-        .setTitle('⚔️ PERTANDINGAN DIMULAI!')
+        .setColor(0xEF4444) // Premium Red
+        .setTitle('⚔️ PERTANDINGAN DIMULAI! ⚔️')
         .setDescription(
-          `**${p1Pet.pet_name}** (<@${match.player_1_id}>) vs **${p2Pet.pet_name}** (<@${match.player_2_id}>)\n\n` +
-          `🔗 Saksikan pertarungan di: <#${thread.id}>`
+          `Pertandingan liga baru saja dimulai! Ayo saksikan keseruannya di arena khusus!\n` +
+          `▬`.repeat(15)
         )
+        .addFields(
+          { name: '🔴 Challenger', value: `🐾 **${p1Pet.pet_name}** (<@${match.player_1_id}>)`, inline: true },
+          { name: '🔵 Opponent', value: `🐾 **${p2Pet.pet_name}** (<@${match.player_2_id}>)`, inline: true },
+          { name: '🏟️ Arena Laga (Thread)', value: `👉 Masuk ke arena: <#${thread.id}>`, inline: false }
+        )
+        .setFooter({ text: `Match #${match.match_id} • Ronde ${event.current_round}` })
         .setTimestamp();
       await channel.send({ embeds: [matchAnnounce] }).catch(() => {});
     }
@@ -490,98 +481,87 @@ async function executeNextMatch(guildId, client) {
 
   } else {
     // Seluruh match di ronde ini sudah selesai!
-    // Ambil pemenang babak ini
-    const activeParticipants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ? AND status = \'ACTIVE\'', [guildId]);
-    
-    // Check match winners yang selesai di ronde aktif
     const roundMatches = db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND round_number = ?', [guildId, event.current_round]);
     const allCompleted = roundMatches.every(m => m.match_status === 'COMPLETED' || m.match_status === 'FORFEITED');
 
     if (!allCompleted) {
-      // Tunggu match aktif lain jika ada (harusnya sequential tidak kena ini, tapi aman untuk safety check)
       return;
     }
 
-    // Ambil pemenang ronde ini dari database
-    const winners = roundMatches.map(m => m.winner_id).filter(id => id !== null);
+    // Periksa apakah masih ada match PENDING lainnya di ronde selanjutnya
+    const pendingMatches = db.get('SELECT match_id FROM tournament_matches WHERE guild_id = ? AND match_status = \'PENDING\' LIMIT 1', [guildId]);
 
-    if (winners.length === 1) {
-      // HANYA 1 PEMENANG TERSISA = JUARA UTAMA!
-      const championId = winners[0];
-      const runnerUpMatch = db.get(
-        'SELECT player_1_id, player_2_id, winner_id FROM tournament_matches WHERE guild_id = ? AND round_number = ? AND (player_1_id = ? OR player_2_id = ?)',
-        [guildId, event.current_round, championId, championId]
-      );
-      
-      let runnerUpId = null;
-      if (runnerUpMatch) {
-        runnerUpId = runnerUpMatch.player_1_id === championId ? runnerUpMatch.player_2_id : runnerUpMatch.player_1_id;
+    if (!pendingMatches) {
+      // LIGA SELESAI! Hitung klasemen akhir
+      const participants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [guildId]);
+      const matches = db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'COMPLETED\'', [guildId]);
+
+      const standings = participants.map(p => {
+        let played = 0;
+        let won = 0;
+        matches.forEach(m => {
+          if (m.player_1_id === p.user_id || m.player_2_id === p.user_id) {
+            played++;
+            if (m.winner_id === p.user_id) {
+              won++;
+            }
+          }
+        });
+        const lost = played - won;
+        const points = won * 3;
+        return {
+          userId: p.user_id,
+          petName: p.pet_name,
+          played,
+          won,
+          lost,
+          points
+        };
+      });
+
+      // Urutkan klasemen
+      standings.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.won !== a.won) return b.won - a.won;
+        return a.petName.localeCompare(b.petName);
+      });
+
+      const championId = standings[0]?.userId || null;
+      const runnerUpId = standings[1]?.userId || null;
+
+      if (championId) {
+        await endTournament(guildId, championId, runnerUpId, client);
+      } else {
+        db.run('DELETE FROM tournament_events WHERE guild_id = ?', [guildId]);
+        await channel.send('❌ **Liga dibatalkan** karena terjadi error status (tidak ditemukan peserta).');
       }
-
-      await endTournament(guildId, championId, runnerUpId, client);
-    } else if (winners.length === 0) {
-      // Keadaan aneh di mana tidak ada pemenang
-      db.run('DELETE FROM tournament_events WHERE guild_id = ?', [guildId]);
-      await channel.send('❌ **Turnamen dibatalkan** karena terjadi error status (tidak ditemukan pemenang).');
     } else {
-      // Ada beberapa pemenang, susun babak berikutnya
+      // Maju ke ronde selanjutnya
       const nextRound = event.current_round + 1;
+      db.run('UPDATE tournament_events SET current_round = ? WHERE guild_id = ?', [nextRound, guildId]);
 
-      db.transaction(() => {
-        // Pairing winners
-        let idx = 0;
-        const totalW = winners.length;
-        // Check power of 2
-        let P = 2;
-        while (P < totalW) {
-          P *= 2;
-        }
+      // Ambil max round
+      const maxRoundObj = db.get('SELECT MAX(round_number) as max_r FROM tournament_matches WHERE guild_id = ?', [guildId]);
+      const maxRound = maxRoundObj ? maxRoundObj.max_r : nextRound;
 
-        const numMatches = totalW - (P / 2);
-        const numByes = P - totalW;
+      const roundLabel = nextRound === maxRound ? '🏆 ROUND AKHIR (FINAL ROUND) 🏆' : `ROUND ${nextRound}`;
 
-        for (let i = 0; i < numMatches; i++) {
-          const p1 = winners[idx++];
-          const p2 = winners[idx++];
-          db.run(
-            `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, match_status)
-             VALUES (?, ?, ?, ?, 'PENDING')`,
-            [guildId, nextRound, p1, p2]
-          );
-        }
-
-        for (let i = 0; i < numByes; i++) {
-          const p = winners[idx++];
-          db.run(
-            `INSERT INTO tournament_matches (guild_id, round_number, player_1_id, player_2_id, winner_id, match_status)
-             VALUES (?, ?, ?, NULL, ?, 'COMPLETED')`,
-            [guildId, nextRound, p, p]
-          );
-        }
-
-        // Naikkan ronde turnamen
-        db.run('UPDATE tournament_events SET current_round = ? WHERE guild_id = ?', [nextRound, guildId]);
-      })();
-
-      // Beritahu bagan baru
-      const roundLabel = nextRound === event.current_round + 1 && winners.length === 2 ? '🏆 GRAND FINALS 🏆' : `ROUND ${nextRound}`;
-      
-      const visualBracket = getVisualBracketString(guildId);
+      const standingsText = getLeagueStandingsString(guildId);
       const queueText = getMatchQueueString(guildId);
 
       const newBracketEmbed = new EmbedBuilder()
-        .setColor(0x7C4DFF)
-        .setTitle(`📊 BAGAN PERTANDINGAN — ${roundLabel} 📊`)
+        .setColor(0x6366F1)
+        .setTitle(`📊 LIGA PET — ${roundLabel} 📊`)
         .setDescription(
           `Babak **Ronde ${event.current_round}** selesai!\n` +
-          `Berikut adalah bagan pertandingan untuk babak selanjutnya:\n\n` +
-          `\`\`\`text\n` +
-          visualBracket + `\n` +
-          `\`\`\`\n\n` +
-          queueText +
-          `\n\n⏱️ *Pertandingan pertama ronde baru dimulai dalam 1 menit (Jeda Istirahat).*`
+          `Berikut adalah klasemen sementara dan jadwal pertandingan untuk babak selanjutnya:\n\n` +
+          `▬`.repeat(15)
         )
-        .setFooter({ text: 'Admin Cup • Tournament Seeding' })
+        .addFields(
+          { name: '🏆 Klasemen Sementara (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+          { name: '📋 Antrean Pertandingan (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
+        )
+        .setFooter({ text: 'Pet PvP League • Standings Transition' })
         .setTimestamp();
 
       await channel.send({ embeds: [newBracketEmbed] });
@@ -1020,24 +1000,23 @@ async function endMatch(matchId, winnerId, reason, client) {
       'UPDATE tournament_matches SET winner_id = ?, match_status = \'COMPLETED\' WHERE match_id = ?',
       [winnerId, matchId]
     );
-
-    // Eliminasi pecundang dari pendaftar aktif
-    db.run(
-      'UPDATE tournament_participants SET status = \'ELIMINATED\' WHERE guild_id = ? AND user_id = ?',
-      [match.guildId, loser.user_id]
-    );
   })();
 
   const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
     const victoryEmbed = new EmbedBuilder()
-      .setColor(0x10B981)
+      .setColor(0x10B981) // Emerald Green
       .setTitle('🏆 PERTANDINGAN SELESAI! 🏆')
       .setDescription(
-        `🎉 Selamat kepada **${winner.pet_name}** (<@${winner.user_id}>) yang berhasil memenangkan pertandingan!\n\n` +
-        `💀 **Status Pecundang:** Pet **${loser.pet_name}** (<@${loser.user_id}>) tereliminasi dari turnamen.\n` +
-        `💡 *Status HP dan kebahagiaan pet kedua pemain telah dipulihkan 100% seperti semula.*`
+        `Pertempuran di arena telah usai dan pemenang telah ditentukan!\n` +
+        `▬`.repeat(15)
       )
+      .addFields(
+        { name: '👑 Pemenang (Winner)', value: `🥇 **${winner.pet_name}** (<@${winner.user_id}>) — memperoleh **+3 Poin**`, inline: false },
+        { name: '💀 Lawan (Opponent)', value: `🐾 **${loser.pet_name}** (<@${loser.user_id}>) — memperoleh **0 Poin**`, inline: false },
+        { name: '💡 Pemulihan HP & Kebahagiaan', value: `*Status HP dan kebahagiaan pet kedua pemain telah dipulihkan 100% seperti semula.*`, inline: false }
+      )
+      .setFooter({ text: `Match #${match.matchId} Completed` })
       .setTimestamp();
 
     await threadChannel.send({ embeds: [victoryEmbed] });
@@ -1052,23 +1031,24 @@ async function endMatch(matchId, winnerId, reason, client) {
     }
   }
 
-  // Kirim update bagan & antrean ke channel utama
+  // Kirim update klasemen & antrean ke channel utama
   const eventChan = db.get('SELECT channel_id FROM tournament_events WHERE guild_id = ?', [match.guildId]);
   if (eventChan) {
     const channel = client.channels.cache.get(eventChan.channel_id) || await client.channels.fetch(eventChan.channel_id).catch(() => null);
     if (channel) {
-      const visualBracket = getVisualBracketString(match.guildId);
+      const standingsText = getLeagueStandingsString(match.guildId);
       const queueText = getMatchQueueString(match.guildId);
 
       const updateEmbed = new EmbedBuilder()
-        .setColor(0x7C4DFF)
-        .setTitle('📊 UPDATE BAGAN & ANTRIAN TURNAMEN 📊')
+        .setColor(0x6366F1)
+        .setTitle('📊 UPDATE KLASEMEN LIGA PET 📊')
         .setDescription(
-          `Match #${match.matchId} selesai!\n\n` +
-          `\`\`\`text\n` +
-          visualBracket + `\n` +
-          `\`\`\`\n\n` +
-          queueText
+          `Pertandingan Match #${match.matchId} telah selesai!\n` +
+          `▬`.repeat(15)
+        )
+        .addFields(
+          { name: '🏆 Klasemen Sementara (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+          { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
         )
         .setTimestamp();
       await channel.send({ embeds: [updateEmbed] }).catch(() => {});
@@ -1105,18 +1085,24 @@ async function endTournament(guildId, championId, runnerUpId, client) {
   const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID || '1511871394210779247';
   const catalogChanId = '1510138369923874958';
 
+  const finalStandings = getLeagueStandingsString(guildId);
+
   const celebrationEmbed = new EmbedBuilder()
-    .setColor(0xFFD700)
-    .setTitle('👑 CHAMPION OF ADMIN CUP 👑')
+    .setColor(0xF59E0B) // Amber/Gold
+    .setTitle('🏆 CHAMPION OF PET LEAGUE 🏆')
     .setDescription(
-      `🏆 **Turnamen Admin Cup Resmi Berakhir!** 🏆\n\n` +
-      `🥇 **JUARA 1:** **${champPet.pet_name}** (<@${championId}>)\n` +
-      (runnerPet ? `🥈 **JUARA 2:** **${runnerPet.pet_name}** (<@${runnerUpId}>)\n\n` : '\n') +
-      `🎉 Selamat kepada sang juara! Terima kasih kepada seluruh pet dan pawang yang telah berpartisipasi dengan luar biasa!\n\n` +
-      (event.reward_desc ? `🎁 **Hadiah Turnamen:** ${event.reward_desc}\n\n` : '') +
-      `📢 <@${event.admin_id}> (Administrator) dipersilakan untuk memberikan hadiah turnamen secara manual kepada para pemenang!`
+      `🎉 **Liga PvP Pet Resmi Berakhir!** 🎉\n` +
+      `Pertarungan sengit telah usai dan sang legenda baru server telah dinobatkan!\n` +
+      `▬`.repeat(15)
     )
-    .setFooter({ text: 'Admin Cup • Tournament Completed' })
+    .addFields(
+      { name: '🥇 JUARA 1 (CHAMPION)', value: `🏆 **${champPet?.pet_name || 'Pet 1'}** (<@${championId}>)`, inline: false },
+      { name: '🥈 JUARA 2 (RUNNER-UP)', value: runnerPet ? `🥈 **${runnerPet.pet_name}** (<@${runnerUpId}>)` : '*Tidak ada.*', inline: false },
+      { name: '🎁 Hadiah Liga (Reward)', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara manual oleh Admin.*`, inline: false },
+      { name: '📊 Klasemen Akhir Liga (Final Standings)', value: `\`\`\`text\n${finalStandings}\n\`\`\``, inline: false },
+      { name: '📢 Pemberitahuan Admin', value: `<@${event.admin_id}> dipersilakan memberikan hadiah turnamen secara manual kepada para pemenang.`, inline: false }
+    )
+    .setFooter({ text: 'Pet PvP League • Completed' })
     .setTimestamp();
 
   if (guild) {
@@ -1153,9 +1139,17 @@ async function endTournament(guildId, championId, runnerUpId, client) {
       const adminMsg = await adminChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
       if (adminMsg) {
         const completedEmbed = new EmbedBuilder()
-          .setColor(0xFFD700)
-          .setTitle('🏆 TURNAMEN SELESAI!')
-          .setDescription(`Turnamen Admin Cup telah selesai dengan sukses!\nJuara 1: <@${championId}>\nJuara 2: ${runnerUpId ? `<@${runnerUpId}>` : '-'}`)
+          .setColor(0xF59E0B) // Amber
+          .setTitle('🏆 LIGA SELESAI!')
+          .setDescription(
+            `Liga Pet telah selesai dengan sukses!\n` +
+            `▬`.repeat(15)
+          )
+          .addFields(
+            { name: '🥇 Juara 1', value: `<@${championId}>`, inline: true },
+            { name: '🥈 Juara 2', value: runnerUpId ? `<@${runnerUpId}>` : '-', inline: true }
+          )
+          .setFooter({ text: 'League Status: Completed' })
           .setTimestamp();
         await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => {});
       }
@@ -1236,30 +1230,45 @@ function getBattleEmbedData(match) {
 
   // Embed premium layout
   const embed = new EmbedBuilder()
-    .setColor(0x7C4DFF)
-    .setTitle(`⚔️ ARENA ADMIN CUP — MATCH #${match.matchId} ⚔️`)
+    .setColor(0xEF4444) // Red for active fight
+    .setTitle(`⚔️ ARENA LIGA PET — MATCH #${match.matchId} ⚔️`)
     .setDescription(
-      `🔴 **[Challenger] ${p1.pet_name}** (Lv.${p1.level}) — <@${p1.user_id}>\n` +
-      `HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP} (${Math.round((p1.hp / p1.maxHP) * 100)}%)\`\n` +
-      `SP: \`[${renderSPBar(p1.energy)}]\` \`${p1.energy}/100 Energy\`\n` +
-      `Efek: ${p1.burnTurns > 0 ? '🔥 TERBAKAR' : p1.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p1.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n` +
-      `Status: ${p1Status}\n\n` +
-      
-      `🔵 **[Opponent] ${p2.pet_name}** (Lv.${p2.level}) — <@${p2.user_id}>\n` +
-      `HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP} (${Math.round((p2.hp / p2.maxHP) * 100)}%)\`\n` +
-      `SP: \`[${renderSPBar(p2.energy)}]\` \`${p2.energy}/100 Energy\`\n` +
-      `Efek: ${p2.burnTurns > 0 ? '🔥 TERBAKAR' : p2.shieldTurns > 0 ? '🛡️ PERISAI KOKOH' : p2.isDefending ? '🛡️ BERTAHAN' : 'Normal'}\n` +
-      `Status: ${p2Status}\n\n` +
-      
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `📜 **Log Jalannya Duel:**\n` +
-      `\`\`\`ansi\n` +
-      (ansiLogs || 'Belum ada log.') + '\n' +
-      `\`\`\`\n` +
-      `👉 **Kedua pemain silakan menentukan tindakan Anda menggunakan tombol di bawah!**\n` +
-      `⏳ **Batas Waktu**: <t:${match.turnEndUnix || Math.floor(Date.now() / 1000 + 45)}:R>`
+      `Kedua pet bertarung sengit di bawah kendali pawang masing-masing!\n` +
+      `▬`.repeat(15)
     )
-    .setFooter({ text: `Turn ${match.turnCount} • Admin Cup` })
+    .addFields(
+      {
+        name: `🔴 Challenger: ${p1.pet_name} (Lv.${p1.level})`,
+        value: 
+          `👤 Pawang: <@${p1.user_id}>\n` +
+          `❤️ HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP}\`\n` +
+          `⚡ SP: \`[${renderSPBar(p1.energy)}]\` \`${p1.energy}/100\`\n` +
+          `🔰 Status: ${p1.burnTurns > 0 ? '🔥 Terbakar' : p1.shieldTurns > 0 ? '🛡️ Perisai' : p1.isDefending ? '🛡️ Bertahan' : 'Normal'}\n` +
+          `⌛ Aksi: ${p1Status}`,
+        inline: true
+      },
+      {
+        name: `🔵 Opponent: ${p2.pet_name} (Lv.${p2.level})`,
+        value: 
+          `👤 Pawang: <@${p2.user_id}>\n` +
+          `❤️ HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP}\`\n` +
+          `⚡ SP: \`[${renderSPBar(p2.energy)}]\` \`${p2.energy}/100\`\n` +
+          `🔰 Status: ${p2.burnTurns > 0 ? '🔥 Terbakar' : p2.shieldTurns > 0 ? '🛡️ Perisai' : p2.isDefending ? '🛡️ Bertahan' : 'Normal'}\n` +
+          `⌛ Aksi: ${p2Status}`,
+        inline: true
+      },
+      {
+        name: '📜 Log Jalannya Duel',
+        value: `\`\`\`ansi\n${ansiLogs || 'Belum ada log.'}\n\`\`\``,
+        inline: false
+      },
+      {
+        name: '⏳ Batas Waktu Tindakan',
+        value: `👉 Pilih langkah Anda menggunakan tombol di bawah!\n⏳ Tersisa: <t:${match.turnEndUnix || Math.floor(Date.now() / 1000 + 45)}:R>`,
+        inline: false
+      }
+    )
+    .setFooter({ text: `Turn ${match.turnCount} • Pet PvP League` })
     .setTimestamp();
 
   // Aksi Button
@@ -1543,7 +1552,7 @@ function getMatchQueueString(guildId) {
 /**
  * Menyusun data panel kontrol admin.
  */
-function getAdminPanelData(guildId) {
+function getAdminPanelData(guildId, client) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
   if (!event) {
     return {
@@ -1569,19 +1578,32 @@ function getAdminPanelData(guildId) {
   if (activeMatch) {
     const p1 = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, activeMatch.player_1_id]);
     const p2 = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, activeMatch.player_2_id]);
-    activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}** (Thread: <#${activeMatch.thread_id}>)`;
+    activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}**\n🏟️ Thread: <#${activeMatch.thread_id}>`;
+
+    if (client && client.activeCupMatches) {
+      const combat = client.activeCupMatches.get(activeMatch.match_id);
+      if (combat) {
+        activeMatchText += `\n⏳ **Status Duel (Turn ${combat.turnCount}):**\n` +
+          `• 🔴 **Challenger:** HP \`${combat.player1.hp}/${combat.player1.maxHP}\` | SP \`${combat.player1.energy}/100\`\n` +
+          `• 🔵 **Opponent:** HP \`${combat.player2.hp}/${combat.player2.maxHP}\` | SP \`${combat.player2.energy}/100\``;
+      }
+    }
   }
 
   const embed = new EmbedBuilder()
-    .setColor(isPaused ? 0xFF9800 : 0x7C4DFF)
-    .setTitle('🛠️ ADMIN CUP TOURNAMENT DASHBOARD')
+    .setColor(isPaused ? 0xF59E0B : 0x10B981) // Orange if paused, Green if running
+    .setTitle('🛠️ LIGA PET TOURNAMENT DASHBOARD')
     .setDescription(
-      `📶 **Status Turnamen:** \`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}\n` +
-      `📅 **Ronde Aktif:** Ronde \`${event.current_round}\`\n\n` +
-      `⚔️ **Pertandingan Aktif:**\n${activeMatchText}\n\n` +
-      `👉 Gunakan tombol di bawah ini untuk mengontrol jalannya turnamen.`
+      `Panel kendali Administrator untuk mengatur jalannya Liga Pet secara real-time.\n` +
+      `▬`.repeat(15)
     )
-    .setFooter({ text: 'Admin Cup Panel • Staff Only' })
+    .addFields(
+      { name: '📶 Status Liga', value: `\`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}`, inline: true },
+      { name: '📅 Ronde Aktif', value: `Ronde **${event.current_round}**`, inline: true },
+      { name: '⚔️ Pertandingan Aktif', value: activeMatchText, inline: false },
+      { name: '🎮 Panduan Kontrol', value: `• **Pause/Resume:** Menjeda/melanjutkan antrean laga.\n• **Re-roll:** Mengulang duel aktif dari awal.\n• **DQ/Force Win:** Diskualifikasi atau memenangkan paksa pet aktif.\n• **Perpanjang:** Memberi tambahan waktu pendaftaran.`, inline: false }
+    )
+    .setFooter({ text: 'Admin Cup Panel • Staff Control' })
     .setTimestamp();
 
   const row1 = new ActionRowBuilder();
@@ -1647,7 +1669,7 @@ async function updateAdminPanel(guildId, client) {
   const msg = await channel.messages.fetch(event.admin_panel_message_id).catch(() => null);
   if (!msg) return;
 
-  const data = getAdminPanelData(guildId);
+  const data = getAdminPanelData(guildId, client);
   await msg.edit(data).catch(() => {});
 }
 
@@ -1793,7 +1815,7 @@ async function extendRegistration(guildId, mins, client) {
   if (!event) throw new Error('Pendaftaran turnamen tidak sedang aktif.');
 
   const newEndRegAt = event.registration_end_at + (mins * 60);
-  db.run('UPDATE tournament_events SET registration_end_at = ? WHERE guild_id = ?', [guildId]);
+  db.run('UPDATE tournament_events SET registration_end_at = ? WHERE guild_id = ?', [newEndRegAt, guildId]);
 
   await updateRegistrationEmbed(guildId, client);
 
@@ -1811,6 +1833,100 @@ async function extendRegistration(guildId, mins, client) {
   await updateAdminPanel(guildId, client).catch(() => {});
 }
 
+/**
+ * Menyusun papan klasemen liga saat ini dalam format tabel ASCII yang rapi.
+ */
+function getLeagueStandingsString(guildId) {
+  const participants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [guildId]);
+  const matches = db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'COMPLETED\'', [guildId]);
+
+  const standings = participants.map(p => {
+    let played = 0;
+    let won = 0;
+    matches.forEach(m => {
+      if (m.player_1_id === p.user_id || m.player_2_id === p.user_id) {
+        played++;
+        if (m.winner_id === p.user_id) {
+          won++;
+        }
+      }
+    });
+    const lost = played - won;
+    const points = won * 3;
+    return {
+      userId: p.user_id,
+      petName: p.pet_name,
+      played,
+      won,
+      lost,
+      points
+    };
+  });
+
+  // Urutkan berdasarkan poin desc, lalu jumlah menang desc, lalu nama pet
+  standings.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.won !== a.won) return b.won - a.won;
+    return a.petName.localeCompare(b.petName);
+  });
+
+  // Buat tabel klasemen
+  let table = '🏆 KLASEMEN LIGA PET 🏆\n';
+  table += '┌────┬──────────────────────┬────┬────┬────┬─────┐\n';
+  table += '│ Pos│ Pet (Pawang)         │ M  │ S  │ K  │ Pts │\n';
+  table += '├────┼──────────────────────┼────┼────┼────┼─────┤\n';
+  
+  standings.forEach((s, idx) => {
+    const pos = String(idx + 1).padStart(2, ' ');
+    let name = s.petName;
+    if (name.length > 20) name = name.slice(0, 17) + '...';
+    const nameCol = name.padEnd(20, ' ');
+    const m = String(s.played).padStart(2, ' ');
+    const w = String(s.won).padStart(2, ' ');
+    const l = String(s.lost).padStart(2, ' ');
+    const pts = String(s.points).padStart(3, ' ');
+    table += `│ ${pos} │ ${nameCol} │ ${m} │ ${w} │ ${l} │ ${pts} │\n`;
+  });
+  
+  table += '└────┴──────────────────────┴────┴────┴────┴─────┘';
+  return table;
+}
+
+/**
+ * Membuat penjadwalan liga Round Robin (Circle Method).
+ */
+function generateRoundRobinMatches(players) {
+  const list = [...players];
+  if (list.length % 2 !== 0) {
+    list.push(null); // merepresentasikan BYE jika ganjil
+  }
+  
+  const numPlayers = list.length;
+  const numRounds = numPlayers - 1;
+  const matches = [];
+  
+  for (let round = 1; round <= numRounds; round++) {
+    for (let i = 0; i < numPlayers / 2; i++) {
+      const p1 = list[i];
+      const p2 = list[numPlayers - 1 - i];
+      if (p1 !== null && p2 !== null) {
+        matches.push({ round, p1, p2 });
+      } else if (p1 !== null) {
+        matches.push({ round, p1, p2: null, winner: p1 });
+      } else if (p2 !== null) {
+        matches.push({ round, p1: null, p2, winner: p2 });
+      }
+    }
+    // Rotasi pemain (indeks 0 tetap)
+    const last = list[numPlayers - 1];
+    for (let k = numPlayers - 1; k > 1; k--) {
+      list[k] = list[k - 1];
+    }
+    list[1] = last;
+  }
+  return matches;
+}
+
 module.exports = {
   startTournament,
   stopTournament,
@@ -1826,7 +1942,7 @@ module.exports = {
   endMatch,
   endTournament,
   createTournamentChannel,
-  getVisualBracketString,
+  getLeagueStandingsString,
   getMatchQueueString,
   getAdminPanelData,
   updateAdminPanel,

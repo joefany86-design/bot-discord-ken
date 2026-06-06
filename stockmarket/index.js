@@ -1170,6 +1170,10 @@ function initStockMarket(client) {
           await tournament.resumeTournament(interaction.guildId, client);
           await interaction.reply({ content: '▶️ Turnamen dilanjutkan kembali oleh Admin!', flags: 64 });
         } else if (adminAction === 'stop') {
+          if (client.tournamentTimers && client.tournamentTimers.has(interaction.guildId)) {
+            clearTimeout(client.tournamentTimers.get(interaction.guildId));
+            client.tournamentTimers.delete(interaction.guildId);
+          }
           const active = tournament.stopTournament(interaction.guildId);
           if (active && active.channel_id) {
             const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
@@ -13234,7 +13238,7 @@ async function handleEconomyCommands(message, client) {
           }
 
           // Kirim Dashboard Admin Control Panel
-          const adminPanelData = tournament.getAdminPanelData(guildId);
+          const adminPanelData = tournament.getAdminPanelData(guildId, client);
           const adminPanelMsg = await message.channel.send(adminPanelData).catch(() => null);
           if (adminPanelMsg) {
             database.run(
@@ -13280,7 +13284,7 @@ async function handleEconomyCommands(message, client) {
             }
           }
 
-          const adminPanelData = tournament.getAdminPanelData(guildId);
+          const adminPanelData = tournament.getAdminPanelData(guildId, client);
           const adminPanelMsg = await message.channel.send(adminPanelData).catch(() => null);
           if (adminPanelMsg) {
             database.run(
@@ -13296,6 +13300,10 @@ async function handleEconomyCommands(message, client) {
 
       if (action === 'stop' || action === 'force-end' || action === 'batal') {
         try {
+          if (client.tournamentTimers && client.tournamentTimers.has(guildId)) {
+            clearTimeout(client.tournamentTimers.get(guildId));
+            client.tournamentTimers.delete(guildId);
+          }
           const active = tournament.stopTournament(guildId);
           if (active && active.channel_id) {
             const channel = message.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
