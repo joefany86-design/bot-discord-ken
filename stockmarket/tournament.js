@@ -1079,6 +1079,18 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
     });
   }
 
+  // Simpan pemenang terakhir ke ebyus_settings
+  const settingsExist = db.get('SELECT 1 FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (!settingsExist) {
+    db.run('INSERT INTO ebyus_settings (guild_id) VALUES (?)', [guildId]);
+  }
+  db.run(
+    `UPDATE ebyus_settings 
+     SET last_cup_juara_1 = ?, last_cup_juara_2 = ?, last_cup_juara_3 = ?, last_cup_juara_4 = ? 
+     WHERE guild_id = ?`,
+    [championId, runnerUpId, thirdPlaceId, fourthPlaceId, guildId]
+  );
+
   // Bersihkan data event di database
   db.transaction(() => {
     db.run('DELETE FROM tournament_events WHERE guild_id = ?', [guildId]);

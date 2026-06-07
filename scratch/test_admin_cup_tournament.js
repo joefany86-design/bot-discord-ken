@@ -242,6 +242,19 @@ async function runTests() {
   await tournament.endTournament('guild_123', 'user_1', 'user_2', client, 'user_3', 'user_4');
   console.log('✅ endTournament execution completed.');
 
+  // Test 6.6: Verify settings has the correct winners
+  console.log('\n6.6. Querying ebyus_settings to verify saved winners...');
+  const settings = db.get('SELECT last_cup_juara_1, last_cup_juara_2, last_cup_juara_3, last_cup_juara_4 FROM ebyus_settings WHERE guild_id = ?', ['guild_123']);
+  console.log('Saved Winners in settings:', settings);
+  if (settings.last_cup_juara_1 === 'user_1' &&
+      settings.last_cup_juara_2 === 'user_2' &&
+      settings.last_cup_juara_3 === 'user_3' &&
+      settings.last_cup_juara_4 === 'user_4') {
+    console.log('✅ Winners correctly stored in ebyus_settings!');
+  } else {
+    throw new Error('Winners were not stored correctly in ebyus_settings');
+  }
+
   // Clean up
   console.log('\n7. Cleaning up test data...');
   db.run('DELETE FROM tournament_events WHERE guild_id = \'guild_123\'');

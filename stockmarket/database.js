@@ -705,6 +705,16 @@ function initSchema() {
         db.exec("CREATE INDEX IF NOT EXISTS idx_user_pet_logs_user ON user_pet_logs (user_id)");
         db.exec("CREATE INDEX IF NOT EXISTS idx_user_pet_logs_created_at ON user_pet_logs (created_at)");
       }
+    },
+    {
+      version: 11,
+      description: "Menambahkan kolom juara_1 s/d juara_4 ke ebyus_settings untuk melacak pemenang turnamen terakhir",
+      run: () => {
+        addColumn('ebyus_settings', 'last_cup_juara_1', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'last_cup_juara_2', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'last_cup_juara_3', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'last_cup_juara_4', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 
