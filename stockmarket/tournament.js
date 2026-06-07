@@ -650,10 +650,10 @@ async function handleTimeout(matchId, client) {
 
 function getActionName(actionType) {
   switch (actionType) {
-    case 'atk': return '⚔️ Serang';
+    case 'atk': return '🗡️ Serang';
     case 'def': return '🛡️ Bertahan';
-    case 'elem': return '⚡ Elemen';
-    case 'ult': return '💥 Ultimate';
+    case 'ult': return '🔥 Ultimate';
+    case 'surr': return '🏳️ Menyerah';
     default: return 'Tindakan';
   }
 }
@@ -678,23 +678,24 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
     throw new Error('Anda bukan peserta pertandingan ini!');
   }
 
-  if (actor.chosenAction) {
-    throw new Error('Anda sudah menentukan pilihan untuk giliran ini! Menunggu lawan...');
+  // Menyerah bisa diklik kapan saja
+  if (actionType === 'surr') {
+    match.logs.push(`🏳️ **${actor.pet_name}** menyerah dari pertandingan!`);
+    if (interaction) {
+      await interaction.reply({ content: `🏳️ Anda menyerah! Pertandingan selesai.`, flags: 64 }).catch(() => {});
+    }
+    await endMatch(matchId, opponent.user_id, 'forfeit', client);
+    return;
   }
 
-  // Validasi Aksi
-  if (actionType === 'elem') {
-    if (actor.energy < 20) throw new Error('Energi (SP) tidak cukup! Butuh 20 SP.');
-    if (actor.elemCooldown > 0) throw new Error(`Skill Elemen sedang cooldown! Tersisa ${actor.elemCooldown} turn lagi.`);
-  } else if (actionType === 'ult') {
-    if (actor.energy < 50) throw new Error('Energi (SP) tidak cukup! Butuh 50 SP.');
-    if (actor.hasUsedUltimate) throw new Error('Ultimate Skill hanya dapat digunakan 1 kali per pertandingan!');
+  if (actor.chosenAction) {
+    throw new Error('Anda sudah menentukan pilihan untuk giliran ini! Menunggu lawan...');
   }
 
   actor.chosenAction = actionType;
 
   if (opponent.chosenAction) {
-    // Clear timeout active
+    // Clear timeout aktif
     if (match.timer) {
       clearTimeout(match.timer);
       match.timer = null;
@@ -728,27 +729,21 @@ async function resolveSimultaneousTurn(matchId, client) {
   const p1 = match.player1;
   const p2 = match.player2;
 
-  // 1. Reset status bertahan untuk giliran baru
+  // 1. Reset status bertahan dari turn sebelumnya
   p1.isDefending = false;
   p2.isDefending = false;
-
-  // Kurangi cooldown elemen sebelum aksi diproses
-  if (p1.elemCooldown > 0) p1.elemCooldown--;
-  if (p2.elemCooldown > 0) p2.elemCooldown--;
 
   // 2. Terapkan pertahanan terlebih dahulu agar berlaku untuk turn ini
   if (p1.chosenAction === 'def') {
     p1.isDefending = true;
-    p1.energy = Math.min(100, p1.energy + 20);
-    match.logs.push(`🛡️ **${p1.pet_name}** memasang kuda-kuda bertahan!`);
+    match.logs.push(`🛡️ **${p1.pet_name}** mengambil posisi bertahan! (Mengurangi damage musuh 50% di giliran berikutnya)`);
   }
   if (p2.chosenAction === 'def') {
     p2.isDefending = true;
-    p2.energy = Math.min(100, p2.energy + 20);
-    match.logs.push(`🛡️ **${p2.pet_name}** memasang kuda-kuda bertahan!`);
+    match.logs.push(`🛡️ **${p2.pet_name}** mengambil posisi bertahan! (Mengurangi damage musuh 50% di giliran berikutnya)`);
   }
 
-  // 3. Tentukan urutan aksi menyerang berdasarkan DEX
+  // 3. Tentukan urutan aksi menyerang berdasarkan DEX (SPD)
   let first = p1;
   let second = p2;
   if (p2.stat_dex > p1.stat_dex) {
@@ -762,12 +757,12 @@ async function resolveSimultaneousTurn(matchId, client) {
   }
 
   // Aksi First Player
-  if (first.hp > 0 && ['atk', 'elem', 'ult'].includes(first.chosenAction)) {
+  if (first.hp > 0 && ['atk', 'ult'].includes(first.chosenAction)) {
     executeSingleAction(first, second, first.chosenAction, match);
   }
 
   // Aksi Second Player (hanya jika masih hidup)
-  if (second.hp > 0 && ['atk', 'elem', 'ult'].includes(second.chosenAction)) {
+  if (second.hp > 0 && ['atk', 'ult'].includes(second.chosenAction)) {
     executeSingleAction(second, first, second.chosenAction, match);
   }
 
@@ -785,33 +780,7 @@ async function resolveSimultaneousTurn(matchId, client) {
     return;
   }
 
-  // 5. Terapkan DoT Terbakar & update perisai di akhir giliran
-  for (const player of [p1, p2]) {
-    if (player.burnTurns > 0) {
-      const burnDmg = 8;
-      player.hp = Math.max(1, player.hp - burnDmg); // Sisakan HP minimal 1
-      match.logs.push(`🔥 **${player.pet_name}** menderita kerusakan terbakar bara **-${burnDmg} HP**!`);
-      player.burnTurns--;
-    }
-    if (player.shieldTurns > 0) {
-      player.shieldTurns--;
-    }
-  }
-
-  // Cek kekalahan lagi setelah DoT terbakar
-  if (p1.hp <= 0 && p2.hp <= 0) {
-    const winner = p1.stat_dex >= p2.stat_dex ? p1 : p2;
-    await endMatch(matchId, winner.user_id, 'defeat', client);
-    return;
-  } else if (p1.hp <= 0) {
-    await endMatch(matchId, p2.user_id, 'defeat', client);
-    return;
-  } else if (p2.hp <= 0) {
-    await endMatch(matchId, p1.user_id, 'defeat', client);
-    return;
-  }
-
-  // 6. Reset pilihan aksi & naikkan turnCount
+  // 5. Reset pilihan aksi & naikkan turnCount
   p1.chosenAction = null;
   p2.chosenAction = null;
   match.turnCount++;
@@ -861,7 +830,7 @@ function executeSingleAction(attacker, defender, actionType, match) {
   if (actionType === 'atk') {
     isDodged = Math.random() < dodgeChance;
     if (isDodged) {
-      logMsg = `💨 **${attacker.pet_name}** melancarkan cakar serangan, tetapi **${defender.pet_name}** berhasil menghindar dengan lincah!`;
+      logMsg = `💨 **${attacker.pet_name}** melancarkan serangan, tetapi **${defender.pet_name}** berhasil menghindar!`;
     } else {
       isCrit = Math.random() < critChance;
       let rawDmg = Math.round(attackerATK * atkMultiplier * (0.8 + Math.random() * 0.4));
@@ -873,54 +842,18 @@ function executeSingleAction(attacker, defender, actionType, match) {
       if (defender.isDefending) damage = Math.round(damage * 0.5);
       if (damage < 1) damage = 1;
 
-      if (defender.shieldTurns > 0) {
-        damage = 0;
-        logMsg = `🛡️ **${defender.pet_name}** dilindungi oleh **Perisai Kokoh**! Serangan diblokir sepenuhnya!`;
-      } else {
-        defender.hp = Math.max(0, defender.hp - damage);
-        const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-        logMsg = `⚔️ **${attacker.pet_name}** menyerang **${defender.pet_name}** dan memberikan **${damage} DMG**!${critText}`;
-      }
+      defender.hp = Math.max(0, defender.hp - damage);
+      const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+      logMsg = `⚔️ **${attacker.pet_name}** menyerang **${defender.pet_name}** dan memberikan **${damage} DMG**!${critText}`;
     }
-    attacker.energy = Math.min(100, attacker.energy + 10);
-
-  } else if (actionType === 'elem') {
-    isDodged = Math.random() < (dodgeChance * 0.8);
-    if (isDodged) {
-      logMsg = `💨 **${attacker.pet_name}** meluncurkan skill elemennya, tetapi **${defender.pet_name}** berhasil menghindar!`;
-    } else {
-      isCrit = Math.random() < critChance;
-      let rawDmg = Math.round(attackerATK * 1.5 * atkMultiplier * (0.8 + Math.random() * 0.4));
-      if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
-
-      // Elem ignores 30% of defender's DEF
-      const effDef = defenderDEF * 0.7;
-      let defFactor = effDef / 150;
-      if (defFactor > 0.8) defFactor = 0.8;
-      damage = Math.round(rawDmg * (1 - defFactor) * defMultiplier);
-      if (defender.isDefending) damage = Math.round(damage * 0.5);
-      if (damage < 1) damage = 1;
-
-      if (defender.shieldTurns > 0) {
-        damage = 0;
-        logMsg = `🛡️ **${defender.pet_name}** dilindungi oleh **Perisai Kokoh**! Skill Elemen diblokir!`;
-      } else {
-        defender.hp = Math.max(0, defender.hp - damage);
-        const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-        const elemName = getElementalSkillName(attacker.gacha_element);
-        logMsg = `⚡ **${attacker.pet_name}** melancarkan skill elemen **[${elemName}]** kepada **${defender.pet_name}** sebesar **${damage} DMG**!${critText}`;
-      }
-    }
-    attacker.energy -= 20;
-    attacker.elemCooldown = 3; // 1 giliran aktif + 2 cooldown
 
   } else if (actionType === 'ult') {
-    isDodged = Math.random() < (dodgeChance * 0.5);
-    if (isDodged) {
-      logMsg = `💨 **${attacker.pet_name}** meluncurkan Jurus Pamungkas, tetapi meleset menghindari zirah **${defender.pet_name}**!`;
+    const isMissed = Math.random() < 0.30;
+    if (isMissed) {
+      logMsg = `💨 **${attacker.pet_name}** melancarkan Jurus Ultimate, tetapi meleset!`;
     } else {
-      isCrit = Math.random() < (critChance * 1.2);
-      let rawDmg = Math.round(attackerATK * 2.2 * atkMultiplier * (0.9 + Math.random() * 0.2));
+      isCrit = Math.random() < critChance;
+      let rawDmg = Math.round((attackerATK * 2) * atkMultiplier * (0.8 + Math.random() * 0.4));
       if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
 
       let defFactor = defenderDEF / 150;
@@ -929,37 +862,10 @@ function executeSingleAction(attacker, defender, actionType, match) {
       if (defender.isDefending) damage = Math.round(damage * 0.5);
       if (damage < 1) damage = 1;
 
-      if (defender.shieldTurns > 0) {
-        damage = 0;
-        logMsg = `🛡️ **${defender.pet_name}** dilindungi oleh **Perisai Kokoh**! Jurus Ultimate diblokir!`;
-      } else {
-        defender.hp = Math.max(0, defender.hp - damage);
-        const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-        const ultName = getUltimateName(attacker.gacha_element);
-        
-        let effectText = '';
-        const elem = attacker.gacha_element ? attacker.gacha_element.toUpperCase() : 'EARTH';
-        
-        if (elem === 'FIRE') {
-          defender.burnTurns = 3;
-          effectText = `\n🔥 **${defender.pet_name}** terkena kutukan **TERBAKAR**! (-8 HP/turn untuk 3 turn).`;
-        } else if (elem === 'WATER') {
-          const heal = Math.round(attacker.maxHP * 0.35);
-          attacker.hp = Math.min(attacker.maxHP, attacker.hp + heal);
-          effectText = `\n🌀 **${attacker.pet_name}** memulihkan tubuhnya sebesar **+${heal} HP**!`;
-        } else if (elem === 'EARTH') {
-          attacker.shieldTurns = 2; // Kebal turn lawan depan
-          effectText = `\n🛡️ **${attacker.pet_name}** melingkari dirinya dengan zirah **Perisai Kokoh** kebal kerusakan!`;
-        } else if (elem === 'DRAGON') {
-          defender.stat_def = Math.round(defender.stat_def * 0.5);
-          effectText = `\n💥 Zirah pertahanan **${defender.pet_name}** pecah! DEF berkurang 50% untuk sisa laga turnamen!`;
-        }
-
-        logMsg = `💥 **${attacker.pet_name}** membangkitkan amarah **[${ultName}]** kepada **${defender.pet_name}** memberikan **${damage} DMG**!${critText}${effectText}`;
-      }
+      defender.hp = Math.max(0, defender.hp - damage);
+      const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
+      logMsg = `🔥 **${attacker.pet_name}** mengeluarkan Jurus Ultimate kepada **${defender.pet_name}** sebesar **${damage} DMG**!${critText}`;
     }
-    attacker.energy -= 50;
-    attacker.hasUsedUltimate = true;
   }
 
   if (logMsg) {
@@ -1206,7 +1112,7 @@ function getBattleEmbedData(match) {
   const p1 = match.player1;
   const p2 = match.player2;
 
-  const barSize = 8;
+  const barSize = 10;
   const renderHPBar = (hp, max) => {
     const ratio = Math.max(0, Math.min(1, hp / max));
     const filled = Math.round(ratio * barSize);
@@ -1216,14 +1122,8 @@ function getBattleEmbedData(match) {
     return emoji.repeat(filled) + '⬛'.repeat(barSize - filled);
   };
 
-  const renderSPBar = (energy) => {
-    const ratio = Math.max(0, Math.min(1, energy / 100));
-    const filled = Math.round(ratio * barSize);
-    return '🔵'.repeat(filled) + '⬛'.repeat(barSize - filled);
-  };
-
   // Format battle logs to ANSI
-  const ansiLogs = match.logs.slice(-3).map(formatLogToAnsi).join('\n');
+  const ansiLogs = match.logs.slice(-5).map(formatLogToAnsi).join('\n');
 
   const p1Status = p1.chosenAction ? '✔️ **SIAP**' : '⏳ **MEMILIH...**';
   const p2Status = p2.chosenAction ? '✔️ **SIAP**' : '⏳ **MEMILIH...**';
@@ -1242,8 +1142,7 @@ function getBattleEmbedData(match) {
         value: 
           `👤 Pawang: <@${p1.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP}\`\n` +
-          `⚡ SP: \`[${renderSPBar(p1.energy)}]\` \`${p1.energy}/100\`\n` +
-          `🔰 Status: ${p1.burnTurns > 0 ? '🔥 Terbakar' : p1.shieldTurns > 0 ? '🛡️ Perisai' : p1.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p1Status}`,
+          `🔰 Status: ${p1.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p1Status}`,
         inline: false
       },
       {
@@ -1251,8 +1150,7 @@ function getBattleEmbedData(match) {
         value: 
           `👤 Pawang: <@${p2.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP}\`\n` +
-          `⚡ SP: \`[${renderSPBar(p2.energy)}]\` \`${p2.energy}/100\`\n` +
-          `🔰 Status: ${p2.burnTurns > 0 ? '🔥 Terbakar' : p2.shieldTurns > 0 ? '🛡️ Perisai' : p2.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p2Status}`,
+          `🔰 Status: ${p2.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p2Status}`,
         inline: false
       },
       {
@@ -1273,20 +1171,20 @@ function getBattleEmbedData(match) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`cup_btn_atk_${match.matchId}`)
-      .setLabel('⚔️ Serang')
+      .setLabel('🗡️ Serang')
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`cup_btn_ult_${match.matchId}`)
+      .setLabel('🔥 Ultimate')
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`cup_btn_def_${match.matchId}`)
       .setLabel('🛡️ Bertahan')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`cup_btn_elem_${match.matchId}`)
-      .setLabel('⚡ Elemen')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`cup_btn_ult_${match.matchId}`)
-      .setLabel('💥 Ultimate')
-      .setStyle(ButtonStyle.Danger)
+      .setCustomId(`cup_btn_surr_${match.matchId}`)
+      .setLabel('🏳️ Menyerah')
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return { embeds: [embed], components: [row] };
@@ -1797,24 +1695,14 @@ async function rerollMatch(guildId, client) {
   
   match.player1.hp = maxHp1;
   match.player1.maxHP = maxHp1;
-  match.player1.energy = 30;
   match.player1.timeouts = 0;
-  match.player1.elemCooldown = 0;
-  match.player1.hasUsedUltimate = false;
   match.player1.isDefending = false;
-  match.player1.burnTurns = 0;
-  match.player1.shieldTurns = 0;
   match.player1.chosenAction = null;
 
   match.player2.hp = maxHp2;
   match.player2.maxHP = maxHp2;
-  match.player2.energy = 30;
   match.player2.timeouts = 0;
-  match.player2.elemCooldown = 0;
-  match.player2.hasUsedUltimate = false;
   match.player2.isDefending = false;
-  match.player2.burnTurns = 0;
-  match.player2.shieldTurns = 0;
   match.player2.chosenAction = null;
 
   match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
@@ -1973,5 +1861,6 @@ module.exports = {
   dqPlayer,
   forceWinPlayer,
   rerollMatch,
-  extendRegistration
+  extendRegistration,
+  handleTimeout
 };

@@ -31,6 +31,7 @@ const mockChannel = {
       const mockThread = {
         id: 'thread_456',
         isThread: true,
+        setName: async (name) => console.log('🏷️ [THREAD SET NAME]:', name),
         send: async (p) => {
           console.log('💬 [THREAD SEND]:', p.embeds ? '[Embed Message]' : p);
           if (p.embeds) {
@@ -146,7 +147,7 @@ async function runTests() {
   console.log('⏳ Waiting 5.5s for executeNextMatch...');
   await new Promise(resolve => setTimeout(resolve, 5500));
 
-  // Test 4: Battle Engine Turn-Based Loop
+  // Test 4: Battle Engine Simultaneous Turn Loop
   console.log('\n4. Simulating Active Match Duel...');
   // Ambil match yang barusan di-set ACTIVE di executeNextMatch
   const activeMatch = Array.from(client.activeCupMatches.values())[0];
@@ -156,56 +157,43 @@ async function runTests() {
   }
   
   const matchId = activeMatch.matchId;
-  const activePlayerId = activeMatch.activePlayer.user_id;
-  const opponentId = activeMatch.player1.user_id === activePlayerId ? activeMatch.player2.user_id : activeMatch.player1.user_id;
+  const p1Id = activeMatch.player1.user_id;
+  const p2Id = activeMatch.player2.user_id;
 
   console.log(`Match ID: ${matchId}`);
-  console.log(`Active Player: ${activeMatch.activePlayer.pet_name} (User ID: ${activePlayerId})`);
+  console.log(`P1: ${activeMatch.player1.pet_name} (User ID: ${p1Id}, SPD: ${activeMatch.player1.stat_dex})`);
+  console.log(`P2: ${activeMatch.player2.pet_name} (User ID: ${p2Id}, SPD: ${activeMatch.player2.stat_dex})`);
 
-  // Simulasikan turn 1: Basic Attack
-  console.log('\n--- Round 1 (Turn 1: Attacker uses Basic Attack) ---');
-  tournament.processTurn(matchId, activePlayerId, 'atk', client);
+  // Simulasikan Ronde 1
+  console.log('\n--- Ronde 1 (P1 uses Serang, P2 uses Bertahan) ---');
+  await tournament.processTurn(matchId, p1Id, 'atk', client);
+  await tournament.processTurn(matchId, p2Id, 'def', client); // Resolves Turn 1
 
-  // Simulasikan turn 2: Defender (now active) uses Defend
-  console.log('\n--- Round 1 (Turn 2: Opponent uses Defend) ---');
-  tournament.processTurn(matchId, opponentId, 'def', client);
-
-  // Berikan energi buatan ke active player untuk skill
-  activeMatch.player1.energy = 60;
-  activeMatch.player2.energy = 60;
-
-  // Simulasikan turn 3: Attacker uses Elemental Skill
-  console.log('\n--- Round 2 (Turn 3: Attacker uses Elemental Skill) ---');
-  tournament.processTurn(matchId, activePlayerId, 'elem', client);
-
-  // Simulasikan turn 4: Opponent uses Ultimate
-  console.log('\n--- Round 2 (Turn 4: Opponent uses Ultimate) ---');
-  tournament.processTurn(matchId, opponentId, 'ult', client);
+  // Simulasikan Ronde 2
+  console.log('\n--- Ronde 2 (P1 uses Ultimate, P2 uses Serang) ---');
+  await tournament.processTurn(matchId, p1Id, 'ult', client);
+  await tournament.processTurn(matchId, p2Id, 'atk', client); // Resolves Turn 2
 
   // Test 5: Turn Timeout Logic
   console.log('\n5. Testing Turn Timeout Logic...');
-  console.log(`Active Player before timeout: ${activeMatch.activePlayer.pet_name}`);
-  const currentPlayerId = activeMatch.activePlayer.user_id;
   
-  // Timeout 1: auto-attack
-  console.log('Simulating 1st timeout (should auto attack)...');
-  await tournament.processTurn(matchId, currentPlayerId, 'atk', client); 
+  // Reset chosen actions if any
+  activeMatch.player1.chosenAction = null;
+  activeMatch.player2.chosenAction = null;
+  activeMatch.player1.timeouts = 0;
+  activeMatch.player2.timeouts = 0;
 
-  // Timeout 2: forfeit (force forfeit by calling endMatch manually or passing forfeit timeout)
-  console.log('Simulating 2nd timeout forfeit...');
-  // Simulasikan AFK timeout berturut-turut
-  activeMatch.activePlayer.timeouts = 1; // set timeouts ke 1 agar trigger forfeit pada call berikutnya
-  activeMatch.activePlayer.isDefending = false;
-  
-  const nextPlayerId = activeMatch.activePlayer.user_id;
-  const defenderId = activeMatch.player1.user_id === nextPlayerId ? activeMatch.player2.user_id : activeMatch.player1.user_id;
-  
-  // Manual trigger handleTimeout to test forfeit logic
-  // handleTimeout checks timeouts (which we set to 1) and will increment to 2, triggering forfeit.
+  console.log('Simulating timeout (should auto attack)...');
   const { handleTimeout } = require('../stockmarket/tournament');
-  // We can't access private functions directly if they are not exported, but they are internally run.
-  // Let's directly trigger it via match forfeit
-  await tournament.endMatch(matchId, defenderId, 'forfeit', client);
+  await handleTimeout(matchId, client);
+
+  console.log('Simulating forfeit timeout (timeouts = 1, should forfeit)...');
+  activeMatch.player1.chosenAction = null;
+  activeMatch.player2.chosenAction = null;
+  activeMatch.player1.timeouts = 1;
+  activeMatch.player2.timeouts = 0;
+
+  await handleTimeout(matchId, client);
   console.log('✅ Timeout forfeit simulation success.');
 
   // Test 6: Verify HP recovery
