@@ -528,9 +528,11 @@ async function executeNextMatch(guildId, client) {
 
       const championId = standings[0]?.userId || null;
       const runnerUpId = standings[1]?.userId || null;
+      const thirdPlaceId = standings[2]?.userId || null;
+      const fourthPlaceId = standings[3]?.userId || null;
 
       if (championId) {
-        await endTournament(guildId, championId, runnerUpId, client);
+        await endTournament(guildId, championId, runnerUpId, client, thirdPlaceId, fourthPlaceId);
       } else {
         db.run('DELETE FROM tournament_events WHERE guild_id = ?', [guildId]);
         await channel.send('❌ **Liga dibatalkan** karena terjadi error status (tidak ditemukan peserta).');
@@ -976,13 +978,15 @@ async function endMatch(matchId, winnerId, reason, client) {
 /**
  * Mengakhiri turnamen dan mengumumkan sang juara.
  */
-async function endTournament(guildId, championId, runnerUpId, client) {
+async function endTournament(guildId, championId, runnerUpId, client, thirdPlaceId = null, fourthPlaceId = null) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
   if (!event) return;
 
   const channel = client.channels.cache.get(event.channel_id) || await client.channels.fetch(event.channel_id).catch(() => null);
   const champPet = db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, championId]);
   const runnerPet = runnerUpId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, runnerUpId]) : null;
+  const thirdPet = thirdPlaceId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, thirdPlaceId]) : null;
+  const fourthPet = fourthPlaceId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, fourthPlaceId]) : null;
 
   const config = require('./config');
   const guild = channel ? channel.guild : (client.guilds.cache.get(guildId));
@@ -1004,6 +1008,8 @@ async function endTournament(guildId, championId, runnerUpId, client) {
     .addFields(
       { name: '🥇 JUARA 1 (CHAMPION)', value: `🏆 **${champPet?.pet_name || 'Pet 1'}** (<@${championId}>)`, inline: false },
       { name: '🥈 JUARA 2 (RUNNER-UP)', value: runnerPet ? `🥈 **${runnerPet.pet_name}** (<@${runnerUpId}>)` : '*Tidak ada.*', inline: false },
+      { name: '🥉 JUARA 3', value: thirdPet ? `🥉 **${thirdPet.pet_name}** (<@${thirdPlaceId}>)` : '*Tidak ada.*', inline: false },
+      { name: '🏅 JUARA 4', value: fourthPet ? `🏅 **${fourthPet.pet_name}** (<@${fourthPlaceId}>)` : '*Tidak ada.*', inline: false },
       { name: '🎁 Hadiah Liga (Reward)', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara manual oleh Admin.*`, inline: false },
       { name: '📊 Klasemen Akhir Liga (Final Standings)', value: `\`\`\`text\n${finalStandings}\n\`\`\``, inline: false },
       { name: '📢 Pemberitahuan Admin', value: `<@${event.admin_id}> dipersilakan memberikan hadiah turnamen secara manual kepada para pemenang.`, inline: false }
@@ -1033,6 +1039,8 @@ async function endTournament(guildId, championId, runnerUpId, client) {
       `🏆 **Turnamen Admin Cup di server Anda telah selesai!**\n\n` +
       `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet.pet_name}**)\n` +
       (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet.pet_name}**)\n` : '') +
+      (thirdPlaceId ? `• Juara 3: <@${thirdPlaceId}> (Pet: **${thirdPet.pet_name}**)\n` : '') +
+      (fourthPlaceId ? `• Juara 4: <@${fourthPlaceId}> (Pet: **${fourthPet.pet_name}**)\n` : '') +
       (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
       `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
     ).catch(() => {});
@@ -1053,7 +1061,9 @@ async function endTournament(guildId, championId, runnerUpId, client) {
           )
           .addFields(
             { name: '🥇 Juara 1', value: `<@${championId}>`, inline: true },
-            { name: '🥈 Juara 2', value: runnerUpId ? `<@${runnerUpId}>` : '-', inline: true }
+            { name: '🥈 Juara 2', value: runnerUpId ? `<@${runnerUpId}>` : '-', inline: true },
+            { name: '🥉 Juara 3', value: thirdPlaceId ? `<@${thirdPlaceId}>` : '-', inline: true },
+            { name: '🏅 Juara 4', value: fourthPlaceId ? `<@${fourthPlaceId}>` : '-', inline: true }
           )
           .setFooter({ text: 'League Status: Completed' })
           .setTimestamp();

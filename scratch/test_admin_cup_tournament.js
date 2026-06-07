@@ -72,10 +72,13 @@ const mockChannel = {
   guild: {
     members: {
       fetch: async (id) => ({ user: { username: `User_${id}` } })
-    }
+    },
+    channels: client.channels
   }
 };
 client.channels.cache.set('channel_123', mockChannel);
+client.channels.cache.set('1511871394210779247', mockChannel);
+client.channels.cache.set('1510138369923874958', mockChannel);
 
 // Helper to setup mock pets
 function insertTestPet(userId, petName, petType, level, hp, element, str, def, dex, vit = 500) {
@@ -203,6 +206,41 @@ async function runTests() {
   console.log(`Pet 1 Health: ${pet1State.health}% (Expected: 100%)`);
   console.log(`Pet 2 Health: ${pet2State.health}% (Expected: 100%)`);
   console.log('✅ Pet health and happiness restored successfully.');
+
+  // Test 6.5: Verify endTournament with Juara 3 and Juara 4
+  console.log('\n6.5. Testing endTournament with 3rd and 4th place...');
+  // Mock event and admin panel settings to test completedEmbed
+  db.run(`
+    UPDATE tournament_events 
+    SET admin_panel_message_id = 'admin_panel_msg_123', admin_panel_channel_id = 'channel_123'
+    WHERE guild_id = 'guild_123'
+  `);
+  // Mock admin panel message in cache
+  const mockAdminPanelMsg = {
+    id: 'admin_panel_msg_123',
+    edit: async (d) => {
+      console.log('✏️ [ADMIN PANEL MESSAGE EDITED - COMPLETED EMBED]');
+      console.log('--- Title:', d.embeds[0].data.title);
+      console.log('--- Fields:', JSON.stringify(d.embeds[0].data.fields, null, 2));
+    }
+  };
+  mockChannel.messages = mockChannel.messages || {};
+  mockChannel.messages.fetch = async (id) => {
+    if (id === 'admin_panel_msg_123') return mockAdminPanelMsg;
+    return { 
+      edit: async () => {}, 
+      delete: async () => {} 
+    };
+  };
+
+  // Register participants in DB so endTournament queries succeed
+  db.run("INSERT OR REPLACE INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES ('guild_123', 'user_1', 'Fenrir', 'ACTIVE')");
+  db.run("INSERT OR REPLACE INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES ('guild_123', 'user_2', 'Kurama', 'ACTIVE')");
+  db.run("INSERT OR REPLACE INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES ('guild_123', 'user_3', 'Rocky', 'ACTIVE')");
+  db.run("INSERT OR REPLACE INTO tournament_participants (guild_id, user_id, pet_name, status) VALUES ('guild_123', 'user_4', 'Kuro', 'ACTIVE')");
+
+  await tournament.endTournament('guild_123', 'user_1', 'user_2', client, 'user_3', 'user_4');
+  console.log('✅ endTournament execution completed.');
 
   // Clean up
   console.log('\n7. Cleaning up test data...');
