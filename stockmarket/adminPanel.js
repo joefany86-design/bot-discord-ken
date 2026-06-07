@@ -1590,7 +1590,7 @@ async function handleAdminTournamentPanel(messageOrInteraction, client) {
             .setCustomId('admin_tournament_btn_rewards')
             .setLabel('🎁 Bagikan Hadiah')
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(!settings || !(settings.last_cup_juara_1 || settings.last_cup_juara_2 || settings.last_cup_juara_3 || settings.last_cup_juara_4)),
+            .setDisabled(false),
           new ButtonBuilder()
             .setCustomId('admin_tournament_btn_back')
             .setLabel('🔙 Kembali ke Hub')
