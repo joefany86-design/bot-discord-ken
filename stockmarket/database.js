@@ -715,6 +715,14 @@ function initSchema() {
         addColumn('ebyus_settings', 'last_cup_juara_3', 'TEXT DEFAULT NULL');
         addColumn('ebyus_settings', 'last_cup_juara_4', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 12,
+      description: "Menambahkan kolom tournament_admin_channel_id ke ebyus_settings untuk panel turnamen persisten",
+      run: () => {
+        addColumn('ebyus_settings', 'tournament_admin_channel_id', 'TEXT DEFAULT NULL');
+        db.prepare("UPDATE ebyus_settings SET tournament_admin_channel_id = '1513187966074490890'").run();
+      }
     }
   ];
 

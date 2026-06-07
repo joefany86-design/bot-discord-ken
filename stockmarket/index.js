@@ -936,24 +936,34 @@ async function promptPaymentMethod(target, userId, guildId, itemLabel, price, on
 async function refreshAdminPanels(client) {
   try {
     const dbModule = require('./database');
-    const guildsSettings = dbModule.db.prepare('SELECT guild_id, admin_panel_channel_id FROM ebyus_settings WHERE admin_panel_channel_id IS NOT NULL').all();
     
-    for (const settings of guildsSettings) {
-      const guild = client.guilds.cache.get(settings.guild_id);
-      if (!guild) continue;
-      
-      const adminChannel = guild.channels.cache.get(settings.admin_panel_channel_id) || await guild.channels.fetch(settings.admin_panel_channel_id).catch(() => null);
-      if (!adminChannel) continue;
-      
-      console.log(`[AdminPanel] Membersihkan dan mengirim ulang panel di channel ${adminChannel.name} (${adminChannel.id}) untuk guild ${guild.name}...`);
-      
-      // Purge all messages in the channel to clean it up
+    // Auto-configure channel 1513187966074490890 if not set yet for active guilds
+    client.guilds.cache.forEach(guild => {
+      try {
+        const settings = dbModule.db.prepare('SELECT tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?').get(guild.id);
+        if (!settings || !settings.tournament_admin_channel_id) {
+          const hasChan = guild.channels.cache.has('1513187966074490890');
+          if (hasChan) {
+            if (!settings) {
+              dbModule.db.prepare("INSERT INTO ebyus_settings (guild_id, tournament_admin_channel_id) VALUES (?, '1513187966074490890')").run(guild.id);
+            } else {
+              dbModule.db.prepare("UPDATE ebyus_settings SET tournament_admin_channel_id = '1513187966074490890' WHERE guild_id = ?").run(guild.id);
+            }
+            console.log(`[AdminTournamentPanel] Auto-configured channel 1513187966074490890 for guild ${guild.name}`);
+          }
+        }
+      } catch (err) {
+        console.error(`[AdminTournamentPanel] Gagal melakukan auto-configure untuk guild ${guild.name}:`, err.message);
+      }
+    });
+
+    const purgeAndSend = async (channel, type) => {
       let fetched;
       do {
-        fetched = await adminChannel.messages.fetch({ limit: 100 }).catch(() => null);
+        fetched = await channel.messages.fetch({ limit: 100 }).catch(() => null);
         if (fetched && fetched.size > 0) {
           try {
-            await adminChannel.bulkDelete(fetched);
+            await channel.bulkDelete(fetched);
           } catch (err) {
             for (const msg of fetched.values()) {
               await msg.delete().catch(() => {});
@@ -962,11 +972,45 @@ async function refreshAdminPanels(client) {
         }
       } while (fetched && fetched.size > 0);
 
-      // Send one persistent admin panel there
       const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminPanel(adminChannel, client).catch((err) => {
+      if (type === 'main') {
+        await adminPanel.handleAdminPanel(channel, client);
+      } else if (type === 'tournament') {
+        await adminPanel.handleAdminTournamentPanel(channel, client);
+      }
+    };
+
+    // Refresh main admin panels
+    const guildsSettings = dbModule.db.prepare('SELECT guild_id, admin_panel_channel_id FROM ebyus_settings WHERE admin_panel_channel_id IS NOT NULL').all();
+    for (const settings of guildsSettings) {
+      const guild = client.guilds.cache.get(settings.guild_id);
+      if (!guild) continue;
+      
+      const adminChannel = guild.channels.cache.get(settings.admin_panel_channel_id) || await guild.channels.fetch(settings.admin_panel_channel_id).catch(() => null);
+      if (!adminChannel) continue;
+      
+      console.log(`[AdminPanel] Membersihkan dan mengirim ulang panel di channel ${adminChannel.name} (${adminChannel.id}) untuk guild ${guild.name}...`);
+      await purgeAndSend(adminChannel, 'main').catch((err) => {
         console.error(`[AdminPanel] Gagal mengirim ulang panel di channel ${adminChannel.id}:`, err);
       });
+    }
+
+    // Refresh tournament admin panels
+    const hasTournamentCol = dbModule.db.prepare("PRAGMA table_info(ebyus_settings)").all().some(col => col.name === 'tournament_admin_channel_id');
+    if (hasTournamentCol) {
+      const tourSettings = dbModule.db.prepare('SELECT guild_id, tournament_admin_channel_id FROM ebyus_settings WHERE tournament_admin_channel_id IS NOT NULL').all();
+      for (const settings of tourSettings) {
+        const guild = client.guilds.cache.get(settings.guild_id);
+        if (!guild) continue;
+
+        const tourChannel = guild.channels.cache.get(settings.tournament_admin_channel_id) || await guild.channels.fetch(settings.tournament_admin_channel_id).catch(() => null);
+        if (!tourChannel) continue;
+
+        console.log(`[AdminTournamentPanel] Membersihkan dan mengirim ulang tournament panel di channel ${tourChannel.name} (${tourChannel.id}) untuk guild ${guild.name}...`);
+        await purgeAndSend(tourChannel, 'tournament').catch((err) => {
+          console.error(`[AdminTournamentPanel] Gagal mengirim ulang tournament panel di channel ${tourChannel.id}:`, err);
+        });
+      }
     }
   } catch (err) {
     console.error('[AdminPanel] Gagal melakukan auto-refresh admin panels pada startup:', err);
@@ -1021,6 +1065,13 @@ function initStockMarket(client) {
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
     let customId = interaction.customId;
+
+    // Admin Tournament Panel Interactions
+    if (customId.startsWith('admin_tournament_')) {
+      const adminPanel = require('./adminPanel');
+      await adminPanel.handleAdminTournamentGlobalInteraction(interaction, client);
+      return;
+    }
 
     // Handler interaksi turnamen Admin Cup - Tombol Join/Gabung/Pilih Pet Publik
     if (interaction.isButton() && customId === 'cup_btn_join_public') {
@@ -14685,6 +14736,73 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ content: `✅ Berhasil setup channel khusus admin panel: <#${adminChannel.id}>!\nSeluruh pesan lama telah dibersihkan dan panel kontrol utama telah dikirim ke sana secara permanen.` });
       } catch (err) {
         console.error('Error setup admin panel channel:', err);
+        return message.reply({ content: `❌ Gagal setup channel: ${err.message}` });
+      }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Perintah Admin: .setup-tournament-panel / .setup-tournamentpanel
+    // ═══════════════════════════════════════════════════
+    if (['setup-tournament-panel', 'setup-tournamentpanel', 'setup-panel-tournament', 'setup-paneltournament'].includes(commandName)) {
+      const isOwner = message.author.id === '436554535037698059';
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        await message.delete().catch(() => { });
+        await author.send('❌ Akses Ditolak! Hanya Owner utama & Administrator yang dapat menggunakan perintah setup ini.').catch(() => { });
+        return true;
+      }
+
+      const { ChannelType, PermissionFlagsBits } = require('discord.js');
+      const guild = message.guild;
+
+      try {
+        let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guild.id]);
+        
+        const TARGET_CHAN_ID = '1513187966074490890';
+        let tourChannel = guild.channels.cache.get(TARGET_CHAN_ID) || await guild.channels.fetch(TARGET_CHAN_ID).catch(() => null);
+
+        if (!tourChannel && settings?.tournament_admin_channel_id) {
+          tourChannel = guild.channels.cache.get(settings.tournament_admin_channel_id) || await guild.channels.fetch(settings.tournament_admin_channel_id).catch(() => null);
+        }
+        if (!tourChannel) {
+          tourChannel = guild.channels.cache.find(c => c.name === '🏆┃panel-tournament' || c.name === 'panel-tournament');
+        }
+        if (!tourChannel) {
+          tourChannel = message.channel;
+        }
+
+        if (!settings) {
+          database.run(
+            'INSERT INTO ebyus_settings (guild_id, tournament_admin_channel_id) VALUES (?, ?)',
+            [guild.id, tourChannel.id]
+          );
+        } else {
+          database.run(
+            'UPDATE ebyus_settings SET tournament_admin_channel_id = ? WHERE guild_id = ?',
+            [tourChannel.id, guild.id]
+          );
+        }
+
+        let fetched;
+        do {
+          fetched = await tourChannel.messages.fetch({ limit: 100 }).catch(() => null);
+          if (fetched && fetched.size > 0) {
+            try {
+              await tourChannel.bulkDelete(fetched);
+            } catch (err) {
+              for (const msg of fetched.values()) {
+                await msg.delete().catch(() => {});
+              }
+            }
+          }
+        } while (fetched && fetched.size > 0);
+
+        const adminPanel = require('./adminPanel');
+        await adminPanel.handleAdminTournamentPanel(tourChannel, client);
+
+        return message.reply({ content: `✅ Berhasil setup channel khusus tournament panel: <#${tourChannel.id}>!\nSeluruh pesan lama telah dibersihkan dan panel kontrol turnamen telah dikirim ke sana secara permanen.` });
+      } catch (err) {
+        console.error('Error setup tournament panel channel:', err);
         return message.reply({ content: `❌ Gagal setup channel: ${err.message}` });
       }
     }

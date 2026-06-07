@@ -855,8 +855,9 @@ client.on('messageCreate', async message => {
   // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
   if (message.guildId) {
     const { db } = require('./stockmarket/database');
-    const settings = db.prepare('SELECT admin_panel_channel_id FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
+    const settings = db.prepare('SELECT admin_panel_channel_id, tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
     const targetChannelId = settings?.admin_panel_channel_id;
+    const tourChannelId = settings?.tournament_admin_channel_id;
 
     if (targetChannelId && message.channelId === targetChannelId) {
       await message.delete().catch(() => {});
@@ -883,6 +884,35 @@ client.on('messageCreate', async message => {
 
           const adminPanel = require('./stockmarket/adminPanel');
           await adminPanel.handleAdminPanel(message.channel, client);
+        }
+      }
+      return;
+    }
+
+    if (tourChannelId && message.channelId === tourChannelId) {
+      await message.delete().catch(() => {});
+
+      const content = message.content.trim().toLowerCase();
+      if (content.startsWith('.')) {
+        const args = content.slice(1).trim().split(/ +/);
+        const commandName = args.shift();
+        if (['tournament-panel', 'tournamentpanel', 'panel-tournament', 'paneltournament', 'setup-tournament-panel', 'setup-tournamentpanel', 'setup-panel-tournament', 'setup-paneltournament'].includes(commandName)) {
+          let fetched;
+          do {
+            fetched = await message.channel.messages.fetch({ limit: 100 });
+            if (fetched.size > 0) {
+              try {
+                await message.channel.bulkDelete(fetched);
+              } catch (err) {
+                for (const msg of fetched.values()) {
+                  await msg.delete().catch(() => {});
+                }
+              }
+            }
+          } while (fetched.size > 0);
+
+          const adminPanel = require('./stockmarket/adminPanel');
+          await adminPanel.handleAdminTournamentPanel(message.channel, client);
         }
       }
       return;

@@ -1522,75 +1522,51 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 /**
  * 🏆 12. SUB-PANEL TURNAMEN PET (ADMIN CUP)
  */
-async function handleAdminTournamentPanel(messageOrInteraction, client) {
-  const isInteraction = !messageOrInteraction.author;
-  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
-  const guildId = messageOrInteraction.guildId;
-  const guild = messageOrInteraction.guild;
+function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
+  const tournament = require('./tournament');
+  const event = database.get('SELECT * FROM tournament_events WHERE guild_id = ?', [gId]);
 
-  const isOwner = author.id === '436554535037698059';
-  const isAdmin = messageOrInteraction.member && messageOrInteraction.member.permissions.has(PermissionsBitField.Flags.Administrator);
-  if (!isOwner && !isAdmin) {
-    if (isInteraction) {
-      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
-    } else {
-      return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.' });
-    }
-  }
+  let embed = new EmbedBuilder()
+    .setColor(0x4F46E5) // Premium Indigo
+    .setThumbnail(client.user.displayAvatarURL())
+    .setTimestamp()
+    .setFooter({ text: 'Sentinel Admin • Pengelolaan Turnamen PvP Pet' });
 
-  if (!guildId) return false;
+  if (state.currentSubMenu === 'main') {
+    if (!event) {
+      // Dapatkan data pemenang terakhir dari ebyus_settings
+      const settings = database.get('SELECT last_cup_juara_1, last_cup_juara_2, last_cup_juara_3, last_cup_juara_4 FROM ebyus_settings WHERE guild_id = ?', [gId]);
+      
+      let winnersText = '*Belum ada riwayat pemenang turnamen terakhir.*';
+      if (settings && (settings.last_cup_juara_1 || settings.last_cup_juara_2 || settings.last_cup_juara_3 || settings.last_cup_juara_4)) {
+        winnersText = 
+          `🥇 Juara 1: ${settings.last_cup_juara_1 ? `<@${settings.last_cup_juara_1}>` : '-'}\n` +
+          `🥈 Juara 2: ${settings.last_cup_juara_2 ? `<@${settings.last_cup_juara_2}>` : '-'}\n` +
+          `🥉 Juara 3: ${settings.last_cup_juara_3 ? `<@${settings.last_cup_juara_3}>` : '-'}\n` +
+          `🏅 Juara 4: ${settings.last_cup_juara_4 ? `<@${settings.last_cup_juara_4}>` : '-'}`;
+      }
 
-  let currentSubMenu = 'main'; // 'main', 'rewards', 'reward_money', 'reward_item', 'reward_qty', 'reward_pet_species', 'reward_pet_trait', 'reward_pet_star'
-  let selectedRewardUserId = null;
-  let selectedRewardUserLabel = '';
-  let selectedRewardItemId = null;
-  let selectedRewardItemQty = null;
+      embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
+        .setDescription(
+          `Tidak ada turnamen PvP Pet yang aktif di server saat ini.\n\n` +
+          `🏆 **RIWAYAT PEMENANG TERAKHIR:**\n${winnersText}\n\n` +
+          `Silakan klik tombol di bawah untuk memulai turnamen baru atau membagikan hadiah ke para pemenang.`
+        );
 
-  let petGiveSpecies = null;
-  let petGiveTrait = null;
-  let petGiveStar = null;
+      const btnComponents = [
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_start')
+          .setLabel('🏆 Mulai Turnamen')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_rewards')
+          .setLabel('🎁 Bagikan Hadiah')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(false)
+      ];
 
-  const getTournamentPanelData = (gId) => {
-    const tournament = require('./tournament');
-    const event = database.get('SELECT * FROM tournament_events WHERE guild_id = ?', [gId]);
-
-    let embed = new EmbedBuilder()
-      .setColor(0x4F46E5) // Premium Indigo
-      .setThumbnail(client.user.displayAvatarURL())
-      .setTimestamp()
-      .setFooter({ text: 'Sentinel Admin • Pengelolaan Turnamen PvP Pet' });
-
-    if (currentSubMenu === 'main') {
-      if (!event) {
-        // Dapatkan data pemenang terakhir dari ebyus_settings
-        const settings = database.get('SELECT last_cup_juara_1, last_cup_juara_2, last_cup_juara_3, last_cup_juara_4 FROM ebyus_settings WHERE guild_id = ?', [gId]);
-        
-        let winnersText = '*Belum ada riwayat pemenang turnamen terakhir.*';
-        if (settings && (settings.last_cup_juara_1 || settings.last_cup_juara_2 || settings.last_cup_juara_3 || settings.last_cup_juara_4)) {
-          winnersText = 
-            `🥇 Juara 1: ${settings.last_cup_juara_1 ? `<@${settings.last_cup_juara_1}>` : '-'}\n` +
-            `🥈 Juara 2: ${settings.last_cup_juara_2 ? `<@${settings.last_cup_juara_2}>` : '-'}\n` +
-            `🥉 Juara 3: ${settings.last_cup_juara_3 ? `<@${settings.last_cup_juara_3}>` : '-'}\n` +
-            `🏅 Juara 4: ${settings.last_cup_juara_4 ? `<@${settings.last_cup_juara_4}>` : '-'}`;
-        }
-
-        embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
-          .setDescription(
-            `Tidak ada turnamen PvP Pet yang aktif di server saat ini.\n\n` +
-            `🏆 **RIWAYAT PEMENANG TERAKHIR:**\n${winnersText}\n\n` +
-            `Silakan klik tombol di bawah untuk memulai turnamen baru atau membagikan hadiah ke para pemenang.`
-          );
-
-        const btnRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('admin_tournament_btn_start')
-            .setLabel('🏆 Mulai Turnamen')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId('admin_tournament_btn_rewards')
-            .setLabel('🎁 Bagikan Hadiah')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(false),
+      if (!isPermanentChannel) {
+        btnComponents.push(
           new ButtonBuilder()
             .setCustomId('admin_tournament_btn_back')
             .setLabel('🔙 Kembali ke Hub')
@@ -1600,89 +1576,95 @@ async function handleAdminTournamentPanel(messageOrInteraction, client) {
             .setLabel('❌ Tutup Panel')
             .setStyle(ButtonStyle.Danger)
         );
-
-        return { embeds: [embed], components: [btnRow] };
       }
 
-      const isPaused = event.is_paused === 1;
-      const statusLabel = event.status;
+      const btnRow = new ActionRowBuilder().addComponents(btnComponents);
+      return { embeds: [embed], components: [btnRow] };
+    }
 
-      const activeMatch = database.get(
-        'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
-        [gId]
-      );
+    const isPaused = event.is_paused === 1;
+    const statusLabel = event.status;
 
-      let activeMatchText = '*Tidak ada pertandingan aktif saat ini.*';
-      if (activeMatch) {
-        const p1 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_1_id]);
-        const p2 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_2_id]);
-        activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}**\nStadium: <#${activeMatch.thread_id}>`;
+    const activeMatch = database.get(
+      'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+      [gId]
+    );
 
-        if (client && client.activeCupMatches) {
-          const combat = client.activeCupMatches.get(activeMatch.match_id);
-          if (combat) {
-            activeMatchText += `\n⏳ **Status Duel (Turn ${combat.turnCount}):**\n` +
-              `• 🔴 Challenger HP: \`${combat.player1.hp}/${combat.player1.maxHP}\`\n` +
-              `• 🔵 Opponent HP: \`${combat.player2.hp}/${combat.player2.maxHP}\``;
-          }
+    let activeMatchText = '*Tidak ada pertandingan aktif saat ini.*';
+    if (activeMatch) {
+      const p1 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_1_id]);
+      const p2 = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [gId, activeMatch.player_2_id]);
+      activeMatchText = `⚔️ **Match #${activeMatch.match_id}:** **${p1?.pet_name || 'Pet 1'}** vs **${p2?.pet_name || 'Pet 2'}**\nStadium: <#${activeMatch.thread_id}>`;
+
+      if (client && client.activeCupMatches) {
+        const combat = client.activeCupMatches.get(activeMatch.match_id);
+        if (combat) {
+          activeMatchText += `\n⏳ **Status Duel (Turn ${combat.turnCount}):**\n` +
+            `• 🔴 Challenger HP: \`${combat.player1.hp}/${combat.player1.maxHP}\`\n` +
+            `• 🔵 Opponent HP: \`${combat.player2.hp}/${combat.player2.maxHP}\``;
         }
       }
+    }
 
-      embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
-        .setColor(isPaused ? 0xF59E0B : 0x10B981)
-        .setDescription(
-          `Kelola jalannya turnamen/liga PvP Pet server secara real-time:\n\n` +
-          `📶 **STATUS LIGA:**\n` +
-          `• Status: \`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}\n` +
-          `• Ronde Aktif: Ronde **${event.current_round}**\n\n` +
-          `⚔️ **PERTANDINGAN AKTIF:**\n${activeMatchText}`
-        );
-
-      const btnRow1 = new ActionRowBuilder();
-      if (isPaused) {
-        btnRow1.addComponents(
-          new ButtonBuilder()
-            .setCustomId('admin_tournament_btn_resume')
-            .setLabel('▶️ Resume')
-            .setStyle(ButtonStyle.Success)
-        );
-      } else {
-        btnRow1.addComponents(
-          new ButtonBuilder()
-            .setCustomId('admin_tournament_btn_pause')
-            .setLabel('⏸️ Pause')
-            .setStyle(ButtonStyle.Secondary)
-        );
-      }
-
-      btnRow1.addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_btn_reroll')
-          .setLabel('🔄 Re-roll Match')
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(!activeMatch),
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_btn_dq')
-          .setLabel('⚠️ DQ Player')
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(!activeMatch),
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_btn_forcewin')
-          .setLabel('👑 Force Win')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(!activeMatch)
+    embed.setTitle('🏆 ADMIN CONTROL PANEL — TURNAMEN LIGA PET')
+      .setColor(isPaused ? 0xF59E0B : 0x10B981)
+      .setDescription(
+        `Kelola jalannya turnamen/liga PvP Pet server secara real-time:\n\n` +
+        `📶 **STATUS LIGA:**\n` +
+        `• Status: \`${statusLabel}\` ${isPaused ? '⏸️ **(JEDA)**' : '▶️ **(BERJALAN)**'}\n` +
+        `• Ronde Aktif: Ronde **${event.current_round}**\n\n` +
+        `⚔️ **PERTANDINGAN AKTIF:**\n${activeMatchText}`
       );
 
-      const btnRow2 = new ActionRowBuilder().addComponents(
+    const btnRow1 = new ActionRowBuilder();
+    if (isPaused) {
+      btnRow1.addComponents(
         new ButtonBuilder()
-          .setCustomId('admin_tournament_btn_extend')
-          .setLabel('⏱️ Perpanjang Registrasi')
+          .setCustomId('admin_tournament_btn_resume')
+          .setLabel('▶️ Resume')
+          .setStyle(ButtonStyle.Success)
+      );
+    } else {
+      btnRow1.addComponents(
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_pause')
+          .setLabel('⏸️ Pause')
           .setStyle(ButtonStyle.Secondary)
-          .setDisabled(statusLabel !== 'REGISTERING'),
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_btn_stop')
-          .setLabel('❌ Batalkan Turnamen')
-          .setStyle(ButtonStyle.Danger),
+      );
+    }
+
+    btnRow1.addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_reroll')
+        .setLabel('🔄 Re-roll Match')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!activeMatch),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_dq')
+        .setLabel('⚠️ DQ Player')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!activeMatch),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_forcewin')
+        .setLabel('👑 Force Win')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(!activeMatch)
+    );
+
+    const btnComponents2 = [
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_extend')
+        .setLabel('⏱️ Perpanjang Registrasi')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(statusLabel !== 'REGISTERING'),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_stop')
+        .setLabel('❌ Batalkan Turnamen')
+        .setStyle(ButtonStyle.Danger)
+    ];
+
+    if (!isPermanentChannel) {
+      btnComponents2.push(
         new ButtonBuilder()
           .setCustomId('admin_tournament_btn_back')
           .setLabel('🔙 Kembali ke Hub')
@@ -1692,910 +1674,972 @@ async function handleAdminTournamentPanel(messageOrInteraction, client) {
           .setLabel('❌ Tutup Panel')
           .setStyle(ButtonStyle.Danger)
       );
-
-      return { embeds: [embed], components: [btnRow1, btnRow2] };
     }
 
-    if (currentSubMenu === 'rewards') {
-      const settings = database.get('SELECT last_cup_juara_1, last_cup_juara_2, last_cup_juara_3, last_cup_juara_4 FROM ebyus_settings WHERE guild_id = ?', [gId]);
+    const btnRow2 = new ActionRowBuilder().addComponents(btnComponents2);
+    return { embeds: [embed], components: [btnRow1, btnRow2] };
+  }
 
-      embed.setTitle('🎁 BAGIKAN HADIAH TURNAMEN LIGA PET')
-        .setDescription(
-          `Silakan pilih pemenang turnamen yang ingin diberikan hadiah di bawah ini.\n` +
-          `Anda juga dapat memilih member lain secara manual jika dibutuhkan.\n\n` +
-          `🏆 **RIWAYAT PEMENANG TERAKHIR:**\n` +
-          `• 🥇 Juara 1: ${settings?.last_cup_juara_1 ? `<@${settings.last_cup_juara_1}>` : '-'}\n` +
-          `• 🥈 Juara 2: ${settings?.last_cup_juara_2 ? `<@${settings.last_cup_juara_2}>` : '-'}\n` +
-          `• 🥉 Juara 3: ${settings?.last_cup_juara_3 ? `<@${settings.last_cup_juara_3}>` : '-'}\n` +
-          `• 🏅 Juara 4: ${settings?.last_cup_juara_4 ? `<@${settings.last_cup_juara_4}>` : '-'}\n\n` +
-          `🎯 **TARGET PENERIMA:** ${selectedRewardUserId ? `<@${selectedRewardUserId}> (${selectedRewardUserLabel})` : '*Belum dipilih*'}`
-        );
+  if (state.currentSubMenu === 'rewards') {
+    const settings = database.get('SELECT last_cup_juara_1, last_cup_juara_2, last_cup_juara_3, last_cup_juara_4 FROM ebyus_settings WHERE guild_id = ?', [gId]);
 
-      const selectWinnerMenu = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_select_winner')
-        .setPlaceholder('🏆 Pilih Juara Pemenang...');
-
-      if (settings?.last_cup_juara_1) selectWinnerMenu.addOptions({ label: '🥇 Juara 1', value: `winner_1_${settings.last_cup_juara_1}` });
-      if (settings?.last_cup_juara_2) selectWinnerMenu.addOptions({ label: '🥈 Juara 2', value: `winner_2_${settings.last_cup_juara_2}` });
-      if (settings?.last_cup_juara_3) selectWinnerMenu.addOptions({ label: '🥉 Juara 3', value: `winner_3_${settings.last_cup_juara_3}` });
-      if (settings?.last_cup_juara_4) selectWinnerMenu.addOptions({ label: '🏅 Juara 4', value: `winner_4_${settings.last_cup_juara_4}` });
-      selectWinnerMenu.addOptions({ label: '👤 Pilih User Lain Manual', value: 'winner_manual' });
-
-      const row1 = new ActionRowBuilder().addComponents(selectWinnerMenu);
-
-      const selectCategoryMenu = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_select_category')
-        .setPlaceholder('🎁 Pilih Kategori Hadiah...')
-        .setDisabled(!selectedRewardUserId);
-
-      selectCategoryMenu.addOptions(
-        { label: '💰 Uang (Saldo Bank)', value: 'cat_money', description: 'Tambahkan saldo bank koin ke pemenang' },
-        { label: '🎒 Item', value: 'cat_item', description: 'Tambahkan item ke inventaris pemenang' },
-        { label: '🐾 Pet (Peliharaan)', value: 'cat_pet', description: 'Berikan pet kustom baru ke pemenang' }
+    embed.setTitle('🎁 BAGIKAN HADIAH TURNAMEN LIGA PET')
+      .setDescription(
+        `Silakan pilih pemenang turnamen yang ingin diberikan hadiah di bawah ini.\n` +
+        `Anda juga dapat memilih member lain secara manual jika dibutuhkan.\n\n` +
+        `🏆 **RIWAYAT PEMENANG TERAKHIR:**\n` +
+        `• 🥇 Juara 1: ${settings?.last_cup_juara_1 ? `<@${settings.last_cup_juara_1}>` : '-'}\n` +
+        `• 🥈 Juara 2: ${settings?.last_cup_juara_2 ? `<@${settings.last_cup_juara_2}>` : '-'}\n` +
+        `• 🥉 Juara 3: ${settings?.last_cup_juara_3 ? `<@${settings.last_cup_juara_3}>` : '-'}\n` +
+        `• 🏅 Juara 4: ${settings?.last_cup_juara_4 ? `<@${settings.last_cup_juara_4}>` : '-'}\n\n` +
+        `🎯 **TARGET PENERIMA:** ${state.selectedRewardUserId ? `<@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})` : '*Belum dipilih*'}`
       );
 
-      const row2 = new ActionRowBuilder().addComponents(selectCategoryMenu);
+    const selectWinnerMenu = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_winner')
+      .setPlaceholder('🏆 Pilih Juara Pemenang...');
 
-      // User Select Menu fallback jika manual
-      let rowUserSelect = null;
-      if (selectedRewardUserLabel === 'Manual Select') {
-        const userSelect = new UserSelectMenuBuilder()
-          .setCustomId('admin_tournament_rewards_user_select')
-          .setPlaceholder('👤 Cari dan Pilih User...');
-        rowUserSelect = new ActionRowBuilder().addComponents(userSelect);
-      }
+    if (settings?.last_cup_juara_1) selectWinnerMenu.addOptions({ label: '🥇 Juara 1', value: `winner_1_${settings.last_cup_juara_1}` });
+    if (settings?.last_cup_juara_2) selectWinnerMenu.addOptions({ label: '🥈 Juara 2', value: `winner_2_${settings.last_cup_juara_2}` });
+    if (settings?.last_cup_juara_3) selectWinnerMenu.addOptions({ label: '🥉 Juara 3', value: `winner_3_${settings.last_cup_juara_3}` });
+    if (settings?.last_cup_juara_4) selectWinnerMenu.addOptions({ label: '🏅 Juara 4', value: `winner_4_${settings.last_cup_juara_4}` });
+    selectWinnerMenu.addOptions({ label: '👤 Pilih User Lain Manual', value: 'winner_manual' });
 
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_main')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary),
+    const row1 = new ActionRowBuilder().addComponents(selectWinnerMenu);
+
+    const selectCategoryMenu = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_category')
+      .setPlaceholder('🎁 Pilih Kategori Hadiah...')
+      .setDisabled(!state.selectedRewardUserId);
+
+    selectCategoryMenu.addOptions(
+      { label: '💰 Uang (Saldo Bank)', value: 'cat_money', description: 'Tambahkan saldo bank koin ke pemenang' },
+      { label: '🎒 Item', value: 'cat_item', description: 'Tambahkan item ke inventaris pemenang' },
+      { label: '🐾 Pet (Peliharaan)', value: 'cat_pet', description: 'Berikan pet kustom baru ke pemenang' }
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(selectCategoryMenu);
+
+    // User Select Menu fallback jika manual
+    let rowUserSelect = null;
+    if (state.selectedRewardUserLabel === 'Manual Select') {
+      const userSelect = new UserSelectMenuBuilder()
+        .setCustomId('admin_tournament_rewards_user_select')
+        .setPlaceholder('👤 Cari dan Pilih User...');
+      rowUserSelect = new ActionRowBuilder().addComponents(userSelect);
+    }
+
+    const btnComponents = [
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_main')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    ];
+    if (!isPermanentChannel) {
+      btnComponents.push(
         new ButtonBuilder()
           .setCustomId('admin_tournament_btn_close')
           .setLabel('❌ Tutup Panel')
           .setStyle(ButtonStyle.Danger)
       );
-
-      const components = [];
-      components.push(row1);
-      if (rowUserSelect) components.push(rowUserSelect);
-      components.push(row2);
-      components.push(btnRow);
-
-      return { embeds: [embed], components };
     }
 
-    if (currentSubMenu === 'reward_money') {
-      embed.setTitle('💰 BERIKAN HADIAH UANG (SALDO BANK)')
-        .setDescription(
-          `Pilih nominal uang (saldo bank) yang ingin diberikan kepada target:\n` +
-          `🎯 **Target:** <@${selectedRewardUserId}> (${selectedRewardUserLabel})`
-        );
+    const btnRow = new ActionRowBuilder().addComponents(btnComponents);
 
-      const moneySelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_select_money')
-        .setPlaceholder('💰 Pilih Nominal Saldo...');
+    const components = [];
+    components.push(row1);
+    if (rowUserSelect) components.push(rowUserSelect);
+    components.push(row2);
+    components.push(btnRow);
 
-      moneySelect.addOptions(
-        { label: '💰 Rp 1.000', value: '1000' },
-        { label: '💰 Rp 2.000', value: '2000' },
-        { label: '💰 Rp 4.000 (Hadiah Juara 3)', value: '4000' },
-        { label: '💰 Rp 5.000', value: '5000' },
-        { label: '💰 Rp 8.000 (Hadiah Juara 2)', value: '8000' },
-        { label: '💰 Rp 10.000 (Hadiah Juara 1)', value: '10000' },
-        { label: '💰 Rp 15.000', value: '15000' },
-        { label: '💰 Rp 20.000', value: '20000' },
-        { label: '💰 Rp 50.000', value: '50000' },
-        { label: '💰 Rp 100.000', value: '100000' },
-        { label: '💰 Rp 250.000', value: '250000' },
-        { label: '💰 Rp 500.000', value: '500000' }
+    return { embeds: [embed], components };
+  }
+
+  if (state.currentSubMenu === 'reward_money') {
+    embed.setTitle('💰 BERIKAN HADIAH UANG (SALDO BANK)')
+      .setDescription(
+        `Pilih nominal uang (saldo bank) yang ingin diberikan kepada target:\n` +
+        `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
       );
 
-      const row1 = new ActionRowBuilder().addComponents(moneySelect);
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_rewards')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
+    const moneySelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_money')
+      .setPlaceholder('💰 Pilih Nominal Saldo...');
+
+    moneySelect.addOptions(
+      { label: '💰 Rp 1.000', value: '1000' },
+      { label: '💰 Rp 2.000', value: '2000' },
+      { label: '💰 Rp 4.000 (Hadiah Juara 3)', value: '4000' },
+      { label: '💰 Rp 5.000', value: '5000' },
+      { label: '💰 Rp 8.000 (Hadiah Juara 2)', value: '8000' },
+      { label: '💰 Rp 10.000 (Hadiah Juara 1)', value: '10000' },
+      { label: '💰 Rp 15.000', value: '15000' },
+      { label: '💰 Rp 20.000', value: '20000' },
+      { label: '💰 Rp 50.000', value: '50000' },
+      { label: '💰 Rp 100.000', value: '100000' },
+      { label: '💰 Rp 250.000', value: '250000' },
+      { label: '💰 Rp 500.000', value: '500000' }
+    );
+
+    const row1 = new ActionRowBuilder().addComponents(moneySelect);
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_rewards')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+
+  if (state.currentSubMenu === 'reward_item') {
+    embed.setTitle('🎒 BERIKAN HADIAH ITEM')
+      .setDescription(
+        `Pilih item yang ingin diberikan kepada target:\n` +
+        `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
       );
 
-      return { embeds: [embed], components: [row1, btnRow] };
-    }
+    const itemSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_item')
+      .setPlaceholder('🎒 Pilih Item...');
 
-    if (currentSubMenu === 'reward_item') {
-      embed.setTitle('🎒 BERIKAN HADIAH ITEM')
-        .setDescription(
-          `Pilih item yang ingin diberikan kepada target:\n` +
-          `🎯 **Target:** <@${selectedRewardUserId}> (${selectedRewardUserLabel})`
-        );
+    const items = [
+      { label: 'XP Booster 8x', value: 'XP_8X' },
+      { label: 'XP Booster 4x', value: 'XP_4X' },
+      { label: 'Premium Food', value: 'FOOD_PREMIUM' },
+      { label: 'Pet Medicine', value: 'MEDICINE' },
+      { label: 'Lucky Amulet', value: 'LUCKY_AMULET' },
+      { label: 'Pet Soap', value: 'SOAP_PET' },
+      { label: 'Basic Food', value: 'FOOD_BASIC' },
+      { label: 'Lockpick', value: 'LOCKPICK' },
+      { label: 'Soap (User)', value: 'SOAP' }
+    ];
 
-      const itemSelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_select_item')
-        .setPlaceholder('🎒 Pilih Item...');
+    items.forEach(it => {
+      itemSelect.addOptions({ label: it.label, value: it.value });
+    });
 
-      const items = [
-        { label: 'XP Booster 8x', value: 'XP_8X' },
-        { label: 'XP Booster 4x', value: 'XP_4X' },
-        { label: 'Premium Food', value: 'FOOD_PREMIUM' },
-        { label: 'Pet Medicine', value: 'MEDICINE' },
-        { label: 'Lucky Amulet', value: 'LUCKY_AMULET' },
-        { label: 'Pet Soap', value: 'SOAP_PET' },
-        { label: 'Basic Food', value: 'FOOD_BASIC' },
-        { label: 'Lockpick', value: 'LOCKPICK' },
-        { label: 'Soap (User)', value: 'SOAP' }
-      ];
+    const row1 = new ActionRowBuilder().addComponents(itemSelect);
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_rewards')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
 
-      items.forEach(it => {
-        itemSelect.addOptions({ label: it.label, value: it.value });
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+
+  if (state.currentSubMenu === 'reward_qty') {
+    embed.setTitle('🔢 PILIH JUMLAH/KUANTITAS ITEM')
+      .setDescription(
+        `Pilih kuantitas untuk item **${state.selectedRewardItemId}** yang akan diberikan:\n` +
+        `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
+      );
+
+    const qtySelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_qty')
+      .setPlaceholder('🔢 Pilih Kuantitas...');
+
+    qtySelect.addOptions(
+      { label: '1 Pcs', value: '1' },
+      { label: '2 Pcs', value: '2' },
+      { label: '3 Pcs', value: '3' },
+      { label: '5 Pcs', value: '5' },
+      { label: '10 Pcs', value: '10' },
+      { label: '25 Pcs', value: '25' },
+      { label: '50 Pcs', value: '50' }
+    );
+
+    const row1 = new ActionRowBuilder().addComponents(qtySelect);
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_item')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+
+  if (state.currentSubMenu === 'reward_pet_species') {
+    embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH SPESIES')
+      .setDescription(
+        `Pilih spesies pet yang ingin diberikan kepada target:\n` +
+        `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
+      );
+
+    const speciesSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_pet_species')
+      .setPlaceholder('🐾 Pilih Spesies Pet...');
+
+    const petModule = require('./pet');
+    const speciesList = Object.keys(petModule.GACHA_SPECIES);
+    speciesList.forEach(sp => {
+      const spec = petModule.GACHA_SPECIES[sp];
+      speciesSelect.addOptions({
+        label: `${spec.emoji || '🐾'} ${spec.name} (${sp})`,
+        value: sp
       });
+    });
 
-      const row1 = new ActionRowBuilder().addComponents(itemSelect);
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_rewards')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
+    const row1 = new ActionRowBuilder().addComponents(speciesSelect);
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_rewards')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+
+  if (state.currentSubMenu === 'reward_pet_trait') {
+    embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH TRAIT')
+      .setDescription(
+        `Pilih Trait utama untuk pet **${state.petGiveSpecies}**:\n` +
+        `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
       );
 
-      return { embeds: [embed], components: [row1, btnRow] };
-    }
+    const traitSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_pet_trait')
+      .setPlaceholder('🧬 Pilih Trait...');
 
-    if (currentSubMenu === 'reward_qty') {
-      embed.setTitle('🔢 PILIH JUMLAH/KUANTITAS ITEM')
-        .setDescription(
-          `Pilih kuantitas untuk item **${selectedRewardItemId}** yang akan diberikan:\n` +
-          `🎯 **Target:** <@${selectedRewardUserId}> (${selectedRewardUserLabel})`
-        );
+    const traits = [
+      { label: 'GENIUS (+XP)', value: 'GENIUS' },
+      { label: 'STURDY (-Damage)', value: 'STURDY' },
+      { label: 'MUTANT (+SPD)', value: 'MUTANT' },
+      { label: 'WARRIOR (+ATK)', value: 'WARRIOR' },
+      { label: 'SURVIVOR (+HP)', value: 'SURVIVOR' },
+      { label: 'Tanpa Trait', value: 'NONE' }
+    ];
 
-      const qtySelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_select_qty')
-        .setPlaceholder('🔢 Pilih Kuantitas...');
+    traits.forEach(tr => {
+      traitSelect.addOptions({ label: tr.label, value: tr.value });
+    });
 
-      qtySelect.addOptions(
-        { label: '1 Pcs', value: '1' },
-        { label: '2 Pcs', value: '2' },
-        { label: '3 Pcs', value: '3' },
-        { label: '5 Pcs', value: '5' },
-        { label: '10 Pcs', value: '10' },
-        { label: '25 Pcs', value: '25' },
-        { label: '50 Pcs', value: '50' }
+    const row1 = new ActionRowBuilder().addComponents(traitSelect);
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_pet_species')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+
+  if (state.currentSubMenu === 'reward_pet_star') {
+    const petModule = require('./pet');
+    const traitLabel = state.petGiveTrait || 'NONE';
+
+    embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH BINTANG')
+      .setDescription(
+        `Pilih tingkatan Bintang (Star Level) pet:\n` +
+        `• Target: <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})\n` +
+        `• Pet: **${state.petGiveSpecies}** (Trait: **${traitLabel}**)`
       );
 
-      const row1 = new ActionRowBuilder().addComponents(qtySelect);
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_item')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
-      );
+    const starSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_pet_star')
+      .setPlaceholder('⭐ Pilih Tingkat Bintang...');
 
-      return { embeds: [embed], components: [row1, btnRow] };
-    }
-
-    // CUSTOM PET SUB-MENUS:
-    if (currentSubMenu === 'reward_pet_species') {
-      embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH SPESIES')
-        .setDescription(
-          `Pilih spesies pet yang ingin diberikan kepada target:\n` +
-          `🎯 **Target:** <@${selectedRewardUserId}> (${selectedRewardUserLabel})`
-        );
-
-      const speciesSelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_pet_species')
-        .setPlaceholder('🐾 Pilih Spesies Pet...');
-
-      const petModule = require('./pet');
-      const speciesList = Object.keys(petModule.GACHA_SPECIES);
-      speciesList.forEach(sp => {
-        const spec = petModule.GACHA_SPECIES[sp];
-        speciesSelect.addOptions({
-          label: `${spec.emoji || '🐾'} ${spec.name} (${sp})`,
-          value: sp
-        });
+    for (let s = 1; s <= 5; s++) {
+      starSelect.addOptions({
+        label: `${'⭐'.repeat(s)} (${s} Bintang)`,
+        value: String(s)
       });
-
-      const row1 = new ActionRowBuilder().addComponents(speciesSelect);
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_rewards')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      return { embeds: [embed], components: [row1, btnRow] };
     }
 
-    if (currentSubMenu === 'reward_pet_trait') {
-      embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH TRAIT')
-        .setDescription(
-          `Pilih Trait utama untuk pet **${petGiveSpecies}**:\n` +
-          `🎯 **Target:** <@${selectedRewardUserId}> (${selectedRewardUserLabel})`
-        );
+    const row1 = new ActionRowBuilder().addComponents(starSelect);
 
-      const traitSelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_pet_trait')
-        .setPlaceholder('🧬 Pilih Trait...');
+    const allSelected = state.petGiveSpecies && state.petGiveTrait && state.petGiveStar;
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_pet_confirm')
+        .setLabel('🎁 Konfirmasi & Masukkan Nama')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(!allSelected),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_pet_trait')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
 
-      const traits = [
-        { label: 'GENIUS (+XP)', value: 'GENIUS' },
-        { label: 'STURDY (-Damage)', value: 'STURDY' },
-        { label: 'MUTANT (+SPD)', value: 'MUTANT' },
-        { label: 'WARRIOR (+ATK)', value: 'WARRIOR' },
-        { label: 'SURVIVOR (+HP)', value: 'SURVIVOR' },
-        { label: 'Tanpa Trait', value: 'NONE' }
-      ];
+    return { embeds: [embed], components: [row1, btnRow] };
+  }
+}
 
-      traits.forEach(tr => {
-        traitSelect.addOptions({ label: tr.label, value: tr.value });
-      });
+/**
+ * 🏆 12. SUB-PANEL TURNAMEN PET (ADMIN CUP)
+ */
+async function handleAdminTournamentPanel(messageOrInteraction, client) {
+  const isInteraction = !messageOrInteraction.author && !!messageOrInteraction.user;
+  const isChannel = typeof messageOrInteraction.send === 'function';
+  const author = isInteraction ? messageOrInteraction.user : (isChannel ? null : messageOrInteraction.author);
+  const guildId = messageOrInteraction.guildId || (isChannel ? messageOrInteraction.guild?.id : null);
 
-      const row1 = new ActionRowBuilder().addComponents(traitSelect);
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_pet_species')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      return { embeds: [embed], components: [row1, btnRow] };
-    }
-
-    if (currentSubMenu === 'reward_pet_star') {
-      const petModule = require('./pet');
-      const traitLabel = petGiveTrait || 'NONE';
-
-      embed.setTitle('🐾 BERIKAN HADIAH PET — PILIH BINTANG')
-        .setDescription(
-          `Pilih tingkatan Bintang (Star Level) pet:\n` +
-          `• Target: <@${selectedRewardUserId}> (${selectedRewardUserLabel})\n` +
-          `• Pet: **${petGiveSpecies}** (Trait: **${traitLabel}**)`
-        );
-
-      const starSelect = new StringSelectMenuBuilder()
-        .setCustomId('admin_tournament_rewards_pet_star')
-        .setPlaceholder('⭐ Pilih Tingkat Bintang...');
-
-      for (let s = 1; s <= 5; s++) {
-        starSelect.addOptions({
-          label: `${'⭐'.repeat(s)} (${s} Bintang)`,
-          value: String(s)
-        });
+  if (author) {
+    const isOwner = author.id === '436554535037698059';
+    const isAdmin = messageOrInteraction.member && messageOrInteraction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      if (isInteraction) {
+        return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      } else {
+        return messageOrInteraction.reply({ content: '❌ Akses Ditolak! Panel Admin Turnamen dikunci khusus untuk Owner utama & Administrator server.' });
       }
-
-      const row1 = new ActionRowBuilder().addComponents(starSelect);
-
-      const allSelected = petGiveSpecies && petGiveTrait && petGiveStar;
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_pet_confirm')
-          .setLabel('🎁 Konfirmasi & Masukkan Nama')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(!allSelected),
-        new ButtonBuilder()
-          .setCustomId('admin_tournament_rewards_btn_back_pet_trait')
-          .setLabel('🔙 Kembali')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      return { embeds: [embed], components: [row1, btnRow] };
     }
+  }
+
+  if (!guildId) return false;
+
+  const settings = database.get('SELECT tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isPermanentChannel = settings && settings.tournament_admin_channel_id === (messageOrInteraction.channelId || messageOrInteraction.id);
+
+  const defaultState = {
+    currentSubMenu: 'main',
+    selectedRewardUserId: null,
+    selectedRewardUserLabel: '',
+    selectedRewardItemId: null,
+    selectedRewardItemQty: null,
+    petGiveSpecies: null,
+    petGiveTrait: null,
+    petGiveStar: null
   };
 
-  const initialData = getTournamentPanelData(guildId);
-  let replyMsg;
+  const initialData = getTournamentPanelDataShared(guildId, defaultState, client, isPermanentChannel);
 
   if (isInteraction) {
     await messageOrInteraction.update(initialData);
-    replyMsg = messageOrInteraction.message;
+  } else if (isChannel) {
+    await messageOrInteraction.send(initialData);
   } else {
-    replyMsg = await messageOrInteraction.reply(initialData);
+    await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  return true;
+}
 
-  collector.on('collect', async iTour => {
-    const isOwner = iTour.user.id === '436554535037698059';
-    const isAdmin = iTour.member && iTour.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!isOwner && !isAdmin) {
-      return iTour.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+/**
+ * Global interaction router for persistent or static tournament admin panels
+ */
+async function handleAdminTournamentGlobalInteraction(interaction, client) {
+  const customId = interaction.customId;
+  const guildId = interaction.guildId;
+  if (!guildId) return;
+
+  const isOwner = interaction.user.id === '436554535037698059';
+  const isAdmin = interaction.member && interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+  if (!isOwner && !isAdmin) {
+    return interaction.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+  }
+
+  client.adminTournamentStates = client.adminTournamentStates || new Map();
+  const stateKey = `${interaction.user.id}_${interaction.message.id}`;
+  let state = client.adminTournamentStates.get(stateKey);
+  if (!state) {
+    state = {
+      currentSubMenu: 'main',
+      selectedRewardUserId: null,
+      selectedRewardUserLabel: '',
+      selectedRewardItemId: null,
+      selectedRewardItemQty: null,
+      petGiveSpecies: null,
+      petGiveTrait: null,
+      petGiveStar: null
+    };
+    client.adminTournamentStates.set(stateKey, state);
+  }
+
+  const settings = database.get('SELECT tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isPermanentChannel = settings && settings.tournament_admin_channel_id === interaction.message.channelId;
+  const author = interaction.user;
+  const guild = interaction.guild;
+
+  try {
+    const tournament = require('./tournament');
+
+    if (customId === 'admin_tournament_btn_back') {
+      client.adminTournamentStates.delete(stateKey);
+      await handleAdminPanel(interaction, client);
     }
-
-    try {
-      const tournament = require('./tournament');
-
-      if (iTour.customId === 'admin_tournament_btn_back') {
-        collector.stop('transition');
-        await handleAdminPanel(iTour, client);
+    else if (customId === 'admin_tournament_btn_close') {
+      client.adminTournamentStates.delete(stateKey);
+      await interaction.message.delete().catch(() => {});
+    }
+    else if (customId === 'admin_tournament_btn_rewards') {
+      state.currentSubMenu = 'rewards';
+      state.selectedRewardUserId = null;
+      state.selectedRewardUserLabel = '';
+      state.selectedRewardItemId = null;
+      state.selectedRewardItemQty = null;
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_winner') {
+      const val = interaction.values[0];
+      if (val === 'winner_manual') {
+        state.selectedRewardUserId = null;
+        state.selectedRewardUserLabel = 'Manual Select';
+      } else if (val.startsWith('winner_')) {
+        const parts = val.split('_'); // [winner, index, userId]
+        const rankIndex = parts[1];
+        const userId = parts[2];
+        state.selectedRewardUserId = userId;
+        state.selectedRewardUserLabel = `Juara ${rankIndex}`;
       }
-      else if (iTour.customId === 'admin_tournament_btn_close') {
-        collector.stop();
-        await replyMsg.delete().catch(() => { });
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_user_select') {
+      const userId = interaction.values[0];
+      state.selectedRewardUserId = userId;
+      state.selectedRewardUserLabel = 'Manual';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_category') {
+      const cat = interaction.values[0];
+      if (cat === 'cat_money') {
+        state.currentSubMenu = 'reward_money';
+      } else if (cat === 'cat_item') {
+        state.currentSubMenu = 'reward_item';
+      } else if (cat === 'cat_pet') {
+        state.currentSubMenu = 'reward_pet_species';
+        state.petGiveSpecies = null;
+        state.petGiveTrait = null;
+        state.petGiveStar = null;
       }
-      else if (iTour.customId === 'admin_tournament_btn_rewards') {
-        currentSubMenu = 'rewards';
-        selectedRewardUserId = null;
-        selectedRewardUserLabel = '';
-        selectedRewardItemId = null;
-        selectedRewardItemQty = null;
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_select_winner') {
-        const val = iTour.values[0];
-        if (val === 'winner_manual') {
-          selectedRewardUserId = null;
-          selectedRewardUserLabel = 'Manual Select';
-        } else if (val.startsWith('winner_')) {
-          const parts = val.split('_'); // [winner, index, userId]
-          const rankIndex = parts[1];
-          const userId = parts[2];
-          selectedRewardUserId = userId;
-          selectedRewardUserLabel = `Juara ${rankIndex}`;
-        }
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_user_select') {
-        const userId = iTour.values[0];
-        selectedRewardUserId = userId;
-        selectedRewardUserLabel = 'Manual';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_select_category') {
-        const cat = iTour.values[0];
-        if (cat === 'cat_money') {
-          currentSubMenu = 'reward_money';
-        } else if (cat === 'cat_item') {
-          currentSubMenu = 'reward_item';
-        } else if (cat === 'cat_pet') {
-          currentSubMenu = 'reward_pet_species';
-          petGiveSpecies = null;
-          petGiveTrait = null;
-          petGiveStar = null;
-        }
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_select_money') {
-        const amount = parseInt(iTour.values[0]);
-        if (!isNaN(amount) && amount > 0) {
-          bank.getSavings(selectedRewardUserId, guildId);
-          database.run(
-            'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
-            [amount, selectedRewardUserId, guildId]
-          );
-          database.run(
-            'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
-            [selectedRewardUserId, guildId, 'ADMIN_BANK_GIVE', amount]
-          );
-          database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_MONEY', `Memberikan hadiah uang Rp ${amount.toLocaleString('id-ID')} kepada ${selectedRewardUserLabel} (<@${selectedRewardUserId}>)`);
-          await iTour.reply({ content: `💰 Sukses menyuntikkan hadiah koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke tabungan bank <@${selectedRewardUserId}>!`, flags: 64 });
-        }
-        currentSubMenu = 'rewards';
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_select_item') {
-        selectedRewardItemId = iTour.values[0];
-        currentSubMenu = 'reward_qty';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_select_qty') {
-        const qty = parseInt(iTour.values[0]);
-        if (!isNaN(qty) && qty > 0) {
-          updateAdminInventory(selectedRewardUserId, guildId, selectedRewardItemId, qty);
-          database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_ITEM', `Memberikan hadiah item ${qty}x ${selectedRewardItemId} kepada ${selectedRewardUserLabel} (<@${selectedRewardUserId}>)`);
-          await iTour.reply({ content: `🎒 Sukses memberikan hadiah item **${qty}x ${selectedRewardItemId}** ke inventaris <@${selectedRewardUserId}>!`, flags: 64 });
-        }
-        currentSubMenu = 'rewards';
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_pet_species') {
-        petGiveSpecies = iTour.values[0];
-        currentSubMenu = 'reward_pet_trait';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_pet_trait') {
-        petGiveTrait = iTour.values[0];
-        currentSubMenu = 'reward_pet_star';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_pet_star') {
-        petGiveStar = parseInt(iTour.values[0]);
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_pet_confirm') {
-        if (!petGiveSpecies || !petGiveTrait || !petGiveStar) {
-          return iTour.reply({ content: '❌ Anda harus memilih spesies, trait, dan bintang pet terlebih dahulu!', flags: 64 });
-        }
-
-        const modal = new ModalBuilder()
-          .setCustomId('admin_tournament_rewards_pet_final_modal')
-          .setTitle(`Beri Pet: ${petGiveSpecies} ⭐${petGiveStar}`);
-
-        const nameInput = new TextInputBuilder()
-          .setCustomId('custom_pet_name')
-          .setLabel('Nama Pet Peliharaan')
-          .setPlaceholder('Masukkan nama peliharaan kustom...')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        const levelInput = new TextInputBuilder()
-          .setCustomId('custom_pet_level')
-          .setLabel('Level Pet (Mulai dari 1)')
-          .setValue('10')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(nameInput),
-          new ActionRowBuilder().addComponents(levelInput)
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_money') {
+      const amount = parseInt(interaction.values[0]);
+      if (!isNaN(amount) && amount > 0) {
+        bank.getSavings(state.selectedRewardUserId, guildId);
+        database.run(
+          'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
+          [amount, state.selectedRewardUserId, guildId]
         );
-        await iTour.showModal(modal);
+        database.run(
+          'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+          [state.selectedRewardUserId, guildId, 'ADMIN_BANK_GIVE', amount]
+        );
+        database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_MONEY', `Memberikan hadiah uang Rp ${amount.toLocaleString('id-ID')} kepada ${state.selectedRewardUserLabel} (<@${state.selectedRewardUserId}>)`);
+        await interaction.reply({ content: `💰 Sukses menyuntikkan hadiah koin **Rp ${amount.toLocaleString('id-ID')}** langsung ke tabungan bank <@${state.selectedRewardUserId}>!`, flags: 64 });
+      }
+      state.currentSubMenu = 'rewards';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_item') {
+      state.selectedRewardItemId = interaction.values[0];
+      state.currentSubMenu = 'reward_qty';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_qty') {
+      const qty = parseInt(interaction.values[0]);
+      if (!isNaN(qty) && qty > 0) {
+        updateAdminInventory(state.selectedRewardUserId, guildId, state.selectedRewardItemId, qty);
+        database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_ITEM', `Memberikan hadiah item ${qty}x ${state.selectedRewardItemId} kepada ${state.selectedRewardUserLabel} (<@${state.selectedRewardUserId}>)`);
+        await interaction.reply({ content: `🎒 Sukses memberikan hadiah item **${qty}x ${state.selectedRewardItemId}** ke inventaris <@${state.selectedRewardUserId}>!`, flags: 64 });
+      }
+      state.currentSubMenu = 'rewards';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_pet_species') {
+      state.petGiveSpecies = interaction.values[0];
+      state.currentSubMenu = 'reward_pet_trait';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_pet_trait') {
+      state.petGiveTrait = interaction.values[0];
+      state.currentSubMenu = 'reward_pet_star';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_pet_star') {
+      state.petGiveStar = parseInt(interaction.values[0]);
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_pet_confirm') {
+      if (!state.petGiveSpecies || !state.petGiveTrait || !state.petGiveStar) {
+        return interaction.reply({ content: '❌ Anda harus memilih spesies, trait, dan bintang pet terlebih dahulu!', flags: 64 });
+      }
 
-        const sub = await iTour.awaitModalSubmit({
-          filter: (s) => s.customId === 'admin_tournament_rewards_pet_final_modal' && s.user.id === author.id,
-          time: 60000
-        }).catch(() => null);
+      const modal = new ModalBuilder()
+        .setCustomId('admin_tournament_rewards_pet_final_modal')
+        .setTitle(`Beri Pet: ${state.petGiveSpecies} ⭐${state.petGiveStar}`);
 
-        if (sub) {
-          try {
-            const pName = sub.fields.getTextInputValue('custom_pet_name');
-            let pLevel = parseInt(sub.fields.getTextInputValue('custom_pet_level')) || 1;
-            const pType = petGiveSpecies;
-            let pTrait = petGiveTrait === 'NONE' ? '' : petGiveTrait;
-            const pStar = petGiveStar;
+      const nameInput = new TextInputBuilder()
+        .setCustomId('custom_pet_name')
+        .setLabel('Nama Pet Peliharaan')
+        .setPlaceholder('Masukkan nama peliharaan kustom...')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
 
-            // Validasi Spesies
-            const petModule = require('./pet');
-            const speciesInfo = petModule.GACHA_SPECIES[pType] || petModule.PET_SPECIES[pType];
-            if (!speciesInfo) {
-              return sub.reply({ content: `❌ Spesies tidak valid!`, flags: 64 });
+      const levelInput = new TextInputBuilder()
+        .setCustomId('custom_pet_level')
+        .setLabel('Level Pet (Mulai dari 1)')
+        .setValue('10')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(levelInput)
+      );
+      await interaction.showModal(modal);
+
+      const sub = await interaction.awaitModalSubmit({
+        filter: (s) => s.customId === 'admin_tournament_rewards_pet_final_modal' && s.user.id === author.id,
+        time: 60000
+      }).catch(() => null);
+
+      if (sub) {
+        try {
+          const pName = sub.fields.getTextInputValue('custom_pet_name');
+          let pLevel = parseInt(sub.fields.getTextInputValue('custom_pet_level')) || 1;
+          const pType = state.petGiveSpecies;
+          let pTrait = state.petGiveTrait === 'NONE' ? '' : state.petGiveTrait;
+          const pStar = state.petGiveStar;
+
+          // Validasi Spesies
+          const petModule = require('./pet');
+          const speciesInfo = petModule.GACHA_SPECIES[pType] || petModule.PET_SPECIES[pType];
+          if (!speciesInfo) {
+            return sub.reply({ content: `❌ Spesies tidak valid!`, flags: 64 });
+          }
+
+          // Sanitasi & Validasi Nama
+          const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
+          if (sanitizedName.length === 0 || sanitizedName.length > 25) {
+            return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
+          }
+
+          // Validasi Slot
+          const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [state.selectedRewardUserId, guildId]);
+          const count = countRow ? countRow.count : 0;
+
+          // Cek Duplikat Nama
+          const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [state.selectedRewardUserId, guildId, sanitizedName.toLowerCase()]);
+          if (nameExists) {
+            return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
+          }
+
+          const gSource = 'ADMIN';
+          const gRarity = speciesInfo.rarity || 'COMMON';
+          const gElement = speciesInfo.element || '';
+
+          // Batas Maksimum Pet
+          const targetMember = await guild.members.fetch(state.selectedRewardUserId).catch(() => null);
+          const isTargetAdmin = (state.selectedRewardUserId === '436554535037698059') || 
+                                (config.OWNER_ID && state.selectedRewardUserId === config.OWNER_ID) ||
+                                (targetMember && targetMember.permissions.has(PermissionsBitField.Flags.Administrator));
+
+          if (gRarity === 'MYTHIC') {
+            const mythicCountRow = database.get(
+              'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
+              [state.selectedRewardUserId, guildId, 'MYTHIC']
+            );
+            const mythicCount = mythicCountRow ? mythicCountRow.count : 0;
+            const maxMythic = isTargetAdmin ? 999 : 2;
+            if (mythicCount >= maxMythic) {
+              return sub.reply({ content: `❌ Target user <@${state.selectedRewardUserId}> sudah memiliki batas maksimum pet MYTHIC (maksimal ${maxMythic} per user)!`, flags: 64 });
             }
-
-            // Sanitasi & Validasi Nama
-            const sanitizedName = pName.replace(/<@!?\d*>|<@&\d*>|<#\d*>|@everyone|@here/g, '').trim();
-            if (sanitizedName.length === 0 || sanitizedName.length > 25) {
-              return sub.reply({ content: '❌ Nama pet tidak valid atau lebih dari 25 karakter!', flags: 64 });
+          } else if (gRarity === 'IMMORTAL') {
+            const immortalCountRow = database.get(
+              'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
+              [state.selectedRewardUserId, guildId, 'IMMORTAL']
+            );
+            const immortalCount = immortalCountRow ? immortalCountRow.count : 0;
+            const maxImmortal = isTargetAdmin ? 999 : 5;
+            if (immortalCount >= maxImmortal) {
+              return sub.reply({ content: `❌ Target user <@${state.selectedRewardUserId}> sudah memiliki batas maksimum pet IMMORTAL (maksimal ${maxImmortal} per user)!`, flags: 64 });
             }
+          }
 
-            // Validasi Slot
-            const countRow = database.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [selectedRewardUserId, guildId]);
-            const count = countRow ? countRow.count : 0;
+          // Clamping Level & Star
+          pLevel = Math.max(1, pLevel);
 
-            // Cek Duplikat Nama
-            const nameExists = database.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [selectedRewardUserId, guildId, sanitizedName.toLowerCase()]);
-            if (nameExists) {
-              return sub.reply({ content: `❌ Anggota terpilih sudah memiliki pet bernama **"${sanitizedName}"**!`, flags: 64 });
+          const pStatus = pLevel >= 10 ? 'ADULT' : 'BABY';
+          const now = Math.floor(Date.now() / 1000);
+          const isActive = count === 0 ? 1 : 0;
+          const hatchAt = 0;
+
+          // Calculate HP & Combat bonuses based on stars
+          const baseHP = speciesInfo.baseHP || 100;
+          const starMultiplier = 1 + (pStar - 1) * 0.15;
+          const bonusHp = Math.round(baseHP * (starMultiplier - 1));
+          const bonusAtkPct = (pStar - 1) * 0.15;
+          const bonusDefPct = (pStar - 1) * 0.15;
+          const maxHP = baseHP + bonusHp;
+
+          // Auto-assign traits & XP Multiplier
+          let finalTrait = pTrait;
+          let finalTrait2 = '';
+          let xpMultiplier = 1.0;
+
+          if (gRarity === 'MYTHIC') {
+            xpMultiplier = 1.5;
+            const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
+            const shuffled = [...allTraits].sort(() => 0.5 - Math.random());
+            finalTrait = shuffled[0];
+            finalTrait2 = shuffled.slice(1, 3).join(',');
+          } else if (gRarity === 'IMMORTAL') {
+            xpMultiplier = 3.0;
+            finalTrait = 'GENIUS';
+            finalTrait2 = 'STURDY,MUTANT,WARRIOR,SURVIVOR';
+          } else if (!finalTrait || finalTrait === 'NONE') {
+            const traitsPool = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+            if (gRarity === 'LEGENDARY') {
+              finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
+              const pool2 = traitsPool.filter(t => t !== finalTrait);
+              finalTrait2 = pool2[Math.floor(Math.random() * pool2.length)];
+            } else if (gRarity === 'EPIC') {
+              finalTrait = 'SURVIVOR';
+            } else if (gRarity === 'RARE') {
+              finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
+            } else {
+              finalTrait = '';
             }
+          }
 
-            const gSource = 'ADMIN';
-            const gRarity = speciesInfo.rarity || 'COMMON';
-            const gElement = speciesInfo.element || '';
+          database.run(
+            `INSERT INTO user_pets (
+              user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
+              last_interaction_at, hatch_at, created_at, is_active, trait, 
+              star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
+              gacha_source, gacha_rarity, gacha_element, gacha_trait2, xp_multiplier
+            ) VALUES (
+              ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
+              ?, ?, ?, ?, ?, 
+              ?, ?, ?, ?,
+              ?, ?, ?, ?, ?
+            )`,
+            [
+              state.selectedRewardUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
+              now, hatchAt, now, isActive, finalTrait,
+              pStar, bonusHp, bonusAtkPct, bonusDefPct,
+              gSource, gRarity, gElement, finalTrait2, xpMultiplier
+            ]
+          );
 
-            // Batas Maksimum Pet
-            const targetMember = await guild.members.fetch(selectedRewardUserId).catch(() => null);
-            const isTargetAdmin = (selectedRewardUserId === '436554535037698059') || 
-                                  (config.OWNER_ID && selectedRewardUserId === config.OWNER_ID) ||
-                                  (targetMember && targetMember.permissions.has(PermissionsBitField.Flags.Administrator));
+          const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
+          const starText = petModule.renderStars(pStar);
+          await sub.reply({ content: `🎁 Sukses memberikan hadiah pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${state.selectedRewardUserId}>!`, flags: 64 });
+          database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_PET', `Memberikan hadiah pet kustom ${sanitizedName} (${pType}) kepada ${state.selectedRewardUserLabel} (<@${state.selectedRewardUserId}>)`);
 
-            if (gRarity === 'MYTHIC') {
-              const mythicCountRow = database.get(
-                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
-                [selectedRewardUserId, guildId, 'MYTHIC']
-              );
-              const mythicCount = mythicCountRow ? mythicCountRow.count : 0;
-              const maxMythic = isTargetAdmin ? 999 : 2;
-              if (mythicCount >= maxMythic) {
-                return sub.reply({ content: `❌ Target user <@${selectedRewardUserId}> sudah memiliki batas maksimum pet MYTHIC (maksimal ${maxMythic} per user)!`, flags: 64 });
-              }
-            } else if (gRarity === 'IMMORTAL') {
-              const immortalCountRow = database.get(
-                'SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ? AND gacha_rarity = ?',
-                [selectedRewardUserId, guildId, 'IMMORTAL']
-              );
-              const immortalCount = immortalCountRow ? immortalCountRow.count : 0;
-              const maxImmortal = isTargetAdmin ? 999 : 5;
-              if (immortalCount >= maxImmortal) {
-                return sub.reply({ content: `❌ Target user <@${selectedRewardUserId}> sudah memiliki batas maksimum pet IMMORTAL (maksimal ${maxImmortal} per user)!`, flags: 64 });
-              }
-            }
-
-            // Clamping Level & Star
-            pLevel = Math.max(1, pLevel);
-
-            const pStatus = pLevel >= 10 ? 'ADULT' : 'BABY';
-            const now = Math.floor(Date.now() / 1000);
-            const isActive = count === 0 ? 1 : 0;
-            const hatchAt = 0;
-
-            // Calculate HP & Combat bonuses based on stars
-            const baseHP = speciesInfo.baseHP || 100;
-            const starMultiplier = 1 + (pStar - 1) * 0.15;
-            const bonusHp = Math.round(baseHP * (starMultiplier - 1));
-            const bonusAtkPct = (pStar - 1) * 0.15;
-            const bonusDefPct = (pStar - 1) * 0.15;
-            const maxHP = baseHP + bonusHp;
-
-            // Auto-assign traits & XP Multiplier
-            let finalTrait = pTrait;
-            let finalTrait2 = '';
-            let xpMultiplier = 1.0;
-
-            if (gRarity === 'MYTHIC') {
-              xpMultiplier = 1.5;
-              const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
-              const shuffled = [...allTraits].sort(() => 0.5 - Math.random());
-              finalTrait = shuffled[0];
-              finalTrait2 = shuffled.slice(1, 3).join(',');
-            } else if (gRarity === 'IMMORTAL') {
-              xpMultiplier = 3.0;
-              finalTrait = 'GENIUS';
-              finalTrait2 = 'STURDY,MUTANT,WARRIOR,SURVIVOR';
-            } else if (!finalTrait || finalTrait === 'NONE') {
-              const traitsPool = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
-              if (gRarity === 'LEGENDARY') {
-                finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
-                const pool2 = traitsPool.filter(t => t !== finalTrait);
-                finalTrait2 = pool2[Math.floor(Math.random() * pool2.length)];
-              } else if (gRarity === 'EPIC') {
-                finalTrait = 'SURVIVOR';
-              } else if (gRarity === 'RARE') {
-                finalTrait = traitsPool[Math.floor(Math.random() * traitsPool.length)];
-              } else {
-                finalTrait = '';
-              }
-            }
-
-            database.run(
-              `INSERT INTO user_pets (
-                user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
-                last_interaction_at, hatch_at, created_at, is_active, trait, 
-                star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
-                gacha_source, gacha_rarity, gacha_element, gacha_trait2, xp_multiplier
-              ) VALUES (
-                ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
-                ?, ?, ?, ?, ?, 
-                ?, ?, ?, ?,
-                ?, ?, ?, ?, ?
-              )`,
+          // Send global economic announcement for MYTHIC/IMMORTAL
+          if (gRarity === 'MYTHIC' || gRarity === 'IMMORTAL') {
+            const rarityEmoji = gRarity === 'MYTHIC' ? '🔴' : '✨';
+            const rarityColor = gRarity === 'MYTHIC' ? '#FF1744' : '#FFD700';
+            const allTraitsStr = [finalTrait, ...finalTrait2.split(',').filter(Boolean)].join(', ');
+            await sendGlobalEconomyAnnouncement(
+              client,
+              guild,
+              author,
+              `${rarityEmoji} Pemberian Pet Legendaris Turnamen ${gRarity}`,
+              `🎉 Admin baru saja menganugerahkan hadiah pet turnamen kasta teratas **${sanitizedName}** (${pType}) ${rarityEmoji} **${gRarity}** kepada sang juara <@${state.selectedRewardUserId}>!`,
+              rarityColor,
               [
-                selectedRewardUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
-                now, hatchAt, now, isActive, finalTrait,
-                pStar, bonusHp, bonusAtkPct, bonusDefPct,
-                gSource, gRarity, gElement, finalTrait2, xpMultiplier
+                { name: 'Penerima', value: `<@${state.selectedRewardUserId}>`, inline: true },
+                { name: 'Spesies', value: `${speciesInfo.name} (${pType})`, inline: true },
+                { name: 'Bintang', value: petModule.renderStars(pStar), inline: true },
+                { name: 'Trait Aktif', value: allTraitsStr || 'Tidak ada', inline: false }
               ]
             );
-
-            const traitText = finalTrait ? ` dengan Trait **${finalTrait}**` : '';
-            const starText = petModule.renderStars(pStar);
-            await sub.reply({ content: `🎁 Sukses memberikan hadiah pet baru **${sanitizedName}** (${pType}) ${starText}${traitText} level **${pLevel}** ke <@${selectedRewardUserId}>!`, flags: 64 });
-            database.logPetAction(guildId, author.id, author.username, '', 'ADMIN_TOURNAMENT_REWARD_PET', `Memberikan hadiah pet kustom ${sanitizedName} (${pType}) kepada ${selectedRewardUserLabel} (<@${selectedRewardUserId}>)`);
-
-            // Send global economic announcement for MYTHIC/IMMORTAL
-            if (gRarity === 'MYTHIC' || gRarity === 'IMMORTAL') {
-              const rarityEmoji = gRarity === 'MYTHIC' ? '🔴' : '✨';
-              const rarityColor = gRarity === 'MYTHIC' ? '#FF1744' : '#FFD700';
-              const allTraitsStr = [finalTrait, ...finalTrait2.split(',').filter(Boolean)].join(', ');
-              await sendGlobalEconomyAnnouncement(
-                client,
-                guild,
-                author,
-                `${rarityEmoji} Pemberian Pet Legendaris Turnamen ${gRarity}`,
-                `🎉 Admin baru saja menganugerahkan hadiah pet turnamen kasta teratas **${sanitizedName}** (${pType}) ${rarityEmoji} **${gRarity}** kepada sang juara <@${selectedRewardUserId}>!`,
-                rarityColor,
-                [
-                  { name: 'Penerima', value: `<@${selectedRewardUserId}>`, inline: true },
-                  { name: 'Spesies', value: `${speciesInfo.name} (${pType})`, inline: true },
-                  { name: 'Bintang', value: petModule.renderStars(pStar), inline: true },
-                  { name: 'Trait Aktif', value: allTraitsStr || 'Tidak ada', inline: false }
-                ]
-              );
-            }
-
-            currentSubMenu = 'rewards';
-            const fresh = getTournamentPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => { });
-          } catch (err) {
-            await sub.reply({ content: `❌ Gagal memberikan pet: ${err.message}`, flags: 64 }).catch(() => {});
-          }
-        }
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_btn_back_main') {
-        currentSubMenu = 'main';
-        selectedRewardUserId = null;
-        selectedRewardUserLabel = '';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_btn_back_rewards') {
-        currentSubMenu = 'rewards';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_btn_back_item') {
-        currentSubMenu = 'reward_item';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_btn_back_pet_species') {
-        currentSubMenu = 'reward_pet_species';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_rewards_btn_back_pet_trait') {
-        currentSubMenu = 'reward_pet_trait';
-        const fresh = getTournamentPanelData(guildId);
-        await iTour.update(fresh).catch(() => {});
-      }
-      else if (iTour.customId === 'admin_tournament_btn_pause') {
-        await tournament.pauseTournament(guildId, client);
-        await iTour.reply({ content: '⏸️ Turnamen berhasil dijeda sementara!', flags: 64 });
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_resume') {
-        await tournament.resumeTournament(guildId, client);
-        await iTour.reply({ content: '▶️ Turnamen berhasil dilanjutkan kembali!', flags: 64 });
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_reroll') {
-        await tournament.rerollMatch(guildId, client);
-        await iTour.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_dq') {
-        const match = database.get(
-          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
-          [guildId]
-        );
-        if (!match) {
-          return iTour.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
-        }
-
-        const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
-        const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
-
-        const actionRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_1_id}`)
-            .setLabel(`DQ ${p1Pet?.pet_name || 'Player 1'}`)
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_2_id}`)
-            .setLabel(`DQ ${p2Pet?.pet_name || 'Player 2'}`)
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        await iTour.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components: [actionRow], flags: 64 });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_forcewin') {
-        const match = database.get(
-          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
-          [guildId]
-        );
-        if (!match) {
-          return iTour.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
-        }
-
-        const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
-        const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
-
-        const actionRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_1_id}`)
-            .setLabel(`Menangkan ${p1Pet?.pet_name || 'Player 1'}`)
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_2_id}`)
-            .setLabel(`Menangkan ${p2Pet?.pet_name || 'Player 2'}`)
-            .setStyle(ButtonStyle.Success)
-        );
-
-        await iTour.reply({ content: '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**', components: [actionRow], flags: 64 });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_extend') {
-        const actionRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_ext_${guildId}_5`)
-            .setLabel('+5 Menit')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_ext_${guildId}_10`)
-            .setLabel('+10 Menit')
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId(`cup_admin_act_ext_${guildId}_15`)
-            .setLabel('+15 Menit')
-            .setStyle(ButtonStyle.Secondary)
-        );
-        await iTour.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_stop') {
-        if (client.tournamentTimers && client.tournamentTimers.has(guildId)) {
-          clearTimeout(client.tournamentTimers.get(guildId));
-          client.tournamentTimers.delete(guildId);
-        }
-        const active = tournament.stopTournament(guildId);
-        if (active && active.channel_id) {
-          await tournament.createTournamentChannel(iTour.guild).catch(() => null);
-
-          const channel = iTour.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
-          if (channel && typeof channel.send === 'function') {
-            await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
-          }
-        }
-        await iTour.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });
-        const fresh = getTournamentPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iTour.customId === 'admin_tournament_btn_start') {
-        const modal = new ModalBuilder()
-          .setCustomId('admin_tournament_start_modal')
-          .setTitle('Mulai Turnamen Admin Cup');
-
-        const durationInput = new TextInputBuilder()
-          .setCustomId('cup_duration')
-          .setLabel('Durasi Registrasi (Menit)')
-          .setValue('30')
-          .setPlaceholder('Contoh: 30')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        const minLevelInput = new TextInputBuilder()
-          .setCustomId('cup_min_level')
-          .setLabel('Level Minimal Pet')
-          .setValue('10')
-          .setPlaceholder('Contoh: 10')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        const maxLevelInput = new TextInputBuilder()
-          .setCustomId('cup_max_level')
-          .setLabel('Level Maksimal Pet')
-          .setValue('9999')
-          .setPlaceholder('Contoh: 9999')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        const rewardInput = new TextInputBuilder()
-          .setCustomId('cup_reward')
-          .setLabel('Hadiah Turnamen (Opsional)')
-          .setPlaceholder('Contoh: 5,000,000 Koin + Role Champion')
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false);
-
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(durationInput),
-          new ActionRowBuilder().addComponents(minLevelInput),
-          new ActionRowBuilder().addComponents(maxLevelInput),
-          new ActionRowBuilder().addComponents(rewardInput)
-        );
-
-        await iTour.showModal(modal);
-
-        const sub = await iTour.awaitModalSubmit({
-          filter: (s) => s.customId === 'admin_tournament_start_modal' && s.user.id === author.id,
-          time: 60000
-        }).catch(() => null);
-
-        if (sub) {
-          const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
-          const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
-          const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
-          const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
-          const finalReward = rewardDesc !== '' ? rewardDesc : null;
-
-          if (isNaN(durationMins) || durationMins <= 0) {
-            return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
-          }
-          if (isNaN(minLevel) || minLevel < 1) {
-            return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
-          }
-          if (isNaN(maxLevel) || maxLevel < minLevel) {
-            return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
           }
 
-          try {
-            await sub.deferReply({ flags: 64 });
-
-            const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
-            let targetChannelObj = iTour.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await iTour.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
-            if (!targetChannelObj) {
-              targetChannelObj = iTour.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
-            }
-            if (!targetChannelObj) {
-              targetChannelObj = await tournament.createTournamentChannel(iTour.guild).catch(() => null);
-            }
-            if (!targetChannelObj) {
-              throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
-            }
-            const targetChannelId = targetChannelObj.id;
-
-            const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
-            const endRegAt = res.registrationEndAt;
-
-            const announceEmbed = new EmbedBuilder()
-              .setColor(0x4F46E5) // Premium Indigo
-              .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
-              .setDescription(
-                `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
-                `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
-                `▬`.repeat(15)
-              )
-              .addFields(
-                { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-                { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
-                { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
-                { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
-              )
-              .setFooter({ text: 'Pet PvP League • Registration Phase' })
-              .setTimestamp();
-
-            const joinRow = new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId('cup_btn_join_public')
-                .setLabel('🏆 Gabung / Ganti Pet')
-                .setStyle(ButtonStyle.Success),
-              new ButtonBuilder()
-                .setCustomId('cup_btn_leave_public')
-                .setLabel('❌ Keluar Turnamen')
-                .setStyle(ButtonStyle.Danger)
-            );
-
-            const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
-            tournament.saveAnnounceMessageId(guildId, announceMsg.id);
-
-            client.tournamentTimers = client.tournamentTimers || new Map();
-            if (client.tournamentTimers.has(guildId)) {
-              clearTimeout(client.tournamentTimers.get(guildId));
-            }
-            const regTimer = setTimeout(() => {
-              tournament.closeRegistrationAndGenerateBracket(guildId, client);
-            }, durationMins * 60 * 1000);
-            client.tournamentTimers.set(guildId, regTimer);
-
-            const adminPanelData = tournament.getAdminPanelData(guildId, client);
-            const adminPanelMsg = await sub.channel.send(adminPanelData).catch(() => null);
-            if (adminPanelMsg) {
-              database.run(
-                'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
-                [adminPanelMsg.id, sub.channel.id, guildId]
-              );
-            }
-
-            await sub.followUp({ content: `🏆 Sukses memulai pendaftaran Liga Pet di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
-            const fresh = getTournamentPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => { });
-          } catch (err) {
-            await sub.followUp({ content: `❌ Gagal memulai turnamen: ${err.message}`, flags: 64 }).catch(() => {});
-          }
+          state.currentSubMenu = 'rewards';
+          const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+          await interaction.message.edit(fresh).catch(() => { });
+        } catch (err) {
+          await sub.reply({ content: `❌ Gagal memberikan pet: ${err.message}`, flags: 64 }).catch(() => {});
         }
       }
-    } catch (err) {
-      console.error('Error in Tournament Panel Interaction:', err);
-      await iTour.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
     }
-  });
+    else if (customId === 'admin_tournament_rewards_btn_back_main') {
+      state.currentSubMenu = 'main';
+      state.selectedRewardUserId = null;
+      state.selectedRewardUserLabel = '';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_btn_back_rewards') {
+      state.currentSubMenu = 'rewards';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_btn_back_item') {
+      state.currentSubMenu = 'reward_item';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_btn_back_pet_species') {
+      state.currentSubMenu = 'reward_pet_species';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_btn_back_pet_trait') {
+      state.currentSubMenu = 'reward_pet_trait';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_btn_pause') {
+      await tournament.pauseTournament(guildId, client);
+      await interaction.reply({ content: '⏸️ Turnamen berhasil dijeda sementara!', flags: 64 });
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => { });
+    }
+    else if (customId === 'admin_tournament_btn_resume') {
+      await tournament.resumeTournament(guildId, client);
+      await interaction.reply({ content: '▶️ Turnamen berhasil dilanjutkan kembali!', flags: 64 });
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => { });
+    }
+    else if (customId === 'admin_tournament_btn_reroll') {
+      await tournament.rerollMatch(guildId, client);
+      await interaction.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => { });
+    }
+    else if (customId === 'admin_tournament_btn_dq') {
+      const match = database.get(
+        'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+        [guildId]
+      );
+      if (!match) {
+        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+      }
 
-  collector.on('end', async (collected, reason) => {
-    if (reason === 'transition') return;
-    try {
-      const fresh = getTournamentPanelData(guildId);
-      fresh.components = [];
-      await replyMsg.edit(fresh).catch(() => { });
-    } catch (e) { }
-  });
+      const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
+      const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
 
-  return true;
+      const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_1_id}`)
+          .setLabel(`DQ ${p1Pet?.pet_name || 'Player 1'}`)
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_dq_${match.match_id}_${match.player_2_id}`)
+          .setLabel(`DQ ${p2Pet?.pet_name || 'Player 2'}`)
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await interaction.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components: [actionRow], flags: 64 });
+    }
+    else if (customId === 'admin_tournament_btn_forcewin') {
+      const match = database.get(
+        'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+        [guildId]
+      );
+      if (!match) {
+        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+      }
+
+      const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
+      const p2Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_2_id]);
+
+      const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_1_id}`)
+          .setLabel(`Menangkan ${p1Pet?.pet_name || 'Player 1'}`)
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_fw_${match.match_id}_${match.player_2_id}`)
+          .setLabel(`Menangkan ${p2Pet?.pet_name || 'Player 2'}`)
+          .setStyle(ButtonStyle.Success)
+      );
+
+      await interaction.reply({ content: '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**', components: [actionRow], flags: 64 });
+    }
+    else if (customId === 'admin_tournament_btn_extend') {
+      const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_ext_${guildId}_5`)
+          .setLabel('+5 Menit')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_ext_${guildId}_10`)
+          .setLabel('+10 Menit')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(`cup_admin_act_ext_${guildId}_15`)
+          .setLabel('+15 Menit')
+          .setStyle(ButtonStyle.Secondary)
+      );
+      await interaction.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
+    }
+    else if (customId === 'admin_tournament_btn_stop') {
+      if (client.tournamentTimers && client.tournamentTimers.has(guildId)) {
+        clearTimeout(client.tournamentTimers.get(guildId));
+        client.tournamentTimers.delete(guildId);
+      }
+      const active = tournament.stopTournament(guildId);
+      if (active && active.channel_id) {
+        await tournament.createTournamentChannel(interaction.guild).catch(() => null);
+
+        const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
+        if (channel && typeof channel.send === 'function') {
+          await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+        }
+      }
+      await interaction.reply({ content: '🏆 Turnamen Admin Cup yang aktif berhasil dibatalkan dan semua data pendaftaran dibersihkan.', flags: 64 });
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.message.edit(fresh).catch(() => { });
+    }
+    else if (customId === 'admin_tournament_btn_start') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_tournament_start_modal')
+        .setTitle('Mulai Turnamen Admin Cup');
+
+      const durationInput = new TextInputBuilder()
+        .setCustomId('cup_duration')
+        .setLabel('Durasi Registrasi (Menit)')
+        .setValue('30')
+        .setPlaceholder('Contoh: 30')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const minLevelInput = new TextInputBuilder()
+        .setCustomId('cup_min_level')
+        .setLabel('Level Minimal Pet')
+        .setValue('10')
+        .setPlaceholder('Contoh: 10')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const maxLevelInput = new TextInputBuilder()
+        .setCustomId('cup_max_level')
+        .setLabel('Level Maksimal Pet')
+        .setValue('9999')
+        .setPlaceholder('Contoh: 9999')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const rewardInput = new TextInputBuilder()
+        .setCustomId('cup_reward')
+        .setLabel('Hadiah Turnamen (Opsional)')
+        .setPlaceholder('Contoh: 5,000,000 Koin + Role Champion')
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(false);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(durationInput),
+        new ActionRowBuilder().addComponents(minLevelInput),
+        new ActionRowBuilder().addComponents(maxLevelInput),
+        new ActionRowBuilder().addComponents(rewardInput)
+      );
+
+      await interaction.showModal(modal);
+
+      const sub = await interaction.awaitModalSubmit({
+        filter: (s) => s.customId === 'admin_tournament_start_modal' && s.user.id === author.id,
+        time: 60000
+      }).catch(() => null);
+
+      if (sub) {
+        const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
+        const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
+        const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
+        const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
+        const finalReward = rewardDesc !== '' ? rewardDesc : null;
+
+        if (isNaN(durationMins) || durationMins <= 0) {
+          return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
+        }
+        if (isNaN(minLevel) || minLevel < 1) {
+          return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
+        }
+        if (isNaN(maxLevel) || maxLevel < minLevel) {
+          return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
+        }
+
+        try {
+          await sub.deferReply({ flags: 64 });
+
+          const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
+          let targetChannelObj = interaction.guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await interaction.guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
+          if (!targetChannelObj) {
+            targetChannelObj = interaction.guild.channels.cache.find(c => c.name === '🏆┃pvp-cup' || c.name === 'pvp-cup');
+          }
+          if (!targetChannelObj) {
+            targetChannelObj = await tournament.createTournamentChannel(interaction.guild).catch(() => null);
+          }
+          if (!targetChannelObj) {
+            throw new Error('Gagal menemukan atau membuat channel turnamen. Silakan periksa izin bot.');
+          }
+          const targetChannelId = targetChannelObj.id;
+
+          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
+          const endRegAt = res.registrationEndAt;
+
+          const announceEmbed = new EmbedBuilder()
+            .setColor(0x4F46E5) // Premium Indigo
+            .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
+            .setDescription(
+              `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
+              `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
+              `▬`.repeat(15)
+            )
+            .addFields(
+              { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
+              { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
+              { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+              { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
+            )
+            .setFooter({ text: 'Pet PvP League • Registration Phase' })
+            .setTimestamp();
+
+          const joinRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('cup_btn_join_public')
+              .setLabel('🏆 Gabung / Ganti Pet')
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId('cup_btn_leave_public')
+              .setLabel('❌ Keluar Turnamen')
+              .setStyle(ButtonStyle.Danger)
+          );
+
+          const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
+          tournament.saveAnnounceMessageId(guildId, announceMsg.id);
+
+          client.tournamentTimers = client.tournamentTimers || new Map();
+          if (client.tournamentTimers.has(guildId)) {
+            clearTimeout(client.tournamentTimers.get(guildId));
+          }
+          const regTimer = setTimeout(() => {
+            tournament.closeRegistrationAndGenerateBracket(guildId, client);
+          }, durationMins * 60 * 1000);
+          client.tournamentTimers.set(guildId, regTimer);
+
+          const adminPanelData = tournament.getAdminPanelData(guildId, client);
+          const adminPanelMsg = await sub.channel.send(adminPanelData).catch(() => null);
+          if (adminPanelMsg) {
+            database.run(
+              'UPDATE tournament_events SET admin_panel_message_id = ?, admin_panel_channel_id = ? WHERE guild_id = ?',
+              [adminPanelMsg.id, sub.channel.id, guildId]
+            );
+          }
+
+          await sub.followUp({ content: `🏆 Sukses memulai pendaftaran Liga Pet di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>!`, flags: 64 });
+          const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+          await interaction.message.edit(fresh).catch(() => { });
+        } catch (err) {
+          await sub.followUp({ content: `❌ Gagal memulai turnamen: ${err.message}`, flags: 64 }).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error in Tournament Panel Interaction:', err);
+    await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+  }
 }
 
 /**
@@ -8382,6 +8426,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
 module.exports = {
   handleAdminPanel,
   handleAdminTournamentPanel,
+  handleAdminTournamentGlobalInteraction,
   handleAdminPetPanel,
   handleAdminBankPanel,
   handleAdminRobberyPanel,
