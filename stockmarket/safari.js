@@ -446,6 +446,22 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     }
 
     state.logs.push(feedLog);
+
+    // Cek Pelarian Pet Pasif (hanya jika tidak tidur)
+    if (state.sleepTurns === 0) {
+      const biome = BIOMES[state.biome];
+      const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
+      const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
+      if (Math.random() < passiveEscapeChance) {
+        activeSafaris.delete(author.id);
+        return interaction.update({
+          content: `💨 **Pet Melarikan Diri!** Saat Anda menyuapkan umpan, gerakan Anda mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`,
+          embeds: [],
+          components: []
+        });
+      }
+    }
+
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 
@@ -463,6 +479,22 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     }
 
     state.logs.push(playLog);
+
+    // Cek Pelarian Pet Pasif (hanya jika tidak tidur)
+    if (state.sleepTurns === 0) {
+      const biome = BIOMES[state.biome];
+      const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
+      const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
+      if (Math.random() < passiveEscapeChance) {
+        activeSafaris.delete(author.id);
+        return interaction.update({
+          content: `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuatnya takut. **${state.pet.typeName}** terkejut dan langsung kabur!`,
+          embeds: [],
+          components: []
+        });
+      }
+    }
+
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 
@@ -485,6 +517,14 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
 
     // GAGAL TANGKAP
     state.logs.push(`❌ Ah! Pet berhasil keluar dari Safari Ball.`);
+
+    // Cek apakah terbangun dari tidur (50% peluang)
+    if (state.sleepTurns > 0) {
+      if (Math.random() < 0.50) {
+        state.sleepTurns = 0;
+        state.logs.push(`⚠️ **Terbangun!** Benturan Safari Ball membuatnya terkejut dan terbangun dari tidurnya!`);
+      }
+    }
 
     // Habis Bola = Kalah
     if (state.balls <= 0) {
