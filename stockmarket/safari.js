@@ -89,25 +89,25 @@ function generateWildPet(biomeId) {
   const level = Math.floor(Math.random() * 15) + 1;
   const element = speciesInfo.element || 'EARTH';
 
-  let baseCatch = 0.50;
-  let baseEscape = 0.08;
+  let baseCatch = 0.40;
+  let baseEscape = 0.10;
   let emoji = '⚪';
   
   if (rarity === 'RARE') {
-    baseCatch = 0.35;
-    baseEscape = 0.12;
+    baseCatch = 0.25;
+    baseEscape = 0.15;
     emoji = '🟢';
   } else if (rarity === 'EPIC') {
-    baseCatch = 0.20;
-    baseEscape = 0.18;
+    baseCatch = 0.15;
+    baseEscape = 0.20;
     emoji = '🟣';
   } else if (rarity === 'LEGENDARY') {
-    baseCatch = 0.08;
-    baseEscape = 0.25;
+    baseCatch = 0.05;
+    baseEscape = 0.28;
     emoji = '🟡';
   } else if (rarity === 'MYTHIC') {
-    baseCatch = 0.03;
-    baseEscape = 0.30;
+    baseCatch = 0.01;
+    baseEscape = 0.35;
     emoji = '🔴';
   }
 
