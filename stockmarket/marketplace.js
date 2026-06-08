@@ -352,7 +352,8 @@ function renderMarketplaceEmbed(guildId, userId, client) {
     });
   } else {
     let listContent = '';
-    listings.slice(0, 15).forEach((item, idx) => {
+    for (let idx = 0; idx < listings.length; idx++) {
+      const item = listings[idx];
       const seller = client.users.cache.get(item.seller_id);
       const sellerName = seller ? seller.username : `Warga (${item.seller_id.slice(-4)})`;
       
@@ -366,15 +367,21 @@ function renderMarketplaceEmbed(guildId, userId, client) {
         itemLabel = `📦 **${itemInfo.name}** x${item.quantity}`;
       }
 
-      listContent += `\`[#${idx + 1}]\` 🆔 **\`ID: ${item.listing_id}\`**\n` +
-                     ` ┗ 🛍️ ${itemLabel}\n` +
-                     ` ┗ 💵 Harga: **Rp ${item.price.toLocaleString('id-ID')}**\n` +
-                     ` ┗ 👤 Penjual: <@${item.seller_id}> (${sellerName})\n\n`;
-    });
+      const entry = `\`[#${idx + 1}]\` 🆔 **\`ID: ${item.listing_id}\`**\n` +
+                    ` ┗ 🛍️ ${itemLabel}\n` +
+                    ` ┗ 💵 Harga: **Rp ${item.price.toLocaleString('id-ID')}**\n` +
+                    ` ┗ 👤 Penjual: <@${item.seller_id}> (${sellerName})\n\n`;
+
+      if ((listContent + entry).length > 950) {
+        listContent += `*...dan ${listings.length - idx} barang lainnya.*`;
+        break;
+      }
+      listContent += entry;
+    }
 
     embed.addFields({
       name: `⚖️ DAFTAR BARANG YANG SEDANG DILELANG (${listings.length}):`,
-      value: listContent.trim()
+      value: listContent.trim() || '> *Tidak ada data*'
     });
   }
 
