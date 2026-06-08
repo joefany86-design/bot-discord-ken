@@ -13427,7 +13427,7 @@ async function handleEconomyCommands(message, client) {
 
       if (action === 'start') {
         const durationMins = parseInt(args[1]) || 30;
-        const minLevel = parseInt(args[2]) || 10;
+        const minLevel = parseInt(args[2]) || 1;
         const maxLevel = parseInt(args[3]) || 9999;
         const rewardDesc = args.slice(4).join(' ').trim() || null;
 

@@ -104,7 +104,7 @@ async function runTests() {
 
   // Test 1: Mulai Turnamen
   console.log('\n1. Testing startTournament...');
-  const activeEvent = tournament.startTournament('admin_user_99', 'guild_123', 'channel_123', 5, 10, 80);
+  const activeEvent = tournament.startTournament('admin_user_99', 'guild_123', 'channel_123', 5, 1, 80);
   console.log('✅ Tournament started:', activeEvent);
 
   // Test 2: Mendaftarkan Peserta
@@ -113,7 +113,7 @@ async function runTests() {
   insertTestPet('user_1', 'Fenrir', 'CAT', 45, 100, 'FIRE', 20, 10, 15);
   insertTestPet('user_2', 'Kurama', 'DRAGON', 38, 100, 'FIRE', 18, 12, 12);
   insertTestPet('user_3', 'Rocky', 'GOLEM', 50, 100, 'EARTH', 25, 25, 5);
-  insertTestPet('user_4', 'Kuro', 'SLIME', 42, 100, 'WATER', 15, 15, 20);
+  insertTestPet('user_4', 'Kuro', 'SLIME', 1, 100, 'WATER', 15, 15, 20); // Menguji pet level 1 baru
 
   // Daftarkan yang valid
   const p1 = tournament.registerParticipant('user_1', 'guild_123', 'Fenrir');

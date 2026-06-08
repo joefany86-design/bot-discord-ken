@@ -2654,7 +2654,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       const minLevelInput = new TextInputBuilder()
         .setCustomId('cup_min_level')
         .setLabel('Level Minimal Pet')
-        .setValue('10')
+        .setValue('1')
         .setPlaceholder('Contoh: 10')
         .setStyle(TextInputStyle.Short)
         .setRequired(true);
@@ -2690,7 +2690,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
       if (sub) {
         const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
-        const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 10;
+        const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 1;
         const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
         const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
         const finalReward = rewardDesc !== '' ? rewardDesc : null;

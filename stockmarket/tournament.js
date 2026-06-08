@@ -41,7 +41,7 @@ function getTournamentMaxHP(pPet) {
 /**
  * Memulai event turnamen baru di database (Admin-only).
  */
-function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 10, maxLevel = 9999, rewardDesc = null) {
+function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 1, maxLevel = 9999, rewardDesc = null) {
   const active = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status != \'COMPLETED\'', [guildId]);
   if (active) {
     throw new Error('Ada turnamen yang sedang berjalan di server ini! Harap batalkan terlebih dahulu sebelum memulai baru.');
@@ -150,9 +150,7 @@ function registerOrUpdateParticipant(userId, guildId, petName) {
   if (targetPet.status === 'EGG') {
     throw new Error('Pet Anda masih berupa telur 🥚! Tunggu menetas untuk mendaftar.');
   }
-  if (targetPet.level < 10) {
-    throw new Error('Pet Anda masih bayi! Tingkat level minimal untuk bertanding adalah **Level 10**.');
-  }
+  // Mengizinkan semua level pet bertanding (disaring oleh kriteria min_level turnamen)
 
   // Level range validation
   if (targetPet.level < event.min_level || targetPet.level > event.max_level) {
