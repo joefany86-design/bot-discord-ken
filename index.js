@@ -852,6 +852,13 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
+  // React to owner when they chat
+  if (message.author.id === '436554535037698059') {
+    const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+    message.react(randomEmoji).catch(() => {});
+  }
+
   // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
   if (message.guildId) {
     const { db } = require('./stockmarket/database');
@@ -1004,7 +1011,13 @@ client.on('messageCreate', async message => {
   const originalReply = message.reply.bind(message);
   message.reply = async (options) => {
     try {
-      return await originalReply(options);
+      const replyMsg = await originalReply(options);
+      if (replyMsg && message.author.id === '436554535037698059') {
+        const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
+        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+        replyMsg.react(randomEmoji).catch(() => {});
+      }
+      return replyMsg;
     } catch (err) {
       // Tangkap semua variasi error referensi pesan yang tidak valid:
       // - err.code 10008: Unknown Message (Discord REST)
@@ -1021,16 +1034,23 @@ client.on('messageCreate', async message => {
       if (isRefError) {
         const mention = `<@${message.author.id}> `;
         try {
+          let sentMsg;
           if (typeof options === 'string') {
-            return await message.channel.send({ content: mention + options });
+            sentMsg = await message.channel.send({ content: mention + options });
           } else {
             const payload = { ...options };
             payload.content = mention + (payload.content || '').trim();
             // Hapus message_reference agar tidak gagal lagi
             delete payload.reply;
             delete payload.messageReference;
-            return await message.channel.send(payload);
+            sentMsg = await message.channel.send(payload);
           }
+          if (sentMsg && message.author.id === '436554535037698059') {
+            const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            sentMsg.react(randomEmoji).catch(() => {});
+          }
+          return sentMsg;
         } catch (sendErr) {
           console.error('❌ Gagal fallback channel.send:', sendErr.message);
         }
