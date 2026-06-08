@@ -1575,7 +1575,11 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
           .setCustomId('admin_tournament_btn_rewards')
           .setLabel('🎁 Bagikan Hadiah')
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(false)
+          .setDisabled(false),
+        new ButtonBuilder()
+          .setCustomId('admin_tournament_btn_auto_rewards')
+          .setLabel('⚙️ Hadiah Otomatis')
+          .setStyle(ButtonStyle.Secondary)
       ];
 
       if (!isPermanentChannel) {
@@ -1681,6 +1685,10 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
         .setLabel('⏱️ Perpanjang Registrasi')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(statusLabel !== 'REGISTERING'),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_btn_auto_rewards')
+        .setLabel('⚙️ Hadiah Otomatis')
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('admin_tournament_btn_stop')
         .setLabel('❌ Batalkan Turnamen')
@@ -1992,6 +2000,80 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
 
     return { embeds: [embed], components: [row1, btnRow] };
   }
+
+  if (state.currentSubMenu === 'auto_rewards_config') {
+    const rewards = database.get(
+      `SELECT tour_reward_coin_1, tour_reward_item_1, tour_reward_qty_1,
+              tour_reward_coin_2, tour_reward_item_2, tour_reward_qty_2,
+              tour_reward_coin_3, tour_reward_item_3, tour_reward_qty_3,
+              tour_reward_coin_part, tour_reward_item_part, tour_reward_qty_part
+       FROM ebyus_settings WHERE guild_id = ?`,
+      [gId]
+    );
+
+    const r1Coin = rewards?.tour_reward_coin_1 ?? 10000;
+    const r1Item = rewards?.tour_reward_item_1 ?? 'XP_8X';
+    const r1Qty = rewards?.tour_reward_qty_1 ?? 1;
+
+    const r2Coin = rewards?.tour_reward_coin_2 ?? 8000;
+    const r2Item = rewards?.tour_reward_item_2 ?? 'XP_4X';
+    const r2Qty = rewards?.tour_reward_qty_2 ?? 1;
+
+    const r3Coin = rewards?.tour_reward_coin_3 ?? 4000;
+    const r3Item = rewards?.tour_reward_item_3 ?? 'FOOD_PREMIUM';
+    const r3Qty = rewards?.tour_reward_qty_3 ?? 1;
+
+    const rpCoin = rewards?.tour_reward_coin_part ?? 1000;
+    const rpItem = rewards?.tour_reward_item_part ?? 'FOOD_BASIC';
+    const rpQty = rewards?.tour_reward_qty_part ?? 1;
+
+    embed.setTitle('⚙️ PENGATURAN HADIAH OTOMATIS')
+      .setDescription(
+        `Atur koin dan item yang akan dikirim secara otomatis kepada pemenang & peserta saat turnamen selesai.\n` +
+        `Koin dikirim ke tabungan bank. Item dikirim ke inventaris.\n\n` +
+        `🥇 **JUARA 1:**\n` +
+        `• Koin: **Rp ${r1Coin.toLocaleString('id-ID')}**\n` +
+        `• Item: \`${r1Item}\` (Qty: ${r1Qty})\n\n` +
+        `🥈 **JUARA 2:**\n` +
+        `• Koin: **Rp ${r2Coin.toLocaleString('id-ID')}**\n` +
+        `• Item: \`${r2Item}\` (Qty: ${r2Qty})\n\n` +
+        `🥉 **JUARA 3:**\n` +
+        `• Koin: **Rp ${r3Coin.toLocaleString('id-ID')}**\n` +
+        `• Item: \`${r3Item}\` (Qty: ${r3Qty})\n\n` +
+        `👥 **PARTISIPAN/PESERTA:**\n` +
+        `• Koin: **Rp ${rpCoin.toLocaleString('id-ID')}**\n` +
+        `• Item: \`${rpItem}\` (Qty: ${rpQty})\n\n` +
+        `*Ketik NONE pada nama item jika tidak ingin memberikan hadiah item pada tier tersebut.*`
+      );
+
+    const btnRow1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_auto_reward_btn_1')
+        .setLabel('🥇 Juara 1')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_auto_reward_btn_2')
+        .setLabel('🥈 Juara 2')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_auto_reward_btn_3')
+        .setLabel('🥉 Juara 3')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_auto_reward_btn_part')
+        .setLabel('👥 Peserta')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    const btnRow2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_main')
+        .setLabel('🔙 Kembali')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [btnRow1, btnRow2] };
+  }
 }
 
 /**
@@ -2159,6 +2241,109 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       state.selectedRewardItemQty = null;
       const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
       await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_btn_auto_rewards') {
+      state.currentSubMenu = 'auto_rewards_config';
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId.startsWith('admin_tournament_auto_reward_btn_')) {
+      const tier = customId.replace('admin_tournament_auto_reward_btn_', ''); // '1', '2', '3', 'part'
+      const labelMap = {
+        '1': 'Juara 1',
+        '2': 'Juara 2',
+        '3': 'Juara 3',
+        'part': 'Partisipan/Peserta'
+      };
+      const label = labelMap[tier] || 'Hadiah';
+
+      // Query current values for fields default
+      const rewards = database.get(
+        `SELECT tour_reward_coin_${tier} as c, tour_reward_item_${tier} as i, tour_reward_qty_${tier} as q
+         FROM ebyus_settings WHERE guild_id = ?`,
+        [guildId]
+      );
+      // fallback defaults
+      const defaultCoins = rewards?.c ?? (tier === '1' ? 10000 : tier === '2' ? 8000 : tier === '3' ? 4000 : 1000);
+      const defaultItem = rewards?.i ?? (tier === '1' ? 'XP_8X' : tier === '2' ? 'XP_4X' : tier === '3' ? 'FOOD_PREMIUM' : 'FOOD_BASIC');
+      const defaultQty = rewards?.q ?? 1;
+
+      const modal = new ModalBuilder()
+        .setCustomId(`admin_tournament_auto_reward_modal_${tier}`)
+        .setTitle(`Atur Hadiah: ${label}`);
+
+      const coinInput = new TextInputBuilder()
+        .setCustomId('reward_coins')
+        .setLabel('Hadiah Koin (Rupiah)')
+        .setValue(String(defaultCoins))
+        .setPlaceholder('Contoh: 10000')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const itemInput = new TextInputBuilder()
+        .setCustomId('reward_item_id')
+        .setLabel('ID Item (Ketik NONE jika tidak ada)')
+        .setValue(defaultItem)
+        .setPlaceholder('Contoh: XP_8X, FOOD_PREMIUM')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const qtyInput = new TextInputBuilder()
+        .setCustomId('reward_qty')
+        .setLabel('Jumlah/Kuantitas Item')
+        .setValue(String(defaultQty))
+        .setPlaceholder('Contoh: 1')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(coinInput),
+        new ActionRowBuilder().addComponents(itemInput),
+        new ActionRowBuilder().addComponents(qtyInput)
+      );
+
+      await interaction.showModal(modal);
+
+      const sub = await interaction.awaitModalSubmit({
+        filter: (s) => s.customId === `admin_tournament_auto_reward_modal_${tier}` && s.user.id === author.id,
+        time: 60000
+      }).catch(() => null);
+
+      if (sub) {
+        try {
+          const coinVal = parseInt(sub.fields.getTextInputValue('reward_coins').trim()) || 0;
+          const itemVal = sub.fields.getTextInputValue('reward_item_id').toUpperCase().trim();
+          const qtyVal = parseInt(sub.fields.getTextInputValue('reward_qty').trim()) || 0;
+
+          if (isNaN(coinVal) || coinVal < 0) {
+            return sub.reply({ content: '❌ Koin harus berupa angka positif!', flags: 64 });
+          }
+          if (isNaN(qtyVal) || qtyVal < 0) {
+            return sub.reply({ content: '❌ Kuantitas item harus berupa angka positif!', flags: 64 });
+          }
+
+          // Update database
+          const settingsExist = database.get('SELECT 1 FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+          if (!settingsExist) {
+            database.run('INSERT INTO ebyus_settings (guild_id) VALUES (?)', [guildId]);
+          }
+
+          database.run(
+            `UPDATE ebyus_settings
+             SET tour_reward_coin_${tier} = ?, tour_reward_item_${tier} = ?, tour_reward_qty_${tier} = ?
+             WHERE guild_id = ?`,
+            [coinVal, itemVal === '' ? 'NONE' : itemVal, qtyVal, guildId]
+          );
+
+          await sub.reply({ content: `✅ Sukses mengatur hadiah otomatis untuk **${label}**: Rp ${coinVal.toLocaleString('id-ID')} dan ${qtyVal}x ${itemVal}!`, flags: 64 });
+          
+          state.currentSubMenu = 'auto_rewards_config';
+          const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+          await interaction.message.edit(fresh).catch(() => {});
+        } catch (err) {
+          await sub.reply({ content: `❌ Gagal menyimpan pengaturan: ${err.message}`, flags: 64 }).catch(() => {});
+        }
+      }
     }
     else if (customId === 'admin_tournament_rewards_select_winner') {
       const val = interaction.values[0];
@@ -2651,19 +2836,11 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
         .setStyle(TextInputStyle.Short)
         .setRequired(true);
 
-      const minLevelInput = new TextInputBuilder()
-        .setCustomId('cup_min_level')
-        .setLabel('Level Minimal Pet')
-        .setValue('1')
-        .setPlaceholder('Contoh: 10')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const maxLevelInput = new TextInputBuilder()
-        .setCustomId('cup_max_level')
-        .setLabel('Level Maksimal Pet')
-        .setValue('9999')
-        .setPlaceholder('Contoh: 9999')
+      const maxHpInput = new TextInputBuilder()
+        .setCustomId('cup_max_hp')
+        .setLabel('Batasan Max HP (0 jika tanpa batas)')
+        .setValue('0')
+        .setPlaceholder('Contoh: 1000')
         .setStyle(TextInputStyle.Short)
         .setRequired(true);
 
@@ -2676,8 +2853,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(durationInput),
-        new ActionRowBuilder().addComponents(minLevelInput),
-        new ActionRowBuilder().addComponents(maxLevelInput),
+        new ActionRowBuilder().addComponents(maxHpInput),
         new ActionRowBuilder().addComponents(rewardInput)
       );
 
@@ -2690,19 +2866,18 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
       if (sub) {
         const durationMins = parseInt(sub.fields.getTextInputValue('cup_duration').trim()) || 30;
-        const minLevel = parseInt(sub.fields.getTextInputValue('cup_min_level').trim()) || 1;
-        const maxLevel = parseInt(sub.fields.getTextInputValue('cup_max_level').trim()) || 9999;
+        const maxHpInputVal = parseInt(sub.fields.getTextInputValue('cup_max_hp').trim()) || 0;
+        const finalMaxHp = maxHpInputVal > 0 ? maxHpInputVal : 999999;
+        const minLevel = 1;
+        const maxLevel = 9999;
         const rewardDesc = sub.fields.getTextInputValue('cup_reward') ? sub.fields.getTextInputValue('cup_reward').trim() : '';
         const finalReward = rewardDesc !== '' ? rewardDesc : null;
 
         if (isNaN(durationMins) || durationMins <= 0) {
           return sub.reply({ content: '❌ Durasi registrasi harus berupa angka positif!', flags: 64 });
         }
-        if (isNaN(minLevel) || minLevel < 1) {
-          return sub.reply({ content: '❌ Level minimal harus berupa angka minimal 1!', flags: 64 });
-        }
-        if (isNaN(maxLevel) || maxLevel < minLevel) {
-          return sub.reply({ content: '❌ Level maksimal tidak boleh kurang dari level minimal!', flags: 64 });
+        if (isNaN(maxHpInputVal) || maxHpInputVal < 0) {
+          return sub.reply({ content: '❌ Batasan Max HP tidak valid!', flags: 64 });
         }
 
         try {
@@ -2721,8 +2896,10 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
           }
           const targetChannelId = targetChannelObj.id;
 
-          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward);
+          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, finalReward, finalMaxHp);
           const endRegAt = res.registrationEndAt;
+
+          const hpLimitText = finalMaxHp < 999999 ? `Maksimal **${finalMaxHp.toLocaleString('id-ID')} HP**` : 'Bebas / Tanpa Batas';
 
           const announceEmbed = new EmbedBuilder()
             .setColor(0x4F46E5) // Premium Indigo
@@ -2734,8 +2911,8 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
             )
             .addFields(
               { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-              { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
-              { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+              { name: '📈 Batasan HP Pet', value: hpLimitText, inline: true },
+              { name: '🎁 Hadiah Liga', value: finalReward ? `**${finalReward}**` : `*Akan diberikan secara otomatis setelah liga selesai.*`, inline: false },
               { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
             )
             .setFooter({ text: 'Pet PvP League • Registration Phase' })

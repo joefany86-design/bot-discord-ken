@@ -41,7 +41,7 @@ function getTournamentMaxHP(pPet) {
 /**
  * Memulai event turnamen baru di database (Admin-only).
  */
-function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 1, maxLevel = 9999, rewardDesc = null) {
+function startTournament(adminId, guildId, channelId, durationMins = 30, minLevel = 1, maxLevel = 9999, rewardDesc = null, maxHp = 999999) {
   const active = db.get('SELECT * FROM tournament_events WHERE guild_id = ? AND status != \'COMPLETED\'', [guildId]);
   if (active) {
     throw new Error('Ada turnamen yang sedang berjalan di server ini! Harap batalkan terlebih dahulu sebelum memulai baru.');
@@ -58,9 +58,9 @@ function startTournament(adminId, guildId, channelId, durationMins = 30, minLeve
 
     // Insert event baru
     db.run(
-      `INSERT INTO tournament_events (guild_id, status, admin_id, channel_id, registration_end_at, current_round, min_level, max_level, created_at, reward_desc)
-       VALUES (?, 'REGISTERING', ?, ?, ?, 1, ?, ?, ?, ?)`,
-      [guildId, adminId, channelId, endRegAt, minLevel, maxLevel, now, rewardDesc]
+      `INSERT INTO tournament_events (guild_id, status, admin_id, channel_id, registration_end_at, current_round, min_level, max_level, created_at, reward_desc, max_hp)
+       VALUES (?, 'REGISTERING', ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      [guildId, adminId, channelId, endRegAt, minLevel, maxLevel, now, rewardDesc, maxHp]
     );
   })();
 
@@ -71,7 +71,8 @@ function startTournament(adminId, guildId, channelId, durationMins = 30, minLeve
     registrationEndAt: endRegAt,
     minLevel,
     maxLevel,
-    rewardDesc
+    rewardDesc,
+    maxHp
   };
 }
 
@@ -150,11 +151,12 @@ function registerOrUpdateParticipant(userId, guildId, petName) {
   if (targetPet.status === 'EGG') {
     throw new Error('Pet Anda masih berupa telur 🥚! Tunggu menetas untuk mendaftar.');
   }
-  // Mengizinkan semua level pet bertanding (disaring oleh kriteria min_level turnamen)
+  // Mengizinkan semua level pet bertanding tanpa batasan
 
-  // Level range validation
-  if (targetPet.level < event.min_level || targetPet.level > event.max_level) {
-    throw new Error(`Level pet Anda (Lv.${targetPet.level}) tidak memenuhi kriteria level turnamen ini (${event.min_level} s/d ${event.max_level})!`);
+  // Max HP limit validation
+  const petMaxHP = getTournamentMaxHP(targetPet);
+  if (event.max_hp && event.max_hp > 0 && event.max_hp < 999999 && petMaxHP > event.max_hp) {
+    throw new Error(`Max HP pet Anda (${petMaxHP.toLocaleString('id-ID')} HP) melebihi batas maksimal HP turnamen ini (${event.max_hp.toLocaleString('id-ID')} HP)!`);
   }
 
   // HP validation
@@ -236,8 +238,8 @@ async function updateRegistrationEmbed(guildId, client) {
     )
     .addFields(
       { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-      { name: '📈 Kriteria Level Pet', value: `Level **${event.min_level}** s/d **${event.max_level}**`, inline: true },
-      { name: '🎁 Hadiah Liga', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+      { name: '📈 Batasan HP Pet', value: (event.max_hp && event.max_hp < 999999) ? `Maksimal **${event.max_hp.toLocaleString('id-ID')} HP**` : 'Bebas / Tanpa Batas', inline: true },
+      { name: '🎁 Hadiah Liga', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara otomatis setelah liga selesai.*`, inline: false },
       { name: `👥 Peserta Terdaftar (${participants.length})`, value: participantList, inline: false }
     )
     .setFooter({ text: 'Pet PvP League • Registration Phase' })
@@ -1154,6 +1156,67 @@ async function endMatch(matchId, winnerId, reason, client) {
 /**
  * Mengakhiri turnamen dan mengumumkan sang juara.
  */
+const PET_ITEM_IDS = [
+  'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
+  'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
+  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+];
+
+function giveUserItem(userId, guildId, itemId, quantity) {
+  if (!itemId || quantity <= 0 || itemId.toUpperCase() === 'NONE') return;
+  const upperId = itemId.toUpperCase().trim();
+  if (PET_ITEM_IDS.includes(upperId)) {
+    const exist = db.get(
+      'SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+      [userId, guildId, upperId]
+    );
+    if (exist) {
+      db.run(
+        'UPDATE pet_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [quantity, userId, guildId, upperId]
+      );
+    } else {
+      db.run(
+        'INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
+        [userId, guildId, upperId, quantity]
+      );
+    }
+  } else {
+    const exist = db.get(
+      'SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+      [userId, guildId, upperId]
+    );
+    if (exist) {
+      db.run(
+        'UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [quantity, userId, guildId, upperId]
+      );
+    } else {
+      db.run(
+        'INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)',
+        [userId, guildId, upperId, quantity]
+      );
+    }
+  }
+}
+
+function giveUserCoins(userId, guildId, amount) {
+  if (amount <= 0) return;
+  const bank = require('./bank');
+  bank.getSavings(userId, guildId);
+  db.run(
+    'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
+    [amount, userId, guildId]
+  );
+  db.run(
+    'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
+    [userId, guildId, 'ADMIN_BANK_GIVE', amount]
+  );
+}
+
+/**
+ * Mengakhiri turnamen dan mengumumkan sang juara.
+ */
 async function endTournament(guildId, championId, runnerUpId, client, thirdPlaceId = null, fourthPlaceId = null) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
   if (!event) return;
@@ -1164,6 +1227,60 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
   const thirdPet = thirdPlaceId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, thirdPlaceId]) : null;
   const fourthPet = fourthPlaceId ? db.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, fourthPlaceId]) : null;
 
+  // Get all participants before deleting
+  const participants = db.all('SELECT user_id FROM tournament_participants WHERE guild_id = ?', [guildId]);
+  const participantIds = participants.map(p => p.user_id);
+
+  // Get rewards configuration
+  const rewards = db.get(
+    `SELECT tour_reward_coin_1, tour_reward_item_1, tour_reward_qty_1,
+            tour_reward_coin_2, tour_reward_item_2, tour_reward_qty_2,
+            tour_reward_coin_3, tour_reward_item_3, tour_reward_qty_3,
+            tour_reward_coin_part, tour_reward_item_part, tour_reward_qty_part
+     FROM ebyus_settings WHERE guild_id = ?`,
+    [guildId]
+  );
+
+  const r1Coin = rewards?.tour_reward_coin_1 ?? 10000;
+  const r1Item = rewards?.tour_reward_item_1 ?? 'XP_8X';
+  const r1Qty = rewards?.tour_reward_qty_1 ?? 1;
+
+  const r2Coin = rewards?.tour_reward_coin_2 ?? 8000;
+  const r2Item = rewards?.tour_reward_item_2 ?? 'XP_4X';
+  const r2Qty = rewards?.tour_reward_qty_2 ?? 1;
+
+  const r3Coin = rewards?.tour_reward_coin_3 ?? 4000;
+  const r3Item = rewards?.tour_reward_item_3 ?? 'FOOD_PREMIUM';
+  const r3Qty = rewards?.tour_reward_qty_3 ?? 1;
+
+  const rpCoin = rewards?.tour_reward_coin_part ?? 1000;
+  const rpItem = rewards?.tour_reward_item_part ?? 'FOOD_BASIC';
+  const rpQty = rewards?.tour_reward_qty_part ?? 1;
+
+  // Distribute rewards
+  // Juara 1
+  if (championId) {
+    giveUserCoins(championId, guildId, r1Coin);
+    giveUserItem(championId, guildId, r1Item, r1Qty);
+  }
+  // Juara 2
+  if (runnerUpId) {
+    giveUserCoins(runnerUpId, guildId, r2Coin);
+    giveUserItem(runnerUpId, guildId, r2Item, r2Qty);
+  }
+  // Juara 3
+  if (thirdPlaceId) {
+    giveUserCoins(thirdPlaceId, guildId, r3Coin);
+    giveUserItem(thirdPlaceId, guildId, r3Item, r3Qty);
+  }
+  // Participants (who are not in top 3)
+  participantIds.forEach(pId => {
+    if (pId !== championId && pId !== runnerUpId && pId !== thirdPlaceId) {
+      giveUserCoins(pId, guildId, rpCoin);
+      giveUserItem(pId, guildId, rpItem, rpQty);
+    }
+  });
+
   const config = require('./config');
   const guild = channel ? channel.guild : (client.guilds.cache.get(guildId));
 
@@ -1172,6 +1289,16 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
   const catalogChanId = '1510138369923874958';
 
   const finalStandings = getLeagueStandingsString(guildId);
+
+  const formatRewardLine = (coins, item, qty) => {
+    const itemText = (item && item.toUpperCase() !== 'NONE') ? ` + ${qty}x \`${item}\`` : '';
+    return `Rp ${coins.toLocaleString('id-ID')}${itemText}`;
+  };
+
+  let rewardsSummaryText = `🥇 **Juara 1:** ${formatRewardLine(r1Coin, r1Item, r1Qty)}\n`;
+  if (runnerUpId) rewardsSummaryText += `🥈 **Juara 2:** ${formatRewardLine(r2Coin, r2Item, r2Qty)}\n`;
+  if (thirdPlaceId) rewardsSummaryText += `🥉 **Juara 3:** ${formatRewardLine(r3Coin, r3Item, r3Qty)}\n`;
+  rewardsSummaryText += `👥 **Peserta:** ${formatRewardLine(rpCoin, rpItem, rpQty)}`;
 
   const celebrationEmbed = new EmbedBuilder()
     .setColor(0xF59E0B) // Amber/Gold
@@ -1185,10 +1312,9 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       { name: '🥇 JUARA 1 (CHAMPION)', value: `🏆 **${champPet?.pet_name || 'Pet 1'}** (<@${championId}>)`, inline: false },
       { name: '🥈 JUARA 2 (RUNNER-UP)', value: runnerPet ? `🥈 **${runnerPet.pet_name}** (<@${runnerUpId}>)` : '*Tidak ada.*', inline: false },
       { name: '🥉 JUARA 3', value: thirdPet ? `🥉 **${thirdPet.pet_name}** (<@${thirdPlaceId}>)` : '*Tidak ada.*', inline: false },
-      { name: '🏅 JUARA 4', value: fourthPet ? `🏅 **${fourthPet.pet_name}** (<@${fourthPlaceId}>)` : '*Tidak ada.*', inline: false },
-      { name: '🎁 Hadiah Liga (Reward)', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara manual oleh Admin.*`, inline: false },
+      { name: '🎁 Hadiah Liga Otomatis (Distributed)', value: rewardsSummaryText, inline: false },
       { name: '📊 Klasemen Akhir Liga (Final Standings)', value: `\`\`\`text\n${finalStandings}\n\`\`\``, inline: false },
-      { name: '📢 Pemberitahuan Admin', value: `<@${event.admin_id}> dipersilakan memberikan hadiah turnamen secara manual kepada para pemenang.`, inline: false }
+      { name: '📢 Status Hadiah', value: `Hadiah koin dan item di atas telah dikirimkan secara otomatis ke tabungan bank dan inventaris masing-masing pemenang & peserta.`, inline: false }
     )
     .setFooter({ text: 'Pet PvP League • Completed' })
     .setTimestamp();
@@ -1213,12 +1339,10 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
   if (adminUser) {
     await adminUser.send(
       `🏆 **Turnamen Admin Cup di server Anda telah selesai!**\n\n` +
-      `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet.pet_name}**)\n` +
-      (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet.pet_name}**)\n` : '') +
-      (thirdPlaceId ? `• Juara 3: <@${thirdPlaceId}> (Pet: **${thirdPet.pet_name}**)\n` : '') +
-      (fourthPlaceId ? `• Juara 4: <@${fourthPlaceId}> (Pet: **${fourthPet.pet_name}**)\n` : '') +
-      (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
-      `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
+      `• Pemenang Juara 1: <@${championId}> (Pet: **${champPet?.pet_name}**)\n` +
+      (runnerUpId ? `• Juara 2: <@${runnerUpId}> (Pet: **${runnerPet?.pet_name}**)\n` : '') +
+      (thirdPlaceId ? `• Juara 3: <@${thirdPlaceId}> (Pet: **${thirdPet?.pet_name}**)\n` : '') +
+      `Seluruh hadiah koin (masuk ke bank savings) dan item (masuk ke inventaris) telah otomatis dikirimkan kepada pemenang & peserta sesuai konfigurasi.`
     ).catch(() => { });
   }
 
@@ -2208,6 +2332,7 @@ async function initTournamentRecovery(client) {
 }
 
 module.exports = {
+  getTournamentMaxHP,
   startTournament,
   stopTournament,
   registerParticipant,

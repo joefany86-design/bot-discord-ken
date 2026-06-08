@@ -1110,17 +1110,17 @@ function initStockMarket(client) {
 
         const allPets = petModule.getPetsList(interaction.user.id, interaction.guildId);
         const eligiblePets = allPets.filter(p => {
-          return p.level >= event.min_level &&
-                 p.level <= event.max_level &&
-                 p.status !== 'DEAD' &&
+          const petMaxHP = tournament.getTournamentMaxHP(p);
+          return p.status !== 'DEAD' &&
                  p.status !== 'EGG' &&
-                 p.health >= 50;
+                 p.health >= 50 &&
+                 (!event.max_hp || event.max_hp <= 0 || event.max_hp >= 999999 || petMaxHP <= event.max_hp);
         });
 
         if (eligiblePets.length === 0) {
+          const criteriaText = (event.max_hp && event.max_hp < 999999) ? `\n📈 **Kriteria Max HP:** Maksimal ${event.max_hp.toLocaleString('id-ID')} HP` : '';
           return interaction.reply({
-            content: `❌ Anda tidak memiliki pet yang memenuhi kriteria turnamen ini!\n` +
-                     `📈 **Kriteria Level:** Level ${event.min_level} s/d ${event.max_level}\n` +
+            content: `❌ Anda tidak memiliki pet yang memenuhi kriteria turnamen ini!${criteriaText}\n` +
                      `❤️ **Kriteria HP:** Minimal 50%\n` +
                      `🚼 **Kriteria Status:** Pet tidak boleh mati atau berupa telur.`,
             flags: 64
@@ -13427,9 +13427,20 @@ async function handleEconomyCommands(message, client) {
 
       if (action === 'start') {
         const durationMins = parseInt(args[1]) || 30;
-        const minLevel = parseInt(args[2]) || 1;
-        const maxLevel = parseInt(args[3]) || 9999;
-        const rewardDesc = args.slice(4).join(' ').trim() || null;
+        const minLevel = 1;
+        const maxLevel = 9999;
+        let maxHp = 999999;
+        let rewardDesc = null;
+
+        if (args[2] && !isNaN(parseInt(args[2])) && args[3] && !isNaN(parseInt(args[3]))) {
+          rewardDesc = args.slice(4).join(' ').trim() || null;
+        } else if (args[2] && !isNaN(parseInt(args[2]))) {
+          const hpVal = parseInt(args[2]);
+          maxHp = hpVal > 0 ? hpVal : 999999;
+          rewardDesc = args.slice(3).join(' ').trim() || null;
+        } else {
+          rewardDesc = args.slice(2).join(' ').trim() || null;
+        }
 
         const statusMsg = await message.reply({ embeds: [embeds.successEmbed('Memproses...', 'Sedang mempersiapkan turnamen. Mohon tunggu...')] }).catch(() => null);
 
@@ -13447,8 +13458,10 @@ async function handleEconomyCommands(message, client) {
           }
           const targetChannelId = targetChannelObj.id;
 
-          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, rewardDesc);
+          const res = tournament.startTournament(author.id, guildId, targetChannelId, durationMins, minLevel, maxLevel, rewardDesc, maxHp);
           const endRegAt = res.registrationEndAt;
+
+          const hpLimitText = maxHp < 999999 ? `Maksimal **${maxHp.toLocaleString('id-ID')} HP**` : 'Bebas / Tanpa Batas';
 
           const announceEmbed = new EmbedBuilder()
             .setColor(0x4F46E5) // Premium Indigo
@@ -13460,8 +13473,8 @@ async function handleEconomyCommands(message, client) {
             )
             .addFields(
               { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-              { name: '📈 Kriteria Level Pet', value: `Level **${minLevel}** s/d **${maxLevel}**`, inline: true },
-              { name: '🎁 Hadiah Liga', value: rewardDesc ? `**${rewardDesc}**` : `*Akan diberikan secara manual oleh Admin setelah liga selesai.*`, inline: false },
+              { name: '📈 Batasan HP Pet', value: hpLimitText, inline: true },
+              { name: '🎁 Hadiah Liga', value: rewardDesc ? `**${rewardDesc}**` : `*Akan diberikan secara otomatis setelah liga selesai.*`, inline: false },
               { name: '👥 Peserta Terdaftar (0)', value: '*Belum ada peserta yang mendaftar.*', inline: false }
             )
             .setFooter({ text: 'Pet PvP League • Registration Phase' })
@@ -13581,7 +13594,7 @@ async function handleEconomyCommands(message, client) {
         }
       }
 
-      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.admincup start [durasi_menit] [min_level] [max_level]\`\n👉 \`.admincup panel\`\n👉 \`.admincup stop\`')] });
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.admincup start [durasi_menit] [max_hp] [hadiah]\`\n👉 \`.admincup panel\`\n👉 \`.admincup stop\`')] });
     }
 
 

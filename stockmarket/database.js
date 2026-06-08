@@ -723,6 +723,31 @@ function initSchema() {
         addColumn('ebyus_settings', 'tournament_admin_channel_id', 'TEXT DEFAULT NULL');
         db.prepare("UPDATE ebyus_settings SET tournament_admin_channel_id = '1513187966074490890'").run();
       }
+    },
+    {
+      version: 13,
+      description: "Menambahkan kolom konfigurasi hadiah turnamen otomatis ke ebyus_settings",
+      run: () => {
+        addColumn('ebyus_settings', 'tour_reward_coin_1', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_item_1', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'tour_reward_qty_1', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_coin_2', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_item_2', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'tour_reward_qty_2', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_coin_3', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_item_3', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'tour_reward_qty_3', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_coin_part', 'INTEGER DEFAULT 0');
+        addColumn('ebyus_settings', 'tour_reward_item_part', 'TEXT DEFAULT NULL');
+        addColumn('ebyus_settings', 'tour_reward_qty_part', 'INTEGER DEFAULT 0');
+      }
+    },
+    {
+      version: 14,
+      description: "Menambahkan kolom max_hp ke tournament_events untuk membatasi max hp pet",
+      run: () => {
+        addColumn('tournament_events', 'max_hp', 'INTEGER DEFAULT 999999');
+      }
     }
   ];
 

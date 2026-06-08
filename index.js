@@ -1187,7 +1187,7 @@ client.on('messageCreate', async message => {
             `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
             `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
             `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`,
-            `👉 **\`.admincup start [durasi_menit] [min_level] [max_level]\`** - Memulai turnamen Admin Cup adu pet interaktif.`,
+            `👉 **\`.admincup start [durasi_menit] [max_hp] [hadiah]\`** - Memulai turnamen Admin Cup adu pet interaktif.`,
             `👉 **\`.admincup stop\`** - Membatalkan turnamen Admin Cup aktif.`
           ].join('\n')
         }

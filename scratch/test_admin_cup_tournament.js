@@ -102,18 +102,18 @@ async function runTests() {
   db.run('DELETE FROM tournament_matches WHERE guild_id = \'guild_123\'');
   db.run('DELETE FROM user_pets WHERE guild_id = \'guild_123\'');
 
-  // Test 1: Mulai Turnamen
+  // Test 1: Mulai Turnamen (dengan batasan max HP = 3000)
   console.log('\n1. Testing startTournament...');
-  const activeEvent = tournament.startTournament('admin_user_99', 'guild_123', 'channel_123', 5, 1, 80);
+  const activeEvent = tournament.startTournament('admin_user_99', 'guild_123', 'channel_123', 5, 1, 80, null, 3000);
   console.log('✅ Tournament started:', activeEvent);
 
   // Test 2: Mendaftarkan Peserta
   console.log('\n2. Testing registerParticipant...');
-  // Setup 4 pet tanding
-  insertTestPet('user_1', 'Fenrir', 'CAT', 45, 100, 'FIRE', 20, 10, 15);
-  insertTestPet('user_2', 'Kurama', 'DRAGON', 38, 100, 'FIRE', 18, 12, 12);
-  insertTestPet('user_3', 'Rocky', 'GOLEM', 50, 100, 'EARTH', 25, 25, 5);
-  insertTestPet('user_4', 'Kuro', 'SLIME', 1, 100, 'WATER', 15, 15, 20); // Menguji pet level 1 baru
+  // Setup 4 pet tanding (masing-masing vit = 200, max HP < 3000)
+  insertTestPet('user_1', 'Fenrir', 'CAT', 45, 100, 'FIRE', 20, 10, 15, 200);
+  insertTestPet('user_2', 'Kurama', 'DRAGON', 38, 100, 'FIRE', 18, 12, 12, 200);
+  insertTestPet('user_3', 'Rocky', 'GOLEM', 50, 100, 'EARTH', 25, 25, 5, 200);
+  insertTestPet('user_4', 'Kuro', 'SLIME', 1, 100, 'WATER', 15, 15, 20, 10); // Slime HP sangat kecil
 
   // Daftarkan yang valid
   const p1 = tournament.registerParticipant('user_1', 'guild_123', 'Fenrir');
@@ -125,7 +125,7 @@ async function runTests() {
   // Uji validasi error pendaftaran
   console.log('\n2b. Testing registration validations (expecting errors)...');
   // HP Rendah
-  insertTestPet('user_fail', 'Lele', 'SLIME', 15, 30, 'WATER', 10, 10, 10);
+  insertTestPet('user_fail', 'Lele', 'SLIME', 15, 30, 'WATER', 10, 10, 10, 10);
   try {
     tournament.registerParticipant('user_fail', 'guild_123', 'Lele');
     console.log('❌ Error: HP rendah lolos!');
@@ -133,13 +133,22 @@ async function runTests() {
     console.log('✅ Got expected error (low HP):', err.message);
   }
 
-  // Level di luar kriteria
-  insertTestPet('user_fail_lv', 'NagaSakti', 'DRAGON', 95, 100, 'DRAGON', 50, 50, 50);
+  // Level limits are removed, registration should succeed (vit = 200 so HP limit is passed)
+  insertTestPet('user_fail_lv', 'NagaSakti', 'DRAGON', 95, 100, 'DRAGON', 50, 50, 50, 200);
   try {
     tournament.registerParticipant('user_fail_lv', 'guild_123', 'NagaSakti');
-    console.log('❌ Error: Level tinggi lolos!');
+    console.log('✅ Got expected success (no pet level limit for registration)');
   } catch (err) {
-    console.log('✅ Got expected error (level out of range):', err.message);
+    console.log('❌ Error: Level limit still blocked registration:', err.message);
+  }
+
+  // Test Max HP Limit (expecting failure because max HP > 3000 limit)
+  insertTestPet('user_fail_hp', 'MegaGoliath', 'GOLEM', 50, 100, 'EARTH', 25, 25, 5, 1000); // 1000 VIT * 5 = 5000 HP
+  try {
+    tournament.registerParticipant('user_fail_hp', 'guild_123', 'MegaGoliath');
+    console.log('❌ Error: Pet dengan HP melebihi batas lolos pendaftaran!');
+  } catch (err) {
+    console.log('✅ Got expected error (HP limit exceeded):', err.message);
   }
 
   // Test 3: Bracket Seeding
