@@ -2900,6 +2900,17 @@ module.exports = {
     const pbarHp = renderEmojiBar(pet.health, maxHP);
     const pbarXp = renderXpBar(pet.xp, xpNeeded);
 
+    let hpStatusLabel = '';
+    if (pet.health <= 30) {
+      hpStatusLabel = ' ⚠️ **[Kritis]**';
+    } else if (isInjured) {
+      hpStatusLabel = ' 🤕 **[Terluka]**';
+    } else if (pet.status === 'SICK') {
+      hpStatusLabel = ' 🤢 **[Sakit]**';
+    } else if (pet.status === 'WEAK') {
+      hpStatusLabel = ' ⚠️ **[Lemas]**';
+    }
+
     embed.setDescription(
       `*${flavorText}*\n\n` +
       `🧬 **KARTU TRAINER**\n` +
@@ -2909,7 +2920,7 @@ module.exports = {
       `• 🛡️ Equip: ${accText}\n` +
       `• 🔋 Auto: \`${pet.auto_feed === 2 ? 'VIP (Gratis)' : (pet.auto_feed === 1 ? 'Aktif' : 'Nonaktif')}\` · ⚡ Boost: \`${multText}\`\n\n` +
       `📊 **STATUS VITALITAS**\n` +
-      `• ❤️ HP: ${pbarHp} ${isSick ? '⚠️ **[Kritis]**' : ''}\n` +
+      `• ❤️ HP: ${pbarHp}${hpStatusLabel}\n` +
       `• ✨ XP: ${pbarXp}\n` +
       `• 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
       `⚔️ **JURUS TEMPUR**\n` +
