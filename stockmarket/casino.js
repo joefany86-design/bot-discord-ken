@@ -3,8 +3,8 @@ const economy = require('./economy');
 const config = require('./config');
 const { EmbedBuilder } = require('discord.js');
 
-// Owner ID dari environment variable (fallback ke default)
-const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+// Owner ID dari config
+const OWNER_ID = config.OWNER_ID;
 
 /**
  * Logika game tebak koin dengan 5% pajak bandar.

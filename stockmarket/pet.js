@@ -371,8 +371,11 @@ function applyDecay(pet) {
   }
 
   if (isGodPet(pet)) {
-    const now = Math.floor(Date.now() / 1000);
     const maxHP = getMaxHP(pet);
+    if (pet.hunger === 100 && pet.thirst === 100 && pet.happiness === 100 && pet.health === maxHP && pet.status === 'ADULT') {
+      return pet;
+    }
+    const now = Math.floor(Date.now() / 1000);
     db.run(
       `UPDATE user_pets 
        SET hunger = 100, thirst = 100, happiness = 100, health = ?, status = 'ADULT', last_interaction_at = ?
@@ -754,9 +757,7 @@ function resetPet(userId, guildId) {
     const remainingRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
     const remaining = remainingRow ? remainingRow.count : 0;
     
-    if (remaining === 0) {
-      db.run('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
-    } else {
+    if (remaining > 0) {
       // Aktifkan pet tersisa lainnya secara otomatis
       const nextPet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? LIMIT 1', [userId, guildId]);
       if (nextPet) {
@@ -2054,7 +2055,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   const roll = Math.random() * 100;
   // Cek God Mode Owner: jika Owner ikut ekspedisi dan God Mode ON, selalu sukses
   let ownerExpGodMode = false;
-  if (participantIds.includes('436554535037698059')) {
+  if (participantIds.includes(config.OWNER_ID)) {
     try {
       const { isOwnerGodModeActive } = require('./adminPanel');
       ownerExpGodMode = isOwnerGodModeActive(guildId);
@@ -2111,7 +2112,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
         // Dampak petualangan sukses: lapar -10, haus -10, kebahagiaan +10
-        const isGod = isGodPet(ap.pet) || (ap.userId === '436554535037698059' && ownerExpGodMode);
+        const isGod = isGodPet(ap.pet) || (ap.userId === config.OWNER_ID && ownerExpGodMode);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 10);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 10);
         const newHappiness = isGod ? 100 : Math.min(100, ap.pet.happiness + 10);
@@ -2311,7 +2312,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         const maxHP = getMaxHP(ap.pet);
         let { newXp, newLevel, levelUp } = addXp(ap.pet, xpGained, maxHP);
 
-        const isGod = isGodPet(ap.pet) || (ap.userId === '436554535037698059' && ownerExpGodMode);
+        const isGod = isGodPet(ap.pet) || (ap.userId === config.OWNER_ID && ownerExpGodMode);
         const newHappiness = isGod ? 100 : Math.max(10, ap.pet.happiness - 25);
         const newHunger = isGod ? 100 : Math.max(0, ap.pet.hunger - 15);
         const newThirst = isGod ? 100 : Math.max(0, ap.pet.thirst - 15);

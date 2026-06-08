@@ -4,8 +4,8 @@ const economy = require('./economy');
 const kos = require('./kos');
 const bm = require('./blackmarket');
 
-// Owner ID dari environment variable (fallback ke default)
-const OWNER_ID = process.env.OWNER_ID || '436554535037698059';
+// Owner ID dari config
+const OWNER_ID = config.OWNER_ID;
 
 // Map untuk mengelola lobi heist aktif per server
 // Key: guildId, Value: HeistLobby
@@ -131,7 +131,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 
   // 2a. Cek Perlindungan Owner (Anti-Rob) dengan Hukuman Langsung
   const { isOwnerProtectionActive } = require('./adminPanel');
-  const isTargetOwner = targetId === OWNER_ID || targetId === '436554535037698059';
+  const isTargetOwner = targetId === OWNER_ID;
   if (isTargetOwner && isOwnerProtectionActive(guildId)) {
     const jailDuration = 36000; // 10 jam (36000 detik)
     const thiefSavings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 };
@@ -243,7 +243,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 
   // Khusus OWNER: Cek God Mode dari panel .ow
   const { isOwnerGodModeActive } = require('./adminPanel');
-  const ownerGodMode = (userId === OWNER_ID || userId === '436554535037698059') && isOwnerGodModeActive(guildId);
+  const ownerGodMode = userId === OWNER_ID && isOwnerGodModeActive(guildId);
   if (ownerGodMode) {
     successRate = 100;
   }
@@ -737,7 +737,7 @@ function executeHeist(guildId) {
 
   // Roll Success
   const roll = Math.random() * 100;
-  const hasOwner = lobby.initiatorId === OWNER_ID || lobby.initiatorId === '436554535037698059' || participants.includes(OWNER_ID) || participants.includes('436554535037698059');
+  const hasOwner = lobby.initiatorId === OWNER_ID || participants.includes(OWNER_ID);
   const { isOwnerGodModeActive } = require('./adminPanel');
   const heistGodMode = hasOwner && isOwnerGodModeActive(guildId);
   const success = heistGodMode ? true : (roll < finalSuccessRate);
@@ -786,7 +786,7 @@ function executeHeist(guildId) {
     const { isOwnerProtectionActive } = require('./adminPanel');
     const ownerProt = isOwnerProtectionActive(guildId);
     const eligibleVictims = victims.filter(v => {
-      const isOwner = v.user_id === OWNER_ID || v.user_id === '436554535037698059';
+      const isOwner = v.user_id === OWNER_ID;
       if (isOwner && ownerProt) return false; // Lewati owner jika proteksi aktif
       return !participants.includes(v.user_id);
     });

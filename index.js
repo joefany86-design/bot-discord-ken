@@ -853,7 +853,7 @@ client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   // React to owner when they chat
-  if (message.author.id === '436554535037698059') {
+  if (message.author.id === OWNER_ID) {
     const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
     message.react(randomEmoji).catch(() => {});
@@ -1012,7 +1012,7 @@ client.on('messageCreate', async message => {
   message.reply = async (options) => {
     try {
       const replyMsg = await originalReply(options);
-      if (replyMsg && message.author.id === '436554535037698059') {
+      if (replyMsg && message.author.id === OWNER_ID) {
         const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
         const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
         replyMsg.react(randomEmoji).catch(() => {});
@@ -1045,7 +1045,7 @@ client.on('messageCreate', async message => {
             delete payload.messageReference;
             sentMsg = await message.channel.send(payload);
           }
-          if (sentMsg && message.author.id === '436554535037698059') {
+          if (sentMsg && message.author.id === OWNER_ID) {
             const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             sentMsg.react(randomEmoji).catch(() => {});

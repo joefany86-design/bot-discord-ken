@@ -194,42 +194,42 @@ async function handlePetSafariCommand(message, client, args) {
   const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
 
   collector.on('collect', async i => {
-    if (i.user.id !== author.id) {
-      return i.reply({ content: '❌ Pilihan ini bukan milik Anda!', flags: 64 });
-    }
-
-    if (i.customId === 'safari_biome_cancel') {
-      collector.stop();
-      return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [] });
-    }
-
-    const selectedBiomeKey = i.customId.replace('safari_biome_', '');
-    const biome = BIOMES[selectedBiomeKey];
-
-    if (!biome) return;
-
-    // Cek Koin untuk Biaya Masuk
-    if (biome.cost > 0) {
-      const wallet = economy.getWallet(author.id, guildId);
-      if (wallet.balance < biome.cost) {
-        return i.reply({ content: `❌ Saldo koin Anda tidak mencukupi untuk masuk ke biome ini! Dibutuhkan **Rp ${biome.cost.toLocaleString('id-ID')}**.`, flags: 64 });
-      }
-      economy.subtractBalance(author.id, guildId, biome.cost, 'PET_SAFARI_ENTRY');
-    }
-
-    // Set Cooldown
-    safariCooldowns.set(author.id, Date.now() + 180 * 1000);
-
-    // Hentikan collector pemilihan biome
-    collector.stop();
-
-    // Mulai Game Sesi Safari
     try {
+      if (i.user.id !== author.id) {
+        return i.reply({ content: '❌ Pilihan ini bukan milik Anda!', flags: 64 });
+      }
+
+      if (i.customId === 'safari_biome_cancel') {
+        collector.stop();
+        return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [] });
+      }
+
+      const selectedBiomeKey = i.customId.replace('safari_biome_', '');
+      const biome = BIOMES[selectedBiomeKey];
+
+      if (!biome) return;
+
+      // Cek Koin untuk Biaya Masuk
+      if (biome.cost > 0) {
+        const wallet = economy.getWallet(author.id, guildId);
+        if (wallet.balance < biome.cost) {
+          return i.reply({ content: `❌ Saldo koin Anda tidak mencukupi untuk masuk ke biome ini! Dibutuhkan **Rp ${biome.cost.toLocaleString('id-ID')}**.`, flags: 64 });
+        }
+        economy.subtractBalance(author.id, guildId, biome.cost, 'PET_SAFARI_ENTRY');
+      }
+
+      // Set Cooldown
+      safariCooldowns.set(author.id, Date.now() + 180 * 1000);
+
+      // Hentikan collector pemilihan biome
+      collector.stop();
+
+      // Mulai Game Sesi Safari
       await startSafariEncounter(i, replyMsg, selectedBiomeKey, author, guildId, client);
     } catch (err) {
-      console.error('Error starting Safari encounter:', err);
+      console.error('Error in biome collector:', err);
       activeSafaris.delete(author.id);
-      await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan koneksi atau pesan telah dihapus.', flags: 64 }).catch(() => {});
+      await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan interaksi atau koneksi.', flags: 64 }).catch(() => {});
     }
   });
 
@@ -636,6 +636,9 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
           return iChoice.reply({ content: '❌ **Kandang Penuh!** Anda sudah memiliki batas maksimal **5 hewan peliharaan** di kandang. Silakan lepas/reset salah satu pet Anda terlebih dahulu sebelum mengadopsi pet baru!', flags: 64 });
         }
 
+        // Simpan ID interaksi terakhir untuk mencegah race condition timeout modal
+        state.lastAdoptInteractionId = iChoice.id;
+
         // Tampilkan Modal Penamaan Pet
         const modal = new ModalBuilder()
           .setCustomId('safari_adopt_modal')
@@ -719,6 +722,9 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
         } catch (errModal) {
           // Abaikan timeout modal, berikan pet default name jika ditutup
           if (errModal.code === 'InteractionCollectorError') {
+            if (state.lastAdoptInteractionId !== iChoice.id) {
+              return; // Abaikan timeout dari klik lama yang dibatalkan/ditutup
+            }
             if (choiceProcessed) return;
             choiceProcessed = true;
             choiceCollector.stop();
@@ -780,6 +786,11 @@ function executeReleaseRewards(userId, guildId, wildPet) {
     coins = Math.floor(Math.random() * 1500) + 2000;
     xp = 500;
     soda = 1;
+  } else if (r === 'MYTHIC' || r === 'IMMORTAL') {
+    coins = Math.floor(Math.random() * 3000) + 4000;
+    xp = 1000;
+    soda = 2;
+    food = 1;
   }
 
   // 1. Tambah Balance Koin

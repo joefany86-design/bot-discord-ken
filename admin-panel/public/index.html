@@ -79,6 +79,10 @@
           <span class="menu-icon">📜</span>
           <span class="menu-text">Logs & Backups</span>
         </a>
+        <a href="#sql-console" class="menu-item" id="menu-sql">
+          <span class="menu-icon">💻</span>
+          <span class="menu-text">SQL Console</span>
+        </a>
         <a href="#promos" class="menu-item" id="menu-promos">
           <span class="menu-icon">🎟️</span>
           <span class="menu-text">Voucher & Promo</span>
@@ -958,6 +962,59 @@
           </div>
         </div>
       </section>
+
+      <!-- Section 10: SQL Console -->
+      <section id="section-sql" class="content-section">
+        <div class="section-header">
+          <h2>💻 Safe Database SQL Console</h2>
+          <p>Lakukan kueri data (SELECT) langsung ke database SQLite untuk inspeksi data dan debugging cepat.</p>
+        </div>
+
+        <div class="control-split-layout">
+          <!-- Left: Database Schema Browser -->
+          <div class="details-card" style="flex: 1; max-height: 600px; overflow-y: auto;">
+            <h3>🗄️ Skema Database</h3>
+            <div id="db-schema-browser" class="db-schema-browser">
+              <p style="color: var(--color-text-muted); font-size: 13px;">Memuat skema database...</p>
+            </div>
+          </div>
+
+          <!-- Right: SQL Editor & Result Rows -->
+          <div style="display: flex; flex-direction: column; gap: 20px; flex: 2.5; width: 100%;">
+            <div class="details-card">
+              <h3>📝 SQL Query Editor</h3>
+              <div class="form-group">
+                <textarea id="sql-query-input" class="form-control" rows="5" placeholder="SELECT * FROM wallets LIMIT 10;" style="font-family: monospace; font-size: 14px; background: #0a0d14; border: 1px solid var(--border-color); color: #fff; resize: vertical;"></textarea>
+              </div>
+              <div class="sql-console-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                <span style="font-size: 12px; color: var(--color-text-muted);">Tekan <kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 11px;">Ctrl + Enter</kbd> untuk mengeksekusi.</span>
+                <button id="execute-sql-btn" class="btn btn-emerald">⚡ Jalankan Query</button>
+              </div>
+            </div>
+
+            <!-- Query Results -->
+            <div class="details-card" id="sql-result-card" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin-bottom: 0;">📊 Hasil Query</h3>
+                <span id="sql-result-meta" class="badge badge-muted">0 Baris Terambil</span>
+              </div>
+              <div id="sql-error-box" class="alert-box alert-danger" style="display: none; padding: 12px 16px; border-radius: 8px; background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: var(--color-red); font-family: monospace; font-size: 13px; margin-bottom: 15px;"></div>
+              
+              <div class="table-container" id="sql-result-table-container" style="max-height: 400px; overflow-y: auto;">
+                <table class="members-table" style="font-size: 13px; width: 100%;">
+                  <thead id="sql-result-thead">
+                    <!-- Dynamic Headers -->
+                  </thead>
+                  <tbody id="sql-result-tbody">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
     </main>
   </div>

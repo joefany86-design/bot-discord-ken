@@ -126,7 +126,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
   const guildId = messageOrInteraction.guildId;
   const guild = messageOrInteraction.guild;
 
-  const isOwner = author.id === '436554535037698059';
+  const isOwner = author.id === config.OWNER_ID;
   const isAdmin = messageOrInteraction.member && messageOrInteraction.member.permissions.has(PermissionsBitField.Flags.Administrator);
   if (!isOwner && !isAdmin) {
     if (isInteraction) {
@@ -415,10 +415,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iPet => {
-    const isOwner = iPet.user.id === '436554535037698059';
+    const isOwner = iPet.user.id === config.OWNER_ID;
     const isAdmin = iPet.member && iPet.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iPet.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -659,7 +659,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
             // Batas Maksimum Pet
             // Check if target is admin
             const targetMember = await guild.members.fetch(selectedTargetUserId).catch(() => null);
-            const isTargetAdmin = (selectedTargetUserId === '436554535037698059') || 
+            const isTargetAdmin = (selectedTargetUserId === config.OWNER_ID) || 
                                   (config.OWNER_ID && selectedTargetUserId === config.OWNER_ID) ||
                                   (targetMember && targetMember.permissions.has(PermissionsBitField.Flags.Administrator));
 
@@ -2193,7 +2193,7 @@ async function handleAdminTournamentPanel(messageOrInteraction, client) {
   const guildId = messageOrInteraction.guildId || (isChannel ? messageOrInteraction.guild?.id : null);
 
   if (author) {
-    const isOwner = author.id === '436554535037698059';
+    const isOwner = author.id === config.OWNER_ID;
     const isAdmin = messageOrInteraction.member && messageOrInteraction.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       if (isInteraction) {
@@ -2243,7 +2243,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
   const guildId = interaction.guildId;
   if (!guildId) return;
 
-  const isOwner = interaction.user.id === '436554535037698059';
+  const isOwner = interaction.user.id === config.OWNER_ID;
   const isAdmin = interaction.member && interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
   if (!isOwner && !isAdmin) {
     return interaction.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -2577,7 +2577,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
           // Batas Maksimum Pet
           const targetMember = await guild.members.fetch(state.selectedRewardUserId).catch(() => null);
-          const isTargetAdmin = (state.selectedRewardUserId === '436554535037698059') || 
+          const isTargetAdmin = (state.selectedRewardUserId === config.OWNER_ID) || 
                                 (config.OWNER_ID && state.selectedRewardUserId === config.OWNER_ID) ||
                                 (targetMember && targetMember.permissions.has(PermissionsBitField.Flags.Administrator));
 
@@ -3174,10 +3174,10 @@ async function handleAdminBankPanel(messageOrInteraction, client, initialTargetU
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iBank => {
-    const isOwner = iBank.user.id === '436554535037698059';
+    const isOwner = iBank.user.id === config.OWNER_ID;
     const isAdmin = iBank.member && iBank.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iBank.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -3891,10 +3891,10 @@ async function handleAdminRobberyPanel(messageOrInteraction, client, initialTarg
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iRob => {
-    const isOwner = iRob.user.id === '436554535037698059';
+    const isOwner = iRob.user.id === config.OWNER_ID;
     const isAdmin = iRob.member && iRob.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iRob.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -4292,10 +4292,10 @@ async function handleAdminSahamPanel(messageOrInteraction, client, initialTicker
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iSaham => {
-    const isOwner = iSaham.user.id === '436554535037698059';
+    const isOwner = iSaham.user.id === config.OWNER_ID;
     const isAdmin = iSaham.member && iSaham.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iSaham.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -4978,10 +4978,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iAbyus => {
-    const isOwner = iAbyus.user.id === '436554535037698059';
+    const isOwner = iAbyus.user.id === config.OWNER_ID;
     const isAdmin = iAbyus.member && iAbyus.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iAbyus.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -5699,10 +5699,10 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iShop => {
-    const isOwner = iShop.user.id === '436554535037698059';
+    const isOwner = iShop.user.id === config.OWNER_ID;
     const isAdmin = iShop.member && iShop.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iShop.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -6333,10 +6333,10 @@ async function handleAdminTrollPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iTroll => {
-    const isOwner = iTroll.user.id === '436554535037698059';
+    const isOwner = iTroll.user.id === config.OWNER_ID;
     const isAdmin = iTroll.member && iTroll.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iTroll.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -6713,10 +6713,10 @@ async function handleAdminLedgerPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iLedger => {
-    const isOwner = iLedger.user.id === '436554535037698059';
+    const isOwner = iLedger.user.id === config.OWNER_ID;
     const isAdmin = iLedger.member && iLedger.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iLedger.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -7034,10 +7034,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.fetchReply();
 
     // Buat collector khusus untuk Owner Panel
-    const ownerCollector = replyMsg.createMessageComponentCollector();
+    const ownerCollector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
     ownerCollector.on('collect', async iOw => {
-      if (iOw.user.id !== '436554535037698059') {
+      if (iOw.user.id !== config.OWNER_ID) {
         return iOw.reply({ content: '❌ Akses Ditolak! Panel ini hanya untuk Owner utama.', flags: 64 });
       }
 
@@ -7100,10 +7100,10 @@ async function handleAdminPanel(messageOrInteraction, client) {
 
   // ── Fungsi untuk setup Hub Collector (dipanggil dari flow normal atau transisi dari Owner Panel) ──
   function setupHubCollector() {
-    const collector = replyMsg.createMessageComponentCollector();
+    const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
     collector.on('collect', async iHub => {
-      const isOwner = iHub.user.id === '436554535037698059';
+      const isOwner = iHub.user.id === config.OWNER_ID;
       const isAdmin = iHub.member && iHub.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return iHub.reply({ content: '❌ Akses Ditolak! Tombol/menu ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -7266,10 +7266,10 @@ async function handleAdminGardenPanel(messageOrInteraction, client, initialTarge
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iGarden => {
-    const isOwner = iGarden.user.id === '436554535037698059';
+    const isOwner = iGarden.user.id === config.OWNER_ID;
     const isAdmin = iGarden.member && iGarden.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iGarden.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -7465,10 +7465,10 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iQuest => {
-    const isOwner = iQuest.user.id === '436554535037698059';
+    const isOwner = iQuest.user.id === config.OWNER_ID;
     const isAdmin = iQuest.member && iQuest.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iQuest.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -7850,10 +7850,10 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iWarga => {
-    const isOwner = iWarga.user.id === '436554535037698059';
+    const isOwner = iWarga.user.id === config.OWNER_ID;
     const isAdmin = iWarga.member && iWarga.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iWarga.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -8255,10 +8255,10 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
     replyMsg = await messageOrInteraction.reply(initialData);
   }
 
-  const collector = replyMsg.createMessageComponentCollector();
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
   collector.on('collect', async iGift => {
-    const isOwner = iGift.user.id === '436554535037698059';
+    const isOwner = iGift.user.id === config.OWNER_ID;
     const isAdmin = iGift.member && iGift.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return iGift.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });

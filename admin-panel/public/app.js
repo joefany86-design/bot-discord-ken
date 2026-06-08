@@ -407,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stocks: document.getElementById('menu-stocks'),
     auctions: document.getElementById('menu-auctions'),
     logs: document.getElementById('menu-logs'),
+    sql: document.getElementById('menu-sql'),
     promos: document.getElementById('menu-promos'),
     broadcast: document.getElementById('menu-broadcast')
   };
@@ -420,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stocks: document.getElementById('section-stocks'),
     auctions: document.getElementById('section-auctions'),
     logs: document.getElementById('section-logs'),
+    sql: document.getElementById('section-sql'),
     promos: document.getElementById('section-promos'),
     broadcast: document.getElementById('section-broadcast')
   };
@@ -622,6 +624,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (activeTabId === 'logs') {
       fetchLogs();
       fetchDetailedStats(); // Loads backups selector
+    } else if (activeTabId === 'sql') {
+      fetchDatabaseSchema();
     } else if (activeTabId === 'promos') {
       fetchPromos();
     } else if (activeTabId === 'broadcast') {
@@ -2253,9 +2257,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="padding: 6px 10px; font-weight: 500; color: var(--color-text-light);">${row.name}</td>
         <td style="padding: 6px 10px; color: var(--color-text-muted);">${row.type}</td>
         <td style="padding: 6px 10px; text-align: center; font-weight: bold;">${row.quantity}</td>
-        <td style="padding: 6px 10px; text-align: center;">
+        <td style="padding: 6px 10px; text-align: center; white-space: nowrap;">
           <button class="btn btn-secondary btn-sm btn-inv-adjust" data-change="-1" style="padding: 2px 6px; font-size: 10px; min-width: 20px;">-</button>
           <button class="btn btn-secondary btn-sm btn-inv-adjust" data-change="1" style="padding: 2px 6px; font-size: 10px; min-width: 20px;">+</button>
+          <button class="btn btn-danger btn-sm btn-inv-delete" style="padding: 2px 6px; font-size: 10px; min-width: 24px; margin-left: 4px;" title="Hapus Aset">🗑️</button>
         </td>
       `;
 
@@ -2293,9 +2298,218 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+      const deleteBtn = tr.querySelector('.btn-inv-delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (!confirm(`Apakah Anda yakin ingin menghapus seluruh ${row.quantity}x ${row.name} dari tas warga?`)) {
+            return;
+          }
+          
+          deleteBtn.disabled = true;
+          try {
+            const response = await secureFetch('/api/give', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: userId,
+                category: row.category,
+                target: row.id,
+                amount: -row.quantity
+              })
+            });
+
+            const resData = await response.json();
+            if (resData.success) {
+              showToast(`${row.name} berhasil dihapus!`, 'success');
+              if (window.SoundEffects) SoundEffects.playSuccess();
+              fetchAndDisplayInventory(userId);
+            } else {
+              showToast(resData.message, 'error');
+              deleteBtn.disabled = false;
+            }
+          } catch {
+            showToast('Gagal menghapus item', 'error');
+            deleteBtn.disabled = false;
+          }
+        });
+      }
+
       citizenInventoryList.appendChild(tr);
     });
   }
+
+  // --- SQL Console Logic ---
+  function initSqlConsole() {
+    const sqlQueryInput = document.getElementById('sql-query-input');
+    const executeSqlBtn = document.getElementById('execute-sql-btn');
+    const sqlResultCard = document.getElementById('sql-result-card');
+    const sqlResultMeta = document.getElementById('sql-result-meta');
+    const sqlErrorBox = document.getElementById('sql-error-box');
+    const sqlResultTableContainer = document.getElementById('sql-result-table-container');
+    const sqlResultThead = document.getElementById('sql-result-thead');
+    const sqlResultTbody = document.getElementById('sql-result-tbody');
+
+    async function executeSqlQuery() {
+      const query = sqlQueryInput.value.trim();
+      if (!query) {
+        showToast('Kueri SQL tidak boleh kosong!', 'error');
+        return;
+      }
+
+      executeSqlBtn.disabled = true;
+      executeSqlBtn.textContent = 'MENGEKSEKUSI...';
+      sqlResultCard.style.display = 'block';
+      sqlErrorBox.style.display = 'none';
+      sqlResultTableContainer.style.display = 'none';
+      sqlResultMeta.textContent = 'Mengeksekusi...';
+
+      try {
+        const res = await secureFetch('/api/admin/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderQueryResult(data.rows);
+        } else {
+          sqlResultMeta.textContent = 'Error';
+          sqlErrorBox.textContent = `❌ ERROR: ${data.message}`;
+          sqlErrorBox.style.display = 'block';
+        }
+      } catch (err) {
+        if (err.message !== 'Unauthorized') {
+          sqlResultMeta.textContent = 'Error Koneksi';
+          sqlErrorBox.textContent = `❌ Koneksi gagal saat mengeksekusi query.`;
+          sqlErrorBox.style.display = 'block';
+        }
+      } finally {
+        executeSqlBtn.disabled = false;
+        executeSqlBtn.textContent = '⚡ Jalankan Query';
+      }
+    }
+
+    function renderQueryResult(rows) {
+      sqlResultThead.innerHTML = '';
+      sqlResultTbody.innerHTML = '';
+      sqlResultMeta.textContent = `${rows.length} Baris Terambil`;
+
+      if (rows.length === 0) {
+        sqlResultTbody.innerHTML = '<tr><td colspan="100%" style="text-align: center; color: var(--color-text-muted); padding: 20px;">Hasil query kosong (0 baris).</td></tr>';
+        sqlResultTableContainer.style.display = 'block';
+        return;
+      }
+
+      const headers = Object.keys(rows[0]);
+      const headerTr = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerTr.appendChild(th);
+      });
+      sqlResultThead.appendChild(headerTr);
+
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-color)';
+        headers.forEach(h => {
+          const td = document.createElement('td');
+          const val = row[h];
+          if (val === null) {
+            td.innerHTML = '<em style="color: var(--color-text-muted);">NULL</em>';
+          } else if (typeof val === 'object') {
+            td.textContent = JSON.stringify(val);
+          } else {
+            td.textContent = val;
+          }
+          tr.appendChild(td);
+        });
+        sqlResultTbody.appendChild(tr);
+      });
+
+      sqlResultTableContainer.style.display = 'block';
+    }
+
+    if (executeSqlBtn) {
+      executeSqlBtn.addEventListener('click', executeSqlQuery);
+    }
+    if (sqlQueryInput) {
+      sqlQueryInput.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          executeSqlQuery();
+        }
+      });
+    }
+  }
+
+  async function fetchDatabaseSchema() {
+    const dbSchemaBrowser = document.getElementById('db-schema-browser');
+    const sqlQueryInput = document.getElementById('sql-query-input');
+    if (!dbSchemaBrowser) return;
+    dbSchemaBrowser.innerHTML = '<p style="color: var(--color-text-muted); font-size: 13px;">Memuat skema database...</p>';
+    try {
+      const res = await secureFetch('/api/admin/tables');
+      const data = await res.json();
+      if (data.success) {
+        renderSchemaBrowser(data.schema);
+      } else {
+        dbSchemaBrowser.innerHTML = `<p style="color: var(--color-red); font-size: 13px;">Gagal memuat skema: ${data.message}</p>`;
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') {
+        dbSchemaBrowser.innerHTML = '<p style="color: var(--color-red); font-size: 13px;">Koneksi error memuat skema.</p>';
+      }
+    }
+
+    function renderSchemaBrowser(schema) {
+      dbSchemaBrowser.innerHTML = '';
+      const tables = Object.keys(schema);
+      if (tables.length === 0) {
+        dbSchemaBrowser.innerHTML = '<p style="color: var(--color-text-muted); font-size: 13px;">Tidak ada tabel ditemukan.</p>';
+        return;
+      }
+
+      tables.forEach(table => {
+        const tableDiv = document.createElement('div');
+        tableDiv.className = 'table-item';
+
+        const tableNameDiv = document.createElement('div');
+        tableNameDiv.className = 'table-name';
+        tableNameDiv.innerHTML = `📁 <strong>${table}</strong>`;
+        tableNameDiv.addEventListener('click', () => {
+          sqlQueryInput.value = `SELECT * FROM ${table} LIMIT 10;`;
+          sqlQueryInput.focus();
+        });
+
+        const columnListUl = document.createElement('ul');
+        columnListUl.className = 'column-list';
+        
+        schema[table].forEach(col => {
+          const li = document.createElement('li');
+          li.innerHTML = `<span>${col.name}</span> <span class="column-type">${col.type}</span>`;
+          li.style.cursor = 'pointer';
+          li.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const start = sqlQueryInput.selectionStart;
+            const end = sqlQueryInput.selectionEnd;
+            const text = sqlQueryInput.value;
+            sqlQueryInput.value = text.substring(0, start) + col.name + text.substring(end);
+            sqlQueryInput.focus();
+            sqlQueryInput.selectionStart = sqlQueryInput.selectionEnd = start + col.name.length;
+          });
+          columnListUl.appendChild(li);
+        });
+
+        tableDiv.appendChild(tableNameDiv);
+        tableDiv.appendChild(columnListUl);
+        dbSchemaBrowser.appendChild(tableDiv);
+      });
+    }
+  }
+
+  initSqlConsole();
 
   // Run passcode auth check on load
   checkAuth();

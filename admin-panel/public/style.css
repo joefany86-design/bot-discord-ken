@@ -1581,3 +1581,56 @@ a {
   transform-origin: left;
 }
 
+/* Glassmorphism for Modal Overlay */
+.modal-overlay {
+  backdrop-filter: blur(12px) !important;
+}
+
+/* SQL Console Specific Styles */
+.db-schema-browser .table-item {
+  margin-bottom: 12px;
+}
+.db-schema-browser .table-name {
+  font-weight: 600;
+  color: var(--color-text-light);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  transition: var(--transition-smooth);
+}
+.db-schema-browser .table-name:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.db-schema-browser .column-list {
+  list-style: none;
+  padding-left: 16px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: monospace;
+  border-left: 1px dashed var(--border-color);
+  margin-left: 14px;
+}
+.db-schema-browser .column-list li {
+  padding: 3px 0;
+  display: flex;
+  justify-content: space-between;
+}
+.db-schema-browser .column-type {
+  color: #c59b76;
+  font-size: 10px;
+}
+kbd {
+  font-family: monospace;
+  font-weight: bold;
+}
+
+

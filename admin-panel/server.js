@@ -246,7 +246,9 @@ const server = http.createServer((req, res) => {
             else if (category === 'item') {
               const exist = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, target);
               const newQty = Math.max(0, (exist ? exist.quantity : 0) + amount);
-              if (!exist) {
+              if (newQty <= 0) {
+                db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, target);
+              } else if (!exist) {
                 db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)').run(userId, guildId, target, newQty);
               } else {
                 db.prepare('UPDATE user_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(newQty, userId, guildId, target);
@@ -255,7 +257,9 @@ const server = http.createServer((req, res) => {
             else if (category === 'pet_item') {
               const exist = db.prepare('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, target);
               const newQty = Math.max(0, (exist ? exist.quantity : 0) + amount);
-              if (!exist) {
+              if (newQty <= 0) {
+                db.prepare('DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, target);
+              } else if (!exist) {
                 db.prepare('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)').run(userId, guildId, target, newQty);
               } else {
                 db.prepare('UPDATE pet_inventory SET quantity = ? WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(newQty, userId, guildId, target);
@@ -912,6 +916,56 @@ const server = http.createServer((req, res) => {
           sendJSON(res, 200, { success: true, message: 'Broadcast queued successfully!' });
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });
+        }
+      });
+    }
+    else if (pathname === '/api/admin/tables' && req.method === 'GET') {
+      try {
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(r => r.name);
+        const schema = {};
+        for (const table of tables) {
+          schema[table] = db.prepare(`PRAGMA table_info(${table})`).all().map(c => ({ name: c.name, type: c.type }));
+        }
+        sendJSON(res, 200, { success: true, schema });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
+    else if (pathname === '/api/admin/query' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const { query } = JSON.parse(body);
+          if (!query) {
+            return sendJSON(res, 400, { success: false, message: 'Missing SQL query parameter' });
+          }
+
+          // Strip comments and check safety
+          const cleanSql = query.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '').trim();
+          const normalized = cleanSql.toUpperCase();
+          
+          if (!/^(SELECT|WITH)\b/.test(normalized)) {
+            return sendJSON(res, 400, { success: false, message: 'Hanya query SELECT atau WITH yang diperbolehkan!' });
+          }
+
+          const forbiddenKeywords = [
+            /\bINSERT\b/, /\bUPDATE\b/, /\bDELETE\b/, /\bDROP\b/,
+            /\bCREATE\b/, /\bALTER\b/, /\bREPLACE\b/, /\bPRAGMA\b/,
+            /\bEXEC\b/, /\bEXECUTE\b/, /\bINTO\b/
+          ];
+
+          for (const regex of forbiddenKeywords) {
+            if (regex.test(normalized)) {
+              return sendJSON(res, 400, { success: false, message: `Query mengandung kata kunci terlarang: ${regex.source}` });
+            }
+          }
+
+          const rows = db.prepare(query).all();
+          appendLog(`Executed SELECT query via SQL Console: ${query.substring(0, 100)}`);
+          sendJSON(res, 200, { success: true, rows });
+        } catch (err) {
+          sendJSON(res, 400, { success: false, message: err.message });
         }
       });
     }

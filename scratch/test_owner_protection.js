@@ -118,7 +118,7 @@ async function runTests() {
     console.log(`  👉 Robber Jail Until: ${updatedRobberWallet.jail_until}`);
     
     if (robRes.success === false && robRes.isSultanPunishment === true) {
-      if (updatedRobberWallet.balance === 3000 && updatedRobberWallet.jail_until > 0) {
+      if (updatedRobberWallet.balance === 0 && updatedRobberWallet.jail_until > 0) {
         console.log("  ✅ PASS: Robber was successfully punished for attempting to rob the protected Owner!");
       } else {
         console.error(`  ❌ FAIL: Punishment values are incorrect. Balance: ${updatedRobberWallet.balance}, Jail: ${updatedRobberWallet.jail_until}`);
@@ -138,7 +138,7 @@ async function runTests() {
   // Set Owner and Victim bank savings balance back to 10000
   db.run("UPDATE bank_savings SET balance = 10000 WHERE user_id = ? AND guild_id = ?", [ownerId, guildId]);
   db.run("UPDATE bank_savings SET balance = 10000 WHERE user_id = ? AND guild_id = ?", [victimId, guildId]);
-  db.run("UPDATE wallets SET last_heist_at = 0, jail_until = 0 WHERE user_id = ? AND guild_id = ?", [robberId, guildId]);
+  db.run("UPDATE wallets SET last_heist_at = 0, jail_until = 0, balance = 5000 WHERE user_id = ? AND guild_id = ?", [robberId, guildId]);
 
   robbery.startHeistLobby(robberId, guildId);
 

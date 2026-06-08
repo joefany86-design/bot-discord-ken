@@ -77,6 +77,18 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
   let tradeMsg;
   let selectedTicker = ticker;
 
+  const updateTradeMsg = async (freshData) => {
+    try {
+      if (isInteraction) {
+        await messageOrInteraction.editReply(freshData);
+      } else {
+        await tradeMsg.edit(freshData);
+      }
+    } catch (err) {
+      if (err.code !== 10008) console.error('Error update trade message:', err.message);
+    }
+  };
+
   const getEmbedAndComponents = (currentTicker) => {
     const activeStock = stocks.getStock(guildId, currentTicker);
     if (!activeStock) return null;
@@ -275,7 +287,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
 
                 // Update the original trade panel message
                 const freshData = getEmbedAndComponents(selectedTicker);
-                await tradeMsg.edit(freshData).catch(console.error);
+                await updateTradeMsg(freshData);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
                 await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
@@ -336,7 +348,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
 
                 // Update original trade panel message
                 const freshData = getEmbedAndComponents(selectedTicker);
-                await tradeMsg.edit(freshData).catch(console.error);
+                await updateTradeMsg(freshData);
               } catch (err) {
                 const cleaned = err.message.replace(/^❌\s*/, '');
                 await submitted.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: submitted.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
@@ -375,9 +387,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
               }
             }
             const freshData = getEmbedAndComponents(selectedTicker);
-            await iTrade.message.edit(freshData).catch(err => {
-              if (err.code !== 10008) console.error('Error edit trade message:', err.message);
-            });
+            await updateTradeMsg(freshData);
           } catch (err) {
             const cleaned = err.message.replace(/^❌\s*/, '');
             await iTrade.reply({ content: `❌ Transaksi gagal: ${cleaned}`, flags: iTrade.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
@@ -405,7 +415,7 @@ async function sendInteractiveTradePanel(messageOrInteraction, ticker, author, g
         });
         return freshRow;
       });
-      await tradeMsg.edit(disabledData).catch(() => { });
+      await updateTradeMsg(disabledData);
     }
   });
 }
@@ -1484,7 +1494,7 @@ function initStockMarket(client) {
                 const wallet2 = economy.getWallet(user.id, guildId);
                 const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
                 const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-                await privateMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+                await interaction.editReply({ embeds: [updatedEmbed] }).catch(() => {});
               });
             } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
               const itemId = parseInt(i.values[0]);
@@ -1543,7 +1553,7 @@ function initStockMarket(client) {
                   updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
                 }
 
-                await privateMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+                await interaction.editReply({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
               });
             }
           } catch (err) {
@@ -1695,7 +1705,7 @@ function initStockMarket(client) {
                     taxSavedMsg
                   );
                   await submitted.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], flags: 64 });
                 }
@@ -1746,7 +1756,7 @@ function initStockMarket(client) {
                     taxSavedMsg
                   );
                   await submitted.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], flags: 64 });
                 }
@@ -1823,7 +1833,7 @@ function initStockMarket(client) {
                       );
 
                       await submitted.reply({ embeds: [successEmb], flags: 64 });
-                      await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                      await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
                     } catch (err) {
                       await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], flags: 64 });
                     }
@@ -1943,7 +1953,7 @@ function initStockMarket(client) {
                           }
 
                           await submitted.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Hutang Berhasil!', desc)], flags: 64 });
-                          await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                          await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
                         } catch (err) {
                           await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
                         }
@@ -1993,7 +2003,7 @@ function initStockMarket(client) {
                             `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
                         }
                         await iChoice.update({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], content: null, components: [] });
-                        await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                        await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
                       } catch (err) {
                         await iChoice.update({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], content: null, components: [] });
                       }
@@ -2017,7 +2027,7 @@ function initStockMarket(client) {
                       `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
                   }
                   await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], flags: 64 });
-                  await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
                 } else if (hasFriendDebts) {
                   // Langsung bayar hutang teman
                   await handleFriendRepayFlowPrivate(iBank);
@@ -2299,7 +2309,7 @@ function initStockMarket(client) {
                         );
 
                         await submitted.reply({ embeds: [successEmb], flags: 64 });
-                        await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => {});
+                        await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
 
                         // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
                         try {
@@ -2794,12 +2804,12 @@ function initStockMarket(client) {
               const row2Components = [
                 new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(
-                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
+                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
                   userPet.level < 10 &&
                   userPet.status !== 'ADULT'
                 ),
                 new ButtonBuilder().setCustomId('pet_btn_breed').setLabel('💍 Kawin Silang').setStyle(ButtonStyle.Primary).setDisabled(
-                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === '436554535037698059') &&
+                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
                   userPet.level < 10 &&
                   userPet.status !== 'ADULT'
                 ),
@@ -2913,7 +2923,7 @@ function initStockMarket(client) {
                       embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
                       components: []
                     });
-                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
                   } catch (err) {
                     await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
                   }
@@ -2964,7 +2974,7 @@ function initStockMarket(client) {
                         const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
                         const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
                         await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
-                        await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                        await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                       } catch (err) {
                         const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
                         await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
@@ -3001,7 +3011,7 @@ function initStockMarket(client) {
                         `📉 Sisa saldo ${sisaText}.`
                       );
                       await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                      await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                     } catch (err) {
                       const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
                       await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
@@ -3127,7 +3137,7 @@ function initStockMarket(client) {
                     );
 
                     await iItemUse.update({ embeds: [successEmb], components: [] });
-                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                   } catch (err) {
                     await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
                   }
@@ -3164,7 +3174,7 @@ function initStockMarket(client) {
                       `📉 Sisa saldo ${sisaText}.`
                     );
                     await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                   } catch (err) {
                     const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
                     await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
@@ -3180,32 +3190,32 @@ function initStockMarket(client) {
               const res = pet.getPet(user.id, guildId);
               if (res && res.status === 'BABY') {
                 await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)], flags: 64 });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               }
             } else if (iPet.customId === 'pet_btn_feed') {
               const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_drink') {
               const res = pet.useItem(user.id, guildId, 'WATER', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_play') {
               const res = pet.playWithPet(user.id, guildId);
               await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_cure') {
               const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
               await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_work') {
               const res = pet.sendToWork(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_hunt') {
               const res = pet.sendToHunt(user.id, guildId, iPet.member);
               await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
-              await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
             } else if (iPet.customId === 'pet_btn_breed') {
               try {
                 const freshPet = pet.getPet(user.id, guildId);
@@ -3316,7 +3326,7 @@ function initStockMarket(client) {
 
                   // Beri notifikasi sukses privat ke pemohon & update dashboard
                   await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke <#${interaction.channel.id}>!`, flags: 64 });
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
 
                   // Buat collector untuk tombol accept/decline di pesan publik
                   const breedCollector = publicMsg.createMessageComponentCollector({ time: 60000 });
@@ -3383,7 +3393,7 @@ function initStockMarket(client) {
                   `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
                 );
                 await iPet.reply({ embeds: [successEmb], flags: 64 });
-                await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } catch (err) {
                 await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
               }
@@ -3438,7 +3448,7 @@ function initStockMarket(client) {
                     components: []
                   });
                   // Refresh private dashboard
-                  await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => {});
+                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
                 } catch (err) {
                   await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
                 }
@@ -3488,7 +3498,7 @@ function initStockMarket(client) {
                       const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
                       const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
                       
-                      await privateMsg.edit(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+                      await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
 
                       const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
                       await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
@@ -3543,7 +3553,7 @@ function initStockMarket(client) {
                       const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
                       const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
                       await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
-                      await privateMsg.edit(getDashboardPanelPrivate(user.id)).catch(() => { });
+                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                     } catch (err) {
                       const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
                       await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
@@ -3637,7 +3647,7 @@ function initStockMarket(client) {
                       const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
                       const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
                       
-                      await privateMsg.edit(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
+                      await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
 
                       const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
                       await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
@@ -3776,7 +3786,7 @@ function initStockMarket(client) {
                   );
 
                   await iKos.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
                   await iKos.reply({ embeds: [errorEmb], flags: 64 });
@@ -3795,7 +3805,7 @@ function initStockMarket(client) {
                   );
 
                   await iKos.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
                   await iKos.reply({ embeds: [errorEmb], flags: 64 });
@@ -4532,7 +4542,7 @@ function initStockMarket(client) {
                     `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
                   );
                   await i.reply({ embeds: [successEmb], flags: 64 });
-                  await privateMsg.edit(getQuestPanelPrivate(user.id)).catch(() => { });
+                  await interaction.editReply(getQuestPanelPrivate(user.id)).catch(() => { });
                 } catch (err) {
                   await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
                 }
@@ -5525,7 +5535,7 @@ async function handlePetCommand(message, client, args) {
   // ── SUB-PERINTAH: IMAGE / SETIMAGE ──
   if (subCommand === 'image' || subCommand === 'setimage') {
     const { PermissionsBitField } = require('discord.js');
-    const isOwner = message.author.id === '436554535037698059';
+    const isOwner = message.author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Perintah ini hanya dapat digunakan oleh Owner utama & Administrator server.')] });
@@ -9305,7 +9315,7 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   }
 
   // Khusus Owner: Cek God Mode dari panel .ow
-  if (user.id === '436554535037698059') {
+  if (user.id === OWNER_ID) {
     const { isOwnerGodModeActive } = require('./adminPanel');
     if (isOwnerGodModeActive(guildId)) {
       zonkRate = 0; // God Mode ON: 100% selalu menang
@@ -9720,7 +9730,7 @@ async function handleEconomyCommands(message, client) {
   if (!guildId) return false;
 
   // ── CEK BLACKLIST BOT (Kecuali Owner & Administrator) ──
-  const isOwner = author.id === '436554535037698059';
+  const isOwner = author.id === OWNER_ID;
   const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
   if (!isOwner && !isAdmin) {
     const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
@@ -9831,7 +9841,7 @@ async function handleEconomyCommands(message, client) {
 
   if (adminCommands.includes(commandName)) {
     // 1. Check if user is administrator or owner
-    const isOwner = author.id === '436554535037698059';
+    const isOwner = author.id === OWNER_ID;
     const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
     if (!isOwner && !isAdmin) {
       await message.delete().catch(() => { });
@@ -14481,7 +14491,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .ebyus-gacha <normal|easy|super_easy|abuse> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-gacha') {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Owner utama & Administrator server!', flags: 64 });
@@ -14538,7 +14548,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .ebyus-coin <off|3|4|5|6|7|8> [durasi_menit]
     // ═══════════════════════════════════════════════════
     if (commandName === 'ebyus-coin') {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Perintah ini hanya dapat dijalankan oleh Owner utama & Administrator server!', flags: 64 });
@@ -14595,6 +14605,12 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Abyus (.abyus, .admin-abyus, .ebyus, .admin-event, dll)
     // ═══════════════════════════════════════════════════
     if (['ebyus', 'ebyus-panel', 'abyus', 'abyus-panel', 'admin-abyus', 'panel-abyus', 'abyus-admin', 'admin-event', 'panel-event', 'event-panel', 'admin-ebyus', 'panel-ebyus'].includes(commandName)) {
+      const isOwner = message.author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+      }
+
       const subArg = args[0]?.toLowerCase();
       if (subArg === 'status') {
         const getOrCreateEbyusSettings = (gId) => {
@@ -14618,12 +14634,6 @@ async function handleEconomyCommands(message, client) {
         return true;
       }
 
-      const isOwner = message.author.id === '436554535037698059';
-      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-      if (!isOwner && !isAdmin) {
-        return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
-      }
-
       const adminPanel = require('./adminPanel');
       await adminPanel.handleAdminAbyusPanel(message, client);
       return true;
@@ -14633,7 +14643,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Turnamen (.admin-tournament / .panel-tournament / .admin-turnamen / .panel-turnamen)
     // ═══════════════════════════════════════════════════
     if (['admin-tournament', 'panel-tournament', 'tournament-panel', 'admin-turnamen', 'panel-turnamen', 'turnamen-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14648,7 +14658,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Pet (.admin-pet / .panel-pet)
     // ═══════════════════════════════════════════════════
     if (['admin-pet', 'panel-pet', 'pet-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14664,7 +14674,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Bank (.admin-bank / .panel-bank)
     // ═══════════════════════════════════════════════════
     if (['admin-bank', 'panel-bank', 'bank-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14680,7 +14690,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Robbery (.admin-rob / .panel-rob / .admin-robbery)
     // ═══════════════════════════════════════════════════
     if (['admin-rob', 'panel-rob', 'rob-panel', 'admin-robbery', 'panel-robbery', 'robbery-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14696,7 +14706,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Saham (.admin-saham / .panel-saham / .admin-bursa)
     // ═══════════════════════════════════════════════════
     if (['admin-saham', 'panel-saham', 'saham-panel', 'admin-bursa', 'panel-bursa', 'bursa-panel', 'admin-market', 'panel-market', 'market-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14712,7 +14722,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Shop & ToD (.admin-shop / .panel-shop / .shop-panel)
     // ═══════════════════════════════════════════════════
     if (['admin-shop', 'panel-shop', 'shop-panel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14727,7 +14737,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Warga (.admin-warga / .panel-warga)
     // ═══════════════════════════════════════════════════
     if (['admin-warga', 'adminwarga', 'panel-warga', 'panelwarga'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14743,7 +14753,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: Panel Gift & Event (.admin-gift / .panel-gift / .gift-panel)
     // ═══════════════════════════════════════════════════
     if (['admin-gift', 'panel-gift', 'gift-panel', 'giftpanel'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14758,7 +14768,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .stop-abyus / .stop-ebyus (Penghentian Darurat Event Abuse)
     // ═══════════════════════════════════════════════════
     if (['stop-abyus', 'stop-ebyus'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14782,7 +14792,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Khusus Owner: .ow (Membuka Dashboard Admin secara Privat)
     // ═══════════════════════════════════════════════════
     if (commandName === 'ow') {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       if (!isOwner) {
         return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Owner utama.', flags: 64 });
       }
@@ -14812,7 +14822,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .admin-panel / .adminpanel / .panel-admin / .paneladmin (Dashboard Kontrol Utama)
     // ═══════════════════════════════════════════════════
     if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         return message.reply({ content: '❌ Akses Ditolak! Menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
@@ -14846,7 +14856,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .setup-panel-admin / .setup-admin-panel
     // ═══════════════════════════════════════════════════
     if (['setup-admin-panel', 'setup-adminpanel', 'setup-panel-admin', 'setup-paneladmin'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         await message.delete().catch(() => { });
@@ -14947,7 +14957,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah Admin: .setup-tournament-panel / .setup-tournamentpanel
     // ═══════════════════════════════════════════════════
     if (['setup-tournament-panel', 'setup-tournamentpanel', 'setup-panel-tournament', 'setup-paneltournament'].includes(commandName)) {
-      const isOwner = message.author.id === '436554535037698059';
+      const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
         await message.delete().catch(() => { });
