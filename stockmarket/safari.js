@@ -655,7 +655,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
               )
               .setTimestamp();
 
-            await message.reply({ embeds: [adoptEmbed] }).catch(() => {});
+            await replyMsg.reply({ embeds: [adoptEmbed] }).catch(() => {});
             await updatedMsg.delete().catch(() => {});
           } else {
             console.error('Error modal submit:', errModal);
