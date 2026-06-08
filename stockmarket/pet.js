@@ -1815,7 +1815,7 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     const nextCount = currentCount + 1;
     let nextCooldown = 0;
 
-    // Jika mencapai 6 kali bermain, set cooldown 4 jam
+    // Jika mencapai 6 kali bermain, set cooldown 30 menit
     if (nextCount >= 6) {
       nextCooldown = nowUnix + (30 * 60); // 30 menit dari sekarang
     }

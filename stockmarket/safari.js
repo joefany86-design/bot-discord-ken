@@ -120,8 +120,8 @@ function generateWildPet(biomeId) {
     baseEscape = 0.20;
     emoji = '🟣';
   } else if (rarity === 'LEGENDARY') {
-    baseCatch = 0.03;
-    baseEscape = 0.80;
+    baseCatch = 0.05;
+    baseEscape = 0.50;
     emoji = '🟡';
   }
 
@@ -576,7 +576,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
       },
       {
         name: '💰 Rilis & Jual (Dapatkan Imbalan)',
-        value: `Lepaskan pet kembali ke alam bebas untuk menerima bundel hadiah koin, XP pet utama, tiket gacha gratis, dan suplai makanan pet!`,
+        value: `Lepaskan pet kembali ke alam bebas untuk menerima bundel hadiah koin dan XP pet utama! Pet Legendary juga memberikan bonus Soda Energi.`,
         inline: false
       }
     )
@@ -764,7 +764,6 @@ function executeReleaseRewards(userId, guildId, wildPet) {
   const r = wildPet.rarity;
   let coins = 0;
   let xp = 0;
-  let tickets = 0;
   let soda = 0;
   let food = 0;
 
@@ -774,30 +773,17 @@ function executeReleaseRewards(userId, guildId, wildPet) {
   } else if (r === 'RARE') {
     coins = Math.floor(Math.random() * 300) + 500;
     xp = 120;
-    if (Math.random() < 0.50) tickets = 1;
   } else if (r === 'EPIC') {
     coins = Math.floor(Math.random() * 600) + 900;
     xp = 250;
-    tickets = 1;
   } else if (r === 'LEGENDARY') {
     coins = Math.floor(Math.random() * 1500) + 2000;
     xp = 500;
-    tickets = 2;
     soda = 1;
   }
 
   // 1. Tambah Balance Koin
   economy.addBalance(userId, guildId, coins, 'PET_SAFARI_RELEASE');
-
-  // 2. Tambah Tiket Gacha ke user_inventory
-  if (tickets > 0) {
-    const exist = db.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'", [userId, guildId]);
-    if (exist) {
-      db.run("UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = 'TICKET_GACHA'", [tickets, userId, guildId]);
-    } else {
-      db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'TICKET_GACHA', ?)", [userId, guildId, tickets]);
-    }
-  }
 
   // 3. Tambah Soda / Food ke pet_inventory
   if (soda > 0) {
@@ -828,9 +814,9 @@ function executeReleaseRewards(userId, guildId, wildPet) {
     );
   }
 
-  logPetAction(guildId, userId, null, wildPet.name, 'RELEASE_SAFARI', `Merilis pet liar ${wildPet.pet_type} (Rarity: ${r}). Koin: Rp ${coins}, Tiket: ${tickets}, Soda: ${soda}`);
+  logPetAction(guildId, userId, null, wildPet.name, 'RELEASE_SAFARI', `Merilis pet liar ${wildPet.pet_type} (Rarity: ${r}). Koin: Rp ${coins}, Soda: ${soda}`);
 
-  return { coins, xp, tickets, soda, food };
+  return { coins, xp, tickets: 0, soda, food };
 }
 
 module.exports = {
