@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const { db, logPetAction } = require('./database');
+const db = require('./database');
+const { logPetAction } = db;
 const economy = require('./economy');
 const embeds = require('./embeds');
 const pet = require('./pet');
