@@ -210,7 +210,13 @@ async function handlePetSafariCommand(message, client, args) {
     collector.stop();
 
     // Mulai Game Sesi Safari
-    await startSafariEncounter(i, replyMsg, selectedBiomeKey, author, guildId, client);
+    try {
+      await startSafariEncounter(i, replyMsg, selectedBiomeKey, author, guildId, client);
+    } catch (err) {
+      console.error('Error starting Safari encounter:', err);
+      activeSafaris.delete(author.id);
+      await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan koneksi atau pesan telah dihapus.', flags: 64 }).catch(() => {});
+    }
   });
 
   collector.on('end', async (collected, reason) => {
@@ -324,10 +330,26 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   );
 
   let updatedMsg;
-  if (interaction.isButton() && !interaction.replied && !interaction.deferred) {
-    updatedMsg = await interaction.update({ embeds: [mainEmbed], components: [actionRow], fetchReply: true });
-  } else {
-    updatedMsg = await replyMsg.edit({ embeds: [mainEmbed], components: [actionRow] });
+  try {
+    if (interaction.isButton() && !interaction.replied && !interaction.deferred) {
+      updatedMsg = await interaction.update({ embeds: [mainEmbed], components: [actionRow], fetchReply: true });
+    } else {
+      updatedMsg = await replyMsg.edit({ embeds: [mainEmbed], components: [actionRow] });
+    }
+  } catch (updateErr) {
+    console.error('Failed to update Safari screen via interaction, trying replyMsg.edit:', updateErr.message);
+    try {
+      updatedMsg = await replyMsg.edit({ embeds: [mainEmbed], components: [actionRow] });
+    } catch (editErr) {
+      console.error('Failed to edit replyMsg, sending new message:', editErr.message);
+      try {
+        updatedMsg = await replyMsg.channel.send({ content: `<@${author.id}>`, embeds: [mainEmbed], components: [actionRow] });
+      } catch (sendErr) {
+        console.error('Fatal: Failed to send new Safari message:', sendErr.message);
+        activeSafaris.delete(author.id);
+        throw new Error('Tidak dapat mengirim atau memperbarui pesan Safari.');
+      }
+    }
   }
 
   // Buat collector baru untuk giliran ini
