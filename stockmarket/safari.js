@@ -27,9 +27,9 @@ const BIOMES = {
     cost: 150,
     catchMultiplier: 0.85,
     escapeMultiplier: 1.1,
-    species: ['DRAGON', 'PHOENIX', 'BAHAMUT', 'BEHEMOTH', 'FENRIR'],
+    species: ['DRAGON', 'PHOENIX', 'BEHEMOTH'],
     color: 0xE74C3C,
-    description: 'Lembah lava membara dengan suhu ekstrem. Dihuni makhluk berelemen api.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Naga, Phoenix, Bahamut, Behemoth, Fenrir*'
+    description: 'Lembah lava membara dengan suhu ekstrem. Dihuni makhluk berelemen api.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Naga, Phoenix, Behemoth*'
   },
   abyss: {
     id: 'abyss',
@@ -37,9 +37,9 @@ const BIOMES = {
     cost: 150,
     catchMultiplier: 0.85,
     escapeMultiplier: 1.1,
-    species: ['TURTLE', 'LEVIATHAN', 'KRAKEN', 'JORMUNGANDR'],
+    species: ['TURTLE', 'LEVIATHAN'],
     color: 0x3498DB,
-    description: 'Danau purba dalam dengan pusaran air berbahaya. Dihuni makhluk air dan bumi.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Kura-Kura, Leviathan, Kraken, Jörmungandr*'
+    description: 'Danau purba dalam dengan pusaran air berbahaya. Dihuni makhluk air dan bumi.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Kura-Kura, Leviathan*'
   },
   mountain: {
     id: 'mountain',
@@ -47,9 +47,9 @@ const BIOMES = {
     cost: 250,
     catchMultiplier: 0.70,
     escapeMultiplier: 1.25,
-    species: ['BEHEMOTH', 'ARCHDRAGON', 'JORMUNGANDR', 'FENRIR', 'BAHAMUT'],
+    species: ['BEHEMOTH', 'ARCHDRAGON'],
     color: 0x9B59B6,
-    description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Behemoth, Archdragon, Jörmungandr, Fenrir, Bahamut*'
+    description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Behemoth, Archdragon*'
   }
 };
 
@@ -58,7 +58,28 @@ const BIOMES = {
  */
 function generateWildPet(biomeId) {
   const biome = BIOMES[biomeId];
-  const speciesId = biome.species[Math.floor(Math.random() * biome.species.length)];
+  
+  // Hitung bobot untuk masing-masing spesies berdasarkan GACHA_RATES
+  let totalWeight = 0;
+  const weights = biome.species.map(specId => {
+    const specInfo = pet.GACHA_SPECIES[specId];
+    if (!specInfo) return 0;
+    const weight = pet.GACHA_RATES[specInfo.rarity] || 0.65;
+    totalWeight += weight;
+    return weight;
+  });
+
+  // Pilih spesies berdasarkan acakan berbobot
+  let roll = Math.random() * totalWeight;
+  let speciesId = biome.species[0]; // Fallback ke elemen pertama jika gagal
+  for (let i = 0; i < biome.species.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) {
+      speciesId = biome.species[i];
+      break;
+    }
+  }
+
   const speciesInfo = pet.GACHA_SPECIES[speciesId];
   
   let rarity = speciesInfo.rarity;
@@ -81,9 +102,6 @@ function generateWildPet(biomeId) {
   } else if (rarity === 'LEGENDARY') {
     const traits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
     trait = traits[Math.floor(Math.random() * traits.length)];
-  } else if (rarity === 'MYTHIC') {
-    const traits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
-    trait = traits[Math.floor(Math.random() * traits.length)];
   }
 
   const level = Math.floor(Math.random() * 15) + 1;
@@ -103,12 +121,8 @@ function generateWildPet(biomeId) {
     emoji = '🟣';
   } else if (rarity === 'LEGENDARY') {
     baseCatch = 0.05;
-    baseEscape = 0.28;
+    baseEscape = 0.50;
     emoji = '🟡';
-  } else if (rarity === 'MYTHIC') {
-    baseCatch = 0.01;
-    baseEscape = 0.35;
-    emoji = '🔴';
   }
 
   return {
@@ -730,12 +744,6 @@ function executeReleaseRewards(userId, guildId, wildPet) {
     xp = 500;
     tickets = 2;
     soda = 1;
-  } else if (r === 'MYTHIC') {
-    coins = Math.floor(Math.random() * 5000) + 5000;
-    xp = 1000;
-    tickets = 3;
-    soda = 2;
-    food = 1;
   }
 
   // 1. Tambah Balance Koin

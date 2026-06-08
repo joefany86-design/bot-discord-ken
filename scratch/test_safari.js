@@ -62,8 +62,7 @@ try {
     { name: 'Slime Liar', pet_type: 'SLIME', rarity: 'COMMON', element: 'EARTH', emoji: '⚪' },
     { name: 'Dragon Liar', pet_type: 'DRAGON', rarity: 'RARE', element: 'FIRE', emoji: '🟢' },
     { name: 'Phoenix Liar', pet_type: 'PHOENIX', rarity: 'EPIC', element: 'FIRE', emoji: '🟣' },
-    { name: 'Leviathan Liar', pet_type: 'LEVIATHAN', rarity: 'LEGENDARY', element: 'WATER', emoji: '🟡' },
-    { name: 'Fenrir Liar', pet_type: 'FENRIR', rarity: 'MYTHIC', element: 'DRAGON', emoji: '🔴' }
+    { name: 'Leviathan Liar', pet_type: 'LEVIATHAN', rarity: 'LEGENDARY', element: 'WATER', emoji: '🟡' }
   ];
 
   for (const mockPet of mockPets) {
@@ -101,12 +100,6 @@ try {
       xp = 500;
       tickets = 2;
       soda = 1;
-    } else if (r === 'MYTHIC') {
-      coins = 7500;
-      xp = 1000;
-      tickets = 3;
-      soda = 2;
-      food = 1;
     }
 
     // Tambah koin & tiket via DB langsung untuk memverifikasi transaksi
