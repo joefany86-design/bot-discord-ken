@@ -625,7 +625,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
           let chosenName = modalInteraction.fields.getTextInputValue('safari_pet_name_input').trim();
           
           // Sanitasi & validasi nama
-          chosenName = chosenName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 15);
+          chosenName = chosenName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 15).trim();
           if (chosenName.length < 2) {
             chosenName = `Liar ${state.pet.name}`;
           }
