@@ -1,0 +1,64 @@
+🏆 **PANDUAN STRATEGIS MENDALAM: CARA MEMENANGKAN LIGA PvP ADMIN CUP** 🏆
+@everyone
+
+Halo Warga Kosan 1A! 🐾⚔️
+Liga PvP Admin Cup kini terintegrasi penuh dengan **Sistem Gym & Kustomisasi Stat Pet**! Pertarungan dilakukan menggunakan sistem **Simultaneous Button Selection** (kedua pawang menekan tombol bersamaan, lalu ronde diselesaikan berdasarkan urutan kecepatan).
+
+Berikut adalah panduan rinci mekanik dan strategi terbaik untuk mendominasi arena turnamen:
+
+---
+
+### 📊 1. MEMAHAMI STATS PET DARI PUSAT KEBUGARAN (GYM)
+Setiap poin latihan (TP) yang Anda alokasikan di `.pet gym` memiliki pengaruh langsung terhadap jalannya duel:
+
+* 💪 **Strength (STR) - Daya Hancur**:
+  - Setiap 1 poin STR menambahkan **+2 Base ATK**.
+  - Sangat krusial untuk memperbesar damage dasar pet Anda saat meluncurkan serangan biasa maupun ultimate.
+* ❤️ **Vitality (VIT) - Ketebalan Darah**:
+  - Setiap 1 poin VIT menambahkan **+3 Max HP**.
+  - Membantu pet Anda bertahan dari serangan telak musuh.
+* 🛡️ **Defense (DEF) - Ketahanan**:
+  - Setiap 1 poin DEF mengurangi damage yang masuk sebesar **+0.5%**.
+  - Batas maksimal reduksi damage dari stat DEF adalah **50%** (setara 100 poin DEF). Setelah itu, damage dipotong setengah secara pasif!
+* ⚡ **Dexterity (DEX) - Kecepatan & Presisi**:
+  - Menentukan **SPD (Speed)** pertempuran. Pet dengan DEX lebih tinggi akan menyerang duluan!
+  - Setiap 1 poin DEX juga meningkatkan **Crit Rate** sebesar **+0.5%** (menghasilkan 1.5x damage kritis), dengan batas maksimal **35% Crit Rate** (setara 70 DEX).
+
+---
+
+### 🕹️ 2. MEMILIH AKSI DENGAN CERMAT (4 TOMBOL DUEL)
+Setiap ronde, Anda dan lawan harus memilih salah satu dari 4 tombol berikut secara bersamaan:
+
+1. 🗡️ **Serang (Basic Attack)**:
+   - Kalkulasi damage bersih: **ATK Anda vs DEF Musuh**.
+   - Kelebihan: Aman, konsisten, dan memiliki peluang mendaratkan *Critical Strike* (1.5x damage). Tidak memiliki peluang meleset bawaan.
+2. 🔥 **Ultimate (Jurus Pamungkas)**:
+   - Kalkulasi damage: **2x ATK Anda vs DEF Musuh**.
+   - Kelemahan: Memiliki **peluang 30% untuk meleset (miss / 0 DMG)**.
+   - *Strategi*: Gunakan Ultimate di awal pertempuran saat darah musuh masih tebal untuk cicilan HP yang besar. Jangan gunakan Ultimate saat sisa HP musuh tinggal sedikit karena jika meleset, Anda kehilangan kesempatan menang!
+3. 🛡️ **Bertahan (Defend)**:
+   - Efek: **Memotong 50% damage** dari seluruh serangan musuh pada ronde tersebut.
+   - *Strategi*: Jika Anda menebak lawan akan meluncurkan *Ultimate* di ronde ini, pasang kuda-kuda *Bertahan*. Ini akan mereduksi damage Ultimate mereka menjadi sangat kecil, sementara mereka tetap memikul risiko meleset 30%.
+4. 🏳️ **Menyerah (Forfeit)**:
+   - Mengakibatkan kekalahan instan. Gunakan hanya jika pet Anda sudah tidak memiliki peluang menang untuk mempersingkat waktu.
+
+---
+
+### 🧠 3. ALUR DUEL SIMULTAN & TRIK SPD
+* **Sistem Eksekusi**: Meskipun tombol ditekan bersamaan, bot akan memproses aksi secara berurutan sesuai **SPD (DEX)** tertinggi.
+* **Trik "Speed-Blitz"**: Jika pet Anda memiliki DEX lebih tinggi dari musuh, dan darah musuh tinggal sedikit, segera pilih **🗡️ Serang** biasa. Karena Anda bergerak lebih cepat, pet Anda akan membunuh musuh terlebih dahulu, sehingga aksi musuh di ronde tersebut otomatis dibatalkan!
+
+---
+
+### 🧪 4. REKOMENDASI FORMULA BUILD GYM & SINERGI
+
+* 🐉 **Dragon / Cat (Tipe DPS Kecepatan Tinggi)**:
+  - *Saran Stat*: **STR 70% | DEX 30%** (VIT & DEF secukupnya).
+  - *Sinergi*: Trait **Warrior** (+15% ATK) + Aksesoris **Pedang Mainan** (`SWORD_TOY` / +15% DMG PvP).
+  - *Gaya Main*: Hancurkan musuh dengan cepat sebelum mereka sempat bergerak atau bertahan.
+* 🧱 **Golem / Slime (Tipe Tanker Alot)**:
+  - *Saran Stat*: **DEF hingga 100 poin (Maks 50% Reduksi) | VIT 50% | STR 50%**.
+  - *Sinergi*: Trait **Sturdy** (-15% DMG taken) + Aksesoris **Tameng Mainan** (`SHIELD_TOY` / -15% DMG taken).
+  - *Gaya Main*: Biarkan musuh kelelahan menyerang pertahanan alot Anda, lalu balikkan keadaan saat HP mereka menipis.
+
+Persiapkan pet kesayangan Anda, atur statnya di `.pet gym`, dan jadilah juara Liga Admin Cup! 🏆👑

@@ -7,6 +7,7 @@ const embeds = require('./embeds');
 const scheduler = require('./scheduler');
 const bank = require('./bank');
 const pet = require('./pet');
+const safari = require('./safari');
 const robbery = require('./robbery');
 const bm = require('./blackmarket');
 const garden = require('./garden');
@@ -4825,6 +4826,12 @@ async function handleKosUpgradeCommand(message, client) {
 async function handlePetCommand(message, client, args) {
   const { guildId, author, guild } = message;
   const subCommand = args[0] ? args[0].toLowerCase() : null;
+
+  // ── SUB-PERINTAH: SAFARI / CATCH ──
+  if (subCommand === 'safari' || subCommand === 'catch' || subCommand === 'tangkap') {
+    await safari.handlePetSafariCommand(message, client, args);
+    return;
+  }
 
   // ── SUB-PERINTAH: MISI / QUEST ──
   if (subCommand === 'misi' || subCommand === 'quest') {
@@ -9821,6 +9828,11 @@ async function handleEconomyCommands(message, client) {
 
   if (commandName === 'pet') {
     await handlePetCommand(message, client, args);
+    return true;
+  }
+
+  if (['safari', 'catch', 'tangkap'].includes(commandName)) {
+    await safari.handlePetSafariCommand(message, client, args);
     return true;
   }
 

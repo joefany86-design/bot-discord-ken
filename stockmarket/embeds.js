@@ -389,6 +389,7 @@ function getPetImage(pet) {
 module.exports = {
   COLORS,
   formatCurrency,
+  getPetImage,
 
   // 1. Embed Saldo / Profile (Portrait UI — Full Description)
   profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null, portfolioItems = [], extraData = {}, activeTab = 'dashboard') {

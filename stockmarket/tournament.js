@@ -1,13 +1,13 @@
 const db = require('./database');
 const pet = require('./pet');
 const embeds = require('./embeds');
-const { 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  EmbedBuilder, 
-  ChannelType, 
-  PermissionFlagsBits 
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  ChannelType,
+  PermissionFlagsBits
 } = require('discord.js');
 
 // Helper to resolve element-based skill names
@@ -243,9 +243,9 @@ async function updateRegistrationEmbed(guildId, client) {
   try {
     const msg = await channel.messages.fetch(event.announce_message_id).catch(() => null);
     if (msg) {
-      await msg.edit({ embeds: [announceEmbed] }).catch(() => {});
+      await msg.edit({ embeds: [announceEmbed] }).catch(() => { });
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 /**
@@ -373,7 +373,7 @@ async function executeNextMatch(guildId, client) {
       [thread.id, match.match_id]
     );
 
-    await thread.send(`⚔️ **Pertandingan Dimulai!** <@${match.player_1_id}> vs <@${match.player_2_id}>\nSilakan bertarung di sini!`).catch(() => {});
+    await thread.send(`⚔️ **Pertandingan Dimulai!** <@${match.player_1_id}> vs <@${match.player_2_id}>\nSilakan bertarung di sini!`).catch(() => { });
 
     // Kirim pengumuman di channel utama turnamen tanpa ping spam
     if (thread.id !== channel.id) {
@@ -391,11 +391,11 @@ async function executeNextMatch(guildId, client) {
         )
         .setFooter({ text: `Match #${match.match_id} • Ronde ${event.current_round}` })
         .setTimestamp();
-      await channel.send({ embeds: [matchAnnounce] }).catch(() => {});
+      await channel.send({ embeds: [matchAnnounce] }).catch(() => { });
     }
 
     // Update panel admin
-    updateAdminPanel(guildId, client).catch(() => {});
+    updateAdminPanel(guildId, client).catch(() => { });
 
     // Inisialisasi status tempur di memori
     client.activeCupMatches = client.activeCupMatches || new Map();
@@ -684,7 +684,7 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
   if (actionType === 'surr') {
     match.logs.push(`🏳️ **${actor.pet_name}** menyerah dari pertandingan!`);
     if (interaction) {
-      await interaction.reply({ content: `🏳️ Anda menyerah! Pertandingan selesai.`, flags: 64 }).catch(() => {});
+      await interaction.reply({ content: `🏳️ Anda menyerah! Pertandingan selesai.`, flags: 64 }).catch(() => { });
     }
     await endMatch(matchId, opponent.user_id, 'forfeit', client);
     return;
@@ -705,7 +705,7 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
 
     // Inform the user ephemerally
     if (interaction) {
-      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Memproses giliran...`, flags: 64 }).catch(() => {});
+      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Memproses giliran...`, flags: 64 }).catch(() => { });
     }
 
     // Resolve turn
@@ -713,7 +713,7 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
   } else {
     // Inform the user ephemerally
     if (interaction) {
-      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Menunggu lawan menentukan tindakan...`, flags: 64 }).catch(() => {});
+      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Menunggu lawan menentukan tindakan...`, flags: 64 }).catch(() => { });
     }
 
     // Update battle embed status to SIAP
@@ -823,7 +823,7 @@ function executeSingleAction(attacker, defender, actionType, match) {
   // Defender buffs
   let defMultiplier = 1.0;
   if (pet.petHasTrait(defender, 'STURDY')) defMultiplier *= 0.85; // Sturdy: -15% damage
-  
+
   // Dodge & Crit
   const baseDodgeChance = Math.min(0.35, (defender.stat_dex || 0) * 0.005);
   const dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
@@ -894,7 +894,7 @@ async function endMatch(matchId, winnerId, reason, client) {
     if (threadChannel) {
       const prevPing = await threadChannel.messages.fetch(match.lastPingMessageId).catch(() => null);
       if (prevPing) {
-        await prevPing.delete().catch(() => {});
+        await prevPing.delete().catch(() => { });
       }
     }
   }
@@ -931,10 +931,10 @@ async function endMatch(matchId, winnerId, reason, client) {
 
     // Rename thread, lock dan archive agar bersih
     if (threadChannel.isThread) {
-      await threadChannel.setName(`[SELESAI] Match ${match.matchId} - Winner: ${winner.pet_name}`).catch(() => {});
+      await threadChannel.setName(`[SELESAI] Match ${match.matchId} - Winner: ${winner.pet_name}`).catch(() => { });
       if (threadChannel.setLocked) {
-        await threadChannel.setLocked(true).catch(() => {});
-        await threadChannel.setArchived(true).catch(() => {});
+        await threadChannel.setLocked(true).catch(() => { });
+        await threadChannel.setArchived(true).catch(() => { });
       }
     }
   }
@@ -959,12 +959,12 @@ async function endMatch(matchId, winnerId, reason, client) {
           { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
         )
         .setTimestamp();
-      await channel.send({ embeds: [updateEmbed] }).catch(() => {});
+      await channel.send({ embeds: [updateEmbed] }).catch(() => { });
     }
   }
 
   // Update panel admin
-  updateAdminPanel(match.guildId, client).catch(() => {});
+  updateAdminPanel(match.guildId, client).catch(() => { });
 
   // Hapus dari map memori
   client.activeCupMatches.delete(matchId);
@@ -1021,13 +1021,13 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
     if (announceChanId) {
       const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
       if (announceChan && typeof announceChan.send === 'function') {
-        await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => {});
+        await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => { });
       }
     }
     if (catalogChanId) {
       const catalogChan = guild.channels.cache.get(catalogChanId) || await guild.channels.fetch(catalogChanId).catch(() => null);
       if (catalogChan && typeof catalogChan.send === 'function') {
-        await catalogChan.send({ embeds: [celebrationEmbed] }).catch(() => {});
+        await catalogChan.send({ embeds: [celebrationEmbed] }).catch(() => { });
       }
     }
   }
@@ -1043,7 +1043,7 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       (fourthPlaceId ? `• Juara 4: <@${fourthPlaceId}> (Pet: **${fourthPet.pet_name}**)\n` : '') +
       (event.reward_desc ? `• Hadiah Terkonfigurasi: **${event.reward_desc}**\n` : '') +
       `Silakan berikan koin, item, role, atau pet kustom kepada mereka sebagai hadiah!`
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   // 3. Perbarui panel admin dengan status selesai
@@ -1067,7 +1067,7 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
           )
           .setFooter({ text: 'League Status: Completed' })
           .setTimestamp();
-        await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => {});
+        await adminMsg.edit({ embeds: [completedEmbed], components: [] }).catch(() => { });
       }
     }
   }
@@ -1105,9 +1105,9 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
 function formatLogToAnsi(log) {
   // Bersihkan penanda bold markdown asterisks
   let cleanLog = log.replace(/\*\*/g, '');
-  
+
   let ansiColor = '\u001b[0m'; // Reset (White/Gray)
-  
+
   if (cleanLog.includes('CRITICAL STRIKE') || cleanLog.includes('🚨') || cleanLog.includes('FORFEIT') || cleanLog.includes('AFK')) {
     ansiColor = '\u001b[1;31m'; // Bold Red
   } else if (cleanLog.includes('⚔️') || cleanLog.includes('DMG') || cleanLog.includes('🔥') || cleanLog.includes('TERBAKAR') || cleanLog.includes('meleset') || cleanLog.includes('lambat bertindak')) {
@@ -1123,7 +1123,7 @@ function formatLogToAnsi(log) {
   } else if (cleanLog.includes('dimulai')) {
     ansiColor = '\u001b[1;34m'; // Bold Blue
   }
-  
+
   return `${ansiColor}${cleanLog}\u001b[0m`;
 }
 
@@ -1161,7 +1161,7 @@ function getBattleEmbedData(match) {
     .addFields(
       {
         name: `🔴 Challenger: ${p1.pet_name} (Lv.${p1.level})`,
-        value: 
+        value:
           `👤 Pawang: <@${p1.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p1.hp, p1.maxHP)}]\` \`${p1.hp}/${p1.maxHP}\`\n` +
           `🔰 Status: ${p1.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p1Status}`,
@@ -1169,7 +1169,7 @@ function getBattleEmbedData(match) {
       },
       {
         name: `🔵 Opponent: ${p2.pet_name} (Lv.${p2.level})`,
-        value: 
+        value:
           `👤 Pawang: <@${p2.user_id}>\n` +
           `❤️ HP: \`[${renderHPBar(p2.hp, p2.maxHP)}]\` \`${p2.hp}/${p2.maxHP}\`\n` +
           `🔰 Status: ${p2.isDefending ? '🛡️ Bertahan' : 'Normal'} | ⌛ Aksi: ${p2Status}`,
@@ -1225,7 +1225,7 @@ async function updateBattleEmbed(matchId, client) {
       const msg = await threadChannel.messages.fetch(match.messageId).catch(() => null);
       if (msg) {
         const data = getBattleEmbedData(match);
-        await msg.edit(data).catch(() => {});
+        await msg.edit(data).catch(() => { });
       }
     }
 
@@ -1233,7 +1233,7 @@ async function updateBattleEmbed(matchId, client) {
     if (match.lastPingMessageId) {
       const prevPing = await threadChannel.messages.fetch(match.lastPingMessageId).catch(() => null);
       if (prevPing) {
-        await prevPing.delete().catch(() => {});
+        await prevPing.delete().catch(() => { });
       }
       match.lastPingMessageId = null;
     }
@@ -1258,10 +1258,10 @@ async function updateBattleEmbed(matchId, client) {
  */
 async function createTournamentChannel(guild) {
   const { ChannelType, PermissionFlagsBits } = require('discord.js');
-  
+
   const TOURNAMENT_CHANNEL_ID = '1512903573720273096';
   let channel = guild.channels.cache.get(TOURNAMENT_CHANNEL_ID) || await guild.channels.fetch(TOURNAMENT_CHANNEL_ID).catch(() => null);
-  
+
   if (channel) {
     // Bersihkan pesan di channel ini tanpa menghapusnya agar ID tidak berubah
     try {
@@ -1451,7 +1451,7 @@ function getMatchQueueString(guildId) {
     'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\'',
     [guildId]
   );
-  
+
   const pendingMatches = db.all(
     'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'PENDING\' ORDER BY round_number, match_id',
     [guildId]
@@ -1612,7 +1612,7 @@ async function updateAdminPanel(guildId, client) {
   if (!msg) return;
 
   const data = getAdminPanelData(guildId, client);
-  await msg.edit(data).catch(() => {});
+  await msg.edit(data).catch(() => { });
 }
 
 /**
@@ -1622,7 +1622,7 @@ async function pauseTournament(guildId, client) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
   if (!event) throw new Error('Tidak ada turnamen aktif.');
   db.run('UPDATE tournament_events SET is_paused = 1 WHERE guild_id = ?', [guildId]);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 }
 
 /**
@@ -1632,7 +1632,7 @@ async function resumeTournament(guildId, client) {
   const event = db.get('SELECT * FROM tournament_events WHERE guild_id = ?', [guildId]);
   if (!event) throw new Error('Tidak ada turnamen aktif.');
   db.run('UPDATE tournament_events SET is_paused = 0 WHERE guild_id = ?', [guildId]);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 
   if (event.status === 'PLAYING') {
     const activeMatch = db.get('SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\'', [guildId]);
@@ -1657,11 +1657,11 @@ async function dqPlayer(guildId, playerId, client) {
 
   const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
-    await threadChannel.send(`⚠️ <@${playerId}> **telah didiskualifikasi oleh Admin!**`).catch(() => {});
+    await threadChannel.send(`⚠️ <@${playerId}> **telah didiskualifikasi oleh Admin!**`).catch(() => { });
   }
 
   await endMatch(match.match_id, winnerId, 'defeat', client);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 }
 
 /**
@@ -1680,11 +1680,11 @@ async function forceWinPlayer(guildId, playerId, client) {
 
   const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
-    await threadChannel.send(`⚠️ Admin memberikan **kemenangan paksa** kepada <@${playerId}>!`).catch(() => {});
+    await threadChannel.send(`⚠️ Admin memberikan **kemenangan paksa** kepada <@${playerId}>!`).catch(() => { });
   }
 
   await endMatch(match.match_id, playerId, 'defeat', client);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 }
 
 /**
@@ -1714,7 +1714,7 @@ async function rerollMatch(guildId, client) {
 
   match.turnCount = 1;
   match.logs = [`🔄 Pertandingan di-reset oleh Admin! Memulai ulang duel antara **${p1Pet.pet_name}** dan **${p2Pet.pet_name}**.`];
-  
+
   match.player1.hp = maxHp1;
   match.player1.maxHP = maxHp1;
   match.player1.timeouts = 0;
@@ -1731,12 +1731,12 @@ async function rerollMatch(guildId, client) {
 
   const threadChannel = client.channels.cache.get(match.threadId) || await client.channels.fetch(match.threadId).catch(() => null);
   if (threadChannel) {
-    await threadChannel.send(`🔄 **Pertandingan di-reset oleh Admin!** Memulai ulang dari awal...`).catch(() => {});
+    await threadChannel.send(`🔄 **Pertandingan di-reset oleh Admin!** Memulai ulang dari awal...`).catch(() => { });
   }
 
   await updateBattleEmbed(matchId, client);
   startTurnTimer(matchId, client);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 }
 
 /**
@@ -1760,9 +1760,9 @@ async function extendRegistration(guildId, mins, client) {
   const newTimer = setTimeout(() => {
     closeRegistrationAndGenerateBracket(guildId, client);
   }, Math.max(0, remainingTimeMs));
-  
+
   client.tournamentTimers.set(guildId, newTimer);
-  await updateAdminPanel(guildId, client).catch(() => {});
+  await updateAdminPanel(guildId, client).catch(() => { });
 }
 
 /**
@@ -1807,7 +1807,7 @@ function getLeagueStandingsString(guildId) {
   table += '┌────┬──────────────┬────┬────┬────┬─────┐\n';
   table += '│ Pos│ Pet (Pawang) │ M  │ S  │ K  │ Pts │\n';
   table += '├────┼──────────────┼────┼────┼────┼─────┤\n';
-  
+
   standings.forEach((s, idx) => {
     const pos = String(idx + 1).padStart(2, ' ');
     let name = s.petName;
@@ -1819,7 +1819,7 @@ function getLeagueStandingsString(guildId) {
     const pts = String(s.points).padStart(3, ' ');
     table += `│ ${pos} │ ${nameCol} │ ${m} │ ${w} │ ${l} │ ${pts} │\n`;
   });
-  
+
   table += '└────┴──────────────┴────┴────┴────┴─────┘';
   return table;
 }
@@ -1832,11 +1832,11 @@ function generateRoundRobinMatches(players) {
   if (list.length % 2 !== 0) {
     list.push(null); // merepresentasikan BYE jika ganjil
   }
-  
+
   const numPlayers = list.length;
   const numRounds = numPlayers - 1;
   const matches = [];
-  
+
   for (let round = 1; round <= numRounds; round++) {
     for (let i = 0; i < numPlayers / 2; i++) {
       const p1 = list[i];
