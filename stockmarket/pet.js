@@ -1209,9 +1209,9 @@ function sendToWork(userId, guildId, member = null) {
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
     const isGod = isGodPet(pet);
-    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 4);
-    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 4);
-    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 3);
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 20);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 20);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 15);
 
     db.run(
       `UPDATE user_pets 
@@ -1360,10 +1360,10 @@ function sendToHunt(userId, guildId, member = null) {
     const maxHP = getMaxHP(pet);
     let { newXp, newLevel, levelUp } = addXp(pet, xpGained, maxHP);
 
-    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 6);
-    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 6);
-    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 4);
-    const newHealth = isGod ? 100 : Math.max(1, pet.health - 3);
+    const newHunger = isGod ? 100 : Math.max(0, pet.hunger - 30);
+    const newThirst = isGod ? 100 : Math.max(0, pet.thirst - 30);
+    const newHappiness = isGod ? 100 : Math.max(0, pet.happiness - 20);
+    const newHealth = isGod ? 100 : Math.max(1, pet.health - 15);
 
     db.run(
       `UPDATE user_pets 

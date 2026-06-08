@@ -33,6 +33,11 @@ function getUltimateName(element) {
   return ults[el] || '💥 Ultimate Strike';
 }
 
+function getTournamentMaxHP(pPet) {
+  const base = pet.getMaxHP(pPet);
+  return base + (pPet.stat_vit || 0) * 5; // Tambahan +5 HP per VIT khusus Turnamen
+}
+
 /**
  * Memulai event turnamen baru di database (Admin-only).
  */
@@ -400,8 +405,8 @@ async function executeNextMatch(guildId, client) {
     // Inisialisasi status tempur di memori
     client.activeCupMatches = client.activeCupMatches || new Map();
 
-    const maxHp1 = pet.getMaxHP(p1Pet);
-    const maxHp2 = pet.getMaxHP(p2Pet);
+    const maxHp1 = getTournamentMaxHP(p1Pet);
+    const maxHp2 = getTournamentMaxHP(p2Pet);
 
     // Siapkan object tempur
     const combatData = {
@@ -425,7 +430,7 @@ async function executeNextMatch(guildId, client) {
         stat_dex: p1Pet.stat_dex || 0,
         maxHP: maxHp1,
         hp: maxHp1,
-        energy: 30,
+        energy: 0,
         timeouts: 0,
         elemCooldown: 0,
         hasUsedUltimate: false,
@@ -448,7 +453,7 @@ async function executeNextMatch(guildId, client) {
         stat_dex: p2Pet.stat_dex || 0,
         maxHP: maxHp2,
         hp: maxHp2,
-        energy: 30,
+        energy: 0,
         timeouts: 0,
         elemCooldown: 0,
         hasUsedUltimate: false,
@@ -690,6 +695,18 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
     return;
   }
 
+  if (actionType === 'ult') {
+    if (match.turnCount === 1) {
+      throw new Error('❌ Jurus Ultimate belum siap pada Turn 1!');
+    }
+    if (actor.energy < 60) {
+      throw new Error(`❌ SP tidak cukup! Butuh minimal 60 SP untuk meluncurkan Jurus Ultimate (SP Anda: ${actor.energy}/100).`);
+    }
+    if (actor.hasUsedUltimate) {
+      throw new Error('❌ Peliharaan Anda sudah menggunakan Jurus Ultimate di pertandingan ini!');
+    }
+  }
+
   if (actor.chosenAction) {
     throw new Error('Anda sudah menentukan pilihan untuk giliran ini! Menunggu lawan...');
   }
@@ -738,11 +755,21 @@ async function resolveSimultaneousTurn(matchId, client) {
   // 2. Terapkan pertahanan terlebih dahulu agar berlaku untuk turn ini
   if (p1.chosenAction === 'def') {
     p1.isDefending = true;
-    match.logs.push(`🛡️ **${p1.pet_name}** mengambil posisi bertahan! (Mengurangi damage musuh 50% di giliran berikutnya)`);
+    p1.energy = Math.min(100, p1.energy + 35);
+    match.logs.push(`🛡️ **${p1.pet_name}** mengambil posisi bertahan! (+35 SP, Mengurangi damage musuh 50% di giliran ini)`);
   }
   if (p2.chosenAction === 'def') {
     p2.isDefending = true;
-    match.logs.push(`🛡️ **${p2.pet_name}** mengambil posisi bertahan! (Mengurangi damage musuh 50% di giliran berikutnya)`);
+    p2.energy = Math.min(100, p2.energy + 35);
+    match.logs.push(`🛡️ **${p2.pet_name}** mengambil posisi bertahan! (+35 SP, Mengurangi damage musuh 50% di giliran ini)`);
+  }
+
+  // Tambah SP untuk Serang Biasa
+  if (p1.chosenAction === 'atk') {
+    p1.energy = Math.min(100, p1.energy + 20);
+  }
+  if (p2.chosenAction === 'atk') {
+    p2.energy = Math.min(100, p2.energy + 20);
   }
 
   // 3. Tentukan urutan aksi menyerang berdasarkan DEX (SPD)
@@ -767,6 +794,14 @@ async function resolveSimultaneousTurn(matchId, client) {
   if (second.hp > 0 && ['atk', 'ult'].includes(second.chosenAction)) {
     executeSingleAction(second, first, second.chosenAction, match);
   }
+
+  // Terapkan damage Burn di akhir ronde (setelah aksi selesai)
+  applyBurnDamage(p1, match);
+  applyBurnDamage(p2, match);
+
+  // Kurangi durasi perisai (Shield) di akhir ronde
+  if (p1.shieldTurns > 0) p1.shieldTurns--;
+  if (p2.shieldTurns > 0) p2.shieldTurns--;
 
   // 4. Cek kekalahan instan setelah aksi bertarung
   if (p1.hp <= 0 && p2.hp <= 0) {
@@ -807,12 +842,14 @@ function executeSingleAction(attacker, defender, actionType, match) {
   // ── ATK & DEF VALUES ──
   const attackerSpecies = pet.GACHA_SPECIES[attacker.pet_type];
   const attackerSpecBaseAtk = attackerSpecies ? (attackerSpecies.baseAtk || 10) : 10;
-  let attackerATK = attackerSpecBaseAtk + attacker.level * 5 + (attacker.stat_str || 0) * 2;
+  // Dampak level dikurangi (multiplier 1), STR dari Gym ditingkatkan menjadi 6x
+  let attackerATK = attackerSpecBaseAtk + attacker.level * 1 + (attacker.stat_str || 0) * 6;
   if (pet.isGodPet(attacker)) attackerATK *= 3; // Immortal: 3x ATK
 
   const defenderSpecies = pet.GACHA_SPECIES[defender.pet_type];
   const defenderSpecBaseDef = defenderSpecies ? (defenderSpecies.baseDef || 0) : 0;
-  let defenderDEF = defenderSpecBaseDef + (defender.stat_def || 0) * 0.5;
+  // DEF dari Gym ditingkatkan menjadi 2.0x
+  let defenderDEF = defenderSpecBaseDef + (defender.stat_def || 0) * 2.0;
   if (pet.isGodPet(defender)) defenderDEF += 50;
 
   // Attacker buffs (accessories/traits)
@@ -825,9 +862,14 @@ function executeSingleAction(attacker, defender, actionType, match) {
   if (pet.petHasTrait(defender, 'STURDY')) defMultiplier *= 0.85; // Sturdy: -15% damage
 
   // Dodge & Crit
-  const baseDodgeChance = Math.min(0.35, (defender.stat_dex || 0) * 0.005);
+  // DEX dari Gym ditingkatkan dampaknya menjadi 0.8% per DEX, maks 40%
+  const baseDodgeChance = Math.min(0.40, (defender.stat_dex || 0) * 0.008);
   const dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
-  const critChance = Math.min(0.35, (attacker.stat_dex || 0) * 0.005);
+  let critChance = Math.min(0.35, (attacker.stat_dex || 0) * 0.005);
+  
+  if (actionType === 'ult' && (attacker.gacha_element || '').toUpperCase() === 'DRAGON') {
+    critChance = Math.min(0.55, critChance + 0.20); // Tambah 20% peluang crit untuk Naga
+  }
 
   if (actionType === 'atk') {
     isDodged = Math.random() < dodgeChance;
@@ -842,6 +884,14 @@ function executeSingleAction(attacker, defender, actionType, match) {
       if (defFactor > 0.8) defFactor = 0.8;
       damage = Math.round(rawDmg * (1 - defFactor) * defMultiplier);
       if (defender.isDefending) damage = Math.round(damage * 0.5);
+
+      // Terapkan reduksi tameng (Shield)
+      if (defender.shieldTurns > 0) {
+        const shieldReduced = Math.round(damage * 0.40);
+        damage = Math.max(1, damage - shieldReduced);
+        match.logs.push(`🛡️ **[SHIELD]** Zirah Gunung Purba melindungi **${defender.pet_name}** dan menyerap **${shieldReduced} DMG**!`);
+      }
+
       if (damage < 1) damage = 1;
 
       defender.hp = Math.max(0, defender.hp - damage);
@@ -850,28 +900,73 @@ function executeSingleAction(attacker, defender, actionType, match) {
     }
 
   } else if (actionType === 'ult') {
+    // Kurangi SP dan catat penggunaan
+    attacker.energy = Math.max(0, attacker.energy - 60);
+    attacker.hasUsedUltimate = true;
+
     const isMissed = Math.random() < 0.30;
     if (isMissed) {
       logMsg = `💨 **${attacker.pet_name}** melancarkan Jurus Ultimate, tetapi meleset!`;
     } else {
       isCrit = Math.random() < critChance;
-      let rawDmg = Math.round((attackerATK * 2) * atkMultiplier * (0.8 + Math.random() * 0.4));
+      
+      // Naga memiliki damage multiplier 2.2x, lainnya 2.0x
+      const mult = (attacker.gacha_element || '').toUpperCase() === 'DRAGON' ? 2.2 : 2.0;
+      let rawDmg = Math.round((attackerATK * mult) * atkMultiplier * (0.8 + Math.random() * 0.4));
       if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
 
       let defFactor = defenderDEF / 150;
       if (defFactor > 0.8) defFactor = 0.8;
       damage = Math.round(rawDmg * (1 - defFactor) * defMultiplier);
       if (defender.isDefending) damage = Math.round(damage * 0.5);
+
+      // Terapkan reduksi tameng (Shield)
+      if (defender.shieldTurns > 0) {
+        const shieldReduced = Math.round(damage * 0.40);
+        damage = Math.max(1, damage - shieldReduced);
+        match.logs.push(`🛡️ **[SHIELD]** Zirah Gunung Purba melindungi **${defender.pet_name}** dan menyerap **${shieldReduced} DMG**!`);
+      }
+
       if (damage < 1) damage = 1;
 
       defender.hp = Math.max(0, defender.hp - damage);
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-      logMsg = `🔥 **${attacker.pet_name}** mengeluarkan Jurus Ultimate kepada **${defender.pet_name}** sebesar **${damage} DMG**!${critText}`;
+      
+      const element = (attacker.gacha_element || 'EARTH').toUpperCase();
+      const ultName = getUltimateName(element);
+      logMsg = `${element === 'FIRE' ? '🔥' : element === 'WATER' ? '🌊' : element === 'DRAGON' ? '🐉' : '🧱'} **${attacker.pet_name}** mengeluarkan Jurus Ultimate **${ultName}** kepada **${defender.pet_name}** sebesar **${damage} DMG**!${critText}`;
+      
+      // Efek Elemental Tambahan (peluang 40%):
+      if (Math.random() < 0.40) {
+        if (element === 'FIRE') {
+          defender.burnTurns = 2;
+          logMsg += ` dan membakar tubuh lawan! (Burn 2 Turn)`;
+        } else if (element === 'WATER') {
+          const healAmount = Math.round(attacker.maxHP * 0.25);
+          attacker.hp = Math.min(attacker.maxHP, attacker.hp + healAmount);
+          logMsg += ` dan memulihkan dirinya sebesar **${healAmount} HP**! (Heal)`;
+        } else if (element === 'EARTH') {
+          attacker.shieldTurns = 2;
+          logMsg += ` dan menciptakan perisai pelindung! (Shield 2 Turn)`;
+        }
+      }
     }
   }
 
   if (logMsg) {
     match.logs.push(logMsg);
+  }
+}
+
+/**
+ * Terapkan damage terbakar (Burn) di akhir turn.
+ */
+function applyBurnDamage(player, match) {
+  if (player.hp > 0 && player.burnTurns > 0) {
+    const burnDmg = Math.round(player.maxHP * 0.08); // 8% dari maks HP per turn
+    player.hp = Math.max(0, player.hp - burnDmg);
+    player.burnTurns--;
+    match.logs.push(`🔥 **[BURN]** **${player.pet_name}** terbakar hebat dan terkena **${burnDmg} DMG**! (Sisa efek: ${player.burnTurns} turn)`);
   }
 }
 
@@ -1709,22 +1804,30 @@ async function rerollMatch(guildId, client) {
   const p1Pet = getRegisteredPet(matchRow.player_1_id, guildId);
   const p2Pet = getRegisteredPet(matchRow.player_2_id, guildId);
 
-  const maxHp1 = pet.getMaxHP(p1Pet);
-  const maxHp2 = pet.getMaxHP(p2Pet);
+  const maxHp1 = getTournamentMaxHP(p1Pet);
+  const maxHp2 = getTournamentMaxHP(p2Pet);
 
   match.turnCount = 1;
   match.logs = [`🔄 Pertandingan di-reset oleh Admin! Memulai ulang duel antara **${p1Pet.pet_name}** dan **${p2Pet.pet_name}**.`];
 
   match.player1.hp = maxHp1;
   match.player1.maxHP = maxHp1;
+  match.player1.energy = 0;
   match.player1.timeouts = 0;
   match.player1.isDefending = false;
+  match.player1.hasUsedUltimate = false;
+  match.player1.burnTurns = 0;
+  match.player1.shieldTurns = 0;
   match.player1.chosenAction = null;
 
   match.player2.hp = maxHp2;
   match.player2.maxHP = maxHp2;
+  match.player2.energy = 0;
   match.player2.timeouts = 0;
   match.player2.isDefending = false;
+  match.player2.hasUsedUltimate = false;
+  match.player2.burnTurns = 0;
+  match.player2.shieldTurns = 0;
   match.player2.chosenAction = null;
 
   match.turnEndUnix = Math.floor(Date.now() / 1000) + 45;
@@ -1866,20 +1969,20 @@ async function initTournamentRecovery(client) {
   try {
     const events = db.all("SELECT * FROM tournament_events WHERE status != 'COMPLETED'");
     console.log(`[Tournament] Menemukan ${events.length} turnamen aktif untuk dipulihkan.`);
-    
+
     client.tournamentTimers = client.tournamentTimers || new Map();
     client.activeCupMatches = client.activeCupMatches || new Map();
 
     for (const event of events) {
       const guildId = event.guild_id;
-      
+
       // Jika statusnya REGISTERING, pasang kembali timer pendaftaran atau langsung tutup jika sudah lewat waktu
       if (event.status === 'REGISTERING') {
         const now = Math.floor(Date.now() / 1000);
         const remainingTimeMs = (event.registration_end_at - now) * 1000;
-        
+
         if (remainingTimeMs > 0) {
-          console.log(`[Tournament] Memulihkan timer pendaftaran untuk guild ${guildId}. Sisa waktu: ${Math.round(remainingTimeMs/1000)} detik.`);
+          console.log(`[Tournament] Memulihkan timer pendaftaran untuk guild ${guildId}. Sisa waktu: ${Math.round(remainingTimeMs / 1000)} detik.`);
           const timer = setTimeout(() => {
             closeRegistrationAndGenerateBracket(guildId, client);
           }, remainingTimeMs);
@@ -1894,20 +1997,20 @@ async function initTournamentRecovery(client) {
           }, 5000);
         }
       }
-      
+
       // Jika statusnya PLAYING, pulihkan duel/laga yang aktif
       if (event.status === 'PLAYING') {
         if (event.is_paused === 1) {
           console.log(`[Tournament] Turnamen di guild ${guildId} sedang di-pause. Recovery dilewati.`);
           continue;
         }
-        
+
         // Cari apakah ada match yang berstatus 'ACTIVE' di database
         const activeMatch = db.get(
           "SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = 'ACTIVE' LIMIT 1",
           [guildId]
         );
-        
+
         if (activeMatch) {
           console.log(`[Tournament] Menemukan match ACTIVE #${activeMatch.match_id} di database. Mengembalikan statusnya ke PENDING untuk dimainkan ulang...`);
           db.run(
@@ -1915,7 +2018,7 @@ async function initTournamentRecovery(client) {
             [activeMatch.match_id]
           );
         }
-        
+
         // Mulai jalankan pertandingan berikutnya
         console.log(`[Tournament] Menjalankan executeNextMatch untuk memulihkan antrean laga di guild ${guildId}...`);
         setTimeout(() => {

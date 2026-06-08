@@ -169,13 +169,68 @@ async function runTests() {
 
   // Simulasikan Ronde 1
   console.log('\n--- Ronde 1 (P1 uses Serang, P2 uses Bertahan) ---');
-  await tournament.processTurn(matchId, p1Id, 'atk', client);
-  await tournament.processTurn(matchId, p2Id, 'def', client); // Resolves Turn 1
+  
+  // Test: Mencoba Ultimate di Turn 1 (Harus Gagal)
+  try {
+    console.log('🧪 Menguji penggunaan Ultimate pada Turn 1 (P1)...');
+    await tournament.processTurn(matchId, p1Id, 'ult', client);
+    throw new Error('❌ Gagal memblokir Ultimate di Turn 1!');
+  } catch (err) {
+    console.log('✅ Berhasil diblokir:', err.message);
+  }
+
+  // Lanjutkan aksi normal
+  await tournament.processTurn(matchId, p1Id, 'atk', client); // P1 SP: 0 + 20 = 20 SP
+  await tournament.processTurn(matchId, p2Id, 'def', client); // P2 SP: 0 + 35 = 35 SP. Resolves Turn 1
 
   // Simulasikan Ronde 2
-  console.log('\n--- Ronde 2 (P1 uses Ultimate, P2 uses Serang) ---');
-  await tournament.processTurn(matchId, p1Id, 'ult', client);
-  await tournament.processTurn(matchId, p2Id, 'atk', client); // Resolves Turn 2
+  console.log('\n--- Ronde 2 (P1 tries Ultimate but lacks SP, P2 tries Ultimate but lacks SP) ---');
+  
+  // Test: Mencoba Ultimate dengan SP kurang (P1 memiliki 20 SP, butuh 60 SP)
+  try {
+    console.log(`🧪 Menguji penggunaan Ultimate dengan SP kurang (P1 SP: ${activeMatch.player1.energy})...`);
+    await tournament.processTurn(matchId, p1Id, 'ult', client);
+    throw new Error('❌ Gagal memblokir Ultimate saat SP kurang!');
+  } catch (err) {
+    console.log('✅ Berhasil diblokir:', err.message);
+  }
+
+  // Lanjutkan aksi normal untuk mengumpulkan energi
+  await tournament.processTurn(matchId, p1Id, 'def', client); // P1 SP: 20 + 35 = 55 SP
+  await tournament.processTurn(matchId, p2Id, 'def', client); // P2 SP: 35 + 35 = 70 SP. Resolves Turn 2
+
+  // Simulasikan Ronde 3
+  console.log('\n--- Ronde 3 (P1 tries Ultimate with 55 SP and fails, P2 uses Ultimate with 70 SP) ---');
+
+  // Test: P1 mencoba Ultimate dengan 55 SP (butuh 60 SP)
+  try {
+    console.log(`🧪 Menguji penggunaan Ultimate dengan SP kurang (P1 SP: ${activeMatch.player1.energy})...`);
+    await tournament.processTurn(matchId, p1Id, 'ult', client);
+    throw new Error('❌ Gagal memblokir Ultimate saat SP kurang (55 SP)!');
+  } catch (err) {
+    console.log('✅ Berhasil diblokir:', err.message);
+  }
+
+  // Aksi valid
+  await tournament.processTurn(matchId, p1Id, 'atk', client); // P1 SP: 55 + 20 = 75 SP
+  await tournament.processTurn(matchId, p2Id, 'ult', client); // P2 SP: 70 - 60 = 10 SP. Resolves Turn 3
+
+  // Simulasikan Ronde 4
+  console.log('\n--- Ronde 4 (P1 uses Ultimate with 75 SP, P2 tries Ultimate again and fails) ---');
+
+  // P1 menggunakan Ultimate (memiliki 75 SP)
+  await tournament.processTurn(matchId, p1Id, 'ult', client); // P1 SP: 75 - 60 = 15 SP
+  
+  // Test: P2 mencoba Ultimate lagi (Harus Gagal karena sudah pernah pakai)
+  try {
+    console.log('🧪 Menguji pembatasan 1x Ultimate per match (P2)...');
+    await tournament.processTurn(matchId, p2Id, 'ult', client);
+    throw new Error('❌ Gagal membatasi 1x Ultimate per match!');
+  } catch (err) {
+    console.log('✅ Berhasil dibatasi:', err.message);
+  }
+
+  await tournament.processTurn(matchId, p2Id, 'atk', client); // Resolves Turn 4
 
   // Test 5: Turn Timeout Logic
   console.log('\n5. Testing Turn Timeout Logic...');
