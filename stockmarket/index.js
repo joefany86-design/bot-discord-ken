@@ -1208,6 +1208,27 @@ function initStockMarket(client) {
       return;
     }
 
+    // Handler interaksi String Select Menu Diskualifikasi Peserta Lain (Admin)
+    if (interaction.isStringSelectMenu() && customId === 'cup_admin_select_dq_other') {
+      const isOwner = interaction.user.id === OWNER_ID;
+      const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
+      const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return interaction.reply({ content: '❌ Akses Ditolak! Menu ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
+      }
+
+      try {
+        const tournament = require('./tournament');
+        const selectedValue = interaction.values[0]; // e.g. 'cup_admin_act_selectdq_12345'
+        const targetPlayerId = selectedValue.replace('cup_admin_act_selectdq_', '');
+        await tournament.disqualifyParticipant(interaction.guildId, targetPlayerId, client);
+        await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => {});
+      } catch (err) {
+        await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      }
+      return;
+    }
+
     // Handler interaksi turnamen Admin Cup
     if (interaction.isButton() && customId.startsWith('cup_btn_')) {
       const parts = customId.split('_');
@@ -1262,6 +1283,8 @@ function initStockMarket(client) {
           if (interaction.message) {
             await interaction.message.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => {});
           }
+          const adminPanel = require('./adminPanel');
+          await adminPanel.updatePersistentTournamentPanel(interaction.guildId, client).catch(() => {});
         } else if (adminAction === 'reroll') {
           await tournament.rerollMatch(interaction.guildId, client);
           await interaction.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
@@ -1293,7 +1316,28 @@ function initStockMarket(client) {
             ? '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**' 
             : '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**';
 
-          await interaction.reply({ content: desc, components: [actionRow], flags: 64 });
+          const components = [actionRow];
+          if (adminAction === 'dq') {
+            const allParticipants = dbModule.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [interaction.guildId]);
+            const selectOptions = allParticipants
+              .filter(p => p.user_id !== match.player_1_id && p.user_id !== match.player_2_id)
+              .slice(0, 25)
+              .map(p => ({
+                label: `${p.pet_name}`,
+                value: `cup_admin_act_selectdq_${p.user_id}`,
+                description: `Pawang: (ID: ${p.user_id.slice(0, 8)}...)`
+              }));
+
+            if (selectOptions.length > 0) {
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('cup_admin_select_dq_other')
+                .setPlaceholder('🚨 Pilih Peserta Lain untuk Didiskualifikasi...')
+                .addOptions(selectOptions);
+              components.push(new ActionRowBuilder().addComponents(selectMenu));
+            }
+          }
+
+          await interaction.reply({ content: desc, components, flags: 64 });
         } else if (adminAction === 'extend') {
           const actionRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -5062,8 +5106,32 @@ async function handlePetCommand(message, client, args) {
       } catch (err) {
         return message.reply({ embeds: [embeds.errorEmbed('Gagal Keluar Turnamen!', err.message)] });
       }
+    } else if (action === 'kick' || action === 'dq' || action === 'diskualifikasi') {
+      const isOwner = author.id === OWNER_ID;
+      const isGuildOwner = message.guild && author.id === message.guild.ownerId;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return message.reply({ content: '❌ Akses Ditolak! Perintah ini hanya dapat digunakan oleh Administrator server.' });
+      }
+
+      const targetUser = message.mentions.users.first();
+      if (!targetUser) {
+        return message.reply({ content: '❌ Silakan tag/mention user yang ingin dikick/didiskualifikasi!' });
+      }
+
+      try {
+        const tournament = require('./tournament');
+        await tournament.disqualifyParticipant(guildId, targetUser.id, client);
+        const successEmb = embeds.successEmbed(
+          'Diskualifikasi Sukses! 🚨🏆',
+          `<@${targetUser.id}> telah didiskualifikasi dari turnamen Admin Cup oleh Administrator.`
+        );
+        return message.reply({ embeds: [successEmb] });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Gagal Didiskualifikasi!', err.message)] });
+      }
     } else {
-      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.pet cup register [nama_pet]\` untuk mendaftarkan/mengubah pet Anda.\n👉 \`.pet cup leave\` untuk keluar dari pendaftaran turnamen.')] });
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.pet cup register [nama_pet]\` untuk mendaftarkan/mengubah pet Anda.\n👉 \`.pet cup leave\` untuk keluar dari pendaftaran turnamen.\n👉 \`.pet cup kick [@user]\` untuk mendiskualifikasi/mengeluarkan peserta (Khusus Admin).')] });
     }
   }
 

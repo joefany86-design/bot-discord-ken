@@ -379,7 +379,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     };
   } else {
     // Gagal merampok: Pelaku didenda Rp 200 (atau lebih)
-    let fine = 200;
+    let fine = 350;
     if (activeCctv) {
       fine += 100; // CCTV palsu menambah denda pelaku +100 kompensasi ke korban
     }
@@ -472,7 +472,7 @@ function getHeistStats(kruCount) {
       successRate: 5,
       minPrize: 1000,
       maxPrize: 2000,
-      fine: 1000,                // Denda kru 1 dinaikkan dari Rp 500 ke Rp 1.000
+      fine: 1500,                // Denda kru 1 dinaikkan ke Rp 1.500
       jailDurationSeconds: baseJail
     };
   } else if (kruCount === 2) {
@@ -480,7 +480,7 @@ function getHeistStats(kruCount) {
       successRate: 10,
       minPrize: 2500,
       maxPrize: 4500,
-      fine: 1500,                // Denda kru 2 dinaikkan dari Rp 500 ke Rp 1.500
+      fine: 2200,                // Denda kru 2 dinaikkan ke Rp 2.200
       jailDurationSeconds: baseJail
     };
   } else if (kruCount === 3) {
@@ -488,7 +488,7 @@ function getHeistStats(kruCount) {
       successRate: 15,
       minPrize: 5000,
       maxPrize: 8000,
-      fine: 2000,                // Denda kru 3 dinaikkan dari Rp 600 ke Rp 2.000
+      fine: 3000,                // Denda kru 3 dinaikkan ke Rp 3.000
       jailDurationSeconds: baseJail
     };
   } else if (kruCount === 4) {
@@ -496,16 +496,16 @@ function getHeistStats(kruCount) {
       successRate: 25,
       minPrize: 9000,
       maxPrize: 14000,
-      fine: 2500,                // Denda kru 4 dinaikkan dari Rp 600 ke Rp 2.500
-      jailDurationSeconds: baseJail * 2 // 1 Jam
+      fine: 4000,                // Denda kru 4 dinaikkan ke Rp 4.000
+      jailDurationSeconds: baseJail * 2 // 2 Jam
     };
   } else {
     return {
       successRate: 45,
       minPrize: 10000,
       maxPrize: 16000,
-      fine: 3500,                // Denda kru 5+ dinaikkan dari Rp 750 ke Rp 3.500
-      jailDurationSeconds: baseJail * 2 // 1 Jam
+      fine: 5500,                // Denda kru 5+ dinaikkan ke Rp 5.500
+      jailDurationSeconds: baseJail * 2 // 2 Jam
     };
   }
 }

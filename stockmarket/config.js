@@ -251,11 +251,11 @@ module.exports = {
   // Konfigurasi Sistem Perampokan (Robbery & Heist)
   robbery: {
     SUCCESS_RATE: 45,             // Peluang dasar sukses Solo Rob (45%)
-    JAIL_SOLO_SECONDS: 300,       // Masa hukuman Solo Rob: 5 menit (300s)
-    JAIL_HEIST_BASE: 1800,        // Masa hukuman Heist: 30 menit (1800s)
-    BAIL_SOLO: 250,               // Uang jaminan Solo Rob: Rp 250
-    BAIL_HEIST: 2500,             // Uang jaminan Heist dinaikkan ke Rp 2.500
-    PREP_FEE: 400,                // Biaya persiapan Heist per orang
+    JAIL_SOLO_SECONDS: 600,       // Masa hukuman Solo Rob: 10 menit (600s)
+    JAIL_HEIST_BASE: 3600,        // Masa hukuman Heist: 1 jam (3600s)
+    BAIL_SOLO: 400,               // Uang jaminan Solo Rob: Rp 400
+    BAIL_HEIST: 4500,             // Uang jaminan Heist: Rp 4.500
+    PREP_FEE: 650,                // Biaya persiapan Heist per orang
     COOLDOWN_HEIST_SECONDS: 2 * 3600, // Cooldown Heist: 2 jam (7200 detik)
     MIN_ROB_BALANCE_ROBBER: 300,  // Saldo minimal pelaku agar bisa merampok
     MIN_ROB_BALANCE_VICTIM: 500,  // Saldo minimal korban agar bisa dirampok

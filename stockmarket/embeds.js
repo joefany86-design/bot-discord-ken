@@ -1876,10 +1876,10 @@ module.exports = {
           value:
             `📋 **\`.pet\`** — Dashboard status pet (HP, Kenyangan, Hidrasi, Mood).\n` +
             `🛒 **\`.pet shop\`** — Toko item perawatan (Pakan, Air, Obat, Mainan).\n` +
-            `⚒️ **\`.pet work\`** — Kerja: **Rp 150–400** + bonus 5%/level *(CD: 1 jam)*. *(Epic s/d Mythic mendapat bonus gaji s/d +35% & XP s/d +100%)*\n` +
-            `🏹 **\`.pet hunt\`** — Berburu *(Min. Lv 10)*: **Rp 300–800** + item *(CD: 2 jam)*.\n` +
+            `⚒️ **\`.pet work\`** — Kerja: **Rp 40–100** + bonus 5%/level *(CD: 15 menit, Golem 10m)*. *(Epic s/d Mythic mendapat bonus gaji s/d +35% & XP s/d +100%)*\n` +
+            `🏹 **\`.pet hunt\`** — Berburu *(Min. Lv 10)*: **Rp 75–200** + item *(CD: 30 menit)*.\n` +
             `🥤 **\`.pet use SODA\`** — Reset CD kerja/berburu *(CD: 30 menit)*. Minum ke-3+ berisiko 35% sakit (SICK), **bisa dikurangi s/d 0% kebal sakit** dengan Gacha Role!\n` +
-            `🛡️ **\`.pet expedition\`** — Ekspedisi Co-op *(CD: 30 menit)*: Dapatkan hasil hingga **Rp 2.500**. Berisiko **3% pet meninggal dunia (DEAD)**! Bawalah jimat \`LUCKY_AMULET\` (Rp 2.000) atau miliki Gacha Role Legendary/Mythic untuk proteksi!\n` +
+            `🛡️ **\`.pet expedition\`** — Ekspedisi Co-op *(CD: 30 menit setelah 6 main)*: Dapatkan koin melimpah. Berisiko **4% s/d 16% pet meninggal dunia (DEAD)**! Bawalah jimat \`LUCKY_AMULET\` (Rp 2.500) atau miliki Gacha Role Legendary/Mythic untuk proteksi!\n` +
             `🎾 **\`.pet play\`** — Bermain gratis: **+25 Happiness, +15 XP**.\n` +
             `⚔️ **\`.pet pvp @user <taruhan>\`** — Duel PvP taruhan koin!\n` +
             `🗑️ **\`.pet reset\`** — Kosongkan kandang untuk adopsi ulang.\n\n` +
@@ -1892,16 +1892,16 @@ module.exports = {
             `> *High risk, high reward — atau high regret! Pilih wisely!*\n\n` +
             `🔫 **\`.rob @user\`** — Solo robbery! Merampok **10%–25%** koin dompet target.\n` +
             `╰ ✅ Peluang sukses dasar: **40%** *(pelaku Gacha Role dapat bonus s/d +25% sukses)*\n` +
-            `╰ ❌ Gagal? Didenda **Rp 200** *(+Rp 100 jika korban punya CCTV)* & dipenjara *(CD dipotong gacha s/d -50%)*!\n` +
+            `╰ ❌ Gagal? Didenda **Rp 350** *(+Rp 100 jika korban punya CCTV)* & dipenjara *(CD dipotong gacha s/d -50%)*!\n` +
             `╰ 🛡️ Gembok korban memotong jarahan pelaku 50%. Korban Gacha Role dapat proteksi kehilangan koin (s/d **kebal dirampok 100%** untuk Mythic!)\n\n` +
             `╰ 👤 1 kru: 5% sukses → Rp 1.000–2.000\n` +
             `╰ 👥 2 kru: 10% sukses → Rp 2.500–4.500\n` +
             `╰ 👥👥 3 kru: 15% sukses → Rp 5.000–8.000\n` +
             `╰ 👥👥👥 4 kru: 25% sukses → Rp 9.000–14.000\n` +
             `╰ 👥👥👥👥 **5+ kru: 45% sukses → Rp 10.000–16.000** 🔥\n` +
-            `╰ ❌ Gagal heist? **Denda Rp 750 + Penjara 2 jam** untuk seluruh kru!\n\n` +
+            `╰ ❌ Gagal heist? **Denda Rp 1.500 s/d Rp 5.500 & Penjara 1 s/d 2 jam** untuk seluruh kru!\n\n` +
             `🏛️ **\`.jail\`** · **\`.jail @user\`** — Cek status/sisa waktu penjara virtual.\n` +
-            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 250 | Heist Rp 500 *(Epic s/d Mythic mendapat denda tebus jaminan s/d -50%)*!`,
+            `╰ 💳 Bayar **bail** (jaminan) untuk bebas seketika: Solo Rp 400 | Heist Rp 4.500 *(Epic s/d Mythic mendapat denda tebus jaminan s/d -50%)*!`,
           inline: false
         }
       )
@@ -3555,20 +3555,20 @@ module.exports = {
         {
           name: '💼 3. MEKANIK PENDAPATAN & UPAH KOIN',
           value:
-            `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 150 - Rp 400** + bonus 5% per level pet (Cooldown 1 jam, Golem 40m).\n` +
-            `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 300 - Rp 800** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 2 jam.\n` +
+            `• **Bekerja (\`.pet work\`):** Mencari uang secara aman. Menghasilkan **Rp 40 - Rp 100** + bonus 5% per level pet (Cooldown 15 menit, Golem 10m).\n` +
+            `• **Berburu (\`.pet hunt\`):** Menjelajah hutan liar (Min. Lvl 10). Menghasilkan **Rp 75 - Rp 200** + peluang mendapatkan jackpot item premium gratis (Daging, Obat, Bola Karet). Cooldown 30 menit.\n` +
             `• **PvP Arena (\`.pet pvp @user <taruhan>\`):** Bertarung dengan pet lain memperebutkan uang taruhan (Klaim 95% total taruhan, pajak arena 5%). Kalah mengurangi HP & Kebahagiaan secara signifikan.\n` +
-            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (Tanpa Batas Kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 6 main, CD 4 jam setelahnya, biaya Rp 250).`,
+            `• **Ekspedisi (\`.pet expedition\`):** Berpetualang bersama tim (Tanpa Batas Kru) melawan bos penjaga zona untuk koin melimpah & jackpot item Black Market! (Maks 6 main, CD 30 menit setelahnya, biaya Rp 250).`,
           inline: false
         },
         {
           name: '🍗 4. KEBUTUHAN PERAWATAN & TOKO PERSSEDIAAN (\`.pet shop\`)',
           value:
-            `• 🍗 **Pakan Biasa (Rp 150):** +30 Kenyangan.\n` +
-            `• 🥩 **Daging Premium (Rp 350):** +70 Kenyangan, +10 HP, +5 Kebahagiaan.\n` +
-            `• 🥤 **Air Bersih (Rp 100):** +35 Hidrasi.\n` +
+            `• 🍗 **Pakan Biasa (Rp 80):** +30 Kenyangan.\n` +
+            `• 🥩 **Daging Premium (Rp 200):** +70 Kenyangan, +10 HP, +5 Kebahagiaan.\n` +
+            `• 🥤 **Air Bersih (Rp 50):** +35 Hidrasi.\n` +
             `• 💊 **Obat (Rp 500):** +50 HP & Menyembuhkan Sakit/Pingsan.\n` +
-            `• ⚽ **Bola Karet (Rp 250):** +50 Kebahagiaan.\n` +
+            `• ⚽ **Bola Karet (Rp 120):** +50 Kebahagiaan.\n` +
             `• ⚽ **Main Gratis (\`.pet play\`):** +25 Kebahagiaan & +15 XP (Gratis, tanpa item, cooldown 15 menit).\n` +
             `👉 *Tip:* Jika pet kelaparan/kehausan menyentuh 0% terlalu lama, HP akan berkurang perlahan. Jika HP menyentuh 0%, pet akan mati (*Dead*). Kandang yang mati harus dibersihkan dengan \`.pet reset\` sebelum mengadopsi yang baru.`,
           inline: false

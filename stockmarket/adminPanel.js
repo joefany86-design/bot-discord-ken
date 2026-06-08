@@ -1995,6 +1995,54 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
 }
 
 /**
+ * Memperbarui panel turnamen persisten di channel khusus (jika dikonfigurasi).
+ */
+async function updatePersistentTournamentPanel(guildId, client) {
+  const settings = database.get('SELECT tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (!settings || !settings.tournament_admin_channel_id) return;
+
+  const channel = client.channels.cache.get(settings.tournament_admin_channel_id) || await client.channels.fetch(settings.tournament_admin_channel_id).catch(() => null);
+  if (!channel) return;
+
+  const msgs = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+  if (!msgs) return;
+
+  const botMsg = msgs.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('ADMIN CONTROL PANEL'));
+
+  const defaultState = {
+    currentSubMenu: 'main',
+    selectedRewardUserId: null,
+    selectedRewardUserLabel: '',
+    selectedRewardItemId: null,
+    selectedRewardItemQty: null,
+    petGiveSpecies: null,
+    petGiveTrait: null,
+    petGiveStar: null
+  };
+
+  if (!botMsg) {
+    const data = getTournamentPanelDataShared(guildId, defaultState, client, true);
+    await channel.send(data).catch(() => {});
+    return;
+  }
+
+  let state = defaultState;
+  if (client.adminTournamentStates) {
+    for (const [key, val] of client.adminTournamentStates.entries()) {
+      if (key.endsWith(`_${botMsg.id}`)) {
+        state = val;
+        break;
+      }
+    }
+  }
+
+  if (state.currentSubMenu === 'main') {
+    const data = getTournamentPanelDataShared(guildId, state, client, true);
+    await botMsg.edit(data).catch(() => {});
+  }
+}
+
+/**
  * 🏆 12. SUB-PANEL TURNAMEN PET (ADMIN CUP)
  */
 async function handleAdminTournamentPanel(messageOrInteraction, client) {
@@ -2083,7 +2131,19 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
   try {
     const tournament = require('./tournament');
 
-    if (customId === 'admin_tournament_btn_back') {
+    if (customId === 'admin_tournament_select_dq_other') {
+      const targetUserId = interaction.values[0].replace('cup_admin_select_dq_', '');
+      await tournament.disqualifyParticipant(guildId, targetUserId, client);
+      await interaction.update({ content: `✅ Pemain <@${targetUserId}> berhasil didiskualifikasi!`, components: [] }).catch(() => {});
+
+      // Perbarui panel admin turnamen utama jika ada
+      if (interaction.message && typeof interaction.message.edit === 'function') {
+        const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+        await interaction.message.edit(fresh).catch(() => {});
+      }
+      return;
+    }
+    else if (customId === 'admin_tournament_btn_back') {
       client.adminTournamentStates.delete(stateKey);
       await handleAdminPanel(interaction, client);
     }
@@ -2476,7 +2536,26 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
           .setStyle(ButtonStyle.Danger)
       );
 
-      await interaction.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components: [actionRow], flags: 64 });
+      const allParticipants = database.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [guildId]);
+      const selectOptions = allParticipants
+        .filter(p => p.user_id !== match.player_1_id && p.user_id !== match.player_2_id)
+        .slice(0, 25)
+        .map(p => ({
+          label: `${p.pet_name}`,
+          value: `cup_admin_select_dq_${p.user_id}`,
+          description: `Pawang: (ID: ${p.user_id.slice(0, 8)}...)`
+        }));
+
+      const components = [actionRow];
+      if (selectOptions.length > 0) {
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('admin_tournament_select_dq_other')
+          .setPlaceholder('🚨 Pilih Peserta Lain untuk Didiskualifikasi...')
+          .addOptions(selectOptions);
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
+      }
+
+      await interaction.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components, flags: 64 });
     }
     else if (customId === 'admin_tournament_btn_forcewin') {
       let match = database.get(
@@ -8497,6 +8576,7 @@ module.exports = {
   handleAdminPanel,
   handleAdminTournamentPanel,
   handleAdminTournamentGlobalInteraction,
+  updatePersistentTournamentPanel,
   handleAdminPetPanel,
   handleAdminBankPanel,
   handleAdminRobberyPanel,

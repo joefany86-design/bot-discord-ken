@@ -120,7 +120,7 @@ function generateWildPet(biomeId) {
     baseEscape = 0.20;
     emoji = '🟣';
   } else if (rarity === 'LEGENDARY') {
-    baseCatch = 0.05;
+    baseCatch = 0.03;
     baseEscape = 0.80;
     emoji = '🟡';
   }
@@ -433,9 +433,9 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   if (action === 'safari_act_feed_bait') {
     state.baits--;
     state.baitFed++;
-    state.catchBonus += 0.10;
+    state.catchBonus += 0.06;
     
-    let feedLog = `🍖 Anda melempar umpan pakan lezat. Pet melahapnya dengan senang! (+10% Peluang Tangkap)`;
+    let feedLog = `🍖 Anda melempar umpan pakan lezat. Pet melahapnya dengan senang! (+6% Peluang Tangkap)`;
     
     // Status tertidur jika diberi makan 3 kali
     if (state.baitFed >= 3 && state.sleepTurns === 0) {
@@ -468,9 +468,9 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   // --- AKSI: GOYANG MAINAN ---
   if (action === 'safari_act_play_toy') {
     state.toys--;
-    state.toyBonus += 0.12;
+    state.toyBonus += 0.08;
     
-    let playLog = `💫 Anda menggoyangkan mainan gemerlap. Pet terlihat teralihkan perhatiannya dan bahagia! (+12% Peluang Tangkap)`;
+    let playLog = `💫 Anda menggoyangkan mainan gemerlap. Pet terlihat teralihkan perhatiannya dan bahagia! (+8% Peluang Tangkap)`;
     
     // Peluang 10% menerapkan trait khusus
     if (Math.random() < 0.10) {

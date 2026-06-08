@@ -2128,14 +2128,20 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let isSavedByAmulet = false;
         let isSavedBySurvivor = false;
 
+        const mId = parseInt(mapId) || 1;
         let deathProb = 0.03;
+        if (mId <= 3) deathProb = 0.04;
+        else if (mId <= 6) deathProb = 0.08;
+        else if (mId <= 9) deathProb = 0.12;
+        else deathProb = 0.16;
+
         const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
         
         if (teamHasImmortal || petRarity === 'IMMORTAL' || petRarity === 'MYTHIC') {
           deathProb = 0.0;
         } else if (membersMap && membersMap[ap.userId]) {
           const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
-          if (gachaTier === 'LEGENDARY') deathProb = 0.01;
+          if (gachaTier === 'LEGENDARY') deathProb = Math.max(0.01, Math.round(deathProb * 0.3 * 100) / 100);
           else if (gachaTier === 'MYTHIC') deathProb = 0.0;
         }
 
@@ -2322,14 +2328,20 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         let isSavedByAmulet = false;
         let isSavedBySurvivor = false;
 
+        const mId = parseInt(mapId) || 1;
         let deathProb = 0.03;
+        if (mId <= 3) deathProb = 0.04;
+        else if (mId <= 6) deathProb = 0.08;
+        else if (mId <= 9) deathProb = 0.12;
+        else deathProb = 0.16;
+
         const petRarity = ap.pet.gacha_rarity || (GACHA_SPECIES[ap.pet.pet_type] ? GACHA_SPECIES[ap.pet.pet_type].rarity : '') || '';
         
         if (teamHasImmortal || petRarity === 'IMMORTAL' || petRarity === 'MYTHIC') {
           deathProb = 0.0;
         } else if (membersMap && membersMap[ap.userId]) {
           const gachaTier = economy.getMemberGachaTier(membersMap[ap.userId], guildId);
-          if (gachaTier === 'LEGENDARY') deathProb = 0.01;
+          if (gachaTier === 'LEGENDARY') deathProb = Math.max(0.01, Math.round(deathProb * 0.3 * 100) / 100);
           else if (gachaTier === 'MYTHIC') deathProb = 0.0;
         }
 
