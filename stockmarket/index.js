@@ -3876,7 +3876,7 @@ function initStockMarket(client) {
               `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 350** / kuntum\n` +
               `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 750** / kuntum\n` +
               `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 2.000** / kuntum\n\n` +
-              `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki.*`
+              `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki, atau pilih opsi dari menu di bawah untuk menjual dalam jumlah tertentu.*`
             )
             .setTimestamp();
 
@@ -3892,7 +3892,23 @@ function initStockMarket(client) {
             new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
           );
 
-          return { embeds: [embed], components: [sellRow1, sellRow2] };
+          const hasAnyFlowers = stock.ROSE > 0 || stock.TULIP > 0 || stock.LAVENDER > 0 || stock.SAKURA > 0 || stock.ORCHID > 0;
+
+          const sellQtySelect = new StringSelectMenuBuilder()
+            .setCustomId('garden_select_sell_qty')
+            .setPlaceholder('💰 Pilih Bunga untuk Dijual (Jumlah Tertentu)...')
+            .setDisabled(!hasAnyFlowers)
+            .addOptions(
+              new StringSelectMenuOptionBuilder().setLabel('🌹 Jual Mawar Merah (Custom Qty)').setValue('sell_qty_rose'),
+              new StringSelectMenuOptionBuilder().setLabel('🌷 Jual Bunga Tulip (Custom Qty)').setValue('sell_qty_tulip'),
+              new StringSelectMenuOptionBuilder().setLabel('🪻 Jual Bunga Lavender (Custom Qty)').setValue('sell_qty_lavender'),
+              new StringSelectMenuOptionBuilder().setLabel('🌸 Jual Bunga Sakura (Custom Qty)').setValue('sell_qty_sakura'),
+              new StringSelectMenuOptionBuilder().setLabel('👑 Jual Anggrek Langka (Custom Qty)').setValue('sell_qty_orchid')
+            );
+
+          const sellRow3 = new ActionRowBuilder().addComponents(sellQtySelect);
+
+          return { embeds: [embed], components: [sellRow1, sellRow2, sellRow3] };
         };
 
         const getGardenGiftDataPrivate = (targetUserId, recId = null) => {
@@ -4139,6 +4155,74 @@ function initStockMarket(client) {
                   });
                 } catch (err) {
                   await safeInteractionReply(submitted, { embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                }
+              }
+            }
+
+            else if (i.isStringSelectMenu() && i.customId === 'garden_select_sell_qty') {
+              const itemKey = i.values[0].replace('sell_qty_', '');
+              const itemNames = {
+                rose: 'Mawar Merah',
+                tulip: 'Bunga Tulip',
+                lavender: 'Bunga Lavender',
+                sakura: 'Bunga Sakura',
+                orchid: 'Anggrek Langka'
+              };
+              const itemName = itemNames[itemKey] || itemKey;
+
+              const inv = database.all(
+                `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
+                [user.id, guildId]
+              );
+              const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
+              inv.forEach(item => {
+                const key = item.item_id.replace('FLOWER_', '').toUpperCase();
+                if (stock[key] !== undefined) {
+                  stock[key] = item.quantity;
+                }
+              });
+              const currentStock = stock[itemKey.toUpperCase()] || 0;
+
+              const modal = new ModalBuilder()
+                .setCustomId(`garden_modal_sell_${itemKey}`)
+                .setTitle(`Jual ${itemName}`);
+
+              const qtyInput = new TextInputBuilder()
+                .setCustomId('sell_qty')
+                .setLabel('Jumlah yang ingin dijual')
+                .setPlaceholder(`Maksimal stok Anda: ${currentStock}`)
+                .setValue('1')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4);
+
+              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+              await i.showModal(modal);
+
+              const submitted = await i.awaitModalSubmit({
+                filter: (sub) => sub.customId === `garden_modal_sell_${itemKey}` && sub.user.id === user.id,
+                time: 60000
+              }).catch(() => null);
+
+              if (submitted) {
+                try {
+                  const qtyStr = submitted.fields.getTextInputValue('sell_qty');
+                  const qty = parseInt(qtyStr);
+                  if (isNaN(qty) || qty <= 0) {
+                    throw new Error('Jumlah penjualan harus berupa angka di atas 0!');
+                  }
+
+                  const res = garden.sellFlowers(user.id, guildId, itemKey, qty);
+                  const successEmb = embeds.successEmbed(
+                    '💰 Penjualan Bunga Sukses!',
+                    `Anda berhasil menjual **${res.quantitySold} kuntum** bunga **${res.flowerName}** Anda seharga **Rp ${res.earnings.toLocaleString('id-ID')}**!\n\n` +
+                    `💸 Saldo dompet Anda sekarang: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  );
+                  await submitted.reply({ embeds: [successEmb], flags: 64 }).catch(() => {});
+                  await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await submitted.reply({ embeds: [embeds.errorEmbed('Penjualan Gagal!', err.message)], flags: 64 }).catch(() => {});
                 }
               }
             }

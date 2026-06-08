@@ -438,12 +438,13 @@ function renderSellPanel(guildId, userId) {
     .setPlaceholder('👉 Pilih barang atau pet Anda untuk dijual...');
 
   let hasItems = false;
+  const options = [];
 
   // 1. Tambah Bunga/Benih ke dropdown
   userInv.forEach(row => {
     const itemInfo = ITEM_MAP[row.item_id.toUpperCase()];
     if (itemInfo && row.quantity > 0) {
-      selectMenu.addOptions(
+      options.push(
         new StringSelectMenuOptionBuilder()
           .setLabel(`${itemInfo.name} (Stok: ${row.quantity})`)
           .setValue(`${itemInfo.type}:${row.item_id}`)
@@ -456,7 +457,7 @@ function renderSellPanel(guildId, userId) {
   petInv.forEach(row => {
     const itemInfo = ITEM_MAP[row.item_id.toUpperCase()];
     if (itemInfo && row.quantity > 0) {
-      selectMenu.addOptions(
+      options.push(
         new StringSelectMenuOptionBuilder()
           .setLabel(`${itemInfo.name} (Stok: ${row.quantity})`)
           .setValue(`PET_ITEM:${row.item_id}`)
@@ -468,7 +469,7 @@ function renderSellPanel(guildId, userId) {
   // 3. Tambah Pet ke dropdown
   userPets.forEach(row => {
     const stars = '⭐'.repeat(row.star_level || 1);
-    selectMenu.addOptions(
+    options.push(
       new StringSelectMenuOptionBuilder()
         .setLabel(`🐾 Pet: ${row.pet_name} (${stars} Lv.${row.level} ${row.pet_type})`)
         .setValue(`PET:${row.pet_name}`)
@@ -478,6 +479,7 @@ function renderSellPanel(guildId, userId) {
 
   const components = [];
   if (hasItems) {
+    selectMenu.addOptions(options.slice(0, 25));
     components.push(new ActionRowBuilder().addComponents(selectMenu));
   } else {
     embed.setDescription('❌ **Inventory Anda Kosong!**\n\nAnda tidak memiliki barang kebun, item pet, peralatan pasar gelap, ataupun hewan peliharaan hidup yang bisa dijual saat ini.');
@@ -513,6 +515,7 @@ function renderCancelPanel(guildId, userId) {
 
   const components = [];
   if (myListings.length > 0) {
+    const options = [];
     myListings.forEach(item => {
       let label = '';
       if (item.item_type === 'PET') {
@@ -521,12 +524,13 @@ function renderCancelPanel(guildId, userId) {
         const itemInfo = ITEM_MAP[item.item_id] || { name: item.item_id };
         label = `Tarik ${itemInfo.name} x${item.quantity} (Harga: Rp ${item.price.toLocaleString('id-ID')})`;
       }
-      selectMenu.addOptions(
+      options.push(
         new StringSelectMenuOptionBuilder()
           .setLabel(label.slice(0, 100))
           .setValue(item.listing_id.toString())
       );
     });
+    selectMenu.addOptions(options.slice(0, 25));
     components.push(new ActionRowBuilder().addComponents(selectMenu));
   } else {
     embed.setDescription('❌ **Anda tidak sedang melelang barang apapun!**\n\nAnda tidak memiliki barang terdaftar aktif di bursa pasar lelang saat ini.');
