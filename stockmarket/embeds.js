@@ -4163,11 +4163,6 @@ module.exports = {
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
       .setThumbnail('attachment://pet_explorer.png')
-      .setDescription(
-        `### 🧭 Chronology Petualangan\n` +
-        reportDesc + `\n` +
-        `─── ⋆⋅☆⋅⋆ ───`
-      )
       .addFields(fields)
       .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })

@@ -41,18 +41,18 @@ dbInstance.prepare(
 
 // 1. Test Elemental Synergy Calculations
 console.log("🧪 Test 1: Calculating Success Rate and Synergies on Map 3 (Lembah Api - FIRE)...");
-// Map 3: baseSuccessRate = 45%, recommendedLevel = 25.
+// Map 3: baseSuccessRate = 65%, recommendedLevel = 25.
 // Leader Level 35 (+10 above rec -> +10%)
 // Member Level 30 (+5 above rec -> +5%)
 // Levi (WATER) vs FIRE -> elementMod = +15%
 // Turt (EARTH) vs FIRE -> elementMod = -15%
 // Path Choice: SAFE (+0%)
-// Expected success rate = 45% (base) + 15% (levels) + 0% (synergy: +15 - 15 = 0) = 60%.
+// Expected success rate = 65% (base) + 15% (levels) + 0% (synergy: +15 - 15 = 0) = 80%.
 const calcSafe = pet.calculateSuccessRate(guildId, [initiatorId, memberId], 3, 'SAFE');
-console.log(`   👉 Safe Success Rate: ${calcSafe.successRate}% (Expected: 60%)`);
+console.log(`   👉 Safe Success Rate: ${calcSafe.successRate}% (Expected: 80%)`);
 console.log(`   👉 Logs:\n${calcSafe.logs.join('\n')}`);
 
-if (calcSafe.successRate === 60 && calcSafe.logs.length === 2) {
+if (calcSafe.successRate === 80 && calcSafe.logs.length === 2) {
   console.log("   ✅ SUCCESS: Elemental synergy and level mods correctly calculated!");
 } else {
   console.log("   ❌ FAILED: Elemental synergy calculation error!");
