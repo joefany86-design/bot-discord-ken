@@ -121,7 +121,7 @@ function generateWildPet(biomeId) {
     emoji = '🟣';
   } else if (rarity === 'LEGENDARY') {
     baseCatch = 0.05;
-    baseEscape = 0.50;
+    baseEscape = 0.80;
     emoji = '🟡';
   }
 
