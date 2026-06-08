@@ -27,9 +27,9 @@ const BIOMES = {
     cost: 150,
     catchMultiplier: 0.85,
     escapeMultiplier: 1.1,
-    species: ['DRAGON', 'PHOENIX', 'BEHEMOTH'],
+    species: ['DRAGON', 'PHOENIX', 'KITSUNE', 'BEHEMOTH', 'CERBERUS', 'IFRIT'],
     color: 0xE74C3C,
-    description: 'Lembah lava membara dengan suhu ekstrem. Dihuni makhluk berelemen api.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Naga, Phoenix, Behemoth*'
+    description: 'Lembah lava membara dengan suhu ekstrem. Dihuni makhluk berelemen api.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Naga, Phoenix, Kitsune, Behemoth, Cerberus, Ifrit*'
   },
   abyss: {
     id: 'abyss',
@@ -37,9 +37,9 @@ const BIOMES = {
     cost: 150,
     catchMultiplier: 0.85,
     escapeMultiplier: 1.1,
-    species: ['TURTLE', 'LEVIATHAN'],
+    species: ['TURTLE', 'SIREN', 'YETI', 'LEVIATHAN', 'VALKYRIE'],
     color: 0x3498DB,
-    description: 'Danau purba dalam dengan pusaran air berbahaya. Dihuni makhluk air dan bumi.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Kura-Kura, Leviathan*'
+    description: 'Danau purba dalam dengan pusaran air berbahaya. Dihuni makhluk air dan bumi.\n🪙 **Biaya Masuk:** **Rp 150**\n🐾 *Spesies liar: Kura-Kura, Siren, Yeti, Leviathan, Valkyrie*'
   },
   mountain: {
     id: 'mountain',
@@ -47,9 +47,9 @@ const BIOMES = {
     cost: 250,
     catchMultiplier: 0.70,
     escapeMultiplier: 1.25,
-    species: ['BEHEMOTH', 'ARCHDRAGON'],
+    species: ['PEGASUS', 'KIRIN', 'BEHEMOTH', 'ARCHDRAGON', 'TYPHON'],
     color: 0x9B59B6,
-    description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Behemoth, Archdragon*'
+    description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Pegasus, Kirin, Behemoth, Archdragon, Typhon*'
   }
 };
 
@@ -835,5 +835,6 @@ function executeReleaseRewards(userId, guildId, wildPet) {
 
 module.exports = {
   handlePetSafariCommand,
-  activeSafaris
+  activeSafaris,
+  BIOMES
 };

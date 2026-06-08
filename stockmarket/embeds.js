@@ -168,6 +168,15 @@ const PET_COLORS = {
   DRAGON: 0xFF6B35, // Blazing Orange
   CAT: 0xFF69B4, // Hot Pink
   GOLEM: 0x8B7355, // Earthen Brown
+  SIREN: 0x3498DB, // Ocean Blue
+  PEGASUS: 0x9B59B6, // Celestial Purple
+  KITSUNE: 0xFF8F00, // Fox Orange
+  KIRIN: 0xF1C40F, // Lightning Yellow
+  YETI: 0x00E5FF, // Celestial Ice Blue
+  CERBERUS: 0xE74C3C, // Hellfire Red
+  TYPHON: 0x8E44AD, // Storm Violet
+  VALKYRIE: 0xBDC3C7, // Steel Silver
+  IFRIT: 0xFF5722, // Lava Orange-Red
   EGG: 0xD4AF37, // Imperial Gold
   DEAD: 0x1E1F22  // Dark Onyx
 };
@@ -299,6 +308,87 @@ const PET_ASSETS = {
     ],
     ADULT: [
       'https://img.pokemondb.net/sprites/black-white/anim/normal/rayquaza.gif'
+    ]
+  },
+  // 🧜‍♀️ Siren — makhluk laut bersuara merdu
+  SIREN: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/horsea.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/milotic.gif'
+    ]
+  },
+  // 🦄 Pegasus — kuda bersayap suci
+  PEGASUS: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/ponyta.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/rapidash.gif'
+    ]
+  },
+  // 🦊 Kitsune — rubah ekor sembilan
+  KITSUNE: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/vulpix.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/ninetales.gif'
+    ]
+  },
+  // ⚡ Kirin — rusa petir mitologi
+  KIRIN: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/electrike.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/raikou.gif'
+    ]
+  },
+  // ❄️ Yeti — raksasa salju
+  YETI: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/cubchoo.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/beartic.gif'
+    ]
+  },
+  // 🐺 Cerberus — anjing penjaga neraka
+  CERBERUS: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/houndour.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/houndoom.gif'
+    ]
+  },
+  // 🌪️ Typhon — bapa segala monster
+  TYPHON: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/deino.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/hydreigon.gif'
+    ]
+  },
+  // ⚔️ Valkyrie — ksatria wanita suci
+  VALKYRIE: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/ralts.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/gardevoir.gif'
+    ]
+  },
+  // 👹 Ifrit — raja jin api
+  IFRIT: {
+    BABY: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/magby.gif'
+    ],
+    ADULT: [
+      'https://img.pokemondb.net/sprites/black-white/anim/normal/magmortar.gif'
     ]
   },
   // 🔴 Mythic
@@ -2685,7 +2775,16 @@ module.exports = {
       TURTLE: '“Kura-Kura bumi raksasa berumur ratusan tahun. Kokoh bagaikan benteng pertahanan berjalan.”',
       LEVIATHAN: '“Naga penguasa lautan dalam. Kekuatannya mengendalikan ombak badai samudera.”',
       BEHEMOTH: '“Raksasa daratan tak tertandingi. Setiap langkahnya menggetarkan seisi bumi.”',
-      ARCHDRAGON: '“Naga purba tertua berselimut aura kosmik. Penguasa mutlak kasta naga.”'
+      ARCHDRAGON: '“Naga purba tertua berselimut aura kosmik. Penguasa mutlak kasta naga.”',
+      SIREN: '“Siren yang memiliki suara merdu memesona. Mengendalikan melodi air tenang untuk menyembuhkan dan melindungi.”',
+      PEGASUS: '“Kuda bersayap suci utusan langit pegunungan kuno. Membawa berkat kecepatan dan perlindungan suci.”',
+      KITSUNE: '“Rubah ekor sembilan legendaris. Memanipulasi api mistis biru pelindung jiwa.”',
+      KIRIN: '“Rusa petir mitologi pembawa kemakmuran. Langkah kakinya memicu guntur dan kilat.”',
+      YETI: '“Raksasa salju penjaga puncak es dingin. Kekuatannya mampu membekukan lawan.”',
+      CERBERUS: '“Cerberus, anjing berkepala tiga penjaga neraka. Membakar habis semua rintangan dengan api jahanam.”',
+      TYPHON: '“Bapa segala monster mitologi. Memiliki kekuatan badai kosmik penghancur dimensi.”',
+      VALKYRIE: '“Ksatria wanita pemandu jiwa pejuang. Memiliki pertahanan emas yang tak tertembus.”',
+      IFRIT: '“Raja jin api dari gurun terdalam berkekuatan destruktif tinggi.”'
     };
     const flavorText = PET_FLAVORS[pet.pet_type.toUpperCase()] || '“Hewan peliharaan yang setia menemani petualangan Anda di dunia Kosan 1A.”';
 
@@ -2755,7 +2854,16 @@ module.exports = {
       TURTLE: { attack: '🐢 Shell Spin', defense: '🛡️ Iron Shell' },
       LEVIATHAN: { attack: '🌊 Tsunami Wave', defense: '🛡️ Water Veil' },
       BEHEMOTH: { attack: '🦏 Earthquake Strike', defense: '🛡️ Heavy Shield' },
-      ARCHDRAGON: { attack: '🐉 Arch Blast', defense: '🛡️ Celestial Barrier' }
+      ARCHDRAGON: { attack: '🐉 Arch Blast', defense: '🛡️ Celestial Barrier' },
+      SIREN: { attack: '🧜‍♀️ Siren Melody', defense: '🛡️ Aqua Wall' },
+      PEGASUS: { attack: '🦄 Wind Tempest', defense: '🛡️ Divine Feather' },
+      KITSUNE: { attack: '🦊 Fox Fire', defense: '🛡️ Illusion Shield' },
+      KIRIN: { attack: '⚡ Kirin Judgement', defense: '🛡️ Lightning Cloak' },
+      YETI: { attack: '❄️ Yeti Smash', defense: '🛡️ Frost Armor' },
+      CERBERUS: { attack: '🐺 Triple Bite', defense: '🛡️ Underworld Shield' },
+      TYPHON: { attack: '🌪️ Typhoon Blast', defense: '🛡️ Tempest Shield' },
+      VALKYRIE: { attack: '⚔️ Valkyrie Strike', defense: '🛡️ Aegis Guard' },
+      IFRIT: { attack: '🔥 Hellfire Inferno', defense: '🛡️ Magma Shield' }
     };
     const moveInfo = PET_MOVES[pet.pet_type.toUpperCase()] || { attack: '💥 Strike', defense: '🛡️ Guard' };
 
@@ -3044,7 +3152,16 @@ module.exports = {
       TURTLE: '🐢',
       LEVIATHAN: '🌊',
       BEHEMOTH: '🦏',
-      ARCHDRAGON: '🐉'
+      ARCHDRAGON: '🐉',
+      SIREN: '🧜‍♀️',
+      PEGASUS: '🦄',
+      KITSUNE: '🦊',
+      KIRIN: '⚡',
+      YETI: '❄️',
+      CERBERUS: '🐺',
+      TYPHON: '🌪️',
+      VALKYRIE: '⚔️',
+      IFRIT: '👹'
     };
     const TRAIT_EMOJIS = {
       WARRIOR: '⚔️',

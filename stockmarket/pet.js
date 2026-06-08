@@ -51,10 +51,19 @@ const GACHA_SPECIES = {
   // 🟣 Epic — spesies khusus bertipe elemen
   PHOENIX:    { id: 'PHOENIX',    name: '🦅 Phoenix',    rarity: 'EPIC',      emoji: '🟣', baseHP: 100, baseAtk: 20, baseDef: 0, element: 'FIRE',  workBuff: 0,    desc: 'Burung api abadi. Elemen Kebakaran (+20% ATK).' },
   TURTLE:     { id: 'TURTLE',     name: '🐢 Kura-Kura',  rarity: 'EPIC',      emoji: '🟣', baseHP: 120, baseAtk: 10, baseDef: 20, element: 'EARTH', workBuff: 0,   desc: 'Kura-kura bumi yang sangat tangguh (+20% HP & DEF).' },
+  SIREN:      { id: 'SIREN',      name: '🧜‍♀️ Siren',      rarity: 'EPIC',      emoji: '🟣', baseHP: 110, baseAtk: 15, baseDef: 5, element: 'WATER', workBuff: 0,   desc: 'Makhluk laut bersuara merdu. Menghipnotis lawan dengan kidung air abadi.' },
+  PEGASUS:    { id: 'PEGASUS',    name: '🦄 Pegasus',    rarity: 'EPIC',      emoji: '🟣', baseHP: 105, baseAtk: 12, baseDef: 8, element: 'DRAGON',workBuff: 0,   desc: 'Kuda bersayap suci penjaga langit. Pelari cepat pembawa keajaiban.' },
+  KITSUNE:    { id: 'KITSUNE',    name: '🦊 Kitsune',    rarity: 'EPIC',      emoji: '🟣', baseHP: 100, baseAtk: 18, baseDef: 5, element: 'FIRE',  workBuff: 0,    desc: 'Rubah ekor sembilan legendaris. Memanipulasi api mistis biru pelindung jiwa.' },
+  KIRIN:      { id: 'KIRIN',      name: '⚡ Kirin',      rarity: 'EPIC',      emoji: '🟣', baseHP: 110, baseAtk: 16, baseDef: 6, element: 'DRAGON',workBuff: 0,   desc: 'Rusa petir mitologi pembawa kemakmuran. Langkah kakinya memicu guntur.' },
+  YETI:       { id: 'YETI',       name: '❄️ Yeti',       rarity: 'EPIC',      emoji: '🟣', baseHP: 115, baseAtk: 13, baseDef: 12, element: 'WATER',workBuff: 0,   desc: 'Raksasa salju penjaga puncak es dingin. Kekuatannya mampu membekukan lawan.' },
   // 🟡 Legendary — buff super +25% kerja & hunt, 150 base HP, 2 trait acak
   LEVIATHAN:  { id: 'LEVIATHAN',  name: '🌊 Leviathan',  rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'WATER', workBuff: 0.25, desc: 'Naga lautan kuno. Menguasai ombak samudera.' },
   BEHEMOTH:   { id: 'BEHEMOTH',   name: '🦏 Behemoth',   rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'EARTH', workBuff: 0.25, desc: 'Monster bumi tak terkalahkan. Kekuatan tiada batas.' },
   ARCHDRAGON: { id: 'ARCHDRAGON', name: '🐉 Archdragon', rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 25, baseDef: 10, element: 'DRAGON',workBuff: 0.25, desc: 'Naga purba tertua. Penguasa langit dan bumi.' },
+  CERBERUS:   { id: 'CERBERUS',   name: '🐺 Cerberus',   rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 28, baseDef: 7, element: 'FIRE',  workBuff: 0.25, desc: 'Anjing berkepala tiga penjaga neraka. Menguasai api jahanam pembakar jiwa.' },
+  TYPHON:     { id: 'TYPHON',     name: '🌪️ Typhon',     rarity: 'LEGENDARY', emoji: '🟡', baseHP: 150, baseAtk: 27, baseDef: 8, element: 'DRAGON',workBuff: 0.25, desc: 'Bapa dari segala monster mitologi. Membawa kekuatan badai penghancur dimensi.' },
+  VALKYRIE:   { id: 'VALKYRIE',   name: '⚔️ Valkyrie',   rarity: 'LEGENDARY', emoji: '🟡', baseHP: 160, baseAtk: 22, baseDef: 18, element: 'EARTH', workBuff: 0.25, desc: 'Ksatria wanita pemandu jiwa pejuang. Memiliki pertahanan emas yang tak tertembus.' },
+  IFRIT:      { id: 'IFRIT',      name: '👹 Ifrit',      rarity: 'LEGENDARY', emoji: '🟡', baseHP: 145, baseAtk: 30, baseDef: 5, element: 'FIRE',  workBuff: 0.25, desc: 'Raja jin api dari gurun terdalam berkekuatan destruktif tinggi.' },
   // 🔴 Mythic — makhluk mitologi langka, 3 trait bawaan, buff +40%
   FENRIR:      { id: 'FENRIR',      name: '🐺 Fenrir',      rarity: 'MYTHIC',   emoji: '🔴', baseHP: 200, baseAtk: 35, baseDef: 15, element: 'DRAGON', workBuff: 0.40, desc: 'Serigala pemusnah akhir zaman. Cakarnya merobek dimensi.' },
   BAHAMUT:     { id: 'BAHAMUT',     name: '🐲 Bahamut',     rarity: 'MYTHIC',   emoji: '🔴', baseHP: 200, baseAtk: 40, baseDef: 10, element: 'FIRE',   workBuff: 0.40, desc: 'Naga kaisar maha-api. Napasnya menguapkan lautan.' },
@@ -3230,10 +3239,10 @@ function _rollOnce() {
     }
     trait = GACHA_TRAIT_RARE[Math.floor(Math.random() * GACHA_TRAIT_RARE.length)];
   } else if (rarity === 'EPIC') {
-    speciesPool = ['PHOENIX', 'TURTLE'];
+    speciesPool = ['PHOENIX', 'TURTLE', 'SIREN', 'PEGASUS', 'KITSUNE', 'KIRIN', 'YETI'];
     trait = GACHA_TRAIT_EPIC[0]; // SURVIVOR
   } else { // LEGENDARY
-    speciesPool = ['LEVIATHAN', 'BEHEMOTH', 'ARCHDRAGON'];
+    speciesPool = ['LEVIATHAN', 'BEHEMOTH', 'ARCHDRAGON', 'CERBERUS', 'TYPHON', 'VALKYRIE', 'IFRIT'];
     // 2 trait acak unik
     const shuffled = [...GACHA_TRAIT_LEGENDARY].sort(() => Math.random() - 0.5);
     trait  = shuffled[0];

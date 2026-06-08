@@ -157,6 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (petType === 'GOLEM') { color = '#7f8c8d'; detailColor = '#95a5a6'; }
     else if (petType === 'PHOENIX') { color = '#e67e22'; detailColor = '#d35400'; }
     else if (petType === 'TURTLE') { color = '#16a085'; detailColor = '#11806a'; }
+    else if (petType === 'SIREN') { color = '#54a0ff'; detailColor = '#2e86de'; }
+    else if (petType === 'PEGASUS') { color = '#a29bfe'; detailColor = '#6c5ce7'; }
+    else if (petType === 'KITSUNE') { color = '#ff9f43'; detailColor = '#ee5253'; }
+    else if (petType === 'KIRIN') { color = '#f1c40f'; detailColor = '#f39c12'; }
+    else if (petType === 'YETI') { color = '#00d2d3'; detailColor = '#01a3a4'; }
+    else if (petType === 'CERBERUS') { color = '#ff7675'; detailColor = '#d63031'; }
+    else if (petType === 'TYPHON') { color = '#8c7ae6'; detailColor = '#5f27cd'; }
+    else if (petType === 'VALKYRIE') { color = '#dcdde1'; detailColor = '#718093'; }
+    else if (petType === 'IFRIT') { color = '#ff6b6b'; detailColor = '#ee5253'; }
     else if (petType === 'CHRONOS') { color = '#9b59b6'; detailColor = '#8e44ad'; }
     else if (petType === 'OUROBOROS') { color = '#1abc9c'; detailColor = '#16a085'; }
     
