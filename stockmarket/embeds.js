@@ -481,6 +481,45 @@ module.exports = {
   formatCurrency,
   getPetImage,
 
+  async petCardEmbed(pet, ownerUser, options = {}) {
+    try {
+      const petCard = require('./petCard');
+      let xpNeeded = 100;
+      try {
+        const petModule = require('./pet');
+        xpNeeded = petModule.getXpNeeded(pet.level, pet.trait);
+      } catch (e) {
+        xpNeeded = pet.level * 150;
+      }
+
+      const attachment = await petCard.getPetCardAttachment(pet, ownerUser, { xpNeeded, maxHP: 100, ...options });
+
+      if (attachment) {
+        const embed = new EmbedBuilder()
+          .setColor(petCard.RARITY_COLORS[(pet.gacha_rarity || 'COMMON').toUpperCase()]?.primary || 0x7C4DFF)
+          .setTitle(`🐾 KARTU PROFIL PET: ${pet.pet_name.toUpperCase()}`)
+          .setImage('attachment://pet_card.png')
+          .setFooter({ text: 'Kosan 1A RPG · Pet Profile Card' })
+          .setTimestamp();
+        return { embeds: [embed], files: [attachment] };
+      }
+    } catch (e) {
+      console.error('[Embeds] Gagal membuat petCardEmbed:', e);
+    }
+
+    // Fallback to text embed
+    const embed = new EmbedBuilder()
+      .setColor(0x7C4DFF)
+      .setTitle(`🐾 PROFIL PET: ${pet.pet_name}`)
+      .setDescription(`Gagal memuat kartu visual. Berikut data status pet:\n\n` +
+        `• Nama: **${pet.pet_name}**\n` +
+        `• Tipe: **${pet.pet_type}** (Lv. ${pet.level})\n` +
+        `• HP: **${pet.health}%** | Kenyangan: **${pet.hunger}%**\n` +
+        `• Hidrasi: **${pet.thirst}%** | Kebahagiaan: **${pet.happiness}%**`)
+      .setTimestamp();
+    return { embeds: [embed] };
+  },
+
   // 1. Embed Saldo / Profile (Portrait UI — Full Description)
   profileEmbed(user, wallet, portfolioValue, member = null, shopItems = [], pet = null, activeLoan = null, bailDebts = null, portfolioItems = [], extraData = {}, activeTab = 'dashboard') {
     // Ambil saldo bank savings secara langsung dari database
@@ -725,6 +764,11 @@ module.exports = {
           desc += `• 🪦 Status: **MENINGGAL DUNIA**\n`;
           desc += `• Nama Pet: **${pet.pet_name}**\n`;
           desc += `• *Ketik \`.pet reset\` untuk adopsi kembali.*\n`;
+        } else if (extraData && extraData.hasVisualCard) {
+          thumbnailURL = null;
+          desc += `Berikut adalah kartu profil premium peliharaan aktif Anda, **${pet.pet_name}**!\n\n` +
+                  `*Gunakan tombol menu di bawah untuk merawat pet.*`;
+          extraData.usePetCardImage = true;
         } else {
           const typeEmoji = pet.pet_type === 'SLIME' ? '🟢' : pet.pet_type === 'DRAGON' ? '🔥' : pet.pet_type === 'CAT' ? '🐱' : pet.pet_type === 'GOLEM' ? '🧱' : '🐾';
           const traitEmojis = {
@@ -918,10 +962,17 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(accentColor)
       .setAuthor({ name: `${user.username}`, iconURL: user.displayAvatarURL({ dynamic: true }) })
-      .setThumbnail(thumbnailURL)
       .setDescription(desc)
       .setFooter({ text: footerText })
       .setTimestamp();
+
+    if (thumbnailURL) {
+      embed.setThumbnail(thumbnailURL);
+    }
+
+    if (extraData && extraData.usePetCardImage) {
+      embed.setImage('attachment://pet_card.png');
+    }
 
     return embed;
   },

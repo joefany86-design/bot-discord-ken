@@ -4981,6 +4981,37 @@ async function handleKosUpgradeCommand(message, client) {
 }
 
 /**
+ * Perintah: .petcard / .pc
+ * Menampilkan kartu profil pet visual secara langsung.
+ */
+async function handlePetCardCommand(message, client, args) {
+  const { guildId, author } = message;
+  const targetUser = message.mentions.users.first() || author;
+  
+  // Kirim sinyal typing untuk pengalaman UI premium
+  await message.channel.sendTyping().catch(() => {});
+
+  const activePet = pet.getPet(targetUser.id, guildId);
+  if (!activePet) {
+    const errorEmb = embeds.errorEmbed(
+      'Pet Tidak Ditemukan! ❌',
+      targetUser.id === author.id
+        ? 'Anda tidak memiliki peliharaan aktif saat ini!\nAdopsi pet terlebih dahulu di `.pet buy <nama> <slime/dragon/cat/golem>`'
+        : `<@${targetUser.id}> tidak memiliki peliharaan aktif saat ini!`
+    );
+    return message.reply({ embeds: [errorEmb] });
+  }
+
+  try {
+    const cardData = await embeds.petCardEmbed(activePet, targetUser);
+    return message.reply(cardData);
+  } catch (err) {
+    console.error('Error handling petcard command:', err);
+    return message.reply({ embeds: [embeds.errorEmbed('Gagal Menampilkan Kartu Pet!', err.message)] });
+  }
+}
+
+/**
  * Helper untuk menampilkan dan memproses Dashboard Pet Tamagotchi
  */
 async function handlePetCommand(message, client, args) {
@@ -9023,9 +9054,34 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
         try {
           // Eksekusi PvP
           const result = pet.executePvP(author.id, opponent.id, guildId, bet);
-          const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
+          
+          let files = [];
+          try {
+            const petCardModule = require('./petCard');
+            const freshChalPet = pet.getPet(author.id, guildId);
+            const freshOppPet = pet.getPet(opponent.id, guildId);
+            
+            const pvpCardAttachment = await petCardModule.getPvpCardAttachment(freshChalPet, freshOppPet, {
+              winner: result.winnerName,
+              loser: result.loserName,
+              pet1HP: result.challengerHpLeft,
+              pet2HP: result.opponentHpLeft,
+              pet1MaxHP: freshChalPet.health + (result.challengerHpLeft > 0 ? 0 : 50),
+              pet2MaxHP: freshOppPet.health + (result.opponentHpLeft > 0 ? 0 : 50)
+            });
+            if (pvpCardAttachment) {
+              files.push(pvpCardAttachment);
+            }
+          } catch (err) {
+            console.error('[PvP] Gagal membuat PvP card attachment:', err);
+          }
 
-          await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport] });
+          const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
+          if (files.length > 0) {
+            battleReport.setImage('attachment://pvp_card.png');
+          }
+
+          await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport], files: files });
         } catch (err) {
           await iMatch.reply({ embeds: [embeds.errorEmbed('Pertempuran Gagal Dihentikan!', err.message)] });
         }
@@ -10012,6 +10068,11 @@ async function handleEconomyCommands(message, client) {
 
   if (commandName === 'pet') {
     await handlePetCommand(message, client, args);
+    return true;
+  }
+
+  if (commandName === 'petcard' || commandName === 'pc') {
+    await handlePetCardCommand(message, client, args);
     return true;
   }
 
@@ -12169,13 +12230,35 @@ async function handleEconomyCommands(message, client) {
       };
 
       let currentTab = 'dashboard';
+      let initialFiles = [];
+      if (currentTab === 'pet' && userPet && userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
+        try {
+          const petCardModule = require('./petCard');
+          let xpNeeded = 100;
+          try {
+            const petModule = require('./pet');
+            xpNeeded = petModule.getXpNeeded(userPet.level, userPet.trait);
+          } catch (e) {
+            xpNeeded = userPet.level * 150;
+          }
+          const attachment = await petCardModule.getPetCardAttachment(userPet, targetUser, { xpNeeded, maxHP: 100 });
+          if (attachment) {
+            initialFiles.push(attachment);
+            extraData.hasVisualCard = true;
+          }
+        } catch (err) {
+          console.error('[Profile] Gagal memuat pet card awal:', err);
+        }
+      }
+
       const initialEmbed = embeds.profileEmbed(
         targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items, extraData, currentTab
       );
 
       const replyMsg = await message.reply({
         embeds: [initialEmbed],
-        components: [buildProfileButtons(currentTab), buildCloseButton()]
+        components: [buildProfileButtons(currentTab), buildCloseButton()],
+        files: initialFiles
       });
 
       const collector = replyMsg.createMessageComponentCollector({
@@ -12233,14 +12316,43 @@ async function handleEconomyCommands(message, client) {
             curseType: freshWallet.curse_type || ''
           };
 
+          let freshFiles = [];
+          if (currentTab === 'pet' && freshUserPet && freshUserPet.status !== 'DEAD' && freshUserPet.status !== 'EGG') {
+            try {
+              const petCardModule = require('./petCard');
+              let xpNeeded = 100;
+              try {
+                const petModule = require('./pet');
+                xpNeeded = petModule.getXpNeeded(freshUserPet.level, freshUserPet.trait);
+              } catch (e) {
+                xpNeeded = freshUserPet.level * 150;
+              }
+              const attachment = await petCardModule.getPetCardAttachment(freshUserPet, targetUser, { xpNeeded, maxHP: 100 });
+              if (attachment) {
+                freshFiles.push(attachment);
+                freshExtraData.hasVisualCard = true;
+              }
+            } catch (err) {
+              console.error('[Profile] Gagal memuat pet card tab:', err);
+            }
+          }
+
           const nextEmbed = embeds.profileEmbed(
             targetUser, freshWallet, freshPorto.totalPortfolioValue, targetMember, shopItems, freshUserPet, freshActiveLoan, freshBailDebts, freshPorto.items, freshExtraData, currentTab
           );
 
-          await i.update({
+          const updateOptions = {
             embeds: [nextEmbed],
-            components: [buildProfileButtons(currentTab), buildCloseButton()]
-          }).catch(console.error);
+            components: [buildProfileButtons(currentTab), buildCloseButton()],
+            files: freshFiles
+          };
+
+          // Hapus lampiran sebelumnya jika keluar dari tab pet
+          if (currentTab !== 'pet') {
+            updateOptions.attachments = [];
+          }
+
+          await i.update(updateOptions).catch(console.error);
         }
       });
 
