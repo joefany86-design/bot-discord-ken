@@ -254,7 +254,7 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
     biome: biomeKey,
     pet: wildPet,
     balls: 5,
-    baits: 5,
+    baits: 3,
     toys: 3,
     baitFed: 0,
     turns: 0,
@@ -320,7 +320,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     .addFields(
       {
         name: '🎒 Kantong Perlengkapan Safari',
-        value: `🥎 **Safari Ball:** \`${state.balls} / 5\` | 🍖 **Safari Bait:** \`${state.baits} / 5\` | 💫 **Mainan Pet:** \`${state.toys} / 3\``,
+        value: `🥎 **Safari Ball:** \`${state.balls} / 5\` | 🍖 **Safari Bait:** \`${state.baits} / 3\` | 💫 **Mainan Pet:** \`${state.toys} / 3\``,
         inline: false
       },
       {
