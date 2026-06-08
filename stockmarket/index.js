@@ -5252,7 +5252,7 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: SWITCH / AKTIF ──
   if (subCommand === 'switch' || subCommand === 'aktif') {
-    const targetName = args[1];
+    const targetName = args.slice(1).join(' ');
     if (!targetName) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet switch <nama>`\nContoh: `.pet switch Ciko`')] });
     }
@@ -5267,8 +5267,8 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: BUY / ADOPT ──
   if (subCommand === 'buy' || subCommand === 'adopt') {
-    const petName = args[1];
-    const petType = args[2];
+    const petType = args[args.length - 1];
+    const petName = args.slice(1, args.length - 1).join(' ');
     if (!petName || !petType) {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet buy <nama> <slime/dragon/cat/golem>`\nContoh: `.pet buy Ciko Dragon`')] });
     }
