@@ -2074,6 +2074,63 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
 
     return { embeds: [embed], components: [btnRow1, btnRow2] };
   }
+
+  if (state.currentSubMenu === 'select_auto_reward_item') {
+    const tier = state.editingRewardTier || '1';
+    const labelMap = {
+      '1': 'Juara 1',
+      '2': 'Juara 2',
+      '3': 'Juara 3',
+      'part': 'Partisipan/Peserta'
+    };
+    const label = labelMap[tier] || 'Hadiah';
+
+    embed.setTitle(`⚙️ PILIH ITEM HADIAH - ${label.toUpperCase()}`)
+      .setDescription(
+        `Pilih item yang ingin diberikan sebagai hadiah otomatis untuk **${label}** dari menu di bawah ini.\n` +
+        `Setelah memilih item, Anda akan diminta mengisi jumlah koin dan kuantitas item melalui modal.`
+      );
+
+    const itemOptions = [
+      new StringSelectMenuOptionBuilder().setLabel('Tidak Ada Hadiah Item').setValue('NONE').setDescription('Hanya memberikan hadiah koin'),
+      new StringSelectMenuOptionBuilder().setLabel('🎟️ Tiket Gacha Pet').setValue('TICKET_GACHA').setDescription('Tiket gacha pet di Toko'),
+      new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 8x').setValue('XP_8X').setDescription('Booster XP Pet 8x'),
+      new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 6x').setValue('XP_6X').setDescription('Booster XP Pet 6x'),
+      new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 4x').setValue('XP_4X').setDescription('Booster XP Pet 4x'),
+      new StringSelectMenuOptionBuilder().setLabel('⚡ XP Booster 2x').setValue('XP_2X').setDescription('Booster XP Pet 2x'),
+      new StringSelectMenuOptionBuilder().setLabel('🔮 Jimat Keberuntungan').setValue('LUCKY_AMULET').setDescription('Penyelamat Pet dari kematian'),
+      new StringSelectMenuOptionBuilder().setLabel('⚔️ Pedang Mainan').setValue('SWORD_TOY').setDescription('Aksesoris Pet: +15% PvP DMG'),
+      new StringSelectMenuOptionBuilder().setLabel('🛡️ Tameng Mainan').setValue('SHIELD_TOY').setDescription('Aksesoris Pet: -15% PvP DMG Taken'),
+      new StringSelectMenuOptionBuilder().setLabel('🪮 Kalung Besi').setValue('COLLAR_IRON').setDescription('Aksesoris Pet: -15% Status Decay'),
+      new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Premium').setValue('FOOD_PREMIUM').setDescription('Pakan Pet: +70 Kenyangan, +10 HP'),
+      new StringSelectMenuOptionBuilder().setLabel('🍗 Pakan Pet Biasa').setValue('FOOD_BASIC').setDescription('Pakan Pet: +30 Kenyangan'),
+      new StringSelectMenuOptionBuilder().setLabel('💊 Ramuan Kesehatan').setValue('MEDICINE').setDescription('Obat Pet: +50 HP, Sembuh Sakit'),
+      new StringSelectMenuOptionBuilder().setLabel('⚽ Bola Karet').setValue('TOY').setDescription('Mainan Pet: +50 Kebahagiaan'),
+      new StringSelectMenuOptionBuilder().setLabel('🥤 Soda Energi Pet').setValue('SODA_ENERGY').setDescription('Minuman Pet: Hapus CD Kerja/Hunt'),
+      new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Mandi Pet').setValue('SOAP_PET').setDescription('Kebersihan Pet: +5 Kebahagiaan'),
+      new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setValue('LOCKPICK').setDescription('Item Heist / Robbery'),
+      new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setValue('MASK').setDescription('Item Heist / Robbery'),
+      new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setValue('MEAT').setDescription('Item Heist / Robbery'),
+      new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setValue('SOAP').setDescription('Item Heist / Robbery'),
+      new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setValue('BRANKAS').setDescription('Item Heist / Robbery')
+    ];
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_select_item')
+      .setPlaceholder('👉 Pilih item hadiah...')
+      .addOptions(itemOptions);
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_tournament_rewards_btn_back_rewards')
+        .setLabel('🔙 Batal')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [selectRow, btnRow] };
+  }
 }
 
 /**
@@ -2099,7 +2156,9 @@ async function updatePersistentTournamentPanel(guildId, client) {
     selectedRewardItemQty: null,
     petGiveSpecies: null,
     petGiveTrait: null,
-    petGiveStar: null
+    petGiveStar: null,
+    editingRewardTier: null,
+    selectedAutoRewardItem: null
   };
 
   if (!botMsg) {
@@ -2158,7 +2217,9 @@ async function handleAdminTournamentPanel(messageOrInteraction, client) {
     selectedRewardItemQty: null,
     petGiveSpecies: null,
     petGiveTrait: null,
-    petGiveStar: null
+    petGiveStar: null,
+    editingRewardTier: null,
+    selectedAutoRewardItem: null
   };
 
   const initialData = getTournamentPanelDataShared(guildId, defaultState, client, isPermanentChannel);
@@ -2200,7 +2261,9 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       selectedRewardItemQty: null,
       petGiveSpecies: null,
       petGiveTrait: null,
-      petGiveStar: null
+      petGiveStar: null,
+      editingRewardTier: null,
+      selectedAutoRewardItem: null
     };
     client.adminTournamentStates.set(stateKey, state);
   }
@@ -2249,6 +2312,16 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
     }
     else if (customId.startsWith('admin_tournament_auto_reward_btn_')) {
       const tier = customId.replace('admin_tournament_auto_reward_btn_', ''); // '1', '2', '3', 'part'
+      state.currentSubMenu = 'select_auto_reward_item';
+      state.editingRewardTier = tier;
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
+    }
+    else if (customId === 'admin_tournament_rewards_select_item') {
+      const selectedItem = interaction.values[0];
+      state.selectedAutoRewardItem = selectedItem;
+      const tier = state.editingRewardTier || '1';
+
       const labelMap = {
         '1': 'Juara 1',
         '2': 'Juara 2',
@@ -2259,13 +2332,12 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
       // Query current values for fields default
       const rewards = database.get(
-        `SELECT tour_reward_coin_${tier} as c, tour_reward_item_${tier} as i, tour_reward_qty_${tier} as q
+        `SELECT tour_reward_coin_${tier} as c, tour_reward_qty_${tier} as q
          FROM ebyus_settings WHERE guild_id = ?`,
         [guildId]
       );
       // fallback defaults
       const defaultCoins = rewards?.c ?? (tier === '1' ? 10000 : tier === '2' ? 8000 : tier === '3' ? 4000 : 1000);
-      const defaultItem = rewards?.i ?? (tier === '1' ? 'XP_8X' : tier === '2' ? 'XP_4X' : tier === '3' ? 'FOOD_PREMIUM' : 'FOOD_BASIC');
       const defaultQty = rewards?.q ?? 1;
 
       const modal = new ModalBuilder()
@@ -2280,17 +2352,9 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
         .setStyle(TextInputStyle.Short)
         .setRequired(true);
 
-      const itemInput = new TextInputBuilder()
-        .setCustomId('reward_item_id')
-        .setLabel('ID Item (Ketik NONE jika tidak ada)')
-        .setValue(defaultItem)
-        .setPlaceholder('Contoh: XP_8X, FOOD_PREMIUM')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
       const qtyInput = new TextInputBuilder()
         .setCustomId('reward_qty')
-        .setLabel('Jumlah/Kuantitas Item')
+        .setLabel(`Jumlah Item (${selectedItem})`)
         .setValue(String(defaultQty))
         .setPlaceholder('Contoh: 1')
         .setStyle(TextInputStyle.Short)
@@ -2298,7 +2362,6 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(coinInput),
-        new ActionRowBuilder().addComponents(itemInput),
         new ActionRowBuilder().addComponents(qtyInput)
       );
 
@@ -2312,7 +2375,6 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       if (sub) {
         try {
           const coinVal = parseInt(sub.fields.getTextInputValue('reward_coins').trim()) || 0;
-          const itemVal = sub.fields.getTextInputValue('reward_item_id').toUpperCase().trim();
           const qtyVal = parseInt(sub.fields.getTextInputValue('reward_qty').trim()) || 0;
 
           if (isNaN(coinVal) || coinVal < 0) {
@@ -2332,18 +2394,27 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
             `UPDATE ebyus_settings
              SET tour_reward_coin_${tier} = ?, tour_reward_item_${tier} = ?, tour_reward_qty_${tier} = ?
              WHERE guild_id = ?`,
-            [coinVal, itemVal === '' ? 'NONE' : itemVal, qtyVal, guildId]
+            [coinVal, selectedItem, qtyVal, guildId]
           );
 
-          await sub.reply({ content: `✅ Sukses mengatur hadiah otomatis untuk **${label}**: Rp ${coinVal.toLocaleString('id-ID')} dan ${qtyVal}x ${itemVal}!`, flags: 64 });
-          
+          await sub.reply({ content: `✅ Sukses mengatur hadiah otomatis untuk **${label}**: Rp ${coinVal.toLocaleString('id-ID')} dan ${qtyVal}x ${selectedItem}!`, flags: 64 });
+
           state.currentSubMenu = 'auto_rewards_config';
+          state.editingRewardTier = null;
+          state.selectedAutoRewardItem = null;
           const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
           await interaction.message.edit(fresh).catch(() => {});
         } catch (err) {
           await sub.reply({ content: `❌ Gagal menyimpan pengaturan: ${err.message}`, flags: 64 }).catch(() => {});
         }
       }
+    }
+    else if (customId === 'admin_tournament_rewards_btn_back_rewards') {
+      state.currentSubMenu = 'auto_rewards_config';
+      state.editingRewardTier = null;
+      state.selectedAutoRewardItem = null;
+      const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
+      await interaction.update(fresh).catch(() => {});
     }
     else if (customId === 'admin_tournament_rewards_select_winner') {
       const val = interaction.values[0];
