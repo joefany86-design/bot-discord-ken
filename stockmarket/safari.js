@@ -537,13 +537,18 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
 
   const choiceCollector = updatedMsg.createMessageComponentCollector({
     filter: (btnI) => btnI.user.id === author.id,
-    time: 60000,
-    max: 1
+    time: 60000
   });
+
+  let choiceProcessed = false;
 
   choiceCollector.on('collect', async iChoice => {
     try {
+      if (choiceProcessed) return;
+
       if (iChoice.customId === 'safari_choice_release') {
+        choiceProcessed = true;
+        choiceCollector.stop();
         // --- PROSES RILIS / JUAL HADIAH ---
         const rewards = executeReleaseRewards(author.id, state.guildId, state.pet);
 
@@ -617,6 +622,10 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             return modalInteraction.reply({ content: `❌ Anda sudah memiliki peliharaan dengan nama **"${chosenName}"**! Silakan coba adopsi lagi dan tentukan nama yang berbeda.`, flags: 64 });
           }
 
+          if (choiceProcessed) return;
+          choiceProcessed = true;
+          choiceCollector.stop();
+
           // Simpan Pet ke Database!
           const nowUnix = Math.floor(Date.now() / 1000);
           const isActive = petsCount === 0 ? 1 : 0;
@@ -656,6 +665,10 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
         } catch (errModal) {
           // Abaikan timeout modal, berikan pet default name jika ditutup
           if (errModal.code === 'InteractionCollectorError') {
+            if (choiceProcessed) return;
+            choiceProcessed = true;
+            choiceCollector.stop();
+
             // Sediakan default name
             const defaultName = `Liar ${state.pet.name} ${Math.floor(100 + Math.random() * 900)}`;
             const nowUnix = Math.floor(Date.now() / 1000);
