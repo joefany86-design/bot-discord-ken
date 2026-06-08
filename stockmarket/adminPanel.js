@@ -1646,6 +1646,17 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
       );
     }
 
+    // Cek apakah turnamen sedang berlangsung (status PLAYING)
+    const isTournamentPlaying = event.status === 'PLAYING';
+    
+    // Cek apakah ada pertandingan yang tersedia (aktif atau akan dimulai)
+    const anyMatchAvailable = database.get(
+      'SELECT match_id FROM tournament_matches WHERE guild_id = ? AND match_status IN (\'PENDING\', \'ACTIVE\') LIMIT 1',
+      [gId]
+    );
+    
+    const canControlMatch = isTournamentPlaying && (activeMatch || anyMatchAvailable);
+
     btnRow1.addComponents(
       new ButtonBuilder()
         .setCustomId('admin_tournament_btn_reroll')
@@ -1656,12 +1667,12 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
         .setCustomId('admin_tournament_btn_dq')
         .setLabel('⚠️ DQ Player')
         .setStyle(ButtonStyle.Danger)
-        .setDisabled(!activeMatch),
+        .setDisabled(!canControlMatch),
       new ButtonBuilder()
         .setCustomId('admin_tournament_btn_forcewin')
         .setLabel('👑 Force Win')
         .setStyle(ButtonStyle.Success)
-        .setDisabled(!activeMatch)
+        .setDisabled(!canControlMatch)
     );
 
     const btnComponents2 = [
@@ -2422,12 +2433,33 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       await interaction.message.edit(fresh).catch(() => { });
     }
     else if (customId === 'admin_tournament_btn_dq') {
-      const match = database.get(
+      let match = database.get(
         'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
         [guildId]
       );
+      
+      // Jika tidak ada match aktif, cari match pending (untuk force start dan DQ)
       if (!match) {
-        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+        match = database.get(
+          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'PENDING\' LIMIT 1',
+          [guildId]
+        );
+        
+        if (match) {
+          // Force start match terlebih dahulu, lalu lanjutkan DQ
+          const tournament = require('./tournament');
+          await tournament.executeNextMatch(guildId, client);
+          
+          // Update match reference setelah force start
+          match = database.get(
+            'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+            [guildId]
+          );
+        }
+      }
+      
+      if (!match) {
+        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif atau pending saat ini!', flags: 64 });
       }
 
       const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
@@ -2447,12 +2479,33 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       await interaction.reply({ content: '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**', components: [actionRow], flags: 64 });
     }
     else if (customId === 'admin_tournament_btn_forcewin') {
-      const match = database.get(
+      let match = database.get(
         'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
         [guildId]
       );
+      
+      // Jika tidak ada match aktif, cari match pending (untuk force start dan Force Win)
       if (!match) {
-        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+        match = database.get(
+          'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'PENDING\' LIMIT 1',
+          [guildId]
+        );
+        
+        if (match) {
+          // Force start match terlebih dahulu, lalu lanjutkan Force Win
+          const tournament = require('./tournament');
+          await tournament.executeNextMatch(guildId, client);
+          
+          // Update match reference setelah force start
+          match = database.get(
+            'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+            [guildId]
+          );
+        }
+      }
+      
+      if (!match) {
+        return interaction.reply({ content: '❌ Tidak ada pertandingan aktif atau pending saat ini!', flags: 64 });
       }
 
       const p1Pet = database.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [guildId, match.player_1_id]);
