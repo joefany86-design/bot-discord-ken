@@ -571,7 +571,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
     .addFields(
       {
         name: '📥 Adopsi (Masukkan ke Kandang)',
-        value: `Simpan pet ini di kandang Anda (langsung berstatus **BABY** yang aktif tanpa perlu waktu tetas!). *Maksimal 3 pet terdaftar.*`,
+        value: `Simpan pet ini di kandang Anda (langsung berstatus **BABY** yang aktif tanpa perlu waktu tetas!). *Maksimal 5 pet terdaftar.*`,
         inline: false
       },
       {
@@ -628,12 +628,12 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
       }
 
       if (iChoice.customId === 'safari_choice_adopt') {
-        // Cek batasan slot kandang (maksimal 3 pet)
+        // Cek batasan slot kandang (maksimal 5 pet)
         const petsCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [author.id, state.guildId]);
         const petsCount = petsCountRow ? petsCountRow.count : 0;
 
-        if (petsCount >= 3) {
-          return iChoice.reply({ content: '❌ **Kandang Penuh!** Anda sudah memiliki batas maksimal **3 hewan peliharaan** di kandang. Silakan lepas/reset salah satu pet Anda terlebih dahulu sebelum mengadopsi pet baru!', flags: 64 });
+        if (petsCount >= 5) {
+          return iChoice.reply({ content: '❌ **Kandang Penuh!** Anda sudah memiliki batas maksimal **5 hewan peliharaan** di kandang. Silakan lepas/reset salah satu pet Anda terlebih dahulu sebelum mengadopsi pet baru!', flags: 64 });
         }
 
         // Tampilkan Modal Penamaan Pet
