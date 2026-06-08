@@ -12334,7 +12334,11 @@ async function handleEconomyCommands(message, client) {
             const itemId = promo.reward_item_id.toUpperCase();
             const qty = promo.reward_item_qty;
 
-            const petItemIds = ['FOOD_BASIC', 'FOOD_PREMIUM', 'TOY', 'SODA', 'SOAP', 'MEDICINE', 'AMULET'];
+            const petItemIds = [
+              'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
+              'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
+              'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+            ];
             if (petItemIds.includes(itemId)) {
               const exist = database.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [author.id, guildId, itemId]);
               if (!exist) {

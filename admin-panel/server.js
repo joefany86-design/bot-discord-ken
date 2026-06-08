@@ -208,7 +208,7 @@ const server = http.createServer((req, res) => {
         { id: 'TICKET_GACHA', name: '🎫 Tiket Gacha Pet', category: 'general', description: 'Tiket memutar gacha peliharaan' },
         { id: 'FOOD_PREMIUM', name: '🥩 Pakan Premium Pet', category: 'pet', description: 'Makanan bernutrisi tinggi untuk pet' },
         { id: 'MEDICINE', name: '💊 Obat Pet Sakit', category: 'pet', description: 'Sembuhkan HP pet yang terluka parah' },
-        { id: 'AMULET', name: '📿 Amulet Proteksi Pet', category: 'pet', description: 'Amulet mistis penangkal kematian pet' }
+        { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan (Amulet)', category: 'pet', description: 'Jimat pelindung kematian pet sekali pakai' }
       ];
       sendJSON(res, 200, { success: true, items });
     }

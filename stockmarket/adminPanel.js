@@ -4855,7 +4855,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           { id: 'TICKET_GACHA', name: '🎫 Tiket Gacha Pet', description: 'Tiket memutar gacha peliharaan' },
           { id: 'FOOD_PREMIUM', name: '🥩 Pakan Premium Pet', description: 'Makanan bernutrisi tinggi untuk pet' },
           { id: 'MEDICINE', name: '💊 Obat Pet Sakit', description: 'Sembuhkan HP pet yang terluka parah' },
-          { id: 'AMULET', name: '📿 Amulet Proteksi Pet', description: 'Amulet mistis penangkal kematian pet' }
+          { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan (Amulet)', description: 'Jimat pelindung kematian pet sekali pakai' }
         ];
 
         items.forEach(it => {
@@ -5757,7 +5757,11 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
                   const newBal = Math.max(0, currentBal - bidAmount);
                   database.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, winnerId, guildId]);
 
-                  const petItemIds = ['FOOD_BASIC', 'FOOD_PREMIUM', 'TOY', 'SODA', 'SOAP', 'MEDICINE', 'AMULET'];
+                  const petItemIds = [
+                    'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
+                    'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
+                    'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+                  ];
                   if (petItemIds.includes(itemId)) {
                     const exist = database.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [winnerId, guildId, itemId]);
                     if (!exist) {
@@ -7789,7 +7793,7 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
       `  └ *Hasil Panen:* \`FLOWER_ROSE\`, \`FLOWER_TULIP\`, \`FLOWER_LAVENDER\`, \`FLOWER_SAKURA\`, \`FLOWER_ORCHID\`, \`BOUQUET_LOVE\`, \`BOUQUET_PEACE\`\n` +
       `  └ *Tiket:* \`TICKET_GACHA\`\n` +
       `• **Pet Items** (Bagi-bagi Item Pet Massal):\n` +
-      `  └ *Pakan/Perawatan:* \`FOOD_BASIC\`, \`FOOD_PREMIUM\`, \`TOY\`, \`SODA\`, \`SOAP\`, \`MEDICINE\`, \`AMULET\`\n\n` +
+      `  └ *Pakan/Perawatan:* \`FOOD_BASIC\`, \`FOOD_PREMIUM\`, \`WATER\`, \`TOY\`, \`SODA_ENERGY\`, \`SOAP_PET\`, \`MEDICINE\`, \`LUCKY_AMULET\`\n\n` +
       `🎟️ **STATISTIK LOTRE MINGGUAN:**\n${lotteryText}`
     );
 
