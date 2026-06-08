@@ -1859,6 +1859,77 @@ function generateRoundRobinMatches(players) {
   return matches;
 }
 
+/**
+ * Memulihkan state turnamen setelah bot restart (Admin Cup).
+ */
+async function initTournamentRecovery(client) {
+  try {
+    const events = db.all("SELECT * FROM tournament_events WHERE status != 'COMPLETED'");
+    console.log(`[Tournament] Menemukan ${events.length} turnamen aktif untuk dipulihkan.`);
+    
+    client.tournamentTimers = client.tournamentTimers || new Map();
+    client.activeCupMatches = client.activeCupMatches || new Map();
+
+    for (const event of events) {
+      const guildId = event.guild_id;
+      
+      // Jika statusnya REGISTERING, pasang kembali timer pendaftaran atau langsung tutup jika sudah lewat waktu
+      if (event.status === 'REGISTERING') {
+        const now = Math.floor(Date.now() / 1000);
+        const remainingTimeMs = (event.registration_end_at - now) * 1000;
+        
+        if (remainingTimeMs > 0) {
+          console.log(`[Tournament] Memulihkan timer pendaftaran untuk guild ${guildId}. Sisa waktu: ${Math.round(remainingTimeMs/1000)} detik.`);
+          const timer = setTimeout(() => {
+            closeRegistrationAndGenerateBracket(guildId, client);
+          }, remainingTimeMs);
+          client.tournamentTimers.set(guildId, timer);
+        } else {
+          console.log(`[Tournament] Pendaftaran untuk guild ${guildId} sudah melewati batas waktu. Menutup pendaftaran sekarang...`);
+          // Gunakan setTimeout agar tidak memblokir proses inisialisasi utama bot
+          setTimeout(() => {
+            closeRegistrationAndGenerateBracket(guildId, client).catch(err => {
+              console.error(`[Tournament] Gagal menutup pendaftaran otomatis saat recovery untuk guild ${guildId}:`, err);
+            });
+          }, 5000);
+        }
+      }
+      
+      // Jika statusnya PLAYING, pulihkan duel/laga yang aktif
+      if (event.status === 'PLAYING') {
+        if (event.is_paused === 1) {
+          console.log(`[Tournament] Turnamen di guild ${guildId} sedang di-pause. Recovery dilewati.`);
+          continue;
+        }
+        
+        // Cari apakah ada match yang berstatus 'ACTIVE' di database
+        const activeMatch = db.get(
+          "SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = 'ACTIVE' LIMIT 1",
+          [guildId]
+        );
+        
+        if (activeMatch) {
+          console.log(`[Tournament] Menemukan match ACTIVE #${activeMatch.match_id} di database. Mengembalikan statusnya ke PENDING untuk dimainkan ulang...`);
+          db.run(
+            "UPDATE tournament_matches SET match_status = 'PENDING', thread_id = NULL WHERE match_id = ?",
+            [activeMatch.match_id]
+          );
+        }
+        
+        // Mulai jalankan pertandingan berikutnya
+        console.log(`[Tournament] Menjalankan executeNextMatch untuk memulihkan antrean laga di guild ${guildId}...`);
+        setTimeout(() => {
+          executeNextMatch(guildId, client).catch(err => {
+            console.error(`[Tournament] Gagal memicu executeNextMatch saat recovery untuk guild ${guildId}:`, err);
+          });
+        }, 10000);
+      }
+    }
+  } catch (err) {
+    console.error('[Tournament] Gagal memulihkan turnamen pada startup:', err);
+  }
+}
+
 module.exports = {
   startTournament,
   stopTournament,
@@ -1884,5 +1955,6 @@ module.exports = {
   forceWinPlayer,
   rerollMatch,
   extendRegistration,
-  handleTimeout
+  handleTimeout,
+  initTournamentRecovery
 };

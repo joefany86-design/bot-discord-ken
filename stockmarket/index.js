@@ -1076,6 +1076,14 @@ function initStockMarket(client) {
   // Auto-refresh permanent admin panels on startup
   refreshAdminPanels(client);
 
+  // Recovery/resume tournament on startup
+  try {
+    const tournament = require('./tournament');
+    tournament.initTournamentRecovery(client);
+  } catch (err) {
+    console.error('❌ Gagal menginisialisasi pemulihan turnamen:', err);
+  }
+
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
     if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
