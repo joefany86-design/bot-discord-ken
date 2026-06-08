@@ -29,6 +29,20 @@ function getMapAttachment(mapId) {
   return null;
 }
 
+// Helper: Safe Interaction Reply to avoid "Interaction has already been acknowledged" errors
+async function safeInteractionReply(interaction, options) {
+  try {
+    if (!interaction) return;
+    if (interaction.replied || interaction.deferred) {
+      return await interaction.followUp(options).catch(() => {});
+    } else {
+      return await interaction.reply(options).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Error in safeInteractionReply:', err.message);
+  }
+}
+
 // Map untuk mengelola cooldown perintah .bal per user
 const balCooldowns = new Map();
 // Helper to build pet shop options dynamically from pet.PET_ITEMS
@@ -1631,7 +1645,7 @@ function initStockMarket(client) {
                   await submitted.reply({ embeds: [successEmb], flags: 64 });
                   await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
-                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], flags: 64 });
+                  await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], flags: 64 });
                 }
               }
             }
@@ -1682,7 +1696,7 @@ function initStockMarket(client) {
                   await submitted.reply({ embeds: [successEmb], flags: 64 });
                   await privateMsg.edit(getBankDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
-                  await submitted.reply({ embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], flags: 64 });
+                  await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], flags: 64 });
                 }
               }
             }
@@ -2245,7 +2259,7 @@ function initStockMarket(client) {
                           console.error('Gagal mengirim notifikasi transfer ke channel:', err);
                         }
                       } catch (err) {
-                        await submitted.reply({ embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)], flags: 64 });
+                        await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)], flags: 64 });
                       }
                     }
                   });
@@ -4124,7 +4138,7 @@ function initStockMarket(client) {
                     }
                   });
                 } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                  await safeInteractionReply(submitted, { embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
                 }
               }
             }
