@@ -5995,44 +5995,44 @@ async function handlePetCommand(message, client, args) {
     // 2. Maksimal 2 lobi ekspedisi aktif per server secara bersamaan
     const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
     if (guildLobbies.length >= 2) {
-      const warnText = `⚠️ **LOBI PENUH!** Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: warnText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: warnText });
+      const emb = embeds.warnEmbed('Lobi Penuh!', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
 
     // Kunci lobi per inisiator
     const lobbyKey = `${guildId}-${author.id}`;
     if (activeLobby.has(lobbyKey)) {
-      const warnText = `⚠️ **LOBI AKTIF!** Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: warnText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: warnText });
+      const emb = embeds.warnEmbed('Lobi Aktif!', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
 
     const initiatorPet = pet.getPet(author.id, guildId);
     if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
-      const errText = `❌ **GAGAL MEMULAI!** Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: errText });
+      const emb = embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
     if (initiatorPet.health < 40) {
-      const errText = `❌ **HP KURANG!** Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: errText });
+      const emb = embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`);
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
 
     try {
       pet.checkExpeditionLimit(author.id, guildId, true); // dryRun = true
     } catch (err) {
-      const errText = `❌ **BATAS EKSPEDISI TERCAPAI!** ${err.message}`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: errText });
+      const emb = embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message);
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
 
     const wallet = economy.getWallet(author.id, guildId);
     if (wallet.balance < 250) {
-      const errText = `❌ **SALDO KURANG!** Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`;
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ content: errText });
+      const emb = embeds.errorEmbed('Saldo Kurang!', 'Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [emb] });
     }
 
     economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
@@ -6670,35 +6670,37 @@ async function handlePetCommand(message, client, args) {
       try {
         if (iExp.customId === 'pet_exp_join') {
           const currentLobby = activeLobby.get(lobbyKey);
-          if (!currentLobby) return iExp.reply({ content: '❌ Lobi ekspedisi sudah berakhir!', flags: 64 });
+          if (!currentLobby) {
+            return iExp.reply({ embeds: [embeds.errorEmbed('Lobi Berakhir!', 'Lobi ekspedisi sudah berakhir!')], flags: 64 });
+          }
 
           if (currentLobby.participants.includes(iExp.user.id)) {
-            return iExp.reply({ content: '❌ Anda sudah bergabung dalam lobi ini!', flags: 64 });
+            return iExp.reply({ embeds: [embeds.warnEmbed('Sudah Bergabung!', 'Anda sudah bergabung dalam lobi ekspedisi ini!')], flags: 64 });
           }
 
           const userPet = pet.getPet(iExp.user.id, guildId);
           if (!userPet || userPet.status === 'DEAD' || userPet.status === 'EGG') {
-            return iExp.reply({ content: '❌ Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!', flags: 64 });
+            return iExp.reply({ embeds: [embeds.errorEmbed('Gagal Bergabung!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!')], flags: 64 });
           }
           if (userPet.health < 40) {
-            return iExp.reply({ content: `❌ Pet Anda **${userPet.pet_name}** terlalu lelah/sakit (HP ${userPet.health}% < 40) untuk ekspedisi!`, flags: 64 });
+            return iExp.reply({ embeds: [embeds.errorEmbed('HP Kurang!', `Pet Anda **${userPet.pet_name}** terlalu lelah/sakit (HP ${userPet.health}% < 40) untuk ekspedisi!`)], flags: 64 });
           }
 
           try {
             pet.checkExpeditionLimit(iExp.user.id, guildId, true); // dryRun = true
           } catch (err) {
-            return iExp.reply({ content: `❌ ${err.message}`, flags: 64 });
+            return iExp.reply({ embeds: [embeds.errorEmbed('Batas Tercapai!', err.message)], flags: 64 });
           }
 
           const userWallet = economy.getWallet(iExp.user.id, guildId);
           if (userWallet.balance < 250) {
-            return iExp.reply({ content: '❌ Saldo Anda kurang untuk membayar biaya ransum Rp 250!', flags: 64 });
+            return iExp.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', 'Saldo Anda kurang untuk membayar biaya ransum Rp 250!')], flags: 64 });
           }
 
           economy.subtractBalance(iExp.user.id, guildId, 250, 'PET_EXPEDITION_FEE');
           currentLobby.participants.push(iExp.user.id);
 
-          await iExp.reply({ content: '🛡️ Berhasil bergabung dengan tim ekspedisi pet!', flags: 64 });
+          await iExp.reply({ embeds: [embeds.successEmbed('Ekspedisi Joined! 🛡️', 'Berhasil bergabung dengan tim ekspedisi pet!')], flags: 64 });
 
           const participantsData = [];
           for (const pId of currentLobby.participants) {
@@ -6733,14 +6735,14 @@ async function handlePetCommand(message, client, args) {
           const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
           const petCard = require('./petCard');
           const lobbyCardAttachment = await petCard.getExpeditionLobbyAttachment(
-            author.id,
-            selectedMap,
-            participantsData,
-            calc.successRate,
-            elementalLogsTextVal,
-            endTimeUnix,
-            mapChoice,
-            guild
+             author.id,
+             selectedMap,
+             participantsData,
+             calc.successRate,
+             elementalLogsTextVal,
+             endTimeUnix,
+             mapChoice,
+             guild
           );
 
           const joinFiles = [];
@@ -6757,7 +6759,7 @@ async function handlePetCommand(message, client, args) {
 
         else if (iExp.customId === 'pet_exp_cancel') {
           if (iExp.user.id !== author.id) {
-            return iExp.reply({ content: '❌ Hanya pembuat lobi ekspedisi yang bisa membatalkan!', flags: 64 });
+            return iExp.reply({ embeds: [embeds.errorEmbed('Batal Gagal!', 'Hanya pembuat lobi ekspedisi yang bisa membatalkan!')], flags: 64 });
           }
 
           clearTimeout(lobby.timeout);
@@ -6771,10 +6773,10 @@ async function handlePetCommand(message, client, args) {
             economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
           });
 
-          await iExp.reply({ content: '❌ Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.' });
+          await iExp.reply({ embeds: [embeds.errorEmbed('Ekspedisi Dibatalkan!', 'Ekspedisi dibatalkan dan biaya ransum telah dikembalikan ke seluruh kru pet.')] });
           await replyMsg.edit({
-            content: '❌ **Ekspedisi tim pet dibatalkan oleh pembuat lobi.**',
-            embeds: [],
+            content: null,
+            embeds: [embeds.errorEmbed('Ekspedisi Dibatalkan!', 'Ekspedisi tim pet dibatalkan oleh pembuat lobi.')],
             components: []
           }).catch(() => { });
           collector.stop();
@@ -6783,9 +6785,9 @@ async function handlePetCommand(message, client, args) {
         console.error('Error in expedition lobby collector:', err);
         try {
           if (iExp.replied || iExp.deferred) {
-            await iExp.followUp({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+            await iExp.followUp({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => {});
           } else {
-            await iExp.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+            await iExp.reply({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => {});
           }
         } catch (e) {}
       }
