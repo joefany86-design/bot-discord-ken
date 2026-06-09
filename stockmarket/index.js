@@ -6613,7 +6613,7 @@ async function handlePetCommand(message, client, args) {
           const participantsData = [];
           for (const pId of currentLobby.participants) {
             const pObj = pet.getPet(pId, guildId);
-            const member = membersMap[pId] || await message.guild.members.fetch(pId).catch(() => null);
+            const member = await message.guild.members.fetch(pId).catch(() => null);
             const username = member ? member.user.username : 'Unknown';
             participantsData.push({
               userId: pId,
@@ -6687,7 +6687,14 @@ async function handlePetCommand(message, client, args) {
           collector.stop();
         }
       } catch (err) {
-        await iExp.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 });
+        console.error('Error in expedition lobby collector:', err);
+        try {
+          if (iExp.replied || iExp.deferred) {
+            await iExp.followUp({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+          } else {
+            await iExp.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+          }
+        } catch (e) {}
       }
     });
 
