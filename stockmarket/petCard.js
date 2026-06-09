@@ -3839,6 +3839,49 @@ function drawPremiumIcon(ctx, name, cx, cy, size = 18, color = '#FFFFFF') {
     // Ribbon
     ctx.fillRect(cx - 1.5, cy - h/2 + 2, 3, h - 2);
   }
+  else if (name === 'fire') {
+    const w = size * 0.8;
+    const h = size * 1.0;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + h/2);
+    ctx.quadraticCurveTo(cx - w/2, cy + h/4, cx - w/4, cy - h/8);
+    ctx.quadraticCurveTo(cx - w/2, cy - h/2, cx, cy - h/2);
+    ctx.quadraticCurveTo(cx + w/4, cy - h/4, cx + w/3, cy);
+    ctx.quadraticCurveTo(cx + w/2, cy + h/4, cx, cy + h/2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  else if (name === 'wave') {
+    const w = size * 1.0;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy + 2);
+    ctx.quadraticCurveTo(cx - w/4, cy - 3, cx, cy + 2);
+    ctx.quadraticCurveTo(cx + w/4, cy + 7, cx + w/2, cy + 2);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - 3);
+    ctx.quadraticCurveTo(cx - w/4, cy - 8, cx, cy - 3);
+    ctx.quadraticCurveTo(cx + w/4, cy + 2, cx + w/2, cy - 3);
+    ctx.stroke();
+  }
+  else if (name === 'mountain') {
+    const w = size * 1.1;
+    const h = size * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy + h/2);
+    ctx.lineTo(cx, cy - h/2);
+    ctx.lineTo(cx + w/2, cy + h/2);
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Draw minor peak
+    ctx.beginPath();
+    ctx.moveTo(cx - w/4, cy + h/2);
+    ctx.lineTo(cx - w/8, cy);
+    ctx.lineTo(cx + w/8, cy + h/2);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -4507,6 +4550,197 @@ async function getAdminDashboardAttachment(client, stats) {
   }
 }
 
+/**
+ * Generate premium card for Pet Safari biome selection lobby
+ */
+async function generateSafariLobbyCard(guildName) {
+  const CARD_WIDTH = 1000;
+  const CARD_HEIGHT = 560;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Deep Forest / Wilderness Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#04140b');
+  bgGrad.addColorStop(0.5, '#092415');
+  bgGrad.addColorStop(1, '#04140b');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Cyber grid
+  ctx.globalAlpha = 0.03;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Main Card Container
+  const margin = 20;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(6, 18, 10, 0.85)';
+  ctx.fill();
+
+  // Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, '#2ECC71');
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+  borderGrad.addColorStop(1, '#2ECC71');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('🌳 PET SAFARI ADVENTURE 🦁', 85, 70);
+
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#2ECC71';
+  ctx.fillText(`WILAYAH SAFARI LIAR KOSAN 1A • ${guildName.toUpperCase()}`, 85, 88);
+
+  // Paw icon in header
+  drawPremiumIcon(ctx, 'paw', 50, 68, 24, '#2ECC71');
+
+  // Header separator line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 115);
+  ctx.lineTo(960, 115);
+  ctx.stroke();
+
+  // ── LEFT COLUMN: WELCOME BADGE ──
+  const col1X = 45;
+  const colWidth = 445;
+
+  ctx.fillStyle = '#2ECC71';
+  drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#2ECC71';
+  ctx.fillText('🏞️ JELAJAHI WILAYAH SAFARI', col1X + 12, 149);
+
+  // Large circular badge
+  const badgeCX = col1X + colWidth / 2;
+  const badgeCY = 295;
+  const badgeRadius = 75;
+
+  // Outer glow ring
+  ctx.beginPath();
+  ctx.arc(badgeCX, badgeCY, badgeRadius + 12, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(46, 204, 113, 0.15)';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(badgeCX, badgeCY, badgeRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#2ECC71';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Fill
+  ctx.beginPath();
+  ctx.arc(badgeCX, badgeCY, badgeRadius - 2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(46, 204, 113, 0.05)';
+  ctx.fill();
+
+  // Large paw icon inside badge
+  drawPremiumIcon(ctx, 'paw', badgeCX, badgeCY, 48, '#2ECC71');
+
+  // Welcome desc text
+  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 415);
+  ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 435);
+
+  // ── RIGHT COLUMN: BIOMES LIST ──
+  const col2X = 510;
+
+  ctx.fillStyle = '#FFD700';
+  drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.fillText('🗺️ WILAYAH BIOME TERSEDIA', col2X + 12, 149);
+
+  const drawBiomeCapsule = (x, y, icon, title, costText, speciesText, iconColor) => {
+    drawRoundedRect(ctx, x, y, colWidth, 72, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    drawPremiumIcon(ctx, icon, x + 24, y + 36, 18, iconColor);
+
+    // Title
+    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(title, x + 52, y + 24);
+
+    // Cost Badge
+    ctx.font = 'bold 9px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = costText === 'GRATIS' ? '#2ECC71' : '#FFD700';
+    ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 52, y + 40);
+
+    // Species
+    ctx.font = 'italic 10px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText(`Fauna: ${speciesText}`, x + 52, y + 54);
+  };
+
+  drawBiomeCapsule(col2X, 172, 'leaf', 'Hutan Hijau (Green Forest)', 'GRATIS', 'Slime, Kucing, Golem', '#2ECC71');
+  drawBiomeCapsule(col2X, 252, 'fire', 'Lembah Volcanic (Volcanic Valley)', 'Rp 150', 'Naga, Phoenix, Kitsune, Behemoth...', '#E74C3C');
+  drawBiomeCapsule(col2X, 332, 'wave', 'Danau Abyss (Abyss Lake)', 'Rp 150', 'Kura-Kura, Siren, Yeti, Leviathan...', '#3498DB');
+  drawBiomeCapsule(col2X, 412, 'mountain', 'Pegunungan Kuno (Ancient Peak)', 'Rp 250', 'Pegasus, Kirin, Behemoth, Archdragon...', '#9B59B6');
+
+  // Footer separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(40, 498);
+  ctx.lineTo(960, 498);
+  ctx.stroke();
+
+  // Footer notice
+  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'center';
+  ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 500, 518);
+
+  // Bottom corner metadata
+  ctx.font = '10px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 540);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('Biome Lobby Selection', 955, 540);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getSafariLobbyAttachment(guildName) {
+  try {
+    const buffer = await generateSafariLobbyCard(guildName);
+    return new AttachmentBuilder(buffer, { name: 'safari_lobby.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating safari lobby attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -4550,6 +4784,8 @@ module.exports = {
   getTournamentRegistrationAttachment,
   generateAdminDashboardCard,
   getAdminDashboardAttachment,
+  generateSafariLobbyCard,
+  getSafariLobbyAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

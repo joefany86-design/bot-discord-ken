@@ -4,6 +4,7 @@ const { logPetAction } = db;
 const economy = require('./economy');
 const embeds = require('./embeds');
 const pet = require('./pet');
+const petCard = require('./petCard');
 
 // Cooldown dan Sesi Aktif
 const activeSafaris = new Map();
@@ -161,26 +162,21 @@ async function handlePetSafariCommand(message, client, args) {
     return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu **${secondsLeft} detik** lagi.` });
   }
 
+  // Generate the visual attachment using napi-rs/canvas
+  const attachment = await petCard.getSafariLobbyAttachment(message.guild.name);
+
   // Biome Selection Panel
   const biomeEmbed = new EmbedBuilder()
-    .setColor(0x7C4DFF)
+    .setColor(0x2ECC71) // Nature green
     .setTitle('🌳 PET SAFARI ADVENTURE 🦁')
     .setDescription(
       `Halo Warga **${message.guild.name}**! Selamat datang di **Safari Pet Liar**.\n` +
       `Di sini Anda bisa menjelajahi berbagai wilayah untuk melacak dan menangkap pet liar yang legendaris secara interaktif!\n\n` +
       `Silakan pilih biome wilayah yang ingin Anda jelajahi di bawah ini:`
     )
+    .setImage('attachment://safari_lobby.png')
     .setFooter({ text: 'Gunakan tombol di bawah untuk masuk ke biome | Cooldown 3 menit' })
     .setTimestamp();
-
-  Object.keys(BIOMES).forEach(key => {
-    const b = BIOMES[key];
-    biomeEmbed.addFields({
-      name: b.name,
-      value: `${b.description}\n💵 **Biaya Masuk:** ${b.cost === 0 ? '`GRATIS`' : `**Rp ${b.cost.toLocaleString('id-ID')}**`}`,
-      inline: false
-    });
-  });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('safari_biome_forest').setLabel('🌳 Forest').setStyle(ButtonStyle.Success),
@@ -190,7 +186,11 @@ async function handlePetSafariCommand(message, client, args) {
     new ButtonBuilder().setCustomId('safari_biome_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary)
   );
 
-  const replyMsg = await message.reply({ embeds: [biomeEmbed], components: [row] });
+  const replyMsg = await message.reply({
+    embeds: [biomeEmbed],
+    components: [row],
+    files: attachment ? [attachment] : []
+  });
   const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
 
   collector.on('collect', async i => {
@@ -201,7 +201,7 @@ async function handlePetSafariCommand(message, client, args) {
 
       if (i.customId === 'safari_biome_cancel') {
         collector.stop();
-        return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [] });
+        return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [], files: [] });
       }
 
       const selectedBiomeKey = i.customId.replace('safari_biome_', '');
@@ -235,7 +235,7 @@ async function handlePetSafariCommand(message, client, args) {
 
   collector.on('end', async (collected, reason) => {
     if (reason === 'time') {
-      await replyMsg.edit({ content: '⏳ Pemilihan wilayah safari kedaluwarsa karena tidak ada respon.', embeds: [], components: [] }).catch(() => {});
+      await replyMsg.edit({ content: '⏳ Pemilihan wilayah safari kedaluwarsa karena tidak ada respon.', embeds: [], components: [], files: [] }).catch(() => {});
     }
   });
 }
