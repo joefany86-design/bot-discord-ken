@@ -5330,11 +5330,15 @@ async function generateExpeditionMapListCard(maps) {
     }
     ctx.restore();
 
-    // Thumbnail outline border
+    // Thumbnail outline border with glow
+    ctx.save();
+    ctx.shadowColor = theme.accent;
+    ctx.shadowBlur = 8;
     drawRoundedRect(ctx, imgX, imgY, imgSize, imgSize, 12);
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    ctx.restore();
 
     // Circular ID Badge on top-left of image
     const badgeR = 14;
@@ -5370,7 +5374,8 @@ async function generateExpeditionMapListCard(maps) {
     ctx.fillText(cleanMapName, textX, y + 28);
 
     // 2. Badges: Element Pill & Level Pill
-    const elemText = m.element;
+    const rawEl = m.element.toUpperCase();
+    const elemText = (rawEl === 'FIRE' ? '🔥 ' : rawEl === 'WATER' ? '🌊 ' : rawEl === 'EARTH' ? '🌿 ' : '🐉 ') + m.element;
     ctx.font = 'bold 10px "DejaVu Sans"';
     const elemW = ctx.measureText(elemText).width + 16;
     const badgeH = 18;
@@ -5405,26 +5410,31 @@ async function generateExpeditionMapListCard(maps) {
     const statY = y + 74;
     ctx.font = '12px "DejaVu Sans"';
     ctx.fillStyle = '#A0AEC0';
-    ctx.fillText('Rate:', textX, statY);
-    
+    ctx.fillText('📊 Rate:', textX, statY);
+    const rateLabelW = ctx.measureText('📊 Rate:').width;
+
     ctx.fillStyle = m.baseSuccessRate >= 60 ? '#4ADE80' : (m.baseSuccessRate >= 35 ? '#FBBF24' : '#F87171');
-    ctx.fillText(`${m.baseSuccessRate}%`, textX + 35, statY);
+    ctx.fillText(`${m.baseSuccessRate}%`, textX + rateLabelW + 6, statY);
+    const rateValW = ctx.measureText(`${m.baseSuccessRate}%`).width;
 
     // Prize range text
+    const prizeStartX = textX + rateLabelW + 6 + rateValW + 20;
     ctx.fillStyle = '#A0AEC0';
-    ctx.fillText('Hadiah:', textX + 85, statY);
+    ctx.fillText('🪙 Hadiah:', prizeStartX, statY);
+    const prizeLabelW = ctx.measureText('🪙 Hadiah:').width;
     ctx.fillStyle = '#FBBF24'; // Gold
     ctx.font = 'bold 12px "DejaVu Sans"';
-    ctx.fillText(`Rp ${m.minPrize.toLocaleString('id-ID')} - ${m.maxPrize.toLocaleString('id-ID')}`, textX + 135, statY);
+    ctx.fillText(`Rp ${m.minPrize.toLocaleString('id-ID')} - ${m.maxPrize.toLocaleString('id-ID')}`, prizeStartX + prizeLabelW + 6, statY);
 
     // 4. Boss Name Row
     const bossY = y + 94;
     ctx.font = '12px "DejaVu Sans"';
     ctx.fillStyle = '#A0AEC0';
-    ctx.fillText('Boss:', textX, bossY);
-    ctx.fillStyle = '#E2E8F0';
+    ctx.fillText('💀 Boss:', textX, bossY);
+    const bossLabelW = ctx.measureText('💀 Boss:').width;
+    ctx.fillStyle = '#FF5252'; // Red for boss name
     ctx.font = 'bold 12px "DejaVu Sans"';
-    ctx.fillText(m.boss, textX + 40, bossY);
+    ctx.fillText(m.boss, textX + bossLabelW + 6, bossY);
 
     // 5. Description Text
     const descY = y + 115;
