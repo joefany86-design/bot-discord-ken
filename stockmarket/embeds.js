@@ -617,74 +617,65 @@ module.exports = {
     if (activeTab === 'dashboard') {
       footerText = '💡 Halaman 1/5 · Gunakan tombol di bawah untuk berpindah tab';
 
-      if (extraData && extraData.hasProfileCard) {
-        thumbnailURL = null; // Hide the small thumbnail since avatar is already drawn in the canvas card
-        extraData.useProfileCardImage = true;
+      desc += `${tier.emoji} **FINANCIAL DASHBOARD** · **${tier.name} MEMBER**\n\n`;
 
-        desc += `✨ **KOSAN 1A - PROFILE DASHBOARD** ✨\n\n` +
-                `Halo **${user.username}**! Berikut adalah rincian profil saldo & aset Anda secara visual.\n\n` +
-                `ℹ️ *Gunakan tombol menu di bawah untuk berpindah tab.*`;
+      desc += `> 💵 **Saldo Dompet**\n`;
+      desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
+      desc += `> \n`;
+      desc += `> 🏦 **Saldo Bank**\n`;
+      desc += `> \`Rp ${bankBalance.toLocaleString('id-ID').padStart(12)}\`\n`;
+      desc += `> \n`;
+      desc += `> 📊 **Nilai Investasi**\n`;
+      desc += `> \`Rp ${portfolioValue.toLocaleString('id-ID').padStart(12)}\`\n`;
+      desc += `> \n`;
+      desc += `> 💎 **Total Kekayaan**\n`;
+      desc += `> \`Rp ${totalWealth.toLocaleString('id-ID').padStart(12)}\`\n\n`;
+
+      // Status Effects
+      let statusEffects = [];
+      if (isJailed) {
+        statusEffects.push(`🚨 **Penjara**: Bebas <t:${wallet.jail_until}:R>`);
+      }
+      if (isWanted) {
+        statusEffects.push(`🚔 **WANTED**: Buron <t:${extraData.wantedUntil}:R>`);
+      }
+      if (extraData.curseUntil && extraData.curseUntil > nowSec) {
+        statusEffects.push(`💀 **Kutukan (${extraData.curseType || 'Curse'})**: Sisa <t:${extraData.curseUntil}:R>`);
+      }
+      if (statusEffects.length > 0) {
+        desc += `⚠️ **Efek Status Aktif**\n`;
+        statusEffects.forEach(s => { desc += `• ${s}\n`; });
+        desc += `\n`;
+      }
+
+      // Statistik
+      const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
+      desc += `${streakEmoji} **Statistik Ringkas**\n`;
+      desc += `• 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
+      desc += `• 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
+      desc += `• 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
+      desc += `• 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
+
+      // Badges
+      if (luxuryBadges.length > 0) {
+        desc += `🏆 **Lencana Status Mewah**\n${luxuryBadges}\n\n`;
+      }
+
+      // Status ringkas lainnya
+      desc += `ℹ️ **Sekilas Status**\n`;
+      if (pet) {
+        const petStatusText = pet.status === 'EGG' ? '🥚 Telur' : pet.status === 'DEAD' ? '🪦 Mati' : `Lv.${pet.level} ${pet.pet_type}`;
+        desc += `• 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
       } else {
-        desc += `${tier.emoji} **FINANCIAL DASHBOARD** · **${tier.name} MEMBER**\n\n`;
+        desc += `• 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
+      }
 
-        desc += `> 💵 **Saldo Dompet**\n`;
-        desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
-        desc += `> \n`;
-        desc += `> 🏦 **Saldo Bank**\n`;
-        desc += `> \`Rp ${bankBalance.toLocaleString('id-ID').padStart(12)}\`\n`;
-        desc += `> \n`;
-        desc += `> 📊 **Nilai Investasi**\n`;
-        desc += `> \`Rp ${portfolioValue.toLocaleString('id-ID').padStart(12)}\`\n`;
-        desc += `> \n`;
-        desc += `> 💎 **Total Kekayaan**\n`;
-        desc += `> \`Rp ${totalWealth.toLocaleString('id-ID').padStart(12)}\`\n\n`;
-
-        // Status Effects
-        let statusEffects = [];
-        if (isJailed) {
-          statusEffects.push(`🚨 **Penjara**: Bebas <t:${wallet.jail_until}:R>`);
-        }
-        if (isWanted) {
-          statusEffects.push(`🚔 **WANTED**: Buron <t:${extraData.wantedUntil}:R>`);
-        }
-        if (extraData.curseUntil && extraData.curseUntil > nowSec) {
-          statusEffects.push(`💀 **Kutukan (${extraData.curseType || 'Curse'})**: Sisa <t:${extraData.curseUntil}:R>`);
-        }
-        if (statusEffects.length > 0) {
-          desc += `⚠️ **Efek Status Aktif**\n`;
-          statusEffects.forEach(s => { desc += `• ${s}\n`; });
-          desc += `\n`;
-        }
-
-        // Statistik
-        const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
-        desc += `${streakEmoji} **Statistik Ringkas**\n`;
-        desc += `• 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
-        desc += `• 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
-        desc += `• 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
-        desc += `• 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
-
-        // Badges
-        if (luxuryBadges.length > 0) {
-          desc += `🏆 **Lencana Status Mewah**\n${luxuryBadges}\n\n`;
-        }
-
-        // Status ringkas lainnya
-        desc += `ℹ️ **Sekilas Status**\n`;
-        if (pet) {
-          const petStatusText = pet.status === 'EGG' ? '🥚 Telur' : pet.status === 'DEAD' ? '🪦 Mati' : `Lv.${pet.level} ${pet.pet_type}`;
-          desc += `• 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
-        } else {
-          desc += `• 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
-        }
-
-        if (extraData.kosRental) {
-          const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-            extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
-          desc += `• 🏠 Kamar Kos: **${roomName}**\n`;
-        } else {
-          desc += `• 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
-        }
+      if (extraData.kosRental) {
+        const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+          extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
+        desc += `• 🏠 Kamar Kos: **${roomName}**\n`;
+      } else {
+        desc += `• 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
       }
 
     } else if (activeTab === 'assets') {
@@ -822,7 +813,7 @@ module.exports = {
           desc += `• ⚽ Senang: \`[${happyBar}]\` \`${Math.round(pet.happiness)}%\`\n`;
           desc += `• 📈 XP: \`[${xpBar}]\` \`${pet.xp}/${xpNeeded}\`\n\n`;
 
-        desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
+          desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
           desc += `• ⚔️ Rekor PvP: **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
           const autoFeedLabel = pet.auto_feed === 1 ? '🟢 Makan Otomatis' : pet.auto_feed === 2 ? '🔵 Makan & Minum Otomatis' : '🔴 Nonaktif';
           desc += `• 🤖 Auto-Feed: **${autoFeedLabel}**\n`;
@@ -845,78 +836,69 @@ module.exports = {
     } else if (activeTab === 'property') {
       footerText = '💡 Halaman 4/5 · Gunakan tombol di bawah untuk berpindah tab';
 
-      if (extraData && extraData.hasPropertyCard) {
-        thumbnailURL = null; // Sembunyikan avatar kecil agar visual lebih fokus
-        extraData.usePropertyCardImage = true;
+      desc += `🏠 **HUNIAN KOS & COZY GARDEN**\n\n`;
 
-        desc += `🏠 **HUNIAN KOS & COZY GARDEN** 🌸\n\n` +
-                `Halo **${user.username}**! Berikut adalah tampilan visual kamar kos beserta tanaman kebun Anda saat ini.\n\n` +
-                `ℹ️ *Gunakan tombol menu di bawah untuk berpindah tab.*`;
+      desc += `🏢 **Sewa Kamar Kos**\n`;
+      if (extraData.kosRental) {
+        const { room_tier, ends_at } = extraData.kosRental;
+        const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+          room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+        desc += `• Kamar Aktif: **${roomName}**\n`;
+        desc += `• Masa Sewa: <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
       } else {
-        desc += `🏠 **HUNIAN KOS & COZY GARDEN**\n\n`;
+        desc += `• Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos sewa\`)*\n`;
+      }
 
-        desc += `🏢 **Sewa Kamar Kos**\n`;
-        if (extraData.kosRental) {
-          const { room_tier, ends_at } = extraData.kosRental;
-          const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-            room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-          desc += `• Kamar Aktif: **${roomName}**\n`;
-          desc += `• Masa Sewa: <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
-        } else {
-          desc += `• Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
-        }
+      // Upgrade kamar
+      if (extraData.kosUpgrades && extraData.kosUpgrades.length > 0) {
+        const upgradeNames = {
+          AC: '❄️ AC Dingin',
+          WIFI: '📶 WiFi Cepat',
+          TV: '📺 TV LED 4K',
+          PC: '🖥️ Gaming PC',
+          DISPENSER: '🚰 Dispenser Air'
+        };
+        const list = extraData.kosUpgrades.map(u => upgradeNames[u.upgrade_id.toUpperCase()] || u.upgrade_id).join(', ');
+        desc += `• Upgrade: **${list}**\n\n`;
+      } else {
+        desc += `• Upgrade: *Belum ada upgrade kamar*\n\n`;
+      }
 
-        // Upgrade kamar
-        if (extraData.kosUpgrades && extraData.kosUpgrades.length > 0) {
-          const upgradeNames = {
-            AC: '❄️ AC Dingin',
-            WIFI: '📶 WiFi Cepat',
-            TV: '📺 TV LED 4K',
-            PC: '🖥️ Gaming PC',
-            DISPENSER: '🚰 Dispenser Air'
-          };
-          const list = extraData.kosUpgrades.map(u => upgradeNames[u.upgrade_id.toUpperCase()] || u.upgrade_id).join(', ');
-          desc += `• Upgrade: **${list}**\n\n`;
-        } else {
-          desc += `• Upgrade: *Belum ada upgrade kamar*\n\n`;
-        }
-
-        desc += `🌸 **Cozy Garden**\n`;
-        if (extraData.gardenSlots && extraData.gardenSlots.length > 0) {
-          const plantNames = {
-            SEED_ROSE: '🌹 Mawar',
-            SEED_TULIP: '🌷 Tulip',
-            SEED_SUNFLOWER: '🌻 Bunga Matahari',
-            SEED_ORCHID: '🪻 Anggrek'
-          };
-          extraData.gardenSlots.forEach(slot => {
-            const slotNum = slot.slot_index;
-            if (slot.seed_id) {
-              const plantName = plantNames[slot.seed_id.toUpperCase()] || slot.seed_id;
-              let duration = 3600; // default 1 jam
-              try {
-                const gardenModule = require('./garden');
-                if (gardenModule.SEEDS && gardenModule.SEEDS[slot.seed_id]) {
-                  duration = gardenModule.SEEDS[slot.seed_id].growTime;
-                }
-              } catch (e) {
-                if (slot.seed_id.includes('ROSE')) duration = 3600;
-                else if (slot.seed_id.includes('TULIP')) duration = 7200;
-                else duration = 14400;
+      desc += `🌸 **Cozy Garden**\n`;
+      if (extraData.gardenSlots && extraData.gardenSlots.length > 0) {
+        const plantNames = {
+          SEED_ROSE: '🌹 Mawar',
+          SEED_TULIP: '🌷 Tulip',
+          SEED_SUNFLOWER: '🌻 Bunga Matahari',
+          SEED_ORCHID: '🪻 Anggrek'
+        };
+        extraData.gardenSlots.forEach(slot => {
+          const slotNum = slot.slot_index;
+          if (slot.seed_id) {
+            const plantName = plantNames[slot.seed_id.toUpperCase()] || slot.seed_id;
+            let duration = 3600; // default 1 jam
+            try {
+              const gardenModule = require('./garden');
+              if (gardenModule.SEEDS && gardenModule.SEEDS[slot.seed_id]) {
+                duration = gardenModule.SEEDS[slot.seed_id].growTime;
               }
-              const readyAt = slot.planted_at + duration;
-              const isReady = nowSec >= readyAt;
-              const statusText = isReady ? '✨ **SIAP PANEN!**' : `🌱 Tumbuh (Siap <t:${readyAt}:R>)`;
-              const waterStatus = slot.last_watered_at > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
-
-              desc += `• Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
-            } else {
-              desc += `• Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
+            } catch (e) {
+              if (slot.seed_id.includes('ROSE')) duration = 3600;
+              else if (slot.seed_id.includes('TULIP')) duration = 7200;
+              else duration = 14400;
             }
-          });
-        } else {
-          desc += `*Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
-        }
+            const readyAt = slot.planted_at + duration;
+            const isReady = nowSec >= readyAt;
+            const statusText = isReady ? '✨ **SIAP PANEN!**' : `🌱 Tumbuh (Siap <t:${readyAt}:R>)`;
+            const waterStatus = slot.last_watered_at > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
+
+            desc += `• Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
+          } else {
+            desc += `• Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
+          }
+        });
+      } else {
+        desc += `*Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
       }
 
     } else if (activeTab === 'quests') {
@@ -997,10 +979,6 @@ module.exports = {
 
     if (extraData && extraData.usePetCardImage) {
       embed.setImage('attachment://pet_card.png');
-    } else if (extraData && extraData.useProfileCardImage) {
-      embed.setImage('attachment://profile_card.png');
-    } else if (extraData && extraData.usePropertyCardImage) {
-      embed.setImage('attachment://property_card.png');
     }
 
     return embed;

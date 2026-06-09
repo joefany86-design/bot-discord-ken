@@ -12470,30 +12470,7 @@ async function handleEconomyCommands(message, client) {
 
       let currentTab = 'dashboard';
       let initialFiles = [];
-      if (currentTab === 'dashboard') {
-        try {
-          const profileCardModule = require('./profileCard');
-          let bankBalance = 0;
-          try {
-            const savingsRow = database.get(
-              'SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?',
-              [targetUser.id, guildId]
-            );
-            if (savingsRow) {
-              bankBalance = savingsRow.balance;
-            }
-          } catch (e) {
-            console.error("Gagal memuat saldo bank untuk profileCard:", e.message);
-          }
-          const attachment = await profileCardModule.getProfileCardAttachment(targetUser, wallet, bankBalance, porto.totalPortfolioValue, extraData);
-          if (attachment) {
-            initialFiles.push(attachment);
-            extraData.hasProfileCard = true;
-          }
-        } catch (err) {
-          console.error('[Profile] Gagal memuat profile card awal:', err);
-        }
-      } else if (currentTab === 'pet' && userPet && userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
+      if (currentTab === 'pet' && userPet && userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
         try {
           const petCardModule = require('./petCard');
           let xpNeeded = 100;
@@ -12584,41 +12561,7 @@ async function handleEconomyCommands(message, client) {
           };
 
           let freshFiles = [];
-          if (currentTab === 'dashboard') {
-            try {
-              const profileCardModule = require('./profileCard');
-              let bankBalance = 0;
-              try {
-                const savingsRow = database.get(
-                  'SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?',
-                  [targetUser.id, guildId]
-                );
-                if (savingsRow) {
-                  bankBalance = savingsRow.balance;
-                }
-              } catch (e) {
-                console.error("Gagal memuat saldo bank untuk profileCard:", e.message);
-              }
-              const attachment = await profileCardModule.getProfileCardAttachment(targetUser, freshWallet, bankBalance, freshPorto.totalPortfolioValue, freshExtraData);
-              if (attachment) {
-                freshFiles.push(attachment);
-                freshExtraData.hasProfileCard = true;
-              }
-            } catch (err) {
-              console.error('[Profile] Gagal memuat profile card tab:', err);
-            }
-          } else if (currentTab === 'property') {
-            try {
-              const profileCardModule = require('./profileCard');
-              const attachment = await profileCardModule.getPropertyCardAttachment(targetUser, freshKosRental, freshKosUpgrades, freshGardenSlots);
-              if (attachment) {
-                freshFiles.push(attachment);
-                freshExtraData.hasPropertyCard = true;
-              }
-            } catch (err) {
-              console.error('[Profile] Gagal memuat property card tab:', err);
-            }
-          } else if (currentTab === 'pet' && freshUserPet && freshUserPet.status !== 'DEAD' && freshUserPet.status !== 'EGG') {
+          if (currentTab === 'pet' && freshUserPet && freshUserPet.status !== 'DEAD' && freshUserPet.status !== 'EGG') {
             try {
               const petCardModule = require('./petCard');
               let xpNeeded = 100;
@@ -12650,9 +12593,13 @@ async function handleEconomyCommands(message, client) {
           const updateOptions = {
             embeds: [nextEmbed],
             components: [buildProfileButtons(currentTab), buildCloseButton()],
-            files: freshFiles,
-            attachments: [] // Selalu bersihkan lampiran gambar sebelumnya agar tidak menumpuk
+            files: freshFiles
           };
+
+          // Hapus lampiran sebelumnya jika keluar dari tab pet
+          if (currentTab !== 'pet') {
+            updateOptions.attachments = [];
+          }
 
           await i.update(updateOptions).catch(console.error);
         }
