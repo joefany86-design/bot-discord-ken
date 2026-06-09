@@ -798,7 +798,7 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
   if (actionType === 'surr') {
     match.logs.push(`🏳️ **${actor.pet_name}** menyerah dari pertandingan!`);
     if (interaction) {
-      await interaction.reply({ content: `🏳️ Anda menyerah! Pertandingan selesai.`, flags: 64 }).catch(() => { });
+      await interaction.deferUpdate().catch(() => { });
     }
     await endMatch(matchId, opponent.user_id, 'forfeit', client);
     return;
@@ -829,17 +829,15 @@ async function processTurn(matchId, playerId, actionType, client, interaction) {
       match.timer = null;
     }
 
-    // Inform the user ephemerally
     if (interaction) {
-      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Memproses giliran...`, flags: 64 }).catch(() => { });
+      await interaction.deferUpdate().catch(() => { });
     }
 
     // Resolve turn
     await resolveSimultaneousTurn(matchId, client);
   } else {
-    // Inform the user ephemerally
     if (interaction) {
-      await interaction.reply({ content: `✔️ Pilihan Anda untuk menggunakan **${getActionName(actionType)}** telah disimpan! Menunggu lawan menentukan tindakan...`, flags: 64 }).catch(() => { });
+      await interaction.deferUpdate().catch(() => { });
     }
 
     // Update battle embed status to SIAP
