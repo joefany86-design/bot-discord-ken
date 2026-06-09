@@ -1051,6 +1051,18 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // 13. Cron Job: Pemeriksaan & penyelesaian lelang kadaluwarsa (setiap 1 menit)
+  cron.schedule('* * * * *', async () => {
+    try {
+      const auction = require('./auction');
+      await auction.checkAndCloseExpiredAuctions(client);
+    } catch (err) {
+      console.error('❌ Error checking expired auctions in cron:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 

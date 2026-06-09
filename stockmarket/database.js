@@ -748,6 +748,14 @@ function initSchema() {
       run: () => {
         addColumn('tournament_events', 'max_hp', 'INTEGER DEFAULT 999999');
       }
+    },
+    {
+      version: 15,
+      description: "Menambahkan kolom seller_id dan pet_details ke auction_items untuk lelang player",
+      run: () => {
+        addColumn('auction_items', 'seller_id', 'TEXT DEFAULT NULL');
+        addColumn('auction_items', 'pet_details', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

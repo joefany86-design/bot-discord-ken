@@ -1415,10 +1415,10 @@ function initStockMarket(client) {
     const { guildId, user } = interaction;
     if (!guildId) return;
 
-    // Router interaksi Pasar Lelang Warga (Marketplace P2P)
-    if (customId.startsWith('eco_market_') || customId.startsWith('eco_btn_open_marketplace_')) {
-      const marketplace = require('./marketplace');
-      await marketplace.handleInteraction(interaction, client);
+    // Router interaksi Pasar Lelang Warga (Lelang P2P)
+    if (customId.startsWith('eco_market_') || customId.startsWith('eco_btn_open_marketplace_') || customId.startsWith('eco_auction_') || customId.startsWith('eco_btn_open_auction_')) {
+      const auction = require('./auction');
+      await auction.handleAuctionInteraction(interaction, client);
       return;
     }
 
@@ -12854,75 +12854,27 @@ async function handleEconomyCommands(message, client) {
         });
       }
 
-      const auction = database.get("SELECT * FROM auction_items WHERE id = ? AND status = 'ACTIVE'", [aId]);
-      if (!auction) {
-        return message.reply({
-          embeds: [embeds.errorEmbed('Lelang Tidak Ditemukan!', `Lelang aktif dengan ID \`${aId}\` tidak ditemukan atau sudah ditutup.`)]
-        });
-      }
-
-      const now = Math.floor(Date.now() / 1000);
-      if (now > auction.ends_at) {
-        return message.reply({
-          embeds: [embeds.errorEmbed('Lelang Berakhir!', `Masa penawaran untuk lelang ID \`${aId}\` sudah berakhir.`)]
-        });
-      }
-
-      const minRequiredBid = auction.highest_bidder_id ? auction.current_bid + Math.max(10, Math.round(auction.min_bid * 0.05)) : auction.min_bid;
-      if (bidAmount < minRequiredBid) {
-        return message.reply({
-          embeds: [embeds.warnEmbed('Penawaran Terlalu Rendah!', `Penawaran minimal berikutnya harus sebesar **Rp ${minRequiredBid.toLocaleString('id-ID')}**!`)]
-        });
-      }
-
-      const wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
-      const currentCoins = wallet ? wallet.balance : 0;
-      if (currentCoins < bidAmount) {
-        return message.reply({
-          embeds: [embeds.warnEmbed('Koin Tidak Cukup!', `Koin di dompet Anda (**Rp ${currentCoins.toLocaleString('id-ID')}**) tidak mencukupi untuk melakukan bid sebesar **Rp ${bidAmount.toLocaleString('id-ID')}**!`)]
-        });
-      }
-
-      if (auction.highest_bidder_id === author.id) {
-        return message.reply({
-          embeds: [embeds.warnEmbed('Bid Tertinggi Milik Anda!', `Anda sudah memegang bid tertinggi untuk lelang ini.`)]
-        });
-      }
-
-      let success = false;
       try {
-        database.transaction(() => {
-          database.run(
-            'UPDATE auction_items SET current_bid = ?, highest_bidder_id = ? WHERE id = ?',
-            [bidAmount, author.id, aId]
-          );
+        const auctionModule = require('./auction');
+        const res = auctionModule.placeBid(aId, author.id, bidAmount, guildId);
+        const itemInfo = res.auction.item_type === 'PET' ? { name: `Pet ${res.auction.item_id}` } : auctionModule.ITEM_MAP[res.auction.item_id.toUpperCase()] || { name: res.auction.item_id };
 
-          database.run(
-            'INSERT INTO auction_bids (auction_id, user_id, bid_amount) VALUES (?, ?, ?)',
-            [aId, author.id, bidAmount]
-          );
-        })();
-        success = true;
-      } catch (txErr) {
-        console.error('Failed to submit bid:', txErr);
-        return message.reply({
-          embeds: [embeds.errorEmbed('Gagal Melakukan Bid!', `Terjadi kesalahan internal: ${txErr.message}`)]
-        });
-      }
-
-      if (success) {
         const bidSuccessEmbed = new EmbedBuilder()
           .setColor(0x3498DB)
           .setTitle('🔨 PENAWARAN HARGA DITERIMA!')
           .setDescription(
             `Kandidat tertinggi lelang terupdate!\n\n` +
             `• ID Lelang: \`${aId}\`\n` +
-            `• Barang: **${auction.quantity}x ${auction.item_id}**\n` +
+            `• Barang: **${res.auction.item_type === 'PET' ? `🐾 Pet: ${res.auction.item_id}` : `${itemInfo.name} x${res.auction.quantity}`}**\n` +
             `• Bid Baru: **Rp ${bidAmount.toLocaleString('id-ID')}** oleh <@${author.id}>\n\n` +
-            `*Pemberitahuan otomatis akan dikirim ke penawar sebelumnya jika terlampaui.*`
+            `*Koin Anda didebit langsung sebagai jaminan lelang (escrow) dan akan di-refund otomatis jika warga lain menawar lebih tinggi.*`
           )
           .setTimestamp();
         await message.reply({ embeds: [bidSuccessEmbed] });
+      } catch (err) {
+        return message.reply({
+          embeds: [embeds.errorEmbed('Gagal Melakukan Bid!', err.message)]
+        });
       }
       return true;
     }

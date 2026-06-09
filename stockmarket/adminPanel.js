@@ -6134,54 +6134,10 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             }
 
             let endSuccess = false;
-            let endMsgStr = '';
             try {
-              database.transaction(() => {
-                database.run("UPDATE auction_items SET status = 'COMPLETED' WHERE id = ?", [aId]);
-                
-                if (freshA.highest_bidder_id) {
-                  const itemId = freshA.item_id;
-                  const qty = freshA.quantity;
-                  const winnerId = freshA.highest_bidder_id;
-                  const bidAmount = freshA.current_bid;
-
-                  const wallet = database.get('SELECT balance FROM wallets WHERE user_id = ? AND guild_id = ?', [winnerId, guildId]);
-                  const currentBal = wallet ? wallet.balance : 0;
-                  const newBal = Math.max(0, currentBal - bidAmount);
-                  database.run('UPDATE wallets SET balance = ? WHERE user_id = ? AND guild_id = ?', [newBal, winnerId, guildId]);
-
-                  const petItemIds = [
-                    'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
-                    'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
-                    'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
-                  ];
-                  if (petItemIds.includes(itemId)) {
-                    const exist = database.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [winnerId, guildId, itemId]);
-                    if (!exist) {
-                      database.run('INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [winnerId, guildId, itemId, qty]);
-                    } else {
-                      database.run('UPDATE pet_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, winnerId, guildId, itemId]);
-                    }
-                  } else {
-                    const exist = database.get('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [winnerId, guildId, itemId]);
-                    if (!exist) {
-                      database.run('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, ?)', [winnerId, guildId, itemId, qty]);
-                    } else {
-                      database.run('UPDATE user_inventory SET quantity = quantity + ? WHERE user_id = ? AND guild_id = ? AND item_id = ?', [qty, winnerId, guildId, itemId]);
-                    }
-                  }
-
-                  database.run('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)', [winnerId, guildId, 'AUCTION_WIN', -bidAmount]);
-
-                  endMsgStr = `🏆 **LELANG ID ${aId} RESMI DITUTUP!**\n\n` +
-                    `• Pemenang: <@${winnerId}>\n` +
-                    `• Item Didapat: **${qty}x \`${itemId}\`**\n` +
-                    `• Total Bid: **Rp ${bidAmount.toLocaleString('id-ID')}** (Saldo dipotong otomatis).\n\n` +
-                    `*Selamat kepada pemenang! Barang telah didistribusikan ke tas.*`;
-                } else {
-                  endMsgStr = `ℹ️ **LELANG ID ${aId} DITUTUP!**\n\nTidak ada penawar (bidder) pada lelang ini. Item lelang dikembalikan ke kas negara.`;
-                }
-              })();
+              database.run("UPDATE auction_items SET ends_at = strftime('%s','now') WHERE id = ?", [aId]);
+              const auctionModule = require('./auction');
+              await auctionModule.checkAndCloseExpiredAuctions(client);
               endSuccess = true;
             } catch (txErr) {
               console.error('Failed to close auction:', txErr);
@@ -6189,17 +6145,8 @@ async function handleAdminShopPanel(messageOrInteraction, client) {
             }
 
             if (endSuccess) {
-              const targetChannelId = config.REPORT_CHANNEL_ID || messageOrInteraction.channelId;
-              const targetChannel = guild.channels.cache.get(targetChannelId) || messageOrInteraction.channel;
-              if (targetChannel) {
-                const reportEmbed = new EmbedBuilder()
-                  .setColor(0xF1C40F)
-                  .setTitle('🔨 HASIL AKHIR EVENT LELANG GLOBAL')
-                  .setDescription(endMsgStr)
-                  .setTimestamp();
-                await targetChannel.send({ embeds: [reportEmbed] }).catch(() => {});
-              }
-              await iClose.followUp({ content: `✅ Lelang ID ${aId} ditutup sukses! Laporan dikirim ke <#${targetChannel?.id}>.`, flags: 64 });
+              const targetChannelId = config.ANNOUNCEMENT_CHANNEL_ID || config.REPORT_CHANNEL_ID || messageOrInteraction.channelId;
+              await iClose.followUp({ content: `✅ Lelang ID ${aId} ditutup sukses! Laporan hasil akhir dikirim ke <#${targetChannelId}>.`, flags: 64 });
             }
 
             closeCollector.stop();
