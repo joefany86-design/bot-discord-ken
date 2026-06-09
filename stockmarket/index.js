@@ -829,20 +829,16 @@ function startRealtimeLeaderboard(client) {
 /**
  * Helper untuk membuat tampilan data Portal Hub (Embed dan Dropdown Menu).
  */
-function getPortalHubData(client) {
+async function getPortalHubData(client) {
+  const petCard = require('./petCard');
+  const attachment = await petCard.getPortalHubAttachment(client);
+
   const embed = new EmbedBuilder()
     .setColor(embeds.COLORS.PURPLE)
-    .setTitle('🎮 PORTAL HUB BOT KOSAN 1A — PUSAT KONTROL UTAMA')
-    .setThumbnail(client.user.displayAvatarURL())
-    .setDescription(
-      `Selamat datang di **Portal Hub Bot Kosan 1A**! 🎮\n` +
-      `Pusat layanan warga terpadu. Klik tombol di bawah ini untuk mengakses fitur secara **Pribadi & Rahasia (Private)**:\n\n` +
-      `💼 **EKONOMI & FINANSIAL**\n` +
-      `• Toko Role • Bursa Saham • Bank Sentral • Black Market • Pasar Lelang • Profil & Aset\n\n` +
-      `🐾 **DUNIA PET & GAYA HIDUP**\n` +
-      `• Kandang Pet (Pusat Pet) • Sewa Kosan • Cozy Garden • Misi Harian • Lotre Mingguan`
-    )
-    .setFooter({ text: 'Bot Kosan 1A Active Gamification • Pusat Kontrol Warga' })
+    .setTitle('🎮 SENTINEL PORTAL HUB — PUSAT KONTROL UTAMA')
+    .setDescription('Klik tombol di bawah ini untuk membuka panel secara Pribadi/Private (Hanya Anda yang dapat melihatnya):')
+    .setImage('attachment://portal_hub.png')
+    .setFooter({ text: 'Sentinel Bot • Server Kosan 1A' })
     .setTimestamp();
 
   const row1 = new ActionRowBuilder().addComponents(
@@ -866,7 +862,7 @@ function getPortalHubData(client) {
   );
 
   const components = [row1, row2, row3];
-  return { embed, components };
+  return { embed, components, files: attachment ? [attachment] : [] };
 }
 
 /**
@@ -1425,8 +1421,8 @@ function initStockMarket(client) {
     try {
       // Handler untuk tombol prompt membuka portal hub privat
       if (customId === 'eco_btn_open_portal_hub_private') {
-        const { embed, components } = getPortalHubData(client);
-        await interaction.reply({ embeds: [embed], components, flags: 64 });
+        const { embed, components, files } = await getPortalHubData(client);
+        await interaction.reply({ embeds: [embed], components, files, flags: 64 });
         return;
       }
 
@@ -15201,8 +15197,8 @@ async function handleEconomyCommands(message, client) {
 
       await message.delete().catch(() => { });
 
-      const { embed, row } = getPortalHubData(client);
-      await message.channel.send({ embeds: [embed], components: [row] });
+      const { embed, components, files } = await getPortalHubData(client);
+      await message.channel.send({ embeds: [embed], components, files });
       return true;
     }
 

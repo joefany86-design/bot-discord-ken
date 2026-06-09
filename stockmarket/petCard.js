@@ -3591,6 +3591,448 @@ async function getStage2ResultAttachment(selectedMap, commanderName, eventText, 
   }
 }
 
+// ═══════════════════════════════════════════════
+// PREMIUM MINIMALIST ICONS VECTOR DRAWING HELPER
+// ═══════════════════════════════════════════════
+function drawPremiumIcon(ctx, name, cx, cy, size = 18, color = '#FFFFFF') {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (name === 'controller') {
+    const w = size * 1.3;
+    const h = size * 0.8;
+    drawRoundedRect(ctx, cx - w/2, cy - h/2, w, h, 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - w/4 - 3, cy);
+    ctx.lineTo(cx - w/4 + 3, cy);
+    ctx.moveTo(cx - w/4, cy - 3);
+    ctx.lineTo(cx - w/4, cy + 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + w/4 - 2, cy - 2, 1.5, 0, Math.PI*2);
+    ctx.arc(cx + w/4 + 3, cy + 2, 1.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+  else if (name === 'briefcase') {
+    const w = size * 1.1;
+    const h = size * 0.8;
+    drawRoundedRect(ctx, cx - w/2, cy - h/2 + 2, w, h - 2, 4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy - h/2 + 2, 4, Math.PI, 0);
+    ctx.stroke();
+    ctx.fillRect(cx - 2, cy, 4, 3);
+  }
+  else if (name === 'paw') {
+    ctx.beginPath();
+    ctx.arc(cx, cy + 2, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx - 5, cy - 4, 2, 0, Math.PI*2);
+    ctx.arc(cx - 1, cy - 7, 2, 0, Math.PI*2);
+    ctx.arc(cx + 3, cy - 7, 2, 0, Math.PI*2);
+    ctx.arc(cx + 7, cy - 4, 2, 0, Math.PI*2);
+    ctx.fill();
+  }
+  else if (name === 'bag') {
+    const w = size * 0.9;
+    const h = size * 1.0;
+    drawRoundedRect(ctx, cx - w/2, cy - h/2 + 3, w, h - 3, 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy - h/2 + 4, 5, Math.PI, 0);
+    ctx.stroke();
+  }
+  else if (name === 'chart') {
+    const w = size;
+    const h = size;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - h/2);
+    ctx.lineTo(cx - w/2, cy + h/2);
+    ctx.lineTo(cx + w/2, cy + h/2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2 + 2, cy + h/4);
+    ctx.lineTo(cx - w/6, cy - h/6);
+    ctx.lineTo(cx + w/6, cy + h/8);
+    ctx.lineTo(cx + w/2 - 2, cy - h/3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + w/2 - 2, cy - h/3, 2, 0, Math.PI*2);
+    ctx.fill();
+  }
+  else if (name === 'bank') {
+    const w = size * 1.1;
+    const h = size * 0.9;
+    ctx.fillRect(cx - w/2, cy + h/2 - 2, w, 2);
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - h/2 + 3);
+    ctx.lineTo(cx, cy - h/2 - 3);
+    ctx.lineTo(cx + w/2, cy - h/2 + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(cx - w/3 - 1, cy - h/2 + 4, 2, h - 7);
+    ctx.fillRect(cx - 1, cy - h/2 + 4, 2, h - 7);
+    ctx.fillRect(cx + w/3 - 2, cy - h/2 + 4, 2, h - 7);
+  }
+  else if (name === 'spy') {
+    const r = size * 0.45;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2, r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.fillRect(cx - r - 1, cy - 4, r * 2 + 2, 2);
+    ctx.beginPath();
+    ctx.arc(cx - 2.5, cy, 2.5, 0, Math.PI);
+    ctx.arc(cx + 2.5, cy, 2.5, 0, Math.PI);
+    ctx.fill();
+  }
+  else if (name === 'scales') {
+    const w = size * 1.1;
+    const h = size * 0.9;
+    ctx.fillRect(cx - w/4, cy + h/2 - 2, w/2, 2);
+    ctx.fillRect(cx - 0.75, cy - h/2, 1.5, h);
+    ctx.fillRect(cx - w/2, cy - h/2 + 2, w, 1.5);
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2 + 2, cy - h/2 + 4);
+    ctx.lineTo(cx - w/2 - 3, cy + h/4);
+    ctx.lineTo(cx - w/2 + 7, cy + h/4);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + w/2 - 2, cy - h/2 + 4);
+    ctx.lineTo(cx + w/2 - 7, cy + h/4);
+    ctx.lineTo(cx + w/2 + 3, cy + h/4);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  else if (name === 'user') {
+    const r = size * 0.35;
+    ctx.beginPath();
+    ctx.arc(cx, cy - r, r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy + size * 0.45, size * 0.5, Math.PI, 0);
+    ctx.fill();
+  }
+  else if (name === 'bed') {
+    const w = size * 1.1;
+    const h = size * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - h/2);
+    ctx.lineTo(cx - w/2, cy + h/2);
+    ctx.moveTo(cx + w/2, cy - h/2);
+    ctx.lineTo(cx + w/2, cy + h/2);
+    ctx.moveTo(cx - w/2, cy + h/4);
+    ctx.lineTo(cx + w/2, cy + h/4);
+    ctx.stroke();
+    ctx.fillRect(cx - w/2 + 3, cy - h/2 + 2, 4, 5);
+    drawRoundedRect(ctx, cx - w/2 + 8, cy - h/2 + 4, w - 10, h/2, 2);
+    ctx.fill();
+  }
+  else if (name === 'leaf') {
+    const h = size;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + h/2);
+    ctx.quadraticCurveTo(cx - 3, cy, cx - 1, cy - h/4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx - 4, cy - 2, 3.5, 1.8, -Math.PI/4, 0, Math.PI*2);
+    ctx.ellipse(cx + 2, cy - 3, 3.5, 1.8, Math.PI/4, 0, Math.PI*2);
+    ctx.fill();
+  }
+  else if (name === 'list') {
+    const w = size * 0.8;
+    const h = size * 1.0;
+    drawRoundedRect(ctx, cx - w/2, cy - h/2 + 2, w, h - 2, 2);
+    ctx.stroke();
+    ctx.fillRect(cx - 2.5, cy - h/2, 5, 2.5);
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2 + 3, cy - 1);
+    ctx.lineTo(cx + w/2 - 3, cy - 1);
+    ctx.moveTo(cx - w/2 + 3, cy + 3);
+    ctx.lineTo(cx + w/2 - 3, cy + 3);
+    ctx.stroke();
+  }
+  else if (name === 'ticket') {
+    const w = size * 1.1;
+    const h = size * 0.7;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI / 12);
+    drawRoundedRect(ctx, -w/2, -h/2, w, h, 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.setLineDash([2, 2]);
+    ctx.moveTo(-w/6, -h/2);
+    ctx.lineTo(-w/6, h/2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w/4, 0, 1.5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+  else if (name === 'lock') {
+    const w = size * 0.75;
+    const h = size * 0.65;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 1.5, w/3, Math.PI, 0);
+    ctx.stroke();
+    drawRoundedRect(ctx, cx - w/2, cy - 0.5, w, h, 1.5);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Generate premium card for Sentinel Portal Hub control center
+ */
+async function generatePortalHubCard(client) {
+  const CARD_WIDTH = 1000;
+  const CARD_HEIGHT = 560;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0a0813');
+  bgGrad.addColorStop(0.5, '#151128');
+  bgGrad.addColorStop(1, '#0a0813');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Decorative grid lines (futuristic cyber grid)
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Subtle radial glow behind avatar
+  const radialGlow = ctx.createRadialGradient(75, 70, 0, 75, 70, 120);
+  radialGlow.addColorStop(0, 'rgba(124, 77, 255, 0.2)');
+  radialGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = radialGlow;
+  ctx.fillRect(0, 0, 300, 150);
+
+  // Main Container Card (glassmorphic border)
+  const margin = 20;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(10, 8, 20, 0.84)';
+  ctx.fill();
+
+  // Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, '#7C4DFF');
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+  borderGrad.addColorStop(1, '#00E5FF');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Load bot avatar
+  let avatarImg = null;
+  if (client && client.user && client.user.displayAvatarURL) {
+    try {
+      const avatarURL = client.user.displayAvatarURL({ extension: 'png', size: 128 });
+      avatarImg = await loadImageSafe(avatarURL);
+    } catch (e) {
+      console.warn('[PetCard] Failed to load bot avatar for Portal Hub card');
+    }
+  }
+
+  // Draw Avatar with glow
+  drawCircleAvatar(ctx, avatarImg, 75, 70, 26, '#7C4DFF', 'rgba(124, 77, 255, 0.4)');
+
+  // Title & Subtitle next to avatar
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('SENTINEL PORTAL HUB', 135, 68);
+
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText('— PUSAT KONTROL UTAMA —', 135, 86);
+
+  // Decorative controller icon inside header
+  drawPremiumIcon(ctx, 'controller', 115, 60, 16, '#00E5FF');
+
+  // Header separator line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 115);
+  ctx.lineTo(960, 115);
+  ctx.stroke();
+
+  // ── COLUMN 1: EKONOMI & FINANSIAL ──
+  const col1X = 45;
+  const colWidth = 445;
+
+  // Title accent bar
+  ctx.fillStyle = '#FFD700';
+  drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
+  ctx.fill();
+
+  // Column header text
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'left';
+  ctx.fillText('EKONOMI & FINANSIAL', col1X + 32, 149);
+  drawPremiumIcon(ctx, 'briefcase', col1X + 16, 143, 14, '#FFD700');
+
+  const leftItems = [
+    { icon: 'bag', title: 'Toko Role', desc: 'Beli kasta role prestise & gacha.' },
+    { icon: 'chart', title: 'Bursa Saham', desc: 'Investasi saham channel server.' },
+    { icon: 'bank', title: 'Bank Sentral', desc: 'Simpan uang (tabungan) & pinjam koin.' },
+    { icon: 'spy', title: 'Black Market', desc: 'Beli peralatan aksi kriminal (rob).' },
+    { icon: 'scales', title: 'Pasar Lelang', desc: 'Bursa jual-beli barang & pet warga.' },
+    { icon: 'user', title: 'Profil & Aset', desc: 'Lihat peralatan & barang mewah.' }
+  ];
+
+  let leftY = 172;
+  const itemHeight = 44;
+  const itemGap = 8;
+
+  leftItems.forEach(item => {
+    // Glassmorphic item box
+    drawRoundedRect(ctx, col1X, leftY, colWidth, itemHeight, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Icon circle backing
+    ctx.beginPath();
+    ctx.arc(col1X + 24, leftY + 22, 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.fill();
+
+    // Premium Icon
+    drawPremiumIcon(ctx, item.icon, col1X + 24, leftY + 22, 16, '#FFD700');
+
+    // Title
+    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.title, col1X + 48, leftY + 18);
+
+    // Desc
+    ctx.font = '10px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#A0AABF';
+    ctx.fillText(item.desc, col1X + 48, leftY + 33);
+
+    leftY += itemHeight + itemGap;
+  });
+
+  // ── COLUMN 2: DUNIA PET & GAYA HIDUP ──
+  const col2X = 510;
+
+  // Title accent bar
+  ctx.fillStyle = '#00E676';
+  drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
+  ctx.fill();
+
+  // Column header text
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#00E676';
+  ctx.textAlign = 'left';
+  ctx.fillText('DUNIA PET & GAYA HIDUP', col2X + 32, 149);
+  drawPremiumIcon(ctx, 'paw', col2X + 16, 143, 14, '#00E676');
+
+  const rightItems = [
+    { icon: 'paw', title: 'Kandang Pet', desc: 'Pusat perawatan, kerja, buru, & kelola pet.' },
+    { icon: 'bed', title: 'Sewa Kosan', desc: 'Sewa kamar kos & upgrade fasilitas.' },
+    { icon: 'leaf', title: 'Cozy Garden', desc: 'Menanam bunga & berkebun cozy.' },
+    { icon: 'list', title: 'Misi Harian', desc: 'Selesaikan misi harian untuk koin & barang.' },
+    { icon: 'ticket', title: 'Lotre Mingguan', desc: 'Beli tiket lotre mingguan berhadiah pool besar.' }
+  ];
+
+  let rightY = 172;
+  rightItems.forEach(item => {
+    // Glassmorphic item box
+    drawRoundedRect(ctx, col2X, rightY, colWidth, itemHeight, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Icon circle backing
+    ctx.beginPath();
+    ctx.arc(col2X + 24, rightY + 22, 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.fill();
+
+    // Premium Icon
+    drawPremiumIcon(ctx, item.icon, col2X + 24, rightY + 22, 16, '#00E676');
+
+    // Title
+    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.title, col2X + 48, rightY + 18);
+
+    // Desc
+    ctx.font = '10px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#A0AABF';
+    ctx.fillText(item.desc, col2X + 48, rightY + 33);
+
+    rightY += itemHeight + itemGap;
+  });
+
+  // Footer separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(40, 485);
+  ctx.lineTo(960, 485);
+  ctx.stroke();
+
+  // Footer notice (Centered with dynamic lock placement)
+  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'center';
+  const noticeText = 'Klik tombol di bawah ini untuk membuka panel secara Pribadi / Private (Hanya Anda yang dapat melihatnya)';
+  const textWidth = ctx.measureText(noticeText).width;
+  ctx.fillText(noticeText, 500, 506);
+  
+  const lockX = 500 - (textWidth / 2) - 10;
+  drawPremiumIcon(ctx, 'lock', lockX, 501, 10, '#FFD700');
+
+  // Bottom corner metadata
+  ctx.font = '10px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Sentinel Bot • Server Kosan 1A', 45, 532);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('Pusat Kontrol Utama', 955, 532);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getPortalHubAttachment(client) {
+  try {
+    const buffer = await generatePortalHubCard(client);
+    return new AttachmentBuilder(buffer, { name: 'portal_hub.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating portal hub attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -3628,6 +4070,8 @@ module.exports = {
   getPortfolioAttachment,
   getPropertyAttachment,
   getLeaderboardAttachment,
+  generatePortalHubCard,
+  getPortalHubAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

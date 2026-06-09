@@ -474,8 +474,8 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 
     try {
       if (i.customId === 'help_btn_portal') {
-        const { embed, components } = getPortalHubData(client);
-        await i.reply({ embeds: [embed], components, flags: 64 });
+        const { embed, components, files } = await getPortalHubData(client);
+        await i.reply({ embeds: [embed], components, files, flags: 64 });
       }
 
       if (i.customId === 'help_btn_member') {
@@ -659,10 +659,10 @@ async function sendInteractiveHelp(replyTarget, isInteraction, user, guild, clie
 }
 
 async function sendPortalHubDirect(replyTarget, isInteraction, user, guild, client) {
-  const { embed, components } = getPortalHubData(client);
+  const { embed, components, files } = await getPortalHubData(client);
 
   if (isInteraction) {
-    await replyTarget.reply({ embeds: [embed], components, flags: 64 });
+    await replyTarget.reply({ embeds: [embed], components, files, flags: 64 });
   } else {
     // Hapus pesan pemicu (.hub) dari member
     await replyTarget.delete().catch(() => {});
