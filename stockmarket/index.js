@@ -5981,6 +5981,7 @@ async function handlePetCommand(message, client, args) {
       activeLobby.delete(lobbyKey);
 
       const currentLobby = lobby;
+      const mapAttachment = getMapAttachment(mapChoice);
       try {
         const membersMap = {};
         for (const pId of currentLobby.participants) {
