@@ -159,7 +159,7 @@ async function handlePetSafariCommand(message, client, args) {
 
   // Hanya izinkan di channel ID 1513927968379109436
   if (message.channelId !== '1513927968379109436') {
-    return message.reply({ content: '⚠️ **Safari** hanya dapat digunakan di channel <#1513927968379109436>!' });
+    return message.reply({ embeds: [embeds.safariChannelRestrictionEmbed()] });
   }
 
   if (activeSafaris.has(author.id)) {

@@ -1582,6 +1582,20 @@ module.exports = {
       .setTimestamp();
   },
 
+  safariChannelRestrictionEmbed() {
+    return new EmbedBuilder()
+      .setColor(0xE67E22) // Savannah Orange
+      .setTitle('🌴 WILAYAH SAFARI TERBATAS 🦁')
+      .setDescription(
+        `⚠️ **Safari** hanya dapat digunakan di channel <#1513927968379109436> (🥎┃pet-safari)!\n\n` +
+        `> **Kenapa dibatasi?**\n` +
+        `> Penjelajahan wilayah liar membutuhkan visualisasi peta dinamis dan kontrol khusus agar tidak mengganggu ketertiban obrolan warga lainnya.\n\n` +
+        `👉 **Silakan kunjungi:** <#1513927968379109436> untuk memulai safari!`
+      )
+      .setFooter({ text: 'Dinas Kehutanan & Konservasi Safari' })
+      .setTimestamp();
+  },
+
   // 10. Embed Sukses Umum
   successEmbed(title, description) {
     const cleanedTitle = title.replace(/^[✅🟢]\s*/, '').trim();

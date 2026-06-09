@@ -10205,8 +10205,9 @@ async function handleEconomyCommands(message, client) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
-        const channelMention = isSafariCommand ? '<#1513927968379109436>' : '<#1509762623917265137>';
-        const warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', `Perintah bermain pet (\`.pet\`) hanya dapat digunakan di saluran khusus pet: ${channelMention}!`);
+        const warnEmb = isSafariCommand
+          ? embeds.safariChannelRestrictionEmbed()
+          : embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
         await autoReply({ embeds: [warnEmb] });
         return true; // Berhenti memproses perintah
       }
