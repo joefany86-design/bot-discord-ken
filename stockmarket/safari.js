@@ -157,8 +157,8 @@ function generateWildPet(biomeId) {
 async function handlePetSafariCommand(message, client, args) {
   const { author, guildId } = message;
 
-  // Hanya izinkan di channel ID 1513927968379109436
-  if (message.channelId !== '1513927968379109436') {
+  // Hanya izinkan di channel ID 1513927968379109436 atau channel test 1503324994153873458
+  if (message.channelId !== '1513927968379109436' && message.channelId !== '1503324994153873458') {
     return message.reply({ embeds: [embeds.safariChannelRestrictionEmbed()] });
   }
 
