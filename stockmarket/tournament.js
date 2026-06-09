@@ -304,12 +304,7 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
   if (channel) {
     const standings = getLeagueStandingsData(guildId);
     let standingsCardAttachment = null;
-    try {
-      const petCardModule = require('./petCard');
-      standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
-    } catch (e) {
-      console.error('[Tournament] Gagal memuat standings card:', e);
-    }
+    // Standings card disabled
 
     const queueText = getMatchQueueString(guildId);
 
@@ -393,12 +388,7 @@ async function executeNextMatch(guildId, client) {
 
       const standings = getLeagueStandingsData(guildId);
       let standingsCardAttachment = null;
-      try {
-        const petCardModule = require('./petCard');
-        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
-      } catch (e) {
-        console.error('[Tournament] Gagal memuat standings card:', e);
-      }
+      // Standings card disabled
 
       const queueText = getMatchQueueString(guildId);
 
@@ -630,12 +620,7 @@ async function executeNextMatch(guildId, client) {
 
       const standings = getLeagueStandingsData(guildId);
       let standingsCardAttachment = null;
-      try {
-        const petCardModule = require('./petCard');
-        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
-      } catch (e) {
-        console.error('[Tournament] Gagal memuat standings card:', e);
-      }
+      // Standings card disabled
 
       const queueText = getMatchQueueString(guildId);
 
@@ -1134,23 +1119,7 @@ async function endMatch(matchId, winnerId, reason, client) {
 
   // Generate PvP Card visual buffer
   let pvpCardBuffer = null;
-  try {
-    const petCardModule = require('./petCard');
-    const freshP1Pet = getRegisteredPet(match.player1.user_id, match.guildId);
-    const freshP2Pet = getRegisteredPet(match.player2.user_id, match.guildId);
-    if (freshP1Pet && freshP2Pet) {
-      pvpCardBuffer = await petCardModule.generatePvpCard(freshP1Pet, freshP2Pet, {
-        winner: winner.pet_name,
-        loser: loser.pet_name,
-        pet1HP: match.player1.hp,
-        pet2HP: match.player2.hp,
-        pet1MaxHP: match.player1.maxHP,
-        pet2MaxHP: match.player2.maxHP
-      });
-    }
-  } catch (err) {
-    console.error('[Tournament] Gagal membuat PvP card buffer:', err);
-  }
+  // Tournament PvP result card disabled
 
   const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
@@ -1211,12 +1180,7 @@ async function endMatch(matchId, winnerId, reason, client) {
 
       const standings = getLeagueStandingsData(match.guildId);
       let standingsCardAttachment = null;
-      try {
-        const petCardModule = require('./petCard');
-        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
-      } catch (e) {
-        console.error('[Tournament] Gagal memuat standings card:', e);
-      }
+      // Standings card disabled
 
       const queueText = getMatchQueueString(match.guildId);
 
@@ -1391,12 +1355,7 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
 
   const standings = getLeagueStandingsData(guildId);
   let standingsCardBuffer = null;
-  try {
-    const petCardModule = require('./petCard');
-    standingsCardBuffer = await petCardModule.generateStandingsCard(standings, guild);
-  } catch (e) {
-    console.error('[Tournament] Gagal membuat standings card buffer:', e);
-  }
+  // Final standings card disabled
 
   const formatRewardLine = (coins, item, qty) => {
     const itemText = (item && item.toUpperCase() !== 'NONE') ? ` + ${qty}x \`${item}\`` : '';

@@ -482,41 +482,69 @@ module.exports = {
   getPetImage,
 
   async petCardEmbed(pet, ownerUser, options = {}) {
+    let xpNeeded = 100;
     try {
-      const petCard = require('./petCard');
-      let xpNeeded = 100;
-      try {
-        const petModule = require('./pet');
-        xpNeeded = petModule.getXpNeeded(pet.level, pet.trait);
-      } catch (e) {
-        xpNeeded = pet.level * 150;
-      }
-
-      const attachment = await petCard.getPetCardAttachment(pet, ownerUser, { xpNeeded, maxHP: 100, ...options });
-
-      if (attachment) {
-        const embed = new EmbedBuilder()
-          .setColor(petCard.RARITY_COLORS[(pet.gacha_rarity || 'COMMON').toUpperCase()]?.primary || 0x7C4DFF)
-          .setTitle(`🐾 KARTU PROFIL PET: ${pet.pet_name.toUpperCase()}`)
-          .setImage('attachment://pet_card.png')
-          .setFooter({ text: 'Kosan 1A RPG · Pet Profile Card' })
-          .setTimestamp();
-        return { embeds: [embed], files: [attachment] };
-      }
+      const petModule = require('./pet');
+      xpNeeded = petModule.getXpNeeded(pet.level, pet.trait);
     } catch (e) {
-      console.error('[Embeds] Gagal membuat petCardEmbed:', e);
+      xpNeeded = pet.level * 150;
     }
 
-    // Fallback to text embed
+    const generateProgressBar = (value, max, size = 8) => {
+      if (max <= 0) return '░'.repeat(size);
+      const ratio = Math.min(1, Math.max(0, value / max));
+      const filled = Math.round(ratio * size);
+      return '▓'.repeat(filled) + '░'.repeat(size - filled);
+    };
+
+    const typeEmoji = pet.pet_type === 'SLIME' ? '🟢' : pet.pet_type === 'DRAGON' ? '🔥' : pet.pet_type === 'CAT' ? '🐱' : pet.pet_type === 'GOLEM' ? '🧱' : '🐾';
+    const traitEmojis = {
+      GENIUS: '🧠 GENIUS (Bonus XP)',
+      STURDY: '🛡️ STURDY (Bonus HP)',
+      MUTANT: '🧬 MUTANT (Bonus Evolusi)',
+      WARRIOR: '⚔️ WARRIOR (Bonus ATK)'
+    };
+
+    const xpBar = generateProgressBar(pet.xp, xpNeeded, 10);
+    const hpBar = generateProgressBar(pet.health, 100, 8);
+    const hungerBar = generateProgressBar(pet.hunger, 100, 8);
+    const thirstBar = generateProgressBar(pet.thirst, 100, 8);
+    const happyBar = generateProgressBar(pet.happiness, 100, 8);
+
+    let traitLabel = pet.trait ? (traitEmojis[pet.trait.toUpperCase()] || pet.trait) : '*Tidak Ada*';
+    if (pet.gacha_trait2) {
+      traitLabel += ` & ${traitEmojis[pet.gacha_trait2.toUpperCase()] || pet.gacha_trait2}`;
+    }
+
+    let desc = `🐾 **Identitas Peliharaan**:\n`;
+    desc += `• Nama: **${pet.pet_name}**\n`;
+    desc += `• Spesies: ${typeEmoji} **${pet.pet_type}** (Lv.**${pet.level}**)\n`;
+    desc += `• Rarity: **${pet.gacha_rarity || 'COMMON'}**\n`;
+    desc += `• Elemen: **${pet.gacha_element || 'EARTH'}**\n`;
+    desc += `• Bintang: **${'★'.repeat(pet.star_level || 1)}**\n`;
+    desc += `• Aksesori: **${pet.accessory || 'Tanpa Aksesori'}**\n`;
+    desc += `• Karakter: ${traitLabel}\n\n`;
+
+    desc += `📊 **Kondisi Fisik**:\n`;
+    desc += `• ❤️ HP: \`[${hpBar}]\` \`${Math.round(pet.health)}%\`\n`;
+    desc += `• 🍖 Kenyang: \`[${hungerBar}]\` \`${Math.round(pet.hunger)}%\`\n`;
+    desc += `• 💧 Hidrasi: \`[${thirstBar}]\` \`${Math.round(pet.thirst)}%\`\n`;
+    desc += `• ⚽ Senang: \`[${happyBar}]\` \`${Math.round(pet.happiness)}%\`\n`;
+    desc += `• 📈 XP: \`[${xpBar}]\` \`${pet.xp}/${xpNeeded}\`\n\n`;
+
+    desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
+    desc += `• ⚔️ Rekor PvP: **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
+    const autoFeedLabel = pet.auto_feed === 1 ? '🟢 Makan Otomatis' : pet.auto_feed === 2 ? '🔵 Makan & Minum Otomatis' : '🔴 Nonaktif';
+    desc += `• 🤖 Auto-Feed: **${autoFeedLabel}**\n`;
+
     const embed = new EmbedBuilder()
       .setColor(0x7C4DFF)
-      .setTitle(`🐾 PROFIL PET: ${pet.pet_name}`)
-      .setDescription(`Gagal memuat kartu visual. Berikut data status pet:\n\n` +
-        `• Nama: **${pet.pet_name}**\n` +
-        `• Tipe: **${pet.pet_type}** (Lv. ${pet.level})\n` +
-        `• HP: **${pet.health}%** | Kenyangan: **${pet.hunger}%**\n` +
-        `• Hidrasi: **${pet.thirst}%** | Kebahagiaan: **${pet.happiness}%**`)
+      .setTitle(`🐾 PROFIL PET: ${pet.pet_name.toUpperCase()}`)
+      .setDescription(desc)
+      .setThumbnail(ownerUser.displayAvatarURL ? ownerUser.displayAvatarURL({ dynamic: true, size: 256 }) : null)
+      .setFooter({ text: 'Kosan 1A RPG · Pet Profile' })
       .setTimestamp();
+
     return { embeds: [embed] };
   },
 
@@ -4182,6 +4210,9 @@ module.exports = {
     const isChallenging = selectedMap.recommendedLevel >= 25;
     const embedColor = isChallenging ? 0x990000 : 0xFFB800; // Crimson / Gold Premium
 
+    const successBar = '🟩'.repeat(Math.round(successRate / 10)) + '⬛'.repeat(10 - Math.round(successRate / 10));
+    const difficultyBar = '🟥'.repeat(Math.round(selectedMap.difficulty)) + '⬛'.repeat(10 - Math.round(selectedMap.difficulty));
+
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
@@ -4190,17 +4221,32 @@ module.exports = {
         `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang dan bahaya nyata.*\n\n` +
         `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-        `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n` +
-        `💰 **Biaya Ransum:** \`Rp 250\` koin`
+        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
       )
       .addFields(
         {
-          name: '🐾 Sinergi & Log Elemen Tim',
-          value: elementalLogsText || '*Belum ada keuntungan/kelemahan elemen*',
+          name: '🐾 KRU PET SAAT INI',
+          value: petListText || '*Belum ada peserta*',
           inline: false
+        },
+        {
+          name: '🎯 PELUANG & SINERGI ELEMEN',
+          value: `• **Peluang Sukses Tim**: \`[${successBar}]\` (**${successRate}%**)\n` +
+            `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
+            `• **Sinergi Elemen:**\n${elementalLogsText}`,
+          inline: false
+        },
+        {
+          name: '💰 Biaya Ransum',
+          value: `\`Rp 250\` koin`,
+          inline: true
+        },
+        {
+          name: '⏳ Batas Persiapan',
+          value: `<t:${endTimeUnix}:R>`,
+          inline: true
         }
       )
-      .setImage('attachment://lobby_card.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },
@@ -4219,7 +4265,6 @@ module.exports = {
         `👥 **Anggota Tim:** ${crewMentions}\n\n` +
         `*⏳ Menunggu koordinasi kru pet... Pastikan pet Anda siap bertempur!*`
       )
-      .setImage('attachment://expedition_loading.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Memulai petualangan...' })
       .setTimestamp();
   },
@@ -4239,7 +4284,6 @@ module.exports = {
         `Memasuki wilayah **${selectedMap.name}** bagian dalam...\n\n` +
         `*Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!*`
       )
-      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: `Kosan 1A RPG Pet Expedition • Tahap ${stageNum}` })
       .setTimestamp();
   },
@@ -4263,7 +4307,6 @@ module.exports = {
         `📈 **Progres QTE:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
         `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh menekan tombol! Salah klik oleh kru lain akan memicu penalti interferensi.*`
       )
-      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG • Fokus dan bersiaplah!' })
       .setTimestamp();
   },
@@ -4284,14 +4327,12 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(0xD50000) // Vibrant Red
       .setTitle(`🏰 EKSPEDISI GAGAL: BOS PERTEMPURAN KACAU!`)
-      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `💥 **ALARM PENJAGA BERBUNYI! TIM DIPAKSA MUNDUR!** 💥\n\n` +
         `🔍 **Penyebab Kekalahan:**\n${causeText}\n\n` +
         `🐾 **Dampak Kondisi Kru Pet:**\n${rekapPetList}\n\n` +
         `⚠️ *Dampak kegagalan QTE: Seluruh pet kehilangan status HP/kesehatan, lapar/haus meningkat, dan kebahagiaan menurun drastis.*`
       )
-      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition Failure • Coba lagi setelah cooldown selesai!' })
       .setTimestamp();
   },
@@ -4309,7 +4350,6 @@ module.exports = {
         `Contoh: \`.pet expedition 3\`\n\n` +
         `📌 **DAFTAR ZONA PETUALANGAN PET:**`
       )
-      .setThumbnail('attachment://pet_explorer.png')
       .addFields(
         mapsList.map(m => ({
           name: `🎮 ID Peta: ${m.id} — ${m.name}`,
@@ -4356,9 +4396,7 @@ module.exports = {
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
       .setDescription(reportDesc || null)
-      .setThumbnail('attachment://pet_explorer.png')
       .addFields(fields)
-      .setImage('attachment://expedition_result.png')
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }

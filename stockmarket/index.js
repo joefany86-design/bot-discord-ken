@@ -6027,7 +6027,7 @@ async function handlePetCommand(message, client, args) {
     const lobbyEmbed = embeds.petExpeditionLobbyEmbed(
       author.id,
       selectedMap,
-      '', // list text no longer needed, drawn on canvas
+      `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
       calcInit.successRate,
       elementalLogsText,
       endTimeUnix,
@@ -6787,6 +6787,15 @@ async function handlePetCommand(message, client, args) {
             });
           }
 
+          let petListText = '';
+          currentLobby.participants.forEach((pId, idx) => {
+            const pObj = pet.getPet(pId, guildId);
+            const pName = pObj ? pObj.pet_name : 'Unknown Pet';
+            const pLvl = pObj ? pObj.level : 1;
+            const pType = pObj ? pObj.pet_type : 'Normal';
+            petListText += `• ${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) · <@${pId}>\n`;
+          });
+
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
@@ -6794,7 +6803,7 @@ async function handlePetCommand(message, client, args) {
           const updatedEmbed = embeds.petExpeditionLobbyEmbed(
             author.id,
             selectedMap,
-            '', // no longer used for list text, drawn on canvas
+            petListText,
             calc.successRate,
             elementalLogsTextVal,
             endTimeUnix,
@@ -9279,30 +9288,10 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
           const result = pet.executePvP(author.id, opponent.id, guildId, bet);
           
           let files = [];
-          try {
-            const petCardModule = require('./petCard');
-            const freshChalPet = pet.getPet(author.id, guildId);
-            const freshOppPet = pet.getPet(opponent.id, guildId);
-            
-            const pvpCardAttachment = await petCardModule.getPvpCardAttachment(freshChalPet, freshOppPet, {
-              winner: result.winnerName,
-              loser: result.loserName,
-              pet1HP: result.challengerHpLeft,
-              pet2HP: result.opponentHpLeft,
-              pet1MaxHP: freshChalPet.health + (result.challengerHpLeft > 0 ? 0 : 50),
-              pet2MaxHP: freshOppPet.health + (result.opponentHpLeft > 0 ? 0 : 50)
-            });
-            if (pvpCardAttachment) {
-              files.push(pvpCardAttachment);
-            }
-          } catch (err) {
-            console.error('[PvP] Gagal membuat PvP card attachment:', err);
-          }
+          // Visual PvP result card disabled
 
           const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
-          if (files.length > 0) {
-            battleReport.setImage('attachment://pvp_card.png');
-          }
+
 
           await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport], files: files });
         } catch (err) {
@@ -12470,30 +12459,7 @@ async function handleEconomyCommands(message, client) {
 
       let currentTab = 'dashboard';
       let initialFiles = [];
-      if (currentTab === 'pet' && userPet && userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
-        try {
-          const petCardModule = require('./petCard');
-          let xpNeeded = 100;
-          try {
-            const petModule = require('./pet');
-            xpNeeded = petModule.getXpNeeded(userPet.level, userPet.trait);
-          } catch (e) {
-            xpNeeded = userPet.level * 150;
-          }
-          const attachment = await petCardModule.getPetCardAttachment(userPet, targetUser, {
-            xpNeeded,
-            maxHP: 100,
-            expeditionCooldownUntil: wallet.expedition_cooldown_until || 0,
-            dailyExpeditionCount: wallet.daily_expedition_count || 0
-          });
-          if (attachment) {
-            initialFiles.push(attachment);
-            extraData.hasVisualCard = true;
-          }
-        } catch (err) {
-          console.error('[Profile] Gagal memuat pet card awal:', err);
-        }
-      }
+      // Visual card disabled for pet tab
 
       const initialEmbed = embeds.profileEmbed(
         targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items, extraData, currentTab
@@ -12561,30 +12527,7 @@ async function handleEconomyCommands(message, client) {
           };
 
           let freshFiles = [];
-          if (currentTab === 'pet' && freshUserPet && freshUserPet.status !== 'DEAD' && freshUserPet.status !== 'EGG') {
-            try {
-              const petCardModule = require('./petCard');
-              let xpNeeded = 100;
-              try {
-                const petModule = require('./pet');
-                xpNeeded = petModule.getXpNeeded(freshUserPet.level, freshUserPet.trait);
-              } catch (e) {
-                xpNeeded = freshUserPet.level * 150;
-              }
-              const attachment = await petCardModule.getPetCardAttachment(freshUserPet, targetUser, {
-                xpNeeded,
-                maxHP: 100,
-                expeditionCooldownUntil: freshWallet.expedition_cooldown_until || 0,
-                dailyExpeditionCount: freshWallet.daily_expedition_count || 0
-              });
-              if (attachment) {
-                freshFiles.push(attachment);
-                freshExtraData.hasVisualCard = true;
-              }
-            } catch (err) {
-              console.error('[Profile] Gagal memuat pet card tab:', err);
-            }
-          }
+          // Visual card disabled for pet tab
 
           const nextEmbed = embeds.profileEmbed(
             targetUser, freshWallet, freshPorto.totalPortfolioValue, targetMember, shopItems, freshUserPet, freshActiveLoan, freshBailDebts, freshPorto.items, freshExtraData, currentTab
