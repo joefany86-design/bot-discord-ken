@@ -6312,31 +6312,16 @@ async function handlePetCommand(message, client, args) {
             .setColor('#E040FB')
             .setTitle('📦 STAGE 2 ━━ PETI KUNO TERKUNCI')
             .setDescription(
-              `### 📦 ANCIENT CHEST FOUND!\n` +
-              `*“A dusty relic of the past lies before you. What secrets or traps does it hold?”*\n\n` +
-              `> *Di tengah petualangan, tim menemukan peti kuno berdebu dengan gembok besi besar yang kokoh...*\n\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━━━`
-            )
-            .addFields(
-              {
-                name: '🗝️ ═══ OPSI TINDAKAN ═══',
-                value: 
-                  `> 🗝️ **[Gunakan Lockpick]**\n` +
-                  `> └─ Membuka peti aman. Dijamin 1 item langka acak!\n\n` +
-                  `> 💥 **[Dobrak Paksa]**\n` +
-                  `> └─ **40%** sukses, **60%** ledakan (**-15 HP** semua pet)\n\n` +
-                  `> 🏃 **[Lewati]**\n` +
-                  `> └─ Tinggalkan peti dan lanjut aman`,
-                inline: false
-              },
-              {
-                name: '🎒 Inventaris Komandan',
-                value: `> **Lockpick:** ${hasLockpick ? '🟢 **Tersedia** *(1x)*' : '🔴 **Tidak Ada**'}`,
-                inline: false
-              }
+              `👤 **Komandan:** <@${author.id}>\n` +
+              `🎒 **Inventaris Lockpick:** ${hasLockpick ? '🟢 **Ada** (1x)' : '🔴 **Tidak Ada**'}\n\n` +
+              `Tim menemukan peti kuno terkunci di jalan. Pilih tindakan:\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `🗝️ **[Gunakan Lockpick]** ➔ Buka aman, dapat 1 item langka gratis\n` +
+              `💥 **[Dobrak Paksa]** ➔ Peluang **40%** sukses | **60%** meledak (**-15 HP** tim)\n` +
+              `🏃 **[Lewati]** ➔ Lanjut perjalanan dengan aman`
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
+            .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
             .setTimestamp();
 
           const chestRow = new ActionRowBuilder().addComponents(
@@ -6412,24 +6397,14 @@ async function handlePetCommand(message, client, args) {
             .setColor('#00E5FF')
             .setTitle('💧 STAGE 2 ━━ AIR TERJUN SUCI')
             .setDescription(
-              `### 💧 SACRED WATERFALL FOUND!\n` +
-              `*“A crystal-clear spring of magical waters, offering rejuvenation to weary travelers.”*\n\n` +
-              `> *Tim menemukan mata air suci tersembunyi yang jernih, sejuk, dan memancarkan aura magis...*\n\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━━━`
-            )
-            .addFields(
-              {
-                name: '⛲ ═══ OPSI TINDAKAN ═══',
-                value: 
-                  `> 💧 **[Minum Bersama]**\n` +
-                  `> └─ Seluruh pet memulihkan **+20 HP & +20 Hidrasi**\n\n` +
-                  `> 🏃 **[Lewati]**\n` +
-                  `> └─ Lanjut perjalanan tanpa istirahat`,
-                inline: false
-              }
+              `👤 **Komandan:** <@${author.id}>\n\n` +
+              `Tim menemukan air terjun suci tersembunyi. Pilih tindakan:\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `⛲ **[Minum Bersama]** ➔ Pulihkan **+20 HP** & **+20 Hidrasi** semua pet\n` +
+              `🏃 **[Lewati]** ➔ Lanjut perjalanan tanpa istirahat`
             )
             .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
+            .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
             .setTimestamp();
 
           const waterfallRow = new ActionRowBuilder().addComponents(
