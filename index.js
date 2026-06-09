@@ -1,6 +1,7 @@
 // Muat environment variables SEBELUM semua require agar .env tersedia di seluruh modul
 require('dotenv').config();
 const config = require('./stockmarket/config');
+const embeds = require('./stockmarket/embeds');
 
 const sodium = require('libsodium-wrappers');
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
@@ -1105,7 +1106,7 @@ client.on('messageCreate', async message => {
       const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
       if (!isOwner && !isAdmin && !isGuildOwner) {
-        return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
+        return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat melihat daftar perintah admin.')] });
       }
 
       const embed = new EmbedBuilder()

@@ -9257,10 +9257,10 @@ async function handlePetAdminCommand(message, client, args) {
   if (subCommand === 'give-xp') {
     const amount = parseInt(args[2]);
     if (!target || isNaN(amount) || amount <= 0) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin give-xp @user <jumlah_xp>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin give-xp @user <jumlah_xp>`')] });
     }
     const petData = pet.getPet(target.id, guildId);
-    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
+    if (!petData) return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Ditemukan!', 'User tersebut tidak memiliki pet!')] });
 
     database.transaction(() => {
       let newXp = petData.xp + amount;
@@ -9282,10 +9282,10 @@ async function handlePetAdminCommand(message, client, args) {
 
   if (subCommand === 'heal') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin heal @user`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin heal @user`')] });
     }
     const petData = pet.getPet(target.id, guildId);
-    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
+    if (!petData) return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Ditemukan!', 'User tersebut tidak memiliki pet!')] });
 
     database.run(
       "UPDATE user_pets SET health = CASE WHEN pet_type = 'SLIME' THEN 120 ELSE 100 END, hunger = 100, thirst = 100, happiness = 100, status = CASE WHEN status = 'DEAD' THEN 'BABY' ELSE status END WHERE user_id = ? AND guild_id = ? AND is_active = 1",
@@ -9297,23 +9297,23 @@ async function handlePetAdminCommand(message, client, args) {
 
   if (subCommand === 'reset') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin reset @user`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin reset @user`')] });
     }
     try {
       pet.resetPet(target.id, guildId);
       return message.reply(`✅ Sukses mereset dan menghapus data pet milik <@${target.id}>.`);
     } catch (err) {
-      return message.reply(`❌ Gagal mereset: ${err.message}`);
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Mereset!', err.message)] });
     }
   }
 
   if (subCommand === 'hatch') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin hatch @user`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin hatch @user`')] });
     }
     const petData = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [target.id, guildId]);
-    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet!');
-    if (petData.status !== 'EGG') return message.reply('❌ Pet milik user tersebut sudah menetas!');
+    if (!petData) return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Ditemukan!', 'User tersebut tidak memiliki pet!')] });
+    if (petData.status !== 'EGG') return message.reply({ embeds: [embeds.errorEmbed('Sudah Menetas!', 'Pet milik user tersebut sudah menetas!')] });
 
     const now = Math.floor(Date.now() / 1000);
     database.run(
@@ -9339,35 +9339,35 @@ async function handlePetAdminCommand(message, client, args) {
     if (deletedCount > 0) {
       return message.reply(`✅ Sukses mereset secara paksa ${deletedCount} lobi ekspedisi pet yang aktif di server ini.`);
     } else {
-      return message.reply('❌ Tidak ada lobi ekspedisi pet yang aktif di server ini saat ini.');
+      return message.reply({ embeds: [embeds.errorEmbed('Tidak Aktif!', 'Tidak ada lobi ekspedisi pet yang aktif di server ini saat ini.')] });
     }
   }
   // ── ADMIN: ADD-TICKET (Tambah Tiket Gacha) ──
   if (subCommand === 'add-ticket') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin add-ticket @user <jumlah>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin add-ticket @user <jumlah>`')] });
     }
     const qty = parseInt(args[2]);
     if (isNaN(qty) || qty <= 0) {
-      return message.reply('❌ Jumlah tiket harus angka positif! Gunakan: `.pet-admin add-ticket @user <jumlah>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Jumlah Tiket Salah!', 'Jumlah tiket harus angka positif! Gunakan: `.pet-admin add-ticket @user <jumlah>`')] });
     }
     try {
       const newTotal = pet.addGachaTickets(target.id, guildId, qty);
       return message.reply(`✅ Berhasil menambahkan **${qty} Tiket Gacha** ke <@${target.id}>! Total tiket sekarang: **${newTotal} tiket**.`);
     } catch (err) {
-      return message.reply(`❌ Gagal menambahkan tiket: ${err.message}`);
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Menambahkan Tiket!', err.message)] });
     }
   }
 
   // ── ADMIN: FORCE-STAR (Paksa Set Bintang Pet) ──
   if (subCommand === 'force-star') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin force-star @user <nama_pet> <bintang>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin force-star @user <nama_pet> <bintang>`')] });
     }
     const petName = args[2];
     const starLevel = parseInt(args[3]);
     if (!petName || isNaN(starLevel) || starLevel < 1 || starLevel > 5) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin force-star @user <nama_pet> <1-5>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin force-star @user <nama_pet> <1-5>`')] });
     }
     try {
       const updated = pet.forceSetStar(target.id, guildId, petName, starLevel);
@@ -9376,21 +9376,21 @@ async function handlePetAdminCommand(message, client, args) {
         `📊 Bonus: HP+${updated.base_hp_bonus} | ATK+${Math.round((updated.base_atk_bonus_pct || 0) * 100)}% | DEF+${Math.round((updated.base_def_bonus_pct || 0) * 100)}%`
       );
     } catch (err) {
-      return message.reply(`❌ Gagal mengubah bintang: ${err.message}`);
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Mengubah Bintang!', err.message)] });
     }
   }
 
   // ── ADMIN: SET-TP (Atur Training Points Pet) ──
   if (subCommand === 'set-tp') {
     if (!target) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin set-tp @user <jumlah>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin set-tp @user <jumlah>`')] });
     }
     const tp = parseInt(args[2]);
     if (isNaN(tp) || tp < 0) {
-      return message.reply('❌ Jumlah TP harus berupa angka bulat minimal 0!');
+      return message.reply({ embeds: [embeds.errorEmbed('Jumlah TP Salah!', 'Jumlah TP harus berupa angka bulat minimal 0!')] });
     }
     const petData = pet.getPet(target.id, guildId);
-    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet aktif!');
+    if (!petData) return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Aktif!', 'User tersebut tidak memiliki pet aktif!')] });
 
     database.run('UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [tp, target.id, guildId]);
     return message.reply(`✅ Berhasil mengatur sisa Poin Latihan (TP) pet **${petData.pet_name}** milik <@${target.id}> menjadi **${tp} TP**!`);
@@ -9399,7 +9399,7 @@ async function handlePetAdminCommand(message, client, args) {
   // ── ADMIN: SET-STATS (Ubah Atribut Stat Gym Pet) ──
   if (subCommand === 'set-stats') {
     if (!target || !args[2] || !args[3] || !args[4] || !args[5]) {
-      return message.reply('❌ Format salah! Gunakan: `.pet-admin set-stats @user <str> <vit> <def> <dex> [tp]`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan: `.pet-admin set-stats @user <str> <vit> <def> <dex> [tp]`')] });
     }
     const str = parseInt(args[2]);
     const vit = parseInt(args[3]);
@@ -9408,14 +9408,14 @@ async function handlePetAdminCommand(message, client, args) {
     const tp = args[6] !== undefined ? parseInt(args[6]) : null;
 
     if (isNaN(str) || str < 0 || isNaN(vit) || vit < 0 || isNaN(def) || def < 0 || isNaN(dex) || dex < 0) {
-      return message.reply('❌ Seluruh nilai stat harus berupa angka bulat minimal 0!');
+      return message.reply({ embeds: [embeds.errorEmbed('Nilai Stat Salah!', 'Seluruh nilai stat harus berupa angka bulat minimal 0!')] });
     }
     if (tp !== null && (isNaN(tp) || tp < 0)) {
-      return message.reply('❌ Nilai TP harus berupa angka bulat minimal 0!');
+      return message.reply({ embeds: [embeds.errorEmbed('Nilai TP Salah!', 'Nilai TP harus berupa angka bulat minimal 0!')] });
     }
 
     const petData = pet.getPet(target.id, guildId);
-    if (!petData) return message.reply('❌ User tersebut tidak memiliki pet aktif!');
+    if (!petData) return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Aktif!', 'User tersebut tidak memiliki pet aktif!')] });
 
     database.transaction(() => {
       database.run(
@@ -9940,7 +9940,7 @@ async function handleEconomyCommands(message, client) {
   if (!isOwner && !isAdmin) {
     const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
     if (isBlacklisted) {
-      const warnMsg = await message.reply('❌ Akses Ditolak! Anda telah di-blacklist oleh Admin/Owner dan tidak dapat menggunakan perintah bot ini.');
+      const warnMsg = await message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Anda telah di-blacklist oleh Admin/Owner dan tidak dapat menggunakan perintah bot ini.')] });
       setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
       return true;
     }
@@ -14296,12 +14296,12 @@ async function handleEconomyCommands(message, client) {
       const targetChannel = message.mentions.channels.first() || message.channel;
 
       if (!targetChannel.isTextBased()) {
-        return message.reply('❌ Channel target harus berupa text channel!');
+        return message.reply({ embeds: [embeds.errorEmbed('Channel Salah!', 'Channel target harus berupa text channel!')] });
       }
 
       const botPermissions = targetChannel.permissionsFor(message.guild.members.me);
       if (!botPermissions.has('SendMessages') || !botPermissions.has('EmbedLinks')) {
-        return message.reply(`❌ Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`);
+        return message.reply({ embeds: [embeds.errorEmbed('Izin Kurang!', `Bot tidak memiliki izin \`Send Messages\` atau \`Embed Links\` di channel ${targetChannel}!`)] });
       }
 
       try {

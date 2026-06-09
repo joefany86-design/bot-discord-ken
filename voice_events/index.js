@@ -18,6 +18,7 @@ const {
 const config = require('./config');
 const database = require('./database');
 const audio = require('./audio');
+const embeds = require('../stockmarket/embeds');
 
 // Sesi game aktif per guild: Map<guildId, gameSession>
 const activeGames = new Map();
@@ -225,7 +226,7 @@ async function startTodGame(message, client) {
   collector.on('collect', async (interaction) => {
     const currentSession = activeGames.get(guildId);
     if (!currentSession || currentSession !== session) {
-      return interaction.reply({ content: '❌ Sesi lobby ini sudah tidak aktif.', flags: 64 });
+      return interaction.reply({ embeds: [embeds.errorEmbed('Lobi Tidak Aktif!', 'Sesi lobi ini sudah tidak aktif.')], flags: 64 });
     }
 
     const { customId, user } = interaction;
@@ -235,7 +236,7 @@ async function startTodGame(message, client) {
       const clickerMember = interaction.member;
       const clickerVoiceChannel = clickerMember.voice.channel;
       if (!clickerVoiceChannel || clickerVoiceChannel.id !== session.voiceChannelId) {
-        return interaction.reply({ content: '❌ Kamu harus berada di **Voice Channel** yang sama untuk bergabung!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Gagal Bergabung!', 'Kamu harus berada di **Voice Channel** yang sama untuk bergabung!')], flags: 64 });
       }
 
       if (session.players.some(p => p.id === user.id)) {
@@ -252,7 +253,7 @@ async function startTodGame(message, client) {
     // 🚪 Keluar dari Lobi
     else if (customId === 'tod_lobby_leave') {
       if (!session.players.some(p => p.id === user.id)) {
-        return interaction.reply({ content: '❌ Kamu belum bergabung di lobi ini!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Batal Keluar!', 'Kamu belum bergabung di lobi ini!')], flags: 64 });
       }
 
       // Host tidak bisa keluar kecuali dia membatalkan lobi
@@ -270,7 +271,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_settings') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host (pembuat lobi) atau Admin yang bisa merubah setelan!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host (pembuat lobi) atau Admin yang bisa merubah setelan!')], flags: 64 });
       }
 
       // Buat menu pilihan setelan yang cantik secara ephemeral
@@ -310,7 +311,7 @@ async function startTodGame(message, client) {
       settingsCollector.on('collect', async (selInteraction) => {
         const activeSess = activeGames.get(guildId);
         if (!activeSess || activeSess !== session) {
-          return selInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+          return selInteraction.reply({ embeds: [embeds.errorEmbed('Lobi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
         }
 
         if (selInteraction.customId === 'tod_settings_mode') {
@@ -368,7 +369,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_start') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa memulai permainan!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host atau Admin yang bisa memulai permainan!')], flags: 64 });
       }
 
       // Validasi pemain minimal 2 di Voice Channel
@@ -378,7 +379,7 @@ async function startTodGame(message, client) {
 
       if (playersActiveInVc.length < 2) {
         return interaction.reply({
-          content: '❌ **Gagal memulai!** Harus ada minimal **2 pemain terdaftar yang aktif di Voice Channel** saat ini.',
+          embeds: [embeds.errorEmbed('Gagal Memulai!', 'Harus ada minimal **2 pemain terdaftar yang aktif di Voice Channel** saat ini.')],
           flags: 64
         });
       }
@@ -396,7 +397,7 @@ async function startTodGame(message, client) {
     else if (customId === 'tod_lobby_cancel') {
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya Host atau Admin yang bisa membatalkan lobi!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host atau Admin yang bisa membatalkan lobi!')], flags: 64 });
       }
 
       collector.stop();
@@ -598,7 +599,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -606,7 +607,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_method_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
+          return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host/Admin yang bisa menghentikan game!')], flags: 64 });
         }
         collector.stop();
         await announceMatchSummary(client, guildId, `Game diakhiri paksa oleh ${user.username}.`);
@@ -614,7 +615,7 @@ async function startNextTurn(client, guildId) {
       }
 
       if (user.id !== session.challenger.id) {
-        return interaction.reply({ content: '❌ Hanya penanya aktif yang boleh merespon!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya penanya aktif yang boleh merespon!')], flags: 64 });
       }
 
       if (customId === 'tod_method_voice') {
@@ -705,7 +706,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -713,7 +714,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_mode3_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
+          return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host/Admin yang bisa menghentikan game!')], flags: 64 });
         }
         collector.stop();
         await announceMatchSummary(client, guildId, `Game diakhiri paksa oleh ${user.username}.`);
@@ -721,7 +722,7 @@ async function startNextTurn(client, guildId) {
       }
 
       if (user.id !== session.victim.id) {
-        return interaction.reply({ content: '❌ Hanya korban yang aktif saat ini yang boleh memilih!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya korban yang aktif saat ini yang boleh memilih!')], flags: 64 });
       }
 
       collector.stop();
@@ -821,7 +822,7 @@ async function startNextTurn(client, guildId) {
     collector.on('collect', async (interaction) => {
       const curSess = activeGames.get(guildId);
       if (!curSess || curSess !== session) {
-        return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
       }
 
       const { customId, user } = interaction;
@@ -830,7 +831,7 @@ async function startNextTurn(client, guildId) {
       if (customId === 'tod_method_stop') {
         const isAdm = interaction.member.permissions.has('Administrator');
         if (user.id !== session.host.id && !isAdm) {
-          return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
+          return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host/Admin yang bisa menghentikan game!')], flags: 64 });
         }
 
         collector.stop();
@@ -841,7 +842,7 @@ async function startNextTurn(client, guildId) {
       // Hanya penanya aktif atau admin yang boleh memilih metode
       const isAdmin = interaction.member.permissions.has('Administrator');
       if (user.id !== session.challenger.id && !isAdmin) {
-        return interaction.reply({ content: '❌ Hanya penanya aktif saat ini yang boleh merespon!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya penanya aktif saat ini yang boleh merespon!')], flags: 64 });
       }
 
       collector.stop();
@@ -921,7 +922,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
   collector.on('collect', async (interaction) => {
     const curSess = activeGames.get(guildId);
     if (!curSess || curSess !== session) {
-      return interaction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+      return interaction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
     }
 
     const { customId, user } = interaction;
@@ -931,7 +932,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       const clickerMember = interaction.member;
       const vc = clickerMember.voice.channel;
       if (!vc || vc.id !== session.voiceChannelId) {
-        return interaction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Gagal Akses!', 'Masuk Voice Channel game terlebih dahulu!')], flags: 64 });
       }
 
       if (session.players.some(p => p.id === user.id)) {
@@ -958,7 +959,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
     if (customId === 'tod_judge_host') {
       const isAdm = interaction.member.permissions.has('Administrator');
       if (user.id !== session.host.id && !isAdm) {
-        return interaction.reply({ content: '❌ Hanya Host/Admin yang bisa mengakses panel kontrol!', flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host/Admin yang bisa mengakses panel kontrol!')], flags: 64 });
       }
 
       const hostRow = new ActionRowBuilder().addComponents(
@@ -981,7 +982,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       ctrlCollector.on('collect', async (ctrlInteraction) => {
         const activeSess = activeGames.get(guildId);
         if (!activeSess || activeSess !== session) {
-          return ctrlInteraction.reply({ content: '❌ Sesi sudah tidak aktif.', flags: 64 });
+          return ctrlInteraction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi sudah tidak aktif.')], flags: 64 });
         }
 
         ctrlCollector.stop();
@@ -1009,7 +1010,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
 
       if (!isAllowedToJudge) {
         const expectedRole = session.mode === 'mode_3' ? 'Host/Admin' : 'Penanya aktif';
-        return interaction.reply({ content: `❌ Hanya ${expectedRole} yang berhak menilai giliran ini!`, flags: 64 });
+        return interaction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', `Hanya ${expectedRole} yang berhak menilai giliran ini!`)], flags: 64 });
       }
 
       collector.stop();
@@ -1099,7 +1100,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
       transCollector.on('collect', async (btnInteraction) => {
         const s = activeGames.get(guildId);
         if (!s || s !== session) {
-          return btnInteraction.reply({ content: '❌ Sesi game sudah tidak aktif.', flags: 64 });
+          return btnInteraction.reply({ embeds: [embeds.errorEmbed('Sesi Tidak Aktif!', 'Sesi game sudah tidak aktif.')], flags: 64 });
         }
 
         const btnUser = btnInteraction.user;
@@ -1108,7 +1109,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
           const m = btnInteraction.member;
           const vc = m.voice.channel;
           if (!vc || vc.id !== session.voiceChannelId) {
-            return btnInteraction.reply({ content: '❌ Masuk Voice Channel game terlebih dahulu!', flags: 64 });
+            return btnInteraction.reply({ embeds: [embeds.errorEmbed('Gagal Akses!', 'Masuk Voice Channel game terlebih dahulu!')], flags: 64 });
           }
           if (session.players.some(p => p.id === btnUser.id)) {
             return btnInteraction.reply({ content: 'ℹ️ Kamu sudah terdaftar!', flags: 64 });
@@ -1132,7 +1133,7 @@ async function startAnswerPhase(client, guildId, challengeText, challengeType) {
         if (btnInteraction.customId === 'tod_next_stop') {
           const isAdm = btnInteraction.member.permissions.has('Administrator');
           if (btnUser.id !== session.host.id && !isAdm) {
-            return btnInteraction.reply({ content: '❌ Hanya Host/Admin yang bisa menghentikan game!', flags: 64 });
+            return btnInteraction.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host/Admin yang bisa menghentikan game!')], flags: 64 });
           }
 
           if (session.timer) clearTimeout(session.timer);
@@ -1307,12 +1308,12 @@ async function handleVoiceTodCommand(message, client) {
   if (subCommand === 'stop' || subCommand === 'force-end') {
     const session = activeGames.get(message.guildId);
     if (!session) {
-      return message.reply('❌ Tidak ada sesi game Truth or Dare yang sedang aktif di server ini.');
+      return message.reply({ embeds: [embeds.errorEmbed('Tidak Aktif!', 'Tidak ada sesi game Truth or Dare yang sedang aktif di server ini.')] });
     }
 
     const isAdm = message.member.permissions.has('Administrator');
     if (message.author.id !== session.host.id && !isAdm) {
-      return message.reply('❌ Hanya Host atau Administrator yang bisa memberhentikan game paksa!');
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Host atau Administrator yang bisa memberhentikan game paksa!')] });
     }
 
     await announceMatchSummary(client, message.guildId, `Diberhentikan paksa oleh ${message.author.username}.`);
@@ -1323,7 +1324,7 @@ async function handleVoiceTodCommand(message, client) {
   if (subCommand === 'add') {
     const isAdm = message.member.permissions.has('Administrator');
     if (!isAdm) {
-      return message.reply('❌ Hanya Administrator yang berhak menambahkan pertanyaan kustom ke database!');
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang berhak menambahkan pertanyaan kustom ke database!')] });
     }
 
     const type = content[1]?.toLowerCase();
@@ -1331,7 +1332,7 @@ async function handleVoiceTodCommand(message, client) {
     const questionText = content.slice(3).join(' ');
 
     if (!type || !cat || !questionText || !['truth', 'dare'].includes(type) || !['chill', 'deep', 'spicy'].includes(cat)) {
-      return message.reply('❌ **Format salah!** Gunakan:\n👉 `.tod add <truth/dare> <chill/deep/spicy> <teks pertanyaan>`');
+      return message.reply({ embeds: [embeds.errorEmbed('Format Salah!', 'Gunakan:\n👉 `.tod add <truth/dare> <chill/deep/spicy> <teks pertanyaan>`')] });
     }
 
     database.addCustomQuestion(type, cat, questionText, message.author.tag);
@@ -1342,7 +1343,7 @@ async function handleVoiceTodCommand(message, client) {
   if (subCommand === 'announce') {
     const isAdm = message.member.permissions.has('Administrator');
     if (!isAdm) {
-      return message.reply('❌ Hanya Administrator yang dapat menyiarkan pengumuman game ToD!');
+      return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Hanya Administrator yang dapat menyiarkan pengumuman game ToD!')] });
     }
 
     const targetChannel = message.mentions.channels.first() || message.channel;
