@@ -6114,7 +6114,12 @@ async function handlePetCommand(message, client, args) {
 
         // ⭐ STAGE 1 TRANSITION: Animasi transisi ke Stage 1
         const s1TransEmbed = embeds.petExpeditionStageTransitionEmbed(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
-        const s1TransAtt = getMapAttachment(mapChoice);
+        let s1TransAtt = null;
+        try {
+          s1TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
+        } catch (err) {}
+        if (!s1TransAtt) s1TransAtt = getMapAttachment(mapChoice);
+        
         const s1TransOpts = { embeds: [s1TransEmbed], components: [], attachments: [] };
         if (s1TransAtt) s1TransOpts.files = [s1TransAtt];
         await replyMsg.edit(s1TransOpts).catch(() => {});
@@ -6242,7 +6247,12 @@ async function handlePetCommand(message, client, args) {
 
         // ⭐ STAGE 2 TRANSITION: Animasi transisi ke Stage 2
         const s2TransEmbed = embeds.petExpeditionStageTransitionEmbed(2, 'Kejadian Acak', selectedMap, mapChoice);
-        const s2TransAtt = getMapAttachment(mapChoice);
+        let s2TransAtt = null;
+        try {
+          s2TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(2, 'Kejadian Acak', selectedMap, mapChoice);
+        } catch (err) {}
+        if (!s2TransAtt) s2TransAtt = getMapAttachment(mapChoice);
+
         const s2TransOpts = { embeds: [s2TransEmbed], components: [], attachments: [] };
         if (s2TransAtt) s2TransOpts.files = [s2TransAtt];
         await replyMsg.edit(s2TransOpts).catch(() => {});
@@ -6451,7 +6461,12 @@ async function handlePetCommand(message, client, args) {
 
         // ⭐ STAGE 3 TRANSITION: Animasi transisi ke Boss Battle
         const s3TransEmbed = embeds.petExpeditionStageTransitionEmbed(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
-        const s3TransAtt = getMapAttachment(mapChoice);
+        let s3TransAtt = null;
+        try {
+          s3TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
+        } catch (err) {}
+        if (!s3TransAtt) s3TransAtt = getMapAttachment(mapChoice);
+
         const s3TransOpts = { embeds: [s3TransEmbed], components: [], attachments: [] };
         if (s3TransAtt) s3TransOpts.files = [s3TransAtt];
         await replyMsg.edit(s3TransOpts).catch(() => {});
@@ -6483,7 +6498,14 @@ async function handlePetCommand(message, client, args) {
               .setStyle(ButtonStyle.Danger)
           );
 
-          const qteAtt = getMapAttachment(mapChoice);
+          let qteAtt = null;
+          try {
+            const member = membersMap[targetUserId] || await message.guild.members.fetch(targetUserId).catch(() => null);
+            const targetMemberName = member ? member.user.username : 'Pawang';
+            qteAtt = await petCardModule.getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice);
+          } catch (err) {}
+          if (!qteAtt) qteAtt = getMapAttachment(mapChoice);
+
           const qteOpts = { embeds: [qteEmbed], components: [qteRow], attachments: [] };
           if (qteAtt) qteOpts.files = [qteAtt];
           await replyMsg.edit(qteOpts).catch(() => {});
@@ -6541,7 +6563,14 @@ async function handlePetCommand(message, client, args) {
           const failResults = pet.executeExpeditionQteFailure(guildId, currentLobby.participants, failedUserId, reasonType, mapChoice, membersMap);
           const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults, mapChoice);
           
-          const failAtt = getMapAttachment(mapChoice);
+          let failAtt = null;
+          try {
+            const member = membersMap[failedUserId] || await message.guild.members.fetch(failedUserId).catch(() => null);
+            const failedMemberName = member ? member.user.username : 'Pawang';
+            failAtt = await petCardModule.getExpeditionQteFailureAttachment(selectedMap.name, failedMemberName, reasonType, failResults, mapChoice, message.guild);
+          } catch (err) {}
+          if (!failAtt) failAtt = getMapAttachment(mapChoice);
+
           const failFiles = [];
           if (failAtt) failFiles.push(failAtt);
           try {

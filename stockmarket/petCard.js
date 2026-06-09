@@ -1698,6 +1698,418 @@ async function getExpeditionLoadingAttachment(selectedMap, leaderId, participant
   }
 }
 
+async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selectedMap, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, 320);
+  const ctx = canvas.getContext('2d');
+
+  // Load Map Background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try {
+      bgImg = await loadImage(mapPath);
+    } catch (err) {}
+  }
+
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+  } else {
+    const theme = ELEMENT_THEMES[(selectedMap?.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
+    const colors = theme.bg;
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    for (let i = 0; i < colors.length; i++) {
+      grad.addColorStop(i / (colors.length - 1), colors[i]);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+  }
+
+  // Dark overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 320 - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.85)';
+  ctx.fill();
+
+  // Border glow gold
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 320 - panelMargin);
+  borderGrad.addColorStop(0, '#FFB80080');
+  borderGrad.addColorStop(1, '#FFD70080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Icon based on stage
+  let stageIcon = '🗺️';
+  if (stageNum === 1) stageIcon = '🧭';
+  if (stageNum === 2) stageIcon = '🎲';
+  if (stageNum === 3) stageIcon = '⚔️';
+
+  // Text details
+  ctx.textAlign = 'center';
+  
+  // Header
+  ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFB800';
+  ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, CARD_WIDTH / 2, 80);
+
+  // Title
+  ctx.font = 'bold 32px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(stageTitle.toUpperCase(), CARD_WIDTH / 2, 135);
+
+  // Map / Path text
+  ctx.font = '16px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, CARD_WIDTH / 2, 185);
+
+  // Flavour text
+  ctx.font = 'italic 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', CARD_WIDTH / 2, 225);
+
+  // Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', CARD_WIDTH / 2, 280);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionStageTransitionAttachment(stageNum, stageTitle, selectedMap, mapChoice) {
+  try {
+    const buffer = await generateExpeditionStageTransitionCard(stageNum, stageTitle, selectedMap, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage_transition.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating stage transition card:', e);
+    return null;
+  }
+}
+
+async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, 360);
+  const ctx = canvas.getContext('2d');
+
+  // Load Map Background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try {
+      bgImg = await loadImage(mapPath);
+    } catch (err) {}
+  }
+
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 360);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 360);
+    grad.addColorStop(0, '#110000');
+    grad.addColorStop(1, '#331100');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, 360);
+  }
+
+  // Dark overlay panel
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 360 - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(15, 10, 10, 0.88)';
+  ctx.fill();
+
+  // Orange border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 360 - panelMargin);
+  borderGrad.addColorStop(0, '#FF910080');
+  borderGrad.addColorStop(1, '#FF3D0080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header Text
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FF9100';
+  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, CARD_WIDTH / 2, 55);
+
+  ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText(`🚨 SERANGAN BERSAMA KEPADA ${bossName.toUpperCase()}! 🚨`, CARD_WIDTH / 2, 80);
+
+  // Visual QTE progress tracker
+  const nodeRadius = 10;
+  const nodeGap = 16;
+  const totalNodesWidth = (totalSteps * nodeRadius * 2) + ((totalSteps - 1) * nodeGap);
+  const startNodesX = (CARD_WIDTH / 2) - (totalNodesWidth / 2);
+  const nodesY = 105;
+
+  for (let step = 1; step <= totalSteps; step++) {
+    const cx = startNodesX + (step - 1) * (nodeRadius * 2 + nodeGap) + nodeRadius;
+    
+    // Draw glow
+    ctx.beginPath();
+    ctx.arc(cx, nodesY, nodeRadius + 3, 0, Math.PI * 2);
+    ctx.fillStyle = step <= stepNumber ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 255, 255, 0.05)';
+    ctx.fill();
+
+    // Main node
+    ctx.beginPath();
+    ctx.arc(cx, nodesY, nodeRadius, 0, Math.PI * 2);
+    ctx.fillStyle = step <= stepNumber ? '#00E676' : '#424242';
+    ctx.fill();
+
+    // Node border
+    ctx.strokeStyle = step <= stepNumber ? '#B9F6CA' : '#212121';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Draw two column sections: target pet info (left) & target player instructions (right)
+  const leftX = 75;
+  const rightX = 490;
+  const columnsY = 145;
+
+  // 1. LEFT COLUMN: Target Pet Profile panel
+  drawRoundedRect(ctx, leftX, columnsY, 350, 150, 12);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Pet avatar
+  const avCx = leftX + 60;
+  const avCy = columnsY + 75;
+  const avR = 40;
+
+  let petImg = null;
+  try {
+    const embeds = require('./embeds');
+    petImg = await loadImageSafe(embeds.getPetImage(petObj));
+  } catch (e) {}
+
+  const petRarity = (petObj?.gacha_rarity || 'COMMON').toUpperCase();
+  const rarityTheme = RARITY_COLORS[petRarity] || RARITY_COLORS.COMMON;
+
+  if (petImg) {
+    drawCircleAvatar(ctx, petImg, avCx, avCy, avR, rarityTheme.primary, rarityTheme.glow);
+  } else {
+    ctx.beginPath();
+    ctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
+    ctx.fillStyle = '#222244';
+    ctx.fill();
+    ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = rarityTheme.primary;
+    ctx.textAlign = 'center';
+    ctx.fillText(petObj?.pet_name?.charAt(0) || 'P', avCx, avCy + 8);
+  }
+
+  // Pet details next to avatar
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+  let petNameDisp = petObj?.pet_name || 'Pet';
+  if (petNameDisp.length > 18) petNameDisp = petNameDisp.substring(0, 17) + '…';
+  ctx.fillText(petNameDisp, leftX + 120, columnsY + 55);
+
+  ctx.font = '12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 120, columnsY + 80);
+
+  // Element and Rarity Badges
+  let badgeX = leftX + 120;
+  ctx.font = 'bold 9px "Segoe UI", Arial, sans-serif';
+  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 95, petRarity, rarityTheme.primary, '#FFFFFF', 9);
+  badgeX += rBadgeW + 6;
+  drawBadge(ctx, badgeX, columnsY + 95, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
+
+  // 2. RIGHT COLUMN: Target Player Turn details
+  drawRoundedRect(ctx, rightX, columnsY, 350, 150, 12);
+  ctx.fillStyle = 'rgba(255, 145, 0, 0.05)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 145, 0, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.font = '14px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 45);
+
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FF9100';
+  let usernameDisp = `@${targetMemberName}`;
+  if (usernameDisp.length > 20) usernameDisp = usernameDisp.substring(0, 19) + '…';
+  ctx.fillText(usernameDisp, rightX + 175, columnsY + 80);
+
+  ctx.font = 'italic 11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 115);
+
+  // Footer Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', CARD_WIDTH / 2, 340);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice) {
+  try {
+    const buffer = await generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_qte_step.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating QTE step card:', e);
+    return null;
+  }
+}
+
+async function generateExpeditionQteFailureCard(mapName, failedMemberName, reasonType, failResults, mapChoice, guild) {
+  const canvas = createCanvas(CARD_WIDTH, 420);
+  const ctx = canvas.getContext('2d');
+
+  // Load Map Background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try {
+      bgImg = await loadImage(mapPath);
+    } catch (err) {}
+  }
+
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 420);
+  }
+
+  // Red/Dark theme overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 420 - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(25, 10, 10, 0.92)';
+  ctx.fill();
+
+  // Dark Red border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 420 - panelMargin);
+  borderGrad.addColorStop(0, '#D5000080');
+  borderGrad.addColorStop(1, '#FF174480');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FF1744';
+  ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', CARD_WIDTH / 2, 55);
+
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, CARD_WIDTH / 2, 80);
+
+  const leftX = 40;
+  const rightX = 480;
+  const columnsY = 110;
+
+  // 1. LEFT COLUMN: Failure explanation
+  drawRoundedRect(ctx, leftX, columnsY, 400, 240, 12);
+  ctx.fillStyle = 'rgba(213, 0, 0, 0.04)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(213, 0, 0, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FF8A80';
+  ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 20, columnsY + 35);
+
+  // Cause text word wrap
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  
+  let causeText = '';
+  if (reasonType === 'Timeout') {
+    causeText = `@${failedMemberName} lambat mengambil keputusan! Batas waktu QTE 6 detik habis saat pertarungan memanas. Tim kehilangan momentum!`;
+  } else {
+    causeText = `@${failedMemberName} salah merespon (Interferensi)! Mengklik tombol skill pet di luar giliran merusak koordinasi tim secara instan!`;
+  }
+
+  // Draw wrapped text
+  const words = causeText.split(' ');
+  let line = '';
+  let yPos = columnsY + 65;
+  const maxWidth = 360;
+  const lineHeight = 20;
+
+  for (let n = 0; n < words.length; n++) {
+    let testLine = line + words[n] + ' ';
+    let metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, leftX + 20, yPos);
+      line = words[n] + ' ';
+      yPos += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, leftX + 20, yPos);
+
+  ctx.font = 'italic 11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 180);
+  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 198);
+
+  // 2. RIGHT COLUMN: Pet impact lists
+  drawRoundedRect(ctx, rightX, columnsY, 400, 240, 12);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 20, columnsY + 35);
+
+  let rowY = columnsY + 60;
+  const rowHeight = 40;
+
+  for (let i = 0; i < Math.min(4, failResults.length); i++) {
+    const r = failResults[i];
+    let pOwner = 'Pawang';
+    if (guild) {
+      try {
+        const m = guild.members.cache.get(r.userId);
+        if (m) pOwner = m.user.username;
+      } catch (err) {}
+    }
+
+    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`🦖 ${r.petName} (@${pOwner})`, rightX + 20, rowY);
+
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FF8A80';
+    ctx.fillText(`└─ ${r.statusText || 'Luka & Stress'}`, rightX + 20, rowY + 16);
+
+    rowY += rowHeight;
+  }
+
+  // Footer Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', CARD_WIDTH / 2, 395);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionQteFailureAttachment(mapName, failedMemberName, reasonType, failResults, mapChoice, guild) {
+  try {
+    const buffer = await generateExpeditionQteFailureCard(mapName, failedMemberName, reasonType, failResults, mapChoice, guild);
+    return new AttachmentBuilder(buffer, { name: 'expedition_qte_failure.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating QTE failure card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -1705,12 +2117,18 @@ module.exports = {
   generateExpeditionCard,
   generateExpeditionLobbyCard,
   generateExpeditionLoadingCard,
+  generateExpeditionStageTransitionCard,
+  generateExpeditionQteStepCard,
+  generateExpeditionQteFailureCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
   getExpeditionCardAttachment,
   getExpeditionLobbyAttachment,
   getExpeditionLoadingAttachment,
+  getExpeditionStageTransitionAttachment,
+  getExpeditionQteStepAttachment,
+  getExpeditionQteFailureAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
