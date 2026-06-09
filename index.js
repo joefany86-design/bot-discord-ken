@@ -745,103 +745,114 @@ client.once('ready', () => {
 // PENANGANAN SLASH COMMANDS
 // ═══════════════════════════════════════════════════
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+  try {
+    if (!interaction.isChatInputCommand()) return;
 
-  const { commandName, guildId, member, guild } = interaction;
+    const { commandName, guildId, member, guild } = interaction;
 
-  if (!guildId) {
-    return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', flags: 64 });
-  }
+    if (!guildId) {
+      return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', flags: 64 });
+    }
 
-  // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
-  if (interaction.channelId === config.channels.SHOP_PORTAL) {
-    return interaction.reply({
-      content: `⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>!`,
-      flags: 64
-    });
-  }
-
-
-
-  // ── JOIN ──
-  if (commandName === 'join') {
-    const res = await handleVoiceJoin(member, guild, guildId);
-    if (res.success) {
-      await interaction.reply({
-        content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${res.channelName}**!\n` +
-          `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
-        flags: 64
-      });
-    } else {
-      await interaction.reply({
-        content: res.message,
+    // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
+    if (interaction.channelId === config.channels.SHOP_PORTAL) {
+      return interaction.reply({
+        content: `⚠️ Saluran ini hanya untuk **Dashboard Portal**. Silakan gunakan perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>!`,
         flags: 64
       });
     }
-  }
 
-  // ── LEAVE ──
-  else if (commandName === 'leave') {
-    const res = await handleVoiceLeave(member, guild, guildId);
-    if (res.success) {
-      await interaction.reply({
-        content: `👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel **${res.channelName}**!`,
-        flags: 64
-      });
-    } else {
-      await interaction.reply({
-        content: res.message,
-        flags: 64
-      });
-    }
-  }
-
-  // ── HELP ──
-  else if (commandName === 'help') {
-    await sendInteractiveHelp(interaction, true, interaction.user, guild, client);
-  }
-  // ── PORTAL HUB DIRECT ──
-  else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
-    await sendPortalHubDirect(interaction, true, interaction.user, guild, client);
-  }
-  // ── ARREST ──
-  else if (commandName === 'arrest') {
-    const targetUser = interaction.options.getUser('target');
-    if (!targetUser) {
-      return interaction.reply({ content: '❌ Anda harus menentukan warga buronan yang ingin Anda tangkap!', flags: 64 });
-    }
-
-    await interaction.deferReply({ flags: 64 });
-
-    try {
-      const robbery = require('./stockmarket/robbery');
-      const embeds = require('./stockmarket/embeds');
-      
-      const res = robbery.arrestBuronan(interaction.user.id, targetUser.id, guildId, interaction.member);
+    // ── JOIN ──
+    if (commandName === 'join') {
+      const res = await handleVoiceJoin(member, guild, guildId);
       if (res.success) {
-        const successEmb = embeds.successEmbed(
-          '👮 Buronan Berhasil Ditangkap! 🚨',
-          `Luar biasa, Pemburu! <@${interaction.user.id}> berhasil meringkus buronan <@${targetUser.id}>!\n\n` +
-          `🪙 **Bounty Didapat:** **Rp ${res.bounty.toLocaleString('id-ID')}** (Koin hadiah bounty masuk dompet Anda)\n` +
-          `🔒 **Masa Tahanan:** Pelaku langsung dimasukkan ke **sel tahanan selama 3 jam**!${res.hasHandcuffs ? '\n👮 *Anda menggunakan Borgol / Handcuffs (+20% success rate)!*' : ''}`
-        );
-        await interaction.editReply({ embeds: [successEmb] });
+        await interaction.reply({
+          content: `✅ **Saluran Terkunci!** Berhasil bergabung ke **${res.channelName}**!\n` +
+            `🛡️ *Mekanisme proteksi aktif: Bot terkunci di channel ini.*`,
+          flags: 64
+        });
       } else {
-        let failMsg = '';
-        if (res.petDamaged) {
-          failMsg = `Buronan melawan dengan sengit dan kabur! Pet aktif Anda **${res.petName}** terluka dan HP-nya berkurang **-20** (HP Tersisa: \`${res.petHpLeft}\`).`;
-        } else {
-          failMsg = `Buronan melawan dengan sengit dan kabur! Karena Anda tidak memiliki pet aktif yang sehat untuk bertarung, Anda didenda **Rp ${res.fineAmount}** yang langsung ditransfer ke buronan sebagai ganti rugi!`;
-        }
-        const failEmb = embeds.errorEmbed(
-          '👮 Gagal Menangkap Buronan! 💨',
-          failMsg + (res.hasHandcuffs ? '\n👮 *Meskipun menggunakan Borgol, buronan tetap berhasil lolos!*' : '')
-        );
-        await interaction.editReply({ embeds: [failEmb] });
+        await interaction.reply({
+          content: res.message,
+          flags: 64
+        });
       }
-    } catch (err) {
-      const embeds = require('./stockmarket/embeds');
-      await interaction.editReply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
+    }
+
+    // ── LEAVE ──
+    else if (commandName === 'leave') {
+      const res = await handleVoiceLeave(member, guild, guildId);
+      if (res.success) {
+        await interaction.reply({
+          content: `👋 Berhasil membuka kunci saluran dan keluar dari Voice Channel **${res.channelName}**!`,
+          flags: 64
+        });
+      } else {
+        await interaction.reply({
+          content: res.message,
+          flags: 64
+        });
+      }
+    }
+
+    // ── HELP ──
+    else if (commandName === 'help') {
+      await sendInteractiveHelp(interaction, true, interaction.user, guild, client);
+    }
+    // ── PORTAL HUB DIRECT ──
+    else if (commandName === 'portal' || commandName === 'portalhub' || commandName === 'hub') {
+      await sendPortalHubDirect(interaction, true, interaction.user, guild, client);
+    }
+    // ── ARREST ──
+    else if (commandName === 'arrest') {
+      const targetUser = interaction.options.getUser('target');
+      if (!targetUser) {
+        return interaction.reply({ content: '❌ Anda harus menentukan warga buronan yang ingin Anda tangkap!', flags: 64 });
+      }
+
+      await interaction.deferReply({ flags: 64 });
+
+      try {
+        const robbery = require('./stockmarket/robbery');
+        const embeds = require('./stockmarket/embeds');
+        
+        const res = robbery.arrestBuronan(interaction.user.id, targetUser.id, guildId, interaction.member);
+        if (res.success) {
+          const successEmb = embeds.successEmbed(
+            '👮 Buronan Berhasil Ditangkap! 🚨',
+            `Luar biasa, Pemburu! <@${interaction.user.id}> berhasil meringkus buronan <@${targetUser.id}>!\n\n` +
+            `🪙 **Bounty Didapat:** **Rp ${res.bounty.toLocaleString('id-ID')}** (Koin hadiah bounty masuk dompet Anda)\n` +
+            `🔒 **Masa Tahanan:** Pelaku langsung dimasukkan ke **sel tahanan selama 3 jam**!${res.hasHandcuffs ? '\n👮 *Anda menggunakan Borgol / Handcuffs (+20% success rate)!*' : ''}`
+          );
+          await interaction.editReply({ embeds: [successEmb] });
+        } else {
+          let failMsg = '';
+          if (res.petDamaged) {
+            failMsg = `Buronan melawan dengan sengit dan kabur! Pet aktif Anda **${res.petName}** terluka dan HP-nya berkurang **-20** (HP Tersisa: \`${res.petHpLeft}\`).`;
+          } else {
+            failMsg = `Buronan melawan dengan sengit dan kabur! Karena Anda tidak memiliki pet aktif yang sehat untuk bertarung, Anda didenda **Rp ${res.fineAmount}** yang langsung ditransfer ke buronan sebagai ganti rugi!`;
+          }
+          const failEmb = embeds.errorEmbed(
+            '👮 Gagal Menangkap Buronan! 💨',
+            failMsg + (res.hasHandcuffs ? '\n👮 *Meskipun menggunakan Borgol, buronan tetap berhasil lolos!*' : '')
+          );
+          await interaction.editReply({ embeds: [failEmb] });
+        }
+      } catch (err) {
+        const embeds = require('./stockmarket/embeds');
+        await interaction.editReply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
+      }
+    }
+  } catch (error) {
+    console.error('Error in slash command handler:', error);
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: '❌ Terjadi kesalahan internal saat memproses perintah ini.', flags: 64 }).catch(() => {});
+      } else {
+        await interaction.reply({ content: '❌ Terjadi kesalahan internal saat memproses perintah ini.', flags: 64 }).catch(() => {});
+      }
+    } catch (sendErr) {
+      console.error('Failed to send error reply:', sendErr.message);
     }
   }
 });
@@ -850,439 +861,443 @@ client.on('interactionCreate', async interaction => {
 // PENANGANAN PERINTAH TEKS (PREFIX .)
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
-  if (message.author.bot) return;
+  try {
+    if (message.author.bot) return;
 
 
-  // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
-  if (message.guildId) {
-    const { db } = require('./stockmarket/database');
-    const settings = db.prepare('SELECT admin_panel_channel_id, tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
-    const targetChannelId = settings?.admin_panel_channel_id;
-    const tourChannelId = settings?.tournament_admin_channel_id;
+    // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
+    if (message.guildId) {
+      const { db } = require('./stockmarket/database');
+      const settings = db.prepare('SELECT admin_panel_channel_id, tournament_admin_channel_id FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
+      const targetChannelId = settings?.admin_panel_channel_id;
+      const tourChannelId = settings?.tournament_admin_channel_id;
 
-    if (targetChannelId && message.channelId === targetChannelId) {
-      await message.delete().catch(() => {});
+      if (targetChannelId && message.channelId === targetChannelId) {
+        await message.delete().catch(() => {});
 
-      const content = message.content.trim().toLowerCase();
-      if (content.startsWith('.')) {
-        const args = content.slice(1).trim().split(/ +/);
-        const commandName = args.shift();
-        if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
-          // Hapus semua pesan di channel ini terlebih dahulu agar bersih
-          let fetched;
-          do {
-            fetched = await message.channel.messages.fetch({ limit: 100 });
-            if (fetched.size > 0) {
-              try {
-                await message.channel.bulkDelete(fetched);
-              } catch (err) {
-                for (const msg of fetched.values()) {
-                  await msg.delete().catch(() => {});
+        const content = message.content.trim().toLowerCase();
+        if (content.startsWith('.')) {
+          const args = content.slice(1).trim().split(/ +/);
+          const commandName = args.shift();
+          if (['admin-panel', 'adminpanel', 'panel-admin', 'paneladmin'].includes(commandName)) {
+            // Hapus semua pesan di channel ini terlebih dahulu agar bersih
+            let fetched;
+            do {
+              fetched = await message.channel.messages.fetch({ limit: 100 });
+              if (fetched.size > 0) {
+                try {
+                  await message.channel.bulkDelete(fetched);
+                } catch (err) {
+                  for (const msg of fetched.values()) {
+                    await msg.delete().catch(() => {});
+                  }
                 }
               }
-            }
-          } while (fetched.size > 0);
+            } while (fetched.size > 0);
 
-          const adminPanel = require('./stockmarket/adminPanel');
-          await adminPanel.handleAdminPanel(message.channel, client);
+            const adminPanel = require('./stockmarket/adminPanel');
+            await adminPanel.handleAdminPanel(message.channel, client);
+          }
         }
+        return;
       }
-      return;
-    }
 
-    if (tourChannelId && message.channelId === tourChannelId) {
-      await message.delete().catch(() => {});
+      if (tourChannelId && message.channelId === tourChannelId) {
+        await message.delete().catch(() => {});
 
-      const content = message.content.trim().toLowerCase();
-      if (content.startsWith('.')) {
-        const args = content.slice(1).trim().split(/ +/);
-        const commandName = args.shift();
-        if (['tournament-panel', 'tournamentpanel', 'panel-tournament', 'paneltournament', 'setup-tournament-panel', 'setup-tournamentpanel', 'setup-panel-tournament', 'setup-paneltournament'].includes(commandName)) {
-          let fetched;
-          do {
-            fetched = await message.channel.messages.fetch({ limit: 100 });
-            if (fetched.size > 0) {
-              try {
-                await message.channel.bulkDelete(fetched);
-              } catch (err) {
-                for (const msg of fetched.values()) {
-                  await msg.delete().catch(() => {});
+        const content = message.content.trim().toLowerCase();
+        if (content.startsWith('.')) {
+          const args = content.slice(1).trim().split(/ +/);
+          const commandName = args.shift();
+          if (['tournament-panel', 'tournamentpanel', 'panel-tournament', 'paneltournament', 'setup-tournament-panel', 'setup-tournamentpanel', 'setup-panel-tournament', 'setup-paneltournament'].includes(commandName)) {
+            let fetched;
+            do {
+              fetched = await message.channel.messages.fetch({ limit: 100 });
+              if (fetched.size > 0) {
+                try {
+                  await message.channel.bulkDelete(fetched);
+                } catch (err) {
+                  for (const msg of fetched.values()) {
+                    await msg.delete().catch(() => {});
+                  }
                 }
               }
-            }
-          } while (fetched.size > 0);
+            } while (fetched.size > 0);
 
-          const adminPanel = require('./stockmarket/adminPanel');
-          await adminPanel.handleAdminTournamentPanel(message.channel, client);
+            const adminPanel = require('./stockmarket/adminPanel');
+            await adminPanel.handleAdminTournamentPanel(message.channel, client);
+          }
+        }
+        return;
+      }
+    }
+
+    // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung
+    if (message.channelId === config.channels.PET_EXPEDITION) {
+      const activeLobby = client.activeExpeditions;
+      const guildHasActiveExpedition = activeLobby && Array.from(activeLobby.values()).some(l => l.guildId === message.guildId);
+
+      if (guildHasActiveExpedition) {
+        const isOwner = message.author.id === OWNER_ID;
+        const isAdmin = message.member && message.member.permissions.has('Administrator');
+        const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
+
+        if (!isOwner && !isAdmin && !isGuildOwner) {
+          // Hapus pesan apa pun dari user agar channel tetap bersih selama ekspedisi berjalan
+          await message.delete().catch(() => {});
+          const warnMsg = await message.channel.send({
+            content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Saluran ini dikunci untuk chat sampai ekspedisi selesai.`
+          }).catch(() => null);
+
+          if (warnMsg) {
+            setTimeout(() => {
+              warnMsg.delete().catch(() => {});
+            }, 3000);
+          }
+          return;
         }
       }
-      return;
     }
-  }
 
-  // Proteksi Saluran Khusus Pet saat Ekspedisi berlangsung
-  if (message.channelId === config.channels.PET_EXPEDITION) {
-    const activeLobby = client.activeExpeditions;
-    const guildHasActiveExpedition = activeLobby && Array.from(activeLobby.values()).some(l => l.guildId === message.guildId);
-
-    if (guildHasActiveExpedition) {
+    // Proteksi Saluran Papan Peringkat Realtime (O(1) Set lookup)
+    const LEADERBOARD_CHANNELS_SET = new Set([
+      config.LEADERBOARD_RICH_CHANNEL_ID,
+      config.LEADERBOARD_PET_CHANNEL_ID,
+      config.LEADERBOARD_DAILY_CHANNEL_ID
+    ].filter(Boolean));
+    if (LEADERBOARD_CHANNELS_SET.has(message.channelId)) {
       const isOwner = message.author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has('Administrator');
-      const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
 
-      if (!isOwner && !isAdmin && !isGuildOwner) {
-        // Hapus pesan apa pun dari user agar channel tetap bersih selama ekspedisi berjalan
+      if (!isOwner && !isAdmin) {
         await message.delete().catch(() => {});
         const warnMsg = await message.channel.send({
-          content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Saluran ini dikunci untuk chat sampai ekspedisi selesai.`
+          content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk menampilkan papan peringkat realtime!`
         }).catch(() => null);
 
         if (warnMsg) {
           setTimeout(() => {
             warnMsg.delete().catch(() => {});
-          }, 3000);
+          }, 5000);
         }
         return;
       }
     }
-  }
 
-  // Proteksi Saluran Papan Peringkat Realtime (O(1) Set lookup)
-  const LEADERBOARD_CHANNELS_SET = new Set([
-    config.LEADERBOARD_RICH_CHANNEL_ID,
-    config.LEADERBOARD_PET_CHANNEL_ID,
-    config.LEADERBOARD_DAILY_CHANNEL_ID
-  ].filter(Boolean));
-  if (LEADERBOARD_CHANNELS_SET.has(message.channelId)) {
-    const isOwner = message.author.id === OWNER_ID;
-    const isAdmin = message.member && message.member.permissions.has('Administrator');
+    // Proteksi Saluran Laporan / Log / Pengumuman Otomatis (O(1) Set lookup)
+    const REPORT_AND_LOG_CHANNELS_SET = new Set([
+      config.REPORT_CHANNEL_ID,
+      config.BANK_REPORT_CHANNEL_ID,
+      config.DAILY_CLAIM_CHANNEL_ID,
+      config.ANNOUNCEMENT_CHANNEL_ID
+    ].filter(id => id && id !== config.channels.GREETING && id !== config.channels.BOT_COMMAND && id !== config.channels.SHOP_PORTAL));
+    if (REPORT_AND_LOG_CHANNELS_SET.has(message.channelId)) {
+      const isOwner = message.author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
 
-    if (!isOwner && !isAdmin) {
-      await message.delete().catch(() => {});
-      const warnMsg = await message.channel.send({
-        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk menampilkan papan peringkat realtime!`
-      }).catch(() => null);
+      if (!isOwner && !isAdmin) {
+        await message.delete().catch(() => {});
+        const warnMsg = await message.channel.send({
+          content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk pengumuman, laporan harian, dan notifikasi otomatis!`
+        }).catch(() => null);
 
-      if (warnMsg) {
-        setTimeout(() => {
-          warnMsg.delete().catch(() => {});
-        }, 5000);
+        if (warnMsg) {
+          setTimeout(() => {
+            warnMsg.delete().catch(() => {});
+          }, 5000);
+        }
+        return;
       }
-      return;
     }
-  }
 
-  // Proteksi Saluran Laporan / Log / Pengumuman Otomatis (O(1) Set lookup)
-  const REPORT_AND_LOG_CHANNELS_SET = new Set([
-    config.REPORT_CHANNEL_ID,
-    config.BANK_REPORT_CHANNEL_ID,
-    config.DAILY_CLAIM_CHANNEL_ID,
-    config.ANNOUNCEMENT_CHANNEL_ID
-  ].filter(id => id && id !== config.channels.GREETING && id !== config.channels.BOT_COMMAND && id !== config.channels.SHOP_PORTAL));
-  if (REPORT_AND_LOG_CHANNELS_SET.has(message.channelId)) {
-    const isOwner = message.author.id === OWNER_ID;
-    const isAdmin = message.member && message.member.permissions.has('Administrator');
+    // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
+    const processed = await handleLinkMirroring(message, client);
+    if (processed) return;
 
-    if (!isOwner && !isAdmin) {
-      await message.delete().catch(() => {});
-      const warnMsg = await message.channel.send({
-        content: `⚠️ <@${message.author.id}>, saluran ini hanya diperuntukkan untuk pengumuman, laporan harian, dan notifikasi otomatis!`
-      }).catch(() => null);
+    // Proses perolehan koin pasif dari aktivitas chat & kontribusi skor keaktifan bursa
+    await handleEconomyChat(message);
 
-      if (warnMsg) {
-        setTimeout(() => {
-          warnMsg.delete().catch(() => {});
-        }, 5000);
-      }
-      return;
-    }
-  }
+    if (!message.content.startsWith('.')) return;
 
-  // Intersepsi & perbaiki link video (TikTok, Twitter/X, Instagram) via Webhook Mirroring
-  const processed = await handleLinkMirroring(message, client);
-  if (processed) return;
-
-  // Proses perolehan koin pasif dari aktivitas chat & kontribusi skor keaktifan bursa
-  await handleEconomyChat(message);
-
-  if (!message.content.startsWith('.')) return;
-
-  // Decorator untuk memitigasi error 'Unknown Message' / 'Invalid Form Body' jika pesan teks dihapus sebelum bot sempat membalas
-  const originalReply = message.reply.bind(message);
-  message.reply = async (options) => {
-    try {
-      const replyMsg = await originalReply(options);
-      return replyMsg;
-    } catch (err) {
-      // Tangkap semua variasi error referensi pesan yang tidak valid:
-      // - err.code 10008: Unknown Message (Discord REST)
-      // - err.code 50035: Invalid Form Body (Discord REST) dengan message_reference
-      // - err.message mengandung kata kunci referensi
-      const isRefError = (
-        err.code === 10008 ||
-        err.code === 50035 ||
-        err.message?.includes('Unknown Message') ||
-        err.message?.includes('message_reference') ||
-        err.message?.includes('Invalid Form Body') ||
-        JSON.stringify(err.rawError || {}).includes('message_reference')
-      );
-      if (isRefError) {
-        const mention = `<@${message.author.id}> `;
-        try {
-          let sentMsg;
-          if (typeof options === 'string') {
-            sentMsg = await message.channel.send({ content: mention + options });
-          } else {
-            const payload = { ...options };
-            payload.content = mention + (payload.content || '').trim();
-            // Hapus message_reference agar tidak gagal lagi
-            delete payload.reply;
-            delete payload.messageReference;
-            sentMsg = await message.channel.send(payload);
+    // Decorator untuk memitigasi error 'Unknown Message' / 'Invalid Form Body' jika pesan teks dihapus sebelum bot sempat membalas
+    const originalReply = message.reply.bind(message);
+    message.reply = async (options) => {
+      try {
+        const replyMsg = await originalReply(options);
+        return replyMsg;
+      } catch (err) {
+        // Tangkap semua variasi error referensi pesan yang tidak valid:
+        // - err.code 10008: Unknown Message (Discord REST)
+        // - err.code 50035: Invalid Form Body (Discord REST) dengan message_reference
+        // - err.message mengandung kata kunci referensi
+        const isRefError = (
+          err.code === 10008 ||
+          err.code === 50035 ||
+          err.message?.includes('Unknown Message') ||
+          err.message?.includes('message_reference') ||
+          err.message?.includes('Invalid Form Body') ||
+          JSON.stringify(err.rawError || {}).includes('message_reference')
+        );
+        if (isRefError) {
+          const mention = `<@${message.author.id}> `;
+          try {
+            let sentMsg;
+            if (typeof options === 'string') {
+              sentMsg = await message.channel.send({ content: mention + options });
+            } else {
+              const payload = { ...options };
+              payload.content = mention + (payload.content || '').trim();
+              // Hapus message_reference agar tidak gagal lagi
+              delete payload.reply;
+              delete payload.messageReference;
+              sentMsg = await message.channel.send(payload);
+            }
+            return sentMsg;
+          } catch (sendErr) {
+            console.error('❌ Gagal fallback channel.send:', sendErr.message);
           }
-          return sentMsg;
-        } catch (sendErr) {
-          console.error('❌ Gagal fallback channel.send:', sendErr.message);
+          return null;
         }
-        return null;
+        throw err;
       }
-      throw err;
-    }
-  };
+    };
 
-  if (BLOCKED_CMD_CHANNELS_SET.has(message.channelId)) {
-    const warnMsg = await message.channel.send({
-      content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>! Saluran ini tidak mendukung perintah bot.`
-    }).catch(() => null);
-    if (warnMsg) {
-      setTimeout(() => {
-        warnMsg.delete().catch(() => { });
-      }, 5000);
-    }
-    return;
-  }
-
-  // Cek perintah Voice Truth or Dare (Sprint 5)
-  const voiceTodHandled = await handleVoiceTodCommand(message, client);
-  if (voiceTodHandled) return;
-
-  // Cek perintah Ekonomi / Stock Market
-  const economyHandled = await handleEconomyCommands(message, client);
-  if (economyHandled) return;
-
-
-
-  const args = message.content.slice(1).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-
-  const { guildId, member, guild } = message;
-  if (!guildId) return;
-
-  // Helper local untuk membalas dengan Embed Cantik & Rapi
-  const replyEmbed = async (color, description, title = null) => {
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setDescription(description);
-    if (title) embed.setTitle(title);
-    return message.reply({ embeds: [embed] });
-  };
-
-  // ── .admin (Owner & Administrator Only) ──
-  if (commandName === 'admin') {
-    const isOwner = message.author.id === OWNER_ID;
-    const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
-    const isAdmin = message.member && message.member.permissions.has('Administrator');
-    if (!isOwner && !isAdmin && !isGuildOwner) {
-      return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
+    if (BLOCKED_CMD_CHANNELS_SET.has(message.channelId)) {
+      const warnMsg = await message.channel.send({
+        content: `⚠️ <@${message.author.id}>, silakan ketik perintah bot di channel obrolan biasa atau <#${config.channels.BOT_COMMAND}>! Saluran ini tidak mendukung perintah bot.`
+      }).catch(() => null);
+      if (warnMsg) {
+        setTimeout(() => {
+          warnMsg.delete().catch(() => { });
+        }, 5000);
+      }
+      return;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — BOT KOSAN 1A')
-      .setThumbnail(client.user.displayAvatarURL())
-      .setDescription(`Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:`)
-      .addFields(
-        {
-          name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
-          value: [
-            `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Bot Kosan 1A Terpadu** (Portal Hub utama).`,
-            `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
-            `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
-            `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
-            `👉 **\`.admin-saham\`** / **\`.panel-saham\`** - Membuka langsung **Panel Bursa Saham & Event Pasar** (drop price, remove, trigger events).`,
-            `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (mode gacha, multiplier koin).`,
-            `👉 **\`.admin-shop\`** / **\`.panel-shop\`** - Membuka langsung **Panel Toko Role & Game Truth or Dare**.`
-          ].join('\n')
-        },
-        {
-          name: '🎲 KONTROL GAME TRUTH OR DARE (ToD)',
-          value: [
-            `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
-            `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
-            `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`
-          ].join('\n')
-        },
-        {
-          name: '💰 PENGELOLAAN SALDO EKONOMI',
-          value: [
-            `👉 **\`.eco-give @user <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) ke dompet user.`,
-            `👉 **\`.eco-giveall <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) kepada seluruh member server.`,
-            `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong saldo koin dari dompet user.`,
-            `👉 **\`.eco-reset @user\`** - Mereset total saldo dompet, portofolio bursa saham, dan riwayat transaksi user kembali ke 0.`,
-            `👉 **\`.eco-resetall\`** - **[BAHAYA]** Mereset total seluruh database perekonomian server (dompet semua user, bursa, dll).`,
-            `👉 **\`.anoncemen\`** atau **\`.announcement\`** - Menyiarkan embed pengumuman pembaruan sistem ekonomi ke channel target disertai mention @everyone.`
-          ].join('\n')
-        },
-        {
-          name: '📈 SUNTIKAN & RESTURASI BURSA SAHAM',
-          value: [
-            `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel baru sebagai instrumen saham di bursa (contoh: \`.market-add #lounge $LOUNGE\`).`,
-            `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham channel dari bursa dan membersihkan portofolio terkait.`,
-            `👉 **\`.market-reinit\`** - Menghapus seluruh instrumen bursa lama dan mengembalikannya ke setelan saham default server.`,
-            `👉 **\`.market-drop <ticker> <persen>\`** - Menurunkan harga saham secara paksa berdasarkan persentase (contoh: \`.market-drop $LOUNGE 15\`).`,
-            `👉 **\`.dividends-trigger\`** - Memicu pembagian dividen mingguan bursa secara dinamis berbasis keaktifan chat warga.`,
-            `👉 **\`.event-trigger [crash/bull/double]\`** - Memicu event crash pasar, bull run bursa, atau double earning hour secara instan.`
-          ].join('\n')
-        },
-        {
-          name: '🎭 PENGELOLAAN TOKO ROLE & PRESTISE',
-          value: [
-            `👉 **\`.autoshoprole\`** atau **\`.shop-auto\`** - **[PREMIUM]** Membuat otomatis seluruh 5 tingkatan role khusus (Common s/d Mythic) dengan warna & izin rarity, serta mendaftarkannya langsung ke database toko role.`,
-            `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menambahkan manual role server Anda ke dalam daftar toko role dengan klasifikasi kustom.`,
-            `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus item role terdaftar dari penjualan toko.`,
-            `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`
-          ].join('\n')
-        },
-        {
-          name: '⚡ KONTROL BYPASS ADMIN (EBYUS / ABYUS) [NEW!]',
-          value: [
-            `👉 **\`.ebyus\`** / **\`.abyus\`** - Membuka dashboard kontrol panel visual untuk sabotase gacha, multiplier koin chat, dll.`,
-            `👉 **\`.ebyus-gacha <mode> [durasi_menit]\`** - Mengatur manual mode gacha (\`normal\`, \`easy\`, \`super_easy\`, \`abuse\`) beserta durasi auto-reset.`,
-            `👉 **\`.ebyus-coin <multiplier> [durasi_menit]\`** - Mengatur manual pengali koin chat (\`off\`, \`3\`, \`4\`, \`5\`, \`6\`, \`7\`, \`8\`) beserta durasi auto-reset.`,
-            `👉 **\`.ebyus status\`** - Melihat status bypass ekonomi aktif (mode gacha, multiplier koin chat, sisa durasi event, dll).`,
-            `👉 **\`.stop-abyus\`** / **\`.stop-ebyus\`** - **[DARURAT]** Menghentikan paksa seluruh event abuse ekonomi server seketika!`
-          ].join('\n')
-        },
-        {
-          name: '🚨 KONTROL LAPAS & HEIST ADMINISTRASI',
-          value: [
-            `👉 **\`.heist-admin free @user\`** - Membebaskan paksa tahanan dari Penjara Virtual secara instan.`,
-            `👉 **\`.heist-admin reset\`** - Mereset cooldown global Bank Heist server secara instan.`
-          ].join('\n')
-        },
-        {
-          name: '🐾 KONTROL KANDANG & PERAWATAN PET',
-          value: [
-            `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
-            `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
-            `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
-            `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`,
-            `👉 **\`.admincup start [durasi_menit] [max_hp] [hadiah]\`** - Memulai turnamen Admin Cup adu pet interaktif.`,
-            `👉 **\`.admincup stop\`** - Membatalkan turnamen Admin Cup aktif.`
-          ].join('\n')
-        }
-      )
-      .setFooter({ text: 'Bot Kosan 1A • Administrator Panel' })
-      .setTimestamp();
+    // Cek perintah Voice Truth or Dare (Sprint 5)
+    const voiceTodHandled = await handleVoiceTodCommand(message, client);
+    if (voiceTodHandled) return;
 
-    return message.reply({ embeds: [embed] });
-  }
+    // Cek perintah Ekonomi / Stock Market
+    const economyHandled = await handleEconomyCommands(message, client);
+    if (economyHandled) return;
 
-  // ── .join / .joinlow ──
-  if (commandName === 'join' || commandName === 'joinlow') {
-    const res = await handleVoiceJoin(member, guild, guildId);
-    if (res.success) {
+
+
+    const args = message.content.slice(1).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    const { guildId, member, guild } = message;
+    if (!guildId) return;
+
+    // Helper local untuk membalas dengan Embed Cantik & Rapi
+    const replyEmbed = async (color, description, title = null) => {
       const embed = new EmbedBuilder()
-        .setColor(0x10B981) // Velvet Emerald Green
-        .setTitle('🔒 Saluran Terkunci & Bergabung!')
-        .setDescription(`Berhasil bergabung ke Voice Channel **${res.channelName}**.\n\n` +
-          `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.`)
-        .setTimestamp();
+        .setColor(color)
+        .setDescription(description);
+      if (title) embed.setTitle(title);
+      return message.reply({ embeds: [embed] });
+    };
 
-      await message.reply({ embeds: [embed] });
-    } else {
-      await replyEmbed(0xFF3366, res.message);
-    }
-  }
-
-  // ── .speak / .speaklow <teks> ──
-  else if (commandName === 'speak' || commandName === 'speaklow') {
-    let lang = 'id';
-    let text = args.join(' ');
-
-    if (args[0] && (args[0].toLowerCase() === 'en' || args[0].toLowerCase() === 'id')) {
-      lang = args[0].toLowerCase();
-      text = args.slice(1).join(' ');
-    }
-
-    if (!text) {
-      return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speak Halo semuanya` (Bahasa Indonesia)\n👉 `.speak en Hello everyone` (Bahasa Inggris)');
-    }
-
-    const res = await handleVoiceSpeak(text, lang, guildId);
-    if (res.success) {
-      await message.react('🗣️').catch(() => { });
-    } else {
-      await replyEmbed(0xFF3366, res.message);
-    }
-  }
-
-  // ── .leave / .leavelow ──
-  else if (commandName === 'leave' || commandName === 'leavelow') {
-    const res = await handleVoiceLeave(member, guild, guildId);
-    if (res.success) {
-      const embed = new EmbedBuilder()
-        .setColor(0xFF3366) // Crimson Rose
-        .setTitle('👋 Keluar dari Voice Channel')
-        .setDescription(`Kunci saluran pada **${res.channelName}** telah dilepas dan bot berhasil keluar secara bersih.`)
-        .setTimestamp();
-
-      await message.reply({ embeds: [embed] });
-    } else {
-      await replyEmbed(0xFF3366, res.message);
-    }
-  }
-
-  // ── .status / .statuslow ──
-  else if (commandName === 'status' || commandName === 'statuslow') {
-    const statusData = getStatusData(guild, guildId, client);
-    const embed = buildStatusEmbed(statusData, guild, client);
-    await message.reply({ embeds: [embed] });
-  }
-
-  // ── .help / .helplow / .menu / .control ──
-  else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
-    await sendInteractiveHelp(message, false, message.author, guild, client);
-  }
-  // ── .portal / .portalhub / .hub / .hun / .hunian ──
-  else if (['portal', 'portalhub', 'hub', 'hun', 'hunian'].includes(commandName)) {
-    const subCommand = args[0]?.toLowerCase();
-    if (subCommand === 'saham' || subCommand === 'market' || subCommand === 'bursa') {
-      await message.delete().catch(() => {});
-      const { getStocks } = require('./stockmarket/stocks');
-      const activeStocks = getStocks(guildId);
-      if (activeStocks.length === 0) {
-        return message.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
+    // ── .admin (Owner & Administrator Only) ──
+    if (commandName === 'admin') {
+      const isOwner = message.author.id === OWNER_ID;
+      const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return message.reply('❌ **Akses Ditolak!** Hanya Administrator yang dapat melihat daftar perintah admin.');
       }
 
-      const promptEmbed = new EmbedBuilder()
-        .setColor(0x7C4DFF)
-        .setDescription(`📊 **Portal Bursa Saham** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka panel perdagangan saham pribadi Anda secara rahasia.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x7C4DFF) // Royal Violet
+        .setTitle('🛡️ MENU KONTROL & PERINTAH ADMINISTRATOR — BOT KOSAN 1A')
+        .setThumbnail(client.user.displayAvatarURL())
+        .setDescription(`Halo **${message.author.username}**! Berikut adalah daftar seluruh perintah khusus Owner & Administrator server untuk mengelola game, ekonomi, bursa saham, toko, serta sistem bypass di server ini:`)
+        .addFields(
+          {
+            name: '👑 PANEL KONTROL VISUAL INTERAKTIF [REKOMENDASI!]',
+            value: [
+              `👉 **\`.admin-panel\`** / **\`.panel-admin\`** - Membuka **Dashboard Bot Kosan 1A Terpadu** (Portal Hub utama).`,
+              `👉 **\`.admin-pet\`** / **\`.panel-pet\`** - Membuka langsung **Panel Pet Kandang & Perawatan** (HP, XP, level, egg hatch, reset).`,
+              `👉 **\`.admin-bank\`** / **\`.panel-bank\`** - Membuka langsung **Panel Perbankan & Keuangan** (suntik/tarik koin, reset eco, eco-giveall).`,
+              `👉 **\`.admin-rob\`** / **\`.panel-rob\`** - Membuka langsung **Panel Hukum & Lapas Virtual** (bebas lapas target/massal, reset CD robbery).`,
+              `👉 **\`.admin-saham\`** / **\`.panel-saham\`** - Membuka langsung **Panel Bursa Saham & Event Pasar** (drop price, remove, trigger events).`,
+              `👉 **\`.abyus\`** / **\`.abyus-panel\`** - Membuka langsung **Panel Bypass & Event Abuse** (mode gacha, multiplier koin).`,
+              `👉 **\`.admin-shop\`** / **\`.panel-shop\`** - Membuka langsung **Panel Toko Role & Game Truth or Dare**.`
+            ].join('\n')
+          },
+          {
+            name: '🎲 KONTROL GAME TRUTH OR DARE (ToD)',
+            value: [
+              `👉 **\`.tod announce [#channel]\`** - Menyiarkan template pengumuman peluncuran game ToD berbahasa Indonesia yang cantik.`,
+              `👉 **\`.tod force-end\`** atau **\`.tod stop\`** - Menghentikan paksa sesi aktif game ToD di Voice Channel secara instan.`,
+              `👉 **\`.tod add <truth/dare> <chill/deep/spicy> <teks>\`** - Menambahkan pertanyaan kustom baru ke database ToD.`
+            ].join('\n')
+          },
+          {
+            name: '💰 PENGELOLAAN SALDO EKONOMI',
+            value: [
+              `👉 **\`.eco-give @user <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) ke dompet user.`,
+              `👉 **\`.eco-giveall <jumlah | "random" [min] [max]>\`** - Memberikan koin (jumlah tetap atau acak) kepada seluruh member server.`,
+              `👉 **\`.eco-take @user <jumlah>\`** - Menarik/memotong saldo koin dari dompet user.`,
+              `👉 **\`.eco-reset @user\`** - Mereset total saldo dompet, portofolio bursa saham, dan riwayat transaksi user kembali ke 0.`,
+              `👉 **\`.eco-resetall\`** - **[BAHAYA]** Mereset total seluruh database perekonomian server (dompet semua user, bursa, dll).`,
+              `👉 **\`.anoncemen\`** atau **\`.announcement\`** - Menyiarkan embed pengumuman pembaruan sistem ekonomi ke channel target disertai mention @everyone.`
+            ].join('\n')
+          },
+          {
+            name: '📈 SUNTIKAN & RESTURASI BURSA SAHAM',
+            value: [
+              `👉 **\`.market-add #channel <ticker>\`** - Mendaftarkan text channel baru sebagai instrumen saham di bursa (contoh: \`.market-add #lounge $LOUNGE\`).`,
+              `👉 **\`.market-remove <ticker>\`** - Menghapus instrumen saham channel dari bursa dan membersihkan portofolio terkait.`,
+              `👉 **\`.market-reinit\`** - Menghapus seluruh instrumen bursa lama dan mengembalikannya ke setelan saham default server.`,
+              `👉 **\`.market-drop <ticker> <persen>\`** - Menurunkan harga saham secara paksa berdasarkan persentase (contoh: \`.market-drop $LOUNGE 15\`).`,
+              `👉 **\`.dividends-trigger\`** - Memicu pembagian dividen mingguan bursa secara dinamis berbasis keaktifan chat warga.`,
+              `👉 **\`.event-trigger [crash/bull/double]\`** - Memicu event crash pasar, bull run bursa, atau double earning hour secara instan.`
+            ].join('\n')
+          },
+          {
+            name: '🎭 PENGELOLAAN TOKO ROLE & PRESTISE',
+            value: [
+              `👉 **\`.autoshoprole\`** atau **\`.shop-auto\`** - **[PREMIUM]** Membuat otomatis seluruh 5 tingkatan role khusus (Common s/d Mythic) dengan warna & izin rarity, serta mendaftarkannya langsung ke database toko role.`,
+              `👉 **\`.shop-add @role <harga> [tier] [deskripsi]\`** - Menambahkan manual role server Anda ke dalam daftar toko role dengan klasifikasi kustom.`,
+              `👉 **\`.shop-remove <@role atau ID>\`** - Menghapus item role terdaftar dari penjualan toko.`,
+              `👉 **\`.shop-setstock <@role atau ID> <stok>\`** - Mengubah jumlah ketersediaan slot role terdaftar (-1 untuk tanpa batas/unlimited).`
+            ].join('\n')
+          },
+          {
+            name: '⚡ KONTROL BYPASS ADMIN (EBYUS / ABYUS) [NEW!]',
+            value: [
+              `👉 **\`.ebyus\`** / **\`.abyus\`** - Membuka dashboard kontrol panel visual untuk sabotase gacha, multiplier koin chat, dll.`,
+              `👉 **\`.ebyus-gacha <mode> [durasi_menit]\`** - Mengatur manual mode gacha (\`normal\`, \`easy\`, \`super_easy\`, \`abuse\`) beserta durasi auto-reset.`,
+              `👉 **\`.ebyus-coin <multiplier> [durasi_menit]\`** - Mengatur manual pengali koin chat (\`off\`, \`3\`, \`4\`, \`5\`, \`6\`, \`7\`, \`8\`) beserta durasi auto-reset.`,
+              `👉 **\`.ebyus status\`** - Melihat status bypass ekonomi aktif (mode gacha, multiplier koin chat, sisa durasi event, dll).`,
+              `👉 **\`.stop-abyus\`** / **\`.stop-ebyus\`** - **[DARURAT]** Menghentikan paksa seluruh event abuse ekonomi server seketika!`
+            ].join('\n')
+          },
+          {
+            name: '🚨 KONTROL LAPAS & HEIST ADMINISTRASI',
+            value: [
+              `👉 **\`.heist-admin free @user\`** - Membebaskan paksa tahanan dari Penjara Virtual secara instan.`,
+              `👉 **\`.heist-admin reset\`** - Mereset cooldown global Bank Heist server secara instan.`
+            ].join('\n')
+          },
+          {
+            name: '🐾 KONTROL KANDANG & PERAWATAN PET',
+            value: [
+              `👉 **\`.pet-admin reset @user\`** - Menghapus data pet kotor/mati milik user kembali ke kondisi awal (adopsi ulang).`,
+              `👉 **\`.pet-admin heal @user\`** - Menyembuhkan & memulihkan stats HP/Kenyangan/Hidrasi pet user menjadi 100% instan.`,
+              `👉 **\`.pet-admin give-xp @user <jumlah>\`** - Menyuntikkan poin XP tambahan ke pet milik user.`,
+              `👉 **\`.pet-admin hatch @user\`** - Mempercepat penetasan telur pet milik user seketika.`,
+              `👉 **\`.admincup start [durasi_menit] [max_hp] [hadiah]\`** - Memulai turnamen Admin Cup adu pet interaktif.`,
+              `👉 **\`.admincup stop\`** - Membatalkan turnamen Admin Cup aktif.`
+            ].join('\n')
+          }
+        )
+        .setFooter({ text: 'Bot Kosan 1A • Administrator Panel' })
+        .setTimestamp();
 
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('eco_btn_open_market_direct')
-          .setLabel('📊 Buka Bursa Saham')
-          .setStyle(ButtonStyle.Primary)
-      );
-
-      const promptMsg = await message.channel.send({ embeds: [promptEmbed], components: [btnRow] });
-      setTimeout(() => {
-        promptMsg.delete().catch(() => {});
-      }, 20000);
-    } else {
-      await sendPortalHubDirect(message, false, message.author, guild, client);
+      return message.reply({ embeds: [embed] });
     }
+
+    // ── .join / .joinlow ──
+    if (commandName === 'join' || commandName === 'joinlow') {
+      const res = await handleVoiceJoin(member, guild, guildId);
+      if (res.success) {
+        const embed = new EmbedBuilder()
+          .setColor(0x10B981) // Velvet Emerald Green
+          .setTitle('🔒 Saluran Terkunci & Bergabung!')
+          .setDescription(`Berhasil bergabung ke Voice Channel **${res.channelName}**.\n\n` +
+            `🛡️ **Mekanisme Proteksi Aktif**: Bot terkunci di channel ini. Jika bot dipindahkan paksa atau dikick, bot akan rejoin secara instan.`)
+          .setTimestamp();
+
+        await message.reply({ embeds: [embed] });
+      } else {
+        await replyEmbed(0xFF3366, res.message);
+      }
+    }
+
+    // ── .speak / .speaklow <teks> ──
+    else if (commandName === 'speak' || commandName === 'speaklow') {
+      let lang = 'id';
+      let text = args.join(' ');
+
+      if (args[0] && (args[0].toLowerCase() === 'en' || args[0].toLowerCase() === 'id')) {
+        lang = args[0].toLowerCase();
+        text = args.slice(1).join(' ');
+      }
+
+      if (!text) {
+        return replyEmbed(0xFF3366, '❌ **Harap masukkan teks yang ingin diucapkan!**\nContoh:\n👉 `.speak Halo semuanya` (Bahasa Indonesia)\n👉 `.speak en Hello everyone` (Bahasa Inggris)');
+      }
+
+      const res = await handleVoiceSpeak(text, lang, guildId);
+      if (res.success) {
+        await message.react('🗣️').catch(() => { });
+      } else {
+        await replyEmbed(0xFF3366, res.message);
+      }
+    }
+
+    // ── .leave / .leavelow ──
+    else if (commandName === 'leave' || commandName === 'leavelow') {
+      const res = await handleVoiceLeave(member, guild, guildId);
+      if (res.success) {
+        const embed = new EmbedBuilder()
+          .setColor(0xFF3366) // Crimson Rose
+          .setTitle('👋 Keluar dari Voice Channel')
+          .setDescription(`Kunci saluran pada **${res.channelName}** telah dilepas dan bot berhasil keluar secara bersih.`)
+          .setTimestamp();
+
+        await message.reply({ embeds: [embed] });
+      } else {
+        await replyEmbed(0xFF3366, res.message);
+      }
+    }
+
+    // ── .status / .statuslow ──
+    else if (commandName === 'status' || commandName === 'statuslow') {
+      const statusData = getStatusData(guild, guildId, client);
+      const embed = buildStatusEmbed(statusData, guild, client);
+      await message.reply({ embeds: [embed] });
+    }
+
+    // ── .help / .helplow / .menu / .control ──
+    else if (commandName === 'help' || commandName === 'helplow' || commandName === 'menu' || commandName === 'control') {
+      await sendInteractiveHelp(message, false, message.author, guild, client);
+    }
+    // ── .portal / .portalhub / .hub / .hun / .hunian ──
+    else if (['portal', 'portalhub', 'hub', 'hun', 'hunian'].includes(commandName)) {
+      const subCommand = args[0]?.toLowerCase();
+      if (subCommand === 'saham' || subCommand === 'market' || subCommand === 'bursa') {
+        await message.delete().catch(() => {});
+        const { getStocks } = require('./stockmarket/stocks');
+        const activeStocks = getStocks(guildId);
+        if (activeStocks.length === 0) {
+          return message.reply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
+        }
+
+        const promptEmbed = new EmbedBuilder()
+          .setColor(0x7C4DFF)
+          .setDescription(`📊 **Portal Bursa Saham** | <@${message.author.id}>, klik tombol di bawah ini untuk membuka panel perdagangan saham pribadi Anda secara rahasia.`);
+
+        const btnRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('eco_btn_open_market_direct')
+            .setLabel('📊 Buka Bursa Saham')
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        const promptMsg = await message.channel.send({ embeds: [promptEmbed], components: [btnRow] });
+        setTimeout(() => {
+          promptMsg.delete().catch(() => {});
+        }, 20000);
+      } else {
+        await sendPortalHubDirect(message, false, message.author, guild, client);
+      }
+    }
+  } catch (error) {
+    console.error('Error in messageCreate text command handler:', error);
   }
 });
 

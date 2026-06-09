@@ -1140,8 +1140,9 @@ function initStockMarket(client) {
 
   // Listener untuk button click global (dashboard/panel permanen)
   client.on('interactionCreate', async interaction => {
-    if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
-    let customId = interaction.customId;
+    try {
+      if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
+      let customId = interaction.customId;
 
     // Admin Tournament Panel Interactions
     if (customId.startsWith('admin_tournament_')) {
@@ -4611,6 +4612,18 @@ function initStockMarket(client) {
 
     } catch (err) {
       console.error('Error handling permanent portal click:', err);
+    }
+    } catch (globalInteractionErr) {
+      console.error('Global Error in stockmarket interactionCreate listener:', globalInteractionErr);
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => {});
+        } else {
+          await interaction.reply({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => {});
+        }
+      } catch (sendErr) {
+        console.error('Failed to send interaction error reply:', sendErr.message);
+      }
     }
   });
 }
