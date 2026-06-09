@@ -10121,10 +10121,10 @@ async function handleEconomyCommands(message, client) {
 
   // ── PROTEKSI AKTIF EKSPEDISI PET DI CHANNEL ──
   const expeditionLocks = client.expeditionLocks = client.expeditionLocks || new Map();
-  if (expeditionLocks.has(message.channelId) && commandName !== 'pet') {
+  if (expeditionLocks.has(message.channelId)) {
     await message.delete().catch(() => {});
     const warnMsg = await message.channel.send({
-      content: `⚠️ <@${author.id}>, **Pet Ekspedisi** sedang berlangsung di channel ini! Harap tunggu sampai ekspedisi selesai sebelum menggunakan perintah lain.`
+      content: `⚠️ <@${author.id}>, **Pet Ekspedisi** sedang berlangsung di channel ini! Harap tunggu sampai ekspedisi selesai sebelum menggunakan perintah bot.`
     }).catch(() => null);
     if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
     return true;
