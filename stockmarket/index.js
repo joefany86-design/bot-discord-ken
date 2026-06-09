@@ -5875,42 +5875,103 @@ async function handlePetCommand(message, client, args) {
     const activeLobby = client.activeExpeditions = client.activeExpeditions || new Map();
 
     // 1. Tampilkan peta yang tersedia jika peta tidak ditentukan
-    const mapChoice = parseInt(args[1]);
-    const selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
+    let mapChoice = parseInt(args[1]);
+    let selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
+    let promptMsgToEdit = null;
+
     if (!selectedMap) {
-      const mapList = pet.EXPEDITION_MAPS.map(m => `🎮 **ID Peta: \`${m.id}\`** — **${m.name}**\n• Level Rekomendasi: \`Lv. ${m.recommendedLevel}+\` | Sukses Dasar: \`${m.baseSuccessRate}%\`\n• Hadiah: \`Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}\`\n• Deskripsi: *${m.description}*`).join('\n\n');
-      return message.reply({ embeds: [embeds.errorEmbed('Pilih Peta Ekspedisi! 🗺️', `Silakan tentukan Peta Ekspedisi yang ingin dijelajahi.\nFormat: \`.pet expedition <ID Peta (1-10)>\`\n\n📌 **DAFTAR ZONA PETUALANGAN PET:**\n${mapList}`)] });
+      const selectEmbed = embeds.petExpeditionMapSelectionEmbed(pet.EXPEDITION_MAPS);
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('pet_expedition_map_select')
+        .setPlaceholder('🗺️ Pilih Peta Ekspedisi yang Ingin Dijalani...')
+        .addOptions(
+          pet.EXPEDITION_MAPS.map(m => new StringSelectMenuOptionBuilder()
+            .setLabel(m.name.substring(0, 100))
+            .setValue(String(m.id))
+            .setDescription(`Lv. ${m.recommendedLevel}+ | Hadiah: Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}`.substring(0, 100))
+          )
+        );
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+      const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+
+      const replyMsg = await message.reply({
+        embeds: [selectEmbed],
+        components: [row],
+        files: [petExplorer]
+      });
+
+      const collector = replyMsg.createMessageComponentCollector({
+        filter: i => i.user.id === author.id && i.customId === 'pet_expedition_map_select',
+        time: 30000
+      });
+
+      const chosenMapId = await new Promise((resolve) => {
+        collector.on('collect', async interaction => {
+          const val = parseInt(interaction.values[0]);
+          await interaction.deferUpdate().catch(() => {});
+          collector.stop();
+          resolve(val);
+        });
+
+        collector.on('end', (collected, reason) => {
+          if (reason === 'time' && collected.size === 0) {
+            const disabledSelectMenu = StringSelectMenuBuilder.from(selectMenu).setDisabled(true);
+            const disabledRow = new ActionRowBuilder().addComponents(disabledSelectMenu);
+            replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+            resolve(null);
+          }
+        });
+      });
+
+      if (!chosenMapId) return;
+
+      mapChoice = chosenMapId;
+      selectedMap = pet.EXPEDITION_MAPS.find(m => m.id === mapChoice);
+      promptMsgToEdit = replyMsg;
     }
 
     // 2. Maksimal 2 lobi ekspedisi aktif per server secara bersamaan
     const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
     if (guildLobbies.length >= 2) {
-      return message.reply({ embeds: [embeds.warnEmbed('Lobi Penuh! ⚠️', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.')] });
+      const warnEmb = embeds.warnEmbed('Lobi Penuh! ⚠️', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [warnEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [warnEmb] });
     }
 
     // Kunci lobi per inisiator
     const lobbyKey = `${guildId}-${author.id}`;
     if (activeLobby.has(lobbyKey)) {
-      return message.reply({ embeds: [embeds.warnEmbed('Lobi Aktif! ⚠️', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!')] });
+      const warnEmb = embeds.warnEmbed('Lobi Aktif! ⚠️', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [warnEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [warnEmb] });
     }
 
     const initiatorPet = pet.getPet(author.id, guildId);
     if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
-      return message.reply({ embeds: [embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!')] });
+      const errEmb = embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!');
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [errEmb] });
     }
     if (initiatorPet.health < 40) {
-      return message.reply({ embeds: [embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`)] });
+      const errEmb = embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`);
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [errEmb] });
     }
 
     try {
       pet.checkExpeditionLimit(author.id, guildId, true); // dryRun = true
     } catch (err) {
-      return message.reply({ embeds: [embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message)] });
+      const errEmb = embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message);
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [errEmb] });
     }
 
     const wallet = economy.getWallet(author.id, guildId);
     if (wallet.balance < 250) {
-      return message.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`)] });
+      const errEmb = embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`);
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ embeds: [errEmb] });
     }
 
     economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
@@ -5980,7 +6041,14 @@ async function handlePetCommand(message, client, args) {
 
     const replyMsgOpts = { content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] };
     if (lobbyFiles.length > 0) replyMsgOpts.files = lobbyFiles;
-    const replyMsg = await message.reply(replyMsgOpts);
+    
+    let replyMsg;
+    if (promptMsgToEdit) {
+      replyMsgOpts.attachments = [];
+      replyMsg = await promptMsgToEdit.edit(replyMsgOpts);
+    } else {
+      replyMsg = await message.reply(replyMsgOpts);
+    }
 
     lobby.timeout = setTimeout(async () => {
       activeLobby.delete(lobbyKey);

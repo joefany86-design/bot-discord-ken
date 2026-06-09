@@ -4296,6 +4296,34 @@ module.exports = {
       .setTimestamp();
   },
 
+  // 30da. Pet Expedition Map Selection Embed (Premium)
+  petExpeditionMapSelectionEmbed(mapsList) {
+    return new EmbedBuilder()
+      .setColor(COLORS.PURPLE)
+      .setTitle('🗺️ PILIH PETA EKSPEDISI PETUALANGAN PET 🗺️')
+      .setDescription(
+        `### 🧭 ZONA PETUALANGAN EKSPEDISI TIM\n` +
+        `*Kumpulkan rekan tim petualang Anda, siapkan perbekalan, dan pilihlah zona ekspedisi yang ingin dijelajahi.*\n\n` +
+        `💡 *Anda dapat memilih zona langsung menggunakan **Menu Dropdown** di bawah ini, atau menggunakan format perintah:*\n` +
+        `Format: \`.pet expedition <ID Peta (1-10)>\`\n` +
+        `Contoh: \`.pet expedition 3\`\n\n` +
+        `📌 **DAFTAR ZONA PETUALANGAN PET:**`
+      )
+      .setThumbnail('attachment://pet_explorer.png')
+      .addFields(
+        mapsList.map(m => ({
+          name: `🎮 ID Peta: ${m.id} — ${m.name}`,
+          value: `• **Level Rekomendasi:** Lv. ${m.recommendedLevel}+ | **Sukses Dasar:** ${m.baseSuccessRate}%\n` +
+                 `• **Hadiah:** Rp ${m.minPrize.toLocaleString('id-ID')} - Rp ${m.maxPrize.toLocaleString('id-ID')}\n` +
+                 `• **Deskripsi:** *${m.description}*`,
+          inline: false
+        }))
+      )
+      .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Pilihlah dengan bijak!' })
+      .setTimestamp();
+  },
+
+
   // 30e. Pet Expedition Result Embed (Premium)
   petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice) {
     const embedColor = res.success ? 0x00E676 : 0xD50000; // Emerald Green / Bright Red
