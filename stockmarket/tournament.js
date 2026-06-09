@@ -7,7 +7,8 @@ const {
   ButtonStyle,
   EmbedBuilder,
   ChannelType,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  AttachmentBuilder
 } = require('discord.js');
 
 // Helper to resolve element-based skill names
@@ -1088,6 +1089,26 @@ async function endMatch(matchId, winnerId, reason, client) {
     );
   })();
 
+  // Generate PvP Card visual buffer
+  let pvpCardBuffer = null;
+  try {
+    const petCardModule = require('./petCard');
+    const freshP1Pet = getRegisteredPet(match.player1.user_id, match.guildId);
+    const freshP2Pet = getRegisteredPet(match.player2.user_id, match.guildId);
+    if (freshP1Pet && freshP2Pet) {
+      pvpCardBuffer = await petCardModule.generatePvpCard(freshP1Pet, freshP2Pet, {
+        winner: winner.pet_name,
+        loser: loser.pet_name,
+        pet1HP: match.player1.hp,
+        pet2HP: match.player2.hp,
+        pet1MaxHP: match.player1.maxHP,
+        pet2MaxHP: match.player2.maxHP
+      });
+    }
+  } catch (err) {
+    console.error('[Tournament] Gagal membuat PvP card buffer:', err);
+  }
+
   const threadChannel = client.channels.cache.get(match.thread_id || match.threadId) || await client.channels.fetch(match.thread_id || match.threadId).catch(() => null);
   if (threadChannel) {
     const victoryEmbed = new EmbedBuilder()
@@ -1105,7 +1126,13 @@ async function endMatch(matchId, winnerId, reason, client) {
       .setFooter({ text: `Match #${match.matchId} Completed` })
       .setTimestamp();
 
-    await threadChannel.send({ embeds: [victoryEmbed] });
+    const threadPayload = { embeds: [victoryEmbed] };
+    if (pvpCardBuffer) {
+      victoryEmbed.setImage('attachment://pvp_card.png');
+      threadPayload.files = [new AttachmentBuilder(pvpCardBuffer, { name: 'pvp_card.png' })];
+    }
+
+    await threadChannel.send(threadPayload);
 
     // Rename thread, lock dan archive agar bersih
     if (threadChannel.isThread) {
@@ -1122,6 +1149,23 @@ async function endMatch(matchId, winnerId, reason, client) {
   if (eventChan) {
     const channel = client.channels.cache.get(eventChan.channel_id) || await client.channels.fetch(eventChan.channel_id).catch(() => null);
     if (channel) {
+      // Kirim visual card recap terlebih dahulu
+      const summaryEmbed = new EmbedBuilder()
+        .setColor(0x10B981)
+        .setTitle(`⚔️ HASIL PERTANDINGAN: MATCH #${match.matchId} ⚔️`)
+        .setDescription(
+          `**${winner.pet_name}** (<@${winner.user_id}>) menang melawan **${loser.pet_name}** (<@${loser.user_id}>)!\n\n` +
+          (threadChannel ? `👉 Detail pertarungan lengkap dapat dilihat di arena: <#${threadChannel.id}>` : '')
+        )
+        .setTimestamp();
+
+      const mainSendPayload = { embeds: [summaryEmbed] };
+      if (pvpCardBuffer) {
+        summaryEmbed.setImage('attachment://pvp_card.png');
+        mainSendPayload.files = [new AttachmentBuilder(pvpCardBuffer, { name: 'pvp_card.png' })];
+      }
+      await channel.send(mainSendPayload).catch(() => {});
+
       const standingsText = getLeagueStandingsString(match.guildId);
       const queueText = getMatchQueueString(match.guildId);
 
