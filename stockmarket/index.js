@@ -12650,13 +12650,9 @@ async function handleEconomyCommands(message, client) {
           const updateOptions = {
             embeds: [nextEmbed],
             components: [buildProfileButtons(currentTab), buildCloseButton()],
-            files: freshFiles
+            files: freshFiles,
+            attachments: [] // Selalu bersihkan lampiran gambar sebelumnya agar tidak menumpuk
           };
-
-          // Hapus lampiran sebelumnya jika keluar dari tab pet, dashboard, atau property
-          if (currentTab !== 'pet' && currentTab !== 'dashboard' && currentTab !== 'property') {
-            updateOptions.attachments = [];
-          }
 
           await i.update(updateOptions).catch(console.error);
         }

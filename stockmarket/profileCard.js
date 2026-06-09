@@ -25,9 +25,11 @@ try {
   console.warn('[ProfileCard] Gagal meregistrasi font Inter:', e.message);
 }
 
-const FONT_REGULAR = (size) => `${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-const FONT_BOLD = (size) => `bold ${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-const FONT_ITALIC = (size) => `italic ${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+const FONT_REGULAR = (size) => `${size}px "Inter", "Segoe UI", Arial, sans-serif`;
+const FONT_BOLD = (size) => `bold ${size}px "Inter", "Segoe UI", Arial, sans-serif`;
+const FONT_ITALIC = (size) => `italic ${size}px "Inter", "Segoe UI", Arial, sans-serif`;
+
+const FONT_EMOJI = (size) => `${size}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
 
 // ═══════════════════════════════════════════════
 // KONFIGURASI WARNA & TEMA KEKAYAAN (WEALTH TIER)
@@ -76,10 +78,10 @@ const TIER_THEMES = {
 };
 
 const ROOM_THEMES = {
-  PENTHOUSE: { primary: '#F1C40F', glow: '#FFF176', label: '👑 Penthouse Kosan', border: '#F1C40F' },
-  AC: { primary: '#00A8FF', glow: '#4FC3F7', label: '❄️ Kamar AC', border: '#00A8FF' },
-  KIPAS: { primary: '#BDC3C7', glow: '#CFD8DC', label: '💨 Kamar Kipas Angin', border: '#BDC3C7' },
-  BIASA: { primary: '#D35400', glow: '#E67E22', label: '🚪 Kamar Biasa', border: '#D35400' }
+  PENTHOUSE: { primary: '#F1C40F', glow: '#FFF176', emoji: '👑', text: 'Penthouse Kosan', border: '#F1C40F' },
+  AC: { primary: '#00A8FF', glow: '#4FC3F7', emoji: '❄️', text: 'Kamar AC', border: '#00A8FF' },
+  KIPAS: { primary: '#BDC3C7', glow: '#CFD8DC', emoji: '💨', text: 'Kamar Kipas Angin', border: '#BDC3C7' },
+  BIASA: { primary: '#D35400', glow: '#E67E22', emoji: '🚪', text: 'Kamar Biasa', border: '#D35400' }
 };
 
 const CARD_WIDTH = 920;
@@ -199,21 +201,37 @@ function drawCircleAvatar(ctx, img, cx, cy, radius, borderColor, glowColor) {
 /**
  * Gambar badge pill-shape
  */
-function drawBadge(ctx, x, y, text, bgColor, textColor = '#FFFFFF', fontSize = 11) {
+function drawBadge(ctx, x, y, emoji, text, bgColor, textColor = '#FFFFFF', fontSize = 11) {
   ctx.font = FONT_BOLD(fontSize);
-  const metrics = ctx.measureText(text);
+  const textWidth = ctx.measureText(text).width;
+
+  ctx.font = FONT_EMOJI(fontSize);
+  const emojiWidth = emoji ? ctx.measureText(emoji).width + 6 : 0;
+
   const padX = 10;
   const padY = 4;
-  const width = metrics.width + padX * 2;
+  const width = textWidth + emojiWidth + padX * 2;
   const height = fontSize + padY * 2;
+
+  if (x === 0 && y === 0) return width; // Helper to measure width without drawing
 
   drawRoundedRect(ctx, x, y, width, height, height / 2);
   ctx.fillStyle = bgColor;
   ctx.fill();
 
+  let curX = x + padX;
+  if (emoji) {
+    ctx.font = FONT_EMOJI(fontSize);
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    ctx.fillText(emoji, curX, y + height - padY - 1);
+    curX += emojiWidth;
+  }
+
+  ctx.font = FONT_BOLD(fontSize);
   ctx.fillStyle = textColor;
   ctx.textAlign = 'left';
-  ctx.fillText(text, x + padX, y + height - padY - 1);
+  ctx.fillText(text, curX, y + height - padY - 1);
 
   return width;
 }
@@ -372,10 +390,8 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
 
   // Wealth Tier Badge
   const badgeY = avatarCY + avatarRadius + 42;
-  const tierText = `${tier.emoji} ${tier.label}`;
-  ctx.font = FONT_BOLD(10);
-  const badgeWidth = ctx.measureText(tierText).width + 20;
-  drawBadge(ctx, avatarCX - badgeWidth / 2, badgeY, tierText, `${tier.primary}20`, tier.primary, 10);
+  const badgeWidth = drawBadge(ctx, 0, 0, tier.emoji, tier.label, `${tier.primary}20`, tier.primary, 10);
+  drawBadge(ctx, avatarCX - badgeWidth / 2, badgeY, tier.emoji, tier.label, `${tier.primary}20`, tier.primary, 10);
 
   // Luxury Badges & Status Icons (Di bawah badge tier)
   let prestigeY = badgeY + 28;
@@ -405,7 +421,7 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
       IPHONE: '📱'
     };
     const rowText = ownedLuxury.map(item => luxuryIcons[item] || '').join('  ');
-    ctx.font = FONT_REGULAR(20);
+    ctx.font = FONT_EMOJI(20);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(rowText, avatarCX, prestigeY + 16);
   } else {
@@ -430,10 +446,12 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   const gapY = 16;
 
   // Dashboard Title
+  ctx.font = FONT_EMOJI(15);
+  ctx.fillText('🏠', gridX, 52);
   ctx.font = FONT_BOLD(15);
   ctx.fillStyle = isJailed || isWanted ? '#FF3366' : tier.primary;
   ctx.textAlign = 'left';
-  ctx.fillText('🏠 STATUS SALDO & KEUANGAN WARGA', gridX, 52);
+  ctx.fillText('STATUS SALDO & KEUANGAN WARGA', gridX + 24, 52);
 
   // Helper untuk menggambar kartu finansial
   const drawFinancialCard = (x, y, label, amount, icon, isTotal = false) => {
@@ -464,7 +482,7 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
     ctx.fillText(`Rp ${amount.toLocaleString('id-ID')}`, x + 18, y + 58);
 
     // Icon (kanan)
-    ctx.font = FONT_REGULAR(28);
+    ctx.font = FONT_EMOJI(28);
     ctx.textAlign = 'right';
     ctx.fillText(icon, x + cardW - 18, y + 54);
     ctx.textAlign = 'left'; // Reset alignment
@@ -495,22 +513,25 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   ctx.stroke();
 
   const drawMiniStat = (x, y, label, value, icon) => {
+    ctx.font = FONT_EMOJI(12);
+    ctx.fillText(icon, x, y);
+
     ctx.font = FONT_REGULAR(12);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.fillText(`${icon} ${label}:`, x, y);
+    ctx.fillText(`${label}:`, x + 18, y);
 
-    const offset = ctx.measureText(`${icon} ${label}: `).width;
+    const offset = 18 + ctx.measureText(`${label}: `).width;
     ctx.font = FONT_BOLD(12);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(value, x + offset, y);
   };
 
   // Streak Daily
-  const streakStatus = wallet.streak_days >= 7 ? `${wallet.streak_days} Hari 🔥` : `${wallet.streak_days} Hari`;
+  const streakStatus = `${wallet.streak_days} Hari`;
   drawMiniStat(gridX, statsY + 6, 'Gaji Streak', streakStatus, '🔥');
 
   // Auto-Trade
-  const autoTradeStatus = wallet.auto_trade === 1 ? 'Aktif 🟢' : 'Nonaktif 🔴';
+  const autoTradeStatus = wallet.auto_trade === 1 ? 'Aktif' : 'Nonaktif';
   drawMiniStat(gridX + colW, statsY + 6, 'Auto-Trade', autoTradeStatus, '🤖');
 
   // Jail Counts
@@ -530,24 +551,36 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
     ctx.stroke();
 
     let bannerText = '';
+    let bannerEmoji = '';
     if (isJailed) {
       const remainingSec = wallet.jail_until - nowSec;
       const mins = Math.ceil(remainingSec / 60);
-      bannerText = `🚨 DI DALAM PENJARA: Anda ditahan! Bebas dalam ${mins} menit lagi.`;
+      bannerEmoji = '🚨';
+      bannerText = `DI DALAM PENJARA: Anda ditahan! Bebas dalam ${mins} menit lagi.`;
     } else if (isWanted) {
       const remainingSec = extraData.wantedUntil - nowSec;
       const mins = Math.ceil(remainingSec / 60);
-      bannerText = `🚔 STATUS WANTED: Anda buron! Masa pengejaran sisa ${mins} menit lagi.`;
+      bannerEmoji = '🚔';
+      bannerText = `STATUS WANTED: Anda buron! Masa pengejaran sisa ${mins} menit lagi.`;
     } else if (isCursed) {
       const remainingSec = extraData.curseUntil - nowSec;
       const mins = Math.ceil(remainingSec / 60);
-      bannerText = `💀 TERKUTUK (${extraData.curseType}): Status terkena efek kutukan ${mins} menit.`;
+      bannerEmoji = '💀';
+      bannerText = `TERKUTUK (${extraData.curseType}): Status terkena efek kutukan ${mins} menit.`;
     }
 
     ctx.font = FONT_BOLD(11);
+    const textW = ctx.measureText(bannerText).width;
+    const totalW = textW + 20;
+    const startX = gridX + (bannerW - totalW) / 2;
+
+    ctx.textAlign = 'left';
+    ctx.font = FONT_EMOJI(11);
+    ctx.fillText(bannerEmoji, startX, bannerY + 22);
+
+    ctx.font = FONT_BOLD(11);
     ctx.fillStyle = '#FF4D79';
-    ctx.textAlign = 'center';
-    ctx.fillText(bannerText, gridX + bannerW / 2, bannerY + 22);
+    ctx.fillText(bannerText, startX + 20, bannerY + 22);
   } else {
     // Footer Watermark inside the panel
     const watermarkY = statsY + 36;
@@ -630,10 +663,24 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   ctx.stroke();
 
   // Room Name
+  const roomEmoji = roomTheme.emoji;
+  const roomText = roomTheme.text.toUpperCase();
+  
+  ctx.font = FONT_BOLD(15);
+  const roomTextW = ctx.measureText(roomText).width;
+  ctx.font = FONT_EMOJI(15);
+  const roomEmojiW = ctx.measureText(roomEmoji).width;
+  const roomTotalW = roomEmojiW + 6 + roomTextW;
+  const roomStartX = roomX + (roomW - roomTotalW) / 2;
+  
+  ctx.textAlign = 'left';
+  ctx.font = FONT_EMOJI(15);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(roomEmoji, roomStartX, roomY + 38);
+  
   ctx.font = FONT_BOLD(15);
   ctx.fillStyle = '#FFFFFF';
-  ctx.textAlign = 'center';
-  ctx.fillText(roomTheme.label.toUpperCase(), roomX + roomW / 2, roomY + 38);
+  ctx.fillText(roomText, roomStartX + roomEmojiW + 6, roomY + 38);
 
   // Room Lease duration
   const nowSec = Math.floor(Date.now() / 1000);
@@ -645,14 +692,17 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   }
   ctx.font = FONT_REGULAR(11);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.textAlign = 'center';
   ctx.fillText(durationText, roomX + roomW / 2, roomY + 68);
 
   // Upgrades section
   let upgradesY = roomY + roomH + 25;
+  ctx.textAlign = 'left';
+  ctx.font = FONT_EMOJI(12);
+  ctx.fillText('🏢', roomX, upgradesY);
   ctx.font = FONT_BOLD(12);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.textAlign = 'left';
-  ctx.fillText('🏢 UPGRADE KAMAR AKTIF', roomX, upgradesY);
+  ctx.fillText('UPGRADE KAMAR AKTIF', roomX + 20, upgradesY);
 
   upgradesY += 12;
   let pillX = roomX;
@@ -660,17 +710,27 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   const maxPillX = roomX + roomW;
 
   const upgradeIcons = {
-    AC: '❄️ AC', WIFI: '📶 WiFi', TV: '📺 TV 4K', PC: '🖥️ PC', DISPENSER: '🚰 Dispenser',
-    ALARM: '🚨 Alarm', CCTV: '📹 CCTV', GEMBOK: '🔒 Gembok', KASUR: '🛏️ Kasur', SECURITY: '👮 Security'
+    AC: { emoji: '❄️', text: 'AC' },
+    WIFI: { emoji: '📶', text: 'WiFi' },
+    TV: { emoji: '📺', text: 'TV 4K' },
+    PC: { emoji: '🖥️', text: 'PC' },
+    DISPENSER: { emoji: '🚰', text: 'Dispenser' },
+    ALARM: { emoji: '🚨', text: 'Alarm' },
+    CCTV: { emoji: '📹', text: 'CCTV' },
+    GEMBOK: { emoji: '🔒', text: 'Gembok' },
+    KASUR: { emoji: '🛏️', text: 'Kasur' },
+    SECURITY: { emoji: '👮', text: 'Security' }
   };
 
   if (kosUpgrades && kosUpgrades.length > 0) {
     kosUpgrades.forEach(u => {
       const rawId = (typeof u === 'string' ? u : u.upgrade_id || '').toUpperCase();
-      const label = upgradeIcons[rawId] || rawId;
+      const upgradeData = upgradeIcons[rawId] || { emoji: '⚙️', text: rawId };
+      
       ctx.font = FONT_BOLD(10);
-      const textW = ctx.measureText(label).width;
-      const pillW = textW + 16;
+      const textW = ctx.measureText(upgradeData.text).width;
+      const emojiW = 16;
+      const pillW = textW + emojiW + 16;
       const pillH = 18;
 
       if (pillX + pillW > maxPillX) {
@@ -685,9 +745,12 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       ctx.lineWidth = 1;
       ctx.stroke();
 
+      ctx.font = FONT_EMOJI(10);
+      ctx.fillText(upgradeData.emoji, pillX + 8, pillY + 12);
+
+      ctx.font = FONT_BOLD(10);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.textAlign = 'left';
-      ctx.fillText(label, pillX + 8, pillY + 12);
+      ctx.fillText(upgradeData.text, pillX + 8 + emojiW, pillY + 12);
 
       pillX += pillW + 6;
     });
@@ -700,10 +763,12 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   // --- RIGHT COLUMN: GARDEN SLOTS ---
   const gardenX = 385;
 
+  ctx.font = FONT_EMOJI(15);
+  ctx.fillText('🌸', gardenX, 52);
   ctx.font = FONT_BOLD(15);
   ctx.fillStyle = '#00E676';
   ctx.textAlign = 'left';
-  ctx.fillText('🌸 COZY GARDEN WARGA', gardenX, 52);
+  ctx.fillText('COZY GARDEN WARGA', gardenX + 24, 52);
 
   const slotY = 85;
   const slotW = 150;
@@ -730,10 +795,10 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
 
     if (slot.seed_id) {
       const plantNames = {
-        SEED_ROSE: '🌹 Mawar',
-        SEED_TULIP: '🌷 Tulip',
-        SEED_SUNFLOWER: '🌻 Matahari',
-        SEED_ORCHID: '🪻 Anggrek'
+        SEED_ROSE: 'Mawar',
+        SEED_TULIP: 'Tulip',
+        SEED_SUNFLOWER: 'Matahari',
+        SEED_ORCHID: 'Anggrek'
       };
       const emojis = { SEED_ROSE: '🌹', SEED_TULIP: '🌷', SEED_SUNFLOWER: '🌻', SEED_ORCHID: '🪻' };
       const rawSeed = slot.seed_id.toUpperCase();
@@ -741,13 +806,14 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       const emoji = emojis[rawSeed] || '🌱';
 
       // Emoji
-      ctx.font = FONT_REGULAR(40);
+      ctx.font = FONT_EMOJI(40);
+      ctx.textAlign = 'center';
       ctx.fillText(emoji, sx + slotW / 2, slotY + 84);
 
       // Name
       ctx.font = FONT_BOLD(12);
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(plantName.split(' ').pop() || plantName, sx + slotW / 2, slotY + 115);
+      ctx.fillText(plantName, sx + slotW / 2, slotY + 115);
 
       // Growth status
       let duration = 3600;
@@ -759,26 +825,61 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       const readyAt = slot.planted_at + duration;
       const isReady = nowSec >= readyAt;
 
+      let gEmoji = '🌱';
+      let gText = '';
+      let gColor = 'rgba(255, 255, 255, 0.6)';
+      let gFont = FONT_REGULAR(11);
+
       if (isReady) {
-        ctx.font = FONT_BOLD(11);
-        ctx.fillStyle = '#00E676';
-        ctx.fillText('✨ SIAP PANEN!', sx + slotW / 2, slotY + 150);
+        gEmoji = '✨';
+        gText = 'SIAP PANEN!';
+        gColor = '#00E676';
+        gFont = FONT_BOLD(11);
       } else {
         const remaining = readyAt - nowSec;
         const mins = Math.ceil(remaining / 60);
-        ctx.font = FONT_REGULAR(11);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillText(`🌱 ${mins}m lagi`, sx + slotW / 2, slotY + 150);
+        gText = `${mins}m lagi`;
       }
 
+      ctx.font = FONT_EMOJI(11);
+      const gEmojiW = ctx.measureText(gEmoji).width;
+      ctx.font = gFont;
+      const gTextW = ctx.measureText(gText).width;
+      const gTotalW = gEmojiW + 6 + gTextW;
+      const gStartX = sx + (slotW - gTotalW) / 2;
+
+      ctx.textAlign = 'left';
+      ctx.font = FONT_EMOJI(11);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(gEmoji, gStartX, slotY + 150);
+
+      ctx.font = gFont;
+      ctx.fillStyle = gColor;
+      ctx.fillText(gText, gStartX + gEmojiW + 6, slotY + 150);
+
       // Watering status
-      const waterStatus = slot.water_count > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
+      const wEmoji = slot.water_count > 0 ? '💦' : '⚠️';
+      const wText = slot.water_count > 0 ? `Disiram ${slot.water_count}x` : 'Butuh Air';
+      const wColor = slot.water_count > 0 ? '#4FC3F7' : '#FF9800';
+
+      ctx.font = FONT_EMOJI(11);
+      const wEmojiW = ctx.measureText(wEmoji).width;
       ctx.font = FONT_BOLD(11);
-      ctx.fillStyle = slot.water_count > 0 ? '#4FC3F7' : '#FF9800';
-      ctx.fillText(waterStatus, sx + slotW / 2, slotY + 185);
+      const wTextW = ctx.measureText(wText).width;
+      const wTotalW = wEmojiW + 6 + wTextW;
+      const wStartX = sx + (slotW - wTotalW) / 2;
+
+      ctx.font = FONT_EMOJI(11);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(wEmoji, wStartX, slotY + 185);
+
+      ctx.font = FONT_BOLD(11);
+      ctx.fillStyle = wColor;
+      ctx.fillText(wText, wStartX + wEmojiW + 6, slotY + 185);
     } else {
       // Empty
-      ctx.font = FONT_REGULAR(36);
+      ctx.font = FONT_EMOJI(36);
+      ctx.textAlign = 'center';
       ctx.fillText('🪹', sx + slotW / 2, slotY + 88);
 
       ctx.font = FONT_REGULAR(12);
