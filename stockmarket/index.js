@@ -3033,7 +3033,7 @@ function initStockMarket(client) {
                   return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
                 }
                 const inv = pet.getInventory(user.id, guildId);
-                const usableItems = inv.filter(item => item.quantity > 0);
+                const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
 
                 if (usableItems.length === 0) {
                   return iPet.reply({
@@ -3078,6 +3078,11 @@ function initStockMarket(client) {
                   } else if (item.multiplier) {
                     effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
                     cooldownDesc = ' · Bebas Cooldown';
+                  }
+
+                  if (!effectDesc) {
+                    const rawDesc = item.desc || 'Gunakan item ini';
+                    effectDesc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
                   }
 
                   selectMenu.addOptions(
@@ -6833,7 +6838,7 @@ async function handlePetCommand(message, client, args) {
             return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
           }
           const inv = pet.getInventory(author.id, guildId);
-          const usableItems = inv.filter(item => item.quantity > 0);
+          const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
 
           if (usableItems.length === 0) {
             return iPet.reply({
@@ -6878,6 +6883,11 @@ async function handlePetCommand(message, client, args) {
             } else if (item.multiplier) {
               effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
               cooldownDesc = ' · Bebas Cooldown';
+            }
+
+            if (!effectDesc) {
+              const rawDesc = item.desc || 'Gunakan item ini';
+              effectDesc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
             }
 
             selectMenu.addOptions(
