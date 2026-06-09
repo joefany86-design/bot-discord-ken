@@ -1024,7 +1024,13 @@ module.exports = {
       embed.setThumbnail(thumbnailURL);
     }
 
-    if (extraData && extraData.usePetCardImage) {
+    if (activeTab === 'dashboard') {
+      embed.setImage('attachment://dashboard_card.png');
+    } else if (activeTab === 'assets' && portfolioItems.length > 0) {
+      embed.setImage('attachment://portfolio_card.png');
+    } else if (activeTab === 'property') {
+      embed.setImage('attachment://property_card.png');
+    } else if (activeTab === 'pet' && extraData && extraData.usePetCardImage) {
       embed.setImage('attachment://pet_card.png');
     }
 
@@ -1319,7 +1325,7 @@ module.exports = {
   },
 
   // 7. Embed Leaderboard Terkaya
-  leaderboardEmbed(guildName, leaderboard, client) {
+  leaderboardEmbed(guildName, leaderboard, client, useCanvas = false) {
     const guild = client.guilds.cache.find(g => g.name === guildName);
     const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
 
@@ -1330,6 +1336,10 @@ module.exports = {
         `👑 **KONGLOMERAT KOSAN 1A** — Rupiah Server 2026\n\n` +
         `> *10 warga terhormat dengan total aset (Dompet + Saham + Bank) tertinggi.*`
       );
+
+    if (useCanvas) {
+      embed.setImage('attachment://leaderboard_card.png');
+    }
 
     if (iconUrl) {
       embed.setThumbnail(iconUrl);

@@ -574,10 +574,14 @@ function startRealtimeLeaderboard(client) {
     console.log('⚠️ [Leaderboard] Interval sebelumnya dibersihkan (mencegah duplikasi).');
   }
 
-  async function updateLeaderboardMsg(channel, embed, keyword) {
+  async function updateLeaderboardMsg(channel, embed, keyword, files = []) {
     const cacheKey = `${channel.id}_${keyword}`;
     const cachedMsgId = leaderboardMsgCache.get(cacheKey);
     const payload = { embeds: [embed], components: [] };
+    if (files && files.length > 0) {
+      payload.files = files;
+      payload.attachments = [];
+    }
 
     if (cachedMsgId) {
       try {
@@ -627,8 +631,25 @@ function startRealtimeLeaderboard(client) {
           if (client.users.cache.has(u.userId)) return;
           try { await client.users.fetch(u.userId); } catch (e) { }
         }));
-        const richEmbed = embeds.leaderboardEmbed(guildName, richData, client);
-        await updateLeaderboardMsg(richChannel, richEmbed, 'WEALTH');
+
+        // Build visual canvas standings
+        const petCard = require('./petCard');
+        const standings = await Promise.all(richData.map(async (u, idx) => {
+          let discordUser = client.users.cache.get(u.userId);
+          if (!discordUser) {
+            discordUser = await client.users.fetch(u.userId).catch(() => null);
+          }
+          return {
+            rank: idx + 1,
+            name: discordUser ? discordUser.username : `User-${u.userId.substring(0, 5)}`,
+            value: u.totalWealth,
+            avatarURL: discordUser ? discordUser.displayAvatarURL({ extension: 'png', size: 128 }) : null
+          };
+        }));
+
+        const lbAtt = await petCard.getLeaderboardAttachment('HALL OF WEALTH — ' + guildName, standings, 'Rp');
+        const richEmbed = embeds.leaderboardEmbed(guildName, richData, client, !!lbAtt);
+        await updateLeaderboardMsg(richChannel, richEmbed, 'WEALTH', lbAtt ? [lbAtt] : []);
       }
     } catch (err) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
@@ -12467,9 +12488,48 @@ async function handleEconomyCommands(message, client) {
         );
       };
 
+      const petCard = require('./petCard');
+      const getBankBalance = (uid, gid) => {
+        let bal = 0;
+        try {
+          const row = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [uid, gid]);
+          if (row) bal = row.balance;
+        } catch (e) {}
+        return bal;
+      };
+
+      const generateTabAttachment = async (tab, uUser, uWallet, uPorto, uPet, uLoan, uBail, uExtra) => {
+        try {
+          if (tab === 'dashboard') {
+            const bankBalance = getBankBalance(uUser.id, guildId);
+            return await petCard.getProfileDashboardAttachment(uUser, uWallet, bankBalance, uPorto.totalPortfolioValue, uExtra);
+          } else if (tab === 'assets') {
+            return await petCard.getPortfolioAttachment(uUser, uWallet, uPorto.totalPortfolioValue, uPorto.items);
+          } else if (tab === 'property') {
+            return await petCard.getPropertyAttachment(uUser, uWallet, uExtra);
+          } else if (tab === 'pet' && uPet) {
+            let xpNeeded = 100;
+            try {
+              const petModule = require('./pet');
+              xpNeeded = petModule.getXpNeeded(uPet.level, uPet.trait);
+            } catch (e) {
+              xpNeeded = uPet.level * 150;
+            }
+            uExtra.usePetCardImage = true;
+            return await petCard.getPetCardAttachment(uPet, uUser, { xpNeeded, maxHP: 100 });
+          }
+        } catch (e) {
+          console.error(`[Index] Gagal membuat attachment tab ${tab}:`, e.message);
+        }
+        return null;
+      };
+
       let currentTab = 'dashboard';
       let initialFiles = [];
-      // Visual card disabled for pet tab
+      const dashAtt = await generateTabAttachment(currentTab, targetUser, wallet, porto, userPet, activeLoan, bailDebts, extraData);
+      if (dashAtt) {
+        initialFiles.push(dashAtt);
+      }
 
       const initialEmbed = embeds.profileEmbed(
         targetUser, wallet, porto.totalPortfolioValue, targetMember, shopItems, userPet, activeLoan, bailDebts, porto.items, extraData, currentTab
@@ -12537,7 +12597,10 @@ async function handleEconomyCommands(message, client) {
           };
 
           let freshFiles = [];
-          // Visual card disabled for pet tab
+          const tabAtt = await generateTabAttachment(currentTab, targetUser, freshWallet, freshPorto, freshUserPet, freshActiveLoan, freshBailDebts, freshExtraData);
+          if (tabAtt) {
+            freshFiles.push(tabAtt);
+          }
 
           const nextEmbed = embeds.profileEmbed(
             targetUser, freshWallet, freshPorto.totalPortfolioValue, targetMember, shopItems, freshUserPet, freshActiveLoan, freshBailDebts, freshPorto.items, freshExtraData, currentTab
@@ -12546,13 +12609,9 @@ async function handleEconomyCommands(message, client) {
           const updateOptions = {
             embeds: [nextEmbed],
             components: [buildProfileButtons(currentTab), buildCloseButton()],
-            files: freshFiles
+            files: freshFiles,
+            attachments: []
           };
-
-          // Hapus lampiran sebelumnya jika keluar dari tab pet
-          if (currentTab !== 'pet') {
-            updateOptions.attachments = [];
-          }
 
           await i.update(updateOptions).catch(console.error);
         }

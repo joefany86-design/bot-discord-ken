@@ -906,11 +906,777 @@ async function generatePvpCard(pet1, pet2, result) {
   return canvas.toBuffer('image/png');
 }
 
+
+// ═══════════════════════════════════════════════
+// NEW GENERATORS: Profile Tabs (Dashboard, Portfolio, Property) & Leaderboards
+// ═══════════════════════════════════════════════
+
+/**
+ * Generate kartu profil dashboard utama
+ */
+async function generateProfileDashboardCard(user, wallet, bankBalance, portfolioValue, extraData) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  const totalWealth = wallet.balance + bankBalance + portfolioValue;
+
+  const getTierInfo = (t) => {
+    if (t >= 50000) return { name: 'DIAMOND', emoji: '💎', color: '#00E5FF', darkColor: '#00363A' };
+    if (t >= 20000) return { name: 'GOLD', emoji: '👑', color: '#FFD700', darkColor: '#3A3000' };
+    if (t >= 10000) return { name: 'SILVER', emoji: '🥈', color: '#BDC3C7', darkColor: '#1F2421' };
+    if (t >= 5000) return { name: 'BRONZE', emoji: '🥉', color: '#E67E22', darkColor: '#2B1100' };
+    return { name: 'STARTER', emoji: '🪵', color: '#95A5A6', darkColor: '#1C2022' };
+  };
+  const tier = getTierInfo(totalWealth);
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0D0E15');
+  bgGrad.addColorStop(0.5, '#16192B');
+  bgGrad.addColorStop(1, '#0D0E15');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Decorative grid lines
+  ctx.globalAlpha = 0.03;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Dark Overlay Card Container
+  const margin = 15;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(13, 15, 28, 0.82)';
+  ctx.fill();
+
+  // Card Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, tier.color);
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+  borderGrad.addColorStop(1, tier.color);
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // LEFT PANEL: User Info
+  // Avatar loading & drawing
+  let avatarImg = null;
+  if (user.displayAvatarURL) {
+    const avatarURL = user.displayAvatarURL({ extension: 'png', size: 256 });
+    avatarImg = await loadImageSafe(avatarURL);
+  }
+  const cx = 145, cy = 135, r = 65;
+  if (avatarImg) {
+    drawCircleAvatar(ctx, avatarImg, cx, cy, r, tier.color, `${tier.color}40`);
+  } else {
+    // Fallback avatar
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = tier.color; ctx.fill();
+    ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#111'; ctx.textAlign = 'center';
+    ctx.fillText((user.username || 'U').charAt(0).toUpperCase(), cx, cy + 12);
+  }
+
+  // Tag & Username
+  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  const nameText = user.username ? user.username.toUpperCase() : 'USER';
+  ctx.fillText(nameText, cx, 230);
+
+  // Tier Badge
+  drawBadge(ctx, cx - 80, 245, `${tier.emoji} ${tier.name} MEMBER`, tier.darkColor, tier.color, 11);
+
+  // Stats
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#A0AABF';
+  ctx.font = '13px "DejaVu Sans", sans-serif';
+  const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
+  ctx.fillText(`${streakEmoji} Daily Streak: ${wallet.streak_days} Hari`, 55, 305);
+  ctx.fillText(`🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}`, 55, 335);
+  ctx.fillText(`🚨 Masuk Sel: ${wallet.jail_count || 0} Kali`, 55, 365);
+
+  // Vertical Separator Line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(280, 40); ctx.lineTo(280, 380); ctx.stroke();
+
+  // RIGHT PANEL: Financial Dashboard Grid
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('FINANCIAL DASHBOARD', 315, 60);
+
+  const drawFinancialBox = (x, y, w, h, title, amount, mainColor) => {
+    // Glass card background
+    drawRoundedRect(ctx, x, y, w, h, 14);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Side accent light indicator
+    ctx.fillStyle = mainColor;
+    drawRoundedRect(ctx, x, y + 10, 4, h - 20, 2);
+    ctx.fill();
+
+    // Box labels
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#8E9AA8';
+    ctx.fillText(title.toUpperCase(), x + 18, y + 30);
+
+    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('Rp ' + Math.floor(amount).toLocaleString('id-ID'), x + 18, y + 65);
+  };
+
+  const gridX1 = 315, gridX2 = 605, gridW = 270, gridH = 90;
+  drawFinancialBox(gridX1, 85, gridW, gridH, 'Saldo Dompet', wallet.balance, '#FFD700');
+  drawFinancialBox(gridX2, 85, gridW, gridH, 'Saldo Bank', bankBalance, '#00E676');
+  drawFinancialBox(gridX1, 195, gridW, gridH, 'Nilai Investasi', portfolioValue, '#00B0FF');
+  drawFinancialBox(gridX2, 195, gridW, gridH, 'Total Kekayaan', totalWealth, tier.color);
+
+  // Status Effects & Luxury Badges Row
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(315, 305); ctx.lineTo(875, 305); ctx.stroke();
+
+  // Draw Luxury Badges
+  let badgeX = 315;
+  let hasBadges = false;
+  try {
+    const db = require('./database');
+    const luxuryItems = db.all(
+      "SELECT item_id FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id IN ('LAMBO', 'GOLD', 'KEY', 'ROLEX', 'IPHONE') AND quantity > 0",
+      [user.id, wallet.guild_id]
+    );
+    if (luxuryItems && luxuryItems.length > 0) {
+      hasBadges = true;
+      luxuryItems.forEach(item => {
+        let text = '', color = '#7F8C8D';
+        if (item.item_id === 'LAMBO') { text = '🏎️ LAMBO'; color = '#E74C3C'; }
+        if (item.item_id === 'GOLD') { text = '👑 GOLD'; color = '#F1C40F'; }
+        if (item.item_id === 'KEY') { text = '🔑 PENTHOUSE'; color = '#9B59B6'; }
+        if (item.item_id === 'ROLEX') { text = '⌚ ROLEX'; color = '#1ABC9C'; }
+        if (item.item_id === 'IPHONE') { text = '📱 IPHONE'; color = '#34495E'; }
+        badgeX += drawBadge(ctx, badgeX, 330, text, color, '#FFFFFF', 10) + 8;
+      });
+    }
+  } catch (e) {
+    console.error('[Canvas Dashboard] Failed to load badges:', e.message);
+  }
+
+  if (!hasBadges) {
+    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#5A6270';
+    ctx.fillText('Belum memiliki Lencana Status Mewah', 315, 345);
+  }
+
+  // Draw warnings (WANTED / JAILED)
+  const nowSec = Math.floor(Date.now() / 1000);
+  const isWanted = extraData.wantedUntil && extraData.wantedUntil > nowSec;
+  const isJailed = wallet.jail_until && wallet.jail_until > nowSec;
+  if (isWanted || isJailed) {
+    ctx.fillStyle = 'rgba(255, 51, 102, 0.1)';
+    drawRoundedRect(ctx, 315, 370, 560, 32, 6);
+    ctx.fill();
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FF3366';
+    let msg = '⚠️ STATUS AKTIF: ';
+    if (isJailed) msg += '🚨 DIPENJARA ';
+    if (isWanted) msg += '🚔 BURONAN (WANTED) ';
+    ctx.fillText(msg, 325, 390);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Generate kartu portofolio saham
+ */
+async function generatePortfolioCard(user, wallet, portfolioValue, portfolioItems) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0a0d16');
+  bgGrad.addColorStop(0.5, '#111526');
+  bgGrad.addColorStop(1, '#0a0d16');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  const margin = 15;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(12, 14, 27, 0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(16, 185, 129, 0.15)'; // Green portfolio outline tint
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // LEFT PANEL: Portfolio Summary
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('PORTOFOLIO INVESTASI', 45, 60);
+
+  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#8E9AA8';
+  ctx.fillText('TOTAL NILAI INVESTASI', 45, 95);
+
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#10B981';
+  ctx.fillText('Rp ' + Math.floor(portfolioValue).toLocaleString('id-ID'), 45, 130);
+
+  // Profit / Loss calculation
+  let totalProfit = 0;
+  let totalInvested = 0;
+  if (portfolioItems && portfolioItems.length > 0) {
+    portfolioItems.forEach(i => {
+      totalProfit += i.profitRp || 0;
+      totalInvested += i.totalInvested || ((i.shares || 0) * (i.avgPriceRp || 0));
+    });
+  }
+
+  let profitPercent = 0;
+  if (totalInvested > 0) {
+    profitPercent = Math.round((totalProfit / totalInvested) * 1000) / 10;
+  }
+
+  const sign = totalProfit > 0 ? '+' : '';
+  const plColor = totalProfit > 0 ? '#10B981' : totalProfit < 0 ? '#FF3366' : '#8E9AA8';
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = plColor;
+  ctx.fillText(`${totalProfit > 0 ? '▲' : totalProfit < 0 ? '▼' : '─'} Profit/Loss: ${sign}${profitPercent}% (${sign}Rp ${Math.abs(totalProfit).toLocaleString('id-ID')})`, 45, 160);
+
+  // Allocation Bar chart
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#8E9AA8';
+  ctx.fillText('ALOKASI ASET SAHAM', 45, 210);
+
+  const barX = 45, barY = 225, barW = 280, barH = 22;
+  drawRoundedRect(ctx, barX, barY, barW, barH, 6);
+  ctx.fillStyle = '#1A1D2C';
+  ctx.fill();
+
+  if (portfolioItems && portfolioItems.length > 0 && portfolioValue > 0) {
+    let currentX = barX;
+    const colors = ['#60A5FA', '#34D399', '#FB7185', '#FBBF24', '#C084FC', '#22D3EE'];
+    ctx.save();
+    drawRoundedRect(ctx, barX, barY, barW, barH, 6);
+    ctx.clip();
+
+    portfolioItems.forEach((item, idx) => {
+      const shareVal = item.currentValue || (item.shares * (item.currentPriceRp || 0));
+      const pct = shareVal / portfolioValue;
+      const segmentW = barW * pct;
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fillRect(currentX, barY, segmentW, barH);
+      currentX += segmentW;
+    });
+    ctx.restore();
+
+    // Allocation Legends below
+    let legendY = 270;
+    portfolioItems.slice(0, 4).forEach((item, idx) => {
+      const shareVal = item.currentValue || (item.shares * (item.currentPriceRp || 0));
+      const pct = Math.round((shareVal / portfolioValue) * 100);
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.beginPath(); ctx.arc(45, legendY - 4, 5, 0, Math.PI * 2); ctx.fill();
+
+      ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(`${item.ticker}`, 60, legendY);
+
+      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#A0AABF';
+      ctx.fillText(`${pct}% (${item.shares} lbr)`, 120, legendY);
+
+      legendY += 28;
+    });
+  } else {
+    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#5A6270';
+    ctx.fillText('Tidak ada aset saham dalam portofolio.', 45, 250);
+  }
+
+  // Vertical Separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(350, 40); ctx.lineTo(350, 380); ctx.stroke();
+
+  // RIGHT PANEL: Stocks Details Table
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('RINCIAN KEPEMILIKAN ASET SAHAM', 380, 60);
+
+  // Table header row
+  const tableYStart = 90;
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#5A6270';
+  ctx.fillText('KODE', 380, tableYStart);
+  ctx.fillText('JUMLAH', 460, tableYStart);
+  ctx.fillText('RATA-RATA', 550, tableYStart);
+  ctx.fillText('HARGA SEKARANG', 660, tableYStart);
+  ctx.textAlign = 'right';
+  ctx.fillText('P/L (%)', 875, tableYStart);
+  ctx.textAlign = 'left';
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(380, tableYStart + 8); ctx.lineTo(875, tableYStart + 8); ctx.stroke();
+
+  if (portfolioItems && portfolioItems.length > 0) {
+    let rowY = tableYStart + 35;
+    portfolioItems.slice(0, 6).forEach(item => {
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(item.ticker, 380, rowY);
+
+      ctx.font = '13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#A0AABF';
+      ctx.fillText(`${item.shares} lbr`, 460, rowY);
+      ctx.fillText(`Rp ${Math.floor(item.avgPriceRp).toLocaleString('id-ID')}`, 550, rowY);
+      ctx.fillText(`Rp ${Math.floor(item.currentPriceRp).toLocaleString('id-ID')}`, 660, rowY);
+
+      // Profit status
+      const plPct = item.profitPercent || 0;
+      const profitText = `${plPct > 0 ? '+' : ''}${plPct}%`;
+      const badgeColor = plPct > 0 ? 'rgba(16, 185, 129, 0.15)' : plPct < 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+      const textCol = plPct > 0 ? '#10B981' : plPct < 0 ? '#EF4444' : '#8E9AA8';
+
+      // Draw P/L badge pill
+      ctx.textAlign = 'right';
+      drawBadge(ctx, 810, rowY - 12, profitText, badgeColor, textCol, 11);
+      ctx.textAlign = 'left';
+
+      // Subtle row border line
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.beginPath(); ctx.moveTo(380, rowY + 10); ctx.lineTo(875, rowY + 10); ctx.stroke();
+
+      rowY += 44;
+    });
+  } else {
+    ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#5A6270';
+    ctx.fillText('Gunakan perintah .buy <kode_saham> <jumlah> untuk berinvestasi.', 380, tableYStart + 50);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Generate kartu kos & kebun properti
+ */
+async function generatePropertyCard(user, wallet, extraData) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0c0d16');
+  bgGrad.addColorStop(0.5, '#151323');
+  bgGrad.addColorStop(1, '#0c0d16');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  const margin = 15;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(12, 11, 23, 0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(139, 92, 246, 0.15)'; // Purple estate tint outline
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // LEFT PANEL: Kos Rental Management
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('STATUS KOSAN & PROPERTI', 45, 60);
+
+  const kos = extraData.kosRental;
+  let roomTitle = 'Kos Biasa / Tanpa Sewa';
+  let roomColor = '#95A5A6';
+  let roomGlow = 'rgba(149, 165, 166, 0.1)';
+  let roomIcon = '🏠';
+
+  if (kos) {
+    if (kos.room_tier === 'KIPAS') { roomTitle = 'Kamar Kipas Angin'; roomColor = '#3498DB'; roomIcon = '💨'; roomGlow = 'rgba(52, 152, 219, 0.15)'; }
+    else if (kos.room_tier === 'AC') { roomTitle = 'Kamar AC Nyaman'; roomColor = '#2ECC71'; roomIcon = '❄️'; roomGlow = 'rgba(46, 204, 113, 0.15)'; }
+    else if (kos.room_tier === 'PENTHOUSE') { roomTitle = 'Penthouse Eksekutif'; roomColor = '#F1C40F'; roomIcon = '👑'; roomGlow = 'rgba(241, 196, 15, 0.2)'; }
+  }
+
+  // Draw Kos Room Card block
+  const kosX = 45, kosY = 85, kosW = 280, kosH = 120;
+  drawRoundedRect(ctx, kosX, kosY, kosW, kosH, 12);
+  ctx.fillStyle = roomGlow;
+  ctx.fill();
+  ctx.strokeStyle = roomColor + '40';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = '36px "DejaVu Sans", sans-serif';
+  ctx.fillText(roomIcon, kosX + 20, kosY + 65);
+
+  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(roomTitle, kosX + 80, kosY + 45);
+
+  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#A0AABF';
+  if (kos) {
+    const endsDate = new Date(kos.ends_at * 1000);
+    const endsStr = endsDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    ctx.fillText(`Masa Sewa s/d:`, kosX + 80, kosY + 75);
+    ctx.fillText(`${endsStr}`, kosX + 80, kosY + 95);
+  } else {
+    ctx.fillText(`Kamar standart non-sewa.`, kosX + 80, kosY + 75);
+    ctx.fillText(`Ketik .kos untuk melihat opsi sewa.`, kosX + 80, kosY + 95);
+  }
+
+  // Upgrades list
+  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#8E9AA8';
+  ctx.fillText('FASILITAS TAMBAHAN KOS', 45, 235);
+
+  const upgrades = extraData.kosUpgrades || [];
+  if (upgrades.length > 0) {
+    let uY = 265;
+    upgrades.slice(0, 4).forEach((upgrade, idx) => {
+      let uLabel = upgrade.upgrade_id || upgrade;
+      // Make it user friendly
+      const mapping = {
+        WIFI: '📶 Internet High-Speed Wifi',
+        BED: '🛏️ Kasur Busa Ortopedik Premium',
+        TV: '📺 Smart TV 4K Ultra HD',
+        DISPENSER: '🚰 Dispenser Air Otomatis'
+      };
+      const label = mapping[uLabel.toUpperCase()] || `🔧 ${uLabel}`;
+      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#10B981';
+      ctx.fillText(`✓ ${label}`, 45, uY);
+      uY += 26;
+    });
+  } else {
+    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#5A6270';
+    ctx.fillText('Kamar belum di-upgrade.', 45, 265);
+    ctx.fillText('Beli fasilitas via .kos upgrade.', 45, 290);
+  }
+
+  // Vertical Separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(350, 40); ctx.lineTo(350, 380); ctx.stroke();
+
+  // RIGHT PANEL: Garden Slots Grid
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('KEBUN DIGITAL ANDA', 380, 60);
+
+  const slots = extraData.gardenSlots || [];
+  const startGX = 380, startGY = 85, gridWidth = 240, gridHeight = 135;
+
+  const drawGardenSlot = (x, y, w, h, slotIndex, slotData) => {
+    drawRoundedRect(ctx, x, y, w, h, 10);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Slot header
+    ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#8E9AA8';
+    ctx.fillText(`SLOT ${slotIndex + 1}`, x + 12, y + 22);
+
+    if (slotData && slotData.seed_id) {
+      // Map seed to emoji
+      const seedMapping = {
+        PADI: { emoji: '🌾', name: 'Padi' },
+        JAGUNG: { emoji: '🌽', name: 'Jagung' },
+        CABAI: { emoji: '🌶️', name: 'Cabai' },
+        TOMAT: { emoji: '🍅', name: 'Tomat' },
+        WORTEL: { emoji: '🥕', name: 'Wortel' }
+      };
+      const plant = seedMapping[slotData.seed_id.toUpperCase()] || { emoji: '🌱', name: slotData.seed_id };
+      
+      ctx.font = '24px "DejaVu Sans", sans-serif';
+      ctx.fillText(plant.emoji, x + 12, y + 60);
+
+      ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(plant.name, x + 50, y + 48);
+
+      // Water count
+      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#3498DB';
+      ctx.fillText(`💧 Air: ${slotData.water_count || 0}/3`, x + 50, y + 66);
+
+      // Grow progress logic
+      let pct = 0;
+      try {
+        const config = require('./config');
+        const seedConfig = config.garden.SEEDS[slotData.seed_id.toUpperCase()];
+        if (seedConfig) {
+          const duration = seedConfig.grow_time_seconds;
+          const plantedAt = slotData.planted_at;
+          const elapsed = Math.floor(Date.now() / 1000) - plantedAt;
+          pct = Math.min(1, Math.max(0, elapsed / duration));
+        }
+      } catch (e) {
+        pct = 0.5; // fallback
+      }
+
+      const isReady = pct >= 1;
+      const progressColorStart = isReady ? '#00E676' : '#E91E63';
+      const progressColorEnd = isReady ? '#00E676' : '#FFD54F';
+      const progressText = isReady ? 'SIAP PANEN' : `${Math.round(pct * 100)}% TUMBUH`;
+      drawProgressBar(ctx, x + 12, y + 80, w - 24, 14, pct, progressColorStart, progressColorEnd, null, progressText);
+
+    } else {
+      ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#5A6270';
+      ctx.fillText('Tanah Kosong', x + 12, y + 55);
+      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.fillText('Ketik .plant untuk menanam', x + 12, y + 75);
+    }
+  };
+
+  // Render 4 slots (2 columns x 2 rows)
+  for (let i = 0; i < 4; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const sX = startGX + col * (gridWidth + 15);
+    const sY = startGY + row * (gridHeight + 15);
+    
+    // Find slot info
+    const slotData = slots.find(s => s.slot_index === i);
+    drawGardenSlot(sX, sY, gridWidth, gridHeight, i, slotData);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Generate visual leaderboard card
+ */
+async function generateLeaderboardCard(title, listData, unitLabel = 'Rp') {
+  const width = 920;
+  const height = 500;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#0a0d16');
+  bgGrad.addColorStop(0.5, '#131122');
+  bgGrad.addColorStop(1, '#0a0d16');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  const margin = 15;
+  drawRoundedRect(ctx, margin, margin, width - margin * 2, height - margin * 2, 20);
+  ctx.fillStyle = 'rgba(12, 11, 23, 0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)'; // Indigo leaderboard tint
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText(title.toUpperCase(), width / 2, 55);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(45, 75); ctx.lineTo(width - 45, 75); ctx.stroke();
+
+  // Format helper
+  const formatValue = (val) => {
+    if (unitLabel === 'Rp') {
+      return 'Rp ' + Math.floor(val).toLocaleString('id-ID');
+    }
+    return Math.floor(val).toLocaleString('id-ID') + ' ' + unitLabel;
+  };
+
+  // Slice list data to top 10
+  const top10 = listData.slice(0, 10);
+  const first = top10.find(u => u.rank === 1);
+  const second = top10.find(u => u.rank === 2);
+  const third = top10.find(u => u.rank === 3);
+
+  // LEFT AREA: Juara Podium (Draw juaras 1, 2, 3)
+  const drawPodiumMember = async (pX, pY, pW, pH, member, color, rankNum, crownEmoji) => {
+    if (!member) return;
+
+    // Draw avatar above podium
+    const avX = pX + pW / 2;
+    const avY = pY - 45;
+    const avR = 30;
+
+    let avImg = null;
+    if (member.avatarURL) {
+      avImg = await loadImageSafe(member.avatarURL);
+    }
+
+    if (avImg) {
+      drawCircleAvatar(ctx, avImg, avX, avY, avR, color, `${color}40`);
+    } else {
+      ctx.beginPath(); ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#111'; ctx.textAlign = 'center';
+      ctx.fillText(member.name.charAt(0).toUpperCase(), avX, avY + 7);
+    }
+
+    // Draw podium block
+    drawRoundedRect(ctx, pX, pY, pW, pH, 10);
+    ctx.fillStyle = color + '22';
+    ctx.fill();
+    ctx.strokeStyle = color + '60';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw crown / ranking indicator
+    ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(crownEmoji, avX, avY - avR - 10);
+
+    // Rank Number
+    ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = color;
+    ctx.fillText(rankNum.toString(), avX, pY + pH / 2 + 10);
+
+    // Name
+    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(member.name.substring(0, 14), avX, pY + pH - 35);
+
+    // Value
+    ctx.font = '10px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#A0AABF';
+    ctx.fillText(formatValue(member.value), avX, pY + pH - 15);
+  };
+
+  // Draw Juara 2 (Silver)
+  await drawPodiumMember(45, 240, 95, 180, second, '#BDC3C7', 2, '🥈');
+  // Draw Juara 1 (Gold)
+  await drawPodiumMember(155, 200, 110, 220, first, '#FFD700', 1, '👑');
+  // Draw Juara 3 (Bronze)
+  await drawPodiumMember(280, 260, 95, 160, third, '#E67E22', 3, '🥉');
+
+  // Separator between Podium and List
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(400, 95); ctx.lineTo(400, 460); ctx.stroke();
+
+  // RIGHT AREA: Rank 4 to 10 List
+  const listX = 425;
+  let listY = 115;
+  const listRowH = 48;
+
+  ctx.textAlign = 'left';
+  const remaining = top10.slice(3); // ranks 4-10
+  if (remaining.length > 0) {
+    for (const item of remaining) {
+      // Background row capsule
+      drawRoundedRect(ctx, listX, listY - 14, 435, listRowH - 8, 6);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
+      ctx.fill();
+
+      // Rank
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#8E9AA8';
+      ctx.fillText(`#${item.rank}`, listX + 10, listY + 10);
+
+      // Avatar mini
+      const mAvX = listX + 50, mAvY = listY + 5, mAvR = 14;
+      let mAvImg = null;
+      if (item.avatarURL) {
+        mAvImg = await loadImageSafe(item.avatarURL);
+      }
+      if (mAvImg) {
+        drawCircleAvatar(ctx, mAvImg, mAvX, mAvY, mAvR, '#99AAB5', null);
+      } else {
+        ctx.beginPath(); ctx.arc(mAvX, mAvY, mAvR, 0, Math.PI * 2);
+        ctx.fillStyle = '#555'; ctx.fill();
+      }
+
+      // Name
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(item.name.substring(0, 18), listX + 80, listY + 10);
+
+      // Value
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#10B981';
+      ctx.textAlign = 'right';
+      ctx.fillText(formatValue(item.value), listX + 425, listY + 10);
+      ctx.textAlign = 'left';
+
+      listY += listRowH;
+    }
+  } else {
+    ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#5A6270';
+    ctx.fillText('Tidak ada kontestan tambahan.', listX + 15, listY + 50);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Discord Attachment wrappers for new canvas cards
+ */
+async function getProfileDashboardAttachment(user, wallet, bankBalance, portfolioValue, extraData) {
+  try {
+    const buffer = await generateProfileDashboardCard(user, wallet, bankBalance, portfolioValue, extraData);
+    return new AttachmentBuilder(buffer, { name: 'dashboard_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating dashboard attachment:', e);
+    return null;
+  }
+}
+
+async function getPortfolioAttachment(user, wallet, portfolioValue, portfolioItems) {
+  try {
+    const buffer = await generatePortfolioCard(user, wallet, portfolioValue, portfolioItems);
+    return new AttachmentBuilder(buffer, { name: 'portfolio_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating portfolio attachment:', e);
+    return null;
+  }
+}
+
+async function getPropertyAttachment(user, wallet, extraData) {
+  try {
+    const buffer = await generatePropertyCard(user, wallet, extraData);
+    return new AttachmentBuilder(buffer, { name: 'property_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating property attachment:', e);
+    return null;
+  }
+}
+
+async function getLeaderboardAttachment(title, listData, unitLabel = 'Rp') {
+  try {
+    const buffer = await generateLeaderboardCard(title, listData, unitLabel);
+    return new AttachmentBuilder(buffer, { name: 'leaderboard_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating leaderboard attachment:', e);
+    return null;
+  }
+}
+
 // ═══════════════════════════════════════════════
 // HELPER: Get GACHA_SPECIES data
 // ═══════════════════════════════════════════════
 
 function getGachaSpecies(petType) {
+
   try {
     const pet = require('./pet');
     return pet.GACHA_SPECIES[petType.toUpperCase()] || null;
@@ -2840,6 +3606,10 @@ module.exports = {
   generateStage2ChestCard,
   generateStage2WaterfallCard,
   generateStage2ResultCard,
+  generateProfileDashboardCard,
+  generatePortfolioCard,
+  generatePropertyCard,
+  generateLeaderboardCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
@@ -2854,6 +3624,10 @@ module.exports = {
   getStage2ChestAttachment,
   getStage2WaterfallAttachment,
   getStage2ResultAttachment,
+  getProfileDashboardAttachment,
+  getPortfolioAttachment,
+  getPropertyAttachment,
+  getLeaderboardAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

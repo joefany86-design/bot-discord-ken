@@ -1,6 +1,7 @@
 const db = require('./database');
 const pet = require('./pet');
 const embeds = require('./embeds');
+const petCard = require('./petCard');
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -304,7 +305,11 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
   if (channel) {
     const standings = getLeagueStandingsData(guildId);
     let standingsCardAttachment = null;
-    // Standings card disabled
+    try {
+      standingsCardAttachment = await petCard.getStandingsCardAttachment(standings, channel.guild);
+    } catch (e) {
+      console.error('[Tournament] Gagal membuat standings card awal:', e);
+    }
 
     const queueText = getMatchQueueString(guildId);
 
@@ -388,7 +393,11 @@ async function executeNextMatch(guildId, client) {
 
       const standings = getLeagueStandingsData(guildId);
       let standingsCardAttachment = null;
-      // Standings card disabled
+      try {
+        standingsCardAttachment = await petCard.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal membuat standings card update:', e);
+      }
 
       const queueText = getMatchQueueString(guildId);
 
@@ -620,7 +629,11 @@ async function executeNextMatch(guildId, client) {
 
       const standings = getLeagueStandingsData(guildId);
       let standingsCardAttachment = null;
-      // Standings card disabled
+      try {
+        standingsCardAttachment = await petCard.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal membuat standings card ronde transition:', e);
+      }
 
       const queueText = getMatchQueueString(guildId);
 
@@ -1180,7 +1193,11 @@ async function endMatch(matchId, winnerId, reason, client) {
 
       const standings = getLeagueStandingsData(match.guildId);
       let standingsCardAttachment = null;
-      // Standings card disabled
+      try {
+        standingsCardAttachment = await petCard.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal membuat standings card match selesai:', e);
+      }
 
       const queueText = getMatchQueueString(match.guildId);
 
@@ -1354,8 +1371,12 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
   const catalogChanId = '1510138369923874958';
 
   const standings = getLeagueStandingsData(guildId);
-  let standingsCardBuffer = null;
-  // Final standings card disabled
+  let standingsCardAttachment = null;
+  try {
+    standingsCardAttachment = await petCard.getStandingsCardAttachment(standings, guild);
+  } catch (e) {
+    console.error('[Tournament] Gagal membuat standings card final:', e);
+  }
 
   const formatRewardLine = (coins, item, qty) => {
     const itemText = (item && item.toUpperCase() !== 'NONE') ? ` + ${qty}x \`${item}\`` : '';
@@ -1380,7 +1401,7 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       { name: '🥈 JUARA 2 (RUNNER-UP)', value: runnerPet ? `🥈 **${runnerPet.pet_name}** (<@${runnerUpId}>)` : '*Tidak ada.*', inline: false },
       { name: '🥉 JUARA 3', value: thirdPet ? `🥉 **${thirdPet.pet_name}** (<@${thirdPlaceId}>)` : '*Tidak ada.*', inline: false },
       { name: '🎁 Hadiah Liga Otomatis (Distributed)', value: rewardsSummaryText, inline: false },
-      { name: '📊 Klasemen Akhir Liga (Final Standings)', value: standingsCardBuffer ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
+      { name: '📊 Klasemen Akhir Liga (Final Standings)', value: standingsCardAttachment ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
       { name: '📢 Status Hadiah', value: `Hadiah koin dan item di atas telah dikirimkan secara otomatis ke tabungan bank dan inventaris masing-masing pemenang & peserta.`, inline: false }
     )
     .setFooter({ text: 'Pet PvP League • Completed' })
@@ -1391,9 +1412,9 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
       if (announceChan && typeof announceChan.send === 'function') {
         const announcePayload = { content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } };
-        if (standingsCardBuffer) {
+        if (standingsCardAttachment) {
           celebrationEmbed.setImage('attachment://standings_card.png');
-          announcePayload.files = [new AttachmentBuilder(standingsCardBuffer, { name: 'standings_card.png' })];
+          announcePayload.files = [standingsCardAttachment];
         }
         await announceChan.send(announcePayload).catch(() => { });
       }
@@ -1402,9 +1423,9 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       const catalogChan = guild.channels.cache.get(catalogChanId) || await guild.channels.fetch(catalogChanId).catch(() => null);
       if (catalogChan && typeof catalogChan.send === 'function') {
         const catalogPayload = { embeds: [celebrationEmbed] };
-        if (standingsCardBuffer) {
+        if (standingsCardAttachment) {
           celebrationEmbed.setImage('attachment://standings_card.png');
-          catalogPayload.files = [new AttachmentBuilder(standingsCardBuffer, { name: 'standings_card.png' })];
+          catalogPayload.files = [standingsCardAttachment];
         }
         await catalogChan.send(catalogPayload).catch(() => { });
       }
