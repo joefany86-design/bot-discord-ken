@@ -302,7 +302,15 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
   })();
 
   if (channel) {
-    const standingsText = getLeagueStandingsString(guildId);
+    const standings = getLeagueStandingsData(guildId);
+    let standingsCardAttachment = null;
+    try {
+      const petCardModule = require('./petCard');
+      standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
+    } catch (e) {
+      console.error('[Tournament] Gagal memuat standings card:', e);
+    }
+
     const queueText = getMatchQueueString(guildId);
 
     const bracketEmbed = new EmbedBuilder()
@@ -313,13 +321,19 @@ async function closeRegistrationAndGenerateBracket(guildId, client) {
         `▬`.repeat(15)
       )
       .addFields(
-        { name: '🏆 Klasemen Awal (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+        { name: '🏆 Klasemen Awal (Standings)', value: standingsCardAttachment ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
         { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
       )
       .setFooter({ text: 'Pet PvP League • Round Robin Seeding' })
       .setTimestamp();
 
-    await channel.send({ embeds: [bracketEmbed] });
+    const sendPayload = { embeds: [bracketEmbed] };
+    if (standingsCardAttachment) {
+      bracketEmbed.setImage('attachment://standings_card.png');
+      sendPayload.files = [standingsCardAttachment];
+    }
+
+    await channel.send(sendPayload);
   }
 
   // Mulai pertandingan pertama
@@ -377,7 +391,15 @@ async function executeNextMatch(guildId, client) {
         await channel.send(`⚠️ **Match #${match.match_id}:** ${reason}`).catch(() => {});
       }
 
-      const standingsText = getLeagueStandingsString(guildId);
+      const standings = getLeagueStandingsData(guildId);
+      let standingsCardAttachment = null;
+      try {
+        const petCardModule = require('./petCard');
+        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal memuat standings card:', e);
+      }
+
       const queueText = getMatchQueueString(guildId);
 
       const updateEmbed = new EmbedBuilder()
@@ -385,11 +407,18 @@ async function executeNextMatch(guildId, client) {
         .setTitle('📊 UPDATE KLASEMEN LIGA PET 📊')
         .setDescription(`Pertandingan Match #${match.match_id} telah selesai (Walkover/DQ).\n▬`.repeat(15))
         .addFields(
-          { name: '🏆 Klasemen Sementara (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+          { name: '🏆 Klasemen Sementara (Standings)', value: standingsCardAttachment ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
           { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
         )
         .setTimestamp();
-      await channel.send({ embeds: [updateEmbed] }).catch(() => { });
+
+      const sendPayload = { embeds: [updateEmbed] };
+      if (standingsCardAttachment) {
+        updateEmbed.setImage('attachment://standings_card.png');
+        sendPayload.files = [standingsCardAttachment];
+      }
+
+      await channel.send(sendPayload).catch(() => { });
 
       updateAdminPanel(guildId, client).catch(() => {});
 
@@ -599,7 +628,15 @@ async function executeNextMatch(guildId, client) {
 
       const roundLabel = nextRound === maxRound ? '🏆 ROUND AKHIR (FINAL ROUND) 🏆' : `ROUND ${nextRound}`;
 
-      const standingsText = getLeagueStandingsString(guildId);
+      const standings = getLeagueStandingsData(guildId);
+      let standingsCardAttachment = null;
+      try {
+        const petCardModule = require('./petCard');
+        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal memuat standings card:', e);
+      }
+
       const queueText = getMatchQueueString(guildId);
 
       const newBracketEmbed = new EmbedBuilder()
@@ -611,13 +648,19 @@ async function executeNextMatch(guildId, client) {
           `▬`.repeat(15)
         )
         .addFields(
-          { name: '🏆 Klasemen Sementara (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+          { name: '🏆 Klasemen Sementara (Standings)', value: standingsCardAttachment ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
           { name: '📋 Antrean Pertandingan (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
         )
         .setFooter({ text: 'Pet PvP League • Standings Transition' })
         .setTimestamp();
 
-      await channel.send({ embeds: [newBracketEmbed] });
+      const sendPayload = { embeds: [newBracketEmbed] };
+      if (standingsCardAttachment) {
+        newBracketEmbed.setImage('attachment://standings_card.png');
+        sendPayload.files = [standingsCardAttachment];
+      }
+
+      await channel.send(sendPayload);
 
       // Jalankan pertandingan setelah 60 detik jeda
       setTimeout(() => {
@@ -1166,7 +1209,15 @@ async function endMatch(matchId, winnerId, reason, client) {
       }
       await channel.send(mainSendPayload).catch(() => {});
 
-      const standingsText = getLeagueStandingsString(match.guildId);
+      const standings = getLeagueStandingsData(match.guildId);
+      let standingsCardAttachment = null;
+      try {
+        const petCardModule = require('./petCard');
+        standingsCardAttachment = await petCardModule.getStandingsCardAttachment(standings, channel.guild);
+      } catch (e) {
+        console.error('[Tournament] Gagal memuat standings card:', e);
+      }
+
       const queueText = getMatchQueueString(match.guildId);
 
       const updateEmbed = new EmbedBuilder()
@@ -1177,11 +1228,17 @@ async function endMatch(matchId, winnerId, reason, client) {
           `▬`.repeat(15)
         )
         .addFields(
-          { name: '🏆 Klasemen Sementara (Standings)', value: `\`\`\`text\n${standingsText}\n\`\`\``, inline: false },
+          { name: '🏆 Klasemen Sementara (Standings)', value: standingsCardAttachment ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(match.guildId)}\n\`\`\``, inline: false },
           { name: '📋 Jadwal & Antrean Match (Queue)', value: queueText || '*Tidak ada antrean.*', inline: false }
         )
         .setTimestamp();
-      await channel.send({ embeds: [updateEmbed] }).catch(() => { });
+
+      const sendPayload = { embeds: [updateEmbed] };
+      if (standingsCardAttachment) {
+        updateEmbed.setImage('attachment://standings_card.png');
+        sendPayload.files = [standingsCardAttachment];
+      }
+      await channel.send(sendPayload).catch(() => { });
     }
   }
 
@@ -1332,7 +1389,14 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
   const announceChanId = config.ANNOUNCEMENT_CHANNEL_ID || '1511871394210779247';
   const catalogChanId = '1510138369923874958';
 
-  const finalStandings = getLeagueStandingsString(guildId);
+  const standings = getLeagueStandingsData(guildId);
+  let standingsCardBuffer = null;
+  try {
+    const petCardModule = require('./petCard');
+    standingsCardBuffer = await petCardModule.generateStandingsCard(standings, guild);
+  } catch (e) {
+    console.error('[Tournament] Gagal membuat standings card buffer:', e);
+  }
 
   const formatRewardLine = (coins, item, qty) => {
     const itemText = (item && item.toUpperCase() !== 'NONE') ? ` + ${qty}x \`${item}\`` : '';
@@ -1357,7 +1421,7 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
       { name: '🥈 JUARA 2 (RUNNER-UP)', value: runnerPet ? `🥈 **${runnerPet.pet_name}** (<@${runnerUpId}>)` : '*Tidak ada.*', inline: false },
       { name: '🥉 JUARA 3', value: thirdPet ? `🥉 **${thirdPet.pet_name}** (<@${thirdPlaceId}>)` : '*Tidak ada.*', inline: false },
       { name: '🎁 Hadiah Liga Otomatis (Distributed)', value: rewardsSummaryText, inline: false },
-      { name: '📊 Klasemen Akhir Liga (Final Standings)', value: `\`\`\`text\n${finalStandings}\n\`\`\``, inline: false },
+      { name: '📊 Klasemen Akhir Liga (Final Standings)', value: standingsCardBuffer ? '*(Terlampir dalam kartu klasemen visual di bawah)*' : `\`\`\`text\n${getLeagueStandingsString(guildId)}\n\`\`\``, inline: false },
       { name: '📢 Status Hadiah', value: `Hadiah koin dan item di atas telah dikirimkan secara otomatis ke tabungan bank dan inventaris masing-masing pemenang & peserta.`, inline: false }
     )
     .setFooter({ text: 'Pet PvP League • Completed' })
@@ -1367,13 +1431,23 @@ async function endTournament(guildId, championId, runnerUpId, client, thirdPlace
     if (announceChanId) {
       const announceChan = guild.channels.cache.get(announceChanId) || await guild.channels.fetch(announceChanId).catch(() => null);
       if (announceChan && typeof announceChan.send === 'function') {
-        await announceChan.send({ content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } }).catch(() => { });
+        const announcePayload = { content: '@everyone', embeds: [celebrationEmbed], allowedMentions: { parse: ['everyone'] } };
+        if (standingsCardBuffer) {
+          celebrationEmbed.setImage('attachment://standings_card.png');
+          announcePayload.files = [new AttachmentBuilder(standingsCardBuffer, { name: 'standings_card.png' })];
+        }
+        await announceChan.send(announcePayload).catch(() => { });
       }
     }
     if (catalogChanId) {
       const catalogChan = guild.channels.cache.get(catalogChanId) || await guild.channels.fetch(catalogChanId).catch(() => null);
       if (catalogChan && typeof catalogChan.send === 'function') {
-        await catalogChan.send({ embeds: [celebrationEmbed] }).catch(() => { });
+        const catalogPayload = { embeds: [celebrationEmbed] };
+        if (standingsCardBuffer) {
+          celebrationEmbed.setImage('attachment://standings_card.png');
+          catalogPayload.files = [new AttachmentBuilder(standingsCardBuffer, { name: 'standings_card.png' })];
+        }
+        await catalogChan.send(catalogPayload).catch(() => { });
       }
     }
   }
@@ -2210,10 +2284,7 @@ async function extendRegistration(guildId, mins, client) {
   await updateAdminPanel(guildId, client).catch(() => { });
 }
 
-/**
- * Menyusun papan klasemen liga saat ini dalam format tabel ASCII yang rapi.
- */
-function getLeagueStandingsString(guildId) {
+function getLeagueStandingsData(guildId) {
   const participants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [guildId]);
   const matches = db.all('SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'COMPLETED\'', [guildId]);
 
@@ -2246,6 +2317,14 @@ function getLeagueStandingsString(guildId) {
     if (b.won !== a.won) return b.won - a.won;
     return a.petName.localeCompare(b.petName);
   });
+  return standings;
+}
+
+/**
+ * Menyusun papan klasemen liga saat ini dalam format tabel ASCII yang rapi.
+ */
+function getLeagueStandingsString(guildId) {
+  const standings = getLeagueStandingsData(guildId);
 
   // Buat tabel klasemen
   let table = '🏆 KLASEMEN LIGA PET 🏆\n';

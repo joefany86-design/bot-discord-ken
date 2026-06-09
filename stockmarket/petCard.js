@@ -899,13 +899,186 @@ async function getPvpCardAttachment(pet1, pet2, result) {
   }
 }
 
+/**
+ * Generate visual tournament standings card
+ * @param {Array} standings List of participant standing objects
+ * @param {Discord.Guild} guild Discord guild for resolving names
+ */
+async function generateStandingsCard(standings, guild) {
+  const rowHeight = 44;
+  const headerHeight = 90;
+  const footerHeight = 40;
+  const maxRows = Math.min(10, standings.length);
+  const canvasHeight = headerHeight + (maxRows * rowHeight) + footerHeight;
+
+  const canvas = createCanvas(CARD_WIDTH, canvasHeight);
+  const ctx = canvas.getContext('2d');
+
+  // Background gradient - deep dark celestial arena
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, canvasHeight);
+  bgGrad.addColorStop(0, '#0a0a1a');
+  bgGrad.addColorStop(0.5, '#150a2e');
+  bgGrad.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, canvasHeight);
+
+  // Decorative border glow
+  drawRoundedRect(ctx, 10, 10, CARD_WIDTH - 20, canvasHeight - 20, 16);
+  ctx.fillStyle = 'rgba(10,10,30,0.6)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(99,102,241,0.2)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+  const titleGrad = ctx.createLinearGradient(CARD_WIDTH / 2 - 200, 0, CARD_WIDTH / 2 + 200, 0);
+  titleGrad.addColorStop(0, '#FFD700');
+  titleGrad.addColorStop(0.5, '#FF8A80');
+  titleGrad.addColorStop(1, '#CE93D8');
+  ctx.fillStyle = titleGrad;
+  ctx.textAlign = 'center';
+  ctx.fillText('KLASEMEN LIGA PET - ADMIN CUP', CARD_WIDTH / 2, 48);
+
+  // Column Headers Configuration
+  const columns = [
+    { name: 'Pos', x: 50, align: 'center' },
+    { name: 'Pet Name', x: 110, align: 'left' },
+    { name: 'Pawang (Owner)', x: 340, align: 'left' },
+    { name: 'P', x: 580, align: 'center' },
+    { name: 'W', x: 660, align: 'center' },
+    { name: 'L', x: 740, align: 'center' },
+    { name: 'Pts', x: 830, align: 'center' }
+  ];
+
+  // Draw Header Row
+  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+
+  columns.forEach(col => {
+    ctx.textAlign = col.align;
+    ctx.fillText(col.name.toUpperCase(), col.x, headerHeight - 12);
+  });
+
+  // Header bottom border line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(30, headerHeight - 4);
+  ctx.lineTo(CARD_WIDTH - 30, headerHeight - 4);
+  ctx.stroke();
+
+  // Draw standings rows
+  for (let i = 0; i < maxRows; i++) {
+    const s = standings[i];
+    const y = headerHeight + (i * rowHeight) + 26;
+
+    // Alternate row backgrounds (zebra striping)
+    if (i % 2 === 0) {
+      drawRoundedRect(ctx, 30, headerHeight + (i * rowHeight), CARD_WIDTH - 60, rowHeight - 4, 8);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.fill();
+    }
+
+    // Resolve pawang name
+    let pawangName = 'Pawang';
+    if (guild) {
+      try {
+        const member = guild.members.cache.get(s.userId);
+        if (member) {
+          pawangName = member.user.username;
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    // Colors per rank
+    let rankColor = '#FFFFFF';
+    let rowBgHighlight = null;
+    if (i === 0) {
+      rankColor = '#FFD700'; // Gold
+      rowBgHighlight = 'rgba(255, 215, 0, 0.05)';
+    } else if (i === 1) {
+      rankColor = '#C0C0C0'; // Silver
+      rowBgHighlight = 'rgba(192, 192, 192, 0.05)';
+    } else if (i === 2) {
+      rankColor = '#CD7F32'; // Bronze
+      rowBgHighlight = 'rgba(205, 127, 50, 0.05)';
+    }
+
+    if (rowBgHighlight) {
+      drawRoundedRect(ctx, 30, headerHeight + (i * rowHeight), CARD_WIDTH - 60, rowHeight - 4, 8);
+      ctx.fillStyle = rowBgHighlight;
+      ctx.fill();
+      ctx.strokeStyle = rankColor + '22'; // 10% opacity border
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Rank (Pos)
+    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = rankColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(`${i + 1}`, columns[0].x, y);
+
+    // Pet Name
+    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    let petName = s.petName;
+    if (petName.length > 20) petName = petName.slice(0, 18) + '…';
+    ctx.fillText(petName, columns[1].x, y);
+
+    // Pawang (Owner)
+    ctx.font = '13px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    let ownerText = pawangName;
+    if (ownerText.length > 20) ownerText = ownerText.slice(0, 18) + '…';
+    ctx.fillText(ownerText, columns[2].x, y);
+
+    // Stats
+    ctx.font = '14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${s.played}`, columns[3].x, y);
+    ctx.fillText(`${s.won}`, columns[4].x, y);
+    ctx.fillText(`${s.lost}`, columns[5].x, y);
+
+    // Points
+    ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = rankColor;
+    ctx.fillText(`${s.points}`, columns[6].x, y);
+  }
+
+  // Footer Watermark
+  ctx.font = '10px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Kosan 1A RPG · Pet PvP League Standings', CARD_WIDTH / 2, canvasHeight - 15);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStandingsCardAttachment(standings, guild) {
+  try {
+    const buffer = await generateStandingsCard(standings, guild);
+    return new AttachmentBuilder(buffer, { name: 'standings_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating standings card:', e);
+    return null;
+  }
+}
 
 module.exports = {
   generatePetCard,
   generatePvpCard,
+  generateStandingsCard,
   getPetCardAttachment,
   getPvpCardAttachment,
+  getStandingsCardAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
 };
+
