@@ -10089,6 +10089,17 @@ async function handleEconomyCommands(message, client) {
     return true;
   }
 
+  // ── PROTEKSI AKTIF PET SAFARI DI CHANNEL ──
+  const safariLocks = client.safariLocks = client.safariLocks || new Map();
+  if (safariLocks.has(message.channelId)) {
+    await message.delete().catch(() => {});
+    const warnMsg = await message.channel.send({
+      content: `⚠️ <@${author.id}>, **Pet Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai sebelum menggunakan perintah bot.`
+    }).catch(() => null);
+    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+    return true;
+  }
+
   // ── PROTEKSI AKTIF HEIST DI CHANNEL 1508417228624887928 ──
   if (message.channelId === '1508417228624887928') {
     const activeLobby = robbery.activeHeists.get(guildId);

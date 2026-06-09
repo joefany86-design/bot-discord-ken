@@ -10,6 +10,13 @@ const petCard = require('./petCard');
 const activeSafaris = new Map();
 const safariCooldowns = new Map();
 
+// Helper to release channel lock for Safari
+function releaseLock(client, channelId) {
+  if (client && client.safariLocks) {
+    client.safariLocks.delete(channelId);
+  }
+}
+
 // Konfigurasi Biome Safari
 const BIOMES = {
   forest: {
@@ -162,6 +169,13 @@ async function handlePetSafariCommand(message, client, args) {
     return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu **${secondsLeft} detik** lagi.` });
   }
 
+  // Check and set channel lock for Safari
+  const safariLocks = client.safariLocks = client.safariLocks || new Map();
+  if (safariLocks.has(message.channelId)) {
+    return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
+  }
+  safariLocks.set(message.channelId, author.id);
+
   // Generate the visual attachment using napi-rs/canvas
   const attachment = await petCard.getSafariLobbyAttachment(message.guild.name);
 
@@ -201,6 +215,7 @@ async function handlePetSafariCommand(message, client, args) {
 
       if (i.customId === 'safari_biome_cancel') {
         collector.stop();
+        releaseLock(client, message.channelId);
         return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [], files: [] });
       }
 
@@ -213,6 +228,7 @@ async function handlePetSafariCommand(message, client, args) {
       if (biome.cost > 0) {
         const wallet = economy.getWallet(author.id, guildId);
         if (wallet.balance < biome.cost) {
+          releaseLock(client, message.channelId);
           return i.reply({ content: `❌ Saldo koin Anda tidak mencukupi untuk masuk ke biome ini! Dibutuhkan **Rp ${biome.cost.toLocaleString('id-ID')}**.`, flags: 64 });
         }
         economy.subtractBalance(author.id, guildId, biome.cost, 'PET_SAFARI_ENTRY');
@@ -229,12 +245,14 @@ async function handlePetSafariCommand(message, client, args) {
     } catch (err) {
       console.error('Error in biome collector:', err);
       activeSafaris.delete(author.id);
+      releaseLock(client, message.channelId);
       await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan interaksi atau koneksi.', flags: 64 }).catch(() => {});
     }
   });
 
   collector.on('end', async (collected, reason) => {
     if (reason === 'time') {
+      releaseLock(client, message.channelId);
       await replyMsg.edit({ content: '⏳ Pemilihan wilayah safari kedaluwarsa karena tidak ada respon.', embeds: [], components: [], files: [] }).catch(() => {});
     }
   });
@@ -252,6 +270,7 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
     userId: author.id,
     guildId,
     biome: biomeKey,
+    channelId: replyMsg.channelId,
     pet: wildPet,
     balls: 5,
     baits: 3,
@@ -385,6 +404,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   turnCollector.on('end', async (collected, reason) => {
     if (reason === 'time') {
       activeSafaris.delete(author.id);
+      releaseLock(client, state.channelId);
       await updatedMsg.edit({ content: `⏳ Sesi Safari berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`, embeds: [], components: [] }).catch(() => {});
     }
   });
@@ -407,6 +427,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
 
   if (action === 'safari_act_flee') {
     activeSafaris.delete(author.id);
+    releaseLock(client, state.channelId);
     return interaction.update({ content: '🏃‍♂️ Anda melarikan diri dari wilayah safari secara aman.', embeds: [], components: [] });
   }
 
@@ -415,6 +436,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     // 20% Peluang Kaget & Kabur
     if (Math.random() < 0.20) {
       activeSafaris.delete(author.id);
+      releaseLock(client, state.channelId);
       return interaction.update({
         content: `💨 **Pet Terkejut!** Langkah kaki Anda terlalu berisik. **${state.pet.typeName}** terkejut dan langsung kabur terbirit-birit ke dalam semak-semak!`,
         embeds: [],
@@ -454,6 +476,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
         activeSafaris.delete(author.id);
+        releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Saat Anda menyuapkan umpan, gerakan Anda mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`,
           embeds: [],
@@ -487,6 +510,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
         activeSafaris.delete(author.id);
+        releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuatnya takut. **${state.pet.typeName}** terkejut dan langsung kabur!`,
           embeds: [],
@@ -529,6 +553,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     // Habis Bola = Kalah
     if (state.balls <= 0) {
       activeSafaris.delete(author.id);
+      releaseLock(client, state.channelId);
       return interaction.update({
         content: `😢 **Safari Ball Habis!** Anda kehabisan bola safari. **${state.pet.typeName}** liar berjalan santai menjauh ke dalam hutan gelap.`,
         embeds: [],
@@ -541,6 +566,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
       if (Math.random() < finalEscapeChance) {
         activeSafaris.delete(author.id);
+        releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Guncangan bola membuatnya ketakutan. **${state.pet.typeName}** melompat cepat dan menghilang di antara semak-semak!`,
           embeds: [],
@@ -624,6 +650,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
           )
           .setTimestamp();
 
+        releaseLock(client, state.channelId);
         return iChoice.update({ embeds: [releaseEmbed], components: [] });
       }
 
@@ -717,6 +744,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             .setThumbnail(embeds.getPetImage(state.pet))
             .setTimestamp();
 
+          releaseLock(client, state.channelId);
           await modalInteraction.reply({ embeds: [adoptEmbed] });
           await updatedMsg.delete().catch(() => {});
         } catch (errModal) {
@@ -750,6 +778,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
               )
               .setTimestamp();
 
+            releaseLock(client, state.channelId);
             await replyMsg.reply({ embeds: [adoptEmbed] }).catch(() => {});
             await updatedMsg.delete().catch(() => {});
           } else {
@@ -759,6 +788,19 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
       }
     } catch (err) {
       console.error('Error choice handling:', err);
+    }
+  });
+
+  choiceCollector.on('end', async (collected, reason) => {
+    if (!choiceProcessed) {
+      activeSafaris.delete(author.id);
+      releaseLock(client, state.channelId);
+      // Disable buttons on updatedMsg
+      const disabledRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('safari_choice_adopt').setLabel('📥 Adopsi').setStyle(ButtonStyle.Success).setDisabled(true),
+        new ButtonBuilder().setCustomId('safari_choice_release').setLabel('💰 Rilis & Jual').setStyle(ButtonStyle.Primary).setDisabled(true)
+      );
+      await updatedMsg.edit({ content: '⏳ Keputusan adopsi/rilis kedaluwarsa karena tidak ada respon. Pet liar melarikan diri kembali ke hutan!', components: [disabledRow] }).catch(() => {});
     }
   });
 }
