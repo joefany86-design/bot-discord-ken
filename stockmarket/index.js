@@ -6610,17 +6610,17 @@ async function handlePetCommand(message, client, args) {
         if (res.success) {
           res.rewards.forEach(r => {
             rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `  ├─ 💰 Koin: **+Rp ${r.koin.toLocaleString('id-ID')}**\n` +
-              `  ├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `  ├─ 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
-              `  └─ 📊 Status: ${r.statusText || '☀️ Sehat & Bahagia'}\n\n`;
+              `  • 💰 Koin: **+Rp ${r.koin.toLocaleString('id-ID')}**\n` +
+              `  • 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `  • 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
+              `  • 📊 Status: **${r.statusText || '☀️ Sehat & Bahagia'}**\n\n`;
           });
         } else {
           res.rewards.forEach(r => {
             rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `  ├─ 💰 Koin: **+Rp 0**\n` +
-              `  ├─ 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `  └─ 📊 Status: ${r.statusText || '🩸 Menderita luka & stress'}\n\n`;
+              `  • 💰 Koin: **+Rp 0**\n` +
+              `  • 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
+              `  • 📊 Status: **${r.statusText || '🩸 Menderita luka & stress'}**\n\n`;
           });
         }
 
