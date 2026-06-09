@@ -13381,11 +13381,40 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .rich / .leaderboard / .liderbot
     // ═══════════════════════════════════════════════════
     if (commandName === 'rich' || commandName === 'leaderboard' || commandName === 'liderbot') {
-      const embed = embeds.warnEmbed(
-        'Papan Peringkat Dinonaktifkan! ❌',
-        'Perintah `.rich` manual sudah tidak digunakan lagi.\n\n👉 Silakan lihat papan peringkat realtime terbaru di channel: <#1510230591860113418>!'
-      );
-      await message.reply({ embeds: [embed] });
+      const richData = economy.getLeaderboard(guildId, 10);
+      if (richData.length === 0) {
+        return message.reply({ content: '❌ Belum ada data ekonomi untuk server ini.' });
+      }
+
+      await message.channel.sendTyping().catch(() => {});
+
+      await Promise.all(richData.map(async u => {
+        if (client.users.cache.has(u.userId)) return;
+        try { await client.users.fetch(u.userId); } catch (e) { }
+      }));
+
+      const petCard = require('./petCard');
+      const standings = await Promise.all(richData.map(async (u, idx) => {
+        let discordUser = client.users.cache.get(u.userId);
+        if (!discordUser) {
+          discordUser = await client.users.fetch(u.userId).catch(() => null);
+        }
+        return {
+          rank: idx + 1,
+          name: discordUser ? discordUser.username : `User-${u.userId.substring(0, 5)}`,
+          value: u.totalWealth,
+          avatarURL: discordUser ? discordUser.displayAvatarURL({ extension: 'png', size: 128 }) : null
+        };
+      }));
+
+      const lbAtt = await petCard.getLeaderboardAttachment('HALL OF WEALTH — ' + guild.name, standings, 'Rp');
+      const richEmbed = embeds.leaderboardEmbed(guild.name, richData, client, !!lbAtt);
+
+      const payload = { embeds: [richEmbed] };
+      if (lbAtt) {
+        payload.files = [lbAtt];
+      }
+      await message.reply(payload).catch(console.error);
       return true;
     }
 
