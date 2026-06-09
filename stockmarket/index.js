@@ -1054,6 +1054,39 @@ async function refreshAdminPanels(client) {
         });
       }
     }
+
+    // Refresh Shop Portal Hub (Pusat Kontrol Utama)
+    const shopPortalId = config.channels.SHOP_PORTAL;
+    if (shopPortalId) {
+      let shopChannel = null;
+      for (const [_, guild] of client.guilds.cache) {
+        shopChannel = guild.channels.cache.get(shopPortalId) || await guild.channels.fetch(shopPortalId).catch(() => null);
+        if (shopChannel) break;
+      }
+
+      if (shopChannel) {
+        console.log(`[ShopPortal] Membersihkan dan mengirim ulang Portal Hub di channel ${shopChannel.name} (${shopChannel.id})...`);
+        
+        let fetched;
+        do {
+          fetched = await shopChannel.messages.fetch({ limit: 100 }).catch(() => null);
+          if (fetched && fetched.size > 0) {
+            try {
+              await shopChannel.bulkDelete(fetched);
+            } catch (err) {
+              for (const msg of fetched.values()) {
+                await msg.delete().catch(() => {});
+              }
+            }
+          }
+        } while (fetched && fetched.size > 0);
+
+        const { embed, components, files } = await getPortalHubData(client);
+        await shopChannel.send({ embeds: [embed], components, files }).catch((err) => {
+          console.error(`[ShopPortal] Gagal mengirim ulang Portal Hub:`, err);
+        });
+      }
+    }
   } catch (err) {
     console.error('[AdminPanel] Gagal melakukan auto-refresh admin panels pada startup:', err);
   }
