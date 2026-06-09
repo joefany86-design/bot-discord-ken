@@ -14,6 +14,17 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 
+// Register Inter under aliases so that we don't have to modify existing font strings
+try {
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Regular.otf'), 'Segoe UI');
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Bold.otf'), 'Segoe UI');
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Regular.otf'), 'Arial');
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Bold.otf'), 'Arial');
+} catch (e) {
+  console.warn('[PetCard] Gagal meregistrasi font Inter:', e.message);
+}
+
+
 // ═══════════════════════════════════════════════
 // KONFIGURASI WARNA & TEMA
 // ═══════════════════════════════════════════════
