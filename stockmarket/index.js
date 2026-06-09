@@ -1000,19 +1000,16 @@ async function refreshAdminPanels(client) {
     });
 
     const purgeAndSend = async (channel, type) => {
-      let fetched;
-      do {
-        fetched = await channel.messages.fetch({ limit: 100 }).catch(() => null);
-        if (fetched && fetched.size > 0) {
-          try {
-            await channel.bulkDelete(fetched);
-          } catch (err) {
-            for (const msg of fetched.values()) {
-              await msg.delete().catch(() => {});
-            }
-          }
+      const fetched = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+      if (fetched && fetched.size > 0) {
+        try {
+          await channel.bulkDelete(fetched);
+        } catch (err) {
+          await Promise.all(
+            Array.from(fetched.values()).map(msg => msg.delete().catch(() => {}))
+          ).catch(() => {});
         }
-      } while (fetched && fetched.size > 0);
+      }
 
       const adminPanel = require('./adminPanel');
       if (type === 'main') {
@@ -1067,19 +1064,16 @@ async function refreshAdminPanels(client) {
       if (shopChannel) {
         console.log(`[ShopPortal] Membersihkan dan mengirim ulang Portal Hub di channel ${shopChannel.name} (${shopChannel.id})...`);
         
-        let fetched;
-        do {
-          fetched = await shopChannel.messages.fetch({ limit: 100 }).catch(() => null);
-          if (fetched && fetched.size > 0) {
-            try {
-              await shopChannel.bulkDelete(fetched);
-            } catch (err) {
-              for (const msg of fetched.values()) {
-                await msg.delete().catch(() => {});
-              }
-            }
+        const fetched = await shopChannel.messages.fetch({ limit: 50 }).catch(() => null);
+        if (fetched && fetched.size > 0) {
+          try {
+            await shopChannel.bulkDelete(fetched);
+          } catch (err) {
+            await Promise.all(
+              Array.from(fetched.values()).map(msg => msg.delete().catch(() => {}))
+            ).catch(() => {});
           }
-        } while (fetched && fetched.size > 0);
+        }
 
         const { embed, components, files } = await getPortalHubData(client);
         await shopChannel.send({ embeds: [embed], components, files }).catch((err) => {
