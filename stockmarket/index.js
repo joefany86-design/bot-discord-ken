@@ -6169,36 +6169,20 @@ async function handlePetCommand(message, client, args) {
         await replyMsg.edit(s1TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
-        // 🧭 STAGE 1: PEMILIHAN JALUR TIM (Voting / Otak Ekspedisi)
         const stage1Embed = new EmbedBuilder()
           .setColor('#FF9100')
           .setTitle('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM')
           .setDescription(
-            `### 🧭 CHOOSE YOUR PATH\n` +
-            `*“Decide wisely, Commander, for every path holds its own fortune and peril...”*\n\n` +
-            `> <@${author.id}> selaku **Komandan Perjalanan**, pilih jalur ekspedisi:\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━`
-          )
-          .addFields(
-            {
-              name: '🗺️ Info Wilayah',
-              value: `> **Peta:** **${selectedMap.name}**\n> **Komandan:** <@${author.id}>`,
-              inline: false
-            },
-            {
-              name: '🛣️ ═══ PILIHAN JALUR ═══',
-              value: 
-                `> 🛣️ **[Jalur Aman]**\n` +
-                `> └─ Perjalanan lancar tanpa risiko ekstra. (**+0%** Sukses)\n\n` +
-                `> 🧗 **[Jalur Pintas Terjal]**\n` +
-                `> └─ Mendaki tebing terjal. Sukses **+15%**, pet kelelahan (**-15 HP**)\n\n` +
-                `> 🌲 **[Rawa Beracun]**\n` +
-                `> └─ Rawa berlumpur. Sukses **+25%**, risiko **30%** terkena efek negatif`,
-              inline: false
-            }
+            `🗺️ **Peta:** **${selectedMap.name}**\n` +
+            `👤 **Komandan:** <@${author.id}>\n\n` +
+            `Silakan pilih jalur ekspedisi tim pet Anda:\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `🛣️ **[Jalur Aman]** ➔ Perjalanan aman tanpa risiko (**+0%** Sukses)\n` +
+            `🧗 **[Jalur Pintas]** ➔ Sukses **+15%** | Pet lelah (**-15 HP**)\n` +
+            `🌲 **[Rawa Beracun]** ➔ Sukses **+25%** | Risiko efek negatif (**30%**)`
           )
           .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: '⚔️ Batas keputusan: 15 detik • Kosan 1A RPG' })
+          .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
           .setTimestamp();
 
         const stage1Row = new ActionRowBuilder().addComponents(
