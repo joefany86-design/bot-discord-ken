@@ -1510,19 +1510,210 @@ async function getExpeditionLobbyAttachment(initiatorId, selectedMap, participan
   }
 }
 
+async function generateExpeditionLoadingCard(selectedMap, leaderId, participants, mapChoice, guild) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // 1. Draw Map Background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try {
+      bgImg = await loadImage(mapPath);
+    } catch (err) {
+      console.warn("Gagal load peta loading bg:", err.message);
+    }
+  }
+
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+  } else {
+    // Fallback thematic gradient
+    const theme = ELEMENT_THEMES[(selectedMap.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
+    const colors = theme.bg;
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    for (let i = 0; i < colors.length; i++) {
+      grad.addColorStop(i / (colors.length - 1), colors[i]);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  }
+
+  // Dark overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, CARD_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
+  ctx.fill();
+
+  // Panel border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, CARD_HEIGHT - panelMargin);
+  borderGrad.addColorStop(0, '#00E5FF80');
+  borderGrad.addColorStop(1, '#7C4DFF80');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // ─── HEADER SECTION ───
+  let textY = 55;
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.textAlign = 'center';
+  ctx.fillText('🧭 MASUK ZONA EKSPEDISI...', CARD_WIDTH / 2, textY);
+
+  textY += 28;
+  ctx.font = '14px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.fillText(`Mempersiapkan penjelajahan di ${selectedMap.name} · Boss: ${selectedMap.boss}`, CARD_WIDTH / 2, textY);
+
+  // ─── LOADING BAR ───
+  textY += 35;
+  const barWidth = 600;
+  const barHeight = 22;
+  const barX = (CARD_WIDTH / 2) - (barWidth / 2);
+  const barY = textY;
+
+  // Background loading bar
+  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, barHeight / 2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Filled loading bar
+  ctx.save();
+  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, barHeight / 2);
+  ctx.clip();
+  const loadGrad = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+  loadGrad.addColorStop(0, '#00E5FF');
+  loadGrad.addColorStop(1, '#7C4DFF');
+  ctx.fillStyle = loadGrad;
+  ctx.fillRect(barX, barY, barWidth, barHeight);
+  ctx.restore();
+
+  // Loading text inside loading bar
+  ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText('MENYELARASKAN KRU PET & LOGISTIK TIM... 100%', CARD_WIDTH / 2, barY + barHeight / 2 + 4);
+
+  // ─── MEMBERS / PETS SECTION ───
+  let startY = 175;
+  ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.textAlign = 'center';
+  ctx.fillText('KRU PETUALANG TIM', CARD_WIDTH / 2, startY);
+
+  const colWidth = 150;
+  const colGap = 20;
+  const numParticipants = participants.length;
+  const totalWidth = (numParticipants * colWidth) + ((numParticipants - 1) * colGap);
+  const startX = (CARD_WIDTH / 2) - (totalWidth / 2);
+
+  let drawY = startY + 25;
+
+  for (let i = 0; i < numParticipants; i++) {
+    const p = participants[i];
+    const px = startX + i * (colWidth + colGap);
+    const cx = px + colWidth / 2;
+
+    // Draw Column Glass Panel
+    drawRoundedRect(ctx, px, drawY, colWidth, 160, 12);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Draw Pet Avatar inside Column
+    const avatarCY = drawY + 45;
+    const avatarR = 30;
+
+    let petImg = null;
+    try {
+      const embeds = require('./embeds');
+      petImg = await loadImageSafe(embeds.getPetImage(p));
+    } catch (e) {}
+
+    const rarityTheme = RARITY_COLORS[(p.gacha_rarity || 'COMMON').toUpperCase()] || RARITY_COLORS.COMMON;
+
+    if (petImg) {
+      drawCircleAvatar(ctx, petImg, cx, avatarCY, avatarR, rarityTheme.primary, rarityTheme.glow);
+    } else {
+      ctx.beginPath();
+      ctx.arc(cx, avatarCY, avatarR, 0, Math.PI * 2);
+      ctx.fillStyle = '#222244';
+      ctx.fill();
+      ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = rarityTheme.primary;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.pet_name.charAt(0), cx, avatarCY + 6);
+    }
+
+    // Leader Badge if initiator
+    if (p.userId === leaderId) {
+      ctx.font = 'bold 9px "Segoe UI", Arial, sans-serif';
+      const badgeText = '👑 KOMANDAN';
+      const tw = ctx.measureText(badgeText).width + 12;
+      drawBadge(ctx, cx - tw / 2, avatarCY + avatarR + 6, badgeText, '#FFD700', '#1a1a2e', 9);
+    }
+
+    // Owner Name
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`@${p.username}`, cx, drawY + 112);
+
+    // Pet Name
+    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    let petNameDisp = p.pet_name;
+    if (petNameDisp.length > 15) petNameDisp = petNameDisp.substring(0, 14) + '…';
+    ctx.fillText(petNameDisp, cx, drawY + 130);
+
+    // Level + Species
+    ctx.font = '10px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Lv. ${p.level} ${p.pet_type}`, cx, drawY + 146);
+  }
+
+  // Footer Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionLoadingAttachment(selectedMap, leaderId, participants, mapChoice, guild) {
+  try {
+    const buffer = await generateExpeditionLoadingCard(selectedMap, leaderId, participants, mapChoice, guild);
+    return new AttachmentBuilder(buffer, { name: 'expedition_loading.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating expedition loading card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
   generateStandingsCard,
   generateExpeditionCard,
   generateExpeditionLobbyCard,
+  generateExpeditionLoadingCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
   getExpeditionCardAttachment,
   getExpeditionLobbyAttachment,
+  getExpeditionLoadingAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
 };
+
 

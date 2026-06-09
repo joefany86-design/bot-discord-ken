@@ -6070,12 +6070,43 @@ async function handlePetCommand(message, client, args) {
         await replyMsg.edit({ components: [] }).catch(() => {});
 
         // ⭐ LOADING SCREEN: Animasi transisi premium sebelum pertandingan dimulai
+        const loadingParticipantsData = [];
+        for (const pId of currentLobby.participants) {
+          const pObj = pet.getPet(pId, guildId);
+          const member = membersMap[pId];
+          const username = member ? member.user.username : 'Unknown';
+          loadingParticipantsData.push({
+            userId: pId,
+            username,
+            pet_name: pObj ? pObj.pet_name : 'Unknown Pet',
+            pet_type: pObj ? pObj.pet_type : 'CAT',
+            level: pObj ? pObj.level : 1,
+            gacha_element: pObj ? pObj.gacha_element : 'EARTH',
+            gacha_rarity: pObj ? pObj.gacha_rarity : 'COMMON',
+            status: pObj ? pObj.status : 'ACTIVE',
+            health: pObj ? pObj.health : 100
+          });
+        }
+
+        const petCardModule = require('./petCard');
+        const loadingCardAttachment = await petCardModule.getExpeditionLoadingAttachment(
+          selectedMap,
+          author.id,
+          loadingParticipantsData,
+          mapChoice,
+          guild
+        );
+
         const loadingEmbed = embeds.petExpeditionLoadingEmbed(selectedMap, author.id, currentLobby.participants);
         const loadingFiles = [];
-        try {
-          const loadingImg = new AttachmentBuilder('./assets/expedition_loading.png', { name: 'expedition_loading.png' });
-          loadingFiles.push(loadingImg);
-        } catch (err) {}
+        if (loadingCardAttachment) {
+          loadingFiles.push(loadingCardAttachment);
+        } else {
+          try {
+            const loadingImg = new AttachmentBuilder('./assets/expedition_loading.png', { name: 'expedition_loading.png' });
+            loadingFiles.push(loadingImg);
+          } catch (err) {}
+        }
         const loadingOpts = { embeds: [loadingEmbed], components: [], attachments: [] };
         if (loadingFiles.length > 0) loadingOpts.files = loadingFiles;
         await replyMsg.edit(loadingOpts).catch(() => {});
