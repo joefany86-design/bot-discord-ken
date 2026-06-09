@@ -10196,13 +10196,20 @@ async function handleEconomyCommands(message, client) {
   }
 
   // 2. Jika mengetik perintah pet di channel lain, blokir (kecuali admin/owner)
-  if (['pet', 'pet-admin'].includes(commandName) && message.channelId !== '1509762623917265137') {
-    const isOwner = author.id === OWNER_ID;
-    const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    if (!isOwner && !isAdmin) {
-      const warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
-      await autoReply({ embeds: [warnEmb] });
-      return true; // Berhenti memproses perintah
+  if (['pet', 'pet-admin'].includes(commandName)) {
+    const subCommand = args[0] ? args[0].toLowerCase() : null;
+    const isSafariCommand = commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand);
+    const allowedChannelId = isSafariCommand ? '1513927968379109436' : '1509762623917265137';
+
+    if (message.channelId !== allowedChannelId) {
+      const isOwner = author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        const channelMention = isSafariCommand ? '<#1513927968379109436>' : '<#1509762623917265137>';
+        const warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', `Perintah bermain pet (\`.pet\`) hanya dapat digunakan di saluran khusus pet: ${channelMention}!`);
+        await autoReply({ embeds: [warnEmb] });
+        return true; // Berhenti memproses perintah
+      }
     }
   }
 
