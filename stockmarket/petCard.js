@@ -14,21 +14,46 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 
-// Font strategy: Use DejaVu Sans (pre-installed system font on VPS Linux).
-// The .otf Inter fonts fail to register on @napi-rs/canvas v1.0.0 (returns null).
-// DejaVu Sans is confirmed available and renders correctly.
-// Set aliases so any stray "Segoe UI" or "Arial" references still resolve.
+// Font strategy: Load custom Inter fonts if available, fall back to DejaVu Sans.
 try {
-  if (GlobalFonts.has('DejaVu Sans')) {
-    GlobalFonts.setAlias('Segoe UI', 'DejaVu Sans');
-    GlobalFonts.setAlias('Arial', 'DejaVu Sans');
-    console.log('[PetCard] ✅ Font aliases set: Segoe UI -> DejaVu Sans, Arial -> DejaVu Sans');
+  const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
+  const regFontPath = path.join(fontsDir, 'Inter-Regular.otf');
+  const boldFontPath = path.join(fontsDir, 'Inter-Bold.otf');
+
+  let hasCustomFont = false;
+  if (fs.existsSync(regFontPath)) {
+    GlobalFonts.registerFromPath(regFontPath, 'Inter');
+    hasCustomFont = true;
+  }
+  if (fs.existsSync(boldFontPath)) {
+    GlobalFonts.registerFromPath(boldFontPath, 'Inter');
+  }
+
+  if (hasCustomFont) {
+    console.log('[PetCard] ✅ Custom Inter fonts registered successfully.');
+    GlobalFonts.setAlias('DejaVu Sans', 'Inter');
+    GlobalFonts.setAlias('Segoe UI', 'Inter');
+    GlobalFonts.setAlias('Arial', 'Inter');
   } else {
-    console.warn('[PetCard] ⚠️ DejaVu Sans not found in system fonts, text may not render.');
+    console.log('[PetCard] ⚠️ Custom Inter font files not found, falling back to system fonts.');
+    if (GlobalFonts.has('DejaVu Sans')) {
+      GlobalFonts.setAlias('Segoe UI', 'DejaVu Sans');
+      GlobalFonts.setAlias('Arial', 'DejaVu Sans');
+      console.log('[PetCard] ✅ Font aliases set: Segoe UI -> DejaVu Sans, Arial -> DejaVu Sans');
+    } else {
+      console.warn('[PetCard] ⚠️ DejaVu Sans not found in system fonts, text may not render.');
+    }
   }
 } catch (e) {
-  console.warn('[PetCard] ⚠️ Font setup warning:', e.message);
+  console.warn('[PetCard] ⚠️ Custom font registration failed:', e.message);
+  try {
+    if (GlobalFonts.has('DejaVu Sans')) {
+      GlobalFonts.setAlias('Segoe UI', 'DejaVu Sans');
+      GlobalFonts.setAlias('Arial', 'DejaVu Sans');
+    }
+  } catch (err) {}
 }
+
 
 
 // ═══════════════════════════════════════════════
@@ -1898,6 +1923,55 @@ function getExpeditionMap(mapId) {
   }
 }
 
+function getPetElementMatch(participant, mapId) {
+  if (!participant) return 'neutral';
+  const petType = (participant.pet_type || '').toUpperCase();
+  const petRarity = (participant.gacha_rarity || '').toUpperCase();
+  const petEl = (participant.gacha_element || '').toUpperCase();
+  const mapChoice = parseInt(mapId);
+
+  if (petRarity === 'MYTHIC' || petRarity === 'IMMORTAL') {
+    return 'up';
+  }
+
+  let elementMod = 0;
+  if (mapChoice === 1) {
+    if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+    else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+  } else if (mapChoice === 2) {
+    if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+    else if (petType === 'PHOENIX') elementMod = -15;
+  } else if (mapChoice === 3) {
+    if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = 15;
+    else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+  } else if (mapChoice === 4) {
+    if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH' || petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+    else if (petType === 'PHOENIX') elementMod = -15;
+  } else if (mapChoice === 5) {
+    if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+    else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+  } else if (mapChoice === 6) {
+    if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = 15;
+    else if (petEl === 'WATER' || petType === 'LEVIATHAN') elementMod = -15;
+  } else if (mapChoice === 7) {
+    if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = 15;
+    else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+  } else if (mapChoice === 8) {
+    if (petEl === 'DRAGON' || petType === 'ARCHDRAGON') elementMod = 15;
+    else if (petEl === 'FIRE' || petType === 'PHOENIX' || petType === 'DRAGON') elementMod = -15;
+  } else if (mapChoice === 9) {
+    if (petEl === 'DRAGON' || petType === 'ARCHDRAGON' || petEl === 'FIRE' || petType === 'PHOENIX') elementMod = 15;
+    else if (petEl === 'EARTH' || petType === 'TURTLE' || petType === 'BEHEMOTH') elementMod = -15;
+  } else if (mapChoice === 10) {
+    if (petRarity === 'LEGENDARY') elementMod = 15;
+    else if (petRarity === 'COMMON' || !petRarity) elementMod = -15;
+  }
+
+  if (elementMod > 0) return 'up';
+  if (elementMod < 0) return 'down';
+  return 'neutral';
+}
+
 /**
  * Generate visual expedition PVE result card
  */
@@ -2427,6 +2501,26 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
         ctx.fillText(participant.pet_type.charAt(0), avCx, avCy + 6);
       }
 
+      // Element advantage/disadvantage indicator (↑ / ↓)
+      const elMatch = getPetElementMatch(participant, mapChoice);
+      if (elMatch !== 'neutral') {
+        const indX = avCx + 22;
+        const indY = avCy - 22;
+        const indR = 9;
+        ctx.beginPath();
+        ctx.arc(indX, indY, indR, 0, Math.PI * 2);
+        ctx.fillStyle = elMatch === 'up' ? '#00E676' : '#FF1744';
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.fillText(elMatch === 'up' ? '↑' : '↓', indX, indY + 4);
+      }
+
       // Slot Index Indicator (Badge)
       drawBadge(ctx, slotX + 8, slotY + 8, `${idx + 1}`, rarityTheme.primary, '#FFFFFF', 9);
 
@@ -2802,22 +2896,68 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Load dynamic boss image
+  let bossImg = null;
+  const bossPath = path.join(__dirname, '..', 'assets', 'bosses', `boss${mapChoice}.png`);
+  if (fs.existsSync(bossPath)) {
+    try {
+      bossImg = await loadImage(bossPath);
+    } catch (e) {
+      console.warn("Failed to load boss image:", e.message);
+    }
+  }
+
   // Header Text
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
-  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 65);
+  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 45);
 
-  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`🚨 SERANGAN BERSAMA KEPADA ${bossName.toUpperCase()}! 🚨`, EXP_WIDTH / 2, 95);
+  // Draw Boss Avatar / Portrait
+  const bossCx = EXP_WIDTH / 2;
+  const bossCy = 85;
+  const bossR = 30;
+  if (bossImg) {
+    drawCircleAvatar(ctx, bossImg, bossCx, bossCy, bossR, '#FF1744', 'rgba(255, 23, 68, 0.4)');
+  } else {
+    ctx.beginPath();
+    ctx.arc(bossCx, bossCy, bossR, 0, Math.PI * 2);
+    ctx.fillStyle = '#3a0000';
+    ctx.fill();
+    ctx.strokeStyle = '#FF1744';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FF1744';
+    ctx.fillText('👿', bossCx, bossCy + 6);
+  }
+
+  // Boss Name
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF1744';
+  ctx.fillText(bossName.toUpperCase(), EXP_WIDTH / 2, 133);
+
+  // Boss HP Bar (Visual Fluff)
+  const hpBarW = 200;
+  const hpBarH = 6;
+  const hpBarX = EXP_WIDTH / 2 - hpBarW / 2;
+  const hpBarY = 143;
+  drawRoundedRect(ctx, hpBarX, hpBarY, hpBarW, hpBarH, hpBarH / 2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fill();
+  const hpPct = Math.max(0.1, (totalSteps - stepNumber + 1) / totalSteps);
+  drawRoundedRect(ctx, hpBarX, hpBarY, hpBarW * hpPct, hpBarH, hpBarH / 2);
+  ctx.fillStyle = '#FF1744';
+  ctx.fill();
 
   // Visual QTE progress tracker
-  const nodeRadius = 10;
-  const nodeGap = 16;
+  const nodeRadius = 8;
+  const nodeGap = 12;
   const totalNodesWidth = (totalSteps * nodeRadius * 2) + ((totalSteps - 1) * nodeGap);
   const startNodesX = (EXP_WIDTH / 2) - (totalNodesWidth / 2);
-  const nodesY = 135;
+  const nodesY = 172;
 
   for (let step = 1; step <= totalSteps; step++) {
     const cx = startNodesX + (step - 1) * (nodeRadius * 2 + nodeGap) + nodeRadius;
@@ -2843,8 +2983,8 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   // Draw two column sections: target pet info (left) & target player instructions (right)
   const leftX = 75;
   const rightX = 495;
-  const columnsY = 185;
-  const columnsH = 220;
+  const columnsY = 205;
+  const columnsH = 200;
 
   // 1. LEFT COLUMN: Target Pet Profile panel
   drawRoundedRect(ctx, leftX, columnsY, 350, columnsH, 12);
@@ -2887,18 +3027,18 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
   let petNameDisp = petObj?.pet_name || 'Pet';
   if (petNameDisp.length > 18) petNameDisp = petNameDisp.substring(0, 17) + '…';
-  ctx.fillText(petNameDisp, leftX + 125, columnsY + 65);
+  ctx.fillText(petNameDisp, leftX + 125, columnsY + 55);
 
   ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 125, columnsY + 95);
+  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 125, columnsY + 85);
 
   // Element and Rarity Badges
   let badgeX = leftX + 125;
   ctx.font = 'bold 9px "DejaVu Sans", sans-serif';
-  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 120, petRarity, rarityTheme.primary, '#FFFFFF', 9);
+  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 110, petRarity, rarityTheme.primary, '#FFFFFF', 9);
   badgeX += rBadgeW + 6;
-  drawBadge(ctx, badgeX, columnsY + 120, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
+  drawBadge(ctx, badgeX, columnsY + 110, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
 
   // 2. RIGHT COLUMN: Target Player Turn details
   drawRoundedRect(ctx, rightX, columnsY, 350, columnsH, 12);
@@ -2911,17 +3051,17 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.textAlign = 'center';
   ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 65);
+  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 55);
 
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
   let usernameDisp = `@${targetMemberName}`;
   if (usernameDisp.length > 20) usernameDisp = usernameDisp.substring(0, 19) + '…';
-  ctx.fillText(usernameDisp, rightX + 175, columnsY + 115);
+  ctx.fillText(usernameDisp, rightX + 175, columnsY + 105);
 
   ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 165);
+  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 150);
 
   // Footer Watermark
   ctx.font = '9px "DejaVu Sans", sans-serif';
@@ -3406,19 +3546,46 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Load dynamic event image
+  let eventImg = null;
+  const eventImgPath = path.join(__dirname, '..', 'assets', 'events', 'chest.png');
+  if (fs.existsSync(eventImgPath)) {
+    try { eventImg = await loadImage(eventImgPath); } catch (e) {}
+  }
+
   // Header
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#E040FB';
-  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', EXP_WIDTH / 2, 65);
+  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', EXP_WIDTH / 2, 45);
+
+  // Draw Event Image or Fallback
+  const eventX = EXP_WIDTH / 2 - 35;
+  const eventY = 60;
+  const eventSize = 70;
+  if (eventImg) {
+    ctx.drawImage(eventImg, eventX, eventY, eventSize, eventSize);
+  } else {
+    ctx.beginPath();
+    ctx.arc(EXP_WIDTH / 2, eventY + 35, 30, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(224, 64, 251, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = '#E040FB';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#E040FB';
+    ctx.fillText('📦', EXP_WIDTH / 2, eventY + 46);
+  }
 
   ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', EXP_WIDTH / 2, 95);
+  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', EXP_WIDTH / 2, 150);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 125);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 172);
 
   // Three option panels
   const opts = [
@@ -3449,11 +3616,11 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ];
 
   const panelW = 260;
-  const panelH = 245;
+  const panelH = 225;
   const panelGap = 20;
   const totalW = (opts.length * panelW) + ((opts.length - 1) * panelGap);
   const startX = (EXP_WIDTH - totalW) / 2;
-  const panelY = 150;
+  const panelY = 195;
 
   for (let i = 0; i < opts.length; i++) {
     const o = opts[i];
@@ -3480,7 +3647,7 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
 
     // Icon circle
     const iconCx = px + panelW / 2;
-    const iconCy = panelY + 55;
+    const iconCy = panelY + 45;
     ctx.beginPath();
     ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
     ctx.fillStyle = `${o.color}30`;
@@ -3496,13 +3663,13 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     // Title
     ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 105);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
 
     // Description
     ctx.font = '11px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 138);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 154);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 125);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 140);
 
     // Badge
     ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
@@ -3510,7 +3677,7 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     const bW = ctx.measureText(bText).width + 20;
     const bH = 20;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 190;
+    const bY = panelY + 175;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3579,27 +3746,54 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Load dynamic event image
+  let eventImg = null;
+  const eventImgPath = path.join(__dirname, '..', 'assets', 'events', 'waterfall.png');
+  if (fs.existsSync(eventImgPath)) {
+    try { eventImg = await loadImage(eventImgPath); } catch (e) {}
+  }
+
   // Header
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', EXP_WIDTH / 2, 65);
+  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', EXP_WIDTH / 2, 45);
+
+  // Draw Event Image or Fallback
+  const eventX = EXP_WIDTH / 2 - 35;
+  const eventY = 60;
+  const eventSize = 70;
+  if (eventImg) {
+    ctx.drawImage(eventImg, eventX, eventY, eventSize, eventSize);
+  } else {
+    ctx.beginPath();
+    ctx.arc(EXP_WIDTH / 2, eventY + 35, 30, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = '#00E5FF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#00E5FF';
+    ctx.fillText('💧', EXP_WIDTH / 2, eventY + 46);
+  }
 
   ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', EXP_WIDTH / 2, 95);
+  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', EXP_WIDTH / 2, 150);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 125);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 172);
 
   // Two option panels, centered
   const panelW = 340;
-  const panelH = 245;
+  const panelH = 225;
   const panelGap = 30;
   const totalW = 2 * panelW + panelGap;
   const startX = (EXP_WIDTH - totalW) / 2;
-  const panelY = 150;
+  const panelY = 195;
 
   const opts = [
     {
@@ -3641,7 +3835,7 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
 
     // Icon circle
     const iconCx = px + panelW / 2;
-    const iconCy = panelY + 55;
+    const iconCy = panelY + 45;
     ctx.beginPath();
     ctx.arc(iconCx, iconCy, 28, 0, Math.PI * 2);
     ctx.fillStyle = `${o.color}30`;
@@ -3656,19 +3850,19 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
 
     ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 115);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
 
     ctx.font = '12px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 145);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 165);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 125);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 140);
 
     // Badge
     ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
     const bW = ctx.measureText(o.badge).width + 24;
     const bH = 22;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 195;
+    const bY = panelY + 175;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3758,6 +3952,32 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  // Load and draw dynamic event image inside result box
+  let eventImg = null;
+  const eventImgPath = path.join(__dirname, '..', 'assets', 'events', isChest ? 'chest.png' : 'waterfall.png');
+  if (fs.existsSync(eventImgPath)) {
+    try { eventImg = await loadImage(eventImgPath); } catch (e) {}
+  }
+  if (eventImg) {
+    ctx.drawImage(eventImg, boxX + boxW - 120, boxY + 40, 90, 90);
+  } else {
+    // Draw fallback emoji in glowing circle
+    const circleX = boxX + boxW - 75;
+    const circleY = boxY + 85;
+    ctx.beginPath();
+    ctx.arc(circleX, circleY, 35, 0, Math.PI * 2);
+    ctx.fillStyle = isChest ? 'rgba(224, 64, 251, 0.15)' : 'rgba(0, 229, 255, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = isChest ? '#E040FB' : '#00E5FF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = 'bold 36px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = isChest ? '#E040FB' : '#00E5FF';
+    ctx.textAlign = 'center';
+    ctx.fillText(isChest ? '📦' : '💧', circleX, circleY + 12);
+  }
+
   ctx.textAlign = 'left';
   ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = accentColor;
@@ -3770,7 +3990,7 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   let ey = boxY + 75;
   for (const line of evLines) {
     if (ey > boxY + boxH - 10) break;
-    ctx.fillText(line.substring(0, 80), boxX + 25, ey);
+    ctx.fillText(line.substring(0, 55), boxX + 25, ey);
     ey += 22;
   }
 
