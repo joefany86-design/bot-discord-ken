@@ -4210,9 +4210,6 @@ module.exports = {
     const isChallenging = selectedMap.recommendedLevel >= 25;
     const embedColor = isChallenging ? 0x990000 : 0xFFB800; // Crimson / Gold Premium
 
-    const successBar = '🟩'.repeat(Math.round(successRate / 10)) + '⬛'.repeat(10 - Math.round(successRate / 10));
-    const difficultyBar = '🟥'.repeat(Math.round(selectedMap.difficulty)) + '⬛'.repeat(10 - Math.round(selectedMap.difficulty));
-
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
@@ -4221,32 +4218,17 @@ module.exports = {
         `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang dan bahaya nyata.*\n\n` +
         `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
+        `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n` +
+        `💰 **Biaya Ransum:** \`Rp 250\` koin`
       )
       .addFields(
         {
-          name: '🐾 KRU PET SAAT INI',
-          value: petListText || '*Belum ada peserta*',
+          name: '🐾 Sinergi & Log Elemen Tim',
+          value: elementalLogsText || '*Belum ada keuntungan/kelemahan elemen*',
           inline: false
-        },
-        {
-          name: '🎯 PELUANG & SINERGI ELEMEN',
-          value: `• **Peluang Sukses Tim**: \`[${successBar}]\` (**${successRate}%**)\n` +
-            `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
-            `• **Sinergi Elemen:**\n${elementalLogsText}`,
-          inline: false
-        },
-        {
-          name: '💰 Biaya Ransum',
-          value: `\`Rp 250\` koin`,
-          inline: true
-        },
-        {
-          name: '⏳ Batas Persiapan',
-          value: `<t:${endTimeUnix}:R>`,
-          inline: true
         }
       )
+      .setImage('attachment://lobby_card.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },
@@ -4265,6 +4247,7 @@ module.exports = {
         `👥 **Anggota Tim:** ${crewMentions}\n\n` +
         `*⏳ Menunggu koordinasi kru pet... Pastikan pet Anda siap bertempur!*`
       )
+      .setImage('attachment://expedition_loading.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Memulai petualangan...' })
       .setTimestamp();
   },
@@ -4284,6 +4267,7 @@ module.exports = {
         `Memasuki wilayah **${selectedMap.name}** bagian dalam...\n\n` +
         `*Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: `Kosan 1A RPG Pet Expedition • Tahap ${stageNum}` })
       .setTimestamp();
   },
@@ -4307,6 +4291,7 @@ module.exports = {
         `📈 **Progres QTE:** ${progressIcons} (${stepNumber}/${totalSteps})\n\n` +
         `⚠️ *Peringatan: Hanya <@${targetUserId}> yang boleh menekan tombol! Salah klik oleh kru lain akan memicu penalti interferensi.*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG • Fokus dan bersiaplah!' })
       .setTimestamp();
   },
@@ -4327,12 +4312,14 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(0xD50000) // Vibrant Red
       .setTitle(`🏰 EKSPEDISI GAGAL: BOS PERTEMPURAN KACAU!`)
+      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `💥 **ALARM PENJAGA BERBUNYI! TIM DIPAKSA MUNDUR!** 💥\n\n` +
         `🔍 **Penyebab Kekalahan:**\n${causeText}\n\n` +
         `🐾 **Dampak Kondisi Kru Pet:**\n${rekapPetList}\n\n` +
         `⚠️ *Dampak kegagalan QTE: Seluruh pet kehilangan status HP/kesehatan, lapar/haus meningkat, dan kebahagiaan menurun drastis.*`
       )
+      .setImage(`attachment://map${mapChoice}.png`)
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition Failure • Coba lagi setelah cooldown selesai!' })
       .setTimestamp();
   },
@@ -4350,6 +4337,7 @@ module.exports = {
         `Contoh: \`.pet expedition 3\`\n\n` +
         `📌 **DAFTAR ZONA PETUALANGAN PET:**`
       )
+      .setThumbnail('attachment://pet_explorer.png')
       .addFields(
         mapsList.map(m => ({
           name: `🎮 ID Peta: ${m.id} — ${m.name}`,
@@ -4396,7 +4384,9 @@ module.exports = {
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
       .setDescription(reportDesc || null)
+      .setThumbnail('attachment://pet_explorer.png')
       .addFields(fields)
+      .setImage('attachment://expedition_result.png')
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }
