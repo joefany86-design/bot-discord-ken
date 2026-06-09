@@ -6845,7 +6845,7 @@ async function handlePetCommand(message, client, args) {
           const expLocksCancel = client.expeditionLocks || new Map();
           expLocksCancel.delete(message.channelId);
 
-          currentLobby.participants.forEach(pId => {
+          lobby.participants.forEach(pId => {
             economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
           });
 
