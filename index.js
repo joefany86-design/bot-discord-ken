@@ -852,12 +852,6 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  // React to owner when they chat
-  if (message.author.id === OWNER_ID) {
-    const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
-    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-    message.react(randomEmoji).catch(() => {});
-  }
 
   // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
   if (message.guildId) {
@@ -932,18 +926,24 @@ client.on('messageCreate', async message => {
     const guildHasActiveExpedition = activeLobby && Array.from(activeLobby.values()).some(l => l.guildId === message.guildId);
 
     if (guildHasActiveExpedition) {
-      // Hapus pesan apa pun dari user agar channel tetap bersih selama ekspedisi berjalan
-      await message.delete().catch(() => {});
-      const warnMsg = await message.channel.send({
-        content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Saluran ini dikunci untuk chat sampai ekspedisi selesai.`
-      }).catch(() => null);
+      const isOwner = message.author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+      const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
 
-      if (warnMsg) {
-        setTimeout(() => {
-          warnMsg.delete().catch(() => {});
-        }, 3000);
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        // Hapus pesan apa pun dari user agar channel tetap bersih selama ekspedisi berjalan
+        await message.delete().catch(() => {});
+        const warnMsg = await message.channel.send({
+          content: `⚠️ <@${message.author.id}>, sedang ada **Ekspedisi Pet** yang berjalan! Saluran ini dikunci untuk chat sampai ekspedisi selesai.`
+        }).catch(() => null);
+
+        if (warnMsg) {
+          setTimeout(() => {
+            warnMsg.delete().catch(() => {});
+          }, 3000);
+        }
+        return;
       }
-      return;
     }
   }
 
@@ -1012,11 +1012,6 @@ client.on('messageCreate', async message => {
   message.reply = async (options) => {
     try {
       const replyMsg = await originalReply(options);
-      if (replyMsg && message.author.id === OWNER_ID) {
-        const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
-        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-        replyMsg.react(randomEmoji).catch(() => {});
-      }
       return replyMsg;
     } catch (err) {
       // Tangkap semua variasi error referensi pesan yang tidak valid:
@@ -1044,11 +1039,6 @@ client.on('messageCreate', async message => {
             delete payload.reply;
             delete payload.messageReference;
             sentMsg = await message.channel.send(payload);
-          }
-          if (sentMsg && message.author.id === OWNER_ID) {
-            const emojis = ['👑', '🐐', '🔥', '💎', '🦄', '🦖', '😎', '🚀', '✨', '💯'];
-            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-            sentMsg.react(randomEmoji).catch(() => {});
           }
           return sentMsg;
         } catch (sendErr) {
