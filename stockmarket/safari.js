@@ -157,6 +157,11 @@ function generateWildPet(biomeId) {
 async function handlePetSafariCommand(message, client, args) {
   const { author, guildId } = message;
 
+  // Hanya izinkan di channel ID 1513927968379109436
+  if (message.channelId !== '1513927968379109436') {
+    return message.reply({ content: '⚠️ **Safari** hanya dapat digunakan di channel <#1513927968379109436>!' });
+  }
+
   if (activeSafaris.has(author.id)) {
     return message.reply({ content: '⚠️ **Sesi Safari Sedang Aktif!** Selesaikan petualangan safari Anda yang sekarang terlebih dahulu!' });
   }
