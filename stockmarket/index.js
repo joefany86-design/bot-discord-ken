@@ -5003,7 +5003,11 @@ async function handlePetCardCommand(message, client, args) {
   }
 
   try {
-    const cardData = await embeds.petCardEmbed(activePet, targetUser);
+    const targetWallet = economy.getWallet(targetUser.id, guildId);
+    const cardData = await embeds.petCardEmbed(activePet, targetUser, {
+      expeditionCooldownUntil: targetWallet.expedition_cooldown_until || 0,
+      dailyExpeditionCount: targetWallet.daily_expedition_count || 0
+    });
     return message.reply(cardData);
   } catch (err) {
     console.error('Error handling petcard command:', err);
@@ -5922,24 +5926,42 @@ async function handlePetCommand(message, client, args) {
     expeditionLocks.set(message.channelId, lobbyKey);
     lobby.channelId = message.channelId;
 
-    // Siapkan gambar map
-    const mapAttachment = getMapAttachment(mapChoice);
-    const lobbyFiles = [];
-    if (mapAttachment) lobbyFiles.push(mapAttachment);
-    try {
-      const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
-      lobbyFiles.push(petExplorer);
-    } catch (err) {
-      console.warn("Gagal memuat pet_explorer.png:", err.message);
-    }
+    // Siapkan detail partisipan awal (initiator)
+    const petCard = require('./petCard');
+    const initiatorUsername = author.username || 'Pawang';
+    const participantsData = [{
+      userId: author.id,
+      username: initiatorUsername,
+      pet_name: initiatorPet.pet_name,
+      pet_type: initiatorPet.pet_type,
+      level: initiatorPet.level,
+      gacha_element: initiatorPet.gacha_element,
+      gacha_rarity: initiatorPet.gacha_rarity,
+      status: initiatorPet.status,
+      health: initiatorPet.health
+    }];
 
     const calcInit = pet.calculateSuccessRate(guildId, lobby.participants, mapChoice);
     const elementalLogsText = calcInit.logs.length > 0 ? calcInit.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
+    const lobbyCardAttachment = await petCard.getExpeditionLobbyAttachment(
+      author.id,
+      selectedMap,
+      participantsData,
+      calcInit.successRate,
+      elementalLogsText,
+      endTimeUnix,
+      mapChoice,
+      guild
+    );
+
+    const lobbyFiles = [];
+    if (lobbyCardAttachment) lobbyFiles.push(lobbyCardAttachment);
+
     const lobbyEmbed = embeds.petExpeditionLobbyEmbed(
       author.id,
       selectedMap,
-      `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
+      '', // list text no longer needed, drawn on canvas
       calcInit.successRate,
       elementalLogsText,
       endTimeUnix,
@@ -6588,14 +6610,23 @@ async function handlePetCommand(message, client, args) {
 
           await iExp.reply({ content: '🛡️ Berhasil bergabung dengan tim ekspedisi pet!', flags: 64 });
 
-          let petListText = '';
-          currentLobby.participants.forEach((pId, idx) => {
+          const participantsData = [];
+          for (const pId of currentLobby.participants) {
             const pObj = pet.getPet(pId, guildId);
-            const pName = pObj ? pObj.pet_name : 'Unknown Pet';
-            const pLvl = pObj ? pObj.level : 1;
-            const pType = pObj ? pObj.pet_type : 'Normal';
-            petListText += `• ${idx + 1}️⃣ **${pName}** (Lv. ${pLvl} ${pType}) · <@${pId}>\n`;
-          });
+            const member = membersMap[pId] || await message.guild.members.fetch(pId).catch(() => null);
+            const username = member ? member.user.username : 'Unknown';
+            participantsData.push({
+              userId: pId,
+              username,
+              pet_name: pObj ? pObj.pet_name : 'Unknown Pet',
+              pet_type: pObj ? pObj.pet_type : 'CAT',
+              level: pObj ? pObj.level : 1,
+              gacha_element: pObj ? pObj.gacha_element : 'EARTH',
+              gacha_rarity: pObj ? pObj.gacha_rarity : 'COMMON',
+              status: pObj ? pObj.status : 'ACTIVE',
+              health: pObj ? pObj.health : 100
+            });
+          }
 
           const calc = pet.calculateSuccessRate(guildId, currentLobby.participants, mapChoice);
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
@@ -6604,20 +6635,27 @@ async function handlePetCommand(message, client, args) {
           const updatedEmbed = embeds.petExpeditionLobbyEmbed(
             author.id,
             selectedMap,
-            petListText,
+            '', // no longer used for list text, drawn on canvas
             calc.successRate,
             elementalLogsTextVal,
             endTimeUnix,
             mapChoice
           );
 
-          const joinAtt = getMapAttachment(mapChoice);
+          const petCard = require('./petCard');
+          const lobbyCardAttachment = await petCard.getExpeditionLobbyAttachment(
+            author.id,
+            selectedMap,
+            participantsData,
+            calc.successRate,
+            elementalLogsTextVal,
+            endTimeUnix,
+            mapChoice,
+            guild
+          );
+
           const joinFiles = [];
-          if (joinAtt) joinFiles.push(joinAtt);
-          try {
-            const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
-            joinFiles.push(petExplorer);
-          } catch (err) {}
+          if (lobbyCardAttachment) joinFiles.push(lobbyCardAttachment);
 
           const joinOpts = { embeds: [updatedEmbed], attachments: [] };
           if (joinFiles.length > 0) joinOpts.files = joinFiles;
@@ -12255,7 +12293,12 @@ async function handleEconomyCommands(message, client) {
           } catch (e) {
             xpNeeded = userPet.level * 150;
           }
-          const attachment = await petCardModule.getPetCardAttachment(userPet, targetUser, { xpNeeded, maxHP: 100 });
+          const attachment = await petCardModule.getPetCardAttachment(userPet, targetUser, {
+            xpNeeded,
+            maxHP: 100,
+            expeditionCooldownUntil: wallet.expedition_cooldown_until || 0,
+            dailyExpeditionCount: wallet.daily_expedition_count || 0
+          });
           if (attachment) {
             initialFiles.push(attachment);
             extraData.hasVisualCard = true;
@@ -12341,7 +12384,12 @@ async function handleEconomyCommands(message, client) {
               } catch (e) {
                 xpNeeded = freshUserPet.level * 150;
               }
-              const attachment = await petCardModule.getPetCardAttachment(freshUserPet, targetUser, { xpNeeded, maxHP: 100 });
+              const attachment = await petCardModule.getPetCardAttachment(freshUserPet, targetUser, {
+                xpNeeded,
+                maxHP: 100,
+                expeditionCooldownUntil: freshWallet.expedition_cooldown_until || 0,
+                dailyExpeditionCount: freshWallet.daily_expedition_count || 0
+              });
               if (attachment) {
                 freshFiles.push(attachment);
                 freshExtraData.hasVisualCard = true;

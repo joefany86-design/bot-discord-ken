@@ -817,6 +817,13 @@ module.exports = {
           desc += `• ⚔️ Rekor PvP: **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
           const autoFeedLabel = pet.auto_feed === 1 ? '🟢 Makan Otomatis' : pet.auto_feed === 2 ? '🔵 Makan & Minum Otomatis' : '🔴 Nonaktif';
           desc += `• 🤖 Auto-Feed: **${autoFeedLabel}**\n`;
+          const expCooldown = wallet.expedition_cooldown_until || 0;
+          const expCount = wallet.daily_expedition_count || 0;
+          if (expCooldown > nowSec) {
+            desc += `• ⏳ Cooldown Ekspedisi: Sisa <t:${expCooldown}:R> *(Batas 6 main tercapai)*\n`;
+          } else {
+            desc += `• 🧭 Tiket Ekspedisi: **${Math.max(0, 6 - expCount)}/6** *(CD 30m setelah 6 main)*\n`;
+          }
           if (pet.curse_until && pet.curse_until > nowSec) {
             desc += `• 💀 Kutukan: **${pet.curse_type || 'Curse'}** sisa <t:${pet.curse_until}:R>\n`;
           }
@@ -4175,46 +4182,25 @@ module.exports = {
     const isChallenging = selectedMap.recommendedLevel >= 25;
     const embedColor = isChallenging ? 0x990000 : 0xFFB800; // Crimson / Gold Premium
 
-    const successBar = '🟩'.repeat(Math.round(successRate / 10)) + '⬛'.repeat(10 - Math.round(successRate / 10));
-    const difficultyBar = '🟥'.repeat(Math.round(selectedMap.difficulty)) + '⬛'.repeat(10 - Math.round(selectedMap.difficulty));
-
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle('🛡️ TIM EKSPEDISI PET: PERSIAPAN LOBI 🛡️')
-      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `### 🚨 Ekspedisi Tim Pet Telah Dibuka!\n` +
-        `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang and bahaya nyata. Akankah pet kesayanganmu kembali membawa harta karun legendaris, atau terkubur di bawah panasnya magma?*\n\n` +
-        `─── ⋆⋅☆⋅⋆ ───\n\n` +
+        `*Matahari meredup saat sekelompok petualang melangkah ke wilayah terlarang. Angin kencang membawa aroma belerang dan bahaya nyata.*\n\n` +
         `👤 **Pemimpin Perjalanan:** <@${authorId}>\n` +
         `🎮 **Zona Tujuan:** **${selectedMap.name}**\n` +
-        `🎖️ **Rekomendasi Level:** \`Lv. ${selectedMap.recommendedLevel}+\` *(Penalti peluang sukses jika level pet di bawah rekomendasi)*`
+        `⏳ **Batas Persiapan:** <t:${endTimeUnix}:R>\n` +
+        `💰 **Biaya Ransum:** \`Rp 250\` koin`
       )
       .addFields(
         {
-          name: '🐾 KRU PET SAAT INI',
-          value: petListText || '*Belum ada peserta*',
+          name: '🐾 Sinergi & Log Elemen Tim',
+          value: elementalLogsText || '*Belum ada keuntungan/kelemahan elemen*',
           inline: false
-        },
-        {
-          name: '🎯 PELUANG & SINERGI ELEMEN',
-          value: `• **Peluang Sukses Tim**: \`[${successBar}]\` (**${successRate}%**)\n` +
-            `• **Kesulitan Zona**: \`[${difficultyBar}]\` (**${selectedMap.difficulty * 10}%**)\n` +
-            `• **Sinergi Elemen:**\n${elementalLogsText}`,
-          inline: false
-        },
-        {
-          name: '💰 Biaya Ransum',
-          value: `\`Rp 250\` koin`,
-          inline: true
-        },
-        {
-          name: '⏳ Batas Persiapan',
-          value: `<t:${endTimeUnix}:R>`,
-          inline: true
         }
       )
-      .setImage(`attachment://map${mapChoice}.png`)
+      .setImage('attachment://lobby_card.png')
       .setFooter({ text: 'Kosan 1A RPG Pet Expedition • Klik tombol di bawah untuk bergabung!' })
       .setTimestamp();
   },

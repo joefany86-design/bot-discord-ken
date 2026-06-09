@@ -10,6 +10,7 @@
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const { AttachmentBuilder } = require('discord.js');
 const path = require('path');
+const fs = require('fs');
 const https = require('https');
 const http = require('http');
 
@@ -451,14 +452,21 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   drawStars(ctx, avatarCX - ((starCount * 20) / 2), avatarCY + avatarRadius + 18, starCount, 14);
 
   // Status text under stars
-  const statusLabels = {
-    BABY: 'Baby', ADULT: 'Adult', WEAK: 'Lemah', EGG: 'Telur', DEAD: 'Mati', ACTIVE: 'Aktif'
-  };
-  ctx.font = '11px "Segoe UI", Arial, sans-serif';
-  ctx.fillStyle = statusColor;
-  ctx.textAlign = 'center';
   const statusKey = (pet.status || 'ACTIVE').toUpperCase();
-  ctx.fillText(statusLabels[statusKey] || statusKey, avatarCX, avatarCY + avatarRadius + 52);
+  if (statusKey === 'WEAK') {
+    const text = '🩹 RECOVERING';
+    ctx.font = 'bold 9px "Segoe UI", Arial, sans-serif';
+    const w = ctx.measureText(text).width + 16;
+    drawBadge(ctx, avatarCX - w / 2, avatarCY + avatarRadius + 40, text, '#FF9800', '#FFFFFF', 9);
+  } else {
+    const statusLabels = {
+      BABY: 'Baby', ADULT: 'Adult', EGG: 'Telur', DEAD: 'Mati', ACTIVE: 'Aktif'
+    };
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = statusColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(statusLabels[statusKey] || statusKey, avatarCX, avatarCY + avatarRadius + 52);
+  }
 
   // ── [5] IDENTITAS PET (tengah) ──
   const infoX = 245;
@@ -613,22 +621,48 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // ── [9] AUTO-FEED & CURSE STATUS ──
+  // ── [9] AUTO-FEED & EXPEDITION & CURSE STATUS ──
   let bottomY = sep2Y + 16;
   ctx.font = '12px "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'left';
 
+  // Column 1: Auto-Feed
   const autoFeedLabel = pet.auto_feed === 1 ? 'Makan Otomatis' : pet.auto_feed === 2 ? 'Makan & Minum Otomatis' : 'Nonaktif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText('Auto-Feed:', statsX, bottomY);
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.fillText(autoFeedLabel, statsX + 85, bottomY);
+  ctx.fillText(autoFeedLabel, statsX + 75, bottomY);
 
+  // Column 2: Expedition Status
+  const expX = statsX + 260;
   const nowSec = Math.floor(Date.now() / 1000);
-  if (pet.curse_until && pet.curse_until > nowSec) {
-    bottomY += 18;
+  const expCooldown = options.expeditionCooldownUntil || 0;
+  const expCount = options.dailyExpeditionCount || 0;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Ekspedisi:', expX, bottomY);
+
+  if (expCooldown > nowSec) {
+    const sisaSec = expCooldown - nowSec;
+    const mins = Math.floor(sisaSec / 60);
+    const secs = sisaSec % 60;
+    const cdStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     ctx.fillStyle = '#FF5252';
-    ctx.fillText(`Kutukan: ${pet.curse_type || 'Curse'} (aktif)`, statsX, bottomY);
+    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`COOLDOWN (${cdStr})`, expX + 65, bottomY);
+  } else {
+    const tiketSisa = Math.max(0, 6 - expCount);
+    ctx.fillStyle = tiketSisa > 0 ? '#00E676' : '#FF9800';
+    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`${tiketSisa}/6 Tiket`, expX + 65, bottomY);
+  }
+  ctx.font = '12px "Segoe UI", Arial, sans-serif'; // reset font style
+
+  // Column 1 Line 2: Curse Status
+  if (pet.curse_until && pet.curse_until > nowSec) {
+    const curseY = bottomY + 18;
+    ctx.fillStyle = '#FF5252';
+    ctx.fillText(`Kutukan: ${pet.curse_type || 'Curse'} (aktif)`, statsX, curseY);
   }
 
   // ── [10] OWNER INFO + WATERMARK (bawah) ──
@@ -1247,15 +1281,246 @@ async function getExpeditionCardAttachment(res, mapChoice, guild) {
   }
 }
 
+async function generateExpeditionLobbyCard(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // 1. Draw Map Background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try {
+      bgImg = await loadImage(mapPath);
+    } catch (err) {
+      console.warn("Gagal load peta lobby bg:", err.message);
+    }
+  }
+
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+  } else {
+    // Fallback thematic gradient
+    const theme = ELEMENT_THEMES[(selectedMap.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
+    const colors = theme.bg;
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    for (let i = 0; i < colors.length; i++) {
+      grad.addColorStop(i / (colors.length - 1), colors[i]);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  }
+
+  // Glassmorphic overlay panel
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, CARD_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
+  ctx.fill();
+
+  // Panel border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, CARD_HEIGHT - panelMargin);
+  borderGrad.addColorStop(0, '#FFD70080');
+  borderGrad.addColorStop(1, '#FF8A8080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Vertical divider between left and right sections
+  const dividerX = 330;
+  ctx.beginPath();
+  ctx.moveTo(dividerX, 35);
+  ctx.lineTo(dividerX, CARD_HEIGHT - 35);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // ─── LEFT PANEL (MAP & MATCH INFO) ───
+  const leftX = 40;
+  let leftY = 48;
+
+  // Title: LOBI EKSPEDISI TIM
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  const titleGrad = ctx.createLinearGradient(leftX, leftY, leftX + 250, leftY);
+  titleGrad.addColorStop(0, '#FFD700');
+  titleGrad.addColorStop(1, '#FF8A80');
+  ctx.fillStyle = titleGrad;
+  ctx.textAlign = 'left';
+  ctx.fillText('LOBI EKSPEDISI TIM', leftX, leftY + 22);
+  leftY += 38;
+
+  // Zone Name
+  ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  const cleanZoneName = selectedMap.name.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
+  ctx.fillText(cleanZoneName, leftX, leftY + 16);
+  leftY += 28;
+
+  // Rec level & element
+  ctx.font = '12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 12);
+  ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 28);
+  leftY += 40;
+
+  // Success rate progress bar
+  const pct = Math.min(1, Math.max(0, successRate / 100));
+  const barColorStart = pct > 0.6 ? '#00E676' : pct > 0.3 ? '#FF9800' : '#FF1744';
+  const barColorEnd = pct > 0.6 ? '#69F0AE' : pct > 0.3 ? '#FFD54F' : '#FF8A80';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillText('PELUANG TIM', leftX, leftY + 12);
+  drawProgressBar(ctx, leftX, leftY + 20, 260, 16, pct, barColorStart, barColorEnd, '', `${successRate}%`);
+  leftY += 50;
+
+  // Preparation Countdown timer
+  const nowSec = Math.floor(Date.now() / 1000);
+  const sisaWaktu = Math.max(0, endTimeUnix - nowSec);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillText('BATAS WAKTU PERSIAPAN', leftX, leftY + 12);
+
+  const timePct = Math.min(1, Math.max(0, sisaWaktu / 30)); // 30s max lobby duration
+  drawProgressBar(ctx, leftX, leftY + 20, 260, 16, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
+  leftY += 52;
+
+  // Leader / Initiator Pawang
+  let leaderName = 'Pawang';
+  if (guild) {
+    try {
+      const member = guild.members.cache.get(initiatorId);
+      if (member) leaderName = member.user.username;
+    } catch (e) {}
+  }
+  ctx.font = '12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Pemimpin Perjalanan:', leftX, leftY + 12);
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillText(`@${leaderName}`, leftX + 130, leftY + 12);
+
+  // ─── RIGHT PANEL (GRID OF CREW SLOTS) ───
+  // 6 slots: 3 columns x 2 rows
+  const slotsColCount = 3;
+  const slotsRowCount = 2;
+  const colWidth = 172;
+  const rowHeight = 156;
+  const startSlotX = 360;
+  const startSlotY = 48;
+
+  for (let idx = 0; idx < 6; idx++) {
+    const colIdx = idx % slotsColCount;
+    const rowIdx = Math.floor(idx / slotsColCount);
+    const slotX = startSlotX + colIdx * (colWidth + 12);
+    const slotY = startSlotY + rowIdx * (rowHeight + 12);
+
+    const participant = participants[idx];
+
+    if (participant) {
+      const rarityTheme = RARITY_COLORS[(participant.gacha_rarity || 'COMMON').toUpperCase()] || RARITY_COLORS.COMMON;
+
+      // Draw filled slot background
+      drawRoundedRect(ctx, slotX, slotY, colWidth, rowHeight, 12);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.fill();
+      ctx.strokeStyle = rarityTheme.primary + '30';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Avatar
+      const avCx = slotX + colWidth / 2;
+      const avCy = slotY + 48;
+      const avR = 30;
+
+      let petImg = null;
+      try {
+        const embeds = require('./embeds');
+        petImg = await loadImageSafe(embeds.getPetImage(participant));
+      } catch (err) {}
+
+      if (petImg) {
+        drawCircleAvatar(ctx, petImg, avCx, avCy, avR, rarityTheme.primary, rarityTheme.glow);
+      } else {
+        // Fallback letter avatar
+        ctx.beginPath();
+        ctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
+        ctx.fillStyle = rarityTheme.primary;
+        ctx.fill();
+        ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.fillText(participant.pet_type.charAt(0), avCx, avCy + 6);
+      }
+
+      // Slot Index Indicator (Badge)
+      drawBadge(ctx, slotX + 8, slotY + 8, `${idx + 1}`, rarityTheme.primary, '#FFFFFF', 9);
+
+      // Name & Level
+      ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      let petName = participant.pet_name || 'Pet';
+      if (petName.length > 14) petName = petName.slice(0, 12) + '…';
+      ctx.fillText(petName, avCx, slotY + avR * 2 + 38);
+
+      ctx.font = '10px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillText(`Lv.${participant.level} ${participant.pet_type}`, avCx, slotY + avR * 2 + 52);
+
+      // Owner Username
+      let ownerName = participant.username || 'Pawang';
+      if (ownerName.length > 15) ownerName = ownerName.slice(0, 13) + '…';
+      ctx.font = 'italic 10px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = rarityTheme.primary;
+      ctx.fillText(`@${ownerName}`, avCx, slotY + avR * 2 + 68);
+
+    } else {
+      // Draw empty slot (dashed border)
+      ctx.save();
+      ctx.setLineDash([6, 6]);
+      drawRoundedRect(ctx, slotX, slotY, colWidth, rowHeight, 12);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.textAlign = 'center';
+      ctx.fillText('SLOT KOSONG', slotX + colWidth / 2, slotY + rowHeight / 2 - 4);
+      ctx.font = '9px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('Menunggu Pawang...', slotX + colWidth / 2, slotY + rowHeight / 2 + 10);
+    }
+  }
+
+  // Footer Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.textAlign = 'right';
+  ctx.fillText('Kosan 1A RPG · Expedition Lobby', CARD_WIDTH - 30, CARD_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionLobbyAttachment(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild) {
+  try {
+    const buffer = await generateExpeditionLobbyCard(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild);
+    return new AttachmentBuilder(buffer, { name: 'lobby_card.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating expedition lobby card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
   generateStandingsCard,
   generateExpeditionCard,
+  generateExpeditionLobbyCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
   getExpeditionCardAttachment,
+  getExpeditionLobbyAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
