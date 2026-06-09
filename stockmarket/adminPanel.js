@@ -350,7 +350,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
       // Species Select 2: Mythic & Immortal
       const speciesSelect2 = new StringSelectMenuBuilder()
-        .setCustomId('admin_pet_give_species')
+        .setCustomId('admin_pet_give_species_immortal')
         .setPlaceholder('✨ Pilih Spesies Khusus (Mythic & Immortal)...');
 
       speciesSelect2.addOptions(
@@ -574,7 +574,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         return iPet.reply({ embeds: [auditEmbed], flags: 64 });
       }
       // === Give Custom Pet Sub-Menu Handlers ===
-      else if (iPet.customId === 'admin_pet_give_species') {
+      else if (iPet.customId === 'admin_pet_give_species' || iPet.customId === 'admin_pet_give_species_immortal') {
         const val = iPet.values[0];
         if (val.startsWith('_separator_')) {
           return iPet.reply({ content: '❌ Silakan pilih spesies pet yang valid, bukan separator!', flags: 64 });
@@ -1921,7 +1921,7 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
       .setPlaceholder('🐾 Pilih Spesies Standard (Common - Legendary)...');
 
     const speciesSelect2 = new StringSelectMenuBuilder()
-      .setCustomId('admin_tournament_rewards_pet_species')
+      .setCustomId('admin_tournament_rewards_pet_species_immortal')
       .setPlaceholder('✨ Pilih Spesies Khusus (Mythic & Immortal)...');
 
     const petModule = require('./pet');
@@ -2515,7 +2515,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
       const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
       await interaction.message.edit(fresh).catch(() => {});
     }
-    else if (customId === 'admin_tournament_rewards_pet_species') {
+    else if (customId === 'admin_tournament_rewards_pet_species' || customId === 'admin_tournament_rewards_pet_species_immortal') {
       state.petGiveSpecies = interaction.values[0];
       state.currentSubMenu = 'reward_pet_trait';
       const fresh = getTournamentPanelDataShared(guildId, state, client, isPermanentChannel);
