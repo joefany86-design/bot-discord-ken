@@ -5802,6 +5802,8 @@ module.exports = {
   getAdminDashboardAttachment,
   generateSafariEncounterCard,
   getSafariEncounterAttachment,
+  generateSafariLobbyCard,
+  getSafariLobbyAttachment,
   generateHeistLobbyCard,
   getHeistLobbyAttachment,
   generateHeistStepCard,
