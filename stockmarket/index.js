@@ -10200,9 +10200,12 @@ async function handleEconomyCommands(message, client) {
     const subCommand = args[0] ? args[0].toLowerCase() : null;
     const isSafari = ['safari', 'catch', 'tangkap'].includes(commandName) || (commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand));
     if (!isSafari) {
-      const warnEmb = embeds.warnEmbed('Saluran Khusus Safari! 🌴', 'Saluran ini hanya dapat digunakan untuk bermain **Pet Safari** (`.pet safari` / `.safari`)! Silakan gunakan channel yang sesuai untuk perintah lainnya.');
-      await autoReply({ embeds: [warnEmb] });
-      return true; // Berhenti memproses perintah
+      const isOwner = author.id === OWNER_ID;
+      if (!isOwner) {
+        const warnEmb = embeds.warnEmbed('Saluran Khusus Safari! 🌴', 'Saluran ini hanya dapat digunakan untuk bermain **Pet Safari** (`.pet safari` / `.safari`)! Silakan gunakan channel yang sesuai untuk perintah lainnya.');
+        await autoReply({ embeds: [warnEmb] });
+        return true; // Berhenti memproses perintah
+      }
     }
   }
 
