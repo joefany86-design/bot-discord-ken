@@ -10788,12 +10788,21 @@ async function handleEconomyCommands(message, client) {
               .setStyle(ButtonStyle.Danger)
           );
 
-          const heistLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+          const lobbyAttachment = await petCard.getHeistLobbyAttachment(
+            author,
+            lobby.participants,
+            stats.successRate,
+            stats.minPrize,
+            stats.maxPrize,
+            lobby.prepFee,
+            endTimeUnix
+          );
+
           const replyMsg = await message.reply({
             content: `🚨 **OPERASI PERAMPOKAN BANK DIMULAI!** 🚨`,
             embeds: [lobbyEmbed],
             components: [row],
-            files: [heistLoadingImg]
+            files: lobbyAttachment ? [lobbyAttachment] : []
           });
 
           // Helper function to shuffle array elements
@@ -11045,13 +11054,29 @@ async function handleEconomyCommands(message, client) {
                     .setStyle(ButtonStyle.Danger)
                 );
 
-                  const stepLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
-                  await replyMsg.edit({
-                    content: `🚨 **TAHAPAN ${stepNumber}/${steps.length} SEDANG BERJALAN!**`,
-                    embeds: [stepEmbed],
-                    components: [stepRow],
-                    files: [stepLoadingImg]
-                  }).catch(() => {});
+                // Fetch target user object from client cache or fetch directly
+                let targetUserObj = client.users.cache.get(step.targetUserId);
+                if (!targetUserObj) {
+                  try {
+                    targetUserObj = await client.users.fetch(step.targetUserId);
+                  } catch (e) {}
+                }
+
+                const stepAttachment = await petCard.getHeistStepAttachment(
+                  stepNumber,
+                  steps.length,
+                  step.title,
+                  step.desc,
+                  targetUserObj,
+                  endTimeQteUnix
+                );
+
+                await replyMsg.edit({
+                  content: `🚨 **TAHAPAN ${stepNumber}/${steps.length} SEDANG BERJALAN!**`,
+                  embeds: [stepEmbed],
+                  components: [stepRow],
+                  files: stepAttachment ? [stepAttachment] : []
+                }).catch(() => {});
 
                 // Buat collector QTE selama 6 detik
                 const qteCollector = replyMsg.createMessageComponentCollector({
@@ -11078,14 +11103,14 @@ async function handleEconomyCommands(message, client) {
                         // Heist gagal instan karena salah klik
                         const res = robbery.executeHeistQteFailure(guildId, iQte.user.id, 'Interference');
                         const failEmbed = embeds.heistQteFailureEmbed(guild, iQte.user.id, 'Interference', participants);
-                        const failLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+                        const failAttachment = await petCard.getHeistFailureAttachment(iQte.user, 'Interference');
                         
                         await iQte.reply({ content: `🚨 Anda memicu alarm karena menekan tombol di luar giliran!`, flags: 64 });
                         await replyMsg.edit({
                           content: `❌ **HEIST GAGAL: OPERASI DIGAGALKAN OLEH KRU!**`,
                           embeds: [failEmbed],
                           components: [],
-                          files: [failLoadingImg]
+                          files: failAttachment ? [failAttachment] : []
                         }).catch(() => {});
                         
                         resolveQte();
@@ -11110,13 +11135,14 @@ async function handleEconomyCommands(message, client) {
                       
                       const res = robbery.executeHeistQteFailure(guildId, step.targetUserId, 'Timeout');
                       const failEmbed = embeds.heistQteFailureEmbed(guild, step.targetUserId, 'Timeout', participants);
-                      const failLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
+                      const failedUserObj = client.users.cache.get(step.targetUserId) || null;
+                      const failAttachment = await petCard.getHeistFailureAttachment(failedUserObj, 'Timeout');
                       
                       await replyMsg.edit({
                         content: `❌ **HEIST GAGAL: WAKTU REAKSI TIM HABIS!**`,
                         embeds: [failEmbed],
                         components: [],
-                        files: [failLoadingImg]
+                        files: failAttachment ? [failAttachment] : []
                       }).catch(() => {});
                     }
                     resolveQte();
@@ -11156,19 +11182,26 @@ async function handleEconomyCommands(message, client) {
                   contentMsg += `\n🧼 **Sabun Licin Terpakai!** ${mentions} menggunakan Sabun Licin untuk memotong waktu penjara heist sebesar 50%!`;
                 }
 
-                  const resultLoadingImg = new AttachmentBuilder('./assets/heist_loading.png', { name: 'heist_loading.png' });
-                  await replyMsg.edit({
+                const resultAttachment = await petCard.getHeistResultAttachment(
+                  res.success,
+                  res.totalReward,
+                  res.rewardPerPerson,
+                  res.fineAmount,
+                  res.jailHours
+                );
+
+                await replyMsg.edit({
+                  content: contentMsg,
+                  embeds: [resultEmbed],
+                  components: [],
+                  files: resultAttachment ? [resultAttachment] : []
+                }).catch(async () => {
+                  await message.channel.send({
                     content: contentMsg,
                     embeds: [resultEmbed],
-                    components: [],
-                    files: [resultLoadingImg]
-                  }).catch(async () => {
-                    await message.channel.send({
-                      content: contentMsg,
-                      embeds: [resultEmbed],
-                      files: [resultLoadingImg]
-                    });
+                    files: resultAttachment ? [resultAttachment] : []
                   });
+                });
               }
 
             } catch (err) {
@@ -11199,8 +11232,21 @@ async function handleEconomyCommands(message, client) {
                   updatedLobby.prepFee
                 );
 
+                const updatedAttachment = await petCard.getHeistLobbyAttachment(
+                  author,
+                  updatedLobby.participants,
+                  currentStats.successRate,
+                  currentStats.minPrize,
+                  currentStats.maxPrize,
+                  updatedLobby.prepFee,
+                  endTimeUnix
+                );
+
                 await iHeist.reply({ content: `🤝 Anda berhasil bergabung dengan tim heist! Biaya persiapan Rp ${updatedLobby.prepFee} terpotong.`, flags: 64 });
-                await replyMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
+                await replyMsg.edit({
+                  embeds: [updatedEmbed],
+                  files: updatedAttachment ? [updatedAttachment] : []
+                }).catch(() => { });
               }
 
               else if (iHeist.customId === 'heist_btn_cancel') {

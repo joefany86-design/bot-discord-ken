@@ -5800,15 +5800,413 @@ module.exports = {
   getTournamentRegistrationAttachment,
   generateAdminDashboardCard,
   getAdminDashboardAttachment,
-  generateSafariLobbyCard,
-  getSafariLobbyAttachment,
   generateSafariEncounterCard,
   getSafariEncounterAttachment,
+  generateHeistLobbyCard,
+  getHeistLobbyAttachment,
+  generateHeistStepCard,
+  getHeistStepAttachment,
+  generateHeistFailureCard,
+  getHeistFailureAttachment,
+  generateHeistResultCard,
+  getHeistResultAttachment,
   generateExpeditionMapListCard,
   getExpeditionMapListAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
 };
+
+// ═══════════════════════════════════════════════
+// DYNAMIC HEIST CANVAS CARDS GENERATOR
+// ═══════════════════════════════════════════════
+
+async function generateHeistLobbyCard(initiatorUser, participants, successRate, minPrize, maxPrize, prepFee, endTimeUnix) {
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Load Dark Celestial/Cyber Background
+  const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+  bgGrad.addColorStop(0, '#0c0202');
+  bgGrad.addColorStop(0.5, '#220808');
+  bgGrad.addColorStop(1, '#0c0202');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+
+  // Cyber Grid lines
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < EXP_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, EXP_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < EXP_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(EXP_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Dark overlay panel
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(12, 6, 6, 0.88)';
+  ctx.fill();
+
+  // Red neon border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
+  borderGrad.addColorStop(0, '#FF3D0080');
+  borderGrad.addColorStop(1, '#D5000080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#D50000';
+  ctx.textAlign = 'center';
+  ctx.fillText('CENTRAL BANK HEIST • LOBI OPERASI', EXP_WIDTH / 2, 55);
+
+  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillText('Persiapkan tim elit Anda. Bobol sistem keamanan dan bawa pulang jarahan!', EXP_WIDTH / 2, 78);
+
+  // Split into left & right panel
+  const splitX = 430;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath(); ctx.moveTo(splitX, 105); ctx.lineTo(splitX, 420); ctx.stroke();
+
+  // LEFT PANEL: Kru Info
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#D50000';
+  ctx.fillText('DAFTAR KRU OPERASI', 45, 120);
+
+  let startY = 145;
+  const rolesList = ['Otak Kriminal', 'Peretas Keamanan', 'Ahli Peledak', 'Jaga Sandera', 'Pembawa Jarahan', 'Pembalap Pelarian'];
+  
+  for (let i = 0; i < 6; i++) {
+    const isJoined = i < participants.length;
+    const participantId = isJoined ? participants[i] : null;
+    const roleName = rolesList[i] || 'Anggota Kru Backup';
+
+    // Box row
+    drawRoundedRect(ctx, 45, startY - 14, 360, 32, 6);
+    ctx.fillStyle = isJoined ? 'rgba(213, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.01)';
+    ctx.fill();
+    ctx.strokeStyle = isJoined ? 'rgba(213, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.03)';
+    ctx.stroke();
+
+    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = isJoined ? '#FFFFFF' : '#5A6270';
+    ctx.fillText(isJoined ? `KRU ${i + 1}: ID ${participantId.slice(-6)}` : `KRU ${i + 1}: MENUNGGU...`, 60, startY + 6);
+
+    ctx.font = 'italic 9px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = isJoined ? '#FF3D00' : '#454C5E';
+    ctx.textAlign = 'right';
+    ctx.fillText(roleName.toUpperCase(), 390, startY + 6);
+    ctx.textAlign = 'left';
+
+    startY += 40;
+  }
+
+  // RIGHT PANEL: Analisis Risiko & Informasi
+  const rightX = 465;
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#D50000';
+  ctx.fillText('ANALISIS RISIKO & ESTIMASI', rightX, 120);
+
+  // Success bar
+  const barY = 145;
+  ctx.font = '11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#8E9AA8';
+  ctx.fillText('PELUANG SUKSES TIM', rightX, barY);
+  drawProgressBar(ctx, rightX, barY + 8, 410, 20, successRate / 100, '#D50000', '#FF3D00', null, `${successRate}%`);
+
+  // Info boxes
+  const boxY = 210;
+  const drawInfoRow = (y, label, val, color) => {
+    drawRoundedRect(ctx, rightX, y, 410, 48, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.stroke();
+
+    ctx.font = 'bold 9px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#8E9AA8';
+    ctx.textAlign = 'left';
+    ctx.fillText(label.toUpperCase(), rightX + 16, y + 18);
+
+    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = color || '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(val, rightX + 16, y + 36);
+  };
+
+  drawInfoRow(boxY, 'Estimasi Jarahan Brankas', `Rp ${minPrize.toLocaleString('id-ID')} - Rp ${maxPrize.toLocaleString('id-ID')}`, '#FFD700');
+  drawInfoRow(boxY + 62, 'Biaya Persiapan / Kru', `Rp ${prepFee.toLocaleString('id-ID')}`, '#FFFFFF');
+  
+  const secondsLeft = Math.max(0, endTimeUnix - Math.floor(Date.now() / 1000));
+  drawInfoRow(boxY + 124, 'Operasi Dimulai Dalam', `${secondsLeft} Detik`, '#FF3D00');
+
+  // Watermark footer
+  ctx.textAlign = 'center';
+  ctx.font = '9px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG • Central Bank Heist Lobby', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getHeistLobbyAttachment(initiatorUser, participants, successRate, minPrize, maxPrize, prepFee, endTimeUnix) {
+  try {
+    const buffer = await generateHeistLobbyCard(initiatorUser, participants, successRate, minPrize, maxPrize, prepFee, endTimeUnix);
+    return new AttachmentBuilder(buffer, { name: 'heist_lobby.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating heist lobby card:', e);
+    return null;
+  }
+}
+
+async function generateHeistStepCard(stepNumber, totalSteps, stepTitle, stepDesc, targetUser, endTimeQteUnix) {
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+  bgGrad.addColorStop(0, '#0f0505');
+  bgGrad.addColorStop(0.5, '#221111');
+  bgGrad.addColorStop(1, '#0f0505');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+
+  // Overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(12, 8, 8, 0.9)';
+  ctx.fill();
+
+  // Orange/Red border glow
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
+  borderGrad.addColorStop(0, '#FF910080');
+  borderGrad.addColorStop(1, '#FF3D0080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF9100';
+  ctx.textAlign = 'center';
+  ctx.fillText(`FASE EKSEKUSI QTE: TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 55);
+
+  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillText('Sistem keamanan aktif mendeteksi peretas! Cepat ambil tindakan!', EXP_WIDTH / 2, 78);
+
+  // User Target Box
+  const targetX = 50, targetY = 115, targetW = 820, targetH = 85;
+  drawRoundedRect(ctx, targetX, targetY, targetW, targetH, 12);
+  ctx.fillStyle = 'rgba(255, 145, 0, 0.05)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 145, 0, 0.2)';
+  ctx.stroke();
+
+  // Avatar target loading
+  let avatarImg = null;
+  if (targetUser && targetUser.displayAvatarURL) {
+    const avatarURL = targetUser.displayAvatarURL({ extension: 'png', size: 128 });
+    avatarImg = await loadImageSafe(avatarURL);
+  }
+  
+  if (avatarImg) {
+    drawCircleAvatar(ctx, avatarImg, targetX + 50, targetY + 42, 30, '#FF9100', 'rgba(255, 145, 0, 0.2)');
+  }
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 15px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('TARGET OPERASI SAAT INI', targetX + 105, targetY + 36);
+
+  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF9100';
+  ctx.fillText(targetUser ? targetUser.username.toUpperCase() : 'USER TARGET', targetX + 105, targetY + 56);
+
+  // Role Description Box
+  const roleY = 220;
+  drawRoundedRect(ctx, targetX, roleY, targetW, 140, 12);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.stroke();
+
+  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF9100';
+  ctx.fillText(`PERAN KRU: ${stepTitle.toUpperCase()}`, targetX + 24, roleY + 35);
+
+  const cleanDesc = stepDesc.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '').replace(/\*\*/g, '').trim();
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(cleanDesc, targetX + 24, roleY + 65);
+
+  const secondsLeft = Math.max(0, endTimeQteUnix - Math.floor(Date.now() / 1000));
+  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#E74C3C';
+  ctx.fillText(`Sisa Waktu Reaksi: ${secondsLeft} detik`, targetX + 24, roleY + 105);
+
+  // Warning footer notice
+  ctx.textAlign = 'center';
+  ctx.font = 'italic 10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 51, 102, 0.7)';
+  ctx.fillText('Peringatan: Salah klik atau klik oleh kru lain memicu kegagalan instan (Interference Fail)!', EXP_WIDTH / 2, 400);
+
+  // Progress Bar QTE
+  drawProgressBar(ctx, targetX, 420, targetW, 16, stepNumber / totalSteps, '#FF9100', '#FF3D00', null, `Tingkat Kemajuan: Tahap ${stepNumber}/${totalSteps}`);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getHeistStepAttachment(stepNumber, totalSteps, stepTitle, stepDesc, targetUser, endTimeQteUnix) {
+  try {
+    const buffer = await generateHeistStepCard(stepNumber, totalSteps, stepTitle, stepDesc, targetUser, endTimeQteUnix);
+    return new AttachmentBuilder(buffer, { name: 'heist_step.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating heist step QTE card:', e);
+    return null;
+  }
+}
+
+async function generateHeistFailureCard(failedUser, reasonType) {
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+  bgGrad.addColorStop(0, '#1a0000');
+  bgGrad.addColorStop(0.5, '#3a0000');
+  bgGrad.addColorStop(1, '#1a0000');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+
+  // Overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(15, 6, 6, 0.9)';
+  ctx.fill();
+
+  ctx.strokeStyle = '#D50000';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#D50000';
+  ctx.textAlign = 'center';
+  ctx.fillText('OPERASI HEIST GAGAL TOTAL!', EXP_WIDTH / 2, 60);
+
+  // Large alert icon
+  drawPremiumIcon(ctx, 'shield', EXP_WIDTH / 2, 145, 60, '#D50000');
+
+  // Description
+  ctx.font = 'bold 15px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('ALARM BERBUNYI! TIM SWAT MENGEPUNG BANK!', EXP_WIDTH / 2, 220);
+
+  let causeText = '';
+  if (reasonType === 'Timeout') {
+    causeText = `${failedUser ? failedUser.username : 'Target'} lambat bereaksi! Batas waktu habis.`;
+  } else {
+    causeText = `${failedUser ? failedUser.username : 'Kru'} salah klik di luar gilirannya (Interferensi)!`;
+  }
+
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#A0AABF';
+  ctx.fillText(causeText, EXP_WIDTH / 2, 260);
+  ctx.fillText('Seluruh kru perampok dijebloskan ke penjara virtual dan didenda kerugian.', EXP_WIDTH / 2, 290);
+
+  // Footer notice
+  ctx.font = 'italic 10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.fillText('Kosan 1A RPG • Heist Failure Report', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getHeistFailureAttachment(failedUser, reasonType) {
+  try {
+    const buffer = await generateHeistFailureCard(failedUser, reasonType);
+    return new AttachmentBuilder(buffer, { name: 'heist_failure.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating heist failure card:', e);
+    return null;
+  }
+}
+
+async function generateHeistResultCard(success, totalReward, rewardPerPerson, fineAmount, jailHours) {
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+  bgGrad.addColorStop(0, success ? '#001a0d' : '#1a000b');
+  bgGrad.addColorStop(0.5, success ? '#043615' : '#33081b');
+  bgGrad.addColorStop(1, success ? '#001a0d' : '#1a000b');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+
+  // Overlay
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = success ? 'rgba(6, 20, 12, 0.9)' : 'rgba(20, 6, 12, 0.9)';
+  ctx.fill();
+
+  ctx.strokeStyle = success ? '#00E676' : '#FF3366';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = success ? '#00E676' : '#FF3366';
+  ctx.textAlign = 'center';
+  ctx.fillText(success ? 'OPERASI BANK HEIST SUKSES BESAR!' : 'OPERASI HEIST GAGAL NORMAL', EXP_WIDTH / 2, 60);
+
+  // Large medal/badge icon
+  if (success) {
+    drawPremiumIcon(ctx, 'trophy', EXP_WIDTH / 2, 145, 60, '#FFD700');
+  } else {
+    drawPremiumIcon(ctx, 'shield', EXP_WIDTH / 2, 145, 60, '#FF3366');
+  }
+
+  // Details
+  ctx.font = 'bold 15px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText(success ? 'Kru Berhasil Menggondol Koin Brankas Bank!' : 'Kru Tertangkap Polisi di Luar Gedung!', EXP_WIDTH / 2, 220);
+
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#A0AABF';
+  if (success) {
+    ctx.fillText(`Total Jarahan: Rp ${totalReward.toLocaleString('id-ID')}`, EXP_WIDTH / 2, 260);
+    ctx.fillText(`Bagian Per Orang: +Rp ${rewardPerPerson.toLocaleString('id-ID')}`, EXP_WIDTH / 2, 290);
+  } else {
+    ctx.fillText(`Denda Kerugian per Kru: Rp ${fineAmount.toLocaleString('id-ID')}`, EXP_WIDTH / 2, 260);
+    ctx.fillText(`Masa Tahanan Sel: ${jailHours} Jam`, EXP_WIDTH / 2, 290);
+  }
+
+  // Footer notice
+  ctx.font = 'italic 10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.fillText('Kosan 1A RPG • Heist Operational Report', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getHeistResultAttachment(success, totalReward, rewardPerPerson, fineAmount, jailHours) {
+  try {
+    const buffer = await generateHeistResultCard(success, totalReward, rewardPerPerson, fineAmount, jailHours);
+    return new AttachmentBuilder(buffer, { name: 'heist_result.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating heist result card:', e);
+    return null;
+  }
+}
 
 
