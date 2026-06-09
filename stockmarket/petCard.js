@@ -2110,6 +2110,704 @@ async function getExpeditionQteFailureAttachment(mapName, failedMemberName, reas
   }
 }
 
+// ═══════════════════════════════════════════════
+// STAGE 1: PEMILIHAN JALUR TIM — Canvas Card
+// ═══════════════════════════════════════════════
+
+async function generateStage1PathSelectionCard(selectedMap, commanderName, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Map background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+  } else {
+    const theme = ELEMENT_THEMES[(selectedMap?.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    theme.bg.forEach((c, i) => grad.addColorStop(i / (theme.bg.length - 1), c));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  }
+
+  // Dark overlay
+  const pm = 15;
+  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
+  ctx.fill();
+  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  borderGrad.addColorStop(0, '#FF910080');
+  borderGrad.addColorStop(1, '#FFD70080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FF9100';
+  ctx.fillText('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM', CARD_WIDTH / 2, 55);
+
+  ctx.font = 'italic 13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText('"Decide wisely, Commander, for every path holds its own fortune and peril..."', CARD_WIDTH / 2, 80);
+
+  // Map & Commander info bar
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`🗺️ Peta: ${selectedMap?.name || 'Ekspedisi'}  ·  👤 Komandan: @${commanderName}`, CARD_WIDTH / 2, 105);
+
+  // ─── THREE PATH OPTION PANELS ───
+  const paths = [
+    {
+      icon: '🛣️', title: 'JALUR AMAN', color: '#4CAF50', glowColor: '#4CAF5040',
+      desc1: 'Perjalanan lancar tanpa',
+      desc2: 'risiko ekstra.',
+      bonus: '+0% Sukses', bonusColor: '#81C784'
+    },
+    {
+      icon: '🧗', title: 'JALUR PINTAS TERJAL', color: '#2196F3', glowColor: '#2196F340',
+      desc1: 'Mendaki tebing terjal.',
+      desc2: 'Pet kelelahan (-15 HP)',
+      bonus: '+15% Sukses', bonusColor: '#64B5F6'
+    },
+    {
+      icon: '🌲', title: 'RAWA BERACUN', color: '#F44336', glowColor: '#F4433640',
+      desc1: 'Rawa berlumpur. 30%',
+      desc2: 'risiko efek negatif.',
+      bonus: '+25% Sukses', bonusColor: '#EF9A9A'
+    }
+  ];
+
+  const panelW = 260;
+  const panelH = 210;
+  const panelGap = 20;
+  const totalW = (paths.length * panelW) + ((paths.length - 1) * panelGap);
+  const startX = (CARD_WIDTH - totalW) / 2;
+  const panelY = 125;
+
+  for (let i = 0; i < paths.length; i++) {
+    const p = paths[i];
+    const px = startX + i * (panelW + panelGap);
+
+    // Panel background
+    drawRoundedRect(ctx, px, panelY, panelW, panelH, 14);
+    ctx.fillStyle = p.glowColor;
+    ctx.fill();
+    ctx.strokeStyle = `${p.color}60`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Inner glass overlay
+    drawRoundedRect(ctx, px + 2, panelY + 2, panelW - 4, panelH - 4, 12);
+    ctx.fillStyle = 'rgba(10, 10, 30, 0.6)';
+    ctx.fill();
+
+    // Top accent stripe
+    ctx.save();
+    drawRoundedRect(ctx, px, panelY, panelW, 6, 14);
+    ctx.clip();
+    ctx.fillStyle = p.color;
+    ctx.fillRect(px, panelY, panelW, 6);
+    ctx.restore();
+
+    // Icon circle
+    const iconCx = px + panelW / 2;
+    const iconCy = panelY + 50;
+    ctx.beginPath();
+    ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
+    ctx.fillStyle = `${p.color}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${p.color}80`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Icon text (fallback letter since emoji renders as boxes in some canvas)
+    ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = p.color;
+    ctx.textAlign = 'center';
+    const iconLabel = i === 0 ? 'A' : i === 1 ? 'B' : 'C';
+    ctx.fillText(iconLabel, iconCx, iconCy + 7);
+
+    // Title
+    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(p.title, px + panelW / 2, panelY + 95);
+
+    // Description
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText(p.desc1, px + panelW / 2, panelY + 120);
+    ctx.fillText(p.desc2, px + panelW / 2, panelY + 136);
+
+    // Bonus badge
+    ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+    const badgeText = p.bonus;
+    const badgeW = ctx.measureText(badgeText).width + 20;
+    const badgeH = 22;
+    const badgeX = px + (panelW - badgeW) / 2;
+    const badgeY = panelY + 160;
+    drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2);
+    ctx.fillStyle = `${p.color}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${p.color}60`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = p.bonusColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 15);
+  }
+
+  // Footer
+  ctx.font = '11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih jalur dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStage1PathSelectionAttachment(selectedMap, commanderName, mapChoice) {
+  try {
+    const buffer = await generateStage1PathSelectionCard(selectedMap, commanderName, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage1.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating Stage 1 path selection card:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STAGE 1 RESULT — Canvas Card
+// ═══════════════════════════════════════════════
+
+async function generateStage1ResultCard(selectedMap, commanderName, pathText, pathChoice, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, 320);
+  const ctx = canvas.getContext('2d');
+
+  // Map background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    grad.addColorStop(0, '#1a0a00');
+    grad.addColorStop(1, '#331a00');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+  }
+
+  const pm = 15;
+  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, 320 - pm * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
+  ctx.fill();
+
+  // Green checkmark border for completed stage
+  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, 320 - pm);
+  borderGrad.addColorStop(0, '#00E67680');
+  borderGrad.addColorStop(1, '#FFB80080');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#00E676';
+  ctx.fillText('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅', CARD_WIDTH / 2, 60);
+
+  // Path choice color
+  const pathColors = { SAFE: '#4CAF50', SHORTCUT: '#2196F3', SWAMP: '#F44336' };
+  const chosenColor = pathColors[pathChoice] || '#FFB800';
+
+  // Result box
+  const boxW = 700;
+  const boxH = 120;
+  const boxX = (CARD_WIDTH - boxW) / 2;
+  const boxY = 85;
+  drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
+  ctx.fillStyle = `${chosenColor}15`;
+  ctx.fill();
+  ctx.strokeStyle = `${chosenColor}40`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = chosenColor;
+  ctx.fillText('📢 Keputusan Jalur:', boxX + 25, boxY + 30);
+
+  // Wrap path text
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  const cleanPathText = pathText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
+  const lines = cleanPathText.split('\n');
+  let ty = boxY + 55;
+  for (const line of lines) {
+    if (ty > boxY + boxH - 10) break;
+    ctx.fillText(line.substring(0, 80), boxX + 25, ty);
+    ty += 20;
+  }
+
+  // Map & Commander info
+  ctx.textAlign = 'center';
+  ctx.font = '12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}  ·  ⏳ Menghubungkan ke Stage 2...`, CARD_WIDTH / 2, 250);
+
+  // Watermark
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', CARD_WIDTH / 2, 290);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStage1ResultAttachment(selectedMap, commanderName, pathText, pathChoice, mapChoice) {
+  try {
+    const buffer = await generateStage1ResultCard(selectedMap, commanderName, pathText, pathChoice, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage1_result.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating Stage 1 result card:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STAGE 2: PETI KUNO TERKUNCI — Canvas Card
+// ═══════════════════════════════════════════════
+
+async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Map background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    grad.addColorStop(0, '#1a001a');
+    grad.addColorStop(1, '#330033');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  }
+
+  const pm = 15;
+  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  ctx.fillStyle = 'rgba(15, 5, 20, 0.90)';
+  ctx.fill();
+  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  borderGrad.addColorStop(0, '#E040FB80');
+  borderGrad.addColorStop(1, '#7C4DFF80');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#E040FB';
+  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', CARD_WIDTH / 2, 55);
+
+  ctx.font = 'italic 13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', CARD_WIDTH / 2, 80);
+
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, CARD_WIDTH / 2, 105);
+
+  // Three option panels
+  const opts = [
+    {
+      title: 'GUNAKAN LOCKPICK', color: '#2196F3', glowColor: '#2196F340',
+      desc1: 'Membuka peti aman.',
+      desc2: 'Dijamin 1 item langka!',
+      badge: hasLockpick ? '🟢 Tersedia' : '🔴 Tidak Ada',
+      badgeColor: hasLockpick ? '#4CAF50' : '#F44336',
+      letter: 'L'
+    },
+    {
+      title: 'DOBRAK PAKSA', color: '#F44336', glowColor: '#F4433640',
+      desc1: '40% sukses, 60%',
+      desc2: 'ledakan (-15 HP semua)',
+      badge: 'Risiko Tinggi',
+      badgeColor: '#FF9800',
+      letter: 'D'
+    },
+    {
+      title: 'LEWATI', color: '#9E9E9E', glowColor: '#9E9E9E30',
+      desc1: 'Tinggalkan peti dan',
+      desc2: 'lanjut aman.',
+      badge: 'Tanpa Risiko',
+      badgeColor: '#78909C',
+      letter: 'S'
+    }
+  ];
+
+  const panelW = 260;
+  const panelH = 210;
+  const panelGap = 20;
+  const totalW = (opts.length * panelW) + ((opts.length - 1) * panelGap);
+  const startX = (CARD_WIDTH - totalW) / 2;
+  const panelY = 125;
+
+  for (let i = 0; i < opts.length; i++) {
+    const o = opts[i];
+    const px = startX + i * (panelW + panelGap);
+
+    drawRoundedRect(ctx, px, panelY, panelW, panelH, 14);
+    ctx.fillStyle = o.glowColor;
+    ctx.fill();
+    ctx.strokeStyle = `${o.color}60`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    drawRoundedRect(ctx, px + 2, panelY + 2, panelW - 4, panelH - 4, 12);
+    ctx.fillStyle = 'rgba(10, 10, 30, 0.6)';
+    ctx.fill();
+
+    // Top accent
+    ctx.save();
+    drawRoundedRect(ctx, px, panelY, panelW, 6, 14);
+    ctx.clip();
+    ctx.fillStyle = o.color;
+    ctx.fillRect(px, panelY, panelW, 6);
+    ctx.restore();
+
+    // Icon circle
+    const iconCx = px + panelW / 2;
+    const iconCy = panelY + 50;
+    ctx.beginPath();
+    ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
+    ctx.fillStyle = `${o.color}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${o.color}80`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = o.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(o.letter, iconCx, iconCy + 7);
+
+    // Title
+    ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
+
+    // Description
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 118);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 134);
+
+    // Badge
+    ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+    const bText = o.badge;
+    const bW = ctx.measureText(bText).width + 20;
+    const bH = 20;
+    const bX = px + (panelW - bW) / 2;
+    const bY = panelY + 160;
+    drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
+    ctx.fillStyle = `${o.badgeColor}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${o.badgeColor}60`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = o.badgeColor;
+    ctx.fillText(bText, bX + bW / 2, bY + 14);
+  }
+
+  ctx.font = '11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStage2ChestAttachment(selectedMap, commanderName, hasLockpick, mapChoice) {
+  try {
+    const buffer = await generateStage2ChestCard(selectedMap, commanderName, hasLockpick, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage2_chest.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating Stage 2 chest card:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STAGE 2: AIR TERJUN SUCI — Canvas Card
+// ═══════════════════════════════════════════════
+
+async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Map background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    grad.addColorStop(0, '#001a33');
+    grad.addColorStop(1, '#003366');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  }
+
+  const pm = 15;
+  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  ctx.fillStyle = 'rgba(5, 15, 30, 0.90)';
+  ctx.fill();
+  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  borderGrad.addColorStop(0, '#00E5FF80');
+  borderGrad.addColorStop(1, '#00BCD480');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', CARD_WIDTH / 2, 55);
+
+  ctx.font = 'italic 13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', CARD_WIDTH / 2, 80);
+
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, CARD_WIDTH / 2, 105);
+
+  // Two option panels, centered
+  const panelW = 340;
+  const panelH = 220;
+  const panelGap = 30;
+  const totalW = 2 * panelW + panelGap;
+  const startX = (CARD_WIDTH - totalW) / 2;
+  const panelY = 125;
+
+  const opts = [
+    {
+      title: 'MINUM BERSAMA', color: '#00E5FF', glowColor: '#00E5FF30',
+      desc1: 'Seluruh pet memulihkan',
+      desc2: '+20 HP & +20 Hidrasi',
+      badge: 'Pemulihan Tim', badgeColor: '#00E676', letter: 'M'
+    },
+    {
+      title: 'LEWATI', color: '#78909C', glowColor: '#78909C30',
+      desc1: 'Lanjut perjalanan',
+      desc2: 'tanpa istirahat.',
+      badge: 'Tanpa Efek', badgeColor: '#90A4AE', letter: 'S'
+    }
+  ];
+
+  for (let i = 0; i < opts.length; i++) {
+    const o = opts[i];
+    const px = startX + i * (panelW + panelGap);
+
+    drawRoundedRect(ctx, px, panelY, panelW, panelH, 14);
+    ctx.fillStyle = o.glowColor;
+    ctx.fill();
+    ctx.strokeStyle = `${o.color}60`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    drawRoundedRect(ctx, px + 2, panelY + 2, panelW - 4, panelH - 4, 12);
+    ctx.fillStyle = 'rgba(10, 10, 30, 0.6)';
+    ctx.fill();
+
+    // Top accent stripe
+    ctx.save();
+    drawRoundedRect(ctx, px, panelY, panelW, 6, 14);
+    ctx.clip();
+    ctx.fillStyle = o.color;
+    ctx.fillRect(px, panelY, panelW, 6);
+    ctx.restore();
+
+    // Icon circle
+    const iconCx = px + panelW / 2;
+    const iconCy = panelY + 55;
+    ctx.beginPath();
+    ctx.arc(iconCx, iconCy, 28, 0, Math.PI * 2);
+    ctx.fillStyle = `${o.color}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${o.color}80`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = o.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(o.letter, iconCx, iconCy + 8);
+
+    ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(o.title, px + panelW / 2, panelY + 110);
+
+    ctx.font = '12px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 138);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 156);
+
+    // Badge
+    ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+    const bW = ctx.measureText(o.badge).width + 24;
+    const bH = 22;
+    const bX = px + (panelW - bW) / 2;
+    const bY = panelY + 175;
+    drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
+    ctx.fillStyle = `${o.badgeColor}30`;
+    ctx.fill();
+    ctx.strokeStyle = `${o.badgeColor}60`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = o.badgeColor;
+    ctx.fillText(o.badge, bX + bW / 2, bY + 15);
+  }
+
+  ctx.font = '11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStage2WaterfallAttachment(selectedMap, commanderName, mapChoice) {
+  try {
+    const buffer = await generateStage2WaterfallCard(selectedMap, commanderName, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage2_waterfall.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating Stage 2 waterfall card:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STAGE 2 RESULT — Canvas Card
+// ═══════════════════════════════════════════════
+
+async function generateStage2ResultCard(selectedMap, commanderName, eventText, isChest, mapChoice) {
+  const canvas = createCanvas(CARD_WIDTH, 320);
+  const ctx = canvas.getContext('2d');
+
+  // Map background
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+  } else {
+    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    grad.addColorStop(0, isChest ? '#1a001a' : '#001a33');
+    grad.addColorStop(1, isChest ? '#330033' : '#003366');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+  }
+
+  const pm = 15;
+  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, 320 - pm * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
+  ctx.fill();
+
+  const accentColor = isChest ? '#E040FB' : '#00E5FF';
+  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, 320 - pm);
+  borderGrad.addColorStop(0, `${accentColor}80`);
+  borderGrad.addColorStop(1, '#00E67680');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#00E676';
+  const titleIcon = isChest ? '📦' : '💧';
+  ctx.fillText(`${titleIcon} STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅`, CARD_WIDTH / 2, 60);
+
+  // Result box
+  const boxW = 700;
+  const boxH = 120;
+  const boxX = (CARD_WIDTH - boxW) / 2;
+  const boxY = 85;
+  drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
+  ctx.fillStyle = `${accentColor}10`;
+  ctx.fill();
+  ctx.strokeStyle = `${accentColor}30`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = accentColor;
+  ctx.fillText('📢 Keputusan:', boxX + 25, boxY + 30);
+
+  ctx.font = '13px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  const cleanEventText = eventText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
+  const evLines = cleanEventText.split('\n');
+  let ey = boxY + 55;
+  for (const line of evLines) {
+    if (ey > boxY + boxH - 10) break;
+    ctx.fillText(line.substring(0, 80), boxX + 25, ey);
+    ey += 20;
+  }
+
+  ctx.textAlign = 'center';
+  ctx.font = '12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`👤 @${commanderName}  ·  ⏳ Gerbang Bos Akhir terbuka...`, CARD_WIDTH / 2, 250);
+
+  ctx.font = '9px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', CARD_WIDTH / 2, 290);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getStage2ResultAttachment(selectedMap, commanderName, eventText, isChest, mapChoice) {
+  try {
+    const buffer = await generateStage2ResultCard(selectedMap, commanderName, eventText, isChest, mapChoice);
+    return new AttachmentBuilder(buffer, { name: 'expedition_stage2_result.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating Stage 2 result card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -2120,6 +2818,11 @@ module.exports = {
   generateExpeditionStageTransitionCard,
   generateExpeditionQteStepCard,
   generateExpeditionQteFailureCard,
+  generateStage1PathSelectionCard,
+  generateStage1ResultCard,
+  generateStage2ChestCard,
+  generateStage2WaterfallCard,
+  generateStage2ResultCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
@@ -2129,6 +2832,11 @@ module.exports = {
   getExpeditionStageTransitionAttachment,
   getExpeditionQteStepAttachment,
   getExpeditionQteFailureAttachment,
+  getStage1PathSelectionAttachment,
+  getStage1ResultAttachment,
+  getStage2ChestAttachment,
+  getStage2WaterfallAttachment,
+  getStage2ResultAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

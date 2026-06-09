@@ -6163,8 +6163,13 @@ async function handlePetCommand(message, client, args) {
           new ButtonBuilder().setCustomId('exp_path_swamp').setLabel('🌲 Rawa Beracun').setStyle(ButtonStyle.Danger)
         );
 
+        let s1Att = null;
+        try {
+          s1Att = await petCardModule.getStage1PathSelectionAttachment(selectedMap, author.username, mapChoice);
+        } catch (err) {}
+        if (!s1Att) s1Att = getMapAttachment(mapChoice);
+
         const s1EditOpts = { embeds: [stage1Embed], components: [stage1Row], attachments: [] };
-        const s1Att = getMapAttachment(mapChoice);
         if (s1Att) s1EditOpts.files = [s1Att];
         await replyMsg.edit(s1EditOpts).catch(() => {});
 
@@ -6239,7 +6244,12 @@ async function handlePetCommand(message, client, args) {
           .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
           .setTimestamp();
 
-        const s1dAtt = getMapAttachment(mapChoice);
+        let s1dAtt = null;
+        try {
+          s1dAtt = await petCardModule.getStage1ResultAttachment(selectedMap, author.username, pathText, pathChoice, mapChoice);
+        } catch (err) {}
+        if (!s1dAtt) s1dAtt = getMapAttachment(mapChoice);
+
         const s1dOpts = { embeds: [pathSelectedEmbed], components: [], attachments: [] };
         if (s1dAtt) s1dOpts.files = [s1dAtt];
         await replyMsg.edit(s1dOpts).catch(() => {});
@@ -6307,7 +6317,12 @@ async function handlePetCommand(message, client, args) {
             new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
           );
 
-          const s2cAtt = getMapAttachment(mapChoice);
+          let s2cAtt = null;
+          try {
+            s2cAtt = await petCardModule.getStage2ChestAttachment(selectedMap, author.username, hasLockpick, mapChoice);
+          } catch (err) {}
+          if (!s2cAtt) s2cAtt = getMapAttachment(mapChoice);
+
           const s2cOpts = { embeds: [chestEmbed], components: [chestRow], attachments: [] };
           if (s2cAtt) s2cOpts.files = [s2cAtt];
           await replyMsg.edit(s2cOpts).catch(() => {});
@@ -6394,7 +6409,12 @@ async function handlePetCommand(message, client, args) {
             new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
           );
 
-          const s2wAtt = getMapAttachment(mapChoice);
+          let s2wAtt = null;
+          try {
+            s2wAtt = await petCardModule.getStage2WaterfallAttachment(selectedMap, author.username, mapChoice);
+          } catch (err) {}
+          if (!s2wAtt) s2wAtt = getMapAttachment(mapChoice);
+
           const s2wOpts = { embeds: [waterfallEmbed], components: [waterfallRow], attachments: [] };
           if (s2wAtt) s2wOpts.files = [s2wAtt];
           await replyMsg.edit(s2wOpts).catch(() => {});
@@ -6453,7 +6473,12 @@ async function handlePetCommand(message, client, args) {
           .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
           .setTimestamp();
 
-        const s2dAtt = getMapAttachment(mapChoice);
+        let s2dAtt = null;
+        try {
+          s2dAtt = await petCardModule.getStage2ResultAttachment(selectedMap, author.username, eventText, isChest, mapChoice);
+        } catch (err) {}
+        if (!s2dAtt) s2dAtt = getMapAttachment(mapChoice);
+
         const s2dOpts = { embeds: [eventSelectedEmbed], components: [], attachments: [] };
         if (s2dAtt) s2dOpts.files = [s2dAtt];
         await replyMsg.edit(s2dOpts).catch(() => {});
