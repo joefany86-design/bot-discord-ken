@@ -1203,6 +1203,17 @@ function arrestBuronan(hunterId, targetId, guildId, hunterMember) {
   }
 }
 
+/**
+ * ADMIN: Membersihkan lobi heist aktif yang tersangkut di memori
+ */
+function adminClearLobby(guildId) {
+  if (activeHeists.has(guildId)) {
+    activeHeists.delete(guildId);
+    return true;
+  }
+  return false;
+}
+
 module.exports = {
   activeHeists,
   getJailTimeRemaining,
@@ -1219,5 +1230,6 @@ module.exports = {
   executeHeistQteFailure,
   payBail,
   adminFreeUser,
-  adminResetCooldown
+  adminResetCooldown,
+  adminClearLobby
 };

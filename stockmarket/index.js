@@ -11486,10 +11486,23 @@ async function handleEconomyCommands(message, client) {
         }
       }
 
+      else if (sub === 'clear-lobby' || sub === 'clear') {
+        try {
+          const cleared = robbery.adminClearLobby(guildId);
+          if (cleared) {
+            await message.reply({ embeds: [embeds.successEmbed('Lobi Dibersihkan!', '🧹 Lobi heist aktif yang tersangkut telah dihapus dari memori. Anda bisa memulai heist baru sekarang.')] });
+          } else {
+            await message.reply({ embeds: [embeds.warnEmbed('Tidak Ada Lobi Aktif', 'Tidak ditemukan lobi heist yang aktif/tersangkut di server ini.')] });
+          }
+        } catch (err) {
+          await message.reply({ embeds: [embeds.errorEmbed('Gagal Clear Lobby!', err.message)] });
+        }
+      }
+
       else {
         return message.reply({
           embeds: [
-            embeds.errorEmbed('Subcommand Tidak Dikenal!', 'Pilihan: `.heist-admin free @user` atau `.heist-admin reset`')
+            embeds.errorEmbed('Subcommand Tidak Dikenal!', 'Pilihan:\n• `.heist-admin free @user` - Bebaskan dari penjara\n• `.heist-admin reset` - Reset cooldown heist\n• `.heist-admin clear-lobby` - Bersihkan lobi tersangkut')
           ]
         });
       }
