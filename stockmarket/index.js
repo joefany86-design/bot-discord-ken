@@ -10195,6 +10195,21 @@ async function handleEconomyCommands(message, client) {
     }
   }
 
+  // ── FILTER SALURAN KHUSUS SAFARI (Channel ID: 1513927968379109436) ──
+  if (message.channelId === '1513927968379109436') {
+    const subCommand = args[0] ? args[0].toLowerCase() : null;
+    const isSafari = ['safari', 'catch', 'tangkap'].includes(commandName) || (commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand));
+    if (!isSafari) {
+      const isOwner = author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        const warnEmb = embeds.warnEmbed('Saluran Khusus Safari! 🌴', 'Saluran ini hanya dapat digunakan untuk bermain **Pet Safari** (`.pet safari` / `.safari`)! Silakan gunakan channel yang sesuai untuk perintah lainnya.');
+        await autoReply({ embeds: [warnEmb] });
+        return true; // Berhenti memproses perintah
+      }
+    }
+  }
+
   // 2. Jika mengetik perintah pet di channel lain, blokir (kecuali admin/owner)
   if (['pet', 'pet-admin'].includes(commandName)) {
     const subCommand = args[0] ? args[0].toLowerCase() : null;
