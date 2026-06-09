@@ -10028,7 +10028,8 @@ async function handleEconomyCommands(message, client) {
   }
 
   // ── RESTRIKSI SALURAN UNTUK .ROB DAN .HEIST ──
-  if ((commandName === 'rob' || commandName === 'heist') && message.channelId !== '1508417228624887928') {
+  const allowedRobChannels = ['1508417228624887928', '1503324994153873458'];
+  if ((commandName === 'rob' || commandName === 'heist') && !allowedRobChannels.includes(message.channelId)) {
     await message.delete().catch(() => {});
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${author.id}>, perintah \`.rob\` dan \`.heist\` hanya diperbolehkan di saluran khusus perampokan: <#1508417228624887928>!`
