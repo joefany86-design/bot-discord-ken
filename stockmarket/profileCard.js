@@ -60,6 +60,13 @@ const TIER_THEMES = {
   }
 };
 
+const ROOM_THEMES = {
+  PENTHOUSE: { primary: '#F1C40F', glow: '#FFF176', label: '👑 Penthouse Kosan', border: '#F1C40F' },
+  AC: { primary: '#00A8FF', glow: '#4FC3F7', label: '❄️ Kamar AC', border: '#00A8FF' },
+  KIPAS: { primary: '#BDC3C7', glow: '#CFD8DC', label: '💨 Kamar Kipas Angin', border: '#BDC3C7' },
+  BIASA: { primary: '#D35400', glow: '#E67E22', label: '🚪 Kamar Biasa', border: '#D35400' }
+};
+
 const CARD_WIDTH = 920;
 const CARD_HEIGHT = 420;
 
@@ -551,8 +558,258 @@ async function getProfileCardAttachment(user, wallet, bankBalance, portfolioValu
   }
 }
 
+/**
+ * Generate visual property card (room + garden)
+ */
+async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlots = []) {
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background: cozy forest/garden dark theme
+  const bgTheme = {
+    primary: '#00E676',
+    bg: ['#041a0e', '#020d07', '#010503']
+  };
+  drawBackground(ctx, CARD_WIDTH, CARD_HEIGHT, bgTheme);
+
+  // Glassmorphism wrapper
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, CARD_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(6, 12, 8, 0.78)';
+  ctx.fill();
+
+  // Outer border
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, CARD_HEIGHT - panelMargin);
+  borderGrad.addColorStop(0, 'rgba(0, 230, 118, 0.45)');
+  borderGrad.addColorStop(0.5, 'rgba(0, 230, 118, 0.15)');
+  borderGrad.addColorStop(1, 'rgba(0, 230, 118, 0.45)');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Vertical Divider
+  const dividerX = 360;
+  ctx.beginPath();
+  ctx.moveTo(dividerX, 40);
+  ctx.lineTo(dividerX, CARD_HEIGHT - 40);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // --- LEFT COLUMN: ROOM & UPGRADES ---
+  const roomX = 35;
+  const roomY = 48;
+  const roomW = 300;
+  const roomH = 100;
+
+  // Resolve room tier
+  const roomTier = (kosRental ? kosRental.room_tier : 'BIASA').toUpperCase();
+  const roomTheme = ROOM_THEMES[roomTier] || ROOM_THEMES.BIASA;
+
+  // Draw room frame
+  drawRoundedRect(ctx, roomX, roomY, roomW, roomH, 12);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.fill();
+  ctx.strokeStyle = roomTheme.border;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Room Name
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText(roomTheme.label.toUpperCase(), roomX + roomW / 2, roomY + 38);
+
+  // Room Lease duration
+  const nowSec = Math.floor(Date.now() / 1000);
+  let durationText = 'Non-aktif / Ketik .kos';
+  if (kosRental && kosRental.ends_at) {
+    const remainingSec = kosRental.ends_at - nowSec;
+    const remainingDays = Math.max(0, Math.ceil(remainingSec / (24 * 3600)));
+    durationText = `Sisa Sewa: ${remainingDays} Hari`;
+  }
+  ctx.font = '11px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.fillText(durationText, roomX + roomW / 2, roomY + 68);
+
+  // Upgrades section
+  let upgradesY = roomY + roomH + 25;
+  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.textAlign = 'left';
+  ctx.fillText('🏢 UPGRADE KAMAR AKTIF', roomX, upgradesY);
+
+  upgradesY += 12;
+  let pillX = roomX;
+  let pillY = upgradesY;
+  const maxPillX = roomX + roomW;
+
+  const upgradeIcons = {
+    AC: '❄️ AC', WIFI: '📶 WiFi', TV: '📺 TV 4K', PC: '🖥️ PC', DISPENSER: '🚰 Dispenser',
+    ALARM: '🚨 Alarm', CCTV: '📹 CCTV', GEMBOK: '🔒 Gembok', KASUR: '🛏️ Kasur', SECURITY: '👮 Security'
+  };
+
+  if (kosUpgrades && kosUpgrades.length > 0) {
+    kosUpgrades.forEach(u => {
+      const rawId = (typeof u === 'string' ? u : u.upgrade_id || '').toUpperCase();
+      const label = upgradeIcons[rawId] || rawId;
+      ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+      const textW = ctx.measureText(label).width;
+      const pillW = textW + 16;
+      const pillH = 18;
+
+      if (pillX + pillW > maxPillX) {
+        pillX = roomX;
+        pillY += pillH + 6;
+      }
+
+      drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 9);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, pillX + 8, pillY + 12);
+
+      pillX += pillW + 6;
+    });
+  } else {
+    ctx.font = 'italic 11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillText('Belum ada upgrade. Beli via .kos', roomX, upgradesY + 12);
+  }
+
+  // --- RIGHT COLUMN: GARDEN SLOTS ---
+  const gardenX = 385;
+
+  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#00E676';
+  ctx.textAlign = 'left';
+  ctx.fillText('🌸 COZY GARDEN WARGA', gardenX, 52);
+
+  const slotY = 85;
+  const slotW = 150;
+  const slotH = 240;
+  const gap = 20;
+
+  for (let index = 1; index <= 3; index++) {
+    const slot = gardenSlots.find(s => s.slot_index === index) || { slot_index: index };
+    const sx = gardenX + (index - 1) * (slotW + gap);
+
+    // Slot card
+    drawRoundedRect(ctx, sx, slotY, slotW, slotH, 12);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fill();
+    ctx.strokeStyle = slot.seed_id ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Slot title
+    ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`SLOT ${index}`, sx + slotW / 2, slotY + 24);
+
+    if (slot.seed_id) {
+      const plantNames = {
+        SEED_ROSE: '🌹 Mawar',
+        SEED_TULIP: '🌷 Tulip',
+        SEED_SUNFLOWER: '🌻 Matahari',
+        SEED_ORCHID: '🪻 Anggrek'
+      };
+      const emojis = { SEED_ROSE: '🌹', SEED_TULIP: '🌷', SEED_SUNFLOWER: '🌻', SEED_ORCHID: '🪻' };
+      const rawSeed = slot.seed_id.toUpperCase();
+      const plantName = plantNames[rawSeed] || slot.seed_id;
+      const emoji = emojis[rawSeed] || '🌱';
+
+      // Emoji
+      ctx.font = '40px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(emoji, sx + slotW / 2, slotY + 84);
+
+      // Name
+      ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(plantName.split(' ').pop() || plantName, sx + slotW / 2, slotY + 115);
+
+      // Growth status
+      let duration = 3600;
+      if (rawSeed.includes('ROSE')) duration = 3600;
+      else if (rawSeed.includes('TULIP')) duration = 7200;
+      else if (rawSeed.includes('SUNFLOWER')) duration = 14400;
+      else if (rawSeed.includes('ORCHID')) duration = 14400;
+
+      const readyAt = slot.planted_at + duration;
+      const isReady = nowSec >= readyAt;
+
+      if (isReady) {
+        ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#00E676';
+        ctx.fillText('✨ SIAP PANEN!', sx + slotW / 2, slotY + 150);
+      } else {
+        const remaining = readyAt - nowSec;
+        const mins = Math.ceil(remaining / 60);
+        ctx.font = '11px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillText(`🌱 ${mins}m lagi`, sx + slotW / 2, slotY + 150);
+      }
+
+      // Watering status
+      const waterStatus = slot.water_count > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
+      ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = slot.water_count > 0 ? '#4FC3F7' : '#FF9800';
+      ctx.fillText(waterStatus, sx + slotW / 2, slotY + 185);
+    } else {
+      // Empty
+      ctx.font = '36px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('🪹', sx + slotW / 2, slotY + 88);
+
+      ctx.font = '12px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.fillText('Kosong', sx + slotW / 2, slotY + 120);
+
+      ctx.font = '9px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fillText('Ketik .kebun tanam', sx + slotW / 2, slotY + 175);
+    }
+  }
+
+  // Footer / Watermark
+  const footerY = CARD_HEIGHT - 38;
+  ctx.font = '10px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.textAlign = 'right';
+  ctx.fillText('Kosan 1A Economy · Hunian & Kebun', CARD_WIDTH - 30, footerY);
+
+  // Owner label (bottom left)
+  if (user) {
+    ctx.textAlign = 'left';
+    const ownerName = user.username || 'User';
+    ctx.fillText(`Warga: ${ownerName}`, 30, footerY);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Generate property card dan kembalikan sebagai Discord AttachmentBuilder
+ */
+async function getPropertyCardAttachment(user, kosRental, kosUpgrades = [], gardenSlots = []) {
+  try {
+    const buffer = await generatePropertyCard(user, kosRental, kosUpgrades, gardenSlots);
+    return new AttachmentBuilder(buffer, { name: 'property_card.png' });
+  } catch (e) {
+    console.error('[ProfileCard] Error generating property card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   TIER_THEMES,
   generateProfileCard,
-  getProfileCardAttachment
+  getProfileCardAttachment,
+  generatePropertyCard,
+  getPropertyCardAttachment
 };

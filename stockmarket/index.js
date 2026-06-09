@@ -12607,6 +12607,17 @@ async function handleEconomyCommands(message, client) {
             } catch (err) {
               console.error('[Profile] Gagal memuat profile card tab:', err);
             }
+          } else if (currentTab === 'property') {
+            try {
+              const profileCardModule = require('./profileCard');
+              const attachment = await profileCardModule.getPropertyCardAttachment(targetUser, freshKosRental, freshKosUpgrades, freshGardenSlots);
+              if (attachment) {
+                freshFiles.push(attachment);
+                freshExtraData.hasPropertyCard = true;
+              }
+            } catch (err) {
+              console.error('[Profile] Gagal memuat property card tab:', err);
+            }
           } else if (currentTab === 'pet' && freshUserPet && freshUserPet.status !== 'DEAD' && freshUserPet.status !== 'EGG') {
             try {
               const petCardModule = require('./petCard');
@@ -12642,8 +12653,8 @@ async function handleEconomyCommands(message, client) {
             files: freshFiles
           };
 
-          // Hapus lampiran sebelumnya jika keluar dari tab pet atau dashboard
-          if (currentTab !== 'pet' && currentTab !== 'dashboard') {
+          // Hapus lampiran sebelumnya jika keluar dari tab pet, dashboard, atau property
+          if (currentTab !== 'pet' && currentTab !== 'dashboard' && currentTab !== 'property') {
             updateOptions.attachments = [];
           }
 

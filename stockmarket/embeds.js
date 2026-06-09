@@ -822,7 +822,7 @@ module.exports = {
           desc += `• ⚽ Senang: \`[${happyBar}]\` \`${Math.round(pet.happiness)}%\`\n`;
           desc += `• 📈 XP: \`[${xpBar}]\` \`${pet.xp}/${xpNeeded}\`\n\n`;
 
-          desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
+        desc += `⚔️ **Statistik Battle & Asuhan**:\n`;
           desc += `• ⚔️ Rekor PvP: **${pet.pvp_wins || 0}W** / **${pet.pvp_losses || 0}L**\n`;
           const autoFeedLabel = pet.auto_feed === 1 ? '🟢 Makan Otomatis' : pet.auto_feed === 2 ? '🔵 Makan & Minum Otomatis' : '🔴 Nonaktif';
           desc += `• 🤖 Auto-Feed: **${autoFeedLabel}**\n`;
@@ -845,69 +845,78 @@ module.exports = {
     } else if (activeTab === 'property') {
       footerText = '💡 Halaman 4/5 · Gunakan tombol di bawah untuk berpindah tab';
 
-      desc += `🏠 **HUNIAN KOS & COZY GARDEN**\n\n`;
+      if (extraData && extraData.hasPropertyCard) {
+        thumbnailURL = null; // Sembunyikan avatar kecil agar visual lebih fokus
+        extraData.usePropertyCardImage = true;
 
-      desc += `🏢 **Sewa Kamar Kos**\n`;
-      if (extraData.kosRental) {
-        const { room_tier, ends_at } = extraData.kosRental;
-        const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-          room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-        desc += `• Kamar Aktif: **${roomName}**\n`;
-        desc += `• Masa Sewa: <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
+        desc += `🏠 **HUNIAN KOS & COZY GARDEN** 🌸\n\n` +
+                `Halo **${user.username}**! Berikut adalah tampilan visual kamar kos beserta tanaman kebun Anda saat ini.\n\n` +
+                `ℹ️ *Gunakan tombol menu di bawah untuk berpindah tab.*`;
       } else {
-        desc += `• Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos sewa\`)*\n`;
-      }
+        desc += `🏠 **HUNIAN KOS & COZY GARDEN**\n\n`;
 
-      // Upgrade kamar
-      if (extraData.kosUpgrades && extraData.kosUpgrades.length > 0) {
-        const upgradeNames = {
-          AC: '❄️ AC Dingin',
-          WIFI: '📶 WiFi Cepat',
-          TV: '📺 TV LED 4K',
-          PC: '🖥️ Gaming PC',
-          DISPENSER: '🚰 Dispenser Air'
-        };
-        const list = extraData.kosUpgrades.map(u => upgradeNames[u.upgrade_id.toUpperCase()] || u.upgrade_id).join(', ');
-        desc += `• Upgrade: **${list}**\n\n`;
-      } else {
-        desc += `• Upgrade: *Belum ada upgrade kamar*\n\n`;
-      }
+        desc += `🏢 **Sewa Kamar Kos**\n`;
+        if (extraData.kosRental) {
+          const { room_tier, ends_at } = extraData.kosRental;
+          const roomName = room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+            room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+          desc += `• Kamar Aktif: **${roomName}**\n`;
+          desc += `• Masa Sewa: <t:${ends_at}:d> (<t:${ends_at}:R>)\n`;
+        } else {
+          desc += `• Kamar Aktif: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
+        }
 
-      desc += `🌸 **Cozy Garden**\n`;
-      if (extraData.gardenSlots && extraData.gardenSlots.length > 0) {
-        const plantNames = {
-          SEED_ROSE: '🌹 Mawar',
-          SEED_TULIP: '🌷 Tulip',
-          SEED_SUNFLOWER: '🌻 Bunga Matahari',
-          SEED_ORCHID: '🪻 Anggrek'
-        };
-        extraData.gardenSlots.forEach(slot => {
-          const slotNum = slot.slot_index;
-          if (slot.seed_id) {
-            const plantName = plantNames[slot.seed_id.toUpperCase()] || slot.seed_id;
-            let duration = 3600; // default 1 jam
-            try {
-              const gardenModule = require('./garden');
-              if (gardenModule.SEEDS && gardenModule.SEEDS[slot.seed_id]) {
-                duration = gardenModule.SEEDS[slot.seed_id].growTime;
+        // Upgrade kamar
+        if (extraData.kosUpgrades && extraData.kosUpgrades.length > 0) {
+          const upgradeNames = {
+            AC: '❄️ AC Dingin',
+            WIFI: '📶 WiFi Cepat',
+            TV: '📺 TV LED 4K',
+            PC: '🖥️ Gaming PC',
+            DISPENSER: '🚰 Dispenser Air'
+          };
+          const list = extraData.kosUpgrades.map(u => upgradeNames[u.upgrade_id.toUpperCase()] || u.upgrade_id).join(', ');
+          desc += `• Upgrade: **${list}**\n\n`;
+        } else {
+          desc += `• Upgrade: *Belum ada upgrade kamar*\n\n`;
+        }
+
+        desc += `🌸 **Cozy Garden**\n`;
+        if (extraData.gardenSlots && extraData.gardenSlots.length > 0) {
+          const plantNames = {
+            SEED_ROSE: '🌹 Mawar',
+            SEED_TULIP: '🌷 Tulip',
+            SEED_SUNFLOWER: '🌻 Bunga Matahari',
+            SEED_ORCHID: '🪻 Anggrek'
+          };
+          extraData.gardenSlots.forEach(slot => {
+            const slotNum = slot.slot_index;
+            if (slot.seed_id) {
+              const plantName = plantNames[slot.seed_id.toUpperCase()] || slot.seed_id;
+              let duration = 3600; // default 1 jam
+              try {
+                const gardenModule = require('./garden');
+                if (gardenModule.SEEDS && gardenModule.SEEDS[slot.seed_id]) {
+                  duration = gardenModule.SEEDS[slot.seed_id].growTime;
+                }
+              } catch (e) {
+                if (slot.seed_id.includes('ROSE')) duration = 3600;
+                else if (slot.seed_id.includes('TULIP')) duration = 7200;
+                else duration = 14400;
               }
-            } catch (e) {
-              if (slot.seed_id.includes('ROSE')) duration = 3600;
-              else if (slot.seed_id.includes('TULIP')) duration = 7200;
-              else duration = 14400;
-            }
-            const readyAt = slot.planted_at + duration;
-            const isReady = nowSec >= readyAt;
-            const statusText = isReady ? '✨ **SIAP PANEN!**' : `🌱 Tumbuh (Siap <t:${readyAt}:R>)`;
-            const waterStatus = slot.last_watered_at > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
+              const readyAt = slot.planted_at + duration;
+              const isReady = nowSec >= readyAt;
+              const statusText = isReady ? '✨ **SIAP PANEN!**' : `🌱 Tumbuh (Siap <t:${readyAt}:R>)`;
+              const waterStatus = slot.last_watered_at > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
 
-            desc += `• Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
-          } else {
-            desc += `• Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
-          }
-        });
-      } else {
-        desc += `*Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
+              desc += `• Slot ${slotNum}: **${plantName}** · ${statusText} · \`${waterStatus}\`\n`;
+            } else {
+              desc += `• Slot ${slotNum}: *Kosong / Siap Ditanami (Ketik \`.kebun tanam\`)*\n`;
+            }
+          });
+        } else {
+          desc += `*Belum membuka slot kebun. Gunakan \`.kebun\` untuk memulai!*\n`;
+        }
       }
 
     } else if (activeTab === 'quests') {
@@ -990,6 +999,8 @@ module.exports = {
       embed.setImage('attachment://pet_card.png');
     } else if (extraData && extraData.useProfileCardImage) {
       embed.setImage('attachment://profile_card.png');
+    } else if (extraData && extraData.usePropertyCardImage) {
+      embed.setImage('attachment://property_card.png');
     }
 
     return embed;
