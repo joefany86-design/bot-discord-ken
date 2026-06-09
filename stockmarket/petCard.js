@@ -1005,29 +1005,28 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
     // Fallback avatar
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fillStyle = tier.color; ctx.fill();
-    ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 36px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#111'; ctx.textAlign = 'center';
     ctx.fillText((user.username || 'U').charAt(0).toUpperCase(), cx, cy + 12);
   }
 
   // Tag & Username
-  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 20px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
   const nameText = user.username ? user.username.toUpperCase() : 'USER';
   ctx.fillText(nameText, cx, 230);
 
   // Tier Badge
-  drawBadge(ctx, cx - 80, 245, `${tier.emoji} ${tier.name} MEMBER`, tier.darkColor, tier.color, 11);
+  drawBadge(ctx, cx - 80, 245, `${tier.name} MEMBER`, tier.darkColor, tier.color, 11);
 
   // Stats
   ctx.textAlign = 'left';
   ctx.fillStyle = '#A0AABF';
-  ctx.font = '13px "DejaVu Sans", sans-serif';
-  const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
-  ctx.fillText(`${streakEmoji} Daily Streak: ${wallet.streak_days} Hari`, 55, 305);
-  ctx.fillText(`🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}`, 55, 335);
-  ctx.fillText(`🚨 Masuk Sel: ${wallet.jail_count || 0} Kali`, 55, 365);
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillText(`Daily Streak: ${wallet.streak_days} Hari`, 55, 305);
+  ctx.fillText(`Auto-Trade: ${wallet.auto_trade ? 'Aktif' : 'Nonaktif'}`, 55, 335);
+  ctx.fillText(`Masuk Sel: ${wallet.jail_count || 0} Kali`, 55, 365);
 
   // Vertical Separator Line
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -1035,7 +1034,7 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
 
   // RIGHT PANEL: Financial Dashboard Grid
   ctx.textAlign = 'left';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText('FINANCIAL DASHBOARD', 315, 60);
 
@@ -1054,11 +1053,11 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
     ctx.fill();
 
     // Box labels
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#8E9AA8';
     ctx.fillText(title.toUpperCase(), x + 18, y + 30);
 
-    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 18px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText('Rp ' + Math.floor(amount).toLocaleString('id-ID'), x + 18, y + 65);
   };
@@ -1086,11 +1085,11 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
       hasBadges = true;
       luxuryItems.forEach(item => {
         let text = '', color = '#7F8C8D';
-        if (item.item_id === 'LAMBO') { text = '🏎️ LAMBO'; color = '#E74C3C'; }
-        if (item.item_id === 'GOLD') { text = '👑 GOLD'; color = '#F1C40F'; }
-        if (item.item_id === 'KEY') { text = '🔑 PENTHOUSE'; color = '#9B59B6'; }
-        if (item.item_id === 'ROLEX') { text = '⌚ ROLEX'; color = '#1ABC9C'; }
-        if (item.item_id === 'IPHONE') { text = '📱 IPHONE'; color = '#34495E'; }
+        if (item.item_id === 'LAMBO') { text = 'LAMBO'; color = '#E74C3C'; }
+        if (item.item_id === 'GOLD') { text = 'GOLD'; color = '#F1C40F'; }
+        if (item.item_id === 'KEY') { text = 'PENTHOUSE'; color = '#9B59B6'; }
+        if (item.item_id === 'ROLEX') { text = 'ROLEX'; color = '#1ABC9C'; }
+        if (item.item_id === 'IPHONE') { text = 'IPHONE'; color = '#34495E'; }
         badgeX += drawBadge(ctx, badgeX, 330, text, color, '#FFFFFF', 10) + 8;
       });
     }
@@ -1099,7 +1098,7 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
   }
 
   if (!hasBadges) {
-    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#5A6270';
     ctx.fillText('Belum memiliki Lencana Status Mewah', 315, 345);
   }
@@ -1112,11 +1111,11 @@ async function generateProfileDashboardCard(user, wallet, bankBalance, portfolio
     ctx.fillStyle = 'rgba(255, 51, 102, 0.1)';
     drawRoundedRect(ctx, 315, 370, 560, 32, 6);
     ctx.fill();
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FF3366';
-    let msg = '⚠️ STATUS AKTIF: ';
-    if (isJailed) msg += '🚨 DIPENJARA ';
-    if (isWanted) msg += '🚔 BURONAN (WANTED) ';
+    let msg = 'STATUS AKTIF: ';
+    if (isJailed) msg += 'DIPENJARA ';
+    if (isWanted) msg += 'BURONAN (WANTED) ';
     ctx.fillText(msg, 325, 390);
   }
 
