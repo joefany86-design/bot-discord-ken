@@ -13880,6 +13880,7 @@ async function handleEconomyCommands(message, client) {
 
           const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
           tournament.saveAnnounceMessageId(guildId, announceMsg.id);
+          await tournament.updateRegistrationEmbed(guildId, client);
 
           if (statusMsg) {
             await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});

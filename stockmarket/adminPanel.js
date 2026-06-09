@@ -3002,6 +3002,7 @@ async function handleAdminTournamentGlobalInteraction(interaction, client) {
 
           const announceMsg = await targetChannelObj.send({ content: '@everyone', embeds: [announceEmbed], components: [joinRow], allowedMentions: { parse: ['everyone'] } });
           tournament.saveAnnounceMessageId(guildId, announceMsg.id);
+          await tournament.updateRegistrationEmbed(guildId, client);
 
           client.tournamentTimers = client.tournamentTimers || new Map();
           if (client.tournamentTimers.has(guildId)) {

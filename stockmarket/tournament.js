@@ -216,43 +216,65 @@ async function updateRegistrationEmbed(guildId, client) {
 
   const participants = db.all('SELECT * FROM tournament_participants WHERE guild_id = ? AND status = \'ACTIVE\'', [guildId]);
 
-  let participantList = '';
-  if (participants.length === 0) {
-    participantList = '*Belum ada peserta yang mendaftar.*';
-  } else {
-    participantList = participants.map((p, idx) => {
+  // Resolve detailed participant info for the canvas
+  const resolvedParticipants = await Promise.all(
+    participants.map(async (p) => {
+      let username = 'Pawang';
+      try {
+        const discordUser = client.users.cache.get(p.user_id) || await client.users.fetch(p.user_id);
+        if (discordUser) username = discordUser.username;
+      } catch (e) {
+        // Fallback
+      }
+
       const userPet = getRegisteredPet(p.user_id, guildId);
-      const level = userPet ? userPet.level : '?';
-      const petEmoji = userPet ? (pet.GACHA_SPECIES[userPet.pet_type]?.emoji || '\uD83D\uDC3E') : '\uD83D\uDC3E';
-      return `**${idx + 1}.** ${petEmoji} ${p.pet_name} (Lv.${level}) \u2014 <@${p.user_id}>`;
-    }).join('\n');
-  }
+      const level = userPet ? userPet.level : 1;
+      const rarity = userPet ? (userPet.gacha_rarity || (pet.GACHA_SPECIES[userPet.pet_type]?.rarity || 'COMMON')).toUpperCase() : 'COMMON';
 
+      return {
+        username,
+        petName: p.pet_name,
+        level,
+        rarity
+      };
+    })
+  );
+
+  // Generate the visual attachment using napi-rs/canvas
+  const attachment = await petCard.getTournamentRegistrationAttachment(event, resolvedParticipants);
+
+  // Still build the embed but set image to attachment and keep details clean
   const endRegAt = event.registration_end_at;
-
   const announceEmbed = new EmbedBuilder()
-    .setColor(0x4F46E5) // Premium Indigo
+    .setColor(0xFF3366) // Neon Red/Purple Theme
     .setTitle('🏆 LIGA PET — ADMIN CUP 🏆')
     .setDescription(
       `📢 **Pendaftaran Liga PvP Pet telah dibuka oleh Administrator!**\n` +
       `Siapkan pet terkuat Anda untuk bertarung di liga dan merebut takhta juara server!\n\n` +
-      `▬`.repeat(15)
+      `⏱️ **Batas Pendaftaran:** <t:${endRegAt}:R> (<t:${endRegAt}:F>)\n` +
+      `📈 **Batasan HP:** ${(event.max_hp && event.max_hp < 999999) ? `Maksimal **${event.max_hp.toLocaleString('id-ID')} HP**` : '**Bebas / Tanpa Batas**'}\n` +
+      `🎁 **Hadiah:** ${event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara otomatis.*`}`
     )
-    .addFields(
-      { name: '⏱️ Batas Waktu Pendaftaran', value: `<t:${endRegAt}:R> (<t:${endRegAt}:T>)`, inline: true },
-      { name: '📈 Batasan HP Pet', value: (event.max_hp && event.max_hp < 999999) ? `Maksimal **${event.max_hp.toLocaleString('id-ID')} HP**` : 'Bebas / Tanpa Batas', inline: true },
-      { name: '🎁 Hadiah Liga', value: event.reward_desc ? `**${event.reward_desc}**` : `*Akan diberikan secara otomatis setelah liga selesai.*`, inline: false },
-      { name: `👥 Peserta Terdaftar (${participants.length})`, value: participantList, inline: false }
-    )
+    .setImage('attachment://tournament_registration.png')
     .setFooter({ text: 'Pet PvP League • Registration Phase' })
     .setTimestamp();
 
   try {
     const msg = await channel.messages.fetch(event.announce_message_id).catch(() => null);
     if (msg) {
-      await msg.edit({ embeds: [announceEmbed] }).catch(() => { });
+      // Edit message with the new embed and attachment
+      // We also reset any old attachments to prevent them from stacking
+      await msg.edit({
+        embeds: [announceEmbed],
+        files: attachment ? [attachment] : [],
+        attachments: []
+      }).catch((e) => {
+        console.error('[Tournament] Failed to edit tournament registration announcement:', e);
+      });
     }
-  } catch (e) { }
+  } catch (e) {
+    console.error('[Tournament] Error updating registration embed:', e);
+  }
 }
 
 /**
@@ -2388,6 +2410,9 @@ async function initTournamentRecovery(client) {
             closeRegistrationAndGenerateBracket(guildId, client);
           }, remainingTimeMs);
           client.tournamentTimers.set(guildId, timer);
+          
+          // Auto-refresh the visual registration card on boot
+          updateRegistrationEmbed(guildId, client).catch(() => {});
         } else {
           console.log(`[Tournament] Pendaftaran untuk guild ${guildId} sudah melewati batas waktu. Menutup pendaftaran sekarang...`);
           // Gunakan setTimeout agar tidak memblokir proses inisialisasi utama bot

@@ -3785,6 +3785,60 @@ function drawPremiumIcon(ctx, name, cx, cy, size = 18, color = '#FFFFFF') {
     drawRoundedRect(ctx, cx - w/2, cy - 0.5, w, h, 1.5);
     ctx.fill();
   }
+  else if (name === 'trophy') {
+    const w = size * 0.9;
+    const h = size * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - h/2);
+    ctx.lineTo(cx + w/2, cy - h/2);
+    ctx.lineTo(cx + w/3, cy + h/6);
+    ctx.quadraticCurveTo(cx, cy + h/3, cx - w/3, cy + h/6);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.fillRect(cx - 2, cy + h/3, 4, h/4);
+    ctx.fillRect(cx - w/3, cy + h/2 + 1, w * 0.66, 2);
+    
+    // handles
+    ctx.beginPath();
+    ctx.arc(cx - w/3 - 1, cy - h/8, 3, -Math.PI/2, Math.PI/2, true);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + w/3 + 1, cy - h/8, 3, -Math.PI/2, Math.PI/2, false);
+    ctx.stroke();
+  }
+  else if (name === 'clock') {
+    ctx.beginPath();
+    ctx.arc(cx, cy, size/2, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - size/3);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + size/4, cy);
+    ctx.stroke();
+  }
+  else if (name === 'shield') {
+    const w = size * 0.9;
+    const h = size * 1.0;
+    ctx.beginPath();
+    ctx.moveTo(cx - w/2, cy - h/2);
+    ctx.lineTo(cx + w/2, cy - h/2);
+    ctx.lineTo(cx + w/2, cy);
+    ctx.quadraticCurveTo(cx, cy + h/2, cx - w/2, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.stroke();
+  }
+  else if (name === 'gift') {
+    const w = size * 0.9;
+    const h = size * 0.9;
+    drawRoundedRect(ctx, cx - w/2, cy - h/4, w, h * 0.7, 2);
+    ctx.stroke();
+    ctx.fillRect(cx - w/2, cy - h/2 + 2, w, 2);
+    // Ribbon
+    ctx.fillRect(cx - 1.5, cy - h/2 + 2, 3, h - 2);
+  }
 
   ctx.restore();
 }
@@ -4033,6 +4087,211 @@ async function getPortalHubAttachment(client) {
   }
 }
 
+/**
+ * Generate premium card for PvP Pet League registration phase
+ */
+async function generateTournamentRegistrationCard(event, participants) {
+  const CARD_WIDTH = 1000;
+  const CARD_HEIGHT = 560;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark Celestial Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0f051d');
+  bgGrad.addColorStop(0.5, '#190a2e');
+  bgGrad.addColorStop(1, '#0f051d');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Cyber grid
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Main Card Container
+  const margin = 20;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(12, 6, 25, 0.85)';
+  ctx.fill();
+
+  // Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, '#7C4DFF');
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+  borderGrad.addColorStop(1, '#FF3366');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('LIGA PET — ADMIN CUP', 85, 70);
+
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF3366';
+  ctx.fillText('📢 PENDAFTARAN LIGA PVP PET TELAH DIBUKA!', 85, 88);
+
+  // Trophy icon in header
+  drawPremiumIcon(ctx, 'trophy', 50, 68, 24, '#FFD700');
+
+  // Header separator line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 115);
+  ctx.lineTo(960, 115);
+  ctx.stroke();
+
+  // ── LEFT COLUMN: TOURNAMENT DETAILS ──
+  const col1X = 45;
+  const colWidth = 445;
+
+  ctx.fillStyle = '#FF3366';
+  drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FF3366';
+  ctx.fillText('ℹ️ DETAIL PERTANDINGAN', col1X + 12, 149);
+
+  // Time details Y = 175
+  const drawDetailBox = (x, y, icon, title, val) => {
+    drawRoundedRect(ctx, x, y, colWidth, 75, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    drawPremiumIcon(ctx, icon, x + 24, y + 37, 20, '#FF3366');
+
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText(title.toUpperCase(), x + 56, y + 28);
+
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(val, x + 56, y + 49);
+  };
+
+  const endSec = event.registration_end_at;
+  const endDate = new Date(endSec * 1000);
+  const dateStr = endDate.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr = endDate.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+  drawDetailBox(col1X, 172, 'clock', 'Batas Waktu Pendaftaran', `${dateStr} @ ${timeStr}`);
+  
+  const hpLimitText = event.max_hp < 999999 ? `Maksimal ${event.max_hp.toLocaleString('id-ID')} HP` : 'Bebas / Tanpa Batas';
+  drawDetailBox(col1X, 258, 'shield', 'Batasan HP Pet', hpLimitText);
+  
+  const rewardText = event.reward_desc || 'Sesuai Ketentuan Server';
+  drawDetailBox(col1X, 344, 'gift', 'Hadiah Liga', rewardText);
+
+  // ── RIGHT COLUMN: PARTICIPANTS LIST ──
+  const col2X = 510;
+
+  ctx.fillStyle = '#00E5FF';
+  drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText(`👥 PESERTA TERDAFTAR (${participants.length})`, col2X + 12, 149);
+
+  let rightY = 172;
+  const itemHeight = 44;
+  const itemGap = 6;
+  const maxToDisplay = 6; // Max 6 participants displayed, otherwise show "+X more"
+
+  const displayedList = participants.slice(0, maxToDisplay);
+
+  if (participants.length === 0) {
+    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillText('Belum ada peserta yang mendaftar. Jadilah yang pertama!', col2X + 10, 200);
+  } else {
+    displayedList.forEach((p, idx) => {
+      drawRoundedRect(ctx, col2X, rightY, colWidth, itemHeight, 8);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Rarity Color Circle
+      const rColor = RARITY_COLORS[p.rarity] || RARITY_COLORS.COMMON;
+      ctx.beginPath();
+      ctx.arc(col2X + 24, rightY + 22, 5, 0, Math.PI * 2);
+      ctx.fillStyle = rColor.primary;
+      ctx.fill();
+
+      // Pet details
+      ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(`${p.petName} (Lv.${p.level})`, col2X + 44, rightY + 18);
+
+      // Owner/Pawang details
+      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillText(`Pawang: @${p.username}`, col2X + 44, rightY + 33);
+
+      rightY += itemHeight + itemGap;
+    });
+
+    if (participants.length > maxToDisplay) {
+      const remaining = participants.length - maxToDisplay;
+      ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#00E5FF';
+      ctx.fillText(`... dan ${remaining} peserta lainnya telah terdaftar di arena.`, col2X + 10, rightY + 16);
+    }
+  }
+
+  // Footer separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(40, 485);
+  ctx.lineTo(960, 485);
+  ctx.stroke();
+
+  // Footer notice
+  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'center';
+  ctx.fillText('Klik tombol di bawah ini untuk bergabung atau menarik pendaftaran pet Anda.', 500, 506);
+
+  // Bottom corner metadata
+  ctx.font = '10px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Liga Pet PvP • Kosan 1A', 45, 532);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('Registration Phase', 955, 532);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getTournamentRegistrationAttachment(event, participants) {
+  try {
+    const buffer = await generateTournamentRegistrationCard(event, participants);
+    return new AttachmentBuilder(buffer, { name: 'tournament_registration.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating tournament registration attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -4072,6 +4331,8 @@ module.exports = {
   getLeaderboardAttachment,
   generatePortalHubCard,
   getPortalHubAttachment,
+  generateTournamentRegistrationCard,
+  getTournamentRegistrationAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
