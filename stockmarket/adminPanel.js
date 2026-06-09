@@ -6736,7 +6736,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
   const settings = database.get('SELECT admin_panel_channel_id FROM ebyus_settings WHERE guild_id = ?', [guildId]);
   const isPermanentChannel = settings && settings.admin_panel_channel_id === (messageOrInteraction.channelId || messageOrInteraction.id);
 
-  const getHubPanelData = () => {
+  const getHubPanelData = async () => {
     // Live Stats calculation
     let walletsCount = 0;
     let activePetsCount = 0;
@@ -6764,31 +6764,30 @@ async function handleAdminPanel(messageOrInteraction, client) {
       console.error('Error calculating hub stats:', e);
     }
 
+    const attachment = await petCard.getAdminDashboardAttachment(client, {
+      walletsCount,
+      activePetsCount,
+      totalCoins,
+      multiplier,
+      gachaMode,
+      isActiveEvent
+    });
+
     const eventStatusText = isActiveEvent ? '🔴 **Abuse Event Aktif**' : '🟢 Normal';
 
     let embed = new EmbedBuilder()
       .setColor(0x7C4DFF) // Royal Violet
       .setTitle('🛡️ PUSAT KONTROL TERPADU ADMINISTRATOR')
-      .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
-        `Selamat datang di **Pusat Kontrol Terpadu Sentinel Bot 2026**. Gunakan menu dropdown di bawah untuk mengakses sub-panel kontrol. Setiap sub-panel menyediakan tombol kontrol visual yang terfokus untuk membantu Anda mengelola server secara praktis.`
+        `Selamat datang di **Pusat Kontrol Terpadu Sentinel Bot 2026**. Gunakan menu dropdown di bawah untuk mengakses sub-panel kontrol. Setiap sub-panel menyediakan tombol kontrol visual yang terfokus untuk membantu Anda mengelola server secara praktis.\n\n` +
+        `📊 **Warga Terdaftar:** \`${walletsCount} jiwa\`\n` +
+        `🐾 **Pet Aktif:** \`${activePetsCount} peliharaan\`\n` +
+        `💰 **Koin Beredar:** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\`\n\n` +
+        `🪙 **Chat Multiplier:** \`${multiplier}x\`\n` +
+        `🎰 **Gacha Mode:** \`${gachaMode}\`\n` +
+        `📢 **Status Event:** ${eventStatusText}`
       )
-      .addFields(
-        {
-          name: '📊 STATISTIK SERVER REAL-TIME',
-          value: `👥 **Warga Terdaftar:** \`${walletsCount} jiwa\`\n` +
-            `🐾 **Pet Aktif di Server:** \`${activePetsCount} peliharaan\`\n` +
-            `💰 **Koin Beredar (Dompet + Bank):** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\``,
-          inline: false
-        },
-        {
-          name: '⚙️ CONFIG ABYUS SYSTEM',
-          value: `🪙 **Chat Multiplier:** \`${multiplier}x\`\n` +
-            `🎰 **Gacha Role Mode:** \`${gachaMode}\`\n` +
-            `📢 **Status Event:** ${eventStatusText}`,
-          inline: false
-        }
-      )
+      .setImage('attachment://admin_dashboard.png')
       .setTimestamp()
       .setFooter({ text: 'Sentinel Bot • Dashboard Utama Portal' });
 
@@ -6882,7 +6881,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
     }
     const btnRow = new ActionRowBuilder().addComponents(btnComponents);
 
-    return { embeds: [embed], components: [selectRow, btnRow] };
+    return { embeds: [embed], components: [selectRow, btnRow], files: attachment ? [attachment] : [], attachments: [] };
   };
 
   // ── Helper: Generate Owner-Exclusive Panel Data ──
@@ -6970,11 +6969,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
     return { embeds: [ownerEmbed], components: [toggleRow, protectionRow, navRow] };
   };
 
-  const initialData = getHubPanelData();
-  let replyMsg;
-
   // Jika dibuka via .ow (tombol privat owner), tampilkan Owner Panel khusus
   const isOwnerPrivate = isInteraction && messageOrInteraction.customId === 'eco_btn_open_admin_panel_private';
+
+  const initialData = isOwnerPrivate ? null : await getHubPanelData();
+  let replyMsg;
 
   if (isOwnerPrivate) {
     const ownerData = getOwnerPanelData(messageOrInteraction.guildId);
@@ -7011,7 +7010,8 @@ async function handleAdminPanel(messageOrInteraction, client) {
         } else if (iOw.customId === 'ow_open_hub') {
           // Transisi ke Hub Panel biasa
           ownerCollector.stop('transition_hub');
-          await iOw.update(initialData);
+          const hubData = await getHubPanelData();
+          await iOw.update(hubData);
           replyMsg = iOw.message;
           setupHubCollector();
         } else if (iOw.customId === 'ow_refresh') {
@@ -7078,7 +7078,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         }
         else if (iHub.customId === 'hub_btn_refresh') {
           await iHub.deferUpdate();
-          const fresh = getHubPanelData();
+          const fresh = await getHubPanelData();
           await replyMsg.edit(fresh).catch(() => { });
         }
         else if (iHub.customId === 'hub_btn_close') {
@@ -7094,7 +7094,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
     collector.on('end', async (collected, reason) => {
       if (reason === 'transition') return;
       try {
-        const fresh = getHubPanelData();
+        const fresh = await getHubPanelData();
         fresh.components = [];
         await replyMsg.edit(fresh).catch(() => { });
       } catch (e) { }

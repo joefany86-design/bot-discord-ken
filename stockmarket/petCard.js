@@ -4292,6 +4292,221 @@ async function getTournamentRegistrationAttachment(event, participants) {
   }
 }
 
+/**
+ * Generate premium card for Administrator Unified Control Panel
+ */
+async function generateAdminDashboardCard(client, stats) {
+  const CARD_WIDTH = 1000;
+  const CARD_HEIGHT = 560;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Background - Dark purple gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, '#0c0617');
+  bgGrad.addColorStop(0.5, '#150a26');
+  bgGrad.addColorStop(1, '#0c0617');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Cyber grid
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Main Card Container
+  const margin = 20;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(10, 5, 20, 0.85)';
+  ctx.fill();
+
+  // Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, '#7C4DFF');
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+  borderGrad.addColorStop(1, '#00E5FF');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header Title
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('PUSAT KONTROL TERPADU ADMINISTRATOR', 85, 70);
+
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#7C4DFF';
+  ctx.fillText('🛡️ CONFIGURATION & SERVER METRICS PANEL', 85, 88);
+
+  // Shield icon in header
+  drawPremiumIcon(ctx, 'shield', 50, 68, 24, '#7C4DFF');
+
+  // Load Bot Avatar
+  let botImg = null;
+  try {
+    const avatarURL = client.user.displayAvatarURL({ extension: 'png', size: 128 });
+    botImg = await loadImageSafe(avatarURL);
+  } catch (e) {
+    console.warn('[PetCard] Failed to load bot avatar for Admin Panel:', e);
+  }
+
+  if (botImg) {
+    const avatarX = 930;
+    const avatarY = 68;
+    const avatarR = 25;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX, avatarY, avatarR, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(botImg, avatarX - avatarR, avatarY - avatarR, avatarR * 2, avatarR * 2);
+    ctx.restore();
+    
+    // Avatar border
+    ctx.beginPath();
+    ctx.arc(avatarX, avatarY, avatarR, 0, Math.PI * 2);
+    ctx.strokeStyle = '#7C4DFF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Header separator line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 115);
+  ctx.lineTo(960, 115);
+  ctx.stroke();
+
+  // ── LEFT COLUMN: SERVER STATISTICS ──
+  const col1X = 45;
+  const colWidth = 445;
+
+  ctx.fillStyle = '#00E5FF';
+  drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#00E5FF';
+  ctx.fillText('📊 STATISTIK SERVER REAL-TIME', col1X + 12, 149);
+
+  // Detail boxes for stats
+  const drawDetailBox = (x, y, icon, title, val, iconColor = '#7C4DFF') => {
+    drawRoundedRect(ctx, x, y, colWidth, 75, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    drawPremiumIcon(ctx, icon, x + 24, y + 37, 20, iconColor);
+
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText(title.toUpperCase(), x + 56, y + 28);
+
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(val, x + 56, y + 49);
+  };
+
+  drawDetailBox(col1X, 172, 'user', 'Warga Terdaftar', `${stats.walletsCount.toLocaleString('id-ID')} Jiwa`, '#00E5FF');
+  drawDetailBox(col1X, 258, 'paw', 'Pet Aktif di Server', `${stats.activePetsCount.toLocaleString('id-ID')} Peliharaan`, '#00E5FF');
+  drawDetailBox(col1X, 344, 'bank', 'Koin Beredar (Dompet + Bank)', `Rp ${stats.totalCoins.toLocaleString('id-ID')}`, '#00E5FF');
+
+  // ── RIGHT COLUMN: CONFIG ABYUS SYSTEM ──
+  const col2X = 510;
+
+  ctx.fillStyle = '#7C4DFF';
+  drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
+  ctx.fill();
+
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#7C4DFF';
+  ctx.fillText('⚙️ CONFIG ABYUS SYSTEM', col2X + 12, 149);
+
+  // Detail box 1: Multiplier
+  drawDetailBox(col2X, 172, 'chart', 'Chat Multiplier', `${stats.multiplier}x`, '#7C4DFF');
+
+  // Detail box 2: Gacha mode
+  drawDetailBox(col2X, 258, 'ticket', 'Gacha Role Mode', stats.gachaMode, '#7C4DFF');
+
+  // Detail box 3: Event Status (with glowing dot drawn on canvas)
+  const drawEventStatusBox = (x, y) => {
+    drawRoundedRect(ctx, x, y, colWidth, 75, 8);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const isEventActive = stats.isActiveEvent;
+    const dotColor = isEventActive ? '#FF3366' : '#00E676';
+    const statusText = isEventActive ? 'Abuse Event Aktif' : 'Normal / Aman';
+
+    // Draw Event Status Icon (glowing pulse dot)
+    ctx.beginPath();
+    ctx.arc(x + 24, y + 37, 6, 0, Math.PI * 2);
+    ctx.fillStyle = dotColor;
+    ctx.shadowColor = dotColor;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0; // reset shadow
+
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText('STATUS EVENT', x + 56, y + 28);
+
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = dotColor;
+    ctx.fillText(statusText, x + 56, y + 49);
+  };
+
+  drawEventStatusBox(col2X, 344);
+
+  // Footer separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(40, 485);
+  ctx.lineTo(960, 485);
+  ctx.stroke();
+
+  // Footer notice
+  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFD700';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gunakan menu dropdown di bawah untuk mengakses sub-panel kontrol.', 500, 506);
+
+  // Bottom corner metadata
+  ctx.font = '10px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Sentinel Bot • Admin Dashboard', 45, 532);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('Unified Control Hub', 955, 532);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getAdminDashboardAttachment(client, stats) {
+  try {
+    const buffer = await generateAdminDashboardCard(client, stats);
+    return new AttachmentBuilder(buffer, { name: 'admin_dashboard.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating admin dashboard attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -4333,6 +4548,8 @@ module.exports = {
   getPortalHubAttachment,
   generateTournamentRegistrationCard,
   getTournamentRegistrationAttachment,
+  generateAdminDashboardCard,
+  getAdminDashboardAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,
