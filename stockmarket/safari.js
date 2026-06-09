@@ -302,62 +302,27 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
  * Merender Tampilan Layar Safari secara Dinamis
  */
 async function renderSafariScreen(interaction, replyMsg, state, author, client) {
-  const petImg = embeds.getPetImage(state.pet);
   const biome = BIOMES[state.biome];
 
   // Hitung persentase peluang
   const currentCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus);
   const currentEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
 
-  // Tampilan Status Pet
-  let petStatusDetail = `Level **${state.pet.level}** | Elemen: **${state.pet.element}**\n`;
-  if (state.pet.trait) {
-    petStatusDetail += `🧬 Trait Bawaan: **${state.pet.trait}**\n`;
-  }
-  if (state.sleepTurns > 0) {
-    petStatusDetail += `💤 **Status:** Tertidur pulas! (Peluang kabur 0%)\n`;
-  } else {
-    petStatusDetail += `🏃‍♂️ **Status:** Waspada\n`;
-  }
+  // Generate the visual attachment using napi-rs/canvas
+  const attachment = await petCard.getSafariEncounterAttachment(state.pet, state.biome, currentCatchChance, currentEscapeChance, state);
 
-  // Bikin bar visual untuk parameter
-  const drawProgressBar = (val, max = 1.0, iconFilled = '🟩', iconEmpty = '⬛') => {
-    const filled = Math.max(0, Math.min(10, Math.round((val / max) * 10)));
-    return iconFilled.repeat(filled) + iconEmpty.repeat(10 - filled);
-  };
-
-  const catchBar = drawProgressBar(currentCatchChance, 1.0, '🎯', '⬛');
-  const escapeBar = drawProgressBar(state.sleepTurns > 0 ? 0 : currentEscapeChance, 1.0, '🏃‍♂️', '⬛');
-
+  // Status Pet Info & Description (Text description is kept brief since card contains detail)
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
     .setTitle(`🐾 SAFARI ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
     .setDescription(
       `🏞️ **Biome:** ${biome.name}\n` +
-      `💬 *“${state.pet.description}”*\n\n` +
-      `${petStatusDetail}\n` +
-      `🎯 **Peluang Tangkap:** \`${Math.round(currentCatchChance * 100)}%\`\n` +
-      `[ ${catchBar} ]\n\n` +
-      `🏃‍♂️ **Risiko Kabur:** \`${state.sleepTurns > 0 ? 0 : Math.round(currentEscapeChance * 100)}%\`\n` +
-      `[ ${escapeBar} ]`
+      `💬 *“${state.pet.description || 'Pet ini terlihat waspada namun penasaran dengan kehadiran Anda.'}”*\n\n` +
+      `Gunakan tombol aksi di bawah untuk mendekat, memberi umpan, bermain, atau melempar Safari Ball!`
     )
-    .addFields(
-      {
-        name: '🎒 Kantong Perlengkapan Safari',
-        value: `🥎 **Safari Ball:** \`${state.balls} / 5\` | 🍖 **Safari Bait:** \`${state.baits} / 3\` | 💫 **Mainan Pet:** \`${state.toys} / 3\``,
-        inline: false
-      },
-      {
-        name: '📝 Log Aktivitas Safari',
-        value: state.logs.slice(-3).join('\n'),
-        inline: false
-      }
-    )
-    .setFooter({ text: `Giliran: ${state.turns} | Selesaikan sesi agar cooldown tidak menggantung` });
-
-  if (petImg) {
-    mainEmbed.setImage(petImg);
-  }
+    .setImage('attachment://safari_encounter.png')
+    .setFooter({ text: `Giliran: ${state.turns} | Selesaikan sesi agar cooldown tidak menggantung` })
+    .setTimestamp();
 
   const actionRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('safari_act_throw_ball').setLabel('🥎 Lempar Bola').setStyle(ButtonStyle.Success).setDisabled(state.balls <= 0),
@@ -369,19 +334,21 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
 
   let updatedMsg;
   try {
+    const payload = { embeds: [mainEmbed], components: [actionRow], files: attachment ? [attachment] : [] };
     if (interaction.isButton() && !interaction.replied && !interaction.deferred) {
-      updatedMsg = await interaction.update({ embeds: [mainEmbed], components: [actionRow], fetchReply: true });
+      updatedMsg = await interaction.update({ ...payload, fetchReply: true });
     } else {
-      updatedMsg = await replyMsg.edit({ embeds: [mainEmbed], components: [actionRow] });
+      updatedMsg = await replyMsg.edit(payload);
     }
   } catch (updateErr) {
     console.error('Failed to update Safari screen via interaction, trying replyMsg.edit:', updateErr.message);
+    const payload = { embeds: [mainEmbed], components: [actionRow], files: attachment ? [attachment] : [] };
     try {
-      updatedMsg = await replyMsg.edit({ embeds: [mainEmbed], components: [actionRow] });
+      updatedMsg = await replyMsg.edit(payload);
     } catch (editErr) {
       console.error('Failed to edit replyMsg, sending new message:', editErr.message);
       try {
-        updatedMsg = await replyMsg.channel.send({ content: `<@${author.id}>`, embeds: [mainEmbed], components: [actionRow] });
+        updatedMsg = await replyMsg.channel.send({ content: `<@${author.id}>`, ...payload });
       } catch (sendErr) {
         console.error('Fatal: Failed to send new Safari message:', sendErr.message);
         activeSafaris.delete(author.id);
@@ -410,7 +377,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     if (reason === 'time') {
       activeSafaris.delete(author.id);
       releaseLock(client, state.channelId);
-      await updatedMsg.edit({ content: `⏳ Sesi Safari berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`, embeds: [], components: [] }).catch(() => {});
+      await updatedMsg.edit({ content: `⏳ Sesi Safari berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`, embeds: [], components: [], files: [] }).catch(() => {});
     }
   });
 }

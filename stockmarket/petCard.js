@@ -5022,12 +5022,12 @@ async function generateSafariLobbyCard(guildName) {
   ctx.stroke();
 
   // Header Title
-  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
-  ctx.fillText('🌳 PET SAFARI ADVENTURE 🦁', 85, 70);
+  ctx.fillText('PET SAFARI ADVENTURE', 85, 70);
 
-  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
   ctx.fillText(`WILAYAH SAFARI LIAR KOSAN 1A • ${guildName.toUpperCase()}`, 85, 88);
 
@@ -5050,9 +5050,9 @@ async function generateSafariLobbyCard(guildName) {
   drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
   ctx.fill();
 
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
-  ctx.fillText('🏞️ JELAJAHI WILAYAH SAFARI', col1X + 12, 149);
+  ctx.fillText('JELAJAHI WILAYAH SAFARI', col1X + 12, 149);
 
   // Large circular badge
   const badgeCX = col1X + colWidth / 2;
@@ -5083,7 +5083,7 @@ async function generateSafariLobbyCard(guildName) {
   drawPremiumIcon(ctx, 'paw', badgeCX, badgeCY, 48, '#2ECC71');
 
   // Welcome desc text
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'center';
   ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 415);
@@ -5096,33 +5096,40 @@ async function generateSafariLobbyCard(guildName) {
   drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
   ctx.fill();
 
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
-  ctx.fillText('🗺️ WILAYAH BIOME TERSEDIA', col2X + 12, 149);
+  ctx.fillText('BIOME TERSEDIA', col2X + 12, 149);
 
   const drawBiomeCapsule = (x, y, icon, title, costText, speciesText, iconColor) => {
     drawRoundedRect(ctx, x, y, colWidth, 72, 8);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    // Draw a subtle biome specific glowing background instead of plain dark
+    const capsuleGrad = ctx.createLinearGradient(x, y, x + colWidth, y);
+    capsuleGrad.addColorStop(0, 'rgba(255, 255, 255, 0.01)');
+    capsuleGrad.addColorStop(0.1, 'rgba(255, 255, 255, 0.02)');
+    capsuleGrad.addColorStop(1, `${iconColor}08`); // Hex transparency
+    ctx.fillStyle = capsuleGrad;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
+
+    // Glow Border per Biome color
+    ctx.strokeStyle = `${iconColor}33`; // 20% alpha
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     drawPremiumIcon(ctx, icon, x + 24, y + 36, 18, iconColor);
 
     // Title
-    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
     ctx.fillText(title, x + 52, y + 24);
 
     // Cost Badge
-    ctx.font = 'bold 9px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 9px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = costText === 'GRATIS' ? '#2ECC71' : '#FFD700';
     ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 52, y + 40);
 
     // Species
-    ctx.font = 'italic 10px "DejaVu Sans", sans-serif';
+    ctx.font = 'italic 10px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fillText(`Fauna: ${speciesText}`, x + 52, y + 54);
   };
@@ -5140,13 +5147,13 @@ async function generateSafariLobbyCard(guildName) {
   ctx.stroke();
 
   // Footer notice
-  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
   ctx.textAlign = 'center';
   ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 500, 518);
 
   // Bottom corner metadata
-  ctx.font = '10px "DejaVu Sans", sans-serif';
+  ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.textAlign = 'left';
   ctx.fillText('Kosan 1A • Safari Wilderness', 45, 540);
@@ -5163,6 +5170,293 @@ async function getSafariLobbyAttachment(guildName) {
     return new AttachmentBuilder(buffer, { name: 'safari_lobby.png' });
   } catch (e) {
     console.error('[PetCard] Error generating safari lobby attachment:', e);
+    return null;
+  }
+}
+
+/**
+ * Generate premium card for active Pet Safari encounter
+ */
+async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escapeChance, state) {
+  const CARD_WIDTH = 1000;
+  const CARD_HEIGHT = 560;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext('2d');
+
+  // Biome Themes
+  const BIOME_STYLING = {
+    forest: {
+      bgGrad: ['#04140b', '#092415', '#04140b'],
+      accent: '#2ECC71',
+      icon: 'leaf',
+      label: 'HUTAN HIJAU'
+    },
+    volcano: {
+      bgGrad: ['#1a0505', '#2a0a0a', '#1a0505'],
+      accent: '#E74C3C',
+      icon: 'fire',
+      label: 'LEMBAH VOLCANIC'
+    },
+    abyss: {
+      bgGrad: ['#040f1a', '#081a2e', '#040f1a'],
+      accent: '#3498DB',
+      icon: 'wave',
+      label: 'DANAU ABYSS'
+    },
+    mountain: {
+      bgGrad: ['#0e0514', '#1b0924', '#0e0514'],
+      accent: '#9B59B6',
+      icon: 'mountain',
+      label: 'PEGUNUNGAN KUNO'
+    }
+  };
+
+  const style = BIOME_STYLING[biomeKey] || BIOME_STYLING.forest;
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  bgGrad.addColorStop(0, style.bgGrad[0]);
+  bgGrad.addColorStop(0.5, style.bgGrad[1]);
+  bgGrad.addColorStop(1, style.bgGrad[2]);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+  // Cyber grid
+  ctx.globalAlpha = 0.03;
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < CARD_WIDTH; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, CARD_HEIGHT); ctx.stroke();
+  }
+  for (let i = 0; i < CARD_HEIGHT; i += 40) {
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(CARD_WIDTH, i); ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Outer radial ambient glow from right where pet is
+  const radGlow = ctx.createRadialGradient(750, 260, 50, 750, 260, 250);
+  radGlow.addColorStop(0, `${style.accent}1F`); // 12% alpha
+  radGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = radGlow;
+  ctx.fillRect(500, 50, 500, 420);
+
+  // Container
+  const margin = 20;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  ctx.fillStyle = 'rgba(6, 10, 8, 0.85)';
+  ctx.fill();
+
+  // Glow Border
+  const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
+  borderGrad.addColorStop(0, style.accent);
+  borderGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
+  borderGrad.addColorStop(1, style.accent);
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Header
+  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  ctx.fillText('SAFARI WILD ENCOUNTER', 85, 70);
+
+  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = style.accent;
+  ctx.fillText(`${style.label} • WILAYAH SAFARI LIAR KOSAN 1A`, 85, 88);
+
+  drawPremiumIcon(ctx, style.icon, 50, 68, 24, style.accent);
+
+  // Header separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 115);
+  ctx.lineTo(960, 115);
+  ctx.stroke();
+
+  // ── LEFT SIDE: STATUS AND BARS ──
+  const colX = 50;
+  const colW = 460;
+
+  // Pet Meta & Description Box
+  drawRoundedRect(ctx, colX, 135, colW, 105, 8);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.stroke();
+
+  // Name, Rarity & Level
+  ctx.font = 'bold 18px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'left';
+  const cleanName = (petObj.typeName || petObj.name || '')
+    .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '')
+    .trim();
+  ctx.fillText(cleanName, colX + 16, 168);
+
+  const rarityInfo = RARITY_COLORS[petObj.rarity] || RARITY_COLORS.COMMON;
+  ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = rarityInfo.primary;
+  ctx.fillText(`${petObj.rarity.toUpperCase()} • LEVEL ${petObj.level} • ELEMEN: ${petObj.element}`, colX + 18, 190);
+
+  // Short description
+  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 18, 222);
+
+  // Status & Parameter Bars
+  const barY = 260;
+  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('STATUS & PELUANG', colX, barY - 10);
+
+  // Catch Chance Bar
+  drawProgressBar(ctx, colX, barY, colW, 28, catchChance, '#F39C12', '#2ECC71', 'PELUANG TANGKAP', `${Math.round(catchChance * 100)}%`);
+
+  // Escape Risk Bar
+  const displayEscape = state.sleepTurns > 0 ? 0 : escapeChance;
+  drawProgressBar(ctx, colX, barY + 44, colW, 28, displayEscape, '#E74C3C', '#C0392B', 'RISIKO KABUR', `${Math.round(displayEscape * 100)}%`);
+
+  // Gear & Inventory Status
+  const invY = 370;
+  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 8);
+
+  drawRoundedRect(ctx, colX, invY, colW, 42, 6);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.stroke();
+
+  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 16, invY + 26);
+
+  // Status Badge (Sleep, Alert, etc.)
+  const badgeX = colX + 330;
+  const badgeY = invY + 11;
+  ctx.save();
+  ctx.beginPath();
+  if (state.sleepTurns > 0) {
+    ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+    ctx.strokeStyle = '#3498DB';
+    drawRoundedRect(ctx, badgeX, badgeY, 110, 20, 4);
+    ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#3498DB';
+    ctx.fillText('TERTIDUR', badgeX + 28, badgeY + 14);
+  } else {
+    ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
+    ctx.strokeStyle = '#E74C3C';
+    drawRoundedRect(ctx, badgeX, badgeY, 110, 20, 4);
+    ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#E74C3C';
+    ctx.fillText('WASPADA', badgeX + 28, badgeY + 14);
+  }
+  ctx.restore();
+
+  // ── RIGHT SIDE: PET ILLUSTRATION AND GLOW ──
+  const petCX = 740;
+  const petCY = 280;
+  const petRadius = 110;
+
+  // Outer premium aura/ring
+  ctx.beginPath();
+  ctx.arc(petCX, petCY, petRadius + 15, 0, Math.PI * 2);
+  ctx.strokeStyle = `${rarityInfo.primary}33`; // Rarity glow color
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(petCX, petCY, petRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = rarityInfo.primary;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Draw background image or avatar placeholder
+  const embeds = require('./embeds');
+  const petToImage = {
+    ...petObj,
+    pet_type: petObj.pet_type || petObj.speciesId || 'SLIME',
+    status: petObj.status || 'ADULT'
+  };
+  const petImgUrl = embeds.getPetImage(petToImage);
+  const petImg = await loadImageSafe(petImgUrl);
+
+  if (petImg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(petCX, petCY, petRadius - 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(petCX - petRadius, petCY - petRadius, petRadius * 2, petRadius * 2);
+    ctx.drawImage(petImg, petCX - petRadius + 10, petCY - petRadius + 10, (petRadius - 10) * 2, (petRadius - 10) * 2);
+    ctx.restore();
+  } else {
+    // Default silhouette
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(petCX, petCY, petRadius - 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.fill();
+    drawPremiumIcon(ctx, 'paw', petCX, petCY, 60, `${style.accent}44`);
+    ctx.restore();
+  }
+
+  // Trait indicator (if any)
+  if (petObj.trait) {
+    ctx.save();
+    const traitX = petCX - 75;
+    const traitY = petCY + petRadius + 15;
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+    ctx.strokeStyle = '#FFD700';
+    drawRoundedRect(ctx, traitX, traitY, 150, 24, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText(`TRAIT: ${petObj.trait}`, petCX, traitY + 16);
+    ctx.restore();
+  }
+
+  // Footer separator
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(40, 485);
+  ctx.lineTo(960, 485);
+  ctx.stroke();
+
+  // Bottom text/status logs (show last log line)
+  const lastLog = state.logs && state.logs.length > 0 ? state.logs[state.logs.length - 1] : 'Mencari pet liar...';
+  const cleanLog = lastLog.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '').replace(/\*\*/g, '').trim();
+
+  ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.textAlign = 'center';
+  ctx.fillText(cleanLog, 500, 508);
+
+  // Bottom corner metadata
+  ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 535);
+
+  ctx.textAlign = 'right';
+  ctx.fillText(`Giliran: ${state.turns} • Wild Encounter`, 955, 535);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getSafariEncounterAttachment(petObj, biomeKey, catchChance, escapeChance, state) {
+  try {
+    const buffer = await generateSafariEncounterCard(petObj, biomeKey, catchChance, escapeChance, state);
+    return new AttachmentBuilder(buffer, { name: 'safari_encounter.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating safari encounter attachment:', e);
     return null;
   }
 }
@@ -5507,6 +5801,8 @@ module.exports = {
   getAdminDashboardAttachment,
   generateSafariLobbyCard,
   getSafariLobbyAttachment,
+  generateSafariEncounterCard,
+  getSafariEncounterAttachment,
   generateExpeditionMapListCard,
   getExpeditionMapListAttachment,
   loadImageSafe,
