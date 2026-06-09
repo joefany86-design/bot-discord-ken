@@ -6,3 +6,4 @@ data/
 *.db*
 admin-panel/server.log
 admin-panel/backups/
+scratch/
