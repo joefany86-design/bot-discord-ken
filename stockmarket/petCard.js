@@ -1902,168 +1902,347 @@ function getExpeditionMap(mapId) {
  * Generate visual expedition PVE result card
  */
 async function generateExpeditionCard(res, mapChoice, guild) {
-  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
-  const ctx = canvas.getContext('2d');
-
   const selectedMap = getExpeditionMap(mapChoice);
   const element = (selectedMap?.element || 'EARTH').toUpperCase();
   const theme = ELEMENT_THEMES[element] || ELEMENT_THEMES.EARTH;
 
-  // Background - map background image if exists, fallback to gradient
+  // ─── Helper: Strip emoji & markdown for canvas rendering ───
+  const cleanText = (t) => (t || '')
+    .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '')
+    .replace(/\*\*/g, '').replace(/^[>•]\s*/, '').trim();
+
+  // ─── Data Preparation ───
+  const logs = (res.logs || []).map(l => cleanText(l)).filter(l => l.length > 0);
+  const rewards = res.rewards || [];
+  const logsToShow = logs.slice(0, 8);
+  const rewardsCount = rewards.length;
+  const rewardRows = Math.ceil(Math.max(1, rewardsCount) / 3);
+  const hasChest = res.chestAwardedUser && res.chestDropItem;
+  const hasMvpBeban = res.bestPet && res.worstPet && res.bestPet.petName !== res.worstPet.petName;
+
+  // ─── Dynamic Canvas Height ───
+  const PM = 15;
+  const HEADER_H = 115;
+  const LOG_LINE_H = 19;
+  const LOG_SECTION_H = logsToShow.length > 0 ? (38 + logsToShow.length * LOG_LINE_H + 20) : 10;
+  const CHEST_H = hasChest ? 45 : 0;
+  const REWARD_CARD_H = 155;
+  const REWARD_GAP = 14;
+  const REWARD_SECTION_H = rewardsCount > 0 ? (38 + rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5) : 10;
+  const FOOTER_H = hasMvpBeban ? 55 : 35;
+  const canvasH = Math.max(620, HEADER_H + LOG_SECTION_H + CHEST_H + REWARD_SECTION_H + FOOTER_H + PM * 2);
+
+  const canvas = createCanvas(EXP_WIDTH, canvasH);
+  const ctx = canvas.getContext('2d');
+
+  // ═══════════════════════════════════════════════
+  // BACKGROUND — map image or themed gradient
+  // ═══════════════════════════════════════════════
   let bgImg = null;
   const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
   if (fs.existsSync(mapPath)) {
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
-
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, canvasH);
   } else {
-    const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+    const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, canvasH);
     bgGrad.addColorStop(0, theme.bg[0] || '#0f0f26');
     bgGrad.addColorStop(0.5, theme.bg[2] || '#1d0f3a');
     bgGrad.addColorStop(1, theme.bg[0] || '#0f0f26');
     ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, canvasH);
   }
 
-  // Glassmorphic overlay panel
-  const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
-  ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
+  // ═══════════════════════════════════════════════
+  // GLASSMORPHIC PANEL OVERLAY
+  // ═══════════════════════════════════════════════
+  drawRoundedRect(ctx, PM, PM, EXP_WIDTH - PM * 2, canvasH - PM * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
   ctx.fill();
-  ctx.strokeStyle = res.success ? 'rgba(0, 230, 118, 0.4)' : 'rgba(213, 0, 0, 0.4)';
+  const panelBorderGrad = ctx.createLinearGradient(PM, PM, EXP_WIDTH - PM, canvasH - PM);
+  panelBorderGrad.addColorStop(0, res.success ? 'rgba(0,230,118,0.4)' : 'rgba(213,0,0,0.4)');
+  panelBorderGrad.addColorStop(1, res.success ? 'rgba(105,240,174,0.4)' : 'rgba(255,23,68,0.4)');
+  ctx.strokeStyle = panelBorderGrad;
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Left Section: Result & Map Info
-  const leftX = 40;
-  
-  // Banner / Status Ribbon
-  ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
-  const bannerGrad = ctx.createLinearGradient(leftX, 90, leftX + 300, 90);
-  if (res.success) {
-    bannerGrad.addColorStop(0, '#00E676');
-    bannerGrad.addColorStop(1, '#B9F6CA');
-    ctx.fillStyle = bannerGrad;
-    ctx.fillText('EKSPEDISI SUKSES', leftX, 95);
-  } else {
-    bannerGrad.addColorStop(0, '#FF1744');
-    bannerGrad.addColorStop(1, '#FF8A80');
-    ctx.fillStyle = bannerGrad;
-    ctx.fillText('EKSPEDISI GAGAL', leftX, 95);
-  }
+  const cX = PM + 30;
+  const cW = EXP_WIDTH - PM * 2 - 60;
+  let curY = PM + 12;
 
-  // Strip Emojis from Zone Name to avoid box outlines
-  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+  // ═══════════════════════════════════════════════
+  // SECTION 1: HEADER
+  // ═══════════════════════════════════════════════
+
+  // Status pill badge
+  const pillW = 180;
+  const pillH = 24;
+  drawRoundedRect(ctx, cX, curY + 5, pillW, pillH, pillH / 2);
+  ctx.fillStyle = res.success ? 'rgba(0,230,118,0.12)' : 'rgba(213,0,0,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = res.success ? 'rgba(0,230,118,0.35)' : 'rgba(213,0,0,0.35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = res.success ? '#00E676' : '#FF1744';
+  ctx.textAlign = 'center';
+  ctx.fillText(res.success ? 'EKSPEDISI BERHASIL' : 'EKSPEDISI GAGAL', cX + pillW / 2, curY + 21);
+
+  // Main title
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 26px "DejaVu Sans", sans-serif';
+  const titleGrad = ctx.createLinearGradient(cX, curY + 55, cX + 450, curY + 55);
+  titleGrad.addColorStop(0, res.success ? '#00E676' : '#FF1744');
+  titleGrad.addColorStop(1, res.success ? '#B9F6CA' : '#FF8A80');
+  ctx.fillStyle = titleGrad;
+  ctx.fillText('EKSPEDISI PET SELESAI!', cX, curY + 58);
+
+  // Zone name
+  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  const cleanZoneName = res.zoneName.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
-  ctx.fillText(cleanZoneName, leftX, 135);
+  ctx.fillText(cleanText(res.zoneName), cX, curY + 82);
 
-  // Stats Details
-  ctx.font = '14px "DejaVu Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`Kombinasi Level Tim: Lv. ${res.teamPower}`, leftX, 180);
-  ctx.fillText(`Peluang Sukses: ${res.successRate}%`, leftX, 210);
-  ctx.fillText(`Elemen Wilayah: ${element}`, leftX, 240);
+  // Stats row
+  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText(`Tim Lv.${res.teamPower}  ·  Peluang ${res.successRate}%  ·  Elemen: ${element}`, cX, curY + 102);
 
-  // Chest Drop Reward if applicable
-  if (res.chestAwardedUser && res.chestDropItem) {
-    let winnerName = 'Pawang';
-    if (guild) {
-      try {
-        const member = guild.members.cache.get(res.chestAwardedUser);
-        if (member) winnerName = member.user.username;
-      } catch (e) {}
-    }
-    ctx.fillStyle = '#FFD700';
+  curY += HEADER_H;
+
+  // ─── Divider ───
+  ctx.beginPath();
+  ctx.moveTo(cX, curY);
+  ctx.lineTo(cX + cW, curY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  curY += 5;
+
+  // ═══════════════════════════════════════════════
+  // SECTION 2: LOG PERJALANAN
+  // ═══════════════════════════════════════════════
+  if (logsToShow.length > 0) {
     ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
-    ctx.fillText(`Peti Terkunci dibuka oleh ${winnerName}!`, leftX, 290);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '13px "DejaVu Sans", sans-serif';
-    ctx.fillText(`└─ Drop Item: ${res.chestDropItem}`, leftX, 310);
-  }
-
-  // Right Section: MVP & Worst Pets (or single explorer)
-  const drawPetPanel = async (pUser, pName, pLevel, title, x, y, badgeColor, isMvp) => {
-    let petElement = 'EARTH';
-    let petRarity = 'COMMON';
-    let petType = 'PET';
-    try {
-      const db = require('./database');
-      const petData = db.get('SELECT gacha_element, gacha_rarity, pet_type FROM user_pets WHERE pet_name = ?', [pName]);
-      if (petData) {
-        petElement = petData.gacha_element || 'EARTH';
-        petRarity = petData.gacha_rarity || 'COMMON';
-        petType = petData.pet_type || 'PET';
-      }
-    } catch (err) {}
-
-    const rarityTheme = RARITY_COLORS[petRarity.toUpperCase()] || RARITY_COLORS.COMMON;
-    
-    // Draw avatar ring
-    ctx.beginPath();
-    ctx.arc(x, y, 42, 0, Math.PI * 2);
-    ctx.fillStyle = rarityTheme.primary;
-    ctx.fill();
-    ctx.strokeStyle = rarityTheme.glow;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Inner dark circle
-    ctx.beginPath();
-    ctx.arc(x, y, 38, 0, Math.PI * 2);
-    ctx.fillStyle = '#101026';
-    ctx.fill();
-
-    // Fallback Letter
-    ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.fillText(petType.charAt(0).toUpperCase(), x, y + 8);
-
-    // Badge Label (MVP / BEBAN)
-    ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
-    ctx.fillStyle = badgeColor;
-    ctx.fillText(title.toUpperCase(), x, y - 52);
-
-    // Name & Owner details
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
-    ctx.fillStyle = '#FFFFFF';
-    let petDisplayName = pName;
-    if (petDisplayName.length > 14) petDisplayName = petDisplayName.slice(0, 12) + '…';
-    ctx.fillText(petDisplayName, x, y + 60);
+    ctx.fillStyle = res.success ? '#69F0AE' : '#FF8A80';
+    ctx.textAlign = 'left';
+    ctx.fillText('LOG PERJALANAN', cX, curY + 20);
+    curY += 33;
 
     ctx.font = '11px "DejaVu Sans", sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.fillText(`Lv.${pLevel} ${petType}`, x, y + 78);
+    for (let i = 0; i < logsToShow.length; i++) {
+      let line = logsToShow[i];
 
-    let ownerName = 'Pawang';
-    if (guild) {
-      try {
-        const member = guild.members.cache.get(pUser);
-        if (member) ownerName = member.user.username;
-      } catch (e) {}
+      // Color-code dots based on content
+      let dotColor = 'rgba(255,255,255,0.35)';
+      if (/keuntungan|berhasil|bonus|sukses|menaklukan|disita/i.test(line)) dotColor = '#69F0AE';
+      else if (/kelemahan|gagal|terluka|meledak|kerugian/i.test(line)) dotColor = '#FF8A80';
+      else if (/jalur|kejadian|air terjun|peti|menyusup|meminum/i.test(line)) dotColor = '#FFD740';
+
+      // Draw colored indicator dot
+      ctx.beginPath();
+      ctx.arc(cX + 4, curY - 3, 3, 0, Math.PI * 2);
+      ctx.fillStyle = dotColor;
+      ctx.fill();
+
+      // Truncate long lines
+      if (line.length > 100) line = line.substring(0, 97) + '...';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillText(line, cX + 14, curY);
+      curY += LOG_LINE_H;
     }
-    if (ownerName.length > 14) ownerName = ownerName.slice(0, 12) + '…';
-    ctx.fillText(`@${ownerName}`, x, y + 95);
-  };
+    curY += 15;
 
-  const rightCenterX = EXP_WIDTH - 240;
-  const rightCenterY = EXP_HEIGHT / 2 - 10;
-  
-  if (res.bestPet && res.worstPet && res.bestPet.petName !== res.worstPet.petName) {
-    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'MVP', rightCenterX - 85, rightCenterY, '#FFD700', true);
-    await drawPetPanel(res.worstPet.userId, res.worstPet.petName, res.worstPet.level, 'BEBAN', rightCenterX + 85, rightCenterY, '#FF5252', false);
-  } else if (res.bestPet) {
-    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'EXPLORER', rightCenterX, rightCenterY, '#00E676', false);
+    // ─── Divider ───
+    ctx.beginPath();
+    ctx.moveTo(cX, curY);
+    ctx.lineTo(cX + cW, curY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    curY += 5;
   }
 
-  // Footer Watermark
-  ctx.font = '10px "DejaVu Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  // ═══════════════════════════════════════════════
+  // SECTION 2.5: CHEST DROP BANNER (if applicable)
+  // ═══════════════════════════════════════════════
+  if (hasChest) {
+    const chestBannerH = 30;
+    const chestBannerW = cW - 40;
+    const chestBannerX = cX + 20;
+    drawRoundedRect(ctx, chestBannerX, curY + 2, chestBannerW, chestBannerH, 8);
+    ctx.fillStyle = 'rgba(255,215,0,0.08)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,215,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    let chestWinner = 'Pawang';
+    if (guild) {
+      try {
+        const m = guild.members.cache.get(res.chestAwardedUser);
+        if (m) chestWinner = m.user.username;
+      } catch (e) {}
+    }
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText(`PETI KUNO DIBUKA! @${chestWinner} mendapat: ${res.chestDropItem}`, cX + cW / 2, curY + 21);
+    curY += chestBannerH + 12;
+  }
+
+  // ═══════════════════════════════════════════════
+  // SECTION 3: HASIL JARAHAN & STATUS KRU
+  // ═══════════════════════════════════════════════
+  if (rewardsCount > 0) {
+    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFD740';
+    ctx.textAlign = 'left';
+    ctx.fillText('HASIL JARAHAN & STATUS KRU', cX, curY + 20);
+    curY += 35;
+
+    // ─── Card layout calculation (max 3 per row, centered) ───
+    const maxCols = Math.min(3, rewardsCount);
+    const cardGap = 14;
+    const cardW = Math.floor((cW - (maxCols - 1) * cardGap) / maxCols);
+
+    for (let i = 0; i < rewardsCount; i++) {
+      const r = rewards[i];
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+
+      // Calculate centering for possibly-incomplete last row
+      const colsInRow = Math.min(3, rewardsCount - row * 3);
+      const rowW = colsInRow * cardW + (colsInRow - 1) * cardGap;
+      const rowStartX = cX + Math.floor((cW - rowW) / 2);
+      const cx = rowStartX + col * (cardW + cardGap);
+      const cy = curY + row * (REWARD_CARD_H + REWARD_GAP);
+
+      // ─── Card Panel Background ───
+      drawRoundedRect(ctx, cx, cy, cardW, REWARD_CARD_H, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.035)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // ─── Pet Name ───
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'left';
+      let pn = r.petName || 'Pet';
+      if (pn.length > 20) pn = pn.substring(0, 18) + '..';
+      ctx.fillText(pn, cx + 12, cy + 22);
+
+      // ─── Owner ───
+      let owner = 'Pawang';
+      if (guild) {
+        try {
+          const m = guild.members.cache.get(r.userId);
+          if (m) owner = m.user.username;
+        } catch (e) {}
+      }
+      if (owner.length > 20) owner = owner.substring(0, 18) + '..';
+      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillText(`@${owner}`, cx + 12, cy + 37);
+
+      // ─── Separator line ───
+      ctx.beginPath();
+      ctx.moveTo(cx + 10, cy + 46);
+      ctx.lineTo(cx + cardW - 10, cy + 46);
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // ─── Stat Rows ───
+      const lx = cx + 12;
+      const vx = cx + cardW - 12;
+      let sy = cy + 63;
+      const srh = 17;
+
+      const drawStat = (label, value, color) => {
+        ctx.font = '10px "DejaVu Sans", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fillText(label, lx, sy);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = color;
+        let vDisp = value;
+        if (vDisp.length > 20) vDisp = vDisp.substring(0, 18) + '..';
+        ctx.fillText(vDisp, vx, sy);
+        sy += srh;
+      };
+
+      // Koin
+      drawStat('Koin', res.success ? `+Rp ${(r.koin || 0).toLocaleString('id-ID')}` : '+Rp 0', '#FFD740');
+      // XP
+      drawStat('XP', `+${r.xpGained || 0} XP`, '#69F0AE');
+      // Level
+      if (r.levelUp) {
+        drawStat('Level', `Naik ke Lv.${r.newLevel}!`, '#00E5FF');
+      }
+      // Item
+      drawStat('Item', r.dropItem || 'Tidak ada', r.dropItem ? '#E040FB' : 'rgba(255,255,255,0.25)');
+
+      // ─── Status Badge (bottom of card) ───
+      const statusRaw = cleanText(r.statusText || (res.success ? 'Sehat & Bahagia' : 'Luka & Stress'));
+      let sColor = '#FFFFFF';
+      let sBg = 'rgba(255,255,255,0.05)';
+      if (/sehat|bahagia/i.test(statusRaw)) { sColor = '#69F0AE'; sBg = 'rgba(105,240,174,0.1)'; }
+      else if (/terluka|luka|parah/i.test(statusRaw)) { sColor = '#FF8A80'; sBg = 'rgba(255,138,128,0.1)'; }
+      else if (/bau|busuk/i.test(statusRaw)) { sColor = '#FFD740'; sBg = 'rgba(255,215,64,0.1)'; }
+      else if (/stress|derita|menderita/i.test(statusRaw)) { sColor = '#FF8A80'; sBg = 'rgba(255,138,128,0.1)'; }
+
+      let sDisp = statusRaw;
+      if (sDisp.length > 25) sDisp = sDisp.substring(0, 23) + '..';
+      ctx.font = '10px "DejaVu Sans", sans-serif';
+      const sbTextW = ctx.measureText(sDisp).width;
+      const sbW = Math.min(cardW - 20, sbTextW + 18);
+      const sbX = cx + (cardW - sbW) / 2;
+      const sbY = cy + REWARD_CARD_H - 26;
+      drawRoundedRect(ctx, sbX, sbY, sbW, 20, 10);
+      ctx.fillStyle = sBg;
+      ctx.fill();
+      ctx.strokeStyle = sColor + '40';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = sColor;
+      ctx.textAlign = 'center';
+      ctx.fillText(sDisp, sbX + sbW / 2, sbY + 14);
+    }
+
+    curY += rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5;
+  }
+
+  // ═══════════════════════════════════════════════
+  // FOOTER: MVP & BEBAN + WATERMARK
+  // ═══════════════════════════════════════════════
+  if (hasMvpBeban) {
+    ctx.textAlign = 'center';
+    const footY = curY + 15;
+
+    // MVP badge
+    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#FFD700';
+    const mvpName = (res.bestPet.petName || '').length > 16 ? res.bestPet.petName.substring(0, 14) + '..' : res.bestPet.petName;
+    ctx.fillText(`MVP: ${mvpName} (Lv.${res.bestPet.level})`, EXP_WIDTH / 2 - 130, footY);
+
+    // Separator dot
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText('·', EXP_WIDTH / 2, footY);
+
+    // BEBAN badge
+    ctx.fillStyle = '#FF5252';
+    const bebanName = (res.worstPet.petName || '').length > 16 ? res.worstPet.petName.substring(0, 14) + '..' : res.worstPet.petName;
+    ctx.fillText(`BEBAN: ${bebanName} (Lv.${res.worstPet.level})`, EXP_WIDTH / 2 + 130, footY);
+  }
+
+  // Watermark
+  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, canvasH - PM - 8);
 
   return canvas.toBuffer('image/png');
 }

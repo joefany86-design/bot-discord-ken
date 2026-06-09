@@ -6601,29 +6601,7 @@ async function handlePetCommand(message, client, args) {
           }
         });
 
-        let reportDesc = '';
-        res.logs.forEach(log => {
-          reportDesc += `> ${log}\n`;
-        });
-
-        let rewardText = '';
-        if (res.success) {
-          res.rewards.forEach(r => {
-            rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `  • 💰 Koin: **+Rp ${r.koin.toLocaleString('id-ID')}**\n` +
-              `  • 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `  • 🎒 Item: ${r.dropItem ? `✨ **${r.dropItem}**` : '*Tidak ada*'}\n` +
-              `  • 📊 Status: **${r.statusText || '☀️ Sehat & Bahagia'}**\n\n`;
-          });
-        } else {
-          res.rewards.forEach(r => {
-            rewardText += `🦖 **${r.petName}** (<@${r.userId}>)\n` +
-              `  • 💰 Koin: **+Rp 0**\n` +
-              `  • 🧪 XP: **+${r.xpGained} XP**${r.levelUp ? ` (Naik ke Lv. ${r.newLevel}! 🎉)` : ''}\n` +
-              `  • 📊 Status: **${r.statusText || '🩸 Menderita luka & stress'}**\n\n`;
-          });
-        }
-
+        // ─── Full Canvas Result (semua info di dalam gambar) ───
         let expCardAttachment = null;
         try {
           const petCardModule = require('./petCard');
@@ -6641,14 +6619,9 @@ async function handlePetCommand(message, client, args) {
           if (resAtt) resFiles.push(resAtt);
         }
 
-        try {
-          const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
-          resFiles.push(petExplorer);
-        } catch (err) {}
-
-        const resText = `⚔️ **EKSPEDISI PET SELESAI!**\n\n📖 **LOG PERJALANAN:**\n${reportDesc}\n🎁 **HASIL JARAHAN & STATUS KRU:**\n${rewardText}`;
+        const participantMentions = currentLobby.participants.map(pId => `<@${pId}>`).join(' ');
         const resOpts = {
-          content: resText,
+          content: participantMentions,
           embeds: [],
           components: [],
           files: resFiles,
@@ -6656,7 +6629,7 @@ async function handlePetCommand(message, client, args) {
         };
         await replyMsg.edit(resOpts).catch(async () => {
           await message.channel.send({
-            content: resText,
+            content: participantMentions,
             embeds: [],
             files: resFiles
           });
