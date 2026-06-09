@@ -4947,6 +4947,291 @@ async function getSafariLobbyAttachment(guildName) {
   }
 }
 
+/**
+ * Generate visual expedition map list selection card
+ */
+async function generateExpeditionMapListCard(maps) {
+  const canvasW = 1200;
+  const canvasH = 960;
+  const canvas = createCanvas(canvasW, canvasH);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+  bgGrad.addColorStop(0, '#060814');
+  bgGrad.addColorStop(0.5, '#0B0F2B');
+  bgGrad.addColorStop(1, '#060814');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Background glowing circles
+  const radGrad1 = ctx.createRadialGradient(1000, 100, 50, 1000, 100, 400);
+  radGrad1.addColorStop(0, 'rgba(124, 77, 255, 0.15)');
+  radGrad1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = radGrad1;
+  ctx.beginPath();
+  ctx.arc(1000, 100, 400, 0, Math.PI * 2);
+  ctx.fill();
+
+  const radGrad2 = ctx.createRadialGradient(200, 800, 50, 200, 800, 500);
+  radGrad2.addColorStop(0, 'rgba(0, 168, 255, 0.12)');
+  radGrad2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = radGrad2;
+  ctx.beginPath();
+  ctx.arc(200, 800, 500, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Grid background lines (subtle)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < canvasW; i += 60) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvasH); ctx.stroke();
+  }
+  for (let j = 0; j < canvasH; j += 60) {
+    ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvasW, j); ctx.stroke();
+  }
+
+  // Header Title (clean, no emojis)
+  ctx.font = 'bold 32px "DejaVu Sans"';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.fillText('PILIH ZONA EKSPEDISI TIM PET', canvasW / 2, 48);
+
+  ctx.font = '14px "DejaVu Sans"';
+  ctx.fillStyle = '#A0AEC0';
+  ctx.fillText('Pilihlah salah satu dari 10 zona ekspedisi di bawah untuk memulai petualangan bersama tim pet Anda!', canvasW / 2, 75);
+
+  const ELEMENT_COLORS = {
+    FIRE: { accent: '#FF5252', bg: 'rgba(255, 82, 82, 0.12)' },
+    WATER: { accent: '#40C4FF', bg: 'rgba(64, 196, 255, 0.12)' },
+    EARTH: { accent: '#69F0AE', bg: 'rgba(105, 240, 172, 0.12)' },
+    DRAGON: { accent: '#E040FB', bg: 'rgba(224, 64, 251, 0.12)' }
+  };
+
+  const cleanTextLocal = (t) => (t || '')
+    .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '')
+    .replace(/\*\*/g, '').trim();
+
+  const wrapTextLocal = (wordsText, maxWidth) => {
+    const words = wordsText.split(' ');
+    const lines = [];
+    let currentLine = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const width = ctx.measureText(currentLine + ' ' + word).width;
+      if (width < maxWidth) {
+        currentLine += ' ' + word;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  };
+
+  // Load map images in parallel
+  const mapImageMap = new Map();
+  await Promise.all(
+    maps.map(async (m) => {
+      const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${m.id}.png`);
+      if (fs.existsSync(mapPath)) {
+        try {
+          const img = await loadImage(mapPath);
+          mapImageMap.set(m.id, img);
+        } catch (e) {
+          console.warn(`[PetCard] Failed to load map ${m.id}:`, e.message);
+        }
+      }
+    })
+  );
+
+  // Render cards
+  const startY = 110;
+  const cardW = 550;
+  const cardH = 145;
+  const marginX = 40;
+  const gapBetweenCols = 20;
+  const gapBetweenRows = 18;
+
+  for (let index = 0; index < maps.length; index++) {
+    const m = maps[index];
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+
+    const x = marginX + col * (cardW + gapBetweenCols);
+    const y = startY + row * (cardH + gapBetweenRows);
+
+    const theme = ELEMENT_COLORS[m.element.toUpperCase()] || ELEMENT_COLORS.EARTH;
+
+    // Draw card background
+    drawRoundedRect(ctx, x, y, cardW, cardH, 16);
+    ctx.fillStyle = 'rgba(10, 13, 27, 0.9)';
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Inner glowing left border line
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, y + 16);
+    ctx.quadraticCurveTo(x + 1.5, y + 1.5, x + 16, y + 1.5);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, y + 16);
+    ctx.lineTo(x + 1.5, y + cardH - 16);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, y + cardH - 16);
+    ctx.quadraticCurveTo(x + 1.5, y + cardH - 1.5, x + 16, y + cardH - 1.5);
+    ctx.stroke();
+
+    // ── Left Side: Map Image Thumbnail ──
+    const imgX = x + 12;
+    const imgY = y + 12;
+    const imgSize = 121;
+
+    ctx.save();
+    drawRoundedRect(ctx, imgX, imgY, imgSize, imgSize, 12);
+    ctx.clip();
+
+    const mapImg = mapImageMap.get(m.id);
+    if (mapImg) {
+      ctx.drawImage(mapImg, imgX, imgY, imgSize, imgSize);
+    } else {
+      ctx.fillStyle = '#1B1E30';
+      ctx.fillRect(imgX, imgY, imgSize, imgSize);
+    }
+    ctx.restore();
+
+    // Thumbnail outline border
+    drawRoundedRect(ctx, imgX, imgY, imgSize, imgSize, 12);
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Circular ID Badge on top-left of image
+    const badgeR = 14;
+    const badgeX = imgX + 18;
+    const badgeY = imgY + 18;
+
+    ctx.fillStyle = theme.accent;
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner circle
+    ctx.fillStyle = '#060814';
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, badgeR - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = 'bold 12px "DejaVu Sans"';
+    ctx.fillStyle = theme.accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(m.id), badgeX, badgeY);
+
+    // ── Right Side: Text & Badges ──
+    const textX = imgX + imgSize + 15;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    // 1. Map Name (strip emojis)
+    const cleanMapName = cleanTextLocal(m.name);
+    ctx.font = 'bold 15px "DejaVu Sans"';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(cleanMapName, textX, y + 28);
+
+    // 2. Badges: Element Pill & Level Pill
+    const elemText = m.element;
+    ctx.font = 'bold 10px "DejaVu Sans"';
+    const elemW = ctx.measureText(elemText).width + 16;
+    const badgeH = 18;
+    const badgeYPos = y + 38;
+
+    drawRoundedRect(ctx, textX, badgeYPos, elemW, badgeH, 9);
+    ctx.fillStyle = theme.bg;
+    ctx.fill();
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = theme.accent;
+    ctx.fillText(elemText, textX + 8, badgeYPos + 13);
+
+    // Recommended Level Badge Pill
+    const lvlText = `Lv. ${m.recommendedLevel}+`;
+    ctx.font = '10px "DejaVu Sans"';
+    const lvlW = ctx.measureText(lvlText).width + 16;
+    const lvlX = textX + elemW + 8;
+
+    drawRoundedRect(ctx, lvlX, badgeYPos, lvlW, badgeH, 9);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.stroke();
+
+    ctx.fillStyle = '#CBD5E0';
+    ctx.fillText(lvlText, lvlX + 8, badgeYPos + 13);
+
+    // 3. Stats Row: Win Rate & Prize
+    const statY = y + 74;
+    ctx.font = '12px "DejaVu Sans"';
+    ctx.fillStyle = '#A0AEC0';
+    ctx.fillText('Rate:', textX, statY);
+    
+    ctx.fillStyle = m.baseSuccessRate >= 60 ? '#4ADE80' : (m.baseSuccessRate >= 35 ? '#FBBF24' : '#F87171');
+    ctx.fillText(`${m.baseSuccessRate}%`, textX + 35, statY);
+
+    // Prize range text
+    ctx.fillStyle = '#A0AEC0';
+    ctx.fillText('Hadiah:', textX + 85, statY);
+    ctx.fillStyle = '#FBBF24'; // Gold
+    ctx.font = 'bold 12px "DejaVu Sans"';
+    ctx.fillText(`Rp ${m.minPrize.toLocaleString('id-ID')} - ${m.maxPrize.toLocaleString('id-ID')}`, textX + 135, statY);
+
+    // 4. Boss Name Row
+    const bossY = y + 94;
+    ctx.font = '12px "DejaVu Sans"';
+    ctx.fillStyle = '#A0AEC0';
+    ctx.fillText('Boss:', textX, bossY);
+    ctx.fillStyle = '#E2E8F0';
+    ctx.font = 'bold 12px "DejaVu Sans"';
+    ctx.fillText(m.boss, textX + 40, bossY);
+
+    // 5. Description Text
+    const descY = y + 115;
+    ctx.font = 'italic 11px "DejaVu Sans"';
+    ctx.fillStyle = '#718096';
+    const descLines = wrapTextLocal(m.description, cardW - (imgSize + 35));
+    if (descLines.length > 0) {
+      ctx.fillText(descLines[0], textX, descY);
+      if (descLines.length > 1) {
+        ctx.fillText(descLines[1], textX, descY + 14);
+      }
+    }
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionMapListAttachment(maps) {
+  try {
+    const buffer = await generateExpeditionMapListCard(maps);
+    return new AttachmentBuilder(buffer, { name: 'pet_expedition_maps.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating expedition map list attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -4992,6 +5277,8 @@ module.exports = {
   getAdminDashboardAttachment,
   generateSafariLobbyCard,
   getSafariLobbyAttachment,
+  generateExpeditionMapListCard,
+  getExpeditionMapListAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

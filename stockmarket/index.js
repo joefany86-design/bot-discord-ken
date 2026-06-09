@@ -5936,7 +5936,12 @@ async function handlePetCommand(message, client, args) {
         );
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
-      const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+      
+      const petCardModule = require('./petCard');
+      let petExplorer = await petCardModule.getExpeditionMapListAttachment(pet.EXPEDITION_MAPS);
+      if (!petExplorer) {
+        petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
+      }
 
       const replyMsg = await message.reply({
         content: `🗺️ **PILIH ZONA EKSPEDISI TIM PET**\nPilihlah salah satu dari 10 zona ekspedisi di bawah untuk memulai petualangan bersama tim pet Anda!\n\n*Gunakan menu select di bawah atau ketik perintah:* \`.pet expedition <ID Peta>\``,
