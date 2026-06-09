@@ -617,65 +617,74 @@ module.exports = {
     if (activeTab === 'dashboard') {
       footerText = '💡 Halaman 1/5 · Gunakan tombol di bawah untuk berpindah tab';
 
-      desc += `${tier.emoji} **FINANCIAL DASHBOARD** · **${tier.name} MEMBER**\n\n`;
+      if (extraData && extraData.hasProfileCard) {
+        thumbnailURL = null; // Hide the small thumbnail since avatar is already drawn in the canvas card
+        extraData.useProfileCardImage = true;
 
-      desc += `> 💵 **Saldo Dompet**\n`;
-      desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
-      desc += `> \n`;
-      desc += `> 🏦 **Saldo Bank**\n`;
-      desc += `> \`Rp ${bankBalance.toLocaleString('id-ID').padStart(12)}\`\n`;
-      desc += `> \n`;
-      desc += `> 📊 **Nilai Investasi**\n`;
-      desc += `> \`Rp ${portfolioValue.toLocaleString('id-ID').padStart(12)}\`\n`;
-      desc += `> \n`;
-      desc += `> 💎 **Total Kekayaan**\n`;
-      desc += `> \`Rp ${totalWealth.toLocaleString('id-ID').padStart(12)}\`\n\n`;
-
-      // Status Effects
-      let statusEffects = [];
-      if (isJailed) {
-        statusEffects.push(`🚨 **Penjara**: Bebas <t:${wallet.jail_until}:R>`);
-      }
-      if (isWanted) {
-        statusEffects.push(`🚔 **WANTED**: Buron <t:${extraData.wantedUntil}:R>`);
-      }
-      if (extraData.curseUntil && extraData.curseUntil > nowSec) {
-        statusEffects.push(`💀 **Kutukan (${extraData.curseType || 'Curse'})**: Sisa <t:${extraData.curseUntil}:R>`);
-      }
-      if (statusEffects.length > 0) {
-        desc += `⚠️ **Efek Status Aktif**\n`;
-        statusEffects.forEach(s => { desc += `• ${s}\n`; });
-        desc += `\n`;
-      }
-
-      // Statistik
-      const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
-      desc += `${streakEmoji} **Statistik Ringkas**\n`;
-      desc += `• 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
-      desc += `• 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
-      desc += `• 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
-      desc += `• 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
-
-      // Badges
-      if (luxuryBadges.length > 0) {
-        desc += `🏆 **Lencana Status Mewah**\n${luxuryBadges}\n\n`;
-      }
-
-      // Status ringkas lainnya
-      desc += `ℹ️ **Sekilas Status**\n`;
-      if (pet) {
-        const petStatusText = pet.status === 'EGG' ? '🥚 Telur' : pet.status === 'DEAD' ? '🪦 Mati' : `Lv.${pet.level} ${pet.pet_type}`;
-        desc += `• 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
+        desc += `✨ **KOSAN 1A - PROFILE DASHBOARD** ✨\n\n` +
+                `Halo **${user.username}**! Berikut adalah rincian profil saldo & aset Anda secara visual.\n\n` +
+                `ℹ️ *Gunakan tombol menu di bawah untuk berpindah tab.*`;
       } else {
-        desc += `• 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
-      }
+        desc += `${tier.emoji} **FINANCIAL DASHBOARD** · **${tier.name} MEMBER**\n\n`;
 
-      if (extraData.kosRental) {
-        const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-          extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
-        desc += `• 🏠 Kamar Kos: **${roomName}**\n`;
-      } else {
-        desc += `• 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
+        desc += `> 💵 **Saldo Dompet**\n`;
+        desc += `> \`Rp ${wallet.balance.toLocaleString('id-ID').padStart(12)}\`\n`;
+        desc += `> \n`;
+        desc += `> 🏦 **Saldo Bank**\n`;
+        desc += `> \`Rp ${bankBalance.toLocaleString('id-ID').padStart(12)}\`\n`;
+        desc += `> \n`;
+        desc += `> 📊 **Nilai Investasi**\n`;
+        desc += `> \`Rp ${portfolioValue.toLocaleString('id-ID').padStart(12)}\`\n`;
+        desc += `> \n`;
+        desc += `> 💎 **Total Kekayaan**\n`;
+        desc += `> \`Rp ${totalWealth.toLocaleString('id-ID').padStart(12)}\`\n\n`;
+
+        // Status Effects
+        let statusEffects = [];
+        if (isJailed) {
+          statusEffects.push(`🚨 **Penjara**: Bebas <t:${wallet.jail_until}:R>`);
+        }
+        if (isWanted) {
+          statusEffects.push(`🚔 **WANTED**: Buron <t:${extraData.wantedUntil}:R>`);
+        }
+        if (extraData.curseUntil && extraData.curseUntil > nowSec) {
+          statusEffects.push(`💀 **Kutukan (${extraData.curseType || 'Curse'})**: Sisa <t:${extraData.curseUntil}:R>`);
+        }
+        if (statusEffects.length > 0) {
+          desc += `⚠️ **Efek Status Aktif**\n`;
+          statusEffects.forEach(s => { desc += `• ${s}\n`; });
+          desc += `\n`;
+        }
+
+        // Statistik
+        const streakEmoji = wallet.streak_days >= 7 ? '🔥' : wallet.streak_days >= 3 ? '⚡' : '💤';
+        desc += `${streakEmoji} **Statistik Ringkas**\n`;
+        desc += `• 🔥 Streak Daily: **${wallet.streak_days}** hari\n`;
+        desc += `• 📈 Total Earning: **${formatCurrency(wallet.total_earned)}**\n`;
+        desc += `• 🤖 Auto-Trade: ${wallet.auto_trade ? '🟢 Aktif' : '🔴 Nonaktif'}\n`;
+        desc += `• 🚨 Masuk Sel: **${wallet.jail_count || 0}** kali\n\n`;
+
+        // Badges
+        if (luxuryBadges.length > 0) {
+          desc += `🏆 **Lencana Status Mewah**\n${luxuryBadges}\n\n`;
+        }
+
+        // Status ringkas lainnya
+        desc += `ℹ️ **Sekilas Status**\n`;
+        if (pet) {
+          const petStatusText = pet.status === 'EGG' ? '🥚 Telur' : pet.status === 'DEAD' ? '🪦 Mati' : `Lv.${pet.level} ${pet.pet_type}`;
+          desc += `• 🐾 Peliharaan: **${pet.pet_name}** (${petStatusText})\n`;
+        } else {
+          desc += `• 🐾 Peliharaan: *Tidak ada (Beli via \`.pet buy\`)*\n`;
+        }
+
+        if (extraData.kosRental) {
+          const roomName = extraData.kosRental.room_tier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+            extraData.kosRental.room_tier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse';
+          desc += `• 🏠 Kamar Kos: **${roomName}**\n`;
+        } else {
+          desc += `• 🏠 Kamar Kos: *Biasa / Tanpa Sewa (Ketik \`.kos\`)*\n`;
+        }
       }
 
     } else if (activeTab === 'assets') {
@@ -979,6 +988,8 @@ module.exports = {
 
     if (extraData && extraData.usePetCardImage) {
       embed.setImage('attachment://pet_card.png');
+    } else if (extraData && extraData.useProfileCardImage) {
+      embed.setImage('attachment://profile_card.png');
     }
 
     return embed;
