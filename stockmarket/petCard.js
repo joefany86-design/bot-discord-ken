@@ -2071,6 +2071,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
 async function getExpeditionCardAttachment(res, mapChoice, guild) {
   try {
     const buffer = await generateExpeditionCard(res, mapChoice, guild);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_result.png' });
   } catch (e) {
     console.error('[PetCard] Error generating expedition card:', e);
@@ -2300,6 +2301,7 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
 async function getExpeditionLobbyAttachment(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild) {
   try {
     const buffer = await generateExpeditionLobbyCard(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'lobby_card.png' });
   } catch (e) {
     console.error('[PetCard] Error generating expedition lobby card:', e);
@@ -2482,11 +2484,13 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionLoadingAttachment(selectedMap, leaderId, participants, mapChoice, guild) {
   try {
     const buffer = await generateExpeditionLoadingCard(selectedMap, leaderId, participants, mapChoice, guild);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_loading.png' });
   } catch (e) {
     console.error('[PetCard] Error generating expedition loading card:', e);
@@ -2574,6 +2578,7 @@ async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selec
 async function getExpeditionStageTransitionAttachment(stageNum, stageTitle, selectedMap, mapChoice) {
   try {
     const buffer = await generateExpeditionStageTransitionCard(stageNum, stageTitle, selectedMap, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage_transition.png' });
   } catch (e) {
     console.error('[PetCard] Error generating stage transition card:', e);
@@ -2745,11 +2750,13 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice) {
   try {
     const buffer = await generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_qte_step.png' });
   } catch (e) {
     console.error('[PetCard] Error generating QTE step card:', e);
@@ -2894,11 +2901,13 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionQteFailureAttachment(mapName, failedMemberName, reasonType, failResults, mapChoice, guild) {
   try {
     const buffer = await generateExpeditionQteFailureCard(mapName, failedMemberName, reasonType, failResults, mapChoice, guild);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_qte_failure.png' });
   } catch (e) {
     console.error('[PetCard] Error generating QTE failure card:', e);
@@ -3074,6 +3083,7 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
 async function getStage1PathSelectionAttachment(selectedMap, commanderName, mapChoice) {
   try {
     const buffer = await generateStage1PathSelectionCard(selectedMap, commanderName, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage1.png' });
   } catch (e) {
     console.error('[PetCard] Error generating Stage 1 path selection card:', e);
@@ -3168,11 +3178,13 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getStage1ResultAttachment(selectedMap, commanderName, pathText, pathChoice, mapChoice) {
   try {
     const buffer = await generateStage1ResultCard(selectedMap, commanderName, pathText, pathChoice, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage1_result.png' });
   } catch (e) {
     console.error('[PetCard] Error generating Stage 1 result card:', e);
@@ -3339,11 +3351,13 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getStage2ChestAttachment(selectedMap, commanderName, hasLockpick, mapChoice) {
   try {
     const buffer = await generateStage2ChestCard(selectedMap, commanderName, hasLockpick, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage2_chest.png' });
   } catch (e) {
     console.error('[PetCard] Error generating Stage 2 chest card:', e);
@@ -3495,11 +3509,13 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getStage2WaterfallAttachment(selectedMap, commanderName, mapChoice) {
   try {
     const buffer = await generateStage2WaterfallCard(selectedMap, commanderName, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage2_waterfall.png' });
   } catch (e) {
     console.error('[PetCard] Error generating Stage 2 waterfall card:', e);
@@ -3588,11 +3604,13 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
+  return canvas.toBuffer('image/png');
 }
 
 async function getStage2ResultAttachment(selectedMap, commanderName, eventText, isChest, mapChoice) {
   try {
     const buffer = await generateStage2ResultCard(selectedMap, commanderName, eventText, isChest, mapChoice);
+    if (!buffer) return null;
     return new AttachmentBuilder(buffer, { name: 'expedition_stage2_result.png' });
   } catch (e) {
     console.error('[PetCard] Error generating Stage 2 result card:', e);
