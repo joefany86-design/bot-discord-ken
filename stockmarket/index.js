@@ -11094,7 +11094,7 @@ async function handleEconomyCommands(message, client) {
                       if (iQte.user.id === step.targetUserId) {
                         stepSuccess = true;
                         qteCollector.stop('success');
-                        await iQte.reply({ content: `✅ Sukses! Langkah ${stepNumber} diselesaikan dengan cepat.`, flags: 64 });
+                        await iQte.deferUpdate().catch(() => {});
                         resolveQte();
                       } 
                       // Cek apakah pengklik adalah peserta heist lain (Interference Instafail!)
@@ -11107,7 +11107,7 @@ async function handleEconomyCommands(message, client) {
                         const failEmbed = embeds.heistQteFailureEmbed(guild, iQte.user.id, 'Interference', participants);
                         const failAttachment = await petCard.getHeistFailureAttachment(iQte.user, 'Interference');
                         
-                        await iQte.reply({ content: `🚨 Anda memicu alarm karena menekan tombol di luar giliran!`, flags: 64 });
+                        await iQte.deferUpdate().catch(() => {});
                         await replyMsg.edit({
                           content: `❌ **HEIST GAGAL: OPERASI DIGAGALKAN OLEH KRU!**`,
                           embeds: [failEmbed],
