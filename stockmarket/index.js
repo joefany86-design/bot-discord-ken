@@ -5924,7 +5924,6 @@ async function handlePetCommand(message, client, args) {
     let promptMsgToEdit = null;
 
     if (!selectedMap) {
-      const selectEmbed = embeds.petExpeditionMapSelectionEmbed(pet.EXPEDITION_MAPS);
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('pet_expedition_map_select')
         .setPlaceholder('🗺️ Pilih Peta Ekspedisi yang Ingin Dijalani...')
@@ -5940,7 +5939,7 @@ async function handlePetCommand(message, client, args) {
       const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
 
       const replyMsg = await message.reply({
-        embeds: [selectEmbed],
+        content: `🗺️ **PILIH ZONA EKSPEDISI TIM PET**\nPilihlah salah satu dari 10 zona ekspedisi di bawah untuk memulai petualangan bersama tim pet Anda!\n\n*Gunakan menu select di bawah atau ketik perintah:* \`.pet expedition <ID Peta>\``,
         components: [row],
         files: [petExplorer]
       });
@@ -5978,44 +5977,44 @@ async function handlePetCommand(message, client, args) {
     // 2. Maksimal 2 lobi ekspedisi aktif per server secara bersamaan
     const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
     if (guildLobbies.length >= 2) {
-      const warnEmb = embeds.warnEmbed('Lobi Penuh! ⚠️', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [warnEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [warnEmb] });
+      const warnText = `⚠️ **LOBI PENUH!** Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: warnText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: warnText });
     }
 
     // Kunci lobi per inisiator
     const lobbyKey = `${guildId}-${author.id}`;
     if (activeLobby.has(lobbyKey)) {
-      const warnEmb = embeds.warnEmbed('Lobi Aktif! ⚠️', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [warnEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [warnEmb] });
+      const warnText = `⚠️ **LOBI AKTIF!** Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: warnText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: warnText });
     }
 
     const initiatorPet = pet.getPet(author.id, guildId);
     if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
-      const errEmb = embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [errEmb] });
+      const errText = `❌ **GAGAL MEMULAI!** Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: errText });
     }
     if (initiatorPet.health < 40) {
-      const errEmb = embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`);
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [errEmb] });
+      const errText = `❌ **HP KURANG!** Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: errText });
     }
 
     try {
       pet.checkExpeditionLimit(author.id, guildId, true); // dryRun = true
     } catch (err) {
-      const errEmb = embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message);
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [errEmb] });
+      const errText = `❌ **BATAS EKSPEDISI TERCAPAI!** ${err.message}`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: errText });
     }
 
     const wallet = economy.getWallet(author.id, guildId);
     if (wallet.balance < 250) {
-      const errEmb = embeds.errorEmbed('Saldo Kurang!', `Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`);
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ embeds: [errEmb], components: [], attachments: [] }).catch(() => {});
-      return message.reply({ embeds: [errEmb] });
+      const errText = `❌ **SALDO KURANG!** Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!`;
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: errText, embeds: [], components: [], attachments: [] }).catch(() => {});
+      return message.reply({ content: errText });
     }
 
     economy.subtractBalance(author.id, guildId, 250, 'PET_EXPEDITION_FEE');
@@ -6068,22 +6067,16 @@ async function handlePetCommand(message, client, args) {
     const lobbyFiles = [];
     if (lobbyCardAttachment) lobbyFiles.push(lobbyCardAttachment);
 
-    const lobbyEmbed = embeds.petExpeditionLobbyEmbed(
-      author.id,
-      selectedMap,
-      `1️⃣ **${initiatorPet.pet_name}** (Lv. ${initiatorPet.level} ${initiatorPet.pet_type}) · <@${author.id}>`,
-      calcInit.successRate,
-      elementalLogsText,
-      endTimeUnix,
-      mapChoice
-    );
-
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('pet_exp_join').setLabel('🛡️ Ikut Ekspedisi').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('pet_exp_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Danger)
     );
 
-    const replyMsgOpts = { content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!`, embeds: [lobbyEmbed], components: [row] };
+    const replyMsgOpts = {
+      content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!\n*Waktu bergabung tersisa:* <t:${endTimeUnix}:R>`,
+      embeds: [],
+      components: [row]
+    };
     if (lobbyFiles.length > 0) replyMsgOpts.files = lobbyFiles;
     
     let replyMsg;
@@ -6141,7 +6134,6 @@ async function handlePetCommand(message, client, args) {
           guild
         );
 
-        const loadingEmbed = embeds.petExpeditionLoadingEmbed(selectedMap, author.id, currentLobby.participants);
         const loadingFiles = [];
         if (loadingCardAttachment) {
           loadingFiles.push(loadingCardAttachment);
@@ -6151,42 +6143,35 @@ async function handlePetCommand(message, client, args) {
             loadingFiles.push(loadingImg);
           } catch (err) {}
         }
-        const loadingOpts = { embeds: [loadingEmbed], components: [], attachments: [] };
+        const loadingOpts = {
+          content: `⏳ **Petualangan Tim Pet ke ${selectedMap.name} dimulai!** Bersiaplah...`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (loadingFiles.length > 0) loadingOpts.files = loadingFiles;
         await replyMsg.edit(loadingOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 3000)); // Loading screen 3 detik
 
         // ⭐ STAGE 1 TRANSITION: Animasi transisi ke Stage 1
-        const s1TransEmbed = embeds.petExpeditionStageTransitionEmbed(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
         let s1TransAtt = null;
         try {
           s1TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
         } catch (err) {}
         if (!s1TransAtt) s1TransAtt = getMapAttachment(mapChoice);
         
-        const s1TransOpts = { embeds: [s1TransEmbed], components: [], attachments: [] };
+        const s1TransOpts = {
+          content: `🚪 **[STAGE 1] Memasuki Area:** Pemilihan Jalur Tim...`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (s1TransAtt) s1TransOpts.files = [s1TransAtt];
         await replyMsg.edit(s1TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
-        const stage1Embed = new EmbedBuilder()
-          .setColor('#FF9100')
-          .setTitle('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM')
-          .setDescription(
-            `🗺️ **Peta:** **${selectedMap.name}**\n` +
-            `👤 **Komandan:** <@${author.id}>\n\n` +
-            `Silakan pilih jalur ekspedisi tim pet Anda:\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `🛣️ **[Jalur Aman]** ➔ Perjalanan aman tanpa risiko (**+0%** Sukses)\n` +
-            `🧗 **[Jalur Pintas]** ➔ Sukses **+15%** | Pet lelah (**-15 HP**)\n` +
-            `🌲 **[Rawa Beracun]** ➔ Sukses **+25%** | Risiko efek negatif (**30%**)`
-          )
-          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
-          .setTimestamp();
-
         const stage1Row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('exp_path_safe').setLabel('🛣️ Jalur Aman').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('exp_path_safe').setLabel('🛡️ Jalur Aman').setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId('exp_path_shortcut').setLabel('🧗 Jalur Pintas').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId('exp_path_swamp').setLabel('🌲 Rawa Beracun').setStyle(ButtonStyle.Danger)
         );
@@ -6197,7 +6182,12 @@ async function handlePetCommand(message, client, args) {
         } catch (err) {}
         if (!s1Att) s1Att = getMapAttachment(mapChoice);
 
-        const s1EditOpts = { embeds: [stage1Embed], components: [stage1Row], attachments: [] };
+        const s1EditOpts = {
+          content: `🧭 **STAGE 1: PEMILIHAN JALUR TIM**\nKomandan <@${author.id}>, silakan pilih jalur ekspedisi untuk tim Anda!`,
+          embeds: [],
+          components: [stage1Row],
+          attachments: []
+        };
         if (s1Att) s1EditOpts.files = [s1Att];
         await replyMsg.edit(s1EditOpts).catch(() => {});
 
@@ -6258,40 +6248,35 @@ async function handlePetCommand(message, client, args) {
           });
         });
 
-        const pathSelectedEmbed = new EmbedBuilder()
-          .setColor('#FF9100')
-          .setTitle('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅')
-          .setDescription(
-            `> 📢 **Keputusan Jalur:** Tim mengambil **${pathText}**\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `> 🗺️ **Peta:** **${selectedMap.name}**\n` +
-            `> 👤 **Komandan:** <@${author.id}>\n\n` +
-            `*⏳ Menghubungkan ke Stage 2...*`
-          )
-          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
-          .setTimestamp();
-
         let s1dAtt = null;
         try {
           s1dAtt = await petCardModule.getStage1ResultAttachment(selectedMap, author.username, pathText, pathChoice, mapChoice);
         } catch (err) {}
         if (!s1dAtt) s1dAtt = getMapAttachment(mapChoice);
 
-        const s1dOpts = { embeds: [pathSelectedEmbed], components: [], attachments: [] };
+        const s1dOpts = {
+          content: `🧭 **STAGE 1 SELESAI:** Tim mengambil **${pathText.split('\n')[0]}**!`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (s1dAtt) s1dOpts.files = [s1dAtt];
         await replyMsg.edit(s1dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000));
 
         // ⭐ STAGE 2 TRANSITION: Animasi transisi ke Stage 2
-        const s2TransEmbed = embeds.petExpeditionStageTransitionEmbed(2, 'Kejadian Acak', selectedMap, mapChoice);
         let s2TransAtt = null;
         try {
           s2TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(2, 'Kejadian Acak', selectedMap, mapChoice);
         } catch (err) {}
         if (!s2TransAtt) s2TransAtt = getMapAttachment(mapChoice);
 
-        const s2TransOpts = { embeds: [s2TransEmbed], components: [], attachments: [] };
+        const s2TransOpts = {
+          content: `🚪 **[STAGE 2] Memasuki Area:** Kejadian Acak...`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (s2TransAtt) s2TransOpts.files = [s2TransAtt];
         await replyMsg.edit(s2TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
@@ -6308,22 +6293,6 @@ async function handlePetCommand(message, client, args) {
           const lockpickRow = database.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'LOCKPICK'", [author.id, guildId]);
           const hasLockpick = lockpickRow && lockpickRow.quantity > 0;
 
-          const chestEmbed = new EmbedBuilder()
-            .setColor('#E040FB')
-            .setTitle('📦 STAGE 2 ━━ PETI KUNO TERKUNCI')
-            .setDescription(
-              `👤 **Komandan:** <@${author.id}>\n` +
-              `🎒 **Inventaris Lockpick:** ${hasLockpick ? '🟢 **Ada** (1x)' : '🔴 **Tidak Ada**'}\n\n` +
-              `Tim menemukan peti kuno terkunci di jalan. Pilih tindakan:\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `🗝️ **[Gunakan Lockpick]** ➔ Buka aman, dapat 1 item langka gratis\n` +
-              `💥 **[Dobrak Paksa]** ➔ Peluang **40%** sukses | **60%** meledak (**-15 HP** tim)\n` +
-              `🏃 **[Lewati]** ➔ Lanjut perjalanan dengan aman`
-            )
-            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
-            .setTimestamp();
-
           const chestRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('exp_event_lockpick').setLabel('Gunakan Lockpick').setStyle(ButtonStyle.Primary).setDisabled(!hasLockpick),
             new ButtonBuilder().setCustomId('exp_event_force').setLabel('Dobrak Paksa').setStyle(ButtonStyle.Danger),
@@ -6336,7 +6305,12 @@ async function handlePetCommand(message, client, args) {
           } catch (err) {}
           if (!s2cAtt) s2cAtt = getMapAttachment(mapChoice);
 
-          const s2cOpts = { embeds: [chestEmbed], components: [chestRow], attachments: [] };
+          const s2cOpts = {
+            content: `📦 **STAGE 2: PETI KUNO TERKUNCI**\nKomandan <@${author.id}>, pilih tindakan untuk membuka peti kuno!`,
+            embeds: [],
+            components: [chestRow],
+            attachments: []
+          };
           if (s2cAtt) s2cOpts.files = [s2cAtt];
           await replyMsg.edit(s2cOpts).catch(() => {});
 
@@ -6393,20 +6367,6 @@ async function handlePetCommand(message, client, args) {
           });
         } else {
           // Air Terjun Suci
-          const waterfallEmbed = new EmbedBuilder()
-            .setColor('#00E5FF')
-            .setTitle('💧 STAGE 2 ━━ AIR TERJUN SUCI')
-            .setDescription(
-              `👤 **Komandan:** <@${author.id}>\n\n` +
-              `Tim menemukan air terjun suci tersembunyi. Pilih tindakan:\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `⛲ **[Minum Bersama]** ➔ Pulihkan **+20 HP** & **+20 Hidrasi** semua pet\n` +
-              `🏃 **[Lewati]** ➔ Lanjut perjalanan tanpa istirahat`
-            )
-            .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-            .setFooter({ text: '⚔️ Batas keputusan: 15 detik' })
-            .setTimestamp();
-
           const waterfallRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('exp_event_drink').setLabel('Minum Bersama').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('exp_event_leave').setLabel('Lewati').setStyle(ButtonStyle.Secondary)
@@ -6418,7 +6378,12 @@ async function handlePetCommand(message, client, args) {
           } catch (err) {}
           if (!s2wAtt) s2wAtt = getMapAttachment(mapChoice);
 
-          const s2wOpts = { embeds: [waterfallEmbed], components: [waterfallRow], attachments: [] };
+          const s2wOpts = {
+            content: `💧 **STAGE 2: AIR TERJUN SUCI**\nKomandan <@${author.id}>, pilih tindakan untuk memulihkan tim!`,
+            embeds: [],
+            components: [waterfallRow],
+            attachments: []
+          };
           if (s2wAtt) s2wOpts.files = [s2wAtt];
           await replyMsg.edit(s2wOpts).catch(() => {});
 
@@ -6463,39 +6428,35 @@ async function handlePetCommand(message, client, args) {
           });
         }
 
-        const eventSelectedEmbed = new EmbedBuilder()
-          .setColor(isChest ? '#E040FB' : '#00E5FF')
-          .setTitle('📦 STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅')
-          .setDescription(
-            `> 📢 **Keputusan:** Tim memilih **${eventText}**\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `> 👤 **Komandan:** <@${author.id}>\n\n` +
-            `*⏳ Gerbang Bos Akhir terbuka...*`
-          )
-          .setImage(mapAttachment ? `attachment://map${mapChoice}.png` : null)
-          .setFooter({ text: '⚔️ Kosan 1A Pet Expedition' })
-          .setTimestamp();
-
         let s2dAtt = null;
         try {
           s2dAtt = await petCardModule.getStage2ResultAttachment(selectedMap, author.username, eventText, isChest, mapChoice);
         } catch (err) {}
         if (!s2dAtt) s2dAtt = getMapAttachment(mapChoice);
 
-        const s2dOpts = { embeds: [eventSelectedEmbed], components: [], attachments: [] };
+        const s2dOpts = {
+          content: `📦 **STAGE 2 SELESAI:** Tim memilih **${eventText.split('\n')[0]}**!`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (s2dAtt) s2dOpts.files = [s2dAtt];
         await replyMsg.edit(s2dOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000));
 
         // ⭐ STAGE 3 TRANSITION: Animasi transisi ke Boss Battle
-        const s3TransEmbed = embeds.petExpeditionStageTransitionEmbed(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
         let s3TransAtt = null;
         try {
           s3TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
         } catch (err) {}
         if (!s3TransAtt) s3TransAtt = getMapAttachment(mapChoice);
 
-        const s3TransOpts = { embeds: [s3TransEmbed], components: [], attachments: [] };
+        const s3TransOpts = {
+          content: `🚪 **[STAGE 3] Memasuki Area:** Pertempuran Bos Akhir...`,
+          embeds: [],
+          components: [],
+          attachments: []
+        };
         if (s3TransAtt) s3TransOpts.files = [s3TransAtt];
         await replyMsg.edit(s3TransOpts).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
@@ -6518,7 +6479,6 @@ async function handlePetCommand(message, client, args) {
           const endTimeUnix = Math.floor((Date.now() + durationSeconds * 1000) / 1000);
 
           // Buat embeds dan action row tombol QTE
-          const qteEmbed = embeds.petExpeditionStepEmbed(guildId, stepNumber, totalSteps, bossName, targetUserId, petObj, endTimeUnix, mapChoice);
           const qteRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
               .setCustomId('pet_exp_qte_skill')
@@ -6534,7 +6494,12 @@ async function handlePetCommand(message, client, args) {
           } catch (err) {}
           if (!qteAtt) qteAtt = getMapAttachment(mapChoice);
 
-          const qteOpts = { embeds: [qteEmbed], components: [qteRow], attachments: [] };
+          const qteOpts = {
+            content: `⚔️ **BATTLE TURN ${stepNumber}/${totalSteps}!** Giliran <@${targetUserId}> untuk menyerang **${bossName}**! Cepat klik tombol di bawah sebelum waktu habis! <t:${endTimeUnix}:R>`,
+            embeds: [],
+            components: [qteRow],
+            attachments: []
+          };
           if (qteAtt) qteOpts.files = [qteAtt];
           await replyMsg.edit(qteOpts).catch(() => {});
 
@@ -6589,8 +6554,6 @@ async function handlePetCommand(message, client, args) {
         if (qteFailed) {
           // Proses kegagalan QTE di database
           const failResults = pet.executeExpeditionQteFailure(guildId, currentLobby.participants, failedUserId, reasonType, mapChoice, membersMap);
-          const failEmbed = embeds.petExpeditionQteFailureEmbed(guildId, selectedMap.name, failedUserId, reasonType, currentLobby.participants, failResults, mapChoice);
-          
           let failAtt = null;
           try {
             const member = membersMap[failedUserId] || await message.guild.members.fetch(failedUserId).catch(() => null);
@@ -6607,16 +6570,16 @@ async function handlePetCommand(message, client, args) {
           } catch (err) {}
 
           const failOpts = {
-            content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
-            embeds: [failEmbed],
+            content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
+            embeds: [],
             components: [],
             files: failFiles,
             attachments: []
           };
           await replyMsg.edit(failOpts).catch(async () => {
             await message.channel.send({
-              content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**`,
-              embeds: [failEmbed],
+              content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
+              embeds: [],
               files: failFiles
             });
           });
@@ -6661,33 +6624,6 @@ async function handlePetCommand(message, client, args) {
           });
         }
 
-        const fields = [
-          {
-            name: res.success ? '🎉 JARAHAN & PENGALAMAN TIM' : '💔 REKAP PENGALAMAN (MESKI GAGAL)',
-            value: rewardText || '*Tidak ada kru*',
-            inline: false
-          },
-          { name: '🔥 Kombinasi Level Tim', value: `\`Lv. ${res.teamPower}\``, inline: true },
-          { name: '🎯 Peluang Sukses', value: `\`${res.successRate}%\``, inline: true }
-        ];
-
-        if (res.bestPet && res.worstPet) {
-          fields.push(
-            {
-              name: '🏆 BINTANG UTAMA EXPEDITION (MVP) 👑',
-              value: `🦖 **${res.bestPet.petName}** (Lv. ${res.bestPet.level}) · <@${res.bestPet.userId}>\n└─ *Gagah berani memimpin barisan tempur paling depan! 🔥💪*`,
-              inline: false
-            },
-            {
-              name: '🐌 BEBAN TIM TERBERAT (CUPU) 🛌',
-              value: `🦖 **${res.worstPet.petName}** (Lv. ${res.worstPet.level}) · <@${res.worstPet.userId}>\n└─ *Kebanyakan ngemil ransum & sembunyi di balik semak-semak! 😭💤*`,
-              inline: false
-            }
-          );
-        }
-
-        const resultEmbed = embeds.petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice);
-
         let expCardAttachment = null;
         try {
           const petCardModule = require('./petCard');
@@ -6710,17 +6646,18 @@ async function handlePetCommand(message, client, args) {
           resFiles.push(petExplorer);
         } catch (err) {}
 
+        const resText = `⚔️ **EKSPEDISI PET SELESAI!**\n\n📖 **LOG PERJALANAN:**\n${reportDesc}\n🎁 **HASIL JARAHAN & STATUS KRU:**\n${rewardText}`;
         const resOpts = {
-          content: `⚔️ **EKSPEDISI PET SELESAI!**`,
-          embeds: [resultEmbed],
+          content: resText,
+          embeds: [],
           components: [],
           files: resFiles,
           attachments: []
         };
         await replyMsg.edit(resOpts).catch(async () => {
           await message.channel.send({
-            content: `⚔️ **EKSPEDISI PET SELESAI!**`,
-            embeds: [resultEmbed],
+            content: resText,
+            embeds: [],
             files: resFiles
           });
         });
@@ -6803,16 +6740,6 @@ async function handlePetCommand(message, client, args) {
           const elementalLogsTextVal = calc.logs.length > 0 ? calc.logs.join('\n') : '*Belum ada keuntungan/kelemahan elemen*';
 
           const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
-          const updatedEmbed = embeds.petExpeditionLobbyEmbed(
-            author.id,
-            selectedMap,
-            petListText,
-            calc.successRate,
-            elementalLogsTextVal,
-            endTimeUnix,
-            mapChoice
-          );
-
           const petCard = require('./petCard');
           const lobbyCardAttachment = await petCard.getExpeditionLobbyAttachment(
             author.id,
@@ -6828,7 +6755,11 @@ async function handlePetCommand(message, client, args) {
           const joinFiles = [];
           if (lobbyCardAttachment) joinFiles.push(lobbyCardAttachment);
 
-          const joinOpts = { embeds: [updatedEmbed], attachments: [] };
+          const joinOpts = {
+            content: `📣 **Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!\n*Waktu bergabung tersisa:* <t:${endTimeUnix}:R>`,
+            embeds: [],
+            attachments: []
+          };
           if (joinFiles.length > 0) joinOpts.files = joinFiles;
           await replyMsg.edit(joinOpts).catch(() => { });
         }

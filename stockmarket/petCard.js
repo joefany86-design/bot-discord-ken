@@ -61,6 +61,8 @@ const STAT_BAR_COLORS = {
 
 const CARD_WIDTH = 920;
 const CARD_HEIGHT = 420;
+const EXP_WIDTH = 920;
+const EXP_HEIGHT = 500;
 
 // Image cache untuk menghindari re-download
 const imageCache = new Map();
@@ -1900,26 +1902,37 @@ function getExpeditionMap(mapId) {
  * Generate visual expedition PVE result card
  */
 async function generateExpeditionCard(res, mapChoice, guild) {
-  const canvas = createCanvas(CARD_WIDTH, 360);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   const selectedMap = getExpeditionMap(mapChoice);
   const element = (selectedMap?.element || 'EARTH').toUpperCase();
   const theme = ELEMENT_THEMES[element] || ELEMENT_THEMES.EARTH;
 
-  // Background - map thematic gradient
-  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 360);
-  bgGrad.addColorStop(0, theme.bg[0] || '#0f0f26');
-  bgGrad.addColorStop(0.5, theme.bg[2] || '#1d0f3a');
-  bgGrad.addColorStop(1, theme.bg[0] || '#0f0f26');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, CARD_WIDTH, 360);
+  // Background - map background image if exists, fallback to gradient
+  let bgImg = null;
+  const mapPath = path.join(__dirname, '..', 'assets', 'maps', `map${mapChoice}.png`);
+  if (fs.existsSync(mapPath)) {
+    try { bgImg = await loadImage(mapPath); } catch (e) {}
+  }
 
-  // Decorative border glow
-  drawRoundedRect(ctx, 10, 10, CARD_WIDTH - 20, 340, 16);
-  ctx.fillStyle = 'rgba(10,10,30,0.75)';
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
+  } else {
+    const bgGrad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
+    bgGrad.addColorStop(0, theme.bg[0] || '#0f0f26');
+    bgGrad.addColorStop(0.5, theme.bg[2] || '#1d0f3a');
+    bgGrad.addColorStop(1, theme.bg[0] || '#0f0f26');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
+  }
+
+  // Glassmorphic overlay panel
+  const panelMargin = 15;
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
+  ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
   ctx.fill();
-  ctx.strokeStyle = res.success ? 'rgba(0,230,118,0.3)' : 'rgba(213,0,0,0.3)';
+  ctx.strokeStyle = res.success ? 'rgba(0, 230, 118, 0.4)' : 'rgba(213, 0, 0, 0.4)';
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -1928,31 +1941,31 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   
   // Banner / Status Ribbon
   ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
-  const bannerGrad = ctx.createLinearGradient(leftX, 80, leftX + 300, 80);
+  const bannerGrad = ctx.createLinearGradient(leftX, 90, leftX + 300, 90);
   if (res.success) {
     bannerGrad.addColorStop(0, '#00E676');
     bannerGrad.addColorStop(1, '#B9F6CA');
     ctx.fillStyle = bannerGrad;
-    ctx.fillText('EKSPEDISI SUKSES', leftX, 85);
+    ctx.fillText('EKSPEDISI SUKSES', leftX, 95);
   } else {
     bannerGrad.addColorStop(0, '#FF1744');
     bannerGrad.addColorStop(1, '#FF8A80');
     ctx.fillStyle = bannerGrad;
-    ctx.fillText('EKSPEDISI GAGAL', leftX, 85);
+    ctx.fillText('EKSPEDISI GAGAL', leftX, 95);
   }
 
   // Strip Emojis from Zone Name to avoid box outlines
   ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanZoneName = res.zoneName.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
-  ctx.fillText(cleanZoneName, leftX, 125);
+  ctx.fillText(cleanZoneName, leftX, 135);
 
   // Stats Details
   ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`Kombinasi Level Tim: Lv. ${res.teamPower}`, leftX, 165);
-  ctx.fillText(`Peluang Sukses: ${res.successRate}%`, leftX, 190);
-  ctx.fillText(`Elemen Wilayah: ${element}`, leftX, 215);
+  ctx.fillText(`Kombinasi Level Tim: Lv. ${res.teamPower}`, leftX, 180);
+  ctx.fillText(`Peluang Sukses: ${res.successRate}%`, leftX, 210);
+  ctx.fillText(`Elemen Wilayah: ${element}`, leftX, 240);
 
   // Chest Drop Reward if applicable
   if (res.chestAwardedUser && res.chestDropItem) {
@@ -1965,10 +1978,10 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     }
     ctx.fillStyle = '#FFD700';
     ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
-    ctx.fillText(`Peti Terkunci dibuka oleh ${winnerName}!`, leftX, 260);
+    ctx.fillText(`Peti Terkunci dibuka oleh ${winnerName}!`, leftX, 290);
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '13px "DejaVu Sans", sans-serif';
-    ctx.fillText(`└─ Drop Item: ${res.chestDropItem}`, leftX, 280);
+    ctx.fillText(`└─ Drop Item: ${res.chestDropItem}`, leftX, 310);
   }
 
   // Right Section: MVP & Worst Pets (or single explorer)
@@ -2036,20 +2049,21 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     ctx.fillText(`@${ownerName}`, x, y + 95);
   };
 
-  const rightCenterX = CARD_WIDTH - 240;
+  const rightCenterX = EXP_WIDTH - 240;
+  const rightCenterY = EXP_HEIGHT / 2 - 10;
   
   if (res.bestPet && res.worstPet && res.bestPet.petName !== res.worstPet.petName) {
-    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'MVP', rightCenterX - 85, 170, '#FFD700', true);
-    await drawPetPanel(res.worstPet.userId, res.worstPet.petName, res.worstPet.level, 'BEBAN', rightCenterX + 85, 170, '#FF5252', false);
+    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'MVP', rightCenterX - 85, rightCenterY, '#FFD700', true);
+    await drawPetPanel(res.worstPet.userId, res.worstPet.petName, res.worstPet.level, 'BEBAN', rightCenterX + 85, rightCenterY, '#FF5252', false);
   } else if (res.bestPet) {
-    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'EXPLORER', rightCenterX, 170, '#00E676', false);
+    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'EXPLORER', rightCenterX, rightCenterY, '#00E676', false);
   }
 
   // Footer Watermark
   ctx.font = '10px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', CARD_WIDTH / 2, 335);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
   return canvas.toBuffer('image/png');
 }
@@ -2065,7 +2079,7 @@ async function getExpeditionCardAttachment(res, mapChoice, guild) {
 }
 
 async function generateExpeditionLobbyCard(initiatorId, selectedMap, participants, successRate, elementalLogs, endTimeUnix, mapChoice, guild) {
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // 1. Draw Map Background
@@ -2080,27 +2094,27 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   }
 
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
     // Fallback thematic gradient
     const theme = ELEMENT_THEMES[(selectedMap.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
     const colors = theme.bg;
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     for (let i = 0; i < colors.length; i++) {
       grad.addColorStop(i / (colors.length - 1), colors[i]);
     }
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Glassmorphic overlay panel
   const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, CARD_HEIGHT - panelMargin * 2, 18);
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
   ctx.fill();
 
   // Panel border glow
-  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, CARD_HEIGHT - panelMargin);
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
   borderGrad.addColorStop(0, '#FFD70080');
   borderGrad.addColorStop(1, '#FF8A8080');
   ctx.strokeStyle = borderGrad;
@@ -2111,14 +2125,14 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   const dividerX = 330;
   ctx.beginPath();
   ctx.moveTo(dividerX, 35);
-  ctx.lineTo(dividerX, CARD_HEIGHT - 35);
+  ctx.lineTo(dividerX, EXP_HEIGHT - 35);
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   // ─── LEFT PANEL (MAP & MATCH INFO) ───
   const leftX = 40;
-  let leftY = 48;
+  let leftY = 55;
 
   // Title: LOBI EKSPEDISI TIM
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
@@ -2128,21 +2142,21 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   ctx.fillStyle = titleGrad;
   ctx.textAlign = 'left';
   ctx.fillText('LOBI EKSPEDISI TIM', leftX, leftY + 22);
-  leftY += 38;
+  leftY += 42;
 
   // Zone Name
   ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanZoneName = selectedMap.name.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
   ctx.fillText(cleanZoneName, leftX, leftY + 16);
-  leftY += 28;
+  leftY += 32;
 
   // Rec level & element
   ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 12);
   ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 28);
-  leftY += 40;
+  leftY += 45;
 
   // Success rate progress bar
   const pct = Math.min(1, Math.max(0, successRate / 100));
@@ -2152,7 +2166,7 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
   ctx.fillText('PELUANG TIM', leftX, leftY + 12);
   drawProgressBar(ctx, leftX, leftY + 20, 260, 16, pct, barColorStart, barColorEnd, '', `${successRate}%`);
-  leftY += 50;
+  leftY += 55;
 
   // Preparation Countdown timer
   const nowSec = Math.floor(Date.now() / 1000);
@@ -2163,7 +2177,7 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
 
   const timePct = Math.min(1, Math.max(0, sisaWaktu / 30)); // 30s max lobby duration
   drawProgressBar(ctx, leftX, leftY + 20, 260, 16, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
-  leftY += 52;
+  leftY += 58;
 
   // Leader / Initiator Pawang
   let leaderName = 'Pawang';
@@ -2187,7 +2201,7 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   const colWidth = 172;
   const rowHeight = 156;
   const startSlotX = 360;
-  const startSlotY = 48;
+  const startSlotY = 75;
 
   for (let idx = 0; idx < 6; idx++) {
     const colIdx = idx % slotsColCount;
@@ -2278,7 +2292,7 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'right';
-  ctx.fillText('Kosan 1A RPG · Expedition Lobby', CARD_WIDTH - 30, CARD_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Expedition Lobby', EXP_WIDTH - 30, EXP_HEIGHT - 22);
 
   return canvas.toBuffer('image/png');
 }
@@ -2294,7 +2308,7 @@ async function getExpeditionLobbyAttachment(initiatorId, selectedMap, participan
 }
 
 async function generateExpeditionLoadingCard(selectedMap, leaderId, participants, mapChoice, guild) {
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // 1. Draw Map Background
@@ -2309,27 +2323,27 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   }
 
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
     // Fallback thematic gradient
     const theme = ELEMENT_THEMES[(selectedMap.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
     const colors = theme.bg;
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     for (let i = 0; i < colors.length; i++) {
       grad.addColorStop(i / (colors.length - 1), colors[i]);
     }
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Dark overlay
   const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, CARD_HEIGHT - panelMargin * 2, 18);
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.82)';
   ctx.fill();
 
   // Panel border glow
-  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, CARD_HEIGHT - panelMargin);
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
   borderGrad.addColorStop(0, '#00E5FF80');
   borderGrad.addColorStop(1, '#7C4DFF80');
   ctx.strokeStyle = borderGrad;
@@ -2337,22 +2351,22 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.stroke();
 
   // ─── HEADER SECTION ───
-  let textY = 55;
+  let textY = 65;
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
   ctx.textAlign = 'center';
-  ctx.fillText('🧭 MASUK ZONA EKSPEDISI...', CARD_WIDTH / 2, textY);
+  ctx.fillText('🧭 MASUK ZONA EKSPEDISI...', EXP_WIDTH / 2, textY);
 
   textY += 28;
   ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Mempersiapkan penjelajahan di ${selectedMap.name} · Boss: ${selectedMap.boss}`, CARD_WIDTH / 2, textY);
+  ctx.fillText(`Mempersiapkan penjelajahan di ${selectedMap.name} · Boss: ${selectedMap.boss}`, EXP_WIDTH / 2, textY);
 
   // ─── LOADING BAR ───
   textY += 35;
   const barWidth = 600;
   const barHeight = 22;
-  const barX = (CARD_WIDTH / 2) - (barWidth / 2);
+  const barX = (EXP_WIDTH / 2) - (barWidth / 2);
   const barY = textY;
 
   // Background loading bar
@@ -2378,20 +2392,20 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
-  ctx.fillText('MENYELARASKAN KRU PET & LOGISTIK TIM... 100%', CARD_WIDTH / 2, barY + barHeight / 2 + 4);
+  ctx.fillText('MENYELARASKAN KRU PET & LOGISTIK TIM... 100%', EXP_WIDTH / 2, barY + barHeight / 2 + 4);
 
   // ─── MEMBERS / PETS SECTION ───
-  let startY = 175;
+  let startY = 220;
   ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.textAlign = 'center';
-  ctx.fillText('KRU PETUALANG TIM', CARD_WIDTH / 2, startY);
+  ctx.fillText('KRU PETUALANG TIM', EXP_WIDTH / 2, startY);
 
   const colWidth = 150;
   const colGap = 20;
   const numParticipants = participants.length;
   const totalWidth = (numParticipants * colWidth) + ((numParticipants - 1) * colGap);
-  const startX = (CARD_WIDTH / 2) - (totalWidth / 2);
+  const startX = (EXP_WIDTH / 2) - (totalWidth / 2);
 
   let drawY = startY + 25;
 
@@ -2466,9 +2480,8 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionLoadingAttachment(selectedMap, leaderId, participants, mapChoice, guild) {
@@ -2482,7 +2495,7 @@ async function getExpeditionLoadingAttachment(selectedMap, leaderId, participant
 }
 
 async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selectedMap, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, 320);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Load Map Background
@@ -2495,26 +2508,26 @@ async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selec
   }
 
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
     const theme = ELEMENT_THEMES[(selectedMap?.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
     const colors = theme.bg;
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     for (let i = 0; i < colors.length; i++) {
       grad.addColorStop(i / (colors.length - 1), colors[i]);
     }
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Dark overlay
   const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 320 - panelMargin * 2, 18);
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.85)';
   ctx.fill();
 
   // Border glow gold
-  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 320 - panelMargin);
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
   borderGrad.addColorStop(0, '#FFB80080');
   borderGrad.addColorStop(1, '#FFD70080');
   ctx.strokeStyle = borderGrad;
@@ -2533,27 +2546,27 @@ async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selec
   // Header
   ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFB800';
-  ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, CARD_WIDTH / 2, 80);
+  ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, EXP_WIDTH / 2, 120);
 
   // Title
   ctx.font = 'bold 32px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(stageTitle.toUpperCase(), CARD_WIDTH / 2, 135);
+  ctx.fillText(stageTitle.toUpperCase(), EXP_WIDTH / 2, 210);
 
   // Map / Path text
   ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, CARD_WIDTH / 2, 185);
+  ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, EXP_WIDTH / 2, 290);
 
   // Flavour text
   ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', CARD_WIDTH / 2, 225);
+  ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', EXP_WIDTH / 2, 350);
 
   // Watermark
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', CARD_WIDTH / 2, 280);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
   return canvas.toBuffer('image/png');
 }
@@ -2569,7 +2582,7 @@ async function getExpeditionStageTransitionAttachment(stageNum, stageTitle, sele
 }
 
 async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, 360);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Load Map Background
@@ -2582,23 +2595,23 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   }
 
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 360);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 360);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     grad.addColorStop(0, '#110000');
     grad.addColorStop(1, '#331100');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, 360);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Dark overlay panel
   const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 360 - panelMargin * 2, 18);
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
   ctx.fillStyle = 'rgba(15, 10, 10, 0.88)';
   ctx.fill();
 
   // Orange border glow
-  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 360 - panelMargin);
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
   borderGrad.addColorStop(0, '#FF910080');
   borderGrad.addColorStop(1, '#FF3D0080');
   ctx.strokeStyle = borderGrad;
@@ -2609,18 +2622,18 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
-  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, CARD_WIDTH / 2, 55);
+  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 65);
 
   ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`🚨 SERANGAN BERSAMA KEPADA ${bossName.toUpperCase()}! 🚨`, CARD_WIDTH / 2, 80);
+  ctx.fillText(`🚨 SERANGAN BERSAMA KEPADA ${bossName.toUpperCase()}! 🚨`, EXP_WIDTH / 2, 95);
 
   // Visual QTE progress tracker
   const nodeRadius = 10;
   const nodeGap = 16;
   const totalNodesWidth = (totalSteps * nodeRadius * 2) + ((totalSteps - 1) * nodeGap);
-  const startNodesX = (CARD_WIDTH / 2) - (totalNodesWidth / 2);
-  const nodesY = 105;
+  const startNodesX = (EXP_WIDTH / 2) - (totalNodesWidth / 2);
+  const nodesY = 135;
 
   for (let step = 1; step <= totalSteps; step++) {
     const cx = startNodesX + (step - 1) * (nodeRadius * 2 + nodeGap) + nodeRadius;
@@ -2645,11 +2658,12 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
 
   // Draw two column sections: target pet info (left) & target player instructions (right)
   const leftX = 75;
-  const rightX = 490;
-  const columnsY = 145;
+  const rightX = 495;
+  const columnsY = 185;
+  const columnsH = 220;
 
   // 1. LEFT COLUMN: Target Pet Profile panel
-  drawRoundedRect(ctx, leftX, columnsY, 350, 150, 12);
+  drawRoundedRect(ctx, leftX, columnsY, 350, columnsH, 12);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -2657,8 +2671,8 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.stroke();
 
   // Pet avatar
-  const avCx = leftX + 60;
-  const avCy = columnsY + 75;
+  const avCx = leftX + 65;
+  const avCy = columnsY + columnsH / 2;
   const avR = 40;
 
   let petImg = null;
@@ -2689,21 +2703,21 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
   let petNameDisp = petObj?.pet_name || 'Pet';
   if (petNameDisp.length > 18) petNameDisp = petNameDisp.substring(0, 17) + '…';
-  ctx.fillText(petNameDisp, leftX + 120, columnsY + 55);
+  ctx.fillText(petNameDisp, leftX + 125, columnsY + 65);
 
   ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 120, columnsY + 80);
+  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 125, columnsY + 95);
 
   // Element and Rarity Badges
-  let badgeX = leftX + 120;
+  let badgeX = leftX + 125;
   ctx.font = 'bold 9px "DejaVu Sans", sans-serif';
-  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 95, petRarity, rarityTheme.primary, '#FFFFFF', 9);
+  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 120, petRarity, rarityTheme.primary, '#FFFFFF', 9);
   badgeX += rBadgeW + 6;
-  drawBadge(ctx, badgeX, columnsY + 95, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
+  drawBadge(ctx, badgeX, columnsY + 120, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
 
   // 2. RIGHT COLUMN: Target Player Turn details
-  drawRoundedRect(ctx, rightX, columnsY, 350, 150, 12);
+  drawRoundedRect(ctx, rightX, columnsY, 350, columnsH, 12);
   ctx.fillStyle = 'rgba(255, 145, 0, 0.05)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 145, 0, 0.15)';
@@ -2713,25 +2727,24 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.textAlign = 'center';
   ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 45);
+  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 65);
 
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
   let usernameDisp = `@${targetMemberName}`;
   if (usernameDisp.length > 20) usernameDisp = usernameDisp.substring(0, 19) + '…';
-  ctx.fillText(usernameDisp, rightX + 175, columnsY + 80);
+  ctx.fillText(usernameDisp, rightX + 175, columnsY + 115);
 
   ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 115);
+  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 165);
 
   // Footer Watermark
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', CARD_WIDTH / 2, 340);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice) {
@@ -2745,7 +2758,7 @@ async function getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, 
 }
 
 async function generateExpeditionQteFailureCard(mapName, failedMemberName, reasonType, failResults, mapChoice, guild) {
-  const canvas = createCanvas(CARD_WIDTH, 420);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Load Map Background
@@ -2758,17 +2771,17 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   }
 
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 420);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Red/Dark theme overlay
   const panelMargin = 15;
-  drawRoundedRect(ctx, panelMargin, panelMargin, CARD_WIDTH - panelMargin * 2, 420 - panelMargin * 2, 18);
+  drawRoundedRect(ctx, panelMargin, panelMargin, EXP_WIDTH - panelMargin * 2, EXP_HEIGHT - panelMargin * 2, 18);
   ctx.fillStyle = 'rgba(25, 10, 10, 0.92)';
   ctx.fill();
 
   // Dark Red border glow
-  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, CARD_WIDTH - panelMargin, 420 - panelMargin);
+  const borderGrad = ctx.createLinearGradient(panelMargin, panelMargin, EXP_WIDTH - panelMargin, EXP_HEIGHT - panelMargin);
   borderGrad.addColorStop(0, '#D5000080');
   borderGrad.addColorStop(1, '#FF174480');
   ctx.strokeStyle = borderGrad;
@@ -2779,18 +2792,19 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF1744';
-  ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', CARD_WIDTH / 2, 55);
+  ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', EXP_WIDTH / 2, 65);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, CARD_WIDTH / 2, 80);
+  ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, EXP_WIDTH / 2, 95);
 
   const leftX = 40;
   const rightX = 480;
-  const columnsY = 110;
+  const columnsY = 130;
+  const columnsH = 300;
 
   // 1. LEFT COLUMN: Failure explanation
-  drawRoundedRect(ctx, leftX, columnsY, 400, 240, 12);
+  drawRoundedRect(ctx, leftX, columnsY, 400, columnsH, 12);
   ctx.fillStyle = 'rgba(213, 0, 0, 0.04)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(213, 0, 0, 0.2)';
@@ -2800,7 +2814,7 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.textAlign = 'left';
   ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF8A80';
-  ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 20, columnsY + 35);
+  ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 20, columnsY + 40);
 
   // Cause text word wrap
   ctx.font = '13px "DejaVu Sans", sans-serif';
@@ -2816,9 +2830,9 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   // Draw wrapped text
   const words = causeText.split(' ');
   let line = '';
-  let yPos = columnsY + 65;
+  let yPos = columnsY + 75;
   const maxWidth = 360;
-  const lineHeight = 20;
+  const lineHeight = 22;
 
   for (let n = 0; n < words.length; n++) {
     let testLine = line + words[n] + ' ';
@@ -2835,11 +2849,11 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
 
   ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 180);
-  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 198);
+  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 220);
+  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 242);
 
   // 2. RIGHT COLUMN: Pet impact lists
-  drawRoundedRect(ctx, rightX, columnsY, 400, 240, 12);
+  drawRoundedRect(ctx, rightX, columnsY, 400, columnsH, 12);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -2848,12 +2862,12 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
 
   ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 20, columnsY + 35);
+  ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 20, columnsY + 40);
 
-  let rowY = columnsY + 60;
-  const rowHeight = 40;
+  let rowY = columnsY + 70;
+  const rowHeight = 44;
 
-  for (let i = 0; i < Math.min(4, failResults.length); i++) {
+  for (let i = 0; i < Math.min(5, failResults.length); i++) {
     const r = failResults[i];
     let pOwner = 'Pawang';
     if (guild) {
@@ -2878,9 +2892,8 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', CARD_WIDTH / 2, 395);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getExpeditionQteFailureAttachment(mapName, failedMemberName, reasonType, failResults, mapChoice, guild) {
@@ -2898,7 +2911,7 @@ async function getExpeditionQteFailureAttachment(mapName, failedMemberName, reas
 // ═══════════════════════════════════════════════
 
 async function generateStage1PathSelectionCard(selectedMap, commanderName, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Map background
@@ -2908,21 +2921,21 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
     const theme = ELEMENT_THEMES[(selectedMap?.element || 'EARTH').toUpperCase()] || ELEMENT_THEMES.EARTH;
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     theme.bg.forEach((c, i) => grad.addColorStop(i / (theme.bg.length - 1), c));
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   // Dark overlay
   const pm = 15;
-  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  drawRoundedRect(ctx, pm, pm, EXP_WIDTH - pm * 2, EXP_HEIGHT - pm * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
   ctx.fill();
-  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  const borderGrad = ctx.createLinearGradient(pm, pm, EXP_WIDTH - pm, EXP_HEIGHT - pm);
   borderGrad.addColorStop(0, '#FF910080');
   borderGrad.addColorStop(1, '#FFD70080');
   ctx.strokeStyle = borderGrad;
@@ -2933,16 +2946,16 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
-  ctx.fillText('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM', CARD_WIDTH / 2, 55);
+  ctx.fillText('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM', EXP_WIDTH / 2, 65);
 
   ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"Decide wisely, Commander, for every path holds its own fortune and peril..."', CARD_WIDTH / 2, 80);
+  ctx.fillText('"Decide wisely, Commander, for every path holds its own fortune and peril..."', EXP_WIDTH / 2, 95);
 
   // Map & Commander info bar
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ Peta: ${selectedMap?.name || 'Ekspedisi'}  ·  👤 Komandan: @${commanderName}`, CARD_WIDTH / 2, 105);
+  ctx.fillText(`🗺️ Peta: ${selectedMap?.name || 'Ekspedisi'}  ·  👤 Komandan: @${commanderName}`, EXP_WIDTH / 2, 125);
 
   // ─── THREE PATH OPTION PANELS ───
   const paths = [
@@ -2967,11 +2980,11 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
   ];
 
   const panelW = 260;
-  const panelH = 210;
+  const panelH = 245;
   const panelGap = 20;
   const totalW = (paths.length * panelW) + ((paths.length - 1) * panelGap);
-  const startX = (CARD_WIDTH - totalW) / 2;
-  const panelY = 125;
+  const startX = (EXP_WIDTH - totalW) / 2;
+  const panelY = 150;
 
   for (let i = 0; i < paths.length; i++) {
     const p = paths[i];
@@ -3000,7 +3013,7 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
 
     // Icon circle
     const iconCx = px + panelW / 2;
-    const iconCy = panelY + 50;
+    const iconCy = panelY + 55;
     ctx.beginPath();
     ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
     ctx.fillStyle = `${p.color}30`;
@@ -3019,13 +3032,13 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     // Title
     ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(p.title, px + panelW / 2, panelY + 95);
+    ctx.fillText(p.title, px + panelW / 2, panelY + 105);
 
     // Description
     ctx.font = '11px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(p.desc1, px + panelW / 2, panelY + 120);
-    ctx.fillText(p.desc2, px + panelW / 2, panelY + 136);
+    ctx.fillText(p.desc1, px + panelW / 2, panelY + 138);
+    ctx.fillText(p.desc2, px + panelW / 2, panelY + 154);
 
     // Bonus badge
     ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
@@ -3033,7 +3046,7 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     const badgeW = ctx.measureText(badgeText).width + 20;
     const badgeH = 22;
     const badgeX = px + (panelW - badgeW) / 2;
-    const badgeY = panelY + 160;
+    const badgeY = panelY + 190;
     drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2);
     ctx.fillStyle = `${p.color}30`;
     ctx.fill();
@@ -3049,11 +3062,11 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
   ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih jalur dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih jalur dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
 
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
   return canvas.toBuffer('image/png');
 }
@@ -3073,7 +3086,7 @@ async function getStage1PathSelectionAttachment(selectedMap, commanderName, mapC
 // ═══════════════════════════════════════════════
 
 async function generateStage1ResultCard(selectedMap, commanderName, pathText, pathChoice, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, 320);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Map background
@@ -3083,22 +3096,22 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     grad.addColorStop(0, '#1a0a00');
     grad.addColorStop(1, '#331a00');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   const pm = 15;
-  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, 320 - pm * 2, 18);
+  drawRoundedRect(ctx, pm, pm, EXP_WIDTH - pm * 2, EXP_HEIGHT - pm * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
   ctx.fill();
 
   // Green checkmark border for completed stage
-  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, 320 - pm);
+  const borderGrad = ctx.createLinearGradient(pm, pm, EXP_WIDTH - pm, EXP_HEIGHT - pm);
   borderGrad.addColorStop(0, '#00E67680');
   borderGrad.addColorStop(1, '#FFB80080');
   ctx.strokeStyle = borderGrad;
@@ -3109,7 +3122,7 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E676';
-  ctx.fillText('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅', CARD_WIDTH / 2, 60);
+  ctx.fillText('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅', EXP_WIDTH / 2, 75);
 
   // Path choice color
   const pathColors = { SAFE: '#4CAF50', SHORTCUT: '#2196F3', SWAMP: '#F44336' };
@@ -3117,9 +3130,9 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
 
   // Result box
   const boxW = 700;
-  const boxH = 120;
-  const boxX = (CARD_WIDTH - boxW) / 2;
-  const boxY = 85;
+  const boxH = 220;
+  const boxX = (EXP_WIDTH - boxW) / 2;
+  const boxY = 110;
   drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
   ctx.fillStyle = `${chosenColor}15`;
   ctx.fill();
@@ -3130,32 +3143,31 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
   ctx.textAlign = 'left';
   ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = chosenColor;
-  ctx.fillText('📢 Keputusan Jalur:', boxX + 25, boxY + 30);
+  ctx.fillText('📢 Keputusan Jalur:', boxX + 25, boxY + 40);
 
   // Wrap path text
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanPathText = pathText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
   const lines = cleanPathText.split('\n');
-  let ty = boxY + 55;
+  let ty = boxY + 75;
   for (const line of lines) {
     if (ty > boxY + boxH - 10) break;
     ctx.fillText(line.substring(0, 80), boxX + 25, ty);
-    ty += 20;
+    ty += 22;
   }
 
   // Map & Commander info
   ctx.textAlign = 'center';
   ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}  ·  ⏳ Menghubungkan ke Stage 2...`, CARD_WIDTH / 2, 250);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}  ·  ⏳ Menghubungkan ke Stage 2...`, EXP_WIDTH / 2, 380);
 
   // Watermark
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', CARD_WIDTH / 2, 290);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getStage1ResultAttachment(selectedMap, commanderName, pathText, pathChoice, mapChoice) {
@@ -3173,7 +3185,7 @@ async function getStage1ResultAttachment(selectedMap, commanderName, pathText, p
 // ═══════════════════════════════════════════════
 
 async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Map background
@@ -3183,20 +3195,20 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     grad.addColorStop(0, '#1a001a');
     grad.addColorStop(1, '#330033');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   const pm = 15;
-  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  drawRoundedRect(ctx, pm, pm, EXP_WIDTH - pm * 2, EXP_HEIGHT - pm * 2, 18);
   ctx.fillStyle = 'rgba(15, 5, 20, 0.90)';
   ctx.fill();
-  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  const borderGrad = ctx.createLinearGradient(pm, pm, EXP_WIDTH - pm, EXP_HEIGHT - pm);
   borderGrad.addColorStop(0, '#E040FB80');
   borderGrad.addColorStop(1, '#7C4DFF80');
   ctx.strokeStyle = borderGrad;
@@ -3207,15 +3219,15 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#E040FB';
-  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', CARD_WIDTH / 2, 55);
+  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', EXP_WIDTH / 2, 65);
 
   ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', CARD_WIDTH / 2, 80);
+  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', EXP_WIDTH / 2, 95);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, CARD_WIDTH / 2, 105);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 125);
 
   // Three option panels
   const opts = [
@@ -3246,11 +3258,11 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ];
 
   const panelW = 260;
-  const panelH = 210;
+  const panelH = 245;
   const panelGap = 20;
   const totalW = (opts.length * panelW) + ((opts.length - 1) * panelGap);
-  const startX = (CARD_WIDTH - totalW) / 2;
-  const panelY = 125;
+  const startX = (EXP_WIDTH - totalW) / 2;
+  const panelY = 150;
 
   for (let i = 0; i < opts.length; i++) {
     const o = opts[i];
@@ -3277,7 +3289,7 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
 
     // Icon circle
     const iconCx = px + panelW / 2;
-    const iconCy = panelY + 50;
+    const iconCy = panelY + 55;
     ctx.beginPath();
     ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
     ctx.fillStyle = `${o.color}30`;
@@ -3293,13 +3305,13 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     // Title
     ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 105);
 
     // Description
     ctx.font = '11px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 118);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 134);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 138);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 154);
 
     // Badge
     ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
@@ -3307,7 +3319,7 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     const bW = ctx.measureText(bText).width + 20;
     const bH = 20;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 160;
+    const bY = panelY + 190;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3321,13 +3333,12 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
   ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
 
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getStage2ChestAttachment(selectedMap, commanderName, hasLockpick, mapChoice) {
@@ -3345,7 +3356,7 @@ async function getStage2ChestAttachment(selectedMap, commanderName, hasLockpick,
 // ═══════════════════════════════════════════════
 
 async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Map background
@@ -3355,20 +3366,20 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     grad.addColorStop(0, '#001a33');
     grad.addColorStop(1, '#003366');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   const pm = 15;
-  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, CARD_HEIGHT - pm * 2, 18);
+  drawRoundedRect(ctx, pm, pm, EXP_WIDTH - pm * 2, EXP_HEIGHT - pm * 2, 18);
   ctx.fillStyle = 'rgba(5, 15, 30, 0.90)';
   ctx.fill();
-  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, CARD_HEIGHT - pm);
+  const borderGrad = ctx.createLinearGradient(pm, pm, EXP_WIDTH - pm, EXP_HEIGHT - pm);
   borderGrad.addColorStop(0, '#00E5FF80');
   borderGrad.addColorStop(1, '#00BCD480');
   ctx.strokeStyle = borderGrad;
@@ -3379,23 +3390,23 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', CARD_WIDTH / 2, 55);
+  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', EXP_WIDTH / 2, 65);
 
   ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', CARD_WIDTH / 2, 80);
+  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', EXP_WIDTH / 2, 95);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, CARD_WIDTH / 2, 105);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 125);
 
   // Two option panels, centered
   const panelW = 340;
-  const panelH = 220;
+  const panelH = 245;
   const panelGap = 30;
   const totalW = 2 * panelW + panelGap;
-  const startX = (CARD_WIDTH - totalW) / 2;
-  const panelY = 125;
+  const startX = (EXP_WIDTH - totalW) / 2;
+  const panelY = 150;
 
   const opts = [
     {
@@ -3452,19 +3463,19 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
 
     ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 110);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 115);
 
     ctx.font = '12px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 138);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 156);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 145);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 165);
 
     // Badge
     ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
     const bW = ctx.measureText(o.badge).width + 24;
     const bH = 22;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 175;
+    const bY = panelY + 195;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3478,13 +3489,12 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
   ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', CARD_WIDTH / 2, CARD_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
 
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', CARD_WIDTH / 2, CARD_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getStage2WaterfallAttachment(selectedMap, commanderName, mapChoice) {
@@ -3502,7 +3512,7 @@ async function getStage2WaterfallAttachment(selectedMap, commanderName, mapChoic
 // ═══════════════════════════════════════════════
 
 async function generateStage2ResultCard(selectedMap, commanderName, eventText, isChest, mapChoice) {
-  const canvas = createCanvas(CARD_WIDTH, 320);
+  const canvas = createCanvas(EXP_WIDTH, EXP_HEIGHT);
   const ctx = canvas.getContext('2d');
 
   // Map background
@@ -3512,22 +3522,22 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
     try { bgImg = await loadImage(mapPath); } catch (e) {}
   }
   if (bgImg) {
-    ctx.drawImage(bgImg, 0, 0, CARD_WIDTH, 320);
+    ctx.drawImage(bgImg, 0, 0, EXP_WIDTH, EXP_HEIGHT);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 320);
+    const grad = ctx.createLinearGradient(0, 0, EXP_WIDTH, EXP_HEIGHT);
     grad.addColorStop(0, isChest ? '#1a001a' : '#001a33');
     grad.addColorStop(1, isChest ? '#330033' : '#003366');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CARD_WIDTH, 320);
+    ctx.fillRect(0, 0, EXP_WIDTH, EXP_HEIGHT);
   }
 
   const pm = 15;
-  drawRoundedRect(ctx, pm, pm, CARD_WIDTH - pm * 2, 320 - pm * 2, 18);
+  drawRoundedRect(ctx, pm, pm, EXP_WIDTH - pm * 2, EXP_HEIGHT - pm * 2, 18);
   ctx.fillStyle = 'rgba(10, 10, 30, 0.88)';
   ctx.fill();
 
   const accentColor = isChest ? '#E040FB' : '#00E5FF';
-  const borderGrad = ctx.createLinearGradient(pm, pm, CARD_WIDTH - pm, 320 - pm);
+  const borderGrad = ctx.createLinearGradient(pm, pm, EXP_WIDTH - pm, EXP_HEIGHT - pm);
   borderGrad.addColorStop(0, `${accentColor}80`);
   borderGrad.addColorStop(1, '#00E67680');
   ctx.strokeStyle = borderGrad;
@@ -3539,13 +3549,13 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E676';
   const titleIcon = isChest ? '📦' : '💧';
-  ctx.fillText(`${titleIcon} STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅`, CARD_WIDTH / 2, 60);
+  ctx.fillText(`${titleIcon} STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅`, EXP_WIDTH / 2, 75);
 
   // Result box
   const boxW = 700;
-  const boxH = 120;
-  const boxX = (CARD_WIDTH - boxW) / 2;
-  const boxY = 85;
+  const boxH = 220;
+  const boxX = (EXP_WIDTH - boxW) / 2;
+  const boxY = 110;
   drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
   ctx.fillStyle = `${accentColor}10`;
   ctx.fill();
@@ -3556,29 +3566,28 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   ctx.textAlign = 'left';
   ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = accentColor;
-  ctx.fillText('📢 Keputusan:', boxX + 25, boxY + 30);
+  ctx.fillText('📢 Keputusan:', boxX + 25, boxY + 40);
 
   ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanEventText = eventText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
   const evLines = cleanEventText.split('\n');
-  let ey = boxY + 55;
+  let ey = boxY + 75;
   for (const line of evLines) {
     if (ey > boxY + boxH - 10) break;
     ctx.fillText(line.substring(0, 80), boxX + 25, ey);
-    ey += 20;
+    ey += 22;
   }
 
   ctx.textAlign = 'center';
   ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`👤 @${commanderName}  ·  ⏳ Gerbang Bos Akhir terbuka...`, CARD_WIDTH / 2, 250);
+  ctx.fillText(`👤 @${commanderName}  ·  ⏳ Gerbang Bos Akhir terbuka...`, EXP_WIDTH / 2, 380);
 
   ctx.font = '9px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', CARD_WIDTH / 2, 290);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
-  return canvas.toBuffer('image/png');
 }
 
 async function getStage2ResultAttachment(selectedMap, commanderName, eventText, isChest, mapChoice) {
