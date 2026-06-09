@@ -322,12 +322,12 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         `*Setelah semua terisi, klik tombol **✅ Lanjutkan** untuk mengisi nama & level pet.*`
       );
 
-      // Species Select
-      const speciesSelect = new StringSelectMenuBuilder()
+      // Species Select 1: Common, Rare, Epic, Legendary
+      const speciesSelect1 = new StringSelectMenuBuilder()
         .setCustomId('admin_pet_give_species')
-        .setPlaceholder('🐾 Pilih Spesies Pet...');
+        .setPlaceholder('🐾 Pilih Spesies Standard (Common - Legendary)...');
 
-      speciesSelect.addOptions(
+      speciesSelect1.addOptions(
         new StringSelectMenuOptionBuilder().setLabel('🐱 Kucing (Cat)').setDescription('⚪ Common — Lincah berburu').setValue('CAT'),
         new StringSelectMenuOptionBuilder().setLabel('🧱 Golem').setDescription('⚪ Common — Pekerja keras').setValue('GOLEM'),
         new StringSelectMenuOptionBuilder().setLabel('🟢 Slime').setDescription('⚪ Common — Vitalitas tinggi (120 HP)').setValue('SLIME'),
@@ -345,12 +345,25 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder().setLabel('🐺 Cerberus').setDescription('🟡 Legendary — Anjing penjaga neraka').setValue('CERBERUS'),
         new StringSelectMenuOptionBuilder().setLabel('🌪️ Typhon').setDescription('🟡 Legendary — Bapa segala monster').setValue('TYPHON'),
         new StringSelectMenuOptionBuilder().setLabel('⚔️ Valkyrie').setDescription('🟡 Legendary — Ksatria pertahanan emas').setValue('VALKYRIE'),
-        new StringSelectMenuOptionBuilder().setLabel('👹 Ifrit').setDescription('🟡 Legendary — Jin api gurun terdalam').setValue('IFRIT'),
+        new StringSelectMenuOptionBuilder().setLabel('👹 Ifrit').setDescription('🟡 Legendary — Jin api gurun terdalam').setValue('IFRIT')
+      );
+
+      // Species Select 2: Mythic & Immortal
+      const speciesSelect2 = new StringSelectMenuBuilder()
+        .setCustomId('admin_pet_give_species')
+        .setPlaceholder('✨ Pilih Spesies Khusus (Mythic & Immortal)...');
+
+      speciesSelect2.addOptions(
         new StringSelectMenuOptionBuilder().setLabel('━━ MYTHIC ━━').setDescription('🔴 Makhluk mitologi langka').setValue('_separator_mythic').setDefault(false),
         new StringSelectMenuOptionBuilder().setLabel('🐺 Fenrir').setDescription('🔴 Mythic — Serigala pemusnah').setValue('FENRIR'),
         new StringSelectMenuOptionBuilder().setLabel('🐲 Bahamut').setDescription('🔴 Mythic — Naga kaisar maha-api').setValue('BAHAMUT'),
         new StringSelectMenuOptionBuilder().setLabel('🦑 Kraken').setDescription('🔴 Mythic — Raksasa cumi laut abyss').setValue('KRAKEN'),
-        new StringSelectMenuOptionBuilder().setLabel('🐍 Jörmungandr').setDescription('🔴 Mythic — Ular dunia pembelah bumi').setValue('JORMUNGANDR')
+        new StringSelectMenuOptionBuilder().setLabel('🐍 Jörmungandr').setDescription('🔴 Mythic — Ular dunia pembelah bumi').setValue('JORMUNGANDR'),
+        new StringSelectMenuOptionBuilder().setLabel('━━ IMMORTAL ━━').setDescription('✨ Dewa kosmik abadi (God Mode)').setValue('_separator_immortal').setDefault(false),
+        new StringSelectMenuOptionBuilder().setLabel('⏳ Chronos').setDescription('✨ Immortal — Dewa Waktu primordial').setValue('CHRONOS'),
+        new StringSelectMenuOptionBuilder().setLabel('♾️ Ouroboros').setDescription('✨ Immortal — Ular keabadian abadi').setValue('OUROBOROS'),
+        new StringSelectMenuOptionBuilder().setLabel('🌌 Azathoth').setDescription('✨ Immortal — Entitas kosmik primordial').setValue('AZATHOTH'),
+        new StringSelectMenuOptionBuilder().setLabel('🌳 Yggdrasil').setDescription('✨ Immortal — Pohon Dunia penopang alam').setValue('YGGDRASIL')
       );
 
       // Trait Select
@@ -380,7 +393,8 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder().setLabel('⭐⭐⭐⭐⭐ Bintang 5').setDescription('+60 HP, +100% ATK, +20% DEF').setValue('5')
       );
 
-      const speciesRow = new ActionRowBuilder().addComponents(speciesSelect);
+      const speciesRow1 = new ActionRowBuilder().addComponents(speciesSelect1);
+      const speciesRow2 = new ActionRowBuilder().addComponents(speciesSelect2);
       const traitRow = new ActionRowBuilder().addComponents(traitSelect);
       const starRow = new ActionRowBuilder().addComponents(starSelect);
 
@@ -402,7 +416,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           .setStyle(ButtonStyle.Danger)
       );
 
-      return { embeds: [embed], components: [speciesRow, traitRow, starRow, btnRow] };
+      return { embeds: [embed], components: [speciesRow1, speciesRow2, traitRow, starRow, btnRow] };
     }
   };
 
@@ -1902,21 +1916,32 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
         `🎯 **Target:** <@${state.selectedRewardUserId}> (${state.selectedRewardUserLabel})`
       );
 
-    const speciesSelect = new StringSelectMenuBuilder()
+    const speciesSelect1 = new StringSelectMenuBuilder()
       .setCustomId('admin_tournament_rewards_pet_species')
-      .setPlaceholder('🐾 Pilih Spesies Pet...');
+      .setPlaceholder('🐾 Pilih Spesies Standard (Common - Legendary)...');
+
+    const speciesSelect2 = new StringSelectMenuBuilder()
+      .setCustomId('admin_tournament_rewards_pet_species')
+      .setPlaceholder('✨ Pilih Spesies Khusus (Mythic & Immortal)...');
 
     const petModule = require('./pet');
     const speciesList = Object.keys(petModule.GACHA_SPECIES);
     speciesList.forEach(sp => {
       const spec = petModule.GACHA_SPECIES[sp];
-      speciesSelect.addOptions({
+      const rarity = spec.rarity || 'COMMON';
+      const option = {
         label: `${spec.emoji || '🐾'} ${spec.name} (${sp})`,
         value: sp
-      });
+      };
+      if (rarity === 'MYTHIC' || rarity === 'IMMORTAL') {
+        speciesSelect2.addOptions(option);
+      } else {
+        speciesSelect1.addOptions(option);
+      }
     });
 
-    const row1 = new ActionRowBuilder().addComponents(speciesSelect);
+    const row1 = new ActionRowBuilder().addComponents(speciesSelect1);
+    const row2 = new ActionRowBuilder().addComponents(speciesSelect2);
     const btnRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('admin_tournament_rewards_btn_back_rewards')
@@ -1924,7 +1949,7 @@ function getTournamentPanelDataShared(gId, state, client, isPermanentChannel) {
         .setStyle(ButtonStyle.Secondary)
     );
 
-    return { embeds: [embed], components: [row1, btnRow] };
+    return { embeds: [embed], components: [row1, row2, btnRow] };
   }
 
   if (state.currentSubMenu === 'reward_pet_trait') {
