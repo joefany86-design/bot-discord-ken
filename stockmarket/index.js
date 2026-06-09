@@ -10757,6 +10757,7 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .heist
     // ═══════════════════════════════════════════════════
     if (commandName === 'heist') {
+      const petCard = require('./petCard');
       const sub = args[0]?.toLowerCase();
 
       if (!sub || sub === 'start') {
