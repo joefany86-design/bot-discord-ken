@@ -6504,9 +6504,23 @@ async function handlePetCommand(message, client, args) {
 
         const resultEmbed = embeds.petExpeditionResultEmbed(res, reportDesc, rewardText, mapChoice);
 
-        const resAtt = getMapAttachment(mapChoice);
+        let expCardAttachment = null;
+        try {
+          const petCardModule = require('./petCard');
+          expCardAttachment = await petCardModule.getExpeditionCardAttachment(res, mapChoice, message.guild);
+        } catch (e) {
+          console.error('[Expedition] Gagal membuat visual result card:', e);
+        }
+
         const resFiles = [];
-        if (resAtt) resFiles.push(resAtt);
+        if (expCardAttachment) {
+          resFiles.push(expCardAttachment);
+        } else {
+          // Fallback to map image if canvas card fails
+          const resAtt = getMapAttachment(mapChoice);
+          if (resAtt) resFiles.push(resAtt);
+        }
+
         try {
           const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
           resFiles.push(petExplorer);

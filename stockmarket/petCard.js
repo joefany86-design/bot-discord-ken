@@ -1070,13 +1070,192 @@ async function getStandingsCardAttachment(standings, guild) {
   }
 }
 
+function getExpeditionMap(mapId) {
+  try {
+    const petModule = require('./pet');
+    return petModule.EXPEDITION_MAPS.find(m => m.id === parseInt(mapId)) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Generate visual expedition PVE result card
+ */
+async function generateExpeditionCard(res, mapChoice, guild) {
+  const canvas = createCanvas(CARD_WIDTH, 360);
+  const ctx = canvas.getContext('2d');
+
+  const selectedMap = getExpeditionMap(mapChoice);
+  const element = (selectedMap?.element || 'EARTH').toUpperCase();
+  const theme = ELEMENT_THEMES[element] || ELEMENT_THEMES.EARTH;
+
+  // Background - map thematic gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, 360);
+  bgGrad.addColorStop(0, theme.bg[0] || '#0f0f26');
+  bgGrad.addColorStop(0.5, theme.bg[2] || '#1d0f3a');
+  bgGrad.addColorStop(1, theme.bg[0] || '#0f0f26');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH, 360);
+
+  // Decorative border glow
+  drawRoundedRect(ctx, 10, 10, CARD_WIDTH - 20, 340, 16);
+  ctx.fillStyle = 'rgba(10,10,30,0.75)';
+  ctx.fill();
+  ctx.strokeStyle = res.success ? 'rgba(0,230,118,0.3)' : 'rgba(213,0,0,0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Left Section: Result & Map Info
+  const leftX = 40;
+  
+  // Banner / Status Ribbon
+  ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif';
+  const bannerGrad = ctx.createLinearGradient(leftX, 80, leftX + 300, 80);
+  if (res.success) {
+    bannerGrad.addColorStop(0, '#00E676');
+    bannerGrad.addColorStop(1, '#B9F6CA');
+    ctx.fillStyle = bannerGrad;
+    ctx.fillText('EKSPEDISI SUKSES', leftX, 85);
+  } else {
+    bannerGrad.addColorStop(0, '#FF1744');
+    bannerGrad.addColorStop(1, '#FF8A80');
+    ctx.fillStyle = bannerGrad;
+    ctx.fillText('EKSPEDISI GAGAL', leftX, 85);
+  }
+
+  // Strip Emojis from Zone Name to avoid box outlines
+  ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = '#FFFFFF';
+  const cleanZoneName = res.zoneName.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
+  ctx.fillText(cleanZoneName, leftX, 125);
+
+  // Stats Details
+  ctx.font = '14px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillText(`Kombinasi Level Tim: Lv. ${res.teamPower}`, leftX, 165);
+  ctx.fillText(`Peluang Sukses: ${res.successRate}%`, leftX, 190);
+  ctx.fillText(`Elemen Wilayah: ${element}`, leftX, 215);
+
+  // Chest Drop Reward if applicable
+  if (res.chestAwardedUser && res.chestDropItem) {
+    let winnerName = 'Pawang';
+    if (guild) {
+      try {
+        const member = guild.members.cache.get(res.chestAwardedUser);
+        if (member) winnerName = member.user.username;
+      } catch (e) {}
+    }
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`Peti Terkunci dibuka oleh ${winnerName}!`, leftX, 260);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '13px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(`└─ Drop Item: ${res.chestDropItem}`, leftX, 280);
+  }
+
+  // Right Section: MVP & Worst Pets (or single explorer)
+  const drawPetPanel = async (pUser, pName, pLevel, title, x, y, badgeColor, isMvp) => {
+    let petElement = 'EARTH';
+    let petRarity = 'COMMON';
+    let petType = 'PET';
+    try {
+      const db = require('./database');
+      const petData = db.get('SELECT gacha_element, gacha_rarity, pet_type FROM user_pets WHERE pet_name = ?', [pName]);
+      if (petData) {
+        petElement = petData.gacha_element || 'EARTH';
+        petRarity = petData.gacha_rarity || 'COMMON';
+        petType = petData.pet_type || 'PET';
+      }
+    } catch (err) {}
+
+    const rarityTheme = RARITY_COLORS[petRarity.toUpperCase()] || RARITY_COLORS.COMMON;
+    
+    // Draw avatar ring
+    ctx.beginPath();
+    ctx.arc(x, y, 42, 0, Math.PI * 2);
+    ctx.fillStyle = rarityTheme.primary;
+    ctx.fill();
+    ctx.strokeStyle = rarityTheme.glow;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner dark circle
+    ctx.beginPath();
+    ctx.arc(x, y, 38, 0, Math.PI * 2);
+    ctx.fillStyle = '#101026';
+    ctx.fill();
+
+    // Fallback Letter
+    ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.fillText(petType.charAt(0).toUpperCase(), x, y + 8);
+
+    // Badge Label (MVP / BEBAN)
+    ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = badgeColor;
+    ctx.fillText(title.toUpperCase(), x, y - 52);
+
+    // Name & Owner details
+    ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    let petDisplayName = pName;
+    if (petDisplayName.length > 14) petDisplayName = petDisplayName.slice(0, 12) + '…';
+    ctx.fillText(petDisplayName, x, y + 60);
+
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillText(`Lv.${pLevel} ${petType}`, x, y + 78);
+
+    let ownerName = 'Pawang';
+    if (guild) {
+      try {
+        const member = guild.members.cache.get(pUser);
+        if (member) ownerName = member.user.username;
+      } catch (e) {}
+    }
+    if (ownerName.length > 14) ownerName = ownerName.slice(0, 12) + '…';
+    ctx.fillText(`@${ownerName}`, x, y + 95);
+  };
+
+  const rightCenterX = CARD_WIDTH - 240;
+  
+  if (res.bestPet && res.worstPet && res.bestPet.petName !== res.worstPet.petName) {
+    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'MVP', rightCenterX - 85, 170, '#FFD700', true);
+    await drawPetPanel(res.worstPet.userId, res.worstPet.petName, res.worstPet.level, 'BEBAN', rightCenterX + 85, 170, '#FF5252', false);
+  } else if (res.bestPet) {
+    await drawPetPanel(res.bestPet.userId, res.bestPet.petName, res.bestPet.level, 'EXPLORER', rightCenterX, 170, '#00E676', false);
+  }
+
+  // Footer Watermark
+  ctx.font = '10px "Segoe UI", Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.textAlign = 'center';
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', CARD_WIDTH / 2, 335);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getExpeditionCardAttachment(res, mapChoice, guild) {
+  try {
+    const buffer = await generateExpeditionCard(res, mapChoice, guild);
+    return new AttachmentBuilder(buffer, { name: 'expedition_result.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating expedition card:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
   generateStandingsCard,
+  generateExpeditionCard,
   getPetCardAttachment,
   getPvpCardAttachment,
   getStandingsCardAttachment,
+  getExpeditionCardAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

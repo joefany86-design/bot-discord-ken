@@ -4341,9 +4341,10 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
+      .setDescription(reportDesc || null)
       .setThumbnail('attachment://pet_explorer.png')
       .addFields(fields)
-      .setImage(`attachment://map${mapChoice}.png`)
+      .setImage('attachment://expedition_result.png')
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })
       .setTimestamp();
   }
