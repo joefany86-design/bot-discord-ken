@@ -9288,10 +9288,20 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
           const result = pet.executePvP(author.id, opponent.id, guildId, bet);
           
           let files = [];
-          // Visual PvP result card disabled
+          // ── Visual PvP Result Card (Premium Canvas) ──
+          try {
+            const petCardModule = require('./petCard');
+            const challengerPet = pet.getPet(author.id, guildId);
+            const opponentPet = pet.getPet(opponent.id, guildId);
+            if (challengerPet && opponentPet) {
+              const pvpCardAtt = await petCardModule.getPvpCardAttachment(challengerPet, opponentPet, result);
+              if (pvpCardAtt) files.push(pvpCardAtt);
+            }
+          } catch (e) {
+            console.error('[PvP] Gagal membuat visual PvP card:', e.message);
+          }
 
           const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
-
 
           await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport], files: files });
         } catch (err) {

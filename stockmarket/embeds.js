@@ -490,6 +490,25 @@ module.exports = {
       xpNeeded = pet.level * 150;
     }
 
+    // ── Canvas Card (Premium Visual) ──
+    try {
+      const petCard = require('./petCard');
+      const attachment = await petCard.getPetCardAttachment(pet, ownerUser, { xpNeeded, maxHP: 100, ...options });
+
+      if (attachment) {
+        const embed = new EmbedBuilder()
+          .setColor(petCard.RARITY_COLORS[(pet.gacha_rarity || 'COMMON').toUpperCase()]?.primary || 0x7C4DFF)
+          .setTitle(`🐾 KARTU PROFIL PET: ${pet.pet_name.toUpperCase()}`)
+          .setImage('attachment://pet_card.png')
+          .setFooter({ text: 'Kosan 1A RPG · Pet Profile Card' })
+          .setTimestamp();
+        return { embeds: [embed], files: [attachment] };
+      }
+    } catch (e) {
+      console.error('[Embeds] Gagal membuat petCardEmbed canvas:', e.message);
+    }
+
+    // ── Fallback: Text Embed (jika canvas gagal) ──
     const generateProgressBar = (value, max, size = 8) => {
       if (max <= 0) return '░'.repeat(size);
       const ratio = Math.min(1, Math.max(0, value / max));
@@ -3381,6 +3400,7 @@ module.exports = {
       inline: false
     });
 
+    embed.setImage('attachment://pvp_card.png');
     embed.setFooter({ text: 'Rupiah Server PvP Arena • Kosan 1A RPG Series' });
 
     return embed;
