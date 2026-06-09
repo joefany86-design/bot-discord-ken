@@ -7,12 +7,27 @@
  * ══════════════════════════════════════════════════════════════════════
  */
 
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const { AttachmentBuilder } = require('discord.js');
 const https = require('https');
 const http = require('http');
+const path = require('path');
 const dbModule = require('./database');
 const db = dbModule.db;
+
+// ═══════════════════════════════════════════════
+// REGISTRASI FONT PREMIUM INTER & EMAS/EMOJI
+// ═══════════════════════════════════════════════
+try {
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Regular.otf'), 'Inter');
+  GlobalFonts.registerFromPath(path.join(__dirname, '..', 'assets', 'fonts', 'Inter-Bold.otf'), 'Inter');
+} catch (e) {
+  console.warn('[ProfileCard] Gagal meregistrasi font Inter:', e.message);
+}
+
+const FONT_REGULAR = (size) => `${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+const FONT_BOLD = (size) => `bold ${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+const FONT_ITALIC = (size) => `italic ${size}px "Inter", "Segoe UI", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
 
 // ═══════════════════════════════════════════════
 // KONFIGURASI WARNA & TEMA KEKAYAAN (WEALTH TIER)
@@ -185,7 +200,7 @@ function drawCircleAvatar(ctx, img, cx, cy, radius, borderColor, glowColor) {
  * Gambar badge pill-shape
  */
 function drawBadge(ctx, x, y, text, bgColor, textColor = '#FFFFFF', fontSize = 11) {
-  ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
+  ctx.font = FONT_BOLD(fontSize);
   const metrics = ctx.measureText(text);
   const padX = 10;
   const padY = 4;
@@ -341,14 +356,14 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(36);
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.fillText((user.username || 'U').charAt(0).toUpperCase(), avatarCX, avatarCY + 13);
   }
 
   // Username
-  ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(20);
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
   let displayName = user.username || 'User';
@@ -358,7 +373,7 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   // Wealth Tier Badge
   const badgeY = avatarCY + avatarRadius + 42;
   const tierText = `${tier.emoji} ${tier.label}`;
-  ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(10);
   const badgeWidth = ctx.measureText(tierText).width + 20;
   drawBadge(ctx, avatarCX - badgeWidth / 2, badgeY, tierText, `${tier.primary}20`, tier.primary, 10);
 
@@ -375,7 +390,7 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   }
 
   if (ownedLuxury.length > 0) {
-    ctx.font = 'bold 9px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(9);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.textAlign = 'center';
     ctx.fillText('LENCANA KEMEWAHAN', avatarCX, prestigeY + 8);
@@ -390,18 +405,18 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
       IPHONE: '📱'
     };
     const rowText = ownedLuxury.map(item => luxuryIcons[item] || '').join('  ');
-    ctx.font = '20px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_REGULAR(20);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(rowText, avatarCX, prestigeY + 16);
   } else {
     // Info status standard if no luxury badges
-    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_REGULAR(11);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.textAlign = 'center';
     ctx.fillText('Akun Terdaftar', avatarCX, prestigeY + 10);
 
     const regDate = new Date(wallet.created_at * 1000).toLocaleDateString('id-ID', { year: 'numeric', month: 'short' });
-    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(12);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
     ctx.fillText(regDate, avatarCX, prestigeY + 25);
   }
@@ -415,7 +430,7 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   const gapY = 16;
 
   // Dashboard Title
-  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(15);
   ctx.fillStyle = isJailed || isWanted ? '#FF3366' : tier.primary;
   ctx.textAlign = 'left';
   ctx.fillText('🏠 STATUS SALDO & KEUANGAN WARGA', gridX, 52);
@@ -435,21 +450,21 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
     ctx.stroke();
 
     // Text Label
-    ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(10);
     ctx.fillStyle = isTotal
       ? (isJailed || isWanted ? '#FF80AB' : tier.primary)
       : 'rgba(255, 255, 255, 0.45)';
     ctx.fillText(label.toUpperCase(), x + 18, y + 25);
 
     // Text Amount
-    ctx.font = 'bold 21px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(21);
     ctx.fillStyle = isTotal
       ? '#FFFFFF'
       : 'rgba(255, 255, 255, 0.9)';
     ctx.fillText(`Rp ${amount.toLocaleString('id-ID')}`, x + 18, y + 58);
 
     // Icon (kanan)
-    ctx.font = '28px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_REGULAR(28);
     ctx.textAlign = 'right';
     ctx.fillText(icon, x + cardW - 18, y + 54);
     ctx.textAlign = 'left'; // Reset alignment
@@ -480,12 +495,12 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
   ctx.stroke();
 
   const drawMiniStat = (x, y, label, value, icon) => {
-    ctx.font = '12px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_REGULAR(12);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.fillText(`${icon} ${label}:`, x, y);
 
     const offset = ctx.measureText(`${icon} ${label}: `).width;
-    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(12);
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(value, x + offset, y);
   };
@@ -529,14 +544,14 @@ async function generateProfileCard(user, wallet, bankBalance, portfolioValue, ex
       bannerText = `💀 TERKUTUK (${extraData.curseType}): Status terkena efek kutukan ${mins} menit.`;
     }
 
-    ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(11);
     ctx.fillStyle = '#FF4D79';
     ctx.textAlign = 'center';
     ctx.fillText(bannerText, gridX + bannerW / 2, bannerY + 22);
   } else {
     // Footer Watermark inside the panel
     const watermarkY = statsY + 36;
-    ctx.font = '10px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_REGULAR(10);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.textAlign = 'right';
     ctx.fillText('Kosan 1A Economy · Profile Dashboard', CARD_WIDTH - 30, watermarkY);
@@ -615,7 +630,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   ctx.stroke();
 
   // Room Name
-  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(15);
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
   ctx.fillText(roomTheme.label.toUpperCase(), roomX + roomW / 2, roomY + 38);
@@ -628,13 +643,13 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
     const remainingDays = Math.max(0, Math.ceil(remainingSec / (24 * 3600)));
     durationText = `Sisa Sewa: ${remainingDays} Hari`;
   }
-  ctx.font = '11px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_REGULAR(11);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
   ctx.fillText(durationText, roomX + roomW / 2, roomY + 68);
 
   // Upgrades section
   let upgradesY = roomY + roomH + 25;
-  ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(12);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'left';
   ctx.fillText('🏢 UPGRADE KAMAR AKTIF', roomX, upgradesY);
@@ -653,7 +668,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
     kosUpgrades.forEach(u => {
       const rawId = (typeof u === 'string' ? u : u.upgrade_id || '').toUpperCase();
       const label = upgradeIcons[rawId] || rawId;
-      ctx.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_BOLD(10);
       const textW = ctx.measureText(label).width;
       const pillW = textW + 16;
       const pillH = 18;
@@ -677,7 +692,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       pillX += pillW + 6;
     });
   } else {
-    ctx.font = 'italic 11px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_ITALIC(11);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.fillText('Belum ada upgrade. Beli via .kos', roomX, upgradesY + 12);
   }
@@ -685,7 +700,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
   // --- RIGHT COLUMN: GARDEN SLOTS ---
   const gardenX = 385;
 
-  ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_BOLD(15);
   ctx.fillStyle = '#00E676';
   ctx.textAlign = 'left';
   ctx.fillText('🌸 COZY GARDEN WARGA', gardenX, 52);
@@ -708,7 +723,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
     ctx.stroke();
 
     // Slot title
-    ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+    ctx.font = FONT_BOLD(11);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.textAlign = 'center';
     ctx.fillText(`SLOT ${index}`, sx + slotW / 2, slotY + 24);
@@ -726,11 +741,11 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       const emoji = emojis[rawSeed] || '🌱';
 
       // Emoji
-      ctx.font = '40px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_REGULAR(40);
       ctx.fillText(emoji, sx + slotW / 2, slotY + 84);
 
       // Name
-      ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_BOLD(12);
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(plantName.split(' ').pop() || plantName, sx + slotW / 2, slotY + 115);
 
@@ -745,32 +760,32 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
       const isReady = nowSec >= readyAt;
 
       if (isReady) {
-        ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+        ctx.font = FONT_BOLD(11);
         ctx.fillStyle = '#00E676';
         ctx.fillText('✨ SIAP PANEN!', sx + slotW / 2, slotY + 150);
       } else {
         const remaining = readyAt - nowSec;
         const mins = Math.ceil(remaining / 60);
-        ctx.font = '11px "Segoe UI", Arial, sans-serif';
+        ctx.font = FONT_REGULAR(11);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.fillText(`🌱 ${mins}m lagi`, sx + slotW / 2, slotY + 150);
       }
 
       // Watering status
       const waterStatus = slot.water_count > 0 ? `💦 Disiram ${slot.water_count}x` : '⚠️ Butuh Air';
-      ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_BOLD(11);
       ctx.fillStyle = slot.water_count > 0 ? '#4FC3F7' : '#FF9800';
       ctx.fillText(waterStatus, sx + slotW / 2, slotY + 185);
     } else {
       // Empty
-      ctx.font = '36px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_REGULAR(36);
       ctx.fillText('🪹', sx + slotW / 2, slotY + 88);
 
-      ctx.font = '12px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_REGULAR(12);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.fillText('Kosong', sx + slotW / 2, slotY + 120);
 
-      ctx.font = '9px "Segoe UI", Arial, sans-serif';
+      ctx.font = FONT_REGULAR(9);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.fillText('Ketik .kebun tanam', sx + slotW / 2, slotY + 175);
     }
@@ -778,7 +793,7 @@ async function generatePropertyCard(user, kosRental, kosUpgrades = [], gardenSlo
 
   // Footer / Watermark
   const footerY = CARD_HEIGHT - 38;
-  ctx.font = '10px "Segoe UI", Arial, sans-serif';
+  ctx.font = FONT_REGULAR(10);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.textAlign = 'right';
   ctx.fillText('Kosan 1A Economy · Hunian & Kebun', CARD_WIDTH - 30, footerY);
