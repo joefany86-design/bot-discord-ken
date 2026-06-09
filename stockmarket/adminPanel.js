@@ -10,6 +10,7 @@ const scheduler = require('./scheduler');
 const robbery = require('./robbery');
 const bank = require('./bank');
 const lottery = require('./lottery');
+const petCard = require('./petCard');
 const {
   EmbedBuilder,
   ActionRowBuilder,
