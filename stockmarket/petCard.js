@@ -1319,7 +1319,7 @@ async function generatePropertyCard(user, wallet, extraData) {
   ctx.stroke();
 
   // LEFT PANEL: Kos Rental Management
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
   ctx.fillText('STATUS KOSAN & PROPERTI', 45, 60);
@@ -1328,12 +1328,12 @@ async function generatePropertyCard(user, wallet, extraData) {
   let roomTitle = 'Kos Biasa / Tanpa Sewa';
   let roomColor = '#95A5A6';
   let roomGlow = 'rgba(149, 165, 166, 0.1)';
-  let roomIcon = '🏠';
+  let roomIcon = 'home';
 
   if (kos) {
-    if (kos.room_tier === 'KIPAS') { roomTitle = 'Kamar Kipas Angin'; roomColor = '#3498DB'; roomIcon = '💨'; roomGlow = 'rgba(52, 152, 219, 0.15)'; }
-    else if (kos.room_tier === 'AC') { roomTitle = 'Kamar AC Nyaman'; roomColor = '#2ECC71'; roomIcon = '❄️'; roomGlow = 'rgba(46, 204, 113, 0.15)'; }
-    else if (kos.room_tier === 'PENTHOUSE') { roomTitle = 'Penthouse Eksekutif'; roomColor = '#F1C40F'; roomIcon = '👑'; roomGlow = 'rgba(241, 196, 15, 0.2)'; }
+    if (kos.room_tier === 'KIPAS') { roomTitle = 'Kamar Kipas Angin'; roomColor = '#3498DB'; roomIcon = 'wind'; roomGlow = 'rgba(52, 152, 219, 0.15)'; }
+    else if (kos.room_tier === 'AC') { roomTitle = 'Kamar AC Nyaman'; roomColor = '#2ECC71'; roomIcon = 'snowflake'; roomGlow = 'rgba(46, 204, 113, 0.15)'; }
+    else if (kos.room_tier === 'PENTHOUSE') { roomTitle = 'Penthouse Eksekutif'; roomColor = '#F1C40F'; roomIcon = 'crown'; roomGlow = 'rgba(241, 196, 15, 0.2)'; }
   }
 
   // Draw Kos Room Card block
@@ -1345,14 +1345,18 @@ async function generatePropertyCard(user, wallet, extraData) {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.font = '36px "DejaVu Sans", sans-serif';
-  ctx.fillText(roomIcon, kosX + 20, kosY + 65);
+  // Draw premium vector icon instead of raw emoji
+  let vectorIconName = 'home';
+  if (roomIcon === 'wind') vectorIconName = 'wave'; 
+  else if (roomIcon === 'snowflake') vectorIconName = 'clock'; // placeholder
+  else if (roomIcon === 'crown') vectorIconName = 'trophy';
+  drawPremiumIcon(ctx, vectorIconName, kosX + 40, kosY + 60, 32, roomColor);
 
-  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(roomTitle, kosX + 80, kosY + 45);
 
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#A0AABF';
   if (kos) {
     const endsDate = new Date(kos.ends_at * 1000);
@@ -1365,7 +1369,7 @@ async function generatePropertyCard(user, wallet, extraData) {
   }
 
   // Upgrades list
-  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#8E9AA8';
   ctx.fillText('FASILITAS TAMBAHAN KOS', 45, 235);
 
@@ -1374,21 +1378,20 @@ async function generatePropertyCard(user, wallet, extraData) {
     let uY = 265;
     upgrades.slice(0, 4).forEach((upgrade, idx) => {
       let uLabel = upgrade.upgrade_id || upgrade;
-      // Make it user friendly
       const mapping = {
-        WIFI: '📶 Internet High-Speed Wifi',
-        BED: '🛏️ Kasur Busa Ortopedik Premium',
-        TV: '📺 Smart TV 4K Ultra HD',
-        DISPENSER: '🚰 Dispenser Air Otomatis'
+        WIFI: 'Internet High-Speed Wifi',
+        BED: 'Kasur Busa Ortopedik Premium',
+        TV: 'Smart TV 4K Ultra HD',
+        DISPENSER: 'Dispenser Air Otomatis'
       };
-      const label = mapping[uLabel.toUpperCase()] || `🔧 ${uLabel}`;
-      ctx.font = '12px "DejaVu Sans", sans-serif';
+      const label = mapping[uLabel.toUpperCase()] || uLabel;
+      ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#10B981';
-      ctx.fillText(`✓ ${label}`, 45, uY);
+      ctx.fillText(`+ ${label}`, 45, uY);
       uY += 26;
     });
   } else {
-    ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+    ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#5A6270';
     ctx.fillText('Kamar belum di-upgrade.', 45, 265);
     ctx.fillText('Beli fasilitas via .kos upgrade.', 45, 290);
@@ -1399,7 +1402,7 @@ async function generatePropertyCard(user, wallet, extraData) {
   ctx.beginPath(); ctx.moveTo(350, 40); ctx.lineTo(350, 380); ctx.stroke();
 
   // RIGHT PANEL: Garden Slots Grid
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText('KEBUN DIGITAL ANDA', 380, 60);
 
@@ -1415,32 +1418,31 @@ async function generatePropertyCard(user, wallet, extraData) {
     ctx.stroke();
 
     // Slot header
-    ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#8E9AA8';
     ctx.fillText(`SLOT ${slotIndex + 1}`, x + 12, y + 22);
 
     if (slotData && slotData.seed_id) {
-      // Map seed to emoji
       const seedMapping = {
-        PADI: { emoji: '🌾', name: 'Padi' },
-        JAGUNG: { emoji: '🌽', name: 'Jagung' },
-        CABAI: { emoji: '🌶️', name: 'Cabai' },
-        TOMAT: { emoji: '🍅', name: 'Tomat' },
-        WORTEL: { emoji: '🥕', name: 'Wortel' }
+        PADI: 'Padi',
+        JAGUNG: 'Jagung',
+        CABAI: 'Cabai',
+        TOMAT: 'Tomat',
+        WORTEL: 'Wortel'
       };
-      const plant = seedMapping[slotData.seed_id.toUpperCase()] || { emoji: '🌱', name: slotData.seed_id };
+      const plantName = seedMapping[slotData.seed_id.toUpperCase()] || slotData.seed_id;
       
-      ctx.font = '24px "DejaVu Sans", sans-serif';
-      ctx.fillText(plant.emoji, x + 12, y + 60);
+      // Draw plant icon (using premium leaf vector icon)
+      drawPremiumIcon(ctx, 'leaf', x + 24, y + 52, 24, '#2ECC71');
 
-      ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(plant.name, x + 50, y + 48);
+      ctx.fillText(plantName, x + 50, y + 48);
 
       // Water count
-      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#3498DB';
-      ctx.fillText(`💧 Air: ${slotData.water_count || 0}/3`, x + 50, y + 66);
+      ctx.fillText(`Air: ${slotData.water_count || 0}/3`, x + 50, y + 66);
 
       // Grow progress logic
       let pct = 0;
@@ -1464,10 +1466,10 @@ async function generatePropertyCard(user, wallet, extraData) {
       drawProgressBar(ctx, x + 12, y + 80, w - 24, 14, pct, progressColorStart, progressColorEnd, null, progressText);
 
     } else {
-      ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+      ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#5A6270';
       ctx.fillText('Tanah Kosong', x + 12, y + 55);
-      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
       ctx.fillText('Ketik .plant untuk menanam', x + 12, y + 75);
     }
   };
