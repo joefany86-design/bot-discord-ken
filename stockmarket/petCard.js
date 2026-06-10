@@ -86,8 +86,8 @@ const STAT_BAR_COLORS = {
 
 const CARD_WIDTH = 920;
 const CARD_HEIGHT = 420;
-const EXP_WIDTH = 920;
-const EXP_HEIGHT = 500;
+const EXP_WIDTH = 1200;
+const EXP_HEIGHT = 650;
 
 // Image cache untuk menghindari re-download
 const imageCache = new Map();
@@ -2027,8 +2027,8 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   const processedLogs = [];
   const tempCanvas = createCanvas(1, 1);
   const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.font = '13px "DejaVu Sans", sans-serif';
-  const MAX_LOG_WIDTH = 800; // Leaving safe room within card width (830px)
+  tempCtx.font = '17px "DejaVu Sans", sans-serif';
+  const MAX_LOG_WIDTH = 1060; // Leaving safe room within card width (1200px)
 
   for (let logIdx = 0; logIdx < (res.logs || []).length; logIdx++) {
     const rawLogItem = res.logs[logIdx];
@@ -2062,16 +2062,16 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   const hasMvpBeban = res.bestPet && res.worstPet && res.bestPet.petName !== res.worstPet.petName;
 
   // ─── Dynamic Canvas Height ───
-  const PM = 15;
-  const HEADER_H = 115;
-  const LOG_LINE_H = 22;
-  const LOG_SECTION_H = logsToShow.length > 0 ? (38 + logsToShow.length * LOG_LINE_H + 20) : 10;
-  const CHEST_H = hasChest ? 45 : 0;
-  const REWARD_CARD_H = 165;
-  const REWARD_GAP = 14;
-  const REWARD_SECTION_H = rewardsCount > 0 ? (38 + rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5) : 10;
-  const FOOTER_H = hasMvpBeban ? 55 : 35;
-  const canvasH = Math.max(620, HEADER_H + LOG_SECTION_H + CHEST_H + REWARD_SECTION_H + FOOTER_H + PM * 2);
+  const PM = 20;
+  const HEADER_H = 150;
+  const LOG_LINE_H = 28;
+  const LOG_SECTION_H = logsToShow.length > 0 ? (50 + logsToShow.length * LOG_LINE_H + 25) : 10;
+  const CHEST_H = hasChest ? 55 : 0;
+  const REWARD_CARD_H = 210;
+  const REWARD_GAP = 18;
+  const REWARD_SECTION_H = rewardsCount > 0 ? (50 + rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5) : 10;
+  const FOOTER_H = hasMvpBeban ? 70 : 45;
+  const canvasH = Math.max(800, HEADER_H + LOG_SECTION_H + CHEST_H + REWARD_SECTION_H + FOOTER_H + PM * 2);
 
   const canvas = createCanvas(EXP_WIDTH, canvasH);
   const ctx = canvas.getContext('2d');
@@ -2117,37 +2117,37 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // ═══════════════════════════════════════════════
 
   // Status pill badge
-  const pillW = 180;
-  const pillH = 24;
+  const pillW = 240;
+  const pillH = 32;
   drawRoundedRect(ctx, cX, curY + 5, pillW, pillH, pillH / 2);
   ctx.fillStyle = res.success ? 'rgba(0,230,118,0.12)' : 'rgba(213,0,0,0.12)';
   ctx.fill();
   ctx.strokeStyle = res.success ? 'rgba(0,230,118,0.35)' : 'rgba(213,0,0,0.35)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
   ctx.fillStyle = res.success ? '#00E676' : '#FF1744';
   ctx.textAlign = 'center';
-  ctx.fillText(res.success ? 'EKSPEDISI BERHASIL' : 'EKSPEDISI GAGAL', cX + pillW / 2, curY + 22);
+  ctx.fillText(res.success ? 'EKSPEDISI BERHASIL' : 'EKSPEDISI GAGAL', cX + pillW / 2, curY + 27);
 
   // Main title
   ctx.textAlign = 'left';
-  ctx.font = 'bold 26px "DejaVu Sans", sans-serif';
-  const titleGrad = ctx.createLinearGradient(cX, curY + 55, cX + 450, curY + 55);
+  ctx.font = 'bold 34px "DejaVu Sans", sans-serif';
+  const titleGrad = ctx.createLinearGradient(cX, curY + 70, cX + 580, curY + 70);
   titleGrad.addColorStop(0, res.success ? '#00E676' : '#FF1744');
   titleGrad.addColorStop(1, res.success ? '#B9F6CA' : '#FF8A80');
   ctx.fillStyle = titleGrad;
-  ctx.fillText('EKSPEDISI PET SELESAI!', cX, curY + 58);
+  ctx.fillText('EKSPEDISI PET SELESAI!', cX, curY + 75);
 
   // Zone name
-  ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(cleanText(res.zoneName), cX, curY + 82);
+  ctx.fillText(cleanText(res.zoneName), cX, curY + 105);
 
   // Stats row
-  ctx.font = '14px "DejaVu Sans", sans-serif';
+  ctx.font = '18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText(`Tim Lv.${res.teamPower}  ·  Peluang ${res.successRate}%  ·  Elemen: ${element}`, cX, curY + 102);
+  ctx.fillText(`Tim Lv.${res.teamPower}  ·  Peluang ${res.successRate}%  ·  Elemen: ${element}`, cX, curY + 132);
 
   curY += HEADER_H;
 
@@ -2164,13 +2164,13 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // SECTION 2: LOG PERJALANAN
   // ═══════════════════════════════════════════════
   if (logsToShow.length > 0) {
-    ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
     ctx.fillStyle = res.success ? '#69F0AE' : '#FF8A80';
     ctx.textAlign = 'left';
-    ctx.fillText('LOG PERJALANAN', cX, curY + 20);
-    curY += 33;
+    ctx.fillText('LOG PERJALANAN', cX, curY + 25);
+    curY += 42;
 
-    ctx.font = '13px "DejaVu Sans", sans-serif';
+    ctx.font = '17px "DejaVu Sans", sans-serif';
     for (let i = 0; i < logsToShow.length; i++) {
       const item = logsToShow[i];
 
@@ -2184,16 +2184,16 @@ async function generateExpeditionCard(res, mapChoice, guild) {
         else if (/jalur|kejadian|air terjun|peti|menyusup|meminum/i.test(testText)) dotColor = '#FFD740';
 
         ctx.beginPath();
-        ctx.arc(cX + 4, curY - 3, 3, 0, Math.PI * 2);
+        ctx.arc(cX + 5, curY - 4, 4, 0, Math.PI * 2);
         ctx.fillStyle = dotColor;
         ctx.fill();
       }
 
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText(item.text, cX + 14, curY);
+      ctx.fillText(item.text, cX + 18, curY);
       curY += LOG_LINE_H;
     }
-    curY += 15;
+    curY += 20;
 
     // ─── Divider ───
     ctx.beginPath();
@@ -2209,10 +2209,10 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // SECTION 2.5: CHEST DROP BANNER (if applicable)
   // ═══════════════════════════════════════════════
   if (hasChest) {
-    const chestBannerH = 30;
-    const chestBannerW = cW - 40;
-    const chestBannerX = cX + 20;
-    drawRoundedRect(ctx, chestBannerX, curY + 2, chestBannerW, chestBannerH, 8);
+    const chestBannerH = 40;
+    const chestBannerW = cW - 50;
+    const chestBannerX = cX + 25;
+    drawRoundedRect(ctx, chestBannerX, curY + 2, chestBannerW, chestBannerH, 10);
     ctx.fillStyle = 'rgba(255,215,0,0.08)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,215,0,0.25)';
@@ -2226,26 +2226,26 @@ async function generateExpeditionCard(res, mapChoice, guild) {
         if (m) chestWinner = m.user.username;
       } catch (e) {}
     }
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
-    ctx.fillText(`PETI KUNO DIBUKA! @${chestWinner} mendapat: ${res.chestDropItem}`, cX + cW / 2, curY + 21);
-    curY += chestBannerH + 12;
+    ctx.fillText(`PETI KUNO DIBUKA! @${chestWinner} mendapat: ${res.chestDropItem}`, cX + cW / 2, curY + 27);
+    curY += chestBannerH + 15;
   }
 
   // ═══════════════════════════════════════════════
   // SECTION 3: HASIL JARAHAN & STATUS KRU
   // ═══════════════════════════════════════════════
   if (rewardsCount > 0) {
-    ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD740';
     ctx.textAlign = 'left';
-    ctx.fillText('HASIL JARAHAN & STATUS KRU', cX, curY + 20);
-    curY += 35;
+    ctx.fillText('HASIL JARAHAN & STATUS KRU', cX, curY + 25);
+    curY += 45;
 
     // ─── Card layout calculation (max 3 per row, centered) ───
     const maxCols = Math.min(3, rewardsCount);
-    const cardGap = 14;
+    const cardGap = 18;
     const cardW = Math.floor((cW - (maxCols - 1) * cardGap) / maxCols);
 
     for (let i = 0; i < rewardsCount; i++) {
@@ -2269,12 +2269,12 @@ async function generateExpeditionCard(res, mapChoice, guild) {
       ctx.stroke();
 
       // ─── Pet Name ───
-      ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 19px "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.textAlign = 'left';
       let pn = r.petName || 'Pet';
       if (pn.length > 20) pn = pn.substring(0, 18) + '..';
-      ctx.fillText(pn, cx + 12, cy + 24);
+      ctx.fillText(pn, cx + 15, cy + 30);
 
       // ─── Owner ───
       let owner = 'Pawang';
@@ -2285,26 +2285,26 @@ async function generateExpeditionCard(res, mapChoice, guild) {
         } catch (e) {}
       }
       if (owner.length > 20) owner = owner.substring(0, 18) + '..';
-      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.font = '15px "DejaVu Sans", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.fillText(`@${owner}`, cx + 12, cy + 39);
+      ctx.fillText(`@${owner}`, cx + 15, cy + 50);
 
       // ─── Separator line ───
       ctx.beginPath();
-      ctx.moveTo(cx + 10, cy + 48);
-      ctx.lineTo(cx + cardW - 10, cy + 48);
+      ctx.moveTo(cx + 12, cy + 60);
+      ctx.lineTo(cx + cardW - 12, cy + 60);
       ctx.strokeStyle = 'rgba(255,255,255,0.07)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       // ─── Stat Rows ───
-      const lx = cx + 12;
-      const vx = cx + cardW - 12;
-      let sy = cy + 66;
-      const srh = 19;
+      const lx = cx + 15;
+      const vx = cx + cardW - 15;
+      let sy = cy + 82;
+      const srh = 25;
 
       const drawStat = (label, value, color) => {
-        ctx.font = '12px "DejaVu Sans", sans-serif';
+        ctx.font = '16px "DejaVu Sans", sans-serif';
         ctx.textAlign = 'left';
         ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillText(label, lx, sy);
@@ -2338,12 +2338,12 @@ async function generateExpeditionCard(res, mapChoice, guild) {
 
       let sDisp = statusRaw;
       if (sDisp.length > 25) sDisp = sDisp.substring(0, 23) + '..';
-      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.font = '15px "DejaVu Sans", sans-serif';
       const sbTextW = ctx.measureText(sDisp).width;
-      const sbW = Math.min(cardW - 20, sbTextW + 18);
+      const sbW = Math.min(cardW - 24, sbTextW + 22);
       const sbX = cx + (cardW - sbW) / 2;
-      const sbY = cy + REWARD_CARD_H - 28;
-      drawRoundedRect(ctx, sbX, sbY, sbW, 22, 10);
+      const sbY = cy + REWARD_CARD_H - 35;
+      drawRoundedRect(ctx, sbX, sbY, sbW, 28, 14);
       ctx.fillStyle = sBg;
       ctx.fill();
       ctx.strokeStyle = sColor + '40';
@@ -2351,7 +2351,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
       ctx.stroke();
       ctx.fillStyle = sColor;
       ctx.textAlign = 'center';
-      ctx.fillText(sDisp, sbX + sbW / 2, sbY + 15);
+      ctx.fillText(sDisp, sbX + sbW / 2, sbY + 19);
     }
 
     curY += rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5;
@@ -2365,10 +2365,10 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     const footY = curY + 15;
 
     // MVP badge
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     const mvpName = (res.bestPet.petName || '').length > 16 ? res.bestPet.petName.substring(0, 14) + '..' : res.bestPet.petName;
-    ctx.fillText(`MVP: ${mvpName} (Lv.${res.bestPet.level})`, EXP_WIDTH / 2 - 130, footY);
+    ctx.fillText(`MVP: ${mvpName} (Lv.${res.bestPet.level})`, EXP_WIDTH / 2 - 170, footY);
 
     // Separator dot
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
@@ -2377,14 +2377,14 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     // BEBAN badge
     ctx.fillStyle = '#FF5252';
     const bebanName = (res.worstPet.petName || '').length > 16 ? res.worstPet.petName.substring(0, 14) + '..' : res.worstPet.petName;
-    ctx.fillText(`BEBAN: ${bebanName} (Lv.${res.worstPet.level})`, EXP_WIDTH / 2 + 130, footY);
+    ctx.fillText(`BEBAN: ${bebanName} (Lv.${res.worstPet.level})`, EXP_WIDTH / 2 + 170, footY);
   }
 
   // Watermark
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, canvasH - PM - 8);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, canvasH - PM - 10);
 
   return canvas.toBuffer('image/png');
 }
@@ -2444,62 +2444,62 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   ctx.stroke();
 
   // Vertical divider between left and right sections
-  const dividerX = 330;
+  const dividerX = 430;
   ctx.beginPath();
-  ctx.moveTo(dividerX, 35);
-  ctx.lineTo(dividerX, EXP_HEIGHT - 35);
+  ctx.moveTo(dividerX, 45);
+  ctx.lineTo(dividerX, EXP_HEIGHT - 45);
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   // ─── LEFT PANEL (MAP & MATCH INFO) ───
-  const leftX = 40;
-  let leftY = 55;
+  const leftX = 50;
+  let leftY = 65;
 
   // Title: LOBI EKSPEDISI TIM
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
-  const titleGrad = ctx.createLinearGradient(leftX, leftY, leftX + 250, leftY);
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
+  const titleGrad = ctx.createLinearGradient(leftX, leftY, leftX + 330, leftY);
   titleGrad.addColorStop(0, '#FFD700');
   titleGrad.addColorStop(1, '#FF8A80');
   ctx.fillStyle = titleGrad;
   ctx.textAlign = 'left';
-  ctx.fillText('LOBI EKSPEDISI TIM', leftX, leftY + 22);
-  leftY += 42;
+  ctx.fillText('LOBI EKSPEDISI TIM', leftX, leftY + 28);
+  leftY += 55;
 
   // Zone Name
-  ctx.font = 'bold 19px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanZoneName = selectedMap.name.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
-  ctx.fillText(cleanZoneName, leftX, leftY + 18);
-  leftY += 34;
+  ctx.fillText(cleanZoneName, leftX, leftY + 22);
+  leftY += 44;
 
   // Rec level & element
-  ctx.font = '14px "DejaVu Sans", sans-serif';
+  ctx.font = '18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 14);
-  ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 32);
-  leftY += 48;
+  ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 18);
+  ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 42);
+  leftY += 60;
 
   // Success rate progress bar
   const pct = Math.min(1, Math.max(0, successRate / 100));
   const barColorStart = pct > 0.6 ? '#00E676' : pct > 0.3 ? '#FF9800' : '#FF1744';
   const barColorEnd = pct > 0.6 ? '#69F0AE' : pct > 0.3 ? '#FFD54F' : '#FF8A80';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
-  ctx.fillText('PELUANG TIM', leftX, leftY + 12);
-  drawProgressBar(ctx, leftX, leftY + 22, 260, 20, pct, barColorStart, barColorEnd, '', `${successRate}%`);
-  leftY += 58;
+  ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+  ctx.fillText('PELUANG TIM', leftX, leftY + 16);
+  drawProgressBar(ctx, leftX, leftY + 28, 340, 26, pct, barColorStart, barColorEnd, '', `${successRate}%`);
+  leftY += 72;
 
   // Preparation Countdown timer
   const nowSec = Math.floor(Date.now() / 1000);
   const sisaWaktu = Math.max(0, endTimeUnix - nowSec);
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
-  ctx.fillText('BATAS WAKTU PERSIAPAN', leftX, leftY + 12);
+  ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+  ctx.fillText('BATAS WAKTU PERSIAPAN', leftX, leftY + 16);
 
   const timePct = Math.min(1, Math.max(0, sisaWaktu / 30)); // 30s max lobby duration
-  drawProgressBar(ctx, leftX, leftY + 22, 260, 20, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
-  leftY += 60;
+  drawProgressBar(ctx, leftX, leftY + 28, 340, 26, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
+  leftY += 75;
 
   // Leader / Initiator Pawang
   let leaderName = 'Pawang';
@@ -2509,27 +2509,27 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
       if (member) leaderName = member.user.username;
     } catch (e) {}
   }
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('Pemimpin Perjalanan:', leftX, leftY + 12);
+  ctx.fillText('Pemimpin Perjalanan:', leftX, leftY + 16);
   ctx.fillStyle = '#FFD700';
-  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
-  ctx.fillText(`@${leaderName}`, leftX + 130, leftY + 12);
+  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  ctx.fillText(`@${leaderName}`, leftX + 170, leftY + 16);
 
   // ─── RIGHT PANEL (GRID OF CREW SLOTS) ───
   // 6 slots: 3 columns x 2 rows
   const slotsColCount = 3;
   const slotsRowCount = 2;
-  const colWidth = 172;
-  const rowHeight = 156;
-  const startSlotX = 360;
-  const startSlotY = 75;
+  const colWidth = 220;
+  const rowHeight = 200;
+  const startSlotX = 465;
+  const startSlotY = 85;
 
   for (let idx = 0; idx < 6; idx++) {
     const colIdx = idx % slotsColCount;
     const rowIdx = Math.floor(idx / slotsColCount);
-    const slotX = startSlotX + colIdx * (colWidth + 12);
-    const slotY = startSlotY + rowIdx * (rowHeight + 12);
+    const slotX = startSlotX + colIdx * (colWidth + 14);
+    const slotY = startSlotY + rowIdx * (rowHeight + 14);
 
     const participant = participants[idx];
 
@@ -2546,8 +2546,8 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
 
       // Avatar
       const avCx = slotX + colWidth / 2;
-      const avCy = slotY + 48;
-      const avR = 30;
+      const avCy = slotY + 58;
+      const avR = 38;
 
       let petImg = null;
       try {
@@ -2563,10 +2563,10 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
         ctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
         ctx.fillStyle = rarityTheme.primary;
         ctx.fill();
-        ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+        ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.textAlign = 'center';
-        ctx.fillText(participant.pet_type.charAt(0), avCx, avCy + 6);
+        ctx.fillText(participant.pet_type.charAt(0), avCx, avCy + 7);
       }
 
       // Element advantage/disadvantage indicator (↑ / ↓)
@@ -2583,33 +2583,33 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+        ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.textAlign = 'center';
-        ctx.fillText(elMatch === 'up' ? '↑' : '↓', indX, indY + 4);
+        ctx.fillText(elMatch === 'up' ? '↑' : '↓', indX, indY + 5);
       }
 
       // Slot Index Indicator (Badge)
       drawBadge(ctx, slotX + 8, slotY + 8, `${idx + 1}`, rarityTheme.primary, '#FFFFFF', 9);
 
       // Name & Level
-      ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.textAlign = 'center';
       let petName = participant.pet_name || 'Pet';
       if (petName.length > 14) petName = petName.slice(0, 12) + '…';
-      ctx.fillText(petName, avCx, slotY + avR * 2 + 38);
+      ctx.fillText(petName, avCx, slotY + avR * 2 + 48);
 
-      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.font = '13px "DejaVu Sans", sans-serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.fillText(`Lv.${participant.level} ${participant.pet_type}`, avCx, slotY + avR * 2 + 52);
+      ctx.fillText(`Lv.${participant.level} ${participant.pet_type}`, avCx, slotY + avR * 2 + 64);
 
       // Owner Username
       let ownerName = participant.username || 'Pawang';
       if (ownerName.length > 15) ownerName = ownerName.slice(0, 13) + '…';
-      ctx.font = 'italic 10px "DejaVu Sans", sans-serif';
+      ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
       ctx.fillStyle = rarityTheme.primary;
-      ctx.fillText(`@${ownerName}`, avCx, slotY + avR * 2 + 68);
+      ctx.fillText(`@${ownerName}`, avCx, slotY + avR * 2 + 82);
 
     } else {
       // Draw empty slot (dashed border)
@@ -2621,20 +2621,20 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
       ctx.stroke();
       ctx.restore();
 
-      ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.textAlign = 'center';
       ctx.fillText('SLOT KOSONG', slotX + colWidth / 2, slotY + rowHeight / 2 - 4);
-      ctx.font = '9px "DejaVu Sans", sans-serif';
-      ctx.fillText('Menunggu Pawang...', slotX + colWidth / 2, slotY + rowHeight / 2 + 10);
+      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.fillText('Menunggu Pawang...', slotX + colWidth / 2, slotY + rowHeight / 2 + 14);
     }
   }
 
   // Footer Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'right';
-  ctx.fillText('Kosan 1A RPG · Expedition Lobby', EXP_WIDTH - 30, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Expedition Lobby', EXP_WIDTH - 40, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -2694,21 +2694,21 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.stroke();
 
   // ─── HEADER SECTION ───
-  let textY = 65;
-  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  let textY = 80;
+  ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
   ctx.textAlign = 'center';
   ctx.fillText('🧭 MASUK ZONA EKSPEDISI...', EXP_WIDTH / 2, textY);
 
-  textY += 28;
-  ctx.font = '16px "DejaVu Sans", sans-serif';
+  textY += 36;
+  ctx.font = '20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.fillText(`Mempersiapkan penjelajahan di ${selectedMap.name} · Boss: ${selectedMap.boss}`, EXP_WIDTH / 2, textY);
 
   // ─── LOADING BAR ───
-  textY += 35;
-  const barWidth = 600;
-  const barHeight = 22;
+  textY += 45;
+  const barWidth = 780;
+  const barHeight = 28;
   const barX = (EXP_WIDTH / 2) - (barWidth / 2);
   const barY = textY;
 
@@ -2732,7 +2732,7 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.restore();
 
   // Loading text inside loading bar
-  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -2740,14 +2740,14 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.textBaseline = 'alphabetic'; // reset
 
   // ─── MEMBERS / PETS SECTION ───
-  let startY = 220;
-  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  let startY = 275;
+  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.textAlign = 'center';
   ctx.fillText('KRU PETUALANG TIM', EXP_WIDTH / 2, startY);
 
-  const colWidth = 150;
-  const colGap = 20;
+  const colWidth = 190;
+  const colGap = 25;
   const numParticipants = participants.length;
   const totalWidth = (numParticipants * colWidth) + ((numParticipants - 1) * colGap);
   const startX = (EXP_WIDTH / 2) - (totalWidth / 2);
@@ -2760,7 +2760,7 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
     const cx = px + colWidth / 2;
 
     // Draw Column Glass Panel
-    drawRoundedRect(ctx, px, drawY, colWidth, 160, 12);
+    drawRoundedRect(ctx, px, drawY, colWidth, 200, 14);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -2768,8 +2768,8 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
     ctx.stroke();
 
     // Draw Pet Avatar inside Column
-    const avatarCY = drawY + 45;
-    const avatarR = 30;
+    const avatarCY = drawY + 55;
+    const avatarR = 38;
 
     let petImg = null;
     try {
@@ -2786,10 +2786,10 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
       ctx.arc(cx, avatarCY, avatarR, 0, Math.PI * 2);
       ctx.fillStyle = '#222244';
       ctx.fill();
-      ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
       ctx.fillStyle = rarityTheme.primary;
       ctx.textAlign = 'center';
-      ctx.fillText(p.pet_name.charAt(0), cx, avatarCY + 6);
+      ctx.fillText(p.pet_name.charAt(0), cx, avatarCY + 7);
     }
 
     // Leader Badge if initiator
@@ -2801,31 +2801,31 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
     }
 
     // Owner Name
-    ctx.font = '13px "DejaVu Sans", sans-serif';
+    ctx.font = '16px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.textAlign = 'center';
-    ctx.fillText(`@${p.username}`, cx, drawY + 110);
+    ctx.fillText(`@${p.username}`, cx, drawY + 135);
 
     // Pet Name
-    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     let petNameDisp = p.pet_name;
     if (petNameDisp.length > 15) petNameDisp = petNameDisp.substring(0, 14) + '…';
-    ctx.fillText(petNameDisp, cx, drawY + 128);
+    ctx.fillText(petNameDisp, cx, drawY + 157);
 
     // Level + Species
-    ctx.font = '12px "DejaVu Sans", sans-serif';
+    ctx.font = '15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.textAlign = 'center';
-    ctx.fillText(`Lv. ${p.level} ${p.pet_type}`, cx, drawY + 146);
+    ctx.fillText(`Lv. ${p.level} ${p.pet_type}`, cx, drawY + 178);
   }
 
   // Footer Watermark
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -2891,29 +2891,29 @@ async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selec
   ctx.textAlign = 'center';
   
   // Header
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFB800';
-  ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, EXP_WIDTH / 2, 120);
+  ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, EXP_WIDTH / 2, 150);
 
   // Title
-  ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 46px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(stageTitle.toUpperCase(), EXP_WIDTH / 2, 210);
+  ctx.fillText(stageTitle.toUpperCase(), EXP_WIDTH / 2, 260);
 
   // Map / Path text
-  ctx.font = '19px "DejaVu Sans", sans-serif';
+  ctx.font = '24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, EXP_WIDTH / 2, 290);
+  ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, EXP_WIDTH / 2, 370);
 
   // Flavour text
-  ctx.font = 'italic 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', EXP_WIDTH / 2, 350);
+  ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', EXP_WIDTH / 2, 450);
 
   // Watermark
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -2979,14 +2979,14 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
 
   // Header Text
   ctx.textAlign = 'center';
-  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
-  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 45);
+  ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 55);
 
   // Draw Boss Avatar / Portrait
   const bossCx = EXP_WIDTH / 2;
-  const bossCy = 85;
-  const bossR = 30;
+  const bossCy = 100;
+  const bossR = 38;
   if (bossImg) {
     drawCircleAvatar(ctx, bossImg, bossCx, bossCy, bossR, '#FF1744', 'rgba(255, 23, 68, 0.4)');
   } else {
@@ -2998,22 +2998,22 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FF1744';
-    ctx.fillText('👿', bossCx, bossCy + 6);
+    ctx.fillText('👿', bossCx, bossCy + 8);
   }
 
   // Boss Name
   ctx.textAlign = 'center';
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF1744';
-  ctx.fillText(bossName.toUpperCase(), EXP_WIDTH / 2, 133);
+  ctx.fillText(bossName.toUpperCase(), EXP_WIDTH / 2, 157);
 
   // Boss HP Bar (Visual Fluff)
-  const hpBarW = 200;
-  const hpBarH = 6;
+  const hpBarW = 260;
+  const hpBarH = 8;
   const hpBarX = EXP_WIDTH / 2 - hpBarW / 2;
-  const hpBarY = 143;
+  const hpBarY = 170;
   drawRoundedRect(ctx, hpBarX, hpBarY, hpBarW, hpBarH, hpBarH / 2);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
   ctx.fill();
@@ -3023,11 +3023,11 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.fill();
 
   // Visual QTE progress tracker
-  const nodeRadius = 8;
-  const nodeGap = 12;
+  const nodeRadius = 10;
+  const nodeGap = 15;
   const totalNodesWidth = (totalSteps * nodeRadius * 2) + ((totalSteps - 1) * nodeGap);
   const startNodesX = (EXP_WIDTH / 2) - (totalNodesWidth / 2);
-  const nodesY = 172;
+  const nodesY = 200;
 
   for (let step = 1; step <= totalSteps; step++) {
     const cx = startNodesX + (step - 1) * (nodeRadius * 2 + nodeGap) + nodeRadius;
@@ -3051,13 +3051,13 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   }
 
   // Draw two column sections: target pet info (left) & target player instructions (right)
-  const leftX = 75;
-  const rightX = 495;
-  const columnsY = 205;
-  const columnsH = 200;
+  const leftX = 95;
+  const rightX = 640;
+  const columnsY = 240;
+  const columnsH = 260;
 
   // 1. LEFT COLUMN: Target Pet Profile panel
-  drawRoundedRect(ctx, leftX, columnsY, 350, columnsH, 12);
+  drawRoundedRect(ctx, leftX, columnsY, 460, columnsH, 14);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -3065,9 +3065,9 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.stroke();
 
   // Pet avatar
-  const avCx = leftX + 65;
+  const avCx = leftX + 80;
   const avCy = columnsY + columnsH / 2;
-  const avR = 40;
+  const avR = 50;
 
   let petImg = null;
   try {
@@ -3085,33 +3085,33 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
     ctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
     ctx.fillStyle = '#222244';
     ctx.fill();
-    ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
     ctx.fillStyle = rarityTheme.primary;
     ctx.textAlign = 'center';
-    ctx.fillText(petObj?.pet_name?.charAt(0) || 'P', avCx, avCy + 8);
+    ctx.fillText(petObj?.pet_name?.charAt(0) || 'P', avCx, avCy + 10);
   }
 
   // Pet details next to avatar
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 19px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   let petNameDisp = petObj?.pet_name || 'Pet';
   if (petNameDisp.length > 18) petNameDisp = petNameDisp.substring(0, 17) + '…';
-  ctx.fillText(petNameDisp, leftX + 125, columnsY + 55);
+  ctx.fillText(petNameDisp, leftX + 155, columnsY + 65);
 
-  ctx.font = '14px "DejaVu Sans", sans-serif';
+  ctx.font = '18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 125, columnsY + 85);
+  ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 155, columnsY + 100);
 
   // Element and Rarity Badges
-  let badgeX = leftX + 125;
-  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
-  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 110, petRarity, rarityTheme.primary, '#FFFFFF', 11);
-  badgeX += rBadgeW + 6;
-  drawBadge(ctx, badgeX, columnsY + 110, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 11);
+  let badgeX = leftX + 155;
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 130, petRarity, rarityTheme.primary, '#FFFFFF', 14);
+  badgeX += rBadgeW + 8;
+  drawBadge(ctx, badgeX, columnsY + 130, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 14);
 
   // 2. RIGHT COLUMN: Target Player Turn details
-  drawRoundedRect(ctx, rightX, columnsY, 350, columnsH, 12);
+  drawRoundedRect(ctx, rightX, columnsY, 460, columnsH, 14);
   ctx.fillStyle = 'rgba(255, 145, 0, 0.05)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 145, 0, 0.15)';
@@ -3119,25 +3119,25 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.stroke();
 
   ctx.textAlign = 'center';
-  ctx.font = '16px "DejaVu Sans", sans-serif';
+  ctx.font = '20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 55);
+  ctx.fillText('⏳ GILIRAN TARGET:', rightX + 230, columnsY + 65);
 
-  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
   let usernameDisp = `@${targetMemberName}`;
   if (usernameDisp.length > 20) usernameDisp = usernameDisp.substring(0, 19) + '…';
-  ctx.fillText(usernameDisp, rightX + 175, columnsY + 105);
+  ctx.fillText(usernameDisp, rightX + 230, columnsY + 130);
 
-  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 150);
+  ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 230, columnsY + 190);
 
   // Footer Watermark
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -3186,21 +3186,21 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
 
   // Title
   ctx.textAlign = 'center';
-  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 30px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF1744';
-  ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', EXP_WIDTH / 2, 65);
+  ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', EXP_WIDTH / 2, 80);
 
-  ctx.font = '15px "DejaVu Sans", sans-serif';
+  ctx.font = '19px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, EXP_WIDTH / 2, 95);
+  ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, EXP_WIDTH / 2, 118);
 
-  const leftX = 40;
-  const rightX = 480;
-  const columnsY = 130;
-  const columnsH = 300;
+  const leftX = 50;
+  const rightX = 620;
+  const columnsY = 155;
+  const columnsH = 390;
 
   // 1. LEFT COLUMN: Failure explanation
-  drawRoundedRect(ctx, leftX, columnsY, 400, columnsH, 12);
+  drawRoundedRect(ctx, leftX, columnsY, 520, columnsH, 14);
   ctx.fillStyle = 'rgba(213, 0, 0, 0.04)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(213, 0, 0, 0.2)';
@@ -3208,12 +3208,12 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.stroke();
 
   ctx.textAlign = 'left';
-  ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF8A80';
-  ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 20, columnsY + 40);
+  ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 25, columnsY + 48);
 
   // Cause text word wrap
-  ctx.font = '15px "DejaVu Sans", sans-serif';
+  ctx.font = '18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   
   let causeText = '';
@@ -3226,42 +3226,42 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   // Draw wrapped text
   const words = causeText.split(' ');
   let line = '';
-  let yPos = columnsY + 75;
-  const maxWidth = 360;
-  const lineHeight = 24;
+  let yPos = columnsY + 90;
+  const maxWidth = 470;
+  const lineHeight = 30;
 
   for (let n = 0; n < words.length; n++) {
     let testLine = line + words[n] + ' ';
     let metrics = ctx.measureText(testLine);
     if (metrics.width > maxWidth && n > 0) {
-      ctx.fillText(line, leftX + 20, yPos);
+      ctx.fillText(line, leftX + 25, yPos);
       line = words[n] + ' ';
       yPos += lineHeight;
     } else {
       line = testLine;
     }
   }
-  ctx.fillText(line, leftX + 20, yPos);
+  ctx.fillText(line, leftX + 25, yPos);
 
-  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 230);
-  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 254);
+  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 25, columnsY + 300);
+  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 25, columnsY + 328);
 
   // 2. RIGHT COLUMN: Pet impact lists
-  drawRoundedRect(ctx, rightX, columnsY, 400, columnsH, 12);
+  drawRoundedRect(ctx, rightX, columnsY, 520, columnsH, 14);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 20, columnsY + 40);
+  ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 25, columnsY + 48);
 
-  let rowY = columnsY + 74;
-  const rowHeight = 48;
+  let rowY = columnsY + 90;
+  const rowHeight = 60;
 
   for (let i = 0; i < Math.min(5, failResults.length); i++) {
     const r = failResults[i];
@@ -3273,22 +3273,22 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
       } catch (err) {}
     }
 
-    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(`🦖 ${r.petName} (@${pOwner})`, rightX + 20, rowY);
+    ctx.fillText(`🦖 ${r.petName} (@${pOwner})`, rightX + 25, rowY);
 
-    ctx.font = '13px "DejaVu Sans", sans-serif';
+    ctx.font = '16px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FF8A80';
-    ctx.fillText(`└─ ${r.statusText || 'Luka & Stress'}`, rightX + 20, rowY + 18);
+    ctx.fillText(`└─ ${r.statusText || 'Luka & Stress'}`, rightX + 25, rowY + 24);
 
     rowY += rowHeight;
   }
 
   // Footer Watermark
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -3342,18 +3342,18 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
 
   // Header
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
-  ctx.fillText('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM', EXP_WIDTH / 2, 65);
+  ctx.fillText('🧭 STAGE 1 ━━ PEMILIHAN JALUR TIM', EXP_WIDTH / 2, 80);
 
-  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"Decide wisely, Commander, for every path holds its own fortune and peril..."', EXP_WIDTH / 2, 95);
+  ctx.fillText('"Decide wisely, Commander, for every path holds its own fortune and peril..."', EXP_WIDTH / 2, 118);
 
   // Map & Commander info bar
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ Peta: ${selectedMap?.name || 'Ekspedisi'}  ·  👤 Komandan: @${commanderName}`, EXP_WIDTH / 2, 125);
+  ctx.fillText(`🗺️ Peta: ${selectedMap?.name || 'Ekspedisi'}  ·  👤 Komandan: @${commanderName}`, EXP_WIDTH / 2, 150);
 
   // ─── THREE PATH OPTION PANELS ───
   const paths = [
@@ -3377,12 +3377,12 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     }
   ];
 
-  const panelW = 260;
-  const panelH = 245;
-  const panelGap = 20;
+  const panelW = 340;
+  const panelH = 310;
+  const panelGap = 25;
   const totalW = (paths.length * panelW) + ((paths.length - 1) * panelGap);
   const startX = (EXP_WIDTH - totalW) / 2;
-  const panelY = 150;
+  const panelY = 175;
 
   for (let i = 0; i < paths.length; i++) {
     const p = paths[i];
@@ -3411,9 +3411,9 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
 
     // Icon circle
     const iconCx = px + panelW / 2;
-    const iconCy = panelY + 55;
+    const iconCy = panelY + 65;
     ctx.beginPath();
-    ctx.arc(iconCx, iconCy, 24, 0, Math.PI * 2);
+    ctx.arc(iconCx, iconCy, 30, 0, Math.PI * 2);
     ctx.fillStyle = `${p.color}30`;
     ctx.fill();
     ctx.strokeStyle = `${p.color}80`;
@@ -3421,30 +3421,30 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     ctx.stroke();
 
     // Icon text (fallback letter since emoji renders as boxes in some canvas)
-    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
     ctx.fillStyle = p.color;
     ctx.textAlign = 'center';
     const iconLabel = i === 0 ? 'A' : i === 1 ? 'B' : 'C';
-    ctx.fillText(iconLabel, iconCx, iconCy + 7);
+    ctx.fillText(iconLabel, iconCx, iconCy + 8);
 
     // Title
-    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(p.title, px + panelW / 2, panelY + 105);
+    ctx.fillText(p.title, px + panelW / 2, panelY + 125);
 
     // Description
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '14px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(p.desc1, px + panelW / 2, panelY + 138);
-    ctx.fillText(p.desc2, px + panelW / 2, panelY + 154);
+    ctx.fillText(p.desc1, px + panelW / 2, panelY + 165);
+    ctx.fillText(p.desc2, px + panelW / 2, panelY + 185);
 
     // Bonus badge
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
     const badgeText = p.bonus;
-    const badgeW = ctx.measureText(badgeText).width + 20;
-    const badgeH = 22;
+    const badgeW = ctx.measureText(badgeText).width + 24;
+    const badgeH = 28;
     const badgeX = px + (panelW - badgeW) / 2;
-    const badgeY = panelY + 190;
+    const badgeY = panelY + 240;
     drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeH / 2);
     ctx.fillStyle = `${p.color}30`;
     ctx.fill();
@@ -3453,18 +3453,18 @@ async function generateStage1PathSelectionCard(selectedMap, commanderName, mapCh
     ctx.stroke();
     ctx.fillStyle = p.bonusColor;
     ctx.textAlign = 'center';
-    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 15);
+    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 19);
   }
 
   // Footer
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih jalur dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih jalur dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 52);
 
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -3519,19 +3519,19 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
 
   // Header
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E676';
-  ctx.fillText('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅', EXP_WIDTH / 2, 75);
+  ctx.fillText('🧭 STAGE 1 SELESAI ━━ JALUR DIPILIH ✅', EXP_WIDTH / 2, 95);
 
   // Path choice color
   const pathColors = { SAFE: '#4CAF50', SHORTCUT: '#2196F3', SWAMP: '#F44336' };
   const chosenColor = pathColors[pathChoice] || '#FFB800';
 
   // Result box
-  const boxW = 700;
-  const boxH = 220;
+  const boxW = 900;
+  const boxH = 290;
   const boxX = (EXP_WIDTH - boxW) / 2;
-  const boxY = 110;
+  const boxY = 135;
   drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
   ctx.fillStyle = `${chosenColor}15`;
   ctx.fill();
@@ -3540,32 +3540,32 @@ async function generateStage1ResultCard(selectedMap, commanderName, pathText, pa
   ctx.stroke();
 
   ctx.textAlign = 'left';
-  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = chosenColor;
-  ctx.fillText('📢 Keputusan Jalur:', boxX + 25, boxY + 40);
+  ctx.fillText('📢 Keputusan Jalur:', boxX + 30, boxY + 48);
 
   // Wrap path text
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '17px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanPathText = pathText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
   const lines = cleanPathText.split('\n');
-  let ty = boxY + 75;
+  let ty = boxY + 90;
   for (const line of lines) {
-    if (ty > boxY + boxH - 10) break;
-    ctx.fillText(line.substring(0, 80), boxX + 25, ty);
-    ty += 22;
+    if (ty > boxY + boxH - 12) break;
+    ctx.fillText(line.substring(0, 100), boxX + 30, ty);
+    ty += 28;
   }
 
   // Map & Commander info
   ctx.textAlign = 'center';
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}  ·  ⏳ Menghubungkan ke Stage 2...`, EXP_WIDTH / 2, 380);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}  ·  ⏳ Menghubungkan ke Stage 2...`, EXP_WIDTH / 2, 490);
 
   // Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 1 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -3625,9 +3625,9 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
 
   // Header
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#E040FB';
-  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', EXP_WIDTH / 2, 45);
+  ctx.fillText('📦 STAGE 2 ━━ PETI KUNO TERKUNCI', EXP_WIDTH / 2, 55);
 
   // Draw Event Image or Fallback
   const eventX = EXP_WIDTH / 2 - 35;
@@ -3649,13 +3649,13 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     ctx.fillText('📦', EXP_WIDTH / 2, eventY + 46);
   }
 
-  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', EXP_WIDTH / 2, 150);
+  ctx.fillText('"A dusty relic of the past lies before you. What secrets or traps does it hold?"', EXP_WIDTH / 2, 185);
 
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 172);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 212);
 
   // Three option panels
   const opts = [
@@ -3685,12 +3685,12 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     }
   ];
 
-  const panelW = 260;
-  const panelH = 225;
-  const panelGap = 20;
+  const panelW = 340;
+  const panelH = 290;
+  const panelGap = 25;
   const totalW = (opts.length * panelW) + ((opts.length - 1) * panelGap);
   const startX = (EXP_WIDTH - totalW) / 2;
-  const panelY = 195;
+  const panelY = 235;
 
   for (let i = 0; i < opts.length; i++) {
     const o = opts[i];
@@ -3725,29 +3725,29 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     ctx.strokeStyle = `${o.color}80`;
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
     ctx.fillStyle = o.color;
     ctx.textAlign = 'center';
-    ctx.fillText(o.letter, iconCx, iconCy + 7);
+    ctx.fillText(o.letter, iconCx, iconCy + 8);
 
     // Title
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 115);
 
     // Description
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '14px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 125);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 140);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 150);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 170);
 
     // Badge
-    ctx.font = 'bold 10px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     const bText = o.badge;
-    const bW = ctx.measureText(bText).width + 20;
-    const bH = 20;
+    const bW = ctx.measureText(bText).width + 24;
+    const bH = 26;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 175;
+    const bY = panelY + 220;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3755,17 +3755,17 @@ async function generateStage2ChestCard(selectedMap, commanderName, hasLockpick, 
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = o.badgeColor;
-    ctx.fillText(bText, bX + bW / 2, bY + 14);
+    ctx.fillText(bText, bX + bW / 2, bY + 18);
   }
 
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 52);
 
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Ancient Chest', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -3825,9 +3825,9 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
 
   // Header
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
-  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', EXP_WIDTH / 2, 45);
+  ctx.fillText('💧 STAGE 2 ━━ AIR TERJUN SUCI', EXP_WIDTH / 2, 55);
 
   // Draw Event Image or Fallback
   const eventX = EXP_WIDTH / 2 - 35;
@@ -3849,21 +3849,21 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
     ctx.fillText('💧', EXP_WIDTH / 2, eventY + 46);
   }
 
-  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', EXP_WIDTH / 2, 150);
+  ctx.fillText('"A crystal-clear spring of magical waters, offering rejuvenation to weary travelers."', EXP_WIDTH / 2, 185);
 
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 172);
+  ctx.fillText(`🗺️ ${selectedMap?.name || 'Ekspedisi'}  ·  👤 @${commanderName}`, EXP_WIDTH / 2, 212);
 
   // Two option panels, centered
-  const panelW = 340;
-  const panelH = 225;
-  const panelGap = 30;
+  const panelW = 440;
+  const panelH = 290;
+  const panelGap = 35;
   const totalW = 2 * panelW + panelGap;
   const startX = (EXP_WIDTH - totalW) / 2;
-  const panelY = 195;
+  const panelY = 235;
 
   const opts = [
     {
@@ -3913,26 +3913,26 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
     ctx.strokeStyle = `${o.color}80`;
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
     ctx.fillStyle = o.color;
     ctx.textAlign = 'center';
-    ctx.fillText(o.letter, iconCx, iconCy + 8);
+    ctx.fillText(o.letter, iconCx, iconCy + 9);
 
-    ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(o.title, px + panelW / 2, panelY + 95);
+    ctx.fillText(o.title, px + panelW / 2, panelY + 115);
 
-    ctx.font = '12px "DejaVu Sans", sans-serif';
+    ctx.font = '15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(o.desc1, px + panelW / 2, panelY + 125);
-    ctx.fillText(o.desc2, px + panelW / 2, panelY + 140);
+    ctx.fillText(o.desc1, px + panelW / 2, panelY + 150);
+    ctx.fillText(o.desc2, px + panelW / 2, panelY + 170);
 
     // Badge
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
-    const bW = ctx.measureText(o.badge).width + 24;
-    const bH = 22;
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    const bW = ctx.measureText(o.badge).width + 28;
+    const bH = 28;
     const bX = px + (panelW - bW) / 2;
-    const bY = panelY + 175;
+    const bY = panelY + 220;
     drawRoundedRect(ctx, bX, bY, bW, bH, bH / 2);
     ctx.fillStyle = `${o.badgeColor}30`;
     ctx.fill();
@@ -3940,17 +3940,17 @@ async function generateStage2WaterfallCard(selectedMap, commanderName, mapChoice
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = o.badgeColor;
-    ctx.fillText(o.badge, bX + bW / 2, bY + 15);
+    ctx.fillText(o.badge, bX + bW / 2, bY + 19);
   }
 
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.textAlign = 'center';
-  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 40);
+  ctx.fillText('⚔️ Batas keputusan: 15 detik · Pilih opsi dengan tombol di bawah', EXP_WIDTH / 2, EXP_HEIGHT - 52);
 
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 — Sacred Waterfall', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
@@ -4005,16 +4005,16 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
 
   // Header
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 28px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E676';
   const titleIcon = isChest ? '📦' : '💧';
-  ctx.fillText(`${titleIcon} STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅`, EXP_WIDTH / 2, 75);
+  ctx.fillText(`${titleIcon} STAGE 2 SELESAI ━━ KEJADIAN SELESAI ✅`, EXP_WIDTH / 2, 95);
 
   // Result box
-  const boxW = 700;
-  const boxH = 220;
+  const boxW = 900;
+  const boxH = 290;
   const boxX = (EXP_WIDTH - boxW) / 2;
-  const boxY = 110;
+  const boxY = 135;
   drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 12);
   ctx.fillStyle = `${accentColor}10`;
   ctx.fill();
@@ -4049,29 +4049,29 @@ async function generateStage2ResultCard(selectedMap, commanderName, eventText, i
   }
 
   ctx.textAlign = 'left';
-  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
   ctx.fillStyle = accentColor;
-  ctx.fillText('📢 Keputusan:', boxX + 25, boxY + 40);
+  ctx.fillText('📢 Keputusan:', boxX + 30, boxY + 48);
 
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '17px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanEventText = eventText.replace(/\*\*/g, '').replace(/└─\s*/g, '  → ');
   const evLines = cleanEventText.split('\n');
-  let ey = boxY + 75;
+  let ey = boxY + 90;
   for (const line of evLines) {
-    if (ey > boxY + boxH - 10) break;
-    ctx.fillText(line.substring(0, 55), boxX + 25, ey);
-    ey += 22;
+    if (ey > boxY + boxH - 12) break;
+    ctx.fillText(line.substring(0, 70), boxX + 30, ey);
+    ey += 28;
   }
 
   ctx.textAlign = 'center';
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`👤 @${commanderName}  ·  ⏳ Gerbang Bos Akhir terbuka...`, EXP_WIDTH / 2, 380);
+  ctx.fillText(`👤 @${commanderName}  ·  ⏳ Gerbang Bos Akhir terbuka...`, EXP_WIDTH / 2, 490);
 
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '12px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 22);
+  ctx.fillText('Kosan 1A RPG · Pet Expedition Stage 2 Complete', EXP_WIDTH / 2, EXP_HEIGHT - 28);
 
   return canvas.toBuffer('image/png');
 }
