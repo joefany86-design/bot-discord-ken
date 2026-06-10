@@ -160,6 +160,36 @@ function setSafariCooldown(userId, guildId, cooldownUntil) {
 }
 
 /**
+ * Memberikan Safari XP dan memproses level up untuk Master Berburu
+ */
+function addSafariXp(userId, guildId, xpAmount) {
+  let levelUpMsg = '';
+  db.transaction(() => {
+    let currentLvl = 1;
+    let currentXp = 0;
+    const row = db.get('SELECT safari_level, safari_xp FROM wallets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    if (row) {
+      currentLvl = row.safari_level || 1;
+      currentXp = row.safari_xp || 0;
+    }
+    
+    currentXp += xpAmount;
+    
+    while (currentXp >= currentLvl * 100) {
+      currentXp -= currentLvl * 100;
+      currentLvl += 1;
+      levelUpMsg = `\n🎉 **LEVEL UP MASTER BERBURU!** Tingkat Safari Anda sekarang adalah **Level ${currentLvl}**!`;
+    }
+    
+    db.run(
+      'UPDATE wallets SET safari_level = ?, safari_xp = ? WHERE user_id = ? AND guild_id = ?',
+      [currentLvl, currentXp, userId, guildId]
+    );
+  })();
+  return { newLevel: currentLvl, newXp: currentXp, levelUpMsg };
+}
+
+/**
  * Membuat data pet liar secara acak berdasarkan biome
  */
 function generateWildPet(biomeId) {
@@ -231,6 +261,15 @@ function generateWildPet(biomeId) {
     emoji = '🟡';
   }
 
+  let ivMin = 1;
+  if (rarity === 'RARE') ivMin = 5;
+  else if (rarity === 'EPIC') ivMin = 8;
+  else if (rarity === 'LEGENDARY') ivMin = 10;
+  
+  const iv_str = Math.floor(Math.random() * (16 - ivMin)) + ivMin;
+  const iv_vit = Math.floor(Math.random() * (16 - ivMin)) + ivMin;
+  const iv_dex = Math.floor(Math.random() * (16 - ivMin)) + ivMin;
+
   return {
     speciesId,
     name: speciesInfo.name.replace(/^\S+\s+/, ''), // Hapus emoji untuk nama
@@ -245,7 +284,10 @@ function generateWildPet(biomeId) {
     description: speciesInfo.desc,
     gacha_element: element,
     pet_type: speciesId,
-    status: 'ADULT' // Untuk rendering GIF dari embeds.js
+    status: 'ADULT', // Untuk rendering GIF dari embeds.js
+    iv_str,
+    iv_vit,
+    iv_dex
   };
 }
 
@@ -287,8 +329,8 @@ async function handlePetSafariCommand(message, client, args) {
   const now = Date.now();
   const cooldownEnd = getSafariCooldown(author.id, guildId);
   if (now < cooldownEnd) {
-    const secondsLeft = Math.ceil((cooldownEnd - now) / 1000);
-    return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu **${secondsLeft} detik** lagi.` });
+    const epochSec = Math.floor(cooldownEnd / 1000);
+    return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu <t:${epochSec}:R> lagi.` });
   }
 
   // Check and set channel lock for Safari with expiration (5 minutes)
@@ -303,8 +345,20 @@ async function handlePetSafariCommand(message, client, args) {
   }
   safariLocks.set(message.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
 
+  // Get hunting mastery stats from db
+  let mastery = { level: 1, xp: 0 };
+  try {
+    const walletRow = db.get('SELECT safari_level, safari_xp FROM wallets WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
+    if (walletRow) {
+      mastery.level = walletRow.safari_level || 1;
+      mastery.xp = walletRow.safari_xp || 0;
+    }
+  } catch (err) {
+    console.error('Error fetching safari mastery:', err);
+  }
+
   // Generate the visual attachment using napi-rs/canvas
-  const attachment = await petCard.getSafariLobbyAttachment(message.guild.name);
+  const attachment = await petCard.getSafariLobbyAttachment(message.guild.name, mastery);
 
   // Biome Selection Panel
   const biomeEmbed = new EmbedBuilder()
@@ -869,6 +923,8 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
         if (rewards.tickets > 0) rewardText += `🎟️ **Tiket Gacha Pet:** **+${rewards.tickets}x**\n`;
         if (rewards.soda > 0) rewardText += `🥤 **Soda Energi Pet:** **+${rewards.soda}x**\n`;
         if (rewards.food > 0) rewardText += `🥩 **Daging Premium:** **+${rewards.food}x**\n`;
+        rewardText += `🏹 **Safari Mastery:** **+${rewards.safariXp} XP Berburu**\n`;
+        if (rewards.levelUpMsg) rewardText += `${rewards.levelUpMsg}\n`;
 
         const releaseEmbed = new EmbedBuilder()
           .setColor(0x3498DB)
@@ -955,10 +1011,19 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             }
 
             db.run(
-              `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
-               VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
-              [author.id, state.guildId, chosenName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, finalTrait, state.pet.rarity, state.pet.gacha_element]
+              `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, iv_str, iv_vit, iv_dex) 
+               VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?, ?, ?, ?)`,
+              [author.id, state.guildId, chosenName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, finalTrait, state.pet.rarity, state.pet.gacha_element, state.pet.iv_str || 0, state.pet.iv_vit || 0, state.pet.iv_dex || 0]
             );
+
+            let xpReward = 15;
+            if (state.pet.rarity === 'RARE') xpReward = 30;
+            else if (state.pet.rarity === 'EPIC') xpReward = 60;
+            else if (state.pet.rarity === 'LEGENDARY') xpReward = 120;
+            
+            const xpRes = addSafariXp(author.id, state.guildId, xpReward);
+            state.levelUpMsg = xpRes.levelUpMsg;
+            state.xpReward = xpReward;
 
             logPetAction(state.guildId, author.id, null, chosenName, 'ADOPT_SAFARI', `Mengadopsi pet liar hasil safari spesies ${state.pet.pet_type} (Lv.${state.pet.level})`);
           })();
@@ -982,7 +1047,9 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
               `• 🧬 **Tingkat Kelangkaan:** \`${state.pet.emoji} ${state.pet.rarity}\`\n` +
               `• ⚡ **Level Awal:** \`${state.pet.level}\`\n` +
               `• Elemen Bawaan: **${state.pet.element}**\n` +
-              `${finalTrait ? `• Trait Spesial: **${finalTrait}**\n` : ''}\n` +
+              `${finalTrait ? `• Trait Spesial: **${finalTrait}**\n` : ''}` +
+              `• 🧬 **Nilai Bakat (IVs):** ⚔️ STR: \`${state.pet.iv_str}\` | 🩺 VIT: \`${state.pet.iv_vit}\` | ⚡ DEX: \`${state.pet.iv_dex}\`\n\n` +
+              `🏹 **Safari Mastery:** +${state.xpReward} XP Berburu!${state.levelUpMsg || ''}\n\n` +
               `*Pet langsung masuk kandang dalam keadaan sehat bugar dan siap diajak bekerja (\`.pet work\`) atau bermain (\`.pet play\`) tanpa menunggu penetasan!*`
             )
             .setThumbnail(embeds.getPetImage(state.pet))
@@ -1006,12 +1073,21 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             const nowUnix = Math.floor(Date.now() / 1000);
             const isActive = petsCount === 0 ? 1 : 0;
 
+            let xpReward = 15;
+            if (state.pet.rarity === 'RARE') xpReward = 30;
+            else if (state.pet.rarity === 'EPIC') xpReward = 60;
+            else if (state.pet.rarity === 'LEGENDARY') xpReward = 120;
+            
+            let levelUpMsg = '';
             db.transaction(() => {
               db.run(
-                `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
-                 VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
-                [author.id, state.guildId, defaultName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, state.pet.trait || '', state.pet.rarity, state.pet.gacha_element]
+                `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, iv_str, iv_vit, iv_dex) 
+                 VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?, ?, ?, ?)`,
+                [author.id, state.guildId, defaultName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, state.pet.trait || '', state.pet.rarity, state.pet.gacha_element, state.pet.iv_str || 0, state.pet.iv_vit || 0, state.pet.iv_dex || 0]
               );
+              
+              const xpRes = addSafariXp(author.id, state.guildId, xpReward);
+              levelUpMsg = xpRes.levelUpMsg;
             })();
 
             const adoptEmbed = new EmbedBuilder()
@@ -1020,7 +1096,9 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
               .setDescription(
                 `Karena waktu habis, pet diadopsi secara otomatis dengan nama default:\n\n` +
                 `• 🏷️ **Nama Pet:** \`${defaultName}\`\n` +
-                `• 🧬 **Kelangkaan:** \`${state.pet.emoji} ${state.pet.rarity}\` (Lv.${state.pet.level})`
+                `• 🧬 **Kelangkaan:** \`${state.pet.emoji} ${state.pet.rarity}\` (Lv.${state.pet.level})\n` +
+                `• 🧬 **Nilai Bakat (IVs):** ⚔️ STR: \`${state.pet.iv_str}\` | 🩺 VIT: \`${state.pet.iv_vit}\` | ⚡ DEX: \`${state.pet.iv_dex}\`\n\n` +
+                `🏹 **Safari Mastery:** +${xpReward} XP Berburu!${levelUpMsg || ''}`
               )
               .setTimestamp();
 
@@ -1113,9 +1191,17 @@ function executeReleaseRewards(userId, guildId, wildPet) {
     );
   }
 
+  // 5. Tambah Safari XP
+  let safariXpAmount = 10;
+  if (r === 'RARE') safariXpAmount = 20;
+  else if (r === 'EPIC') safariXpAmount = 40;
+  else if (r === 'LEGENDARY') safariXpAmount = 80;
+
+  const xpRes = addSafariXp(userId, guildId, safariXpAmount);
+
   logPetAction(guildId, userId, null, wildPet.name, 'RELEASE_SAFARI', `Merilis pet liar ${wildPet.pet_type} (Rarity: ${r}). Koin: Rp ${coins}, Soda: ${soda}`);
 
-  return { coins, xp, tickets: 0, soda, food };
+  return { coins, xp, tickets: 0, soda, food, safariXp: safariXpAmount, levelUpMsg: xpRes.levelUpMsg };
 }
 
 module.exports = {

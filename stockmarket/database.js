@@ -821,6 +821,17 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 19,
+      description: "Menambahkan kolom safari_level, safari_xp ke wallets dan iv_str, iv_vit, iv_dex ke user_pets",
+      run: () => {
+        addColumn('wallets', 'safari_level', 'INTEGER DEFAULT 1');
+        addColumn('wallets', 'safari_xp', 'INTEGER DEFAULT 0');
+        addColumn('user_pets', 'iv_str', 'INTEGER DEFAULT 0');
+        addColumn('user_pets', 'iv_vit', 'INTEGER DEFAULT 0');
+        addColumn('user_pets', 'iv_dex', 'INTEGER DEFAULT 0');
+      }
     }
   ];
 

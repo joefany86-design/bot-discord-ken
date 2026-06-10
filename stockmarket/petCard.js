@@ -5053,7 +5053,7 @@ async function getAdminDashboardAttachment(client, stats) {
 /**
  * Generate premium card for Pet Safari biome selection lobby
  */
-async function generateSafariLobbyCard(guildName) {
+async function generateSafariLobbyCard(guildName, mastery = { level: 1, xp: 0 }) {
   const CARD_WIDTH = 1600;
   const CARD_HEIGHT = 900;
 
@@ -5163,6 +5163,12 @@ async function generateSafariLobbyCard(guildName) {
   ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 660);
   ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 695);
 
+  // Safari Mastery badge
+  ctx.font = 'bold 20px "Inter", "DejaVu Sans", sans-serif';
+  const masteryText = `🏹 SAFARI MASTERY: LEVEL ${mastery.level} [${mastery.xp}/${mastery.level * 100} XP]`;
+  const textWidth = ctx.measureText(masteryText).width;
+  drawBadge(ctx, badgeCX - (textWidth + 20) / 2, 735, masteryText, 'rgba(255, 215, 0, 0.15)', '#FFD700', 20);
+
   // ── RIGHT COLUMN: BIOMES LIST ──
   const col2X = 820;
 
@@ -5238,9 +5244,9 @@ async function generateSafariLobbyCard(guildName) {
   return canvas.toBuffer('image/png');
 }
 
-async function getSafariLobbyAttachment(guildName) {
+async function getSafariLobbyAttachment(guildName, mastery) {
   try {
-    const buffer = await generateSafariLobbyCard(guildName);
+    const buffer = await generateSafariLobbyCard(guildName, mastery);
     return new AttachmentBuilder(buffer, { name: 'safari_lobby.png' });
   } catch (e) {
     console.error('[PetCard] Error generating safari lobby attachment:', e);
@@ -5320,6 +5326,67 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 24);
   ctx.fillStyle = 'rgba(6, 10, 8, 0.85)';
   ctx.fill();
+
+  // Weather Overlay
+  if (state && state.weather) {
+    const w = state.weather;
+    if (w === 'HUJAN' || w === 'BADAI') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1.5;
+      let rainSeed = 12345;
+      function seededRandom() {
+        let x = Math.sin(rainSeed++) * 10000;
+        return x - Math.floor(x);
+      }
+      for (let r = 0; r < 60; r++) {
+        const rx = margin + seededRandom() * (CARD_WIDTH - margin * 2);
+        const ry = margin + seededRandom() * (CARD_HEIGHT - margin * 2);
+        const rLen = 20 + seededRandom() * 20;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - 6, ry + rLen);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (w === 'BADAI') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 200, 0.45)';
+      ctx.shadowColor = '#FFF59D';
+      ctx.shadowBlur = 15;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      const startX = 600;
+      ctx.moveTo(startX, margin);
+      ctx.lineTo(startX + 30, margin + 120);
+      ctx.lineTo(startX - 15, margin + 200);
+      ctx.lineTo(startX + 40, margin + 350);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (w === 'KABUT') {
+      ctx.save();
+      let fogSeed = 54321;
+      function seededRandomFog() {
+        let x = Math.sin(fogSeed++) * 10000;
+        return x - Math.floor(x);
+      }
+      for (let f = 0; f < 8; f++) {
+        const fx = margin + seededRandomFog() * (CARD_WIDTH - margin * 2);
+        const fy = margin + seededRandomFog() * (CARD_HEIGHT - margin * 2);
+        const fRadius = 150 + seededRandomFog() * 150;
+        const mist = ctx.createRadialGradient(fx, fy, 10, fx, fy, fRadius);
+        mist.addColorStop(0, 'rgba(235, 245, 255, 0.08)');
+        mist.addColorStop(1, 'transparent');
+        ctx.fillStyle = mist;
+        ctx.beginPath();
+        ctx.arc(fx, fy, fRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
 
   // Glow Border
   const borderGrad = ctx.createLinearGradient(margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin);
@@ -5439,17 +5506,25 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   const petRadius = 180;
 
   // Outer premium aura/ring
+  ctx.save();
+  ctx.shadowColor = rarityInfo.glow || rarityInfo.primary;
+  ctx.shadowBlur = 30;
   ctx.beginPath();
   ctx.arc(petCX, petCY, petRadius + 24, 0, Math.PI * 2);
-  ctx.strokeStyle = `${rarityInfo.primary}33`; // Rarity glow color
+  ctx.strokeStyle = `${rarityInfo.primary}44`; // Slightly more visible alpha
   ctx.lineWidth = 8;
   ctx.stroke();
+  ctx.restore();
 
+  ctx.save();
+  ctx.shadowColor = rarityInfo.glow || rarityInfo.primary;
+  ctx.shadowBlur = 15;
   ctx.beginPath();
   ctx.arc(petCX, petCY, petRadius, 0, Math.PI * 2);
   ctx.strokeStyle = rarityInfo.primary;
   ctx.lineWidth = 6;
   ctx.stroke();
+  ctx.restore();
 
   // Draw background image or avatar placeholder
   const embeds = require('./embeds');
