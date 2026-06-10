@@ -829,6 +829,11 @@ async function endPvPGame(interaction, client, combatData, result) {
     .setTimestamp();
 
   await interaction.message.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
+
+  // Hapus pesan hasil pertarungan setelah 15 detik agar channel tetap bersih
+  setTimeout(async () => {
+    await interaction.message.delete().catch(() => {});
+  }, 15000);
 }
 
 /**
