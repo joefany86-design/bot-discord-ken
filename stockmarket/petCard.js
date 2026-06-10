@@ -5830,22 +5830,43 @@ async function getExpeditionMapListAttachment(maps) {
   }
 }
 
-async function generateArenaVsCard(playerPet, botPet, tierKey) {
+async function generateArenaVsCard(playerPet, botPet, tierKey, arenaKey) {
   const canvas = createCanvas(CARD_WIDTH, 360);
   const ctx = canvas.getContext('2d');
 
+  const arenaKeyUpper = (arenaKey || 'VOLCANO').toUpperCase();
+  const arenaThemes = {
+    VOLCANO: {
+      left: '#2e0200', right: '#0f0000', mid: '#610600',
+      glow: '#ff3d00', name: '🌋 VOLCANO ARENA', color: '#ff7043'
+    },
+    OCEAN: {
+      left: '#00132e', right: '#000612', mid: '#002f5e',
+      glow: '#00e5ff', name: '🌊 OCEAN DEPTHS', color: '#4fc3f7'
+    },
+    FOREST: {
+      left: '#081702', right: '#020a00', mid: '#1c3d0b',
+      glow: '#00e676', name: '🌲 ANCIENT FOREST', color: '#81c784'
+    },
+    DRAGON_DEN: {
+      left: '#1d0030', right: '#0a0012', mid: '#3d0d61',
+      glow: '#e040fb', name: '🐉 DRAGON DEN', color: '#ea80fc'
+    }
+  };
+  const theme = arenaThemes[arenaKeyUpper] || arenaThemes.VOLCANO;
+
   // 1. Draw split background
-  // Left half (Player: Blue)
+  // Left half (Player)
   const leftGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH / 2, 360);
-  leftGrad.addColorStop(0, '#0a0f24');
-  leftGrad.addColorStop(1, '#1e295d');
+  leftGrad.addColorStop(0, theme.left);
+  leftGrad.addColorStop(1, theme.mid);
   ctx.fillStyle = leftGrad;
   ctx.fillRect(0, 0, CARD_WIDTH / 2, 360);
 
-  // Right half (Bot: Purple)
+  // Right half (Bot)
   const rightGrad = ctx.createLinearGradient(CARD_WIDTH / 2, 0, CARD_WIDTH, 360);
-  rightGrad.addColorStop(0, '#311042');
-  rightGrad.addColorStop(1, '#0c061a');
+  rightGrad.addColorStop(0, theme.mid);
+  rightGrad.addColorStop(1, theme.right);
   ctx.fillStyle = rightGrad;
   ctx.fillRect(CARD_WIDTH / 2, 0, CARD_WIDTH / 2, 360);
 
@@ -5861,10 +5882,10 @@ async function generateArenaVsCard(playerPet, botPet, tierKey) {
   ctx.beginPath();
   ctx.moveTo(CARD_WIDTH / 2 - 40, 0);
   ctx.lineTo(CARD_WIDTH / 2 + 40, 360);
-  ctx.strokeStyle = '#e040fb';
+  ctx.strokeStyle = theme.glow;
   ctx.lineWidth = 2;
   ctx.shadowBlur = 8;
-  ctx.shadowColor = '#e040fb';
+  ctx.shadowColor = theme.glow;
   ctx.stroke();
   ctx.shadowBlur = 0; // reset shadow
 
@@ -6033,20 +6054,25 @@ async function generateArenaVsCard(playerPet, botPet, tierKey) {
   // 6. Draw Center VS
   ctx.textAlign = 'center';
   ctx.shadowBlur = 20;
-  ctx.shadowColor = '#e040fb';
+  ctx.shadowColor = theme.glow;
   const vsGrad = ctx.createLinearGradient(CARD_WIDTH / 2 - 20, 120, CARD_WIDTH / 2 + 20, 180);
-  vsGrad.addColorStop(0, '#f5d0fe');
-  vsGrad.addColorStop(0.5, '#e040fb');
-  vsGrad.addColorStop(1, '#86198f');
+  vsGrad.addColorStop(0, '#ffffff');
+  vsGrad.addColorStop(0.5, theme.color);
+  vsGrad.addColorStop(1, theme.mid);
   ctx.fillStyle = vsGrad;
   ctx.font = 'italic bold 56px "DejaVu Sans", sans-serif';
   ctx.fillText('VS', CARD_WIDTH / 2, 175);
   ctx.shadowBlur = 0; // reset
 
+  // Arena name label
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = theme.color;
+  ctx.fillText(theme.name, CARD_WIDTH / 2, 215);
+
   // Tier info label
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
-  ctx.fillStyle = '#e040fb';
-  ctx.fillText((tierKey || 'ARENA LIGA').replace('_', ' '), CARD_WIDTH / 2, 215);
+  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#a1a1aa';
+  ctx.fillText((tierKey || 'ARENA LIGA').replace('_', ' '), CARD_WIDTH / 2, 235);
 
   // Card Outer Border
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -6056,9 +6082,9 @@ async function generateArenaVsCard(playerPet, botPet, tierKey) {
   return canvas.toBuffer('image/png');
 }
 
-async function getArenaVsCardAttachment(playerPet, botPet, tierKey) {
+async function getArenaVsCardAttachment(playerPet, botPet, tierKey, arenaKey) {
   try {
-    const buffer = await generateArenaVsCard(playerPet, botPet, tierKey);
+    const buffer = await generateArenaVsCard(playerPet, botPet, tierKey, arenaKey);
     return new AttachmentBuilder(buffer, { name: 'arena_vs.png' });
   } catch (e) {
     console.error('[PetCard] Error generating arena VS card attachment:', e);

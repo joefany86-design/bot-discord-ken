@@ -80,6 +80,13 @@ const COLORS = {
   IMMORTAL: 0xFFD700
 };
 
+const ARENAS = [
+  { key: 'VOLCANO', name: '🌋 Gunung Berapi (VOLCANO)', element: 'FIRE', desc: 'Pet berelemen FIRE mendapat +20% damage!' },
+  { key: 'OCEAN', name: '🌊 Samudra Dalam (OCEAN)', element: 'WATER', desc: 'Pet berelemen WATER mendapat +20% damage!' },
+  { key: 'FOREST', name: '🌲 Hutan Purba (FOREST)', element: 'EARTH', desc: 'Pet berelemen EARTH mendapat +20% damage!' },
+  { key: 'DRAGON_DEN', name: '🐉 Sarang Naga (DRAGON_DEN)', element: 'DRAGON', desc: 'Pet berelemen DRAGON mendapat +20% damage!' }
+];
+
 function getFriendlyTierName(tierKey) {
   return TIER_NAMES[tierKey] || tierKey;
 }
@@ -304,10 +311,13 @@ function getBattleEmbedData(combatData) {
     return buffs.length > 0 ? buffs.join(' · ') : '*Normal*';
   };
 
+  const arenaInfo = combatData.arena ? `🏟️ **Lokasi: ${combatData.arena.name}**\n*ℹ️ ${combatData.arena.desc}*\n\n` : '';
+
   const embed = new EmbedBuilder()
     .setColor(0x7C4DFF)
     .setTitle(`⚔️ PVP ARENA: ${p.name} VS ${b.name}`)
     .setDescription(
+      arenaInfo +
       `🏟️ **Ronde ${combatData.turnCount}**\n` +
       `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
       `🐾 **${p.name}** *(Elemen: ${p.gacha_element})*\n` +
@@ -327,7 +337,7 @@ function getBattleEmbedData(combatData) {
       }).join('\n') +
       `\`\`\``
     )
-    .setFooter({ text: 'Gunakan tombol di bawah untuk menyerang, bertahan, ultimate, atau menyerah!' });
+    .setFooter({ text: 'Gunakan tombol di bawah untuk bertindak!' });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -344,8 +354,13 @@ function getBattleEmbedData(combatData) {
       .setStyle(ButtonStyle.Danger)
       .setDisabled(p.energy < 60), // Memerlukan minimal 60 SP
     new ButtonBuilder()
+      .setCustomId('pvpbot_act_item')
+      .setLabel('🎒 Item')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(p.hasUsedItem),
+    new ButtonBuilder()
       .setCustomId('pvpbot_act_surr')
-      .setLabel('🏳️ Menyerah')
+      .setLabel('🏳️')
       .setStyle(ButtonStyle.Secondary)
   );
 
@@ -419,6 +434,7 @@ async function startPvPChallenge(interaction, client, petName) {
       );
     }
 
+    const randomArena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
     const botOpponent = generateBotForTier(pvpState.tier);
 
     // Hitung status tempur awal berbasis Gym Stats (TANPA Level)
@@ -430,7 +446,8 @@ async function startPvPChallenge(interaction, client, petName) {
       guildId,
       userId: user.id,
       turnCount: 1,
-      logs: [`⚔️ Pertandingan liga dimulai melawan **${botOpponent.name}**!`],
+      arena: randomArena,
+      logs: [`⚔️ Pertandingan liga dimulai di **${randomArena.name}** melawan **${botOpponent.name}**!`],
       player: {
         name: petObj.pet_name,
         pet_type: petObj.pet_type,
@@ -442,6 +459,7 @@ async function startPvPChallenge(interaction, client, petName) {
         burnTurns: 0,
         shieldTurns: 0,
         hasUsedUltimate: false,
+        hasUsedItem: false,
         stat_str: petObj.stat_str || 0,
         stat_vit: petObj.stat_vit || 0,
         stat_def: petObj.stat_def || 0,
@@ -477,7 +495,7 @@ async function startPvPChallenge(interaction, client, petName) {
     };
 
     const payload = getBattleEmbedData(combatData);
-    const vsAttachment = await petCard.getArenaVsCardAttachment(petObj, botOpponent, pvpState.tier);
+    const vsAttachment = await petCard.getArenaVsCardAttachment(petObj, botOpponent, pvpState.tier, combatData.arena.key);
     if (vsAttachment) {
       payload.files = [vsAttachment];
       payload.embeds[0].setImage('attachment://arena_vs.png');
@@ -520,6 +538,14 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
   // DEF berbasis Gym Stats (stat_def)
   let defenderDEF = defenderSpecBaseDef + (defender.stat_def || 0) * 2.0;
 
+  // Arena Buff (+20% damage if attacker element matches arena element)
+  let arenaMultiplier = 1.0;
+  let arenaBuffApplied = false;
+  if (combatData.arena && combatData.arena.element === attacker.gacha_element) {
+    arenaMultiplier = 1.2;
+    arenaBuffApplied = true;
+  }
+
   // Attacker buffs
   let atkMultiplier = attacker.pet_type === 'DRAGON' ? 1.15 : 1.0;
   if (attacker.trait === 'WARRIOR') atkMultiplier += 0.15;
@@ -545,13 +571,15 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
     atkMultiplier += 0.25;
   }
 
+  const arenaSuffix = arenaBuffApplied ? ' 🏟️**[BUFF ARENA]**' : '';
+
   if (actionType === 'atk') {
     isDodged = Math.random() < dodgeChance;
     if (isDodged) {
       logMsg = `💨 **${attacker.name}** melancarkan serangan, namun **${defender.name}** berhasil menghindar!`;
     } else {
       isCrit = Math.random() < critChance;
-      let rawDmg = Math.round(attackerATK * atkMultiplier * (0.8 + Math.random() * 0.4));
+      let rawDmg = Math.round(attackerATK * atkMultiplier * arenaMultiplier * (0.8 + Math.random() * 0.4));
       if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
 
       let defFactor = defenderDEF / 150;
@@ -570,7 +598,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
       defender.hp = Math.max(0, defender.hp - damage);
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-      logMsg = `⚔️ **${attacker.name}** menyerang **${defender.name}** sebesar **${damage} DMG**!${critText}`;
+      logMsg = `⚔️ **${attacker.name}** menyerang **${defender.name}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
     }
 
   } else if (actionType === 'ult') {
@@ -584,7 +612,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       isCrit = Math.random() < critChance;
       
       const mult = attacker.gacha_element === 'DRAGON' ? 2.2 : 2.0;
-      let rawDmg = Math.round((attackerATK * mult) * atkMultiplier * (0.8 + Math.random() * 0.4));
+      let rawDmg = Math.round((attackerATK * mult) * atkMultiplier * arenaMultiplier * (0.8 + Math.random() * 0.4));
       if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
 
       let defFactor = defenderDEF / 150;
@@ -612,7 +640,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       };
       const ultName = ultNames[element] || '💥 Ultimate Strike';
 
-      logMsg = `🔥 **${attacker.name}** menggunakan Ultimate **${ultName}** sebesar **${damage} DMG**!${critText}`;
+      logMsg = `🔥 **${attacker.name}** menggunakan Ultimate **${ultName}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
       
       // Efek elemental tambahan (40% peluang)
       if (Math.random() < 0.40) {
@@ -652,17 +680,25 @@ function applyBurnDamage(player, combatData) {
  * Memproses turn interaktif ketika pemain mengklik tombol
  */
 async function handlePvPAction(interaction, client, actionType) {
-  const { guildId, user } = interaction;
+  const guildId = interaction ? interaction.guildId : null;
+  const user = interaction ? interaction.user : null;
+  
+  if (!user || !guildId) return;
   
   const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(user.id) : null;
   if (!combatData) {
-    return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+    if (interaction && typeof interaction.reply === 'function') {
+      return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+    }
+    return;
   }
 
   if (combatData.isProcessing) return;
   combatData.isProcessing = true;
 
-  await interaction.deferUpdate().catch(() => {});
+  if (interaction && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
+    await interaction.deferUpdate().catch(() => {});
+  }
 
   const p = combatData.player;
   const b = combatData.bot;
@@ -718,7 +754,19 @@ async function handlePvPAction(interaction, client, actionType) {
     }
   }
   b.chosenAction = botAction;
-  p.chosenAction = actionType;
+  if (actionType === 'item_med') {
+    p.hp = Math.min(p.maxHP, p.hp + 150);
+    p.hasUsedItem = true;
+    combatData.logs.push(`🎒 **${p.name}** menggunakan **Ramuan Kesehatan**! (+150 HP)`);
+    p.chosenAction = 'item_med';
+  } else if (actionType === 'item_soda') {
+    p.energy = Math.min(100, p.energy + 50);
+    p.hasUsedItem = true;
+    combatData.logs.push(`🎒 **${p.name}** meminum **Soda Energi**! (+50 SP)`);
+    p.chosenAction = 'item_soda';
+  } else {
+    p.chosenAction = actionType;
+  }
 
   // --- ATURAN COMBAT RESOLUTION ---
   p.isDefending = false;
@@ -794,7 +842,23 @@ async function handlePvPAction(interaction, client, actionType) {
 
   // Update embed & buttons
   const payload = getBattleEmbedData(combatData);
-  await interaction.message.edit(payload).catch(() => {});
+  let messageToEdit = null;
+  if (interaction && interaction.message && (!interaction.message.flags || (interaction.message.flags.bitfield & 64) === 0)) {
+    messageToEdit = interaction.message;
+  } else if (combatData.channelId && combatData.messageId) {
+    try {
+      const channel = await client.channels.fetch(combatData.channelId);
+      if (channel) {
+        messageToEdit = await channel.messages.fetch(combatData.messageId);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pvp battle message for update:', err);
+    }
+  }
+
+  if (messageToEdit) {
+    await messageToEdit.edit(payload).catch(() => {});
+  }
 }
 
 /**
@@ -932,7 +996,7 @@ async function endPvPGame(interaction, client, combatData, result) {
     .setTimestamp();
 
   let messageToEdit = null;
-  if (interaction && interaction.message) {
+  if (interaction && interaction.message && (!interaction.message.flags || (interaction.message.flags.bitfield & 64) === 0)) {
     messageToEdit = interaction.message;
   } else if (combatData.channelId && combatData.messageId) {
     try {

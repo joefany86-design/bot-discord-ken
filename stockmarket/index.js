@@ -1172,6 +1172,76 @@ function initStockMarket(client) {
         await pvpBot.handlePvPAction(interaction, client, 'surr');
         return;
       }
+      if (customId === 'pvpbot_act_item') {
+        const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(interaction.user.id) : null;
+        if (!combatData) {
+          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+        }
+        if (combatData.player.hasUsedItem) {
+          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 });
+        }
+
+        const medRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MEDICINE'", [interaction.user.id, interaction.guildId]);
+        const sodaRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [interaction.user.id, interaction.guildId]);
+        const medQty = medRow ? medRow.quantity : 0;
+        const sodaQty = sodaRow ? sodaRow.quantity : 0;
+
+        const embed = new EmbedBuilder()
+          .setColor(0x7C4DFF)
+          .setTitle('🎒 Kantong Item Tempur Anda')
+          .setDescription(
+            `Pilih item yang ingin digunakan pada giliran ini. Menggunakan item akan mengonsumsi giliran turn ronde Anda.\n\n` +
+            `💊 **Ramuan Kesehatan (MEDICINE)**: Pulihkan **+150 HP** (Milik Anda: **${medQty}**)\n` +
+            `🥤 **Soda Energi Pet (SODA_ENERGY)**: Tambah **+50 SP/Energy** (Milik Anda: **${sodaQty}**)`
+          );
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('pvpbot_use_med')
+            .setLabel('💊 Gunakan Medicine')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(medQty <= 0),
+          new ButtonBuilder()
+            .setCustomId('pvpbot_use_soda')
+            .setLabel('🥤 Gunakan Soda')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(sodaQty <= 0),
+          new ButtonBuilder()
+            .setCustomId('pvpbot_item_cancel')
+            .setLabel('❌ Batal')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        return;
+      }
+      if (customId === 'pvpbot_item_cancel') {
+        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => {});
+        return;
+      }
+      if (customId === 'pvpbot_use_med' || customId === 'pvpbot_use_soda') {
+        const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(interaction.user.id) : null;
+        if (!combatData) {
+          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] });
+        }
+        if (combatData.player.hasUsedItem) {
+          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] });
+        }
+
+        const itemId = customId === 'pvpbot_use_med' ? 'MEDICINE' : 'SODA_ENERGY';
+        const itemRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
+        if (!itemRow || itemRow.quantity <= 0) {
+          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] });
+        }
+
+        database.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
+        database.run("DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0", [interaction.user.id, interaction.guildId, itemId]);
+
+        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => {});
+
+        await pvpBot.handlePvPAction(interaction, client, customId === 'pvpbot_use_med' ? 'item_med' : 'item_soda');
+        return;
+      }
 
       // Admin Tournament Panel Interactions
       if (customId.startsWith('admin_tournament_')) {
