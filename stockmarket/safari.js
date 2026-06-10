@@ -611,7 +611,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   let updatedMsg;
   try {
     const payload = { embeds: [mainEmbed], components: [actionRow], files: [] };
-    if (interaction.isButton()) {
+    if (interaction && typeof interaction.isButton === 'function' && interaction.isButton()) {
       if (interaction.deferred || interaction.replied) {
         updatedMsg = await interaction.editReply({ ...payload, fetchReply: true });
       } else {
