@@ -5381,55 +5381,55 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 28, 336);
 
   // Status & Parameter Bars
-  const barY = 410;
-  ctx.font = 'bold 28px "Inter", "DejaVu Sans", sans-serif';
+  const barY = 425;
+  ctx.font = 'bold 36px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText('STATUS & PELUANG', colX, barY - 20);
 
   // Catch Chance Bar
-  drawProgressBar(ctx, colX, barY, colW, 58, catchChance, '#F39C12', '#2ECC71', 'PELUANG TANGKAP', `${Math.round(catchChance * 100)}%`);
+  drawProgressBar(ctx, colX, barY, colW, 72, catchChance, '#F39C12', '#2ECC71', 'PELUANG TANGKAP', `${Math.round(catchChance * 100)}%`);
 
   // Escape Risk Bar
   const displayEscape = state.sleepTurns > 0 ? 0 : escapeChance;
-  drawProgressBar(ctx, colX, barY + 82, colW, 58, displayEscape, '#E74C3C', '#C0392B', 'RISIKO KABUR', `${Math.round(displayEscape * 100)}%`);
+  drawProgressBar(ctx, colX, barY + 92, colW, 72, displayEscape, '#E74C3C', '#C0392B', 'RISIKO KABUR', `${Math.round(displayEscape * 100)}%`);
 
   // Gear & Inventory Status
-  const invY = 605;
-  ctx.font = 'bold 28px "Inter", "DejaVu Sans", sans-serif';
+  const invY = 645;
+  ctx.font = 'bold 36px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 18);
+  ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 20);
 
-  drawRoundedRect(ctx, colX, invY, colW, 80, 10);
+  drawRoundedRect(ctx, colX, invY, colW, 90, 10);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.stroke();
 
-  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 26px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 28, invY + 50);
+  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 28, invY + 55);
 
   // Status Badge (Sleep, Alert, etc.)
-  const badgeX = colX + 470;
-  const badgeY = invY + 16;
+  const badgeX = colX + 440;
+  const badgeY = invY + 18;
   ctx.save();
   ctx.beginPath();
   if (state.sleepTurns > 0) {
     ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
     ctx.strokeStyle = '#3498DB';
-    drawRoundedRect(ctx, badgeX, badgeY, 210, 48, 8);
+    drawRoundedRect(ctx, badgeX, badgeY, 240, 54, 8);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#3498DB';
-    ctx.fillText('TERTIDUR', badgeX + 50, badgeY + 32);
+    ctx.fillText('TERTIDUR', badgeX + 60, badgeY + 36);
   } else {
     ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
     ctx.strokeStyle = '#E74C3C';
-    drawRoundedRect(ctx, badgeX, badgeY, 210, 48, 8);
+    drawRoundedRect(ctx, badgeX, badgeY, 240, 54, 8);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#E74C3C';
-    ctx.fillText('WASPADA', badgeX + 50, badgeY + 32);
+    ctx.fillText('WASPADA', badgeX + 60, badgeY + 36);
   }
   ctx.restore();
 
