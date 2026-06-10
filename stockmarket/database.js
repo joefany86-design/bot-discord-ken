@@ -756,6 +756,25 @@ function initSchema() {
         addColumn('auction_items', 'seller_id', 'TEXT DEFAULT NULL');
         addColumn('auction_items', 'pet_details', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 16,
+      description: "Membuat tabel user_pet_pvp_bot untuk Arena Tangga PvP Bot",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS user_pet_pvp_bot (
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            pet_name TEXT NOT NULL,
+            tier TEXT DEFAULT 'BRONZE_V',
+            points INTEGER DEFAULT 0,
+            daily_attempts INTEGER DEFAULT 0,
+            last_attempt_date TEXT DEFAULT '',
+            last_battle_at INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, guild_id, pet_name)
+          )
+        `);
+      }
     }
   ];
 

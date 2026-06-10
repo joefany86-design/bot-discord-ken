@@ -2726,6 +2726,17 @@ module.exports = {
     const speciesInfo = GACHA_SPECIES[pet.pet_type];
     const petRarity = (pet.gacha_rarity || (speciesInfo ? speciesInfo.rarity : 'COMMON')).toUpperCase();
 
+    let pvpTitle = '❌ Belum Terperingkat';
+    try {
+      const pvpState = db.get('SELECT tier, points FROM user_pet_pvp_bot WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [pet.user_id, pet.guild_id, pet.pet_name]);
+      if (pvpState) {
+        const pvpBot = require('./pvpBot');
+        pvpTitle = `${pvpBot.getFriendlyTierName(pvpState.tier)} (${pvpState.tier === 'IMMORTAL' ? `${pvpState.points} LP` : `${pvpState.points}/100 LP`})`;
+      }
+    } catch (e) {
+      console.error('[Embeds] Gagal memuat PvP Bot Title:', e);
+    }
+
     // Warna aksen per kasta raritas pet
     const RARITY_COLORS = {
       COMMON: 0x78909C,
@@ -3044,6 +3055,7 @@ module.exports = {
       `*${flavorText}*\n\n` +
       `🧬 **KARTU TRAINER**\n` +
       `• 👤 Owner: <@${pet.user_id}>\n` +
+      `• 🏆 PvP Rank: ${pvpTitle}\n` +
       `• 🧪 Elemen: \`${elementText}\` · 🌟 Rarity: \`${rarityLabel}\`\n` +
       `• 🧠 Trait: ${traitText}\n` +
       `• 🛡️ Equip: ${accText}\n` +

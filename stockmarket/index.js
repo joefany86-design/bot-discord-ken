@@ -12,6 +12,7 @@ const robbery = require('./robbery');
 const bm = require('./blackmarket');
 const garden = require('./garden');
 const lottery = require('./lottery');
+const pvpBot = require('./pvpBot');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, PermissionsBitField, UserSelectMenuBuilder, AttachmentBuilder } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
@@ -1143,6 +1144,18 @@ function initStockMarket(client) {
     try {
       if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
       let customId = interaction.customId;
+
+      // PvP Bot Arena Interactions
+      if (customId.startsWith('pvpbot_challenge_')) {
+        const parts = customId.split('_');
+        const petName = parts.slice(2).join('_');
+        await pvpBot.startPvPChallenge(interaction, client, petName);
+        return;
+      }
+      if (customId === 'pvpbot_leaderboard') {
+        await pvpBot.showPvPLeaderboard(interaction, client);
+        return;
+      }
 
       // Admin Tournament Panel Interactions
       if (customId.startsWith('admin_tournament_')) {
@@ -5240,6 +5253,11 @@ async function handlePetCommand(message, client, args) {
     } else {
       return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Gunakan:\n👉 \`.pet cup register [nama_pet]\` untuk mendaftarkan/mengubah pet Anda.\n👉 \`.pet cup leave\` untuk keluar dari pendaftaran turnamen.\n👉 \`.pet cup kick [@user]\` untuk mendiskualifikasi/mengeluarkan peserta (Khusus Admin).')] });
     }
+  }
+
+  // ── SUB-PERINTAH: PVPBOT ARENA ──
+  if (subCommand === 'pvpbot' || subCommand === 'arena') {
+    return pvpBot.showPvPArena(message, client);
   }
 
   // ── SUB-PERINTAH: TOWER ──
