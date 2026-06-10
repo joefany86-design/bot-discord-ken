@@ -16,6 +16,19 @@ function releaseLock(client, channelId) {
   }
 }
 
+// Helper untuk merespon interaksi yang mungkin sudah di-defer atau dikirim
+async function safeReply(interaction, payload) {
+  try {
+    if (interaction.deferred || interaction.replied) {
+      return await interaction.followUp(payload);
+    } else {
+      return await interaction.reply(payload);
+    }
+  } catch (err) {
+    console.error('safeReply error:', err);
+  }
+}
+
 // Konfigurasi Biome Safari
 const BIOMES = {
   forest: {
@@ -421,7 +434,7 @@ async function handlePetSafariCommand(message, client, args) {
 
       if (errorMsg) {
         releaseLock(client, message.channelId);
-        return i.reply({ content: errorMsg, flags: 64 });
+        return await safeReply(i, { content: errorMsg, flags: 64 });
       }
 
       // Set Cooldown di SQLite
@@ -436,7 +449,7 @@ async function handlePetSafariCommand(message, client, args) {
       console.error('Error in biome collector:', err);
       deleteSafariState(author.id, guildId);
       releaseLock(client, message.channelId);
-      await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan interaksi atau koneksi.', flags: 64 }).catch(() => {});
+      await safeReply(i, { content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan interaksi atau koneksi.', flags: 64 });
     }
   });
 
@@ -655,7 +668,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
       await handleSafariTurn(iTurn, updatedMsg, state, author, client);
     } catch (err) {
       console.error('Error in Safari turn handling:', err);
-      await iTurn.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
+      await safeReply(iTurn, { content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 });
     }
   });
 
@@ -839,7 +852,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     })();
 
     if (errorMsg) {
-      return interaction.reply({ content: errorMsg, flags: 64 });
+      return await safeReply(interaction, { content: errorMsg, flags: 64 });
     }
 
     state.balls--;
