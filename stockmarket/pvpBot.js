@@ -3,6 +3,7 @@ const db = require('./database');
 const pet = require('./pet');
 const economy = require('./economy');
 const config = require('./config');
+const petCard = require('./petCard');
 
 const TIERS = [
   'BRONZE_V', 'BRONZE_IV', 'BRONZE_III', 'BRONZE_II', 'BRONZE_I',
@@ -12,6 +13,28 @@ const TIERS = [
   'DIAMOND_V', 'DIAMOND_IV', 'DIAMOND_III', 'DIAMOND_II', 'DIAMOND_I',
   'MASTER', 'GRANDMASTER', 'LEGEND', 'IMMORTAL'
 ];
+
+const TIER_TITLES = {
+  GOLD_V: "⚔️ Gladiator Kuning",
+  GOLD_IV: "⚔️ Gladiator Kuning",
+  GOLD_III: "⚔️ Gladiator Kuning",
+  GOLD_II: "⚔️ Gladiator Kuning",
+  GOLD_I: "⚔️ Gladiator Kuning",
+  PLATINUM_V: "🛡️ Iron Defender",
+  PLATINUM_IV: "🛡️ Iron Defender",
+  PLATINUM_III: "🛡️ Iron Defender",
+  PLATINUM_II: "🛡️ Iron Defender",
+  PLATINUM_I: "🛡️ Iron Defender",
+  DIAMOND_V: "💎 Diamond Slayer",
+  DIAMOND_IV: "💎 Diamond Slayer",
+  DIAMOND_III: "💎 Diamond Slayer",
+  DIAMOND_II: "💎 Diamond Slayer",
+  DIAMOND_I: "💎 Diamond Slayer",
+  MASTER: "🔥 Arena Master",
+  GRANDMASTER: "👑 Grand Champion",
+  LEGEND: "⚡ Divine Challenger",
+  IMMORTAL: "✨ Immortal God"
+};
 
 const TIER_NAMES = {
   BRONZE_V: '🥉 Bronze V',
@@ -330,6 +353,20 @@ function getBattleEmbedData(combatData) {
 }
 
 /**
+ * Reset timer timeout 60 detik untuk turn pemain
+ */
+function resetPvPTimeout(combatData, client) {
+  if (combatData.timeout) {
+    clearTimeout(combatData.timeout);
+  }
+  combatData.timeout = setTimeout(async () => {
+    combatData.logs.push(`⏳ **${combatData.player.name}** kehabisan waktu turn (60 detik AFK)!`);
+    combatData.logs.push(`🏳️ **${combatData.player.name}** otomatis menyerah dari pertandingan.`);
+    await endPvPGame(null, client, combatData, 'lose');
+  }, 60000);
+}
+
+/**
  * Memulai tantangan PvP vs Bot interaktif (Ronde 1)
  */
 async function startPvPChallenge(interaction, client, petName) {
@@ -437,12 +474,21 @@ async function startPvPChallenge(interaction, client, petName) {
     };
 
     const payload = getBattleEmbedData(combatData);
+    const vsAttachment = await petCard.getArenaVsCardAttachment(petObj, botOpponent, pvpState.tier);
+    if (vsAttachment) {
+      payload.files = [vsAttachment];
+      payload.embeds[0].setImage('attachment://arena_vs.png');
+    }
     const battleMsg = await interaction.channel.send(payload);
 
     combatData.messageId = battleMsg.id;
+    combatData.channelId = interaction.channel.id;
 
     // Simpan game state di memori
     client.activePvPBotGames.set(user.id, combatData);
+
+    // Mulai timeout turn pertama (60 detik)
+    resetPvPTimeout(combatData, client);
 
     await interaction.followUp({ content: `⚔️ Pertarungan dimulai! Silakan bertindak pada panel tempur di bawah ini.`, flags: 64 }).catch(() => {});
 
@@ -623,14 +669,50 @@ async function handlePvPAction(interaction, client, actionType) {
     return endPvPGame(interaction, client, combatData, 'lose');
   }
 
-  // --- BOT DECISION AI ---
+  // --- BOT DECISION AI (Archetype-based) ---
   let botAction = 'atk';
-  if (b.energy >= 60) {
-    botAction = Math.random() < 0.65 ? 'ult' : 'atk';
-  } else if (b.hp < b.maxHP * 0.30 && p.energy >= 60) {
-    botAction = Math.random() < 0.40 ? 'def' : 'atk';
+  const arch = b.archetype || 'BALANCED';
+
+  if (arch === 'TANKER') {
+    // TANKER: Fokus pertahanan dan bertahan ketika SP penuh, sesekali melepaskan ult
+    if (b.energy >= 60) {
+      const r = Math.random();
+      if (r < 0.20) botAction = 'ult';
+      else if (r < 0.70) botAction = 'def';
+      else botAction = 'atk';
+    } else {
+      // Lebih sering def
+      botAction = Math.random() < 0.50 ? 'def' : 'atk';
+    }
+  } else if (arch === 'GLASS_CANNON') {
+    // GLASS_CANNON: Super agresif! Peluang 0% untuk bertahan. Langsung ult jika SP >= 60.
+    if (b.energy >= 60) {
+      botAction = 'ult';
+    } else {
+      botAction = 'atk';
+    }
+  } else if (arch === 'ASSASSIN') {
+    // ASSASSIN: Jika HP lawan di bawah 30% dan SP >= 60, prioritaskan Ultimate 100% untuk finishing blow.
+    if (p.hp < p.maxHP * 0.30 && b.energy >= 60) {
+      botAction = 'ult';
+    } else if (b.energy >= 60) {
+      const r = Math.random();
+      if (r < 0.70) botAction = 'ult';
+      else if (r < 0.90) botAction = 'atk';
+      else botAction = 'def';
+    } else {
+      botAction = Math.random() < 0.60 ? 'atk' : 'def';
+    }
   } else {
-    botAction = Math.random() < 0.80 ? 'atk' : 'def';
+    // BALANCED (dan default)
+    if (b.energy >= 60) {
+      const r = Math.random();
+      if (r < 0.30) botAction = 'ult';
+      else if (r < 0.70) botAction = 'atk';
+      else botAction = 'def';
+    } else {
+      botAction = Math.random() < 0.60 ? 'atk' : 'def';
+    }
   }
   b.chosenAction = botAction;
   p.chosenAction = actionType;
@@ -704,6 +786,9 @@ async function handlePvPAction(interaction, client, actionType) {
   combatData.turnCount++;
   combatData.isProcessing = false;
 
+  // Reset timer timeout 60 detik untuk turn berikutnya
+  resetPvPTimeout(combatData, client);
+
   // Update embed & buttons
   const payload = getBattleEmbedData(combatData);
   await interaction.message.edit(payload).catch(() => {});
@@ -715,8 +800,15 @@ async function handlePvPAction(interaction, client, actionType) {
 async function endPvPGame(interaction, client, combatData, result) {
   const { guildId, userId } = combatData;
 
+  if (combatData.timeout) {
+    clearTimeout(combatData.timeout);
+    combatData.timeout = null;
+  }
+
   // Bersihkan dari memori game aktif
-  client.activePvPBotGames.delete(userId);
+  if (client.activePvPBotGames) {
+    client.activePvPBotGames.delete(userId);
+  }
 
   const petObj = pet.getPet(userId, guildId);
   const pvpState = getOrCreatePvPState(userId, guildId, combatData.player.name);
@@ -749,10 +841,14 @@ async function endPvPGame(interaction, client, combatData, result) {
       rankChangesText = `📈 LP bertambah **+25 LP** *(Poin sekarang: ${nextPoints}/100 LP)*`;
     }
 
+    const currentHighestIndex = TIERS.indexOf(pvpState.highest_tier_reached || 'BRONZE_V');
+    const newTierIndex = TIERS.indexOf(nextTier);
+    const updatedHighestTier = newTierIndex > currentHighestIndex ? nextTier : (pvpState.highest_tier_reached || 'BRONZE_V');
+
     db.transaction(() => {
       db.run(
-        'UPDATE user_pet_pvp_bot SET tier = ?, points = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
-        [nextTier, nextPoints, userId, guildId, petObj.pet_name]
+        'UPDATE user_pet_pvp_bot SET tier = ?, points = ?, highest_tier_reached = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [nextTier, nextPoints, updatedHighestTier, userId, guildId, petObj.pet_name]
       );
     })();
 
@@ -832,12 +928,27 @@ async function endPvPGame(interaction, client, combatData, result) {
     )
     .setTimestamp();
 
-  await interaction.message.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
+  let messageToEdit = null;
+  if (interaction && interaction.message) {
+    messageToEdit = interaction.message;
+  } else if (combatData.channelId && combatData.messageId) {
+    try {
+      const channel = await client.channels.fetch(combatData.channelId);
+      if (channel) {
+        messageToEdit = await channel.messages.fetch(combatData.messageId);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pvp battle message for timeout:', err);
+    }
+  }
 
-  // Hapus pesan hasil pertarungan setelah 15 detik agar channel tetap bersih
-  setTimeout(async () => {
-    await interaction.message.delete().catch(() => {});
-  }, 15000);
+  if (messageToEdit) {
+    await messageToEdit.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
+    // Hapus pesan hasil pertarungan setelah 15 detik agar channel tetap bersih
+    setTimeout(async () => {
+      await messageToEdit.delete().catch(() => {});
+    }, 15000);
+  }
 }
 
 /**
@@ -909,11 +1020,98 @@ async function showPvPLeaderboard(interaction, client) {
   }
 }
 
+async function resetRankedSeason(client) {
+  try {
+    console.log('[PvP Season Reset] Starting ranked season reset...');
+    const list = db.all(`SELECT * FROM user_pet_pvp_bot`);
+    if (!list || list.length === 0) {
+      console.log('[PvP Season Reset] No players to reset.');
+      return;
+    }
+
+    const sortedList = list.sort((a, b) => {
+      const indexA = TIERS.indexOf(a.tier);
+      const indexB = TIERS.indexOf(b.tier);
+      if (indexB !== indexA) return indexB - indexA;
+      return b.points - a.points;
+    });
+
+    const top3 = sortedList.slice(0, 3);
+    const channelId = '1513187966074490890';
+    
+    let announcementText = `🏆 **RESET RANKED SEASON ARENA PVP BOT** 🏆\n` +
+                           `Musim ini telah resmi berakhir! Terima kasih kepada semua Trainer yang telah berjuang keras.\n\n` +
+                           `👑 **Top 3 Juara Season Ini:**\n`;
+
+    for (let i = 0; i < top3.length; i++) {
+      const row = top3[i];
+      const prizeXp = i === 0 ? 1500 : i === 1 ? 1000 : 500;
+      let username = 'Trainer';
+      try {
+        const discordUser = await client.users.fetch(row.user_id).catch(() => null);
+        if (discordUser) username = discordUser.username;
+      } catch(e) {}
+
+      announcementText += `🏅 **#${i + 1}** - <@${row.user_id}> (${username}) dengan Pet **${row.pet_name}** [Tier: **${getFriendlyTierName(row.tier)}**]\n` +
+                          `   🎁 *Hadiah:* **+${prizeXp} XP Pet**\n`;
+
+      const petObj = pet.getPet(row.user_id, row.guild_id);
+      if (petObj && petObj.pet_name === row.pet_name) {
+        db.transaction(() => {
+          const xpResult = pet.addXp(petObj, prizeXp, pet.getMaxHP(petObj));
+          db.run(
+            `UPDATE user_pets SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+            [xpResult.newXp, xpResult.newLevel, row.user_id, row.guild_id, row.pet_name]
+          );
+        })();
+      }
+    }
+
+    announcementText += `\n📉 **Demosi Season Baru (Seluruh Pemain diturunkan 5 Divisi / 1 Kasta):**\n`;
+
+    db.transaction(() => {
+      for (const row of sortedList) {
+        const currentTierIndex = TIERS.indexOf(row.tier);
+        const nextTierIndex = Math.max(0, currentTierIndex - 5);
+        const nextTier = TIERS[nextTierIndex];
+        
+        db.run(
+          `UPDATE user_pet_pvp_bot SET tier = ?, points = 0 WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [nextTier, row.user_id, row.guild_id, row.pet_name]
+        );
+      }
+    })();
+
+    announcementText += `\n✅ Semua pangkat pemain berhasil didegradasi. Selamat berjuang kembali di Season baru! ⚔️`;
+
+    try {
+      const settingsRow = db.get("SELECT tournament_admin_channel_id FROM ebyus_settings LIMIT 1");
+      const targetChannelId = (settingsRow && settingsRow.tournament_admin_channel_id) ? settingsRow.tournament_admin_channel_id : channelId;
+      const channel = await client.channels.fetch(targetChannelId).catch(() => null);
+      if (channel) {
+        await channel.send({ content: announcementText });
+      }
+    } catch (err) {
+      console.error('[PvP Season Reset] Failed to send announcement:', err);
+    }
+  } catch (err) {
+    console.error('[PvP Season Reset] Error in resetRankedSeason:', err);
+  }
+}
+
+function getCollectibleTitle(highestTier) {
+  if (!highestTier) return null;
+  return TIER_TITLES[highestTier] || null;
+}
+
 module.exports = {
   showPvPArena,
   startPvPChallenge,
   showPvPLeaderboard,
   handlePvPAction,
   getFriendlyTierName,
-  getOrCreatePvPState
+  getOrCreatePvPState,
+  getCollectibleTitle,
+  TIER_TITLES,
+  resetRankedSeason
 };

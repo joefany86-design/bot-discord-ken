@@ -775,6 +775,13 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 17,
+      description: "Menambahkan kolom highest_tier_reached ke user_pet_pvp_bot untuk melacak rekor tier tertinggi",
+      run: () => {
+        addColumn('user_pet_pvp_bot', 'highest_tier_reached', "TEXT DEFAULT 'BRONZE_V'");
+      }
     }
   ];
 

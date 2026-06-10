@@ -1063,6 +1063,18 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // 14. Cron Job: Reset Season Arena PvP Bot (Setiap tanggal 1 pukul 00:00 WIB)
+  cron.schedule('0 0 1 * *', async () => {
+    try {
+      const pvpBot = require('./pvpBot');
+      await pvpBot.resetRankedSeason(client);
+    } catch (err) {
+      console.error('❌ Error executing PvP Arena Season Reset in cron:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 

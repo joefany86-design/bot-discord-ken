@@ -5830,6 +5830,242 @@ async function getExpeditionMapListAttachment(maps) {
   }
 }
 
+async function generateArenaVsCard(playerPet, botPet, tierKey) {
+  const canvas = createCanvas(CARD_WIDTH, 360);
+  const ctx = canvas.getContext('2d');
+
+  // 1. Draw split background
+  // Left half (Player: Blue)
+  const leftGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH / 2, 360);
+  leftGrad.addColorStop(0, '#0a0f24');
+  leftGrad.addColorStop(1, '#1e295d');
+  ctx.fillStyle = leftGrad;
+  ctx.fillRect(0, 0, CARD_WIDTH / 2, 360);
+
+  // Right half (Bot: Purple)
+  const rightGrad = ctx.createLinearGradient(CARD_WIDTH / 2, 0, CARD_WIDTH, 360);
+  rightGrad.addColorStop(0, '#311042');
+  rightGrad.addColorStop(1, '#0c061a');
+  ctx.fillStyle = rightGrad;
+  ctx.fillRect(CARD_WIDTH / 2, 0, CARD_WIDTH / 2, 360);
+
+  // 2. Draw middle diagonal slash
+  ctx.beginPath();
+  ctx.moveTo(CARD_WIDTH / 2 - 40, 0);
+  ctx.lineTo(CARD_WIDTH / 2 + 40, 360);
+  ctx.strokeStyle = '#111122';
+  ctx.lineWidth = 15;
+  ctx.stroke();
+
+  // Glow line
+  ctx.beginPath();
+  ctx.moveTo(CARD_WIDTH / 2 - 40, 0);
+  ctx.lineTo(CARD_WIDTH / 2 + 40, 360);
+  ctx.strokeStyle = '#e040fb';
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = '#e040fb';
+  ctx.stroke();
+  ctx.shadowBlur = 0; // reset shadow
+
+  // 3. Load Images
+  let playerImg = null;
+  let botImg = null;
+  const embeds = require('./embeds');
+
+  try {
+    const playerPetWithDefaults = { status: 'ADULT', level: 10, ...playerPet };
+    const playerImgUrl = embeds.getPetImage(playerPetWithDefaults);
+    if (playerImgUrl) playerImg = await loadImageSafe(playerImgUrl);
+  } catch (e) {
+    console.error('[PetCard] Failed to load player pet image:', e);
+  }
+
+  try {
+    const dummyBot = { pet_type: botPet.pet_type, status: 'ADULT', level: 10 };
+    const botImgUrl = embeds.getPetImage(dummyBot);
+    if (botImgUrl) botImg = await loadImageSafe(botImgUrl);
+  } catch (e) {
+    console.error('[PetCard] Failed to load bot pet image:', e);
+  }
+
+  // 4. Draw Player Pet (Left Side)
+  const pX = 220;
+  const avatarY = 120;
+  const avatarR = 55;
+
+  // Outer glow ring
+  ctx.beginPath();
+  ctx.arc(pX, avatarY, avatarR + 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = '#00e5ff';
+  ctx.fill();
+  ctx.shadowBlur = 0; // reset
+
+  // Avatar Image
+  if (playerImg) {
+    drawCircleAvatar(ctx, playerImg, pX, avatarY, avatarR, '#0f172a', '#00e5ff');
+  } else {
+    ctx.beginPath();
+    ctx.arc(pX, avatarY, avatarR, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e293b';
+    ctx.fill();
+    ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((playerPet.pet_name || 'Pet')[0].toUpperCase(), pX, avatarY);
+  }
+
+  // Label PLAYER
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#00e5ff';
+  ctx.textAlign = 'center';
+  ctx.fillText('🏆 PLAYER', pX, 45);
+
+  // Pet Name
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(playerPet.pet_name || 'My Pet', pX, 205);
+
+  // Element
+  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(`Element: ${playerPet.gacha_element || 'EARTH'}`, pX, 228);
+
+  // Stats Grid 2x2
+  const statYStart = 270;
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.textAlign = 'left';
+
+  // STR
+  ctx.fillStyle = '#f87171';
+  ctx.fillText(`STR: ${playerPet.stat_str || 0}`, pX - 90, statYStart);
+  // DEF
+  ctx.fillStyle = '#60a5fa';
+  ctx.fillText(`DEF: ${playerPet.stat_def || 0}`, pX + 20, statYStart);
+  // VIT
+  ctx.fillStyle = '#34d399';
+  ctx.fillText(`VIT: ${playerPet.stat_vit || 0}`, pX - 90, statYStart + 25);
+  // DEX
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText(`DEX: ${playerPet.stat_dex || 0}`, pX + 20, statYStart + 25);
+
+
+  // 5. Draw Bot Pet (Right Side)
+  const bX = 700;
+
+  // Outer glow ring (Red/Purple)
+  ctx.beginPath();
+  ctx.arc(bX, avatarY, avatarR + 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#f43f5e';
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = '#f43f5e';
+  ctx.fill();
+  ctx.shadowBlur = 0; // reset
+
+  // Avatar Image
+  if (botImg) {
+    drawCircleAvatar(ctx, botImg, bX, avatarY, avatarR, '#0f172a', '#f43f5e');
+  } else {
+    ctx.beginPath();
+    ctx.arc(bX, avatarY, avatarR, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e293b';
+    ctx.fill();
+    ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((botPet.name || 'Bot')[0].toUpperCase(), bX, avatarY);
+  }
+
+  // Label OPPONENT BOT
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#f43f5e';
+  ctx.textAlign = 'center';
+  ctx.fillText('🤖 OPPONENT BOT', bX, 45);
+
+  // Bot Name
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(botPet.name || 'Bot', bX, 205);
+
+  // Bot Archetype Badge
+  const badgeText = botPet.archetype || 'BALANCED';
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  const badgeW = ctx.measureText(badgeText).width + 16;
+  const badgeH = 20;
+  const badgeX = bX - badgeW / 2;
+  const badgeY = 216;
+
+  drawRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, 6);
+  ctx.fillStyle = 'rgba(244,63,94,0.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#f43f5e';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ff8a9d';
+  ctx.textAlign = 'center';
+  ctx.fillText(badgeText, bX, badgeY + 14);
+
+  // Stats Grid 2x2
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.textAlign = 'left';
+
+  // STR
+  ctx.fillStyle = '#f87171';
+  ctx.fillText(`STR: ${botPet.stat_str || 0}`, bX - 90, statYStart);
+  // DEF
+  ctx.fillStyle = '#60a5fa';
+  ctx.fillText(`DEF: ${botPet.stat_def || 0}`, bX + 20, statYStart);
+  // VIT
+  ctx.fillStyle = '#34d399';
+  ctx.fillText(`VIT: ${botPet.stat_vit || 0}`, bX - 90, statYStart + 25);
+  // DEX
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText(`DEX: ${botPet.stat_dex || 0}`, bX + 20, statYStart + 25);
+
+
+  // 6. Draw Center VS
+  ctx.textAlign = 'center';
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = '#e040fb';
+  const vsGrad = ctx.createLinearGradient(CARD_WIDTH / 2 - 20, 120, CARD_WIDTH / 2 + 20, 180);
+  vsGrad.addColorStop(0, '#f5d0fe');
+  vsGrad.addColorStop(0.5, '#e040fb');
+  vsGrad.addColorStop(1, '#86198f');
+  ctx.fillStyle = vsGrad;
+  ctx.font = 'italic bold 56px "DejaVu Sans", sans-serif';
+  ctx.fillText('VS', CARD_WIDTH / 2, 175);
+  ctx.shadowBlur = 0; // reset
+
+  // Tier info label
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.fillStyle = '#e040fb';
+  ctx.fillText((tierKey || 'ARENA LIGA').replace('_', ' '), CARD_WIDTH / 2, 215);
+
+  // Card Outer Border
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, CARD_WIDTH - 4, 356);
+
+  return canvas.toBuffer('image/png');
+}
+
+async function getArenaVsCardAttachment(playerPet, botPet, tierKey) {
+  try {
+    const buffer = await generateArenaVsCard(playerPet, botPet, tierKey);
+    return new AttachmentBuilder(buffer, { name: 'arena_vs.png' });
+  } catch (e) {
+    console.error('[PetCard] Error generating arena VS card attachment:', e);
+    return null;
+  }
+}
+
 module.exports = {
   generatePetCard,
   generatePvpCard,
@@ -5887,6 +6123,8 @@ module.exports = {
   getHeistResultAttachment,
   generateExpeditionMapListCard,
   getExpeditionMapListAttachment,
+  generateArenaVsCard,
+  getArenaVsCardAttachment,
   loadImageSafe,
   RARITY_COLORS,
   ELEMENT_THEMES,

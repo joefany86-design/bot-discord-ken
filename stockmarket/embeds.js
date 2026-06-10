@@ -2728,10 +2728,14 @@ module.exports = {
 
     let pvpTitle = '❌ Belum Terperingkat';
     try {
-      const pvpState = db.get('SELECT tier, points FROM user_pet_pvp_bot WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [pet.user_id, pet.guild_id, pet.pet_name]);
+      const pvpState = db.get('SELECT tier, points, highest_tier_reached FROM user_pet_pvp_bot WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [pet.user_id, pet.guild_id, pet.pet_name]);
       if (pvpState) {
         const pvpBot = require('./pvpBot');
         pvpTitle = `${pvpBot.getFriendlyTierName(pvpState.tier)} (${pvpState.tier === 'IMMORTAL' ? `${pvpState.points} LP` : `${pvpState.points}/100 LP`})`;
+        const collectTitle = pvpBot.getCollectibleTitle(pvpState.highest_tier_reached);
+        if (collectTitle) {
+          pvpTitle = `[${collectTitle}] ` + pvpTitle;
+        }
       }
     } catch (e) {
       console.error('[Embeds] Gagal memuat PvP Bot Title:', e);
