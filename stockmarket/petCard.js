@@ -2001,10 +2001,10 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // ─── Dynamic Canvas Height ───
   const PM = 15;
   const HEADER_H = 115;
-  const LOG_LINE_H = 19;
+  const LOG_LINE_H = 22;
   const LOG_SECTION_H = logsToShow.length > 0 ? (38 + logsToShow.length * LOG_LINE_H + 20) : 10;
   const CHEST_H = hasChest ? 45 : 0;
-  const REWARD_CARD_H = 155;
+  const REWARD_CARD_H = 165;
   const REWARD_GAP = 14;
   const REWARD_SECTION_H = rewardsCount > 0 ? (38 + rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5) : 10;
   const FOOTER_H = hasMvpBeban ? 55 : 35;
@@ -2062,10 +2062,10 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   ctx.strokeStyle = res.success ? 'rgba(0,230,118,0.35)' : 'rgba(213,0,0,0.35)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = res.success ? '#00E676' : '#FF1744';
   ctx.textAlign = 'center';
-  ctx.fillText(res.success ? 'EKSPEDISI BERHASIL' : 'EKSPEDISI GAGAL', cX + pillW / 2, curY + 21);
+  ctx.fillText(res.success ? 'EKSPEDISI BERHASIL' : 'EKSPEDISI GAGAL', cX + pillW / 2, curY + 22);
 
   // Main title
   ctx.textAlign = 'left';
@@ -2077,12 +2077,12 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   ctx.fillText('EKSPEDISI PET SELESAI!', cX, curY + 58);
 
   // Zone name
-  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(cleanText(res.zoneName), cX, curY + 82);
 
   // Stats row
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.fillText(`Tim Lv.${res.teamPower}  ·  Peluang ${res.successRate}%  ·  Elemen: ${element}`, cX, curY + 102);
 
@@ -2101,13 +2101,13 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // SECTION 2: LOG PERJALANAN
   // ═══════════════════════════════════════════════
   if (logsToShow.length > 0) {
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = res.success ? '#69F0AE' : '#FF8A80';
     ctx.textAlign = 'left';
     ctx.fillText('LOG PERJALANAN', cX, curY + 20);
     curY += 33;
 
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '13px "DejaVu Sans", sans-serif';
     for (let i = 0; i < logsToShow.length; i++) {
       let line = logsToShow[i];
 
@@ -2162,7 +2162,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
         if (m) chestWinner = m.user.username;
       } catch (e) {}
     }
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
     ctx.fillText(`PETI KUNO DIBUKA! @${chestWinner} mendapat: ${res.chestDropItem}`, cX + cW / 2, curY + 21);
@@ -2173,7 +2173,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   // SECTION 3: HASIL JARAHAN & STATUS KRU
   // ═══════════════════════════════════════════════
   if (rewardsCount > 0) {
-    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD740';
     ctx.textAlign = 'left';
     ctx.fillText('HASIL JARAHAN & STATUS KRU', cX, curY + 20);
@@ -2205,12 +2205,12 @@ async function generateExpeditionCard(res, mapChoice, guild) {
       ctx.stroke();
 
       // ─── Pet Name ───
-      ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+      ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.textAlign = 'left';
       let pn = r.petName || 'Pet';
       if (pn.length > 20) pn = pn.substring(0, 18) + '..';
-      ctx.fillText(pn, cx + 12, cy + 22);
+      ctx.fillText(pn, cx + 12, cy + 24);
 
       // ─── Owner ───
       let owner = 'Pawang';
@@ -2221,14 +2221,14 @@ async function generateExpeditionCard(res, mapChoice, guild) {
         } catch (e) {}
       }
       if (owner.length > 20) owner = owner.substring(0, 18) + '..';
-      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.font = '12px "DejaVu Sans", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.fillText(`@${owner}`, cx + 12, cy + 37);
+      ctx.fillText(`@${owner}`, cx + 12, cy + 39);
 
       // ─── Separator line ───
       ctx.beginPath();
-      ctx.moveTo(cx + 10, cy + 46);
-      ctx.lineTo(cx + cardW - 10, cy + 46);
+      ctx.moveTo(cx + 10, cy + 48);
+      ctx.lineTo(cx + cardW - 10, cy + 48);
       ctx.strokeStyle = 'rgba(255,255,255,0.07)';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -2236,11 +2236,11 @@ async function generateExpeditionCard(res, mapChoice, guild) {
       // ─── Stat Rows ───
       const lx = cx + 12;
       const vx = cx + cardW - 12;
-      let sy = cy + 63;
-      const srh = 17;
+      let sy = cy + 66;
+      const srh = 19;
 
       const drawStat = (label, value, color) => {
-        ctx.font = '10px "DejaVu Sans", sans-serif';
+        ctx.font = '12px "DejaVu Sans", sans-serif';
         ctx.textAlign = 'left';
         ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillText(label, lx, sy);
@@ -2274,12 +2274,12 @@ async function generateExpeditionCard(res, mapChoice, guild) {
 
       let sDisp = statusRaw;
       if (sDisp.length > 25) sDisp = sDisp.substring(0, 23) + '..';
-      ctx.font = '10px "DejaVu Sans", sans-serif';
+      ctx.font = '12px "DejaVu Sans", sans-serif';
       const sbTextW = ctx.measureText(sDisp).width;
       const sbW = Math.min(cardW - 20, sbTextW + 18);
       const sbX = cx + (cardW - sbW) / 2;
-      const sbY = cy + REWARD_CARD_H - 26;
-      drawRoundedRect(ctx, sbX, sbY, sbW, 20, 10);
+      const sbY = cy + REWARD_CARD_H - 28;
+      drawRoundedRect(ctx, sbX, sbY, sbW, 22, 10);
       ctx.fillStyle = sBg;
       ctx.fill();
       ctx.strokeStyle = sColor + '40';
@@ -2287,7 +2287,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
       ctx.stroke();
       ctx.fillStyle = sColor;
       ctx.textAlign = 'center';
-      ctx.fillText(sDisp, sbX + sbW / 2, sbY + 14);
+      ctx.fillText(sDisp, sbX + sbW / 2, sbY + 15);
     }
 
     curY += rewardRows * (REWARD_CARD_H + REWARD_GAP) + 5;
@@ -2301,7 +2301,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     const footY = curY + 15;
 
     // MVP badge
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     const mvpName = (res.bestPet.petName || '').length > 16 ? res.bestPet.petName.substring(0, 14) + '..' : res.bestPet.petName;
     ctx.fillText(`MVP: ${mvpName} (Lv.${res.bestPet.level})`, EXP_WIDTH / 2 - 130, footY);
@@ -2317,7 +2317,7 @@ async function generateExpeditionCard(res, mapChoice, guild) {
   }
 
   // Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Result', EXP_WIDTH / 2, canvasH - PM - 8);
@@ -2403,39 +2403,39 @@ async function generateExpeditionLobbyCard(initiatorId, selectedMap, participant
   leftY += 42;
 
   // Zone Name
-  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 19px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   const cleanZoneName = selectedMap.name.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
-  ctx.fillText(cleanZoneName, leftX, leftY + 16);
-  leftY += 32;
+  ctx.fillText(cleanZoneName, leftX, leftY + 18);
+  leftY += 34;
 
   // Rec level & element
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 12);
-  ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 28);
-  leftY += 45;
+  ctx.fillText(`Rekomendasi: Lv. ${selectedMap.recommendedLevel}+`, leftX, leftY + 14);
+  ctx.fillText(`Elemen Zona: ${selectedMap.element || 'Normal'}`, leftX, leftY + 32);
+  leftY += 48;
 
   // Success rate progress bar
   const pct = Math.min(1, Math.max(0, successRate / 100));
   const barColorStart = pct > 0.6 ? '#00E676' : pct > 0.3 ? '#FF9800' : '#FF1744';
   const barColorEnd = pct > 0.6 ? '#69F0AE' : pct > 0.3 ? '#FFD54F' : '#FF8A80';
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
   ctx.fillText('PELUANG TIM', leftX, leftY + 12);
-  drawProgressBar(ctx, leftX, leftY + 20, 260, 16, pct, barColorStart, barColorEnd, '', `${successRate}%`);
-  leftY += 55;
+  drawProgressBar(ctx, leftX, leftY + 22, 260, 20, pct, barColorStart, barColorEnd, '', `${successRate}%`);
+  leftY += 58;
 
   // Preparation Countdown timer
   const nowSec = Math.floor(Date.now() / 1000);
   const sisaWaktu = Math.max(0, endTimeUnix - nowSec);
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
   ctx.fillText('BATAS WAKTU PERSIAPAN', leftX, leftY + 12);
 
   const timePct = Math.min(1, Math.max(0, sisaWaktu / 30)); // 30s max lobby duration
-  drawProgressBar(ctx, leftX, leftY + 20, 260, 16, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
-  leftY += 58;
+  drawProgressBar(ctx, leftX, leftY + 22, 260, 20, timePct, '#00E5FF', '#2979FF', '', `${sisaWaktu} Detik`);
+  leftY += 60;
 
   // Leader / Initiator Pawang
   let leaderName = 'Pawang';
@@ -5031,7 +5031,7 @@ async function generateSafariLobbyCard(guildName) {
   ctx.textAlign = 'left';
   ctx.fillText('PET SAFARI ADVENTURE', 85, 70);
 
-  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
   ctx.fillText(`WILAYAH SAFARI LIAR KOSAN 1A • ${guildName.toUpperCase()}`, 85, 88);
 
@@ -5054,7 +5054,7 @@ async function generateSafariLobbyCard(guildName) {
   drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
   ctx.fill();
 
-  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
   ctx.fillText('JELAJAHI WILAYAH SAFARI', col1X + 12, 149);
 
@@ -5087,11 +5087,11 @@ async function generateSafariLobbyCard(guildName) {
   drawPremiumIcon(ctx, 'paw', badgeCX, badgeCY, 48, '#2ECC71');
 
   // Welcome desc text
-  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'center';
-  ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 415);
-  ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 435);
+  ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 422);
+  ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 444);
 
   // ── RIGHT COLUMN: BIOMES LIST ──
   const col2X = 510;
@@ -5100,12 +5100,12 @@ async function generateSafariLobbyCard(guildName) {
   drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
   ctx.fill();
 
-  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
   ctx.fillText('BIOME TERSEDIA', col2X + 12, 149);
 
   const drawBiomeCapsule = (x, y, icon, title, costText, speciesText, iconColor) => {
-    drawRoundedRect(ctx, x, y, colWidth, 72, 8);
+    drawRoundedRect(ctx, x, y, colWidth, 76, 8);
     // Draw a subtle biome specific glowing background instead of plain dark
     const capsuleGrad = ctx.createLinearGradient(x, y, x + colWidth, y);
     capsuleGrad.addColorStop(0, 'rgba(255, 255, 255, 0.01)');
@@ -5119,23 +5119,23 @@ async function generateSafariLobbyCard(guildName) {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    drawPremiumIcon(ctx, icon, x + 24, y + 36, 18, iconColor);
+    drawPremiumIcon(ctx, icon, x + 24, y + 38, 18, iconColor);
 
     // Title
-    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
-    ctx.fillText(title, x + 52, y + 24);
+    ctx.fillText(title, x + 52, y + 26);
 
     // Cost Badge
-    ctx.font = 'bold 9px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = costText === 'GRATIS' ? '#2ECC71' : '#FFD700';
-    ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 52, y + 40);
+    ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 52, y + 44);
 
     // Species
-    ctx.font = 'italic 10px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fillText(`Fauna: ${speciesText}`, x + 52, y + 54);
+    ctx.fillText(`Fauna: ${speciesText}`, x + 52, y + 62);
   };
 
   drawBiomeCapsule(col2X, 172, 'leaf', 'Hutan Hijau (Green Forest)', 'GRATIS', 'Slime, Kucing, Golem', '#2ECC71');
@@ -5151,19 +5151,19 @@ async function generateSafariLobbyCard(guildName) {
   ctx.stroke();
 
   // Footer notice
-  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
   ctx.textAlign = 'center';
-  ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 500, 518);
+  ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 500, 516);
 
   // Bottom corner metadata
-  ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.textAlign = 'left';
-  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 540);
+  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 538);
 
   ctx.textAlign = 'right';
-  ctx.fillText('Biome Lobby Selection', 955, 540);
+  ctx.fillText('Biome Lobby Selection', 955, 538);
 
   return canvas.toBuffer('image/png');
 }
@@ -5266,7 +5266,7 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.textAlign = 'left';
   ctx.fillText('SAFARI WILD ENCOUNTER', 85, 70);
 
-  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = style.accent;
   ctx.fillText(`${style.label} • WILAYAH SAFARI LIAR KOSAN 1A`, 85, 88);
 
@@ -5292,7 +5292,7 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.stroke();
 
   // Name, Rarity & Level
-  ctx.font = 'bold 18px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
   const cleanName = (petObj.typeName || petObj.name || '')
@@ -5301,18 +5301,18 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.fillText(cleanName, colX + 16, 168);
 
   const rarityInfo = RARITY_COLORS[petObj.rarity] || RARITY_COLORS.COMMON;
-  ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = rarityInfo.primary;
-  ctx.fillText(`${petObj.rarity.toUpperCase()} • LEVEL ${petObj.level} • ELEMEN: ${petObj.element}`, colX + 18, 190);
+  ctx.fillText(`${petObj.rarity.toUpperCase()} • LEVEL ${petObj.level} • ELEMEN: ${petObj.element}`, colX + 18, 192);
 
   // Short description
-  ctx.font = 'italic 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 18, 222);
+  ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 18, 224);
 
   // Status & Parameter Bars
   const barY = 260;
-  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText('STATUS & PELUANG', colX, barY - 10);
 
@@ -5325,7 +5325,7 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
 
   // Gear & Inventory Status
   const invY = 370;
-  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 8);
 
@@ -5335,31 +5335,31 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.stroke();
 
-  ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 16, invY + 26);
+  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 16, invY + 27);
 
   // Status Badge (Sleep, Alert, etc.)
-  const badgeX = colX + 330;
-  const badgeY = invY + 11;
+  const badgeX = colX + 320;
+  const badgeY = invY + 9;
   ctx.save();
   ctx.beginPath();
   if (state.sleepTurns > 0) {
     ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
     ctx.strokeStyle = '#3498DB';
-    drawRoundedRect(ctx, badgeX, badgeY, 110, 20, 4);
+    drawRoundedRect(ctx, badgeX, badgeY, 120, 24, 4);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#3498DB';
-    ctx.fillText('TERTIDUR', badgeX + 28, badgeY + 14);
+    ctx.fillText('TERTIDUR', badgeX + 26, badgeY + 16);
   } else {
     ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
     ctx.strokeStyle = '#E74C3C';
-    drawRoundedRect(ctx, badgeX, badgeY, 110, 20, 4);
+    drawRoundedRect(ctx, badgeX, badgeY, 120, 24, 4);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 10px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#E74C3C';
-    ctx.fillText('WASPADA', badgeX + 28, badgeY + 14);
+    ctx.fillText('WASPADA', badgeX + 26, badgeY + 16);
   }
   ctx.restore();
 
@@ -5418,12 +5418,12 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
     const traitY = petCY + petRadius + 15;
     ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
     ctx.strokeStyle = '#FFD700';
-    drawRoundedRect(ctx, traitX, traitY, 150, 24, 6);
+    drawRoundedRect(ctx, traitX, traitY, 150, 28, 6);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
-    ctx.fillText(`TRAIT: ${petObj.trait}`, petCX, traitY + 16);
+    ctx.fillText(`TRAIT: ${petObj.trait}`, petCX, traitY + 18);
     ctx.restore();
   }
 
@@ -5438,19 +5438,19 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   const lastLog = state.logs && state.logs.length > 0 ? state.logs[state.logs.length - 1] : 'Mencari pet liar...';
   const cleanLog = lastLog.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '').replace(/\*\*/g, '').trim();
 
-  ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'center';
   ctx.fillText(cleanLog, 500, 508);
 
   // Bottom corner metadata
-  ctx.font = '10px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.textAlign = 'left';
-  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 535);
+  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 533);
 
   ctx.textAlign = 'right';
-  ctx.fillText(`Giliran: ${state.turns} • Wild Encounter`, 955, 535);
+  ctx.fillText(`Giliran: ${state.turns} • Wild Encounter`, 955, 533);
 
   return canvas.toBuffer('image/png');
 }
