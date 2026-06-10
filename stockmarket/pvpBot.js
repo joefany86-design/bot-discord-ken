@@ -393,9 +393,10 @@ async function startPvPChallenge(interaction, client, petName) {
 
   const pvpState = getOrCreatePvPState(user.id, guildId, petObj.pet_name);
 
-  // Kuota Harian
+  // Kuota Harian (Bypass jika Owner/Developer)
   let usedSoda = false;
-  if (pvpState.daily_attempts >= 5) {
+  const isOwner = user.id === config.OWNER_ID;
+  if (pvpState.daily_attempts >= 5 && !isOwner) {
     const sodaRow = db.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [user.id, guildId]);
     if (!sodaRow || sodaRow.quantity <= 0) {
       return interaction.followUp({
@@ -411,10 +412,12 @@ async function startPvPChallenge(interaction, client, petName) {
       db.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [user.id, guildId]);
     }
 
-    db.run(
-      'UPDATE user_pet_pvp_bot SET daily_attempts = daily_attempts + 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
-      [user.id, guildId, petObj.pet_name]
-    );
+    if (!isOwner) {
+      db.run(
+        'UPDATE user_pet_pvp_bot SET daily_attempts = daily_attempts + 1 WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [user.id, guildId, petObj.pet_name]
+      );
+    }
 
     const botOpponent = generateBotForTier(pvpState.tier);
 
