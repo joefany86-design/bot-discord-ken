@@ -6,9 +6,8 @@ const embeds = require('./embeds');
 const pet = require('./pet');
 const petCard = require('./petCard');
 
-// Cooldown dan Sesi Aktif
+// Mock Map untuk menjaga kompatibilitas ekspor (tidak lagi dipakai untuk state utama)
 const activeSafaris = new Map();
-const safariCooldowns = new Map();
 
 // Helper to release channel lock for Safari
 function releaseLock(client, channelId) {
@@ -60,6 +59,105 @@ const BIOMES = {
     description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Pegasus, Kirin, Behemoth, Archdragon, Typhon*'
   }
 };
+
+// SQLite Helpers untuk State Sesi Aktif
+function loadSafariState(userId, guildId) {
+  try {
+    const row = db.get('SELECT * FROM active_safaris WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    if (!row) return null;
+    return {
+      userId: row.user_id,
+      guildId: row.guild_id,
+      channelId: row.channel_id,
+      biome: row.biome,
+      pet: JSON.parse(row.pet_data),
+      balls: row.balls,
+      baits: row.baits,
+      toys: row.toys,
+      baitFed: row.bait_fed,
+      turns: row.turns,
+      sneakCount: row.sneak_count,
+      sleepTurns: row.sleep_turns,
+      catchBonus: row.catch_bonus,
+      escapeBonus: row.escape_bonus,
+      sneakPenalty: row.sneak_penalty,
+      toyBonus: row.toy_bonus,
+      specialTraitApplied: row.special_trait_applied === 1,
+      weather: row.weather || 'CERAH',
+      logs: JSON.parse(row.logs)
+    };
+  } catch (err) {
+    console.error('Error loading Safari state:', err);
+    return null;
+  }
+}
+
+function saveSafariState(userId, guildId, state) {
+  try {
+    const petData = JSON.stringify(state.pet);
+    const logsData = JSON.stringify(state.logs);
+    const exists = db.get('SELECT 1 FROM active_safaris WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    if (exists) {
+      db.run(`
+        UPDATE active_safaris 
+        SET channel_id = ?, biome = ?, pet_data = ?, balls = ?, baits = ?, toys = ?, bait_fed = ?, 
+            turns = ?, sneak_count = ?, sleep_turns = ?, catch_bonus = ?, escape_bonus = ?, 
+            sneak_penalty = ?, toy_bonus = ?, special_trait_applied = ?, weather = ?, logs = ?
+        WHERE user_id = ? AND guild_id = ?
+      `, [
+        state.channelId, state.biome, petData, state.balls, state.baits, state.toys, state.baitFed,
+        state.turns, state.sneakCount, state.sleepTurns, state.catchBonus, state.escapeBonus,
+        state.sneakPenalty, state.toyBonus, state.specialTraitApplied ? 1 : 0, state.weather, logsData,
+        userId, guildId
+      ]);
+    } else {
+      db.run(`
+        INSERT INTO active_safaris (user_id, guild_id, channel_id, biome, pet_data, balls, baits, toys, bait_fed,
+                                   turns, sneak_count, sleep_turns, catch_bonus, escape_bonus, sneak_penalty,
+                                   toy_bonus, special_trait_applied, weather, logs)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        userId, guildId, state.channelId, state.biome, petData, state.balls, state.baits, state.toys, state.baitFed,
+        state.turns, state.sneakCount, state.sleepTurns, state.catchBonus, state.escapeBonus, state.sneakPenalty,
+        state.toyBonus, state.specialTraitApplied ? 1 : 0, state.weather, logsData
+      ]);
+    }
+  } catch (err) {
+    console.error('Error saving Safari state:', err);
+  }
+}
+
+function deleteSafariState(userId, guildId) {
+  try {
+    db.run('DELETE FROM active_safaris WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+  } catch (err) {
+    console.error('Error deleting Safari state:', err);
+  }
+}
+
+// SQLite Helpers untuk Cooldown
+function getSafariCooldown(userId, guildId) {
+  try {
+    const row = db.get('SELECT cooldown_until FROM safari_cooldowns WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    return row ? row.cooldown_until : 0;
+  } catch (err) {
+    console.error('Error loading Safari cooldown:', err);
+    return 0;
+  }
+}
+
+function setSafariCooldown(userId, guildId, cooldownUntil) {
+  try {
+    const exists = db.get('SELECT 1 FROM safari_cooldowns WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    if (exists) {
+      db.run('UPDATE safari_cooldowns SET cooldown_until = ? WHERE user_id = ? AND guild_id = ?', [cooldownUntil, userId, guildId]);
+    } else {
+      db.run('INSERT INTO safari_cooldowns (user_id, guild_id, cooldown_until) VALUES (?, ?, ?)', [userId, guildId, cooldownUntil]);
+    }
+  } catch (err) {
+    console.error('Error setting Safari cooldown:', err);
+  }
+}
 
 /**
  * Membuat data pet liar secara acak berdasarkan biome
@@ -162,24 +260,48 @@ async function handlePetSafariCommand(message, client, args) {
     return message.reply({ embeds: [embeds.safariChannelRestrictionEmbed()] });
   }
 
-  if (activeSafaris.has(author.id)) {
-    return message.reply({ content: '⚠️ **Sesi Safari Sedang Aktif!** Selesaikan petualangan safari Anda yang sekarang terlebih dahulu!' });
+  // Cek apakah ada sesi safari aktif di database
+  const existingState = loadSafariState(author.id, guildId);
+  if (existingState) {
+    // Verifikasi lock channel terlebih dahulu
+    const safariLocks = client.safariLocks = client.safariLocks || new Map();
+    const lock = safariLocks.get(message.channelId);
+    
+    // Jika lock kadaluwarsa (lebih dari 5 menit), hapus lock lama
+    if (lock && Date.now() > lock.expiresAt) {
+      safariLocks.delete(message.channelId);
+    }
+    
+    if (safariLocks.has(message.channelId) && safariLocks.get(message.channelId).userId !== author.id) {
+      return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
+    }
+    
+    // Pasang lock channel baru
+    safariLocks.set(message.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
+    
+    const replyMsg = await message.reply({ content: '🔄 **Melanjutkan Sesi Safari Sebelumnya yang Belum Selesai...**' });
+    return renderSafariScreen(message, replyMsg, existingState, author, client);
   }
 
-  // Cek Cooldown (3 Menit)
+  // Cek Cooldown (3 Menit) dari database SQLite
   const now = Date.now();
-  const cooldownEnd = safariCooldowns.get(author.id) || 0;
+  const cooldownEnd = getSafariCooldown(author.id, guildId);
   if (now < cooldownEnd) {
     const secondsLeft = Math.ceil((cooldownEnd - now) / 1000);
     return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu **${secondsLeft} detik** lagi.` });
   }
 
-  // Check and set channel lock for Safari
+  // Check and set channel lock for Safari with expiration (5 minutes)
   const safariLocks = client.safariLocks = client.safariLocks || new Map();
   if (safariLocks.has(message.channelId)) {
-    return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
+    const lock = safariLocks.get(message.channelId);
+    if (Date.now() > lock.expiresAt) {
+      safariLocks.delete(message.channelId);
+    } else {
+      return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
+    }
   }
-  safariLocks.set(message.channelId, author.id);
+  safariLocks.set(message.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
 
   // Generate the visual attachment using napi-rs/canvas
   const attachment = await petCard.getSafariLobbyAttachment(message.guild.name);
@@ -229,18 +351,26 @@ async function handlePetSafariCommand(message, client, args) {
 
       if (!biome) return;
 
-      // Cek Koin untuk Biaya Masuk
-      if (biome.cost > 0) {
-        const wallet = economy.getWallet(author.id, guildId);
-        if (wallet.balance < biome.cost) {
-          releaseLock(client, message.channelId);
-          return i.reply({ content: `❌ Saldo koin Anda tidak mencukupi untuk masuk ke biome ini! Dibutuhkan **Rp ${biome.cost.toLocaleString('id-ID')}**.`, flags: 64 });
+      // Cek Koin untuk Biaya Masuk & Potong Koin menggunakan transaksi SQLite yang aman
+      let errorMsg = null;
+      db.transaction(() => {
+        if (biome.cost > 0) {
+          const wallet = economy.getWallet(author.id, guildId);
+          if (wallet.balance < biome.cost) {
+            errorMsg = `❌ Saldo koin Anda tidak mencukupi untuk masuk ke biome ini! Dibutuhkan **Rp ${biome.cost.toLocaleString('id-ID')}**.`;
+            return;
+          }
+          economy.subtractBalance(author.id, guildId, biome.cost, 'PET_SAFARI_ENTRY');
         }
-        economy.subtractBalance(author.id, guildId, biome.cost, 'PET_SAFARI_ENTRY');
+      })();
+
+      if (errorMsg) {
+        releaseLock(client, message.channelId);
+        return i.reply({ content: errorMsg, flags: 64 });
       }
 
-      // Set Cooldown
-      safariCooldowns.set(author.id, Date.now() + 180 * 1000);
+      // Set Cooldown di SQLite
+      setSafariCooldown(author.id, guildId, Date.now() + 180 * 1000);
 
       // Hentikan collector pemilihan biome
       collector.stop();
@@ -249,7 +379,7 @@ async function handlePetSafariCommand(message, client, args) {
       await startSafariEncounter(i, replyMsg, selectedBiomeKey, author, guildId, client);
     } catch (err) {
       console.error('Error in biome collector:', err);
-      activeSafaris.delete(author.id);
+      deleteSafariState(author.id, guildId);
       releaseLock(client, message.channelId);
       await i.reply({ content: '⚠️ **Gagal memulai sesi Safari:** Terjadi kesalahan interaksi atau koneksi.', flags: 64 }).catch(() => {});
     }
@@ -270,6 +400,10 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
   const wildPet = generateWildPet(biomeKey);
   const biome = BIOMES[biomeKey];
 
+  // Acak cuaca biome (CERAH, HUJAN, BADAI, KABUT)
+  const weathers = ['CERAH', 'HUJAN', 'BADAI', 'KABUT'];
+  const weather = weathers[Math.floor(Math.random() * weathers.length)];
+
   // Inisialisasi State Safari
   const state = {
     userId: author.id,
@@ -289,10 +423,11 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
     sneakPenalty: 0,
     toyBonus: 0,
     specialTraitApplied: false,
-    logs: [`🔍 Menjelajahi **${biome.name}**... Menemukan **${wildPet.emoji} ${wildPet.typeName} Liar**!`]
+    weather: weather,
+    logs: [`🔍 Menjelajahi **${biome.name}**... Cuaca: **${weather}**! Menemukan **${wildPet.emoji} ${wildPet.typeName} Liar**!`]
   };
 
-  activeSafaris.set(author.id, state);
+  saveSafariState(author.id, guildId, state);
 
   // Jalankan render update screen
   await renderSafariScreen(interaction, replyMsg, state, author, client);
@@ -304,19 +439,48 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
 async function renderSafariScreen(interaction, replyMsg, state, author, client) {
   const biome = BIOMES[state.biome];
 
-  // Hitung persentase peluang
-  const currentCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus);
-  const currentEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
+  // Hitung persentase peluang dengan pengaruh cuaca dinamis
+  let weatherCatchBonus = 0;
+  let weatherEscapeBonus = 0;
+
+  if (state.weather === 'HUJAN') {
+    if (state.biome === 'abyss') {
+      weatherCatchBonus = 0.10; // Rain bonus for water/abyss
+    } else {
+      weatherEscapeBonus = 0.05; // harder to catch other species in rain
+    }
+  } else if (state.weather === 'BADAI') {
+    weatherEscapeBonus = 0.10; // storm makes pets jumpy
+    weatherCatchBonus = 0.05;  // but also harder to flee quickly
+  } else if (state.weather === 'KABUT') {
+    weatherCatchBonus = -0.05; // Fog reduces catch chance
+  }
+
+  const currentCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus + weatherCatchBonus);
+  const currentEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty + weatherEscapeBonus - (state.baitFed * 0.05));
 
   // Generate the visual attachment using napi-rs/canvas
   const attachment = await petCard.getSafariEncounterAttachment(state.pet, state.biome, currentCatchChance, currentEscapeChance, state);
 
-  // Status Pet Info & Description (Text description is kept brief since card contains detail)
+  // Info cuaca untuk dipajang di deskripsi embed
+  let weatherDesc = '';
+  if (state.weather === 'CERAH') {
+    weatherDesc = '☀️ **Cuaca Cerah:** Suasana damai, tidak ada perubahan status.';
+  } else if (state.weather === 'HUJAN') {
+    weatherDesc = '🌧️ **Cuaca Hujan:** Pet Danau Abyss lebih tenang (+10% peluang tangkap), tetapi pet wilayah lainnya lebih waspada (+5% risiko kabur).';
+  } else if (state.weather === 'BADAI') {
+    weatherDesc = '⛈️ **Cuaca Badai:** Pet liar sangat liar dan stres (+10% risiko kabur), namun sedikit lebih mudah dijerat (+5% peluang tangkap).';
+  } else if (state.weather === 'KABUT') {
+    weatherDesc = '🌫️ **Cuaca Kabut:** Mengendap-endap lebih efektif (+15% sukses mendekat), tetapi mengurangi peluang tangkap (-5% peluang tangkap).';
+  }
+
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
     .setTitle(`🐾 SAFARI ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
     .setDescription(
       `🏞️ **Biome:** ${biome.name}\n` +
+      `⛅ **Cuaca:** ${state.weather}\n` +
+      `ℹ️ ${weatherDesc}\n` +
       `💬 *“${state.pet.description || 'Pet ini terlihat waspada namun penasaran dengan kehadiran Anda.'}”*\n\n` +
       `Gunakan tombol aksi di bawah untuk mendekat, memberi umpan, bermain, atau melempar Safari Ball!`
     )
@@ -324,13 +488,24 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     .setFooter({ text: `Giliran: ${state.turns} | Selesaikan sesi agar cooldown tidak menggantung` })
     .setTimestamp();
 
-  const actionRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('safari_act_throw_ball').setLabel('🥎 Lempar Bola').setStyle(ButtonStyle.Success).setDisabled(state.balls <= 0),
-    new ButtonBuilder().setCustomId('safari_act_feed_bait').setLabel('🍖 Beri Umpan').setStyle(ButtonStyle.Primary).setDisabled(state.baits <= 0),
-    new ButtonBuilder().setCustomId('safari_act_sneak').setLabel('🔎 Dekati Perlahan').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('safari_act_play_toy').setLabel('💫 Goyang Mainan').setStyle(ButtonStyle.Primary).setDisabled(state.toys <= 0),
-    new ButtonBuilder().setCustomId('safari_act_flee').setLabel('🏃‍♂️ Kabur').setStyle(ButtonStyle.Danger)
-  );
+  // Custom UI Row: if throwingBall is active, show the sub-menu balls selector!
+  let actionRow;
+  if (state.throwingBall) {
+    actionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('safari_ball_standard').setLabel('🥎 Standard (Free)').setStyle(ButtonStyle.Success).setDisabled(state.balls <= 0),
+      new ButtonBuilder().setCustomId('safari_ball_great').setLabel('🎴 Great Ball (Rp 50)').setStyle(ButtonStyle.Primary).setDisabled(state.balls <= 0),
+      new ButtonBuilder().setCustomId('safari_ball_ultra').setLabel('🏆 Ultra Ball (Rp 100)').setStyle(ButtonStyle.Danger).setDisabled(state.balls <= 0),
+      new ButtonBuilder().setCustomId('safari_ball_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+    );
+  } else {
+    actionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('safari_act_throw_ball').setLabel('🥎 Lempar Bola').setStyle(ButtonStyle.Success).setDisabled(state.balls <= 0),
+      new ButtonBuilder().setCustomId('safari_act_feed_bait').setLabel('🍖 Beri Umpan').setStyle(ButtonStyle.Primary).setDisabled(state.baits <= 0),
+      new ButtonBuilder().setCustomId('safari_act_sneak').setLabel('🔎 Dekati Perlahan').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('safari_act_play_toy').setLabel('💫 Goyang Mainan').setStyle(ButtonStyle.Primary).setDisabled(state.toys <= 0),
+      new ButtonBuilder().setCustomId('safari_act_flee').setLabel('🏃‍♂️ Kabur').setStyle(ButtonStyle.Danger)
+    );
+  }
 
   let updatedMsg;
   try {
@@ -351,11 +526,15 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
         updatedMsg = await replyMsg.channel.send({ content: `<@${author.id}>`, ...payload });
       } catch (sendErr) {
         console.error('Fatal: Failed to send new Safari message:', sendErr.message);
-        activeSafaris.delete(author.id);
+        deleteSafariState(author.id, state.guildId);
         throw new Error('Tidak dapat mengirim atau memperbarui pesan Safari.');
       }
     }
   }
+
+  // Perbarui channel lock timestamp agar tetap aktif
+  const safariLocks = client.safariLocks = client.safariLocks || new Map();
+  safariLocks.set(state.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
 
   // Buat collector baru untuk giliran ini
   const turnCollector = updatedMsg.createMessageComponentCollector({
@@ -375,7 +554,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
 
   turnCollector.on('end', async (collected, reason) => {
     if (reason === 'time') {
-      activeSafaris.delete(author.id);
+      deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
       await updatedMsg.edit({ content: `⏳ Sesi Safari berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`, embeds: [], components: [], files: [] }).catch(() => {});
     }
@@ -387,6 +566,25 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
  */
 async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   const action = interaction.customId;
+
+  // --- SUBMENU LEMPAR BOLA: PILIH BOLA ---
+  if (action === 'safari_act_throw_ball') {
+    state.throwingBall = true;
+    saveSafariState(author.id, state.guildId, state);
+    return renderSafariScreen(interaction, replyMsg, state, author, client);
+  }
+
+  if (action === 'safari_ball_back') {
+    state.throwingBall = false;
+    saveSafariState(author.id, state.guildId, state);
+    return renderSafariScreen(interaction, replyMsg, state, author, client);
+  }
+
+  // Pastikan flag throwingBall dinonaktifkan jika memilih aksi lain di luar melempar
+  if (state.throwingBall && !action.startsWith('safari_ball_')) {
+    state.throwingBall = false;
+  }
+
   state.turns++;
 
   // Kurangi durasi tidur
@@ -398,16 +596,18 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   }
 
   if (action === 'safari_act_flee') {
-    activeSafaris.delete(author.id);
+    deleteSafariState(author.id, state.guildId);
     releaseLock(client, state.channelId);
     return interaction.update({ content: '🏃‍♂️ Anda melarikan diri dari wilayah safari secara aman.', embeds: [], components: [] });
   }
 
   // --- AKSI: DEKATI PERLAHAN ---
   if (action === 'safari_act_sneak') {
-    // 20% Peluang Kaget & Kabur
-    if (Math.random() < 0.20) {
-      activeSafaris.delete(author.id);
+    // Pengaruh cuaca kabut: mengurangi risiko kaget ketika mendekat
+    const escapeFrightChance = state.weather === 'KABUT' ? 0.05 : 0.20;
+
+    if (Math.random() < escapeFrightChance) {
+      deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
       return interaction.update({
         content: `💨 **Pet Terkejut!** Langkah kaki Anda terlalu berisik. **${state.pet.typeName}** terkejut dan langsung kabur terbirit-birit ke dalam semak-semak!`,
@@ -420,6 +620,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     state.catchBonus += 0.15;
     state.sneakPenalty += 0.08;
     state.logs.push(`🔎 Anda mengendap-endap mendekatinya... Jarak semakin dekat! (+15% Peluang Tangkap, +8% Risiko Kabur)`);
+    saveSafariState(author.id, state.guildId, state);
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 
@@ -447,7 +648,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
-        activeSafaris.delete(author.id);
+        deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Saat Anda menyuapkan umpan, gerakan Anda mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`,
@@ -457,6 +658,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       }
     }
 
+    saveSafariState(author.id, state.guildId, state);
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 
@@ -481,7 +683,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
-        activeSafaris.delete(author.id);
+        deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuatnya takut. **${state.pet.typeName}** terkejut dan langsung kabur!`,
@@ -491,40 +693,92 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       }
     }
 
+    saveSafariState(author.id, state.guildId, state);
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 
-  // --- AKSI: LEMPAR BOLA ---
-  if (action === 'safari_act_throw_ball') {
+  // --- PROSES LEMPAR BOLA (Standard, Great, Ultra) ---
+  if (action.startsWith('safari_ball_')) {
+    const ballType = action.replace('safari_ball_', '');
+    let cost = 0;
+    let ballCatchBonus = 0;
+    let ballName = '';
+
+    if (ballType === 'standard') {
+      cost = 0;
+      ballCatchBonus = 0.0;
+      ballName = 'Standard Ball';
+    } else if (ballType === 'great') {
+      cost = 50;
+      ballCatchBonus = 0.15;
+      ballName = 'Great Ball';
+    } else if (ballType === 'ultra') {
+      cost = 100;
+      ballCatchBonus = 0.35;
+      ballName = 'Ultra Ball';
+    }
+
+    // Validasi saldo koin & kurangi saldo dalam transaksi SQLite
+    let errorMsg = null;
+    db.transaction(() => {
+      if (cost > 0) {
+        const wallet = economy.getWallet(author.id, state.guildId);
+        if (wallet.balance < cost) {
+          errorMsg = `❌ Saldo koin Anda tidak mencukupi untuk membeli **${ballName}**! Dibutuhkan **Rp ${cost}**.`;
+          return;
+        }
+        economy.subtractBalance(author.id, state.guildId, cost, 'PET_SAFARI_BALL_PURCHASE');
+      }
+    })();
+
+    if (errorMsg) {
+      return interaction.reply({ content: errorMsg, flags: 64 });
+    }
+
     state.balls--;
+    state.throwingBall = false;
 
     const biome = BIOMES[state.biome];
-    const finalCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus);
     
-    state.logs.push(`🥎 Anda melempar Safari Ball dengan presisi...`);
+    // Hitung pengaruh cuaca dinamis kembali
+    let weatherCatchBonus = 0;
+    let weatherEscapeBonus = 0;
+    if (state.weather === 'HUJAN') {
+      if (state.biome === 'abyss') weatherCatchBonus = 0.10;
+      else weatherEscapeBonus = 0.05;
+    } else if (state.weather === 'BADAI') {
+      weatherEscapeBonus = 0.10;
+      weatherCatchBonus = 0.05;
+    } else if (state.weather === 'KABUT') {
+      weatherCatchBonus = -0.05;
+    }
+
+    const finalCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus + ballCatchBonus + weatherCatchBonus);
+    
+    state.logs.push(`🥎 Anda melempar ${ballName}...`);
 
     // Cek Keberhasilan Tangkapan
     const roll = Math.random();
     if (roll < finalCatchChance) {
       // BERHASIL TANGKAP!
-      activeSafaris.delete(author.id);
+      deleteSafariState(author.id, state.guildId);
       return handleCaptureSuccess(interaction, replyMsg, state, author, client);
     }
 
     // GAGAL TANGKAP
-    state.logs.push(`❌ Ah! Pet berhasil keluar dari Safari Ball.`);
+    state.logs.push(`❌ Ah! Pet berhasil keluar dari ${ballName}.`);
 
     // Cek apakah terbangun dari tidur (50% peluang)
     if (state.sleepTurns > 0) {
       if (Math.random() < 0.50) {
         state.sleepTurns = 0;
-        state.logs.push(`⚠️ **Terbangun!** Benturan Safari Ball membuatnya terkejut dan terbangun dari tidurnya!`);
+        state.logs.push(`⚠️ **Terbangun!** Benturan ${ballName} membuatnya terkejut dan terbangun dari tidurnya!`);
       }
     }
 
     // Habis Bola = Kalah
     if (state.balls <= 0) {
-      activeSafaris.delete(author.id);
+      deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
       return interaction.update({
         content: `😢 **Safari Ball Habis!** Anda kehabisan bola safari. **${state.pet.typeName}** liar berjalan santai menjauh ke dalam hutan gelap.`,
@@ -535,9 +789,9 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
 
     // Cek Pelarian Pet (Jika tidak sedang tidur)
     if (state.sleepTurns === 0) {
-      const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
+      const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty + weatherEscapeBonus - (state.baitFed * 0.05));
       if (Math.random() < finalEscapeChance) {
-        activeSafaris.delete(author.id);
+        deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
         return interaction.update({
           content: `💨 **Pet Melarikan Diri!** Guncangan bola membuatnya ketakutan. **${state.pet.typeName}** melompat cepat dan menghilang di antara semak-semak!`,
@@ -549,6 +803,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
 
     // Naikkan sedikit kecemasan/kabur pet per turn gagal tangkap
     state.escapeBonus += 0.03;
+    saveSafariState(author.id, state.guildId, state);
     return renderSafariScreen(interaction, replyMsg, state, author, client);
   }
 }
@@ -601,8 +856,12 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
       if (iChoice.customId === 'safari_choice_release') {
         choiceProcessed = true;
         choiceCollector.stop();
-        // --- PROSES RILIS / JUAL HADIAH ---
-        const rewards = executeReleaseRewards(author.id, state.guildId, state.pet);
+
+        // Mengamankan proses rilis pet dengan transaksi SQLite agar koin/item tidak terduplikasi
+        let rewards = null;
+        db.transaction(() => {
+          rewards = executeReleaseRewards(author.id, state.guildId, state.pet);
+        })();
 
         let rewardText = `💰 **Koin Diterima:** **Rp ${rewards.coins.toLocaleString('id-ID')}**\n` +
           `🌟 **XP Pet Utama:** **+${rewards.xp} XP**\n`;
@@ -627,7 +886,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
       }
 
       if (iChoice.customId === 'safari_choice_adopt') {
-        // Cek batasan slot kandang (maksimal 5 pet)
+        // Cek batasan slot kandang (maksimal 5 pet) dengan aman
         const petsCountRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [author.id, state.guildId]);
         const petsCount = petsCountRow ? petsCountRow.count : 0;
 
@@ -672,34 +931,47 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             chosenName = `Liar ${state.pet.name}`;
           }
 
-          // Cek nama duplikat
-          const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [author.id, state.guildId, chosenName]);
-          if (nameExists) {
-            return modalInteraction.reply({ content: `❌ Anda sudah memiliki peliharaan dengan nama **"${chosenName}"**! Silakan coba adopsi lagi dan tentukan nama yang berbeda.`, flags: 64 });
+          // Pengecekan nama duplikat & penyimpanan pet dijamin atomic dengan transaksi DB
+          let adoptError = null;
+          db.transaction(() => {
+            const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [author.id, state.guildId, chosenName]);
+            if (nameExists) {
+              adoptError = `❌ Anda sudah memiliki peliharaan dengan nama **"${chosenName}"**! Silakan coba adopsi lagi dan tentukan nama yang berbeda.`;
+              return;
+            }
+
+            if (choiceProcessed) return;
+            choiceProcessed = true;
+            choiceCollector.stop();
+
+            const nowUnix = Math.floor(Date.now() / 1000);
+            const isActive = petsCount === 0 ? 1 : 0;
+
+            // Trait yang diterapkan
+            let finalTrait = state.pet.trait || '';
+            if (state.specialTraitApplied && !finalTrait) {
+              const traits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
+              finalTrait = traits[Math.floor(Math.random() * traits.length)];
+            }
+
+            db.run(
+              `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
+               VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
+              [author.id, state.guildId, chosenName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, finalTrait, state.pet.rarity, state.pet.gacha_element]
+            );
+
+            logPetAction(state.guildId, author.id, null, chosenName, 'ADOPT_SAFARI', `Mengadopsi pet liar hasil safari spesies ${state.pet.pet_type} (Lv.${state.pet.level})`);
+          })();
+
+          if (adoptError) {
+            return modalInteraction.reply({ content: adoptError, flags: 64 });
           }
 
-          if (choiceProcessed) return;
-          choiceProcessed = true;
-          choiceCollector.stop();
-
-          // Simpan Pet ke Database!
-          const nowUnix = Math.floor(Date.now() / 1000);
-          const isActive = petsCount === 0 ? 1 : 0;
-
-          // Trait yang diterapkan
+          // Trait display text
           let finalTrait = state.pet.trait || '';
           if (state.specialTraitApplied && !finalTrait) {
-            const traits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR'];
-            finalTrait = traits[Math.floor(Math.random() * traits.length)];
+            finalTrait = 'DITENTUKAN';
           }
-
-          db.run(
-            `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
-             VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
-            [author.id, state.guildId, chosenName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, finalTrait, state.pet.rarity, state.pet.gacha_element]
-          );
-
-          logPetAction(state.guildId, author.id, null, chosenName, 'ADOPT_SAFARI', `Mengadopsi pet liar hasil safari spesies ${state.pet.pet_type} (Lv.${state.pet.level})`);
 
           const adoptEmbed = new EmbedBuilder()
             .setColor(0x2ECC71)
@@ -734,11 +1006,13 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             const nowUnix = Math.floor(Date.now() / 1000);
             const isActive = petsCount === 0 ? 1 : 0;
 
-            db.run(
-              `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
-               VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
-              [author.id, state.guildId, defaultName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, state.pet.trait || '', state.pet.rarity, state.pet.gacha_element]
-            );
+            db.transaction(() => {
+              db.run(
+                `INSERT INTO user_pets (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element) 
+                 VALUES (?, ?, ?, ?, 'BABY', ?, 0, 100, 100, 100, 100, ?, 0, ?, ?, ?, 'SAFARI', ?, ?)`,
+                [author.id, state.guildId, defaultName, state.pet.pet_type, state.pet.level, nowUnix, nowUnix, isActive, state.pet.trait || '', state.pet.rarity, state.pet.gacha_element]
+              );
+            })();
 
             const adoptEmbed = new EmbedBuilder()
               .setColor(0x2ECC71)
@@ -765,14 +1039,14 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
 
   choiceCollector.on('end', async (collected, reason) => {
     if (!choiceProcessed) {
-      activeSafaris.delete(author.id);
+      deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
       // Disable buttons on updatedMsg
       const disabledRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('safari_choice_adopt').setLabel('📥 Adopsi').setStyle(ButtonStyle.Success).setDisabled(true),
         new ButtonBuilder().setCustomId('safari_choice_release').setLabel('💰 Rilis & Jual').setStyle(ButtonStyle.Primary).setDisabled(true)
       );
-      await updatedMsg.edit({ content: '⏳ Keputusan adopsi/rilis kedaluwarsa karena tidak ada respon. Pet liar melarikan diri kembali ke hutan!', components: [disabledRow] }).catch(() => {});
+      await updatedMsg.edit({ content: '⏳ Keputusan adopsi/rilis kedaluwarsa karena tidak ada respon. Pet liar melarikan diri kembali ku hutan!', components: [disabledRow] }).catch(() => {});
     }
   });
 }

@@ -113,8 +113,8 @@ async function loadImageSafe(url) {
     if (!buffer) return null;
 
     const img = await loadImage(buffer);
-    // Cache (max 50 entries)
-    if (imageCache.size > 50) {
+    // Cache (max 250 entries)
+    if (imageCache.size > 250) {
       const firstKey = imageCache.keys().next().value;
       imageCache.delete(firstKey);
     }

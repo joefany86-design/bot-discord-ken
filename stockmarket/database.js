@@ -782,6 +782,45 @@ function initSchema() {
       run: () => {
         addColumn('user_pet_pvp_bot', 'highest_tier_reached', "TEXT DEFAULT 'BRONZE_V'");
       }
+    },
+    {
+      version: 18,
+      description: "Membuat tabel active_safaris dan safari_cooldowns untuk sistem Pet Safari persisten",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS active_safaris (
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            biome TEXT NOT NULL,
+            pet_data TEXT NOT NULL,
+            balls INTEGER DEFAULT 5,
+            baits INTEGER DEFAULT 3,
+            toys INTEGER DEFAULT 3,
+            bait_fed INTEGER DEFAULT 0,
+            turns INTEGER DEFAULT 0,
+            sneak_count INTEGER DEFAULT 0,
+            sleep_turns INTEGER DEFAULT 0,
+            catch_bonus REAL DEFAULT 0.0,
+            escape_bonus REAL DEFAULT 0.0,
+            sneak_penalty REAL DEFAULT 0.0,
+            toy_bonus REAL DEFAULT 0.0,
+            special_trait_applied INTEGER DEFAULT 0,
+            weather TEXT DEFAULT 'CERAH',
+            logs TEXT NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s','now')),
+            PRIMARY KEY (user_id, guild_id)
+          )
+        `);
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS safari_cooldowns (
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            cooldown_until INTEGER NOT NULL,
+            PRIMARY KEY (user_id, guild_id)
+          )
+        `);
+      }
     }
   ];
 
