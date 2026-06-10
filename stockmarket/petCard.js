@@ -5050,8 +5050,8 @@ async function getAdminDashboardAttachment(client, stats) {
  * Generate premium card for Pet Safari biome selection lobby
  */
 async function generateSafariLobbyCard(guildName) {
-  const CARD_WIDTH = 1000;
-  const CARD_HEIGHT = 560;
+  const CARD_WIDTH = 1200;
+  const CARD_HEIGHT = 680;
 
   const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
   const ctx = canvas.getContext('2d');
@@ -5077,8 +5077,8 @@ async function generateSafariLobbyCard(guildName) {
   ctx.globalAlpha = 1.0;
 
   // Main Card Container
-  const margin = 20;
-  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  const margin = 25;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 24);
   ctx.fillStyle = 'rgba(6, 18, 10, 0.85)';
   ctx.fill();
 
@@ -5092,46 +5092,46 @@ async function generateSafariLobbyCard(guildName) {
   ctx.stroke();
 
   // Header Title
-  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 30px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
-  ctx.fillText('PET SAFARI ADVENTURE', 85, 70);
+  ctx.fillText('PET SAFARI ADVENTURE', 95, 80);
 
-  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
-  ctx.fillText(`WILAYAH SAFARI LIAR KOSAN 1A • ${guildName.toUpperCase()}`, 85, 88);
+  ctx.fillText(`WILAYAH SAFARI LIAR KOSAN 1A • ${guildName.toUpperCase()}`, 95, 104);
 
   // Paw icon in header
-  drawPremiumIcon(ctx, 'paw', 50, 68, 24, '#2ECC71');
+  drawPremiumIcon(ctx, 'paw', 55, 82, 30, '#2ECC71');
 
   // Header separator line
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(40, 115);
-  ctx.lineTo(960, 115);
+  ctx.moveTo(50, 135);
+  ctx.lineTo(1150, 135);
   ctx.stroke();
 
   // ── LEFT COLUMN: WELCOME BADGE ──
-  const col1X = 45;
-  const colWidth = 445;
+  const col1X = 50;
+  const colWidth = 530;
 
   ctx.fillStyle = '#2ECC71';
-  drawRoundedRect(ctx, col1X, 135, 4, 18, 2);
+  drawRoundedRect(ctx, col1X, 160, 5, 22, 2.5);
   ctx.fill();
 
-  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 20px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#2ECC71';
-  ctx.fillText('JELAJAHI WILAYAH SAFARI', col1X + 12, 149);
+  ctx.fillText('JELAJAHI WILAYAH SAFARI', col1X + 16, 178);
 
   // Large circular badge
   const badgeCX = col1X + colWidth / 2;
-  const badgeCY = 295;
-  const badgeRadius = 75;
+  const badgeCY = 360;
+  const badgeRadius = 95;
 
   // Outer glow ring
   ctx.beginPath();
-  ctx.arc(badgeCX, badgeCY, badgeRadius + 12, 0, Math.PI * 2);
+  ctx.arc(badgeCX, badgeCY, badgeRadius + 15, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(46, 204, 113, 0.15)';
   ctx.lineWidth = 4;
   ctx.stroke();
@@ -5150,28 +5150,28 @@ async function generateSafariLobbyCard(guildName) {
   ctx.fill();
 
   // Large paw icon inside badge
-  drawPremiumIcon(ctx, 'paw', badgeCX, badgeCY, 48, '#2ECC71');
+  drawPremiumIcon(ctx, 'paw', badgeCX, badgeCY, 60, '#2ECC71');
 
   // Welcome desc text
-  ctx.font = '14px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'center';
-  ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 422);
-  ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 444);
+  ctx.fillText('Temukan dan tangkap berbagai spesies pet liar legendaris!', badgeCX, 495);
+  ctx.fillText('Persiapkan Safari Ball Anda sebelum menjelajah.', badgeCX, 520);
 
   // ── RIGHT COLUMN: BIOMES LIST ──
-  const col2X = 510;
+  const col2X = 620;
 
   ctx.fillStyle = '#FFD700';
-  drawRoundedRect(ctx, col2X, 135, 4, 18, 2);
+  drawRoundedRect(ctx, col2X, 160, 5, 22, 2.5);
   ctx.fill();
 
-  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 20px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
-  ctx.fillText('BIOME TERSEDIA', col2X + 12, 149);
+  ctx.fillText('BIOME TERSEDIA', col2X + 16, 178);
 
   const drawBiomeCapsule = (x, y, icon, title, costText, speciesText, iconColor) => {
-    drawRoundedRect(ctx, x, y, colWidth, 76, 8);
+    drawRoundedRect(ctx, x, y, colWidth, 90, 10);
     // Draw a subtle biome specific glowing background instead of plain dark
     const capsuleGrad = ctx.createLinearGradient(x, y, x + colWidth, y);
     capsuleGrad.addColorStop(0, 'rgba(255, 255, 255, 0.01)');
@@ -5185,51 +5185,51 @@ async function generateSafariLobbyCard(guildName) {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    drawPremiumIcon(ctx, icon, x + 24, y + 38, 18, iconColor);
+    drawPremiumIcon(ctx, icon, x + 30, y + 45, 22, iconColor);
 
     // Title
-    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
-    ctx.fillText(title, x + 52, y + 26);
+    ctx.fillText(title, x + 64, y + 30);
 
     // Cost Badge
-    ctx.font = 'bold 11px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = costText === 'GRATIS' ? '#2ECC71' : '#FFD700';
-    ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 52, y + 44);
+    ctx.fillText(costText === 'GRATIS' ? 'GRATIS' : `Biaya: ${costText}`, x + 64, y + 52);
 
     // Species
-    ctx.font = 'italic 12px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'italic 14px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fillText(`Fauna: ${speciesText}`, x + 52, y + 62);
+    ctx.fillText(`Fauna: ${speciesText}`, x + 64, y + 74);
   };
 
-  drawBiomeCapsule(col2X, 172, 'leaf', 'Hutan Hijau (Green Forest)', 'GRATIS', 'Slime, Kucing, Golem', '#2ECC71');
-  drawBiomeCapsule(col2X, 252, 'fire', 'Lembah Volcanic (Volcanic Valley)', 'Rp 150', 'Naga, Phoenix, Kitsune, Behemoth...', '#E74C3C');
-  drawBiomeCapsule(col2X, 332, 'wave', 'Danau Abyss (Abyss Lake)', 'Rp 150', 'Kura-Kura, Siren, Yeti, Leviathan...', '#3498DB');
-  drawBiomeCapsule(col2X, 412, 'mountain', 'Pegunungan Kuno (Ancient Peak)', 'Rp 250', 'Pegasus, Kirin, Behemoth, Archdragon...', '#9B59B6');
+  drawBiomeCapsule(col2X, 200, 'leaf', 'Hutan Hijau (Green Forest)', 'GRATIS', 'Slime, Kucing, Golem', '#2ECC71');
+  drawBiomeCapsule(col2X, 300, 'fire', 'Lembah Volcanic (Volcanic Valley)', 'Rp 150', 'Naga, Phoenix, Kitsune, Behemoth...', '#E74C3C');
+  drawBiomeCapsule(col2X, 400, 'wave', 'Danau Abyss (Abyss Lake)', 'Rp 150', 'Kura-Kura, Siren, Yeti, Leviathan...', '#3498DB');
+  drawBiomeCapsule(col2X, 500, 'mountain', 'Pegunungan Kuno (Ancient Peak)', 'Rp 250', 'Pegasus, Kirin, Behemoth, Archdragon...', '#9B59B6');
 
   // Footer separator
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.beginPath();
-  ctx.moveTo(40, 498);
-  ctx.lineTo(960, 498);
+  ctx.moveTo(50, 610);
+  ctx.lineTo(1150, 610);
   ctx.stroke();
 
   // Footer notice
-  ctx.font = 'italic 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 15px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFD700';
   ctx.textAlign = 'center';
-  ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 500, 516);
+  ctx.fillText('Pilih biome wilayah yang ingin Anda jelajahi di bawah ini.', 600, 630);
 
   // Bottom corner metadata
-  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.textAlign = 'left';
-  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 538);
+  ctx.fillText('Kosan 1A • Safari Wilderness', 50, 655);
 
   ctx.textAlign = 'right';
-  ctx.fillText('Biome Lobby Selection', 955, 538);
+  ctx.fillText('Biome Lobby Selection', 1150, 655);
 
   return canvas.toBuffer('image/png');
 }
@@ -5248,8 +5248,8 @@ async function getSafariLobbyAttachment(guildName) {
  * Generate premium card for active Pet Safari encounter
  */
 async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escapeChance, state) {
-  const CARD_WIDTH = 1000;
-  const CARD_HEIGHT = 560;
+  const CARD_WIDTH = 1200;
+  const CARD_HEIGHT = 680;
 
   const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
   const ctx = canvas.getContext('2d');
@@ -5305,15 +5305,15 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.globalAlpha = 1.0;
 
   // Outer radial ambient glow from right where pet is
-  const radGlow = ctx.createRadialGradient(750, 260, 50, 750, 260, 250);
+  const radGlow = ctx.createRadialGradient(885, 330, 60, 885, 330, 300);
   radGlow.addColorStop(0, `${style.accent}1F`); // 12% alpha
   radGlow.addColorStop(1, 'transparent');
   ctx.fillStyle = radGlow;
-  ctx.fillRect(500, 50, 500, 420);
+  ctx.fillRect(600, 50, 600, 520);
 
   // Container
-  const margin = 20;
-  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 20);
+  const margin = 25;
+  drawRoundedRect(ctx, margin, margin, CARD_WIDTH - margin * 2, CARD_HEIGHT - margin * 2, 24);
   ctx.fillStyle = 'rgba(6, 10, 8, 0.85)';
   ctx.fill();
 
@@ -5326,125 +5326,125 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
-  // Header
-  ctx.font = 'bold 24px "Inter", "DejaVu Sans", sans-serif';
+  // Header Title
+  ctx.font = 'bold 30px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
-  ctx.fillText('SAFARI WILD ENCOUNTER', 85, 70);
+  ctx.fillText('SAFARI WILD ENCOUNTER', 95, 80);
 
-  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = style.accent;
-  ctx.fillText(`${style.label} • WILAYAH SAFARI LIAR KOSAN 1A`, 85, 88);
+  ctx.fillText(`${style.label} • WILAYAH SAFARI LIAR KOSAN 1A`, 95, 104);
 
-  drawPremiumIcon(ctx, style.icon, 50, 68, 24, style.accent);
+  drawPremiumIcon(ctx, style.icon, 55, 82, 30, style.accent);
 
   // Header separator
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(40, 115);
-  ctx.lineTo(960, 115);
+  ctx.moveTo(50, 135);
+  ctx.lineTo(1150, 135);
   ctx.stroke();
 
   // ── LEFT SIDE: STATUS AND BARS ──
   const colX = 50;
-  const colW = 460;
+  const colW = 530;
 
   // Pet Meta & Description Box
-  drawRoundedRect(ctx, colX, 135, colW, 105, 8);
+  drawRoundedRect(ctx, colX, 150, colW, 120, 10);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctx.stroke();
 
   // Name, Rarity & Level
-  ctx.font = 'bold 22px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 26px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'left';
   const cleanName = (petObj.typeName || petObj.name || '')
     .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '')
     .trim();
-  ctx.fillText(cleanName, colX + 16, 168);
+  ctx.fillText(cleanName, colX + 20, 188);
 
   const rarityInfo = RARITY_COLORS[petObj.rarity] || RARITY_COLORS.COMMON;
-  ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = rarityInfo.primary;
-  ctx.fillText(`${petObj.rarity.toUpperCase()} • LEVEL ${petObj.level} • ELEMEN: ${petObj.element}`, colX + 18, 192);
+  ctx.fillText(`${petObj.rarity.toUpperCase()} • LEVEL ${petObj.level} • ELEMEN: ${petObj.element}`, colX + 22, 216);
 
   // Short description
-  ctx.font = 'italic 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 15px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 18, 224);
+  ctx.fillText(`"${petObj.description || 'Spesies liar tangguh dan sangat waspada.'}"`, colX + 22, 252);
 
   // Status & Parameter Bars
-  const barY = 260;
-  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+  const barY = 305;
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('STATUS & PELUANG', colX, barY - 10);
+  ctx.fillText('STATUS & PELUANG', colX, barY - 12);
 
   // Catch Chance Bar
-  drawProgressBar(ctx, colX, barY, colW, 28, catchChance, '#F39C12', '#2ECC71', 'PELUANG TANGKAP', `${Math.round(catchChance * 100)}%`);
+  drawProgressBar(ctx, colX, barY, colW, 32, catchChance, '#F39C12', '#2ECC71', 'PELUANG TANGKAP', `${Math.round(catchChance * 100)}%`);
 
   // Escape Risk Bar
   const displayEscape = state.sleepTurns > 0 ? 0 : escapeChance;
-  drawProgressBar(ctx, colX, barY + 44, colW, 28, displayEscape, '#E74C3C', '#C0392B', 'RISIKO KABUR', `${Math.round(displayEscape * 100)}%`);
+  drawProgressBar(ctx, colX, barY + 52, colW, 32, displayEscape, '#E74C3C', '#C0392B', 'RISIKO KABUR', `${Math.round(displayEscape * 100)}%`);
 
   // Gear & Inventory Status
-  const invY = 370;
-  ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
+  const invY = 440;
+  ctx.font = 'bold 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 8);
+  ctx.fillText('PERLENGKAPAN SAFARI', colX, invY - 10);
 
-  drawRoundedRect(ctx, colX, invY, colW, 42, 6);
+  drawRoundedRect(ctx, colX, invY, colW, 50, 8);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.stroke();
 
-  ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 15px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 16, invY + 27);
+  ctx.fillText(`Safari Ball: ${state.balls}/5   Bait: ${state.baits}/3   Mainan: ${state.toys}/3`, colX + 20, invY + 31);
 
   // Status Badge (Sleep, Alert, etc.)
-  const badgeX = colX + 320;
-  const badgeY = invY + 9;
+  const badgeX = colX + 370;
+  const badgeY = invY + 11;
   ctx.save();
   ctx.beginPath();
   if (state.sleepTurns > 0) {
     ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
     ctx.strokeStyle = '#3498DB';
-    drawRoundedRect(ctx, badgeX, badgeY, 120, 24, 4);
+    drawRoundedRect(ctx, badgeX, badgeY, 140, 28, 6);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#3498DB';
-    ctx.fillText('TERTIDUR', badgeX + 26, badgeY + 16);
+    ctx.fillText('TERTIDUR', badgeX + 32, badgeY + 19);
   } else {
     ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
     ctx.strokeStyle = '#E74C3C';
-    drawRoundedRect(ctx, badgeX, badgeY, 120, 24, 4);
+    drawRoundedRect(ctx, badgeX, badgeY, 140, 28, 6);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 12px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#E74C3C';
-    ctx.fillText('WASPADA', badgeX + 26, badgeY + 16);
+    ctx.fillText('WASPADA', badgeX + 32, badgeY + 19);
   }
   ctx.restore();
 
   // ── RIGHT SIDE: PET ILLUSTRATION AND GLOW ──
-  const petCX = 740;
-  const petCY = 280;
-  const petRadius = 110;
+  const petCX = 885;
+  const petCY = 330;
+  const petRadius = 135;
 
   // Outer premium aura/ring
   ctx.beginPath();
-  ctx.arc(petCX, petCY, petRadius + 15, 0, Math.PI * 2);
+  ctx.arc(petCX, petCY, petRadius + 18, 0, Math.PI * 2);
   ctx.strokeStyle = `${rarityInfo.primary}33`; // Rarity glow color
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 6;
   ctx.stroke();
 
   ctx.beginPath();
   ctx.arc(petCX, petCY, petRadius, 0, Math.PI * 2);
   ctx.strokeStyle = rarityInfo.primary;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.stroke();
 
   // Draw background image or avatar placeholder
@@ -5464,7 +5464,7 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
     ctx.clip();
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(petCX - petRadius, petCY - petRadius, petRadius * 2, petRadius * 2);
-    ctx.drawImage(petImg, petCX - petRadius + 10, petCY - petRadius + 10, (petRadius - 10) * 2, (petRadius - 10) * 2);
+    ctx.drawImage(petImg, petCX - petRadius + 12, petCY - petRadius + 12, (petRadius - 12) * 2, (petRadius - 12) * 2);
     ctx.restore();
   } else {
     // Default silhouette
@@ -5473,50 +5473,50 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
     ctx.arc(petCX, petCY, petRadius - 2, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
     ctx.fill();
-    drawPremiumIcon(ctx, 'paw', petCX, petCY, 60, `${style.accent}44`);
+    drawPremiumIcon(ctx, 'paw', petCX, petCY, 75, `${style.accent}44`);
     ctx.restore();
   }
 
   // Trait indicator (if any)
   if (petObj.trait) {
     ctx.save();
-    const traitX = petCX - 75;
-    const traitY = petCY + petRadius + 15;
+    const traitX = petCX - 90;
+    const traitY = petCY + petRadius + 20;
     ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
     ctx.strokeStyle = '#FFD700';
-    drawRoundedRect(ctx, traitX, traitY, 150, 28, 6);
+    drawRoundedRect(ctx, traitX, traitY, 180, 32, 8);
     ctx.fill(); ctx.stroke();
-    ctx.font = 'bold 13px "Inter", "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "Inter", "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
-    ctx.fillText(`TRAIT: ${petObj.trait}`, petCX, traitY + 18);
+    ctx.fillText(`TRAIT: ${petObj.trait}`, petCX, traitY + 20);
     ctx.restore();
   }
 
   // Footer separator
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.beginPath();
-  ctx.moveTo(40, 485);
-  ctx.lineTo(960, 485);
+  ctx.moveTo(50, 600);
+  ctx.lineTo(1150, 600);
   ctx.stroke();
 
   // Bottom text/status logs (show last log line)
   const lastLog = state.logs && state.logs.length > 0 ? state.logs[state.logs.length - 1] : 'Mencari pet liar...';
   const cleanLog = lastLog.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '').replace(/\*\*/g, '').trim();
 
-  ctx.font = 'italic 14px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 16px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.textAlign = 'center';
-  ctx.fillText(cleanLog, 500, 508);
+  ctx.fillText(cleanLog, 600, 625);
 
   // Bottom corner metadata
-  ctx.font = '12px "Inter", "DejaVu Sans", sans-serif';
+  ctx.font = '13px "Inter", "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.textAlign = 'left';
-  ctx.fillText('Kosan 1A • Safari Wilderness', 45, 533);
+  ctx.fillText('Kosan 1A • Safari Wilderness', 50, 655);
 
   ctx.textAlign = 'right';
-  ctx.fillText(`Giliran: ${state.turns} • Wild Encounter`, 955, 533);
+  ctx.fillText(`Giliran: ${state.turns} • Wild Encounter`, 1150, 655);
 
   return canvas.toBuffer('image/png');
 }
