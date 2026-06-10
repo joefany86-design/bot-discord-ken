@@ -1989,10 +1989,73 @@ async function generateExpeditionCard(res, mapChoice, guild) {
     .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u27BF]|\uD83E[\uDD00-\uDFFF]|\uD83F[\uDC00-\uDFFF]|\u200D|\uFE0F|\uFE0E/g, '')
     .replace(/\*\*/g, '').replace(/^[>•]\s*/, '').trim();
 
-  // ─── Data Preparation ───
-  const logs = (res.logs || []).map(l => cleanText(l)).filter(l => l.length > 0);
+  // Helper to resolve Discord user mentions to readable names
+  const resolveMentions = (t) => {
+    return (t || '').replace(/<@(\d+)>/g, (match, userId) => {
+      if (guild) {
+        try {
+          const member = guild.members.cache.get(userId);
+          if (member) return `@${member.user.username}`;
+        } catch (e) {}
+      }
+      return '@Pawang';
+    });
+  };
+
+  // Helper to wrap text
+  const wrapText = (text, context, maxWidth) => {
+    const words = (text || '').split(' ').filter(w => w.length > 0);
+    if (words.length === 0) return [];
+    const lines = [];
+    let currentLine = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const testLine = currentLine + ' ' + word;
+      const width = context.measureText(testLine).width;
+      if (width < maxWidth) {
+        currentLine = testLine;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    return lines;
+  };
+
+  // ─── Data Preparation & Wrapping ───
+  const processedLogs = [];
+  const tempCanvas = createCanvas(1, 1);
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.font = '13px "DejaVu Sans", sans-serif';
+  const MAX_LOG_WIDTH = 800; // Leaving safe room within card width (830px)
+
+  for (let logIdx = 0; logIdx < (res.logs || []).length; logIdx++) {
+    const rawLogItem = res.logs[logIdx];
+    const textWithMentions = resolveMentions(rawLogItem);
+    const rawSubLines = textWithMentions.split('\n');
+    
+    let isFirstForThisItem = true;
+    for (let subLineIdx = 0; subLineIdx < rawSubLines.length; subLineIdx++) {
+      const subLine = rawSubLines[subLineIdx];
+      const cleanedSubLine = cleanText(subLine);
+      if (!cleanedSubLine) continue;
+
+      const wrapped = wrapText(cleanedSubLine, tempCtx, MAX_LOG_WIDTH);
+      for (let wIdx = 0; wIdx < wrapped.length; wIdx++) {
+        processedLogs.push({
+          text: wrapped[wIdx],
+          isFirst: isFirstForThisItem,
+          parentLogItem: rawLogItem
+        });
+        isFirstForThisItem = false;
+      }
+    }
+  }
+
   const rewards = res.rewards || [];
-  const logsToShow = logs.slice(0, 8);
+  // Slice to a reasonable max number of log lines to prevent overflow (e.g. 10 wrapped lines max)
+  const logsToShow = processedLogs.slice(0, 10);
   const rewardsCount = rewards.length;
   const rewardRows = Math.ceil(Math.max(1, rewardsCount) / 3);
   const hasChest = res.chestAwardedUser && res.chestDropItem;
@@ -2109,24 +2172,25 @@ async function generateExpeditionCard(res, mapChoice, guild) {
 
     ctx.font = '13px "DejaVu Sans", sans-serif';
     for (let i = 0; i < logsToShow.length; i++) {
-      let line = logsToShow[i];
+      const item = logsToShow[i];
 
-      // Color-code dots based on content
-      let dotColor = 'rgba(255,255,255,0.35)';
-      if (/keuntungan|berhasil|bonus|sukses|menaklukan|disita/i.test(line)) dotColor = '#69F0AE';
-      else if (/kelemahan|gagal|terluka|meledak|kerugian/i.test(line)) dotColor = '#FF8A80';
-      else if (/jalur|kejadian|air terjun|peti|menyusup|meminum/i.test(line)) dotColor = '#FFD740';
+      // Draw colored indicator dot ONLY if it is the first line of a log item
+      if (item.isFirst) {
+        // Color-code dots based on content of the original log item
+        let dotColor = 'rgba(255,255,255,0.35)';
+        const testText = item.parentLogItem;
+        if (/keuntungan|berhasil|bonus|sukses|menaklukan|disita/i.test(testText)) dotColor = '#69F0AE';
+        else if (/kelemahan|gagal|terluka|meledak|kerugian/i.test(testText)) dotColor = '#FF8A80';
+        else if (/jalur|kejadian|air terjun|peti|menyusup|meminum/i.test(testText)) dotColor = '#FFD740';
 
-      // Draw colored indicator dot
-      ctx.beginPath();
-      ctx.arc(cX + 4, curY - 3, 3, 0, Math.PI * 2);
-      ctx.fillStyle = dotColor;
-      ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cX + 4, curY - 3, 3, 0, Math.PI * 2);
+        ctx.fillStyle = dotColor;
+        ctx.fill();
+      }
 
-      // Truncate long lines
-      if (line.length > 100) line = line.substring(0, 97) + '...';
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText(line, cX + 14, curY);
+      ctx.fillText(item.text, cX + 14, curY);
       curY += LOG_LINE_H;
     }
     curY += 15;
