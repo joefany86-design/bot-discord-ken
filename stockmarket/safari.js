@@ -402,7 +402,7 @@ async function handlePetSafariCommand(message, client, args) {
   collector.on('collect', async i => {
     try {
       if (i.user.id !== author.id) {
-        return i.reply({ content: '❌ Pilihan ini bukan milik Anda!', flags: 64 });
+        return await safeReply(i, { content: '❌ Pilihan ini bukan milik Anda!', flags: 64 });
       }
 
       if (i.customId === 'safari_biome_cancel') {
@@ -1013,7 +1013,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
         const petsCount = petsCountRow ? petsCountRow.count : 0;
 
         if (petsCount >= 5) {
-          return iChoice.reply({ content: '❌ **Kandang Penuh!** Anda sudah memiliki batas maksimal **5 hewan peliharaan** di kandang. Silakan lepas/reset salah satu pet Anda terlebih dahulu sebelum mengadopsi pet baru!', flags: 64 });
+          return await safeReply(iChoice, { content: '❌ **Kandang Penuh!** Anda sudah memiliki batas maksimal **5 hewan peliharaan** di kandang. Silakan lepas/reset salah satu pet Anda terlebih dahulu sebelum mengadopsi pet baru!', flags: 64 });
         }
 
         // Simpan ID interaksi terakhir untuk mencegah race condition timeout modal
@@ -1095,7 +1095,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
           })();
 
           if (adoptError) {
-            return modalInteraction.reply({ content: adoptError, flags: 64 });
+            return await safeReply(modalInteraction, { content: adoptError, flags: 64 });
           }
 
           // Trait display text
@@ -1122,7 +1122,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             .setTimestamp();
 
           releaseLock(client, state.channelId);
-          await modalInteraction.reply({ embeds: [adoptEmbed] });
+          await safeReply(modalInteraction, { embeds: [adoptEmbed] });
           await updatedMsg.delete().catch(() => {});
         } catch (errModal) {
           // Abaikan timeout modal, berikan pet default name jika ditutup
