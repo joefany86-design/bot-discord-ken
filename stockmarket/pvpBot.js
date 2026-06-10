@@ -1171,6 +1171,527 @@ function getCollectibleTitle(highestTier) {
   return TIER_TITLES[highestTier] || null;
 }
 
+/**
+ * Memulai tantangan PvP antar 2 pemain secara interaktif (Ronde 1)
+ */
+async function startInteractivePvP(interaction, client, challengerId, opponentId, betAmount) {
+  const guildId = interaction.guildId;
+  
+  client.activePvPGames = client.activePvPGames || new Map();
+  client.activePvPBotGames = client.activePvPBotGames || new Map();
+
+  if (client.activePvPGames.has(challengerId) || client.activePvPBotGames.has(challengerId)) {
+    return interaction.reply({ content: '❌ Penantang sedang dalam pertempuran lain!', flags: 64 });
+  }
+  if (client.activePvPGames.has(opponentId) || client.activePvPBotGames.has(opponentId)) {
+    return interaction.reply({ content: '❌ Anda sedang dalam pertempuran lain!', flags: 64 });
+  }
+
+  const challengerPet = pet.getPet(challengerId, guildId);
+  const opponentPet = pet.getPet(opponentId, guildId);
+
+  if (!challengerPet || !opponentPet) {
+    return interaction.reply({ content: '❌ Terjadi kesalahan! Pet tidak ditemukan.', flags: 64 });
+  }
+
+  const randomArena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
+
+  // Hitung status tempur awal berbasis Gym Stats (TANPA Level untuk stats, sama seperti pvpBot)
+  const challengerMaxHP = 100 + (challengerPet.stat_vit || 0) * 10;
+  const opponentMaxHP = 100 + (opponentPet.stat_vit || 0) * 10;
+
+  const combatData = {
+    guildId,
+    challengerId,
+    opponentId,
+    betAmount,
+    turnCount: 1,
+    arena: randomArena,
+    logs: [`⚔️ Pertandingan taruhan Rp ${betAmount.toLocaleString('id-ID')} koin dimulai di **${randomArena.name}**!`],
+    p1: {
+      id: challengerId,
+      name: challengerPet.pet_name,
+      pet_type: challengerPet.pet_type,
+      gacha_element: challengerPet.gacha_element || 'EARTH',
+      hp: challengerMaxHP,
+      maxHP: challengerMaxHP,
+      energy: 0,
+      isDefending: false,
+      burnTurns: 0,
+      shieldTurns: 0,
+      hasUsedUltimate: false,
+      hasUsedItem: false,
+      stat_str: challengerPet.stat_str || 0,
+      stat_vit: challengerPet.stat_vit || 0,
+      stat_def: challengerPet.stat_def || 0,
+      stat_dex: challengerPet.stat_dex || 0,
+      base_atk_bonus_pct: challengerPet.base_atk_bonus_pct || 0.0,
+      base_def_bonus_pct: challengerPet.base_def_bonus_pct || 0.0,
+      trait: challengerPet.trait || '',
+      accessory: challengerPet.accessory || null,
+      chosenAction: null
+    },
+    p2: {
+      id: opponentId,
+      name: opponentPet.pet_name,
+      pet_type: opponentPet.pet_type,
+      gacha_element: opponentPet.gacha_element || 'EARTH',
+      hp: opponentMaxHP,
+      maxHP: opponentMaxHP,
+      energy: 0,
+      isDefending: false,
+      burnTurns: 0,
+      shieldTurns: 0,
+      hasUsedUltimate: false,
+      hasUsedItem: false,
+      stat_str: opponentPet.stat_str || 0,
+      stat_vit: opponentPet.stat_vit || 0,
+      stat_def: opponentPet.stat_def || 0,
+      stat_dex: opponentPet.stat_dex || 0,
+      base_atk_bonus_pct: opponentPet.base_atk_bonus_pct || 0.0,
+      base_def_bonus_pct: opponentPet.base_def_bonus_pct || 0.0,
+      trait: opponentPet.trait || '',
+      accessory: opponentPet.accessory || null,
+      chosenAction: null
+    }
+  };
+
+  const payload = getBattleEmbedDataPvP(combatData);
+  const oppPetForCard = { ...opponentPet, name: opponentPet.pet_name };
+  const vsAttachment = await petCard.getArenaVsCardAttachment(challengerPet, oppPetForCard, 'PVP DUEL', combatData.arena.key);
+  if (vsAttachment) {
+    payload.files = [vsAttachment];
+    payload.embeds[0].setImage('attachment://arena_vs.png');
+  }
+
+  const battleMsg = await interaction.channel.send(payload);
+  combatData.messageId = battleMsg.id;
+  combatData.channelId = interaction.channel.id;
+
+  client.activePvPGames.set(challengerId, combatData);
+  client.activePvPGames.set(opponentId, combatData);
+
+  resetPvPTimeoutPvP(combatData, client);
+
+  await interaction.channel.send(`⚔️ PvP Duel dimulai! <@${challengerId}> vs <@${opponentId}>. Silakan tentukan aksi pet kalian!`).catch(() => {});
+}
+
+/**
+ * Mendapatkan embeds & components payload untuk PvP interaktif antar 2 pemain
+ */
+function getBattleEmbedDataPvP(combatData) {
+  const p1 = combatData.p1;
+  const p2 = combatData.p2;
+
+  const p1HPBar = renderStatusBar(p1.hp, p1.maxHP, '🟩', '⬛');
+  const p1SPBar = renderStatusBar(p1.energy, 100, '🟪', '⬛');
+
+  const p2HPBar = renderStatusBar(p2.hp, p2.maxHP, '🟩', '⬛');
+  const p2SPBar = renderStatusBar(p2.energy, 100, '🟪', '⬛');
+
+  const formatBuffs = (actor) => {
+    const buffs = [];
+    if (actor.shieldTurns > 0) buffs.push(`🛡️ Shield (${actor.shieldTurns}T)`);
+    if (actor.burnTurns > 0) buffs.push(`🔥 Burn (${actor.burnTurns}T)`);
+    if (actor.isDefending) buffs.push(`🛡️ Defending`);
+    return buffs.length > 0 ? buffs.join(' · ') : '*Normal*';
+  };
+
+  const getStatusText = (actor) => {
+    if (actor.chosenAction) return '🟢 **Ready**';
+    return '⏳ *Memilih...*';
+  };
+
+  const arenaInfo = combatData.arena ? `🏟️ **Lokasi: ${combatData.arena.name}**\n*ℹ️ ${combatData.arena.desc}*\n\n` : '';
+
+  const embed = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle(`⚔️ PVP ARENA: ${p1.name} VS ${p2.name}`)
+    .setDescription(
+      arenaInfo +
+      `🏟️ **Ronde ${combatData.turnCount}**\n` +
+      `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
+      `🐾 **${p1.name}** (<@${p1.id}>) · ${getStatusText(p1)}\n` +
+      `├─ ❤️ HP: ${p1HPBar}\n` +
+      `├─ ⚡ SP: ${p1SPBar}\n` +
+      `└─ ✨ Status: ${formatBuffs(p1)}\n\n` +
+      `⚔️ **${p2.name}** (<@${p2.id}>) · ${getStatusText(p2)}\n` +
+      `├─ ❤️ HP: ${p2HPBar}\n` +
+      `├─ ⚡ SP: ${p2SPBar}\n` +
+      `└─ ✨ Status: ${formatBuffs(p2)}\n\n` +
+      `📝 **Log Pertempuran:**\n` +
+      `\`\`\`diff\n` +
+      combatData.logs.slice(-5).map(line => {
+        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang') || line.includes('memberikan')) return `+ ${line}`;
+        if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('melarikan') || line.includes('menyerah')) return `- ${line}`;
+        return `  ${line}`;
+      }).join('\n') +
+      `\`\`\``
+    )
+    .setFooter({ text: 'Taruhan: Rp ' + combatData.betAmount.toLocaleString('id-ID') + ' koin' });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('pvp_act_atk')
+      .setLabel('🗡️ Serang')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('pvp_act_def')
+      .setLabel('🛡️ Bertahan')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('pvp_act_ult')
+      .setLabel('🔥 Ultimate')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('pvp_act_item')
+      .setLabel('🎒 Item')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('pvp_act_surr')
+      .setLabel('🏳️')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embeds: [embed], components: [row] };
+}
+
+/**
+ * Mereset timer timeout 60 detik untuk turn PvP 2 pemain
+ */
+function resetPvPTimeoutPvP(combatData, client) {
+  if (combatData.timeout) {
+    clearTimeout(combatData.timeout);
+  }
+  combatData.timeout = setTimeout(async () => {
+    const p1 = combatData.p1;
+    const p2 = combatData.p2;
+
+    combatData.isProcessing = true;
+
+    if (!p1.chosenAction && !p2.chosenAction) {
+      combatData.logs.push(`⏳ Kedua pemain kehabisan waktu turn (60 detik AFK)!`);
+      await endPvPGamePvP(null, client, combatData, p2.id, 'timeout');
+    } else if (!p1.chosenAction) {
+      combatData.logs.push(`⏳ **${p1.name}** kehabisan waktu turn (60 detik AFK)!`);
+      await endPvPGamePvP(null, client, combatData, p2.id, 'timeout');
+    } else {
+      combatData.logs.push(`⏳ **${p2.name}** kehabisan waktu turn (60 detik AFK)!`);
+      await endPvPGamePvP(null, client, combatData, p1.id, 'timeout');
+    }
+  }, 60000);
+}
+
+/**
+ * Memproses turn interaktif ketika salah satu pemain mengklik tombol aksi
+ */
+async function handlePvPActionPvP(interaction, client, actionType) {
+  const guildId = interaction.guildId;
+  const user = interaction.user;
+
+  const combatData = client.activePvPGames ? client.activePvPGames.get(user.id) : null;
+  if (!combatData) {
+    return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+  }
+
+  if (combatData.isProcessing) return;
+
+  const p1 = combatData.p1;
+  const p2 = combatData.p2;
+
+  const actor = user.id === p1.id ? p1 : (user.id === p2.id ? p2 : null);
+  const enemy = actor === p1 ? p2 : p1;
+
+  if (!actor) {
+    return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 });
+  }
+
+  if (actionType === 'surr') {
+    combatData.isProcessing = true;
+    combatData.logs.push(`🏳️ **${actor.name}** menyerah dari pertandingan!`);
+    return endPvPGamePvP(interaction, client, combatData, enemy.id, 'surrender');
+  }
+
+  if (actor.chosenAction) {
+    return interaction.reply({ content: '❌ Anda sudah memilih tindakan untuk giliran ini!', flags: 64 });
+  }
+
+  if (actionType === 'ult' && actor.energy < 60) {
+    return interaction.reply({ content: '❌ Energi Pet Anda tidak cukup (butuh 60 SP)!', flags: 64 });
+  }
+
+  if ((actionType === 'item_med' || actionType === 'item_soda') && actor.hasUsedItem) {
+    return interaction.reply({ content: '❌ Anda sudah menggunakan item di pertarungan ini!', flags: 64 });
+  }
+
+  if (interaction && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
+    await interaction.deferUpdate().catch(() => {});
+  }
+
+  if (actionType === 'item_med') {
+    actor.hp = Math.min(actor.maxHP, actor.hp + 150);
+    actor.hasUsedItem = true;
+    combatData.logs.push(`🎒 **${actor.name}** menggunakan **Ramuan Kesehatan**! (+150 HP)`);
+    actor.chosenAction = 'item_med';
+  } else if (actionType === 'item_soda') {
+    actor.energy = Math.min(100, actor.energy + 50);
+    actor.hasUsedItem = true;
+    combatData.logs.push(`🎒 **${actor.name}** meminum **Soda Energi**! (+50 SP)`);
+    actor.chosenAction = 'item_soda';
+  } else {
+    actor.chosenAction = actionType;
+  }
+
+  if (p1.chosenAction && p2.chosenAction) {
+    combatData.isProcessing = true;
+
+    p1.isDefending = false;
+    p2.isDefending = false;
+
+    if (p1.chosenAction === 'def') {
+      p1.isDefending = true;
+      p1.energy = Math.min(100, p1.energy + 35);
+      combatData.logs.push(`🛡️ **${p1.name}** memasang kuda-kuda bertahan! (+35 SP)`);
+    }
+    if (p2.chosenAction === 'def') {
+      p2.isDefending = true;
+      p2.energy = Math.min(100, p2.energy + 35);
+      combatData.logs.push(`🛡️ **${p2.name}** memasang kuda-kuda bertahan! (+35 SP)`);
+    }
+
+    if (p1.chosenAction === 'atk') p1.energy = Math.min(100, p1.energy + 20);
+    if (p2.chosenAction === 'atk') p2.energy = Math.min(100, p2.energy + 20);
+
+    let first = p1;
+    let second = p2;
+    if (p2.stat_dex > p1.stat_dex) {
+      first = p2;
+      second = p1;
+    } else if (p1.stat_dex === p2.stat_dex) {
+      if (Math.random() < 0.5) {
+        first = p2;
+        second = p1;
+      }
+    }
+
+    if (first.hp > 0 && ['atk', 'ult'].includes(first.chosenAction)) {
+      executeSingleAction(first, second, first.chosenAction, combatData);
+    }
+    if (second.hp > 0 && ['atk', 'ult'].includes(second.chosenAction)) {
+      executeSingleAction(second, first, second.chosenAction, combatData);
+    }
+
+    applyBurnDamage(p1, combatData);
+    applyBurnDamage(p2, combatData);
+
+    if (p1.shieldTurns > 0) p1.shieldTurns--;
+    if (p2.shieldTurns > 0) p2.shieldTurns--;
+
+    if (p1.hp <= 0 && p2.hp <= 0) {
+      if (p1.stat_dex >= p2.stat_dex) {
+        return endPvPGamePvP(interaction, client, combatData, p1.id, 'win');
+      } else {
+        return endPvPGamePvP(interaction, client, combatData, p2.id, 'win');
+      }
+    } else if (p1.hp <= 0) {
+      return endPvPGamePvP(interaction, client, combatData, p2.id, 'win');
+    } else if (p2.hp <= 0) {
+      return endPvPGamePvP(interaction, client, combatData, p1.id, 'win');
+    }
+
+    p1.chosenAction = null;
+    p2.chosenAction = null;
+    combatData.turnCount++;
+    combatData.isProcessing = false;
+
+    resetPvPTimeoutPvP(combatData, client);
+
+    const payload = getBattleEmbedDataPvP(combatData);
+    let messageToEdit = null;
+    if (combatData.channelId && combatData.messageId) {
+      try {
+        const channel = await client.channels.fetch(combatData.channelId);
+        if (channel) {
+          messageToEdit = await channel.messages.fetch(combatData.messageId);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pvp battle message for update:', err);
+      }
+    }
+
+    if (messageToEdit) {
+      await messageToEdit.edit(payload).catch(() => {});
+    }
+  } else {
+    const payload = getBattleEmbedDataPvP(combatData);
+    let messageToEdit = null;
+    if (combatData.channelId && combatData.messageId) {
+      try {
+        const channel = await client.channels.fetch(combatData.channelId);
+        if (channel) {
+          messageToEdit = await channel.messages.fetch(combatData.messageId);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pvp battle message for update:', err);
+      }
+    }
+
+    if (messageToEdit) {
+      await messageToEdit.edit(payload).catch(() => {});
+    }
+  }
+}
+
+/**
+ * Menyelesaikan game PvP interaktif antar 2 pemain
+ */
+async function endPvPGamePvP(interaction, client, combatData, winnerId, reason) {
+  const { guildId, challengerId, opponentId, betAmount } = combatData;
+
+  if (combatData.timeout) {
+    clearTimeout(combatData.timeout);
+    combatData.timeout = null;
+  }
+
+  if (client.activePvPGames) {
+    client.activePvPGames.delete(challengerId);
+    client.activePvPGames.delete(opponentId);
+  }
+
+  const challengerPet = pet.getPet(challengerId, guildId);
+  const opponentPet = pet.getPet(opponentId, guildId);
+
+  const winnerPet = winnerId === challengerId ? challengerPet : opponentPet;
+  const loserPet = winnerId === challengerId ? opponentPet : challengerPet;
+  const loserId = winnerId === challengerId ? opponentId : challengerId;
+
+  const winnerName = winnerPet.pet_name;
+  const loserName = loserPet.pet_name;
+
+  const tax = Math.floor(betAmount * 2 * 0.05);
+  const prizePool = (betAmount * 2) - tax;
+
+  let resultTitle = '🎉 KEMENANGAN ARENA!';
+  let resultDesc = `**${winnerName}** (<@${winnerId}>) berhasil menaklukkan **${loserName}** (<@${loserId}>)!\n\n` +
+                   `✨ **Reward XP Pet Pemenang:** **+50 XP**\n` +
+                   `✨ **Reward XP Pet Kalah:** **+20 XP**\n\n` +
+                   `🪙 **Hadiah Bersih:** Rp **${prizePool.toLocaleString('id-ID')}** koin *(Pajak 5% Server: Rp ${tax})*\n`;
+
+  let wHP = Math.max(10, winnerPet.health - 10);
+  let lHP = Math.max(10, loserPet.health - 30);
+  let wHappy = Math.max(20, winnerPet.happiness - 5);
+  let lHappy = Math.max(10, loserPet.happiness - 25);
+
+  if (pet.isGodPet(winnerPet)) {
+    wHP = 100;
+    wHappy = 100;
+  }
+  if (pet.isGodPet(loserPet)) {
+    lHP = 100;
+    lHappy = 100;
+  }
+
+  const wMaxHP = pet.getMaxHP(winnerPet);
+  const wXpGained = Math.round(50 * (winnerPet.xp_multiplier || 1.0));
+  let { newXp: wXp, newLevel: wLevel } = pet.addXp(winnerPet, wXpGained, wMaxHP);
+
+  const lMaxHP = pet.getMaxHP(loserPet);
+  const lXpGained = Math.round(20 * (loserPet.xp_multiplier || 1.0));
+  let { newXp: lXp, newLevel: lLevel } = pet.addXp(loserPet, lXpGained, lMaxHP);
+
+  let lStatus = loserPet.status;
+  if (pet.isGodPet(winnerPet)) {
+    lHP = 0;
+    lStatus = 'DEAD';
+  }
+
+  let finalCurseType = loserPet.curse_type;
+  let finalCurseUntil = loserPet.curse_until;
+  let injuredTriggered = false;
+  if (!pet.isGodPet(loserPet) && lStatus !== 'DEAD' && Math.random() < 0.15) {
+    finalCurseType = 'injured';
+    finalCurseUntil = Math.floor(Date.now() / 1000) + 86400 * 7;
+    injuredTriggered = true;
+  }
+
+  db.transaction(() => {
+    economy.subtractBalance(loserId, guildId, betAmount, 'PET_PVP_BET_LOST');
+    economy.addBalance(winnerId, guildId, prizePool - betAmount, 'PET_PVP_BET_WON');
+
+    db.run(
+      `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_wins = pvp_wins + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]
+    );
+
+    db.run(
+      `UPDATE user_pets SET health = ?, status = ?, happiness = ?, xp = ?, level = ?, pvp_losses = pvp_losses + 1, last_interaction_at = ?, curse_type = ?, curse_until = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+      [lHP, lStatus, lHappy, lXp, lLevel, Math.floor(Date.now() / 1000), finalCurseType, finalCurseUntil, loserId, guildId, loserName]
+    );
+
+    if (injuredTriggered) {
+      combatData.logs.push(`⚠️ **Cedera Tempur!** Pet **${loserName}** terluka parah akibat kekalahan bertarung di PvP Arena dan mengalami status **INJURED** (Cedera).`);
+    }
+  })();
+
+  db.logPetAction(guildId, winnerId, null, winnerName, 'PVP_BATTLE', `Menang PvP interaktif melawan ${loserName} (milik <@${loserId}>). Taruhan: Rp ${betAmount}, Bersih: Rp ${prizePool}`);
+  db.logPetAction(guildId, loserId, null, loserName, 'PVP_BATTLE', `Kalah PvP interaktif melawan ${winnerName} (milik <@${winnerId}>). Taruhan: Rp ${betAmount}`);
+
+  let files = [];
+  try {
+    const petCardModule = require('./petCard');
+    const freshChal = pet.getPet(challengerId, guildId);
+    const freshOpp = pet.getPet(opponentId, guildId);
+    if (freshChal && freshOpp) {
+      const resultObj = {
+        draw: false,
+        winnerId,
+        winnerName,
+        loserName,
+        prizePool,
+        tax,
+        challengerHP: combatData.p1.hp,
+        opponentHP: combatData.p2.hp
+      };
+      const pvpCardAtt = await petCardModule.getPvpCardAttachment(freshChal, freshOpp, resultObj);
+      if (pvpCardAtt) files.push(pvpCardAtt);
+    }
+  } catch (e) {
+    console.error('[PvP] Gagal membuat visual PvP card:', e.message);
+  }
+
+  const resultEmbed = new EmbedBuilder()
+    .setColor(0x10B981)
+    .setTitle(resultTitle)
+    .setDescription(
+      resultDesc + `\n\n` +
+      `📝 **Log Akhir Pertandingan:**\n` +
+      `\`\`\`diff\n` +
+      combatData.logs.map(line => {
+        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('memberikan') || line.includes('menyerang')) return `+ ${line}`;
+        if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('menyerah')) return `- ${line}`;
+        return `  ${line}`;
+      }).join('\n').substring(0, 1000) +
+      `\`\`\``
+    )
+    .setTimestamp();
+
+  let messageToEdit = null;
+  if (combatData.channelId && combatData.messageId) {
+    try {
+      const channel = await client.channels.fetch(combatData.channelId);
+      if (channel) {
+        messageToEdit = await channel.messages.fetch(combatData.messageId);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pvp battle message for end of game:', err);
+    }
+  }
+
+  if (messageToEdit) {
+    await messageToEdit.edit({ embeds: [resultEmbed], components: [], files }).catch(() => {});
+  }
+}
+
 module.exports = {
   showPvPArena,
   startPvPChallenge,
@@ -1180,5 +1701,8 @@ module.exports = {
   getOrCreatePvPState,
   getCollectibleTitle,
   TIER_TITLES,
-  resetRankedSeason
+  resetRankedSeason,
+  startInteractivePvP,
+  handlePvPActionPvP
 };
+

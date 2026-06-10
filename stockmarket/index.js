@@ -1243,6 +1243,103 @@ function initStockMarket(client) {
         return;
       }
 
+      // Player-vs-Player (PvP) Interactive Actions
+      if (customId === 'pvp_act_atk') {
+        await pvpBot.handlePvPActionPvP(interaction, client, 'atk');
+        return;
+      }
+      if (customId === 'pvp_act_def') {
+        await pvpBot.handlePvPActionPvP(interaction, client, 'def');
+        return;
+      }
+      if (customId === 'pvp_act_ult') {
+        await pvpBot.handlePvPActionPvP(interaction, client, 'ult');
+        return;
+      }
+      if (customId === 'pvp_act_surr') {
+        await pvpBot.handlePvPActionPvP(interaction, client, 'surr');
+        return;
+      }
+      if (customId === 'pvp_act_item') {
+        const combatData = client.activePvPGames ? client.activePvPGames.get(interaction.user.id) : null;
+        if (!combatData) {
+          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+        }
+        
+        const actor = interaction.user.id === combatData.p1.id ? combatData.p1 : (interaction.user.id === combatData.p2.id ? combatData.p2 : null);
+        if (!actor) {
+          return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 });
+        }
+        if (actor.hasUsedItem) {
+          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 });
+        }
+
+        const medRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MEDICINE'", [interaction.user.id, interaction.guildId]);
+        const sodaRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'SODA_ENERGY'", [interaction.user.id, interaction.guildId]);
+        const medQty = medRow ? medRow.quantity : 0;
+        const sodaQty = sodaRow ? sodaRow.quantity : 0;
+
+        const embed = new EmbedBuilder()
+          .setColor(0x7C4DFF)
+          .setTitle('🎒 Kantong Item Tempur Anda')
+          .setDescription(
+            `Pilih item yang ingin digunakan pada giliran ini. Menggunakan item akan mengonsumsi giliran turn ronde Anda.\n\n` +
+            `💊 **Ramuan Kesehatan (MEDICINE)**: Pulihkan **+150 HP** (Milik Anda: **${medQty}**)\n` +
+            `🥤 **Soda Energi Pet (SODA_ENERGY)**: Tambah **+50 SP/Energy** (Milik Anda: **${sodaQty}**)`
+          );
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('pvp_use_med')
+            .setLabel('💊 Gunakan Medicine')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(medQty <= 0),
+          new ButtonBuilder()
+            .setCustomId('pvp_use_soda')
+            .setLabel('🥤 Gunakan Soda')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(sodaQty <= 0),
+          new ButtonBuilder()
+            .setCustomId('pvp_item_cancel')
+            .setLabel('❌ Batal')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        return;
+      }
+      if (customId === 'pvp_item_cancel') {
+        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => {});
+        return;
+      }
+      if (customId === 'pvp_use_med' || customId === 'pvp_use_soda') {
+        const combatData = client.activePvPGames ? client.activePvPGames.get(interaction.user.id) : null;
+        if (!combatData) {
+          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] });
+        }
+        const actor = interaction.user.id === combatData.p1.id ? combatData.p1 : (interaction.user.id === combatData.p2.id ? combatData.p2 : null);
+        if (!actor) {
+          return interaction.update({ content: '❌ Anda tidak berada dalam pertarungan ini!', embeds: [], components: [] });
+        }
+        if (actor.hasUsedItem) {
+          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] });
+        }
+
+        const itemId = customId === 'pvp_use_med' ? 'MEDICINE' : 'SODA_ENERGY';
+        const itemRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
+        if (!itemRow || itemRow.quantity <= 0) {
+          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] });
+        }
+
+        database.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
+        database.run("DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0", [interaction.user.id, interaction.guildId, itemId]);
+
+        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => {});
+
+        await pvpBot.handlePvPActionPvP(interaction, client, customId === 'pvp_use_med' ? 'item_med' : 'item_soda');
+        return;
+      }
+
       // Admin Tournament Panel Interactions
       if (customId.startsWith('admin_tournament_')) {
         const adminPanel = require('./adminPanel');
@@ -9321,28 +9418,9 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
         await replyMsg.delete().catch(() => { });
 
         try {
-          // Eksekusi PvP
-          const result = pet.executePvP(author.id, opponent.id, guildId, bet);
-
-          let files = [];
-          // ── Visual PvP Result Card (Premium Canvas) ──
-          try {
-            const petCardModule = require('./petCard');
-            const challengerPet = pet.getPet(author.id, guildId);
-            const opponentPet = pet.getPet(opponent.id, guildId);
-            if (challengerPet && opponentPet) {
-              const pvpCardAtt = await petCardModule.getPvpCardAttachment(challengerPet, opponentPet, result);
-              if (pvpCardAtt) files.push(pvpCardAtt);
-            }
-          } catch (e) {
-            console.error('[PvP] Gagal membuat visual PvP card:', e.message);
-          }
-
-          const battleReport = embeds.petBattleEmbed(author, opponent, result, guildId);
-
-          await iMatch.reply({ content: `⚔️ **PERTANDINGAN SELESAI!** Berikut adalah battle report arena:`, embeds: [battleReport], files: files });
+          await pvpBot.startInteractivePvP(iMatch, client, author.id, opponent.id, bet);
         } catch (err) {
-          await iMatch.reply({ embeds: [embeds.errorEmbed('Pertempuran Gagal Dihentikan!', err.message)] });
+          await iMatch.reply({ embeds: [embeds.errorEmbed('Pertempuran Gagal Dimulai!', err.message)] });
         }
       }
     } catch (err) {

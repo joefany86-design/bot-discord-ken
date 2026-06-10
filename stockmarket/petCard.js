@@ -5979,12 +5979,13 @@ async function generateArenaVsCard(playerPet, botPet, tierKey, arenaKey) {
   }
 
   try {
-    const dummyBot = { pet_type: botPet.pet_type, status: 'ADULT', level: 10 };
-    const botImgUrl = embeds.getPetImage(dummyBot);
+    const botPetWithDefaults = { status: 'ADULT', level: 10, ...botPet };
+    const botImgUrl = embeds.getPetImage(botPetWithDefaults);
     if (botImgUrl) botImg = await loadImageSafe(botImgUrl);
   } catch (e) {
     console.error('[PetCard] Failed to load bot pet image:', e);
   }
+
 
   // 4. Draw Player Pet (Left Side)
   const pX = 220;
@@ -6078,12 +6079,14 @@ async function generateArenaVsCard(playerPet, botPet, tierKey, arenaKey) {
     ctx.fillText((botPet.name || 'Bot')[0].toUpperCase(), bX, avatarY);
   }
 
-  // Label OPPONENT BOT
+  // Label OPPONENT
+  const isOpponentBot = !(botPet.user_id || botPet.id);
+  const oppLabel = isOpponentBot ? '🤖 OPPONENT BOT' : '⚔️ OPPONENT';
   ctx.textBaseline = 'alphabetic';
   ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#f43f5e';
   ctx.textAlign = 'center';
-  ctx.fillText('🤖 OPPONENT BOT', bX, 45);
+  ctx.fillText(oppLabel, bX, 45);
 
   // Bot Name
   ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
@@ -6091,7 +6094,7 @@ async function generateArenaVsCard(playerPet, botPet, tierKey, arenaKey) {
   ctx.fillText(botPet.name || 'Bot', bX, 205);
 
   // Bot Archetype Badge
-  const badgeText = botPet.archetype || 'BALANCED';
+  const badgeText = botPet.archetype || (botPet.trait ? `TRAIT: ${botPet.trait}` : 'PLAYER');
   ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
   const badgeW = ctx.measureText(badgeText).width + 16;
   const badgeH = 20;
