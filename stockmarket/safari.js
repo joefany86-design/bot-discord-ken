@@ -357,9 +357,6 @@ async function handlePetSafariCommand(message, client, args) {
     console.error('Error fetching safari mastery:', err);
   }
 
-  // Generate the visual attachment using napi-rs/canvas
-  const attachment = await petCard.getSafariLobbyAttachment(message.guild.name, mastery);
-
   // Biome Selection Panel
   const biomeEmbed = new EmbedBuilder()
     .setColor(0x2ECC71) // Nature green
@@ -367,9 +364,11 @@ async function handlePetSafariCommand(message, client, args) {
     .setDescription(
       `Halo Warga **${message.guild.name}**! Selamat datang di **Safari Pet Liar**.\n` +
       `Di sini Anda bisa menjelajahi berbagai wilayah untuk melacak dan menangkap pet liar yang legendaris secara interaktif!\n\n` +
+      `🎯 **Safari Mastery Anda:**\n` +
+      `• Level Berburu: \`Lv.${mastery.level}\`\n` +
+      `• XP Berburu: \`${mastery.xp} XP\`\n\n` +
       `Silakan pilih biome wilayah yang ingin Anda jelajahi di bawah ini:`
     )
-    .setImage('attachment://safari_lobby.png')
     .setFooter({ text: 'Gunakan tombol di bawah untuk masuk ke biome | Cooldown 3 menit' })
     .setTimestamp();
 
@@ -383,8 +382,7 @@ async function handlePetSafariCommand(message, client, args) {
 
   const replyMsg = await message.reply({
     embeds: [biomeEmbed],
-    components: [row],
-    files: attachment ? [attachment] : []
+    components: [row]
   });
   const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
 
@@ -516,9 +514,6 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   const currentCatchChance = Math.min(0.95, state.pet.baseCatch * biome.catchMultiplier + state.catchBonus + state.toyBonus + weatherCatchBonus);
   const currentEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty + weatherEscapeBonus - (state.baitFed * 0.05));
 
-  // Generate the visual attachment using napi-rs/canvas
-  const attachment = await petCard.getSafariEncounterAttachment(state.pet, state.biome, currentCatchChance, currentEscapeChance, state);
-
   // Info cuaca untuk dipajang di deskripsi embed
   let weatherDesc = '';
   if (state.weather === 'CERAH') {
@@ -531,19 +526,59 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     weatherDesc = '🌫️ **Cuaca Kabut:** Mengendap-endap lebih efektif (+15% sukses mendekat), tetapi mengurangi peluang tangkap (-5% peluang tangkap).';
   }
 
+  const logText = state.logs && state.logs.length > 0
+    ? state.logs.slice(-4).join('\n')
+    : '*Mencari pet liar...*';
+
+  const displayEscape = state.sleepTurns > 0 ? 0 : currentEscapeChance;
+  const statusBadge = state.sleepTurns > 0 ? '💤 TERTIDUR' : '⚠️ WASPADA';
+  const petImgUrl = embeds.getPetImage(state.pet);
+
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
-    .setTitle(`🐾 SAFARI ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
+    .setTitle(`🐾 SAFARI WILD ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
     .setDescription(
       `🏞️ **Biome:** ${biome.name}\n` +
       `⛅ **Cuaca:** ${state.weather}\n` +
       `ℹ️ ${weatherDesc}\n` +
-      `💬 *“${state.pet.description || 'Pet ini terlihat waspada namun penasaran dengan kehadiran Anda.'}”*\n\n` +
-      `Gunakan tombol aksi di bawah untuk mendekat, memberi umpan, bermain, atau melempar Safari Ball!`
+      `💬 *“${state.pet.description || 'Spesies liar tangguh dan sangat waspada.'}”*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
     )
-    .setImage('attachment://safari_encounter.png')
+    .addFields(
+      {
+        name: '📊 STATS PET LIAR',
+        value: `• **Kelangkaan:** \`${state.pet.rarity}\`\n` +
+               `• **Level:** \`${state.pet.level}\`\n` +
+               `• **Elemen:** \`${state.pet.gacha_element || state.pet.element}\`\n` +
+               `${state.pet.trait ? `• **Trait:** \`${state.pet.trait}\`\n` : ''}` +
+               `• **Kondisi:** \`${statusBadge}\``,
+        inline: true
+      },
+      {
+        name: '🎯 PELUANG TANGKAP',
+        value: `• **Peluang Tangkap:** \`${Math.round(currentCatchChance * 100)}%\`\n` +
+               `• **Risiko Kabur:** \`${Math.round(displayEscape * 100)}%\``,
+        inline: true
+      },
+      {
+        name: '🎒 INVENTARIS SAFARI',
+        value: `• 🥎 **Safari Ball:** \`${state.balls}/5\`\n` +
+               `• 🍖 **Bait/Umpan:** \`${state.baits}/3\`\n` +
+               `• 💫 **Mainan:** \`${state.toys}/3\``,
+        inline: false
+      },
+      {
+        name: '📝 RIWAYAT AKSI SAFARI',
+        value: logText,
+        inline: false
+      }
+    )
     .setFooter({ text: `Giliran: ${state.turns} | Selesaikan sesi agar cooldown tidak menggantung` })
     .setTimestamp();
+
+  if (petImgUrl) {
+    mainEmbed.setThumbnail(petImgUrl);
+  }
 
   // Custom UI Row: if throwingBall is active, show the sub-menu balls selector!
   let actionRow;
@@ -566,7 +601,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
 
   let updatedMsg;
   try {
-    const payload = { embeds: [mainEmbed], components: [actionRow], files: attachment ? [attachment] : [] };
+    const payload = { embeds: [mainEmbed], components: [actionRow], files: [] };
     if (interaction.isButton()) {
       if (interaction.deferred || interaction.replied) {
         updatedMsg = await interaction.editReply({ ...payload, fetchReply: true });
@@ -578,7 +613,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     }
   } catch (updateErr) {
     console.error('Failed to update Safari screen via interaction, trying replyMsg.edit:', updateErr.message);
-    const payload = { embeds: [mainEmbed], components: [actionRow], files: attachment ? [attachment] : [] };
+    const payload = { embeds: [mainEmbed], components: [actionRow], files: [] };
     try {
       updatedMsg = await replyMsg.edit(payload);
     } catch (editErr) {
@@ -661,7 +696,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   if (action === 'safari_act_flee') {
     deleteSafariState(author.id, state.guildId);
     releaseLock(client, state.channelId);
-    return interaction.update({ content: '🏃‍♂️ Anda melarikan diri dari wilayah safari secara aman.', embeds: [], components: [] });
+    return interaction.editReply({ content: '🏃‍♂️ Anda melarikan diri dari wilayah safari secara aman.', embeds: [], components: [] });
   }
 
   // --- AKSI: DEKATI PERLAHAN ---
@@ -672,7 +707,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     if (Math.random() < escapeFrightChance) {
       deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
-      return interaction.update({
+      return interaction.editReply({
         content: `💨 **Pet Terkejut!** Langkah kaki Anda terlalu berisik. **${state.pet.typeName}** terkejut dan langsung kabur terbirit-birit ke dalam semak-semak!`,
         embeds: [],
         components: []
@@ -713,7 +748,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       if (Math.random() < passiveEscapeChance) {
         deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
-        return interaction.update({
+        return interaction.editReply({
           content: `💨 **Pet Melarikan Diri!** Saat Anda menyuapkan umpan, gerakan Anda mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`,
           embeds: [],
           components: []
@@ -748,7 +783,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       if (Math.random() < passiveEscapeChance) {
         deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
-        return interaction.update({
+        return interaction.editReply({
           content: `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuatnya takut. **${state.pet.typeName}** terkejut dan langsung kabur!`,
           embeds: [],
           components: []
@@ -843,7 +878,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     if (state.balls <= 0) {
       deleteSafariState(author.id, state.guildId);
       releaseLock(client, state.channelId);
-      return interaction.update({
+      return interaction.editReply({
         content: `😢 **Safari Ball Habis!** Anda kehabisan bola safari. **${state.pet.typeName}** liar berjalan santai menjauh ke dalam hutan gelap.`,
         embeds: [],
         components: []
@@ -856,7 +891,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       if (Math.random() < finalEscapeChance) {
         deleteSafariState(author.id, state.guildId);
         releaseLock(client, state.channelId);
-        return interaction.update({
+        return interaction.editReply({
           content: `💨 **Pet Melarikan Diri!** Guncangan bola membuatnya ketakutan. **${state.pet.typeName}** melompat cepat dan menghilang di antara semak-semak!`,
           embeds: [],
           components: []
@@ -903,7 +938,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
     new ButtonBuilder().setCustomId('safari_choice_release').setLabel('💰 Rilis & Jual').setStyle(ButtonStyle.Primary)
   );
 
-  const updatedMsg = await interaction.update({ embeds: [successEmbed], components: [choiceRow], fetchReply: true });
+  const updatedMsg = await interaction.editReply({ embeds: [successEmbed], components: [choiceRow], fetchReply: true });
 
   const choiceCollector = updatedMsg.createMessageComponentCollector({
     filter: (btnI) => btnI.user.id === author.id,

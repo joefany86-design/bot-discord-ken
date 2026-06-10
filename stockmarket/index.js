@@ -566,7 +566,7 @@ let leaderboardInterval = null; // Guard: mencegah interval bertumpuk
 const leaderboardMsgCache = new Map(); // Cache ID pesan leaderboard agar tidak fetch 50 pesan berulang-ulang
 
 function startRealtimeLeaderboard(client) {
-  console.log('🏆 Memulai Papan Peringkat Realtime (60s)...');
+  console.log('🏆 Memulai Papan Peringkat Realtime (180s)...');
 
   // Guard: bersihkan interval sebelumnya jika ada (mencegah duplikasi saat reconnect)
   if (leaderboardInterval) {
@@ -824,7 +824,7 @@ function startRealtimeLeaderboard(client) {
     } catch (err) {
       console.error('❌ Error updating realtime thief leaderboard:', err);
     }
-  }, 60000);
+  }, 180000);
 }
 
 /**

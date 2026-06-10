@@ -5261,8 +5261,9 @@ async function generateSafariEncounterCard(petObj, biomeKey, catchChance, escape
   const CARD_WIDTH = 1600;
   const CARD_HEIGHT = 900;
 
-  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const canvas = createCanvas(1200, 675);
   const ctx = canvas.getContext('2d');
+  ctx.scale(0.75, 0.75);
 
   // Biome Themes
   const BIOME_STYLING = {
