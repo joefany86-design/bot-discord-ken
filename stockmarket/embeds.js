@@ -4356,7 +4356,6 @@ module.exports = {
     return new EmbedBuilder()
       .setColor(0xD50000) // Vibrant Red
       .setTitle(`🏰 EKSPEDISI GAGAL: BOS PERTEMPURAN KACAU!`)
-      .setThumbnail('attachment://pet_explorer.png')
       .setDescription(
         `💥 **ALARM PENJAGA BERBUNYI! TIM DIPAKSA MUNDUR!** 💥\n\n` +
         `🔍 **Penyebab Kekalahan:**\n${causeText}\n\n` +
@@ -4428,7 +4427,6 @@ module.exports = {
       .setColor(embedColor)
       .setTitle(res.success ? `🎉 ⚔️ EKSPEDISI BERHASIL: ${res.zoneName} ⚔️ 🎉` : `💀 🏰 EKSPEDISI GAGAL: ${res.zoneName} 😢 💀`)
       .setDescription(reportDesc || null)
-      .setThumbnail('attachment://pet_explorer.png')
       .addFields(fields)
       .setImage('attachment://expedition_result.png')
       .setFooter({ text: 'Kosan 1A RPG • Petualangan Hewan Peliharaan' })

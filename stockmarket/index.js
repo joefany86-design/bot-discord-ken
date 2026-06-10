@@ -6582,10 +6582,6 @@ async function handlePetCommand(message, client, args) {
 
           const failFiles = [];
           if (failAtt) failFiles.push(failAtt);
-          try {
-            const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
-            failFiles.push(petExplorer);
-          } catch (err) { }
 
           const failOpts = {
             content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
