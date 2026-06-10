@@ -534,6 +534,15 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   const statusBadge = state.sleepTurns > 0 ? '💤 TERTIDUR' : '⚠️ WASPADA';
   const petImgUrl = embeds.getPetImage(state.pet);
 
+  // Bikin bar visual untuk parameter
+  const drawProgressBar = (val, max = 1.0, iconFilled = '🟩', iconEmpty = '⬛') => {
+    const filled = Math.max(0, Math.min(10, Math.round((val / max) * 10)));
+    return iconFilled.repeat(filled) + iconEmpty.repeat(10 - filled);
+  };
+
+  const catchBar = drawProgressBar(currentCatchChance, 1.0, '🎯', '⬛');
+  const escapeBar = drawProgressBar(displayEscape, 1.0, '🏃‍♂️', '⬛');
+
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
     .setTitle(`🐾 SAFARI WILD ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
@@ -555,20 +564,20 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
         inline: true
       },
       {
-        name: '🎯 PELUANG TANGKAP',
+        name: '🎯 CHANCES & BARS',
         value: `• **Peluang Tangkap:** \`${Math.round(currentCatchChance * 100)}%\`\n` +
-               `• **Risiko Kabur:** \`${Math.round(displayEscape * 100)}%\``,
+               `[ ${catchBar} ]\n\n` +
+               `• **Risiko Kabur:** \`${Math.round(displayEscape * 100)}%\`\n` +
+               `[ ${escapeBar} ]`,
         inline: true
       },
       {
-        name: '🎒 INVENTARIS SAFARI',
-        value: `• 🥎 **Safari Ball:** \`${state.balls}/5\`\n` +
-               `• 🍖 **Bait/Umpan:** \`${state.baits}/3\`\n` +
-               `• 💫 **Mainan:** \`${state.toys}/3\``,
+        name: '🎒 Kantong Perlengkapan Safari',
+        value: `🥎 **Safari Ball:** \`${state.balls} / 5\` | 🍖 **Safari Bait:** \`${state.baits} / 3\` | 💫 **Mainan Pet:** \`${state.toys} / 3\``,
         inline: false
       },
       {
-        name: '📝 RIWAYAT AKSI SAFARI',
+        name: '📝 Log Aktivitas Safari',
         value: logText,
         inline: false
       }
@@ -577,7 +586,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     .setTimestamp();
 
   if (petImgUrl) {
-    mainEmbed.setThumbnail(petImgUrl);
+    mainEmbed.setImage(petImgUrl);
   }
 
   // Custom UI Row: if throwingBall is active, show the sub-menu balls selector!
