@@ -1156,6 +1156,22 @@ function initStockMarket(client) {
         await pvpBot.showPvPLeaderboard(interaction, client);
         return;
       }
+      if (customId === 'pvpbot_act_atk') {
+        await pvpBot.handlePvPAction(interaction, client, 'atk');
+        return;
+      }
+      if (customId === 'pvpbot_act_def') {
+        await pvpBot.handlePvPAction(interaction, client, 'def');
+        return;
+      }
+      if (customId === 'pvpbot_act_ult') {
+        await pvpBot.handlePvPAction(interaction, client, 'ult');
+        return;
+      }
+      if (customId === 'pvpbot_act_surr') {
+        await pvpBot.handlePvPAction(interaction, client, 'surr');
+        return;
+      }
 
       // Admin Tournament Panel Interactions
       if (customId.startsWith('admin_tournament_')) {
