@@ -400,6 +400,9 @@ async function handlePetSafariCommand(message, client, args) {
         return i.update({ content: '❌ Petualangan Safari dibatalkan.', embeds: [], components: [], files: [] });
       }
 
+      // Defer update immediately to prevent "Interaction failed" (3-second timeout) during processing
+      await i.deferUpdate().catch(() => {});
+
       const selectedBiomeKey = i.customId.replace('safari_biome_', '');
       const biome = BIOMES[selectedBiomeKey];
 
@@ -564,8 +567,12 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   let updatedMsg;
   try {
     const payload = { embeds: [mainEmbed], components: [actionRow], files: attachment ? [attachment] : [] };
-    if (interaction.isButton() && !interaction.replied && !interaction.deferred) {
-      updatedMsg = await interaction.update({ ...payload, fetchReply: true });
+    if (interaction.isButton()) {
+      if (interaction.deferred || interaction.replied) {
+        updatedMsg = await interaction.editReply({ ...payload, fetchReply: true });
+      } else {
+        updatedMsg = await interaction.update({ ...payload, fetchReply: true });
+      }
     } else {
       updatedMsg = await replyMsg.edit(payload);
     }
@@ -599,6 +606,8 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
 
   turnCollector.on('collect', async iTurn => {
     try {
+      // Defer update immediately to prevent "Interaction failed" during slow Canvas rendering
+      await iTurn.deferUpdate().catch(() => {});
       await handleSafariTurn(iTurn, updatedMsg, state, author, client);
     } catch (err) {
       console.error('Error in Safari turn handling:', err);

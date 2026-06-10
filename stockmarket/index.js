@@ -3169,7 +3169,8 @@ function initStockMarket(client) {
                   await handlePetGymPanel(iPet, client, true);
                 }
               } else if (iPet.customId === 'pet_btn_refresh') {
-                await iPet.update(getDashboardPanelPrivate(user.id));
+                await iPet.deferUpdate().catch(() => {});
+                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
               } else if (iPet.customId === 'pet_btn_use_booster') {
                 try {
                   const freshPet = pet.getPet(user.id, guildId);
@@ -3333,37 +3334,45 @@ function initStockMarket(client) {
                   await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
                 }
               } else if (iPet.customId === 'pet_select_active') {
+                await iPet.deferUpdate().catch(() => {});
                 pet.switchActivePet(user.id, guildId, iPet.values[0]);
-                await iPet.update(getDashboardPanelPrivate(user.id));
+                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
               } else if (iPet.customId === 'pet_btn_hatch') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.getPet(user.id, guildId);
                 if (res && res.status === 'BABY') {
-                  await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)], flags: 64 });
+                  await iPet.editReply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] }).catch(() => {});
                   await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                 }
               } else if (iPet.customId === 'pet_btn_feed') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
-                await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_drink') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.useItem(user.id, guildId, 'WATER', true);
-                await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_play') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.playWithPet(user.id, guildId);
-                await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_cure') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
-                await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_work') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.sendToWork(user.id, guildId, iPet.member);
-                await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_hunt') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 const res = pet.sendToHunt(user.id, guildId, iPet.member);
-                await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
+                await iPet.editReply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] }).catch(() => {});
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_breed') {
                 try {
@@ -3531,6 +3540,7 @@ function initStockMarket(client) {
                   }
                 }
               } else if (iPet.customId === 'pet_btn_autocare') {
+                await iPet.deferReply({ flags: 64 }).catch(() => {});
                 try {
                   const res = pet.unlockAutoCare(user.id, guildId);
                   const successEmb = embeds.successEmbed(
@@ -3541,10 +3551,10 @@ function initStockMarket(client) {
                     `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
                     `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
                   );
-                  await iPet.reply({ embeds: [successEmb], flags: 64 });
+                  await iPet.editReply({ embeds: [successEmb] }).catch(() => {});
                   await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                 } catch (err) {
-                  await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
+                  await iPet.editReply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)] }).catch(() => {});
                 }
               } else if (iPet.customId === 'pet_btn_gacha') {
                 // Redirect ke panel gacha (ephemeral reply)
@@ -6324,6 +6334,7 @@ async function handlePetCommand(message, client, args) {
 
         await new Promise((resolve) => {
           pathCollector.on('collect', async i => {
+            await i.deferUpdate().catch(() => { });
             if (i.customId === 'exp_path_shortcut') {
               pathChoice = 'SHORTCUT';
               pathText = '🧗 Jalur Pintas Terjal';
@@ -6357,7 +6368,6 @@ async function handlePetCommand(message, client, args) {
               pathChoice = 'SAFE';
               pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
             }
-            await i.deferUpdate().catch(() => { });
             resolve();
           });
 
@@ -6444,6 +6454,7 @@ async function handlePetCommand(message, client, args) {
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
+              await i.deferUpdate().catch(() => { });
               if (i.customId === 'exp_event_lockpick') {
                 eventChoice = 'LOCKPICK';
                 eventText = '🗝️ Menggunakan Lockpick';
@@ -6475,7 +6486,6 @@ async function handlePetCommand(message, client, args) {
                 eventChoice = 'LEAVE';
                 eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
               }
-              await i.deferUpdate().catch(() => { });
               resolve();
             });
 
@@ -6517,6 +6527,7 @@ async function handlePetCommand(message, client, args) {
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
+              await i.deferUpdate().catch(() => { });
               if (i.customId === 'exp_event_drink') {
                 eventChoice = 'DRINK';
                 eventText = '💧 Minum Bersama';
@@ -6536,7 +6547,6 @@ async function handlePetCommand(message, client, args) {
                 eventChoice = 'LEAVE';
                 eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
               }
-              await i.deferUpdate().catch(() => { });
               resolve();
             });
 
