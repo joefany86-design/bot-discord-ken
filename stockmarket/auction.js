@@ -136,6 +136,13 @@ function createAuction(guildId, sellerId, itemType, itemId, quantity, minBid, du
   if (bid > 5000000) throw new Error('Harga bid awal maksimal adalah Rp 5.000.000!');
   if (isNaN(dur) || dur < 1 || dur > 72) throw new Error('Durasi lelang minimal 1 jam dan maksimal 72 jam!');
 
+  if (sellerId) {
+    const activeCount = db.get("SELECT COUNT(*) as count FROM auction_items WHERE seller_id = ? AND status = 'ACTIVE'", [sellerId]).count;
+    if (activeCount >= 2) {
+      throw new Error('Batas maksimal lelang aktif Anda adalah 2. Harap tunggu lelang sebelumnya selesai atau tarik lelang Anda!');
+    }
+  }
+
   db.transaction(() => {
     const endsAt = Math.floor(Date.now() / 1000) + dur * 3600;
 
