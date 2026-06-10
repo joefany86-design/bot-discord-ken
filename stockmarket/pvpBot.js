@@ -187,7 +187,7 @@ function generateBotForTier(tierKey) {
 /**
  * Formats pet pvp stats into a beautiful description
  */
-function getPvPStatsDescription(petObj, pvpState) {
+function getPvpStatsDescription(petObj, pvpState) {
   const maxHP = 100 + (petObj.stat_vit || 0) * 10;
   const baseAtk = 20 + (petObj.stat_str || 0) * 3;
   const defPercent = Math.min(75, (petObj.stat_def || 0) * 0.5);
