@@ -164,9 +164,9 @@ function setSafariCooldown(userId, guildId, cooldownUntil) {
  */
 function addSafariXp(userId, guildId, xpAmount) {
   let levelUpMsg = '';
+  let currentLvl = 1;
+  let currentXp = 0;
   db.transaction(() => {
-    let currentLvl = 1;
-    let currentXp = 0;
     const row = db.get('SELECT safari_level, safari_xp FROM wallets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
     if (row) {
       currentLvl = row.safari_level || 1;
