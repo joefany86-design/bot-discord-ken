@@ -610,6 +610,9 @@ async function handlePvPAction(interaction, client, actionType) {
     return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
   }
 
+  if (combatData.isProcessing) return;
+  combatData.isProcessing = true;
+
   await interaction.deferUpdate().catch(() => {});
 
   const p = combatData.player;
@@ -699,6 +702,7 @@ async function handlePvPAction(interaction, client, actionType) {
   p.chosenAction = null;
   b.chosenAction = null;
   combatData.turnCount++;
+  combatData.isProcessing = false;
 
   // Update embed & buttons
   const payload = getBattleEmbedData(combatData);
