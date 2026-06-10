@@ -2631,13 +2631,13 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
 
   // ─── HEADER SECTION ───
   let textY = 65;
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#00E5FF';
   ctx.textAlign = 'center';
   ctx.fillText('🧭 MASUK ZONA EKSPEDISI...', EXP_WIDTH / 2, textY);
 
   textY += 28;
-  ctx.font = '14px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.fillText(`Mempersiapkan penjelajahan di ${selectedMap.name} · Boss: ${selectedMap.boss}`, EXP_WIDTH / 2, textY);
 
@@ -2668,14 +2668,16 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
   ctx.restore();
 
   // Loading text inside loading bar
-  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
-  ctx.fillText('MENYELARASKAN KRU PET & LOGISTIK TIM... 100%', EXP_WIDTH / 2, barY + barHeight / 2 + 4);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('MENYELARASKAN KRU PET & LOGISTIK TIM... 100%', EXP_WIDTH / 2, barY + barHeight / 2);
+  ctx.textBaseline = 'alphabetic'; // reset
 
   // ─── MEMBERS / PETS SECTION ───
   let startY = 220;
-  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.textAlign = 'center';
   ctx.fillText('KRU PETUALANG TIM', EXP_WIDTH / 2, startY);
@@ -2735,28 +2737,28 @@ async function generateExpeditionLoadingCard(selectedMap, leaderId, participants
     }
 
     // Owner Name
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.textAlign = 'center';
-    ctx.fillText(`@${p.username}`, cx, drawY + 112);
+    ctx.fillText(`@${p.username}`, cx, drawY + 110);
 
     // Pet Name
-    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     let petNameDisp = p.pet_name;
     if (petNameDisp.length > 15) petNameDisp = petNameDisp.substring(0, 14) + '…';
-    ctx.fillText(petNameDisp, cx, drawY + 130);
+    ctx.fillText(petNameDisp, cx, drawY + 128);
 
     // Level + Species
-    ctx.font = '10px "DejaVu Sans", sans-serif';
+    ctx.font = '12px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.textAlign = 'center';
     ctx.fillText(`Lv. ${p.level} ${p.pet_type}`, cx, drawY + 146);
   }
 
   // Footer Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Loading Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
@@ -2825,27 +2827,27 @@ async function generateExpeditionStageTransitionCard(stageNum, stageTitle, selec
   ctx.textAlign = 'center';
   
   // Header
-  ctx.font = 'bold 20px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFB800';
   ctx.fillText(`${stageIcon} TRANSISI EXPEDITION: STAGE ${stageNum}/3`, EXP_WIDTH / 2, 120);
 
   // Title
-  ctx.font = 'bold 32px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 36px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(stageTitle.toUpperCase(), EXP_WIDTH / 2, 210);
 
   // Map / Path text
-  ctx.font = '16px "DejaVu Sans", sans-serif';
+  ctx.font = '19px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.fillText(`Memasuki wilayah ${selectedMap?.name || 'Ekspedisi'} bagian dalam...`, EXP_WIDTH / 2, 290);
 
   // Flavour text
-  ctx.font = 'italic 12px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.fillText('Kru pet terus berjalan menembus kabut tebal, bersiaplah menghadapi apa pun yang menghalangi jalan!', EXP_WIDTH / 2, 350);
 
   // Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Transition Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
 
@@ -2913,7 +2915,7 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
 
   // Header Text
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
   ctx.fillText(`⚔️ BOS BATTLE ━━ TAHAP ${stepNumber}/${totalSteps}`, EXP_WIDTH / 2, 45);
 
@@ -2939,7 +2941,7 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
 
   // Boss Name
   ctx.textAlign = 'center';
-  ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF1744';
   ctx.fillText(bossName.toUpperCase(), EXP_WIDTH / 2, 133);
 
@@ -3028,21 +3030,21 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   // Pet details next to avatar
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 16px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 19px "DejaVu Sans", sans-serif';
   let petNameDisp = petObj?.pet_name || 'Pet';
   if (petNameDisp.length > 18) petNameDisp = petNameDisp.substring(0, 17) + '…';
   ctx.fillText(petNameDisp, leftX + 125, columnsY + 55);
 
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.fillText(`Lv. ${petObj?.level || 1} ${petObj?.pet_type || 'Hewan'}`, leftX + 125, columnsY + 85);
 
   // Element and Rarity Badges
   let badgeX = leftX + 125;
-  ctx.font = 'bold 9px "DejaVu Sans", sans-serif';
-  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 110, petRarity, rarityTheme.primary, '#FFFFFF', 9);
+  ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+  const rBadgeW = drawBadge(ctx, badgeX, columnsY + 110, petRarity, rarityTheme.primary, '#FFFFFF', 11);
   badgeX += rBadgeW + 6;
-  drawBadge(ctx, badgeX, columnsY + 110, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 9);
+  drawBadge(ctx, badgeX, columnsY + 110, (petObj?.gacha_element || 'EARTH').toUpperCase(), 'rgba(255, 255, 255, 0.15)', '#FFFFFF', 11);
 
   // 2. RIGHT COLUMN: Target Player Turn details
   drawRoundedRect(ctx, rightX, columnsY, 350, columnsH, 12);
@@ -3053,22 +3055,22 @@ async function generateExpeditionQteStepCard(stepNumber, totalSteps, bossName, t
   ctx.stroke();
 
   ctx.textAlign = 'center';
-  ctx.font = '14px "DejaVu Sans", sans-serif';
+  ctx.font = '16px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.fillText('⏳ GILIRAN TARGET:', rightX + 175, columnsY + 55);
 
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF9100';
   let usernameDisp = `@${targetMemberName}`;
   if (usernameDisp.length > 20) usernameDisp = usernameDisp.substring(0, 19) + '…';
   ctx.fillText(usernameDisp, rightX + 175, columnsY + 105);
 
-  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.fillText('Segera perintahkan pet Anda sebelum waktu habis!', rightX + 175, columnsY + 150);
 
   // Footer Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Boss Battle', EXP_WIDTH / 2, EXP_HEIGHT - 22);
@@ -3120,11 +3122,11 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
 
   // Title
   ctx.textAlign = 'center';
-  ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 24px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF1744';
   ctx.fillText('🏰 EKSPEDISI GAGAL ━━ PERTEMPURAN KACAU!', EXP_WIDTH / 2, 65);
 
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.fillText(`💥 Alarm penjaga berbunyi di ${mapName}! Tim dipaksa mundur! 💥`, EXP_WIDTH / 2, 95);
 
@@ -3142,12 +3144,12 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.stroke();
 
   ctx.textAlign = 'left';
-  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FF8A80';
   ctx.fillText('🔍 PENYEBAB KEKALAHAN:', leftX + 20, columnsY + 40);
 
   // Cause text word wrap
-  ctx.font = '13px "DejaVu Sans", sans-serif';
+  ctx.font = '15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = '#FFFFFF';
   
   let causeText = '';
@@ -3162,7 +3164,7 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   let line = '';
   let yPos = columnsY + 75;
   const maxWidth = 360;
-  const lineHeight = 22;
+  const lineHeight = 24;
 
   for (let n = 0; n < words.length; n++) {
     let testLine = line + words[n] + ' ';
@@ -3177,10 +3179,10 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   }
   ctx.fillText(line, leftX + 20, yPos);
 
-  ctx.font = 'italic 11px "DejaVu Sans", sans-serif';
+  ctx.font = 'italic 13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 220);
-  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 242);
+  ctx.fillText('Dampak: Seluruh pet kehilangan status HP/kesehatan,', leftX + 20, columnsY + 230);
+  ctx.fillText('lapar/haus meningkat, dan kebahagiaan menurun drastis.', leftX + 20, columnsY + 254);
 
   // 2. RIGHT COLUMN: Pet impact lists
   drawRoundedRect(ctx, rightX, columnsY, 400, columnsH, 12);
@@ -3190,12 +3192,12 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 17px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.fillText('🐾 DAMPAK KONDISI KRU PET:', rightX + 20, columnsY + 40);
 
-  let rowY = columnsY + 70;
-  const rowHeight = 44;
+  let rowY = columnsY + 74;
+  const rowHeight = 48;
 
   for (let i = 0; i < Math.min(5, failResults.length); i++) {
     const r = failResults[i];
@@ -3207,19 +3209,19 @@ async function generateExpeditionQteFailureCard(mapName, failedMemberName, reaso
       } catch (err) {}
     }
 
-    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(`🦖 ${r.petName} (@${pOwner})`, rightX + 20, rowY);
 
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = '#FF8A80';
-    ctx.fillText(`└─ ${r.statusText || 'Luka & Stress'}`, rightX + 20, rowY + 16);
+    ctx.fillText(`└─ ${r.statusText || 'Luka & Stress'}`, rightX + 20, rowY + 18);
 
     rowY += rowHeight;
   }
 
   // Footer Watermark
-  ctx.font = '9px "DejaVu Sans", sans-serif';
+  ctx.font = '11px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.textAlign = 'center';
   ctx.fillText('Kosan 1A RPG · Pet Expedition Failure Screen', EXP_WIDTH / 2, EXP_HEIGHT - 22);
