@@ -34,9 +34,9 @@ async function safeInteractionReply(interaction, options) {
   try {
     if (!interaction) return;
     if (interaction.replied || interaction.deferred) {
-      return await interaction.followUp(options).catch(() => {});
+      return await interaction.followUp(options).catch(() => { });
     } else {
-      return await interaction.reply(options).catch(() => {});
+      return await interaction.reply(options).catch(() => { });
     }
   } catch (err) {
     console.error('Error in safeInteractionReply:', err.message);
@@ -603,7 +603,7 @@ function startRealtimeLeaderboard(client) {
       let matchMsg = botMessages.find(m => m.embeds[0] && m.embeds[0].title && m.embeds[0].title.toLowerCase().includes(keyword.toLowerCase()));
       if (matchMsg) {
         leaderboardMsgCache.set(cacheKey, matchMsg.id);
-        await matchMsg.edit(payload).catch(() => {});
+        await matchMsg.edit(payload).catch(() => { });
         return matchMsg;
       } else {
         const newMsg = await channel.send(payload).catch(() => null);
@@ -877,11 +877,11 @@ async function getPortalHubData(client) {
  */
 async function promptPaymentMethod(target, userId, guildId, itemLabel, price, onConfirm, onCancel = null) {
   const isInteraction = typeof target.editReply === 'function';
-  
+
   // Ambil saldo dompet dan bank
   const wallet = economy.getWallet(userId, guildId);
   const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 };
-  
+
   const walletBalance = wallet.balance;
   const bankBalance = bankSavings.balance;
 
@@ -953,7 +953,7 @@ async function promptPaymentMethod(target, userId, guildId, itemLabel, price, on
       await onConfirm('bank', i);
     } else {
       const cancelEmb = embeds.warnEmbed('Transaksi Dibatalkan', 'Pembelian telah dibatalkan oleh pengguna.');
-      await i.update({ embeds: [cancelEmb], components: [] }).catch(() => {});
+      await i.update({ embeds: [cancelEmb], components: [] }).catch(() => { });
       if (onCancel) onCancel();
     }
   });
@@ -962,9 +962,9 @@ async function promptPaymentMethod(target, userId, guildId, itemLabel, price, on
     if (reason === 'time' && collected.size === 0) {
       const timeoutEmb = embeds.warnEmbed('Waktu Habis', 'Waktu konfirmasi pembayaran telah habis.');
       if (isInteraction) {
-        await target.editReply({ embeds: [timeoutEmb], components: [] }).catch(() => {});
+        await target.editReply({ embeds: [timeoutEmb], components: [] }).catch(() => { });
       } else {
-        await promptMsg.edit({ embeds: [timeoutEmb], components: [] }).catch(() => {});
+        await promptMsg.edit({ embeds: [timeoutEmb], components: [] }).catch(() => { });
       }
       if (onCancel) onCancel();
     }
@@ -978,7 +978,7 @@ async function promptPaymentMethod(target, userId, guildId, itemLabel, price, on
 async function refreshAdminPanels(client) {
   try {
     const dbModule = require('./database');
-    
+
     // Auto-configure channel 1513187966074490890 if not set yet for active guilds
     client.guilds.cache.forEach(guild => {
       try {
@@ -1006,8 +1006,8 @@ async function refreshAdminPanels(client) {
           await channel.bulkDelete(fetched);
         } catch (err) {
           await Promise.all(
-            Array.from(fetched.values()).map(msg => msg.delete().catch(() => {}))
-          ).catch(() => {});
+            Array.from(fetched.values()).map(msg => msg.delete().catch(() => { }))
+          ).catch(() => { });
         }
       }
 
@@ -1024,10 +1024,10 @@ async function refreshAdminPanels(client) {
     for (const settings of guildsSettings) {
       const guild = client.guilds.cache.get(settings.guild_id);
       if (!guild) continue;
-      
+
       const adminChannel = guild.channels.cache.get(settings.admin_panel_channel_id) || await guild.channels.fetch(settings.admin_panel_channel_id).catch(() => null);
       if (!adminChannel) continue;
-      
+
       console.log(`[AdminPanel] Membersihkan dan mengirim ulang panel di channel ${adminChannel.name} (${adminChannel.id}) untuk guild ${guild.name}...`);
       await purgeAndSend(adminChannel, 'main').catch((err) => {
         console.error(`[AdminPanel] Gagal mengirim ulang panel di channel ${adminChannel.id}:`, err);
@@ -1063,15 +1063,15 @@ async function refreshAdminPanels(client) {
 
       if (shopChannel) {
         console.log(`[ShopPortal] Membersihkan dan mengirim ulang Portal Hub di channel ${shopChannel.name} (${shopChannel.id})...`);
-        
+
         const fetched = await shopChannel.messages.fetch({ limit: 50 }).catch(() => null);
         if (fetched && fetched.size > 0) {
           try {
             await shopChannel.bulkDelete(fetched);
           } catch (err) {
             await Promise.all(
-              Array.from(fetched.values()).map(msg => msg.delete().catch(() => {}))
-            ).catch(() => {});
+              Array.from(fetched.values()).map(msg => msg.delete().catch(() => { }))
+            ).catch(() => { });
           }
         }
 
@@ -1144,374 +1144,502 @@ function initStockMarket(client) {
       if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
       let customId = interaction.customId;
 
-    // Admin Tournament Panel Interactions
-    if (customId.startsWith('admin_tournament_')) {
-      const adminPanel = require('./adminPanel');
-      await adminPanel.handleAdminTournamentGlobalInteraction(interaction, client);
-      return;
-    }
-
-    // Handler interaksi turnamen Admin Cup - Tombol Join/Gabung/Pilih Pet Publik
-    if (interaction.isButton() && customId === 'cup_btn_join_public') {
-      try {
-        const tournament = require('./tournament');
-        const petModule = require('./pet');
-        const dbModule = require('./database');
-
-        const event = dbModule.db.prepare('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'').get(interaction.guildId);
-        if (!event) {
-          return interaction.reply({ content: '❌ Pendaftaran turnamen Admin Cup sedang tutup atau tidak aktif.', flags: 64 });
-        }
-
-        const allPets = petModule.getPetsList(interaction.user.id, interaction.guildId);
-        const eligiblePets = allPets.filter(p => {
-          const petMaxHP = tournament.getTournamentMaxHP(p);
-          return p.status !== 'DEAD' &&
-                 p.status !== 'EGG' &&
-                 p.health >= 50 &&
-                 (!event.max_hp || event.max_hp <= 0 || event.max_hp >= 999999 || petMaxHP <= event.max_hp);
-        });
-
-        if (eligiblePets.length === 0) {
-          const criteriaText = (event.max_hp && event.max_hp < 999999) ? `\n📈 **Kriteria Max HP:** Maksimal ${event.max_hp.toLocaleString('id-ID')} HP` : '';
-          return interaction.reply({
-            content: `❌ Anda tidak memiliki pet yang memenuhi kriteria turnamen ini!${criteriaText}\n` +
-                     `❤️ **Kriteria HP:** Minimal 50%\n` +
-                     `🚼 **Kriteria Status:** Pet tidak boleh mati atau berupa telur.`,
-            flags: 64
-          });
-        }
-
-        // Cek apakah user sudah terdaftar
-        const alreadyReg = dbModule.db.prepare('SELECT * FROM tournament_participants WHERE guild_id = ? AND user_id = ?').get(interaction.guildId, interaction.user.id);
-        let currentText = '';
-        if (alreadyReg) {
-          currentText = `\n\n⚠️ *Anda saat ini sudah terdaftar dengan pet **"${alreadyReg.pet_name}"**. Memilih pet baru di bawah ini akan **mengganti** pendaftaran Anda.*`;
-        }
-
-        const selectMenu = new StringSelectMenuBuilder()
-          .setCustomId('cup_select_register_pet')
-          .setPlaceholder('👉 Pilih pet Anda untuk didaftarkan...');
-
-        const options = eligiblePets.map(p => {
-          const speciesEmoji = petModule.GACHA_SPECIES[p.pet_type]?.emoji || '🐾';
-          return new StringSelectMenuOptionBuilder()
-            .setLabel(`${p.pet_name} (Lv. ${p.level})`)
-            .setValue(p.pet_name)
-            .setDescription(`Tipe: ${p.pet_type} | HP: ${p.health}%`)
-            .setEmoji(speciesEmoji);
-        });
-
-        selectMenu.addOptions(options);
-        const row = new ActionRowBuilder().addComponents(selectMenu);
-
-        const embed = new EmbedBuilder()
-          .setColor(0x7C4DFF)
-          .setTitle('🏆 Pilih Pet Turnamen Admin Cup')
-          .setDescription(
-            `Silakan pilih pet terkuat Anda untuk didaftarkan ke turnamen Admin Cup dari daftar di bawah ini:${currentText}`
-          )
-          .setFooter({ text: 'Hanya pet yang memenuhi kriteria yang ditampilkan' });
-
-        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
-      } catch (err) {
-        await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
-      }
-      return;
-    }
-
-    // Handler interaksi turnamen Admin Cup - Tombol Keluar Turnamen Publik
-    if (interaction.isButton() && customId === 'cup_btn_leave_public') {
-      try {
-        const tournament = require('./tournament');
-        const leftPet = tournament.unregisterParticipant(interaction.user.id, interaction.guildId);
-        
-        // Update embed pengumuman
-        tournament.updateRegistrationEmbed(interaction.guildId, client);
-
-        await interaction.reply({
-          content: `✅ Anda berhasil keluar dari turnamen. Pendaftaran pet **"${leftPet.pet_name}"** telah dibatalkan.`,
-          flags: 64
-        });
-      } catch (err) {
-        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
-      }
-      return;
-    }
-
-    // Handler interaksi String Select Menu Pilih Pet Turnamen
-    if (interaction.isStringSelectMenu() && customId === 'cup_select_register_pet') {
-      try {
-        const selectedPetName = interaction.values[0];
-        const tournament = require('./tournament');
-        
-        // Mendaftarkan / memperbarui pendaftaran
-        const userPet = tournament.registerOrUpdateParticipant(interaction.user.id, interaction.guildId, selectedPetName);
-        
-        // Update embed pengumuman dengan daftar peserta terbaru
-        tournament.updateRegistrationEmbed(interaction.guildId, client);
-
-        const successEmb = embeds.successEmbed(
-          'Pendaftaran Sukses! 🏆🐾',
-          `Pet **${userPet.pet_name}** (Lv.${userPet.level}) Anda berhasil didaftarkan ke turnamen Admin Cup!`
-        );
-
-        await interaction.update({ embeds: [successEmb], components: [] }).catch(() => {});
-      } catch (err) {
-        await interaction.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => {});
-      }
-      return;
-    }
-
-    // Handler interaksi String Select Menu Diskualifikasi Peserta Lain (Admin)
-    if (interaction.isStringSelectMenu() && customId === 'cup_admin_select_dq_other') {
-      const isOwner = interaction.user.id === OWNER_ID;
-      const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
-      const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
-      if (!isOwner && !isAdmin && !isGuildOwner) {
-        return interaction.reply({ content: '❌ Akses Ditolak! Menu ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
-      }
-
-      try {
-        const tournament = require('./tournament');
-        const selectedValue = interaction.values[0]; // e.g. 'cup_admin_act_selectdq_12345'
-        const targetPlayerId = selectedValue.replace('cup_admin_act_selectdq_', '');
-        await tournament.disqualifyParticipant(interaction.guildId, targetPlayerId, client);
-        await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => {});
-      } catch (err) {
-        await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
-      }
-      return;
-    }
-
-    // Handler interaksi turnamen Admin Cup
-    if (interaction.isButton() && customId.startsWith('cup_btn_')) {
-      const parts = customId.split('_');
-      const actionType = parts[2]; // 'atk', 'def', 'elem', 'ult'
-      const matchId = parseInt(parts[3]);
-
-      try {
-        const tournament = require('./tournament');
-        await tournament.processTurn(matchId, interaction.user.id, actionType, client, interaction);
-      } catch (err) {
-        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 }).catch(() => {});
-      }
-      return;
-    }
-
-    // Handler interaksi panel admin turnamen
-    if (interaction.isButton() && customId.startsWith('cup_admin_')) {
-      const isOwner = interaction.user.id === OWNER_ID;
-      const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
-      const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
-      if (!isOwner && !isAdmin && !isGuildOwner) {
-        return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
-      }
-
-      const tournament = require('./tournament');
-      const parts = customId.split('_');
-      const adminAction = parts[2];
-
-      try {
-        if (adminAction === 'pause') {
-          await tournament.pauseTournament(interaction.guildId, client);
-          await interaction.reply({ content: '⏸️ Turnamen dijeda sementara oleh Admin!', flags: 64 });
-        } else if (adminAction === 'resume') {
-          await tournament.resumeTournament(interaction.guildId, client);
-          await interaction.reply({ content: '▶️ Turnamen dilanjutkan kembali oleh Admin!', flags: 64 });
-        } else if (adminAction === 'stop') {
-          if (client.tournamentTimers && client.tournamentTimers.has(interaction.guildId)) {
-            clearTimeout(client.tournamentTimers.get(interaction.guildId));
-            client.tournamentTimers.delete(interaction.guildId);
-          }
-          const active = tournament.stopTournament(interaction.guildId);
-          if (active && active.channel_id) {
-            // Bersihkan channel secara otomatis agar bersih dari tombol join dll.
-            await tournament.createTournamentChannel(interaction.guild).catch(() => null);
-
-            const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
-            if (channel && typeof channel.send === 'function') {
-              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
-            }
-          }
-          await interaction.reply({ content: '✅ Turnamen berhasil dibatalkan dan dibersihkan.', flags: 64 });
-          if (interaction.message) {
-            await interaction.message.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => {});
-          }
-          const adminPanel = require('./adminPanel');
-          await adminPanel.updatePersistentTournamentPanel(interaction.guildId, client).catch(() => {});
-        } else if (adminAction === 'reroll') {
-          await tournament.rerollMatch(interaction.guildId, client);
-          await interaction.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
-        } else if (adminAction === 'dq' || adminAction === 'forcewin') {
-          const dbModule = require('./database');
-          const match = dbModule.get(
-            'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
-            [interaction.guildId]
-          );
-          if (!match) {
-            return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
-          }
-
-          const p1Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_1_id]);
-          const p2Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_2_id]);
-
-          const actionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_1_id}`)
-              .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p1Pet?.pet_name || 'Player 1'}`)
-              .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_2_id}`)
-              .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p2Pet?.pet_name || 'Player 2'}`)
-              .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success)
-          );
-
-          const desc = adminAction === 'dq' 
-            ? '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**' 
-            : '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**';
-
-          const components = [actionRow];
-          if (adminAction === 'dq') {
-            const allParticipants = dbModule.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [interaction.guildId]);
-            const selectOptions = allParticipants
-              .filter(p => p.user_id !== match.player_1_id && p.user_id !== match.player_2_id)
-              .slice(0, 25)
-              .map(p => ({
-                label: `${p.pet_name}`,
-                value: `cup_admin_act_selectdq_${p.user_id}`,
-                description: `Pawang: (ID: ${p.user_id.slice(0, 8)}...)`
-              }));
-
-            if (selectOptions.length > 0) {
-              const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('cup_admin_select_dq_other')
-                .setPlaceholder('🚨 Pilih Peserta Lain untuk Didiskualifikasi...')
-                .addOptions(selectOptions);
-              components.push(new ActionRowBuilder().addComponents(selectMenu));
-            }
-          }
-
-          await interaction.reply({ content: desc, components, flags: 64 });
-        } else if (adminAction === 'extend') {
-          const actionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_5`)
-              .setLabel('+5 Menit')
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_10`)
-              .setLabel('+10 Menit')
-              .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-              .setCustomId(`cup_admin_act_ext_${interaction.guildId}_15`)
-              .setLabel('+15 Menit')
-              .setStyle(ButtonStyle.Secondary)
-          );
-          await interaction.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
-        } else if (adminAction === 'act') {
-          const subAction = parts[3];
-
-          if (subAction === 'dq') {
-            const targetPlayerId = parts[5];
-            await tournament.dqPlayer(interaction.guildId, targetPlayerId, client);
-            await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => {});
-          } else if (subAction === 'fw') {
-            const targetPlayerId = parts[5];
-            await tournament.forceWinPlayer(interaction.guildId, targetPlayerId, client);
-            await interaction.update({ content: `✅ Kemenangan paksa diberikan kepada <@${targetPlayerId}>!`, components: [] }).catch(() => {});
-          } else if (subAction === 'ext') {
-            const targetGuildId = parts[4];
-            const mins = parseInt(parts[5]);
-            await tournament.extendRegistration(targetGuildId, mins, client);
-            await interaction.update({ content: `✅ Waktu pendaftaran berhasil diperpanjang sebesar **+${mins} menit**!`, components: [] }).catch(() => {});
-          }
-        }
-      } catch (err) {
-        await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => {});
-      }
-      return;
-    }
-
-    if (interaction.isStringSelectMenu() && customId === 'eco_select_portal_hub_navigation') {
-      customId = interaction.values[0];
-    }
-    const { guildId, user } = interaction;
-    if (!guildId) return;
-
-    // Router interaksi Pasar Lelang Warga (Lelang P2P)
-    if (customId.startsWith('eco_market_') || customId.startsWith('eco_btn_open_marketplace_') || customId.startsWith('eco_auction_') || customId.startsWith('eco_btn_open_auction_')) {
-      const auction = require('./auction');
-      await auction.handleAuctionInteraction(interaction, client);
-      return;
-    }
-
-    try {
-      // Handler untuk tombol prompt membuka portal hub privat
-      if (customId === 'eco_btn_open_portal_hub_private') {
-        const { embed, components, files } = await getPortalHubData(client);
-        await interaction.reply({ embeds: [embed], components, files, flags: 64 });
-        return;
-      }
-
-      // Handler untuk tombol prompt membuka admin panel privat khusus owner
-      if (customId === 'eco_btn_open_admin_panel_private') {
-        if (user.id !== OWNER_ID) {
-          return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Owner utama.', flags: 64 });
-        }
+      // Admin Tournament Panel Interactions
+      if (customId.startsWith('admin_tournament_')) {
         const adminPanel = require('./adminPanel');
-        await adminPanel.handleAdminPanel(interaction, client);
+        await adminPanel.handleAdminTournamentGlobalInteraction(interaction, client);
         return;
       }
 
-      // ── PORTAL PERMANEN: TOKO ROLE ──
-      if (customId === 'eco_btn_open_shop_private_perm' || customId === 'eco_btn_open_shop_direct') {
-        await interaction.deferReply({ flags: 64 });
-        const wallet = economy.getWallet(user.id, guildId);
-        const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-        const embed = embeds.shopEmbed(items, wallet);
+      // Handler interaksi turnamen Admin Cup - Tombol Join/Gabung/Pilih Pet Publik
+      if (interaction.isButton() && customId === 'cup_btn_join_public') {
+        try {
+          const tournament = require('./tournament');
+          const petModule = require('./pet');
+          const dbModule = require('./database');
 
-        const components = [];
-        const btnRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
-        );
-        components.push(btnRow);
+          const event = dbModule.db.prepare('SELECT * FROM tournament_events WHERE guild_id = ? AND status = \'REGISTERING\'').get(interaction.guildId);
+          if (!event) {
+            return interaction.reply({ content: '❌ Pendaftaran turnamen Admin Cup sedang tutup atau tidak aktif.', flags: 64 });
+          }
 
-        if (items.length > 0) {
+          const allPets = petModule.getPetsList(interaction.user.id, interaction.guildId);
+          const eligiblePets = allPets.filter(p => {
+            const petMaxHP = tournament.getTournamentMaxHP(p);
+            return p.status !== 'DEAD' &&
+              p.status !== 'EGG' &&
+              p.health >= 50 &&
+              (!event.max_hp || event.max_hp <= 0 || event.max_hp >= 999999 || petMaxHP <= event.max_hp);
+          });
+
+          if (eligiblePets.length === 0) {
+            const criteriaText = (event.max_hp && event.max_hp < 999999) ? `\n📈 **Kriteria Max HP:** Maksimal ${event.max_hp.toLocaleString('id-ID')} HP` : '';
+            return interaction.reply({
+              content: `❌ Anda tidak memiliki pet yang memenuhi kriteria turnamen ini!${criteriaText}\n` +
+                `❤️ **Kriteria HP:** Minimal 50%\n` +
+                `🚼 **Kriteria Status:** Pet tidak boleh mati atau berupa telur.`,
+              flags: 64
+            });
+          }
+
+          // Cek apakah user sudah terdaftar
+          const alreadyReg = dbModule.db.prepare('SELECT * FROM tournament_participants WHERE guild_id = ? AND user_id = ?').get(interaction.guildId, interaction.user.id);
+          let currentText = '';
+          if (alreadyReg) {
+            currentText = `\n\n⚠️ *Anda saat ini sudah terdaftar dengan pet **"${alreadyReg.pet_name}"**. Memilih pet baru di bawah ini akan **mengganti** pendaftaran Anda.*`;
+          }
+
           const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('eco_select_buy_role')
-            .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+            .setCustomId('cup_select_register_pet')
+            .setPlaceholder('👉 Pilih pet Anda untuk didaftarkan...');
 
-          const TIER_EMOJIS = {
-            COMMON: '🟢',
-            RARE: '🔵',
-            EPIC: '🟣',
-            LEGENDARY: '👑',
-            MYTHIC: '🌟'
-          };
-
-          const options = items.slice(0, 25).map(item => {
-            const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-            const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+          const options = eligiblePets.map(p => {
+            const speciesEmoji = petModule.GACHA_SPECIES[p.pet_type]?.emoji || '🐾';
             return new StringSelectMenuOptionBuilder()
-              .setLabel(`${emoji} ${item.role_name}`)
-              .setValue(item.id.toString())
-              .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+              .setLabel(`${p.pet_name} (Lv. ${p.level})`)
+              .setValue(p.pet_name)
+              .setDescription(`Tipe: ${p.pet_type} | HP: ${p.health}%`)
+              .setEmoji(speciesEmoji);
           });
 
           selectMenu.addOptions(options);
-          components.push(new ActionRowBuilder().addComponents(selectMenu));
+          const row = new ActionRowBuilder().addComponents(selectMenu);
+
+          const embed = new EmbedBuilder()
+            .setColor(0x7C4DFF)
+            .setTitle('🏆 Pilih Pet Turnamen Admin Cup')
+            .setDescription(
+              `Silakan pilih pet terkuat Anda untuk didaftarkan ke turnamen Admin Cup dari daftar di bawah ini:${currentText}`
+            )
+            .setFooter({ text: 'Hanya pet yang memenuhi kriteria yang ditampilkan' });
+
+          await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        } catch (err) {
+          await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+        }
+        return;
+      }
+
+      // Handler interaksi turnamen Admin Cup - Tombol Keluar Turnamen Publik
+      if (interaction.isButton() && customId === 'cup_btn_leave_public') {
+        try {
+          const tournament = require('./tournament');
+          const leftPet = tournament.unregisterParticipant(interaction.user.id, interaction.guildId);
+
+          // Update embed pengumuman
+          tournament.updateRegistrationEmbed(interaction.guildId, client);
+
+          await interaction.reply({
+            content: `✅ Anda berhasil keluar dari turnamen. Pendaftaran pet **"${leftPet.pet_name}"** telah dibatalkan.`,
+            flags: 64
+          });
+        } catch (err) {
+          await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
+        }
+        return;
+      }
+
+      // Handler interaksi String Select Menu Pilih Pet Turnamen
+      if (interaction.isStringSelectMenu() && customId === 'cup_select_register_pet') {
+        try {
+          const selectedPetName = interaction.values[0];
+          const tournament = require('./tournament');
+
+          // Mendaftarkan / memperbarui pendaftaran
+          const userPet = tournament.registerOrUpdateParticipant(interaction.user.id, interaction.guildId, selectedPetName);
+
+          // Update embed pengumuman dengan daftar peserta terbaru
+          tournament.updateRegistrationEmbed(interaction.guildId, client);
+
+          const successEmb = embeds.successEmbed(
+            'Pendaftaran Sukses! 🏆🐾',
+            `Pet **${userPet.pet_name}** (Lv.${userPet.level}) Anda berhasil didaftarkan ke turnamen Admin Cup!`
+          );
+
+          await interaction.update({ embeds: [successEmb], components: [] }).catch(() => { });
+        } catch (err) {
+          await interaction.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
+        }
+        return;
+      }
+
+      // Handler interaksi String Select Menu Diskualifikasi Peserta Lain (Admin)
+      if (interaction.isStringSelectMenu() && customId === 'cup_admin_select_dq_other') {
+        const isOwner = interaction.user.id === OWNER_ID;
+        const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
+        const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
+        if (!isOwner && !isAdmin && !isGuildOwner) {
+          return interaction.reply({ content: '❌ Akses Ditolak! Menu ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
         }
 
-        const privateMsg = await interaction.editReply({ embeds: [embed], components });
-        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+        try {
+          const tournament = require('./tournament');
+          const selectedValue = interaction.values[0]; // e.g. 'cup_admin_act_selectdq_12345'
+          const targetPlayerId = selectedValue.replace('cup_admin_act_selectdq_', '');
+          await tournament.disqualifyParticipant(interaction.guildId, targetPlayerId, client);
+          await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => { });
+        } catch (err) {
+          await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+        }
+        return;
+      }
 
-        collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol/Menu ini bukan milik Anda!', flags: 64 });
+      // Handler interaksi turnamen Admin Cup
+      if (interaction.isButton() && customId.startsWith('cup_btn_')) {
+        const parts = customId.split('_');
+        const actionType = parts[2]; // 'atk', 'def', 'elem', 'ult'
+        const matchId = parseInt(parts[3]);
 
-          try {
-            if (i.customId === 'eco_btn_profile') {
+        try {
+          const tournament = require('./tournament');
+          await tournament.processTurn(matchId, interaction.user.id, actionType, client, interaction);
+        } catch (err) {
+          await interaction.reply({ content: `❌ ${err.message}`, flags: 64 }).catch(() => { });
+        }
+        return;
+      }
+
+      // Handler interaksi panel admin turnamen
+      if (interaction.isButton() && customId.startsWith('cup_admin_')) {
+        const isOwner = interaction.user.id === OWNER_ID;
+        const isGuildOwner = interaction.guild && interaction.user.id === interaction.guild.ownerId;
+        const isAdmin = interaction.member && interaction.member.permissions.has('Administrator');
+        if (!isOwner && !isAdmin && !isGuildOwner) {
+          return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Administrator server.', flags: 64 });
+        }
+
+        const tournament = require('./tournament');
+        const parts = customId.split('_');
+        const adminAction = parts[2];
+
+        try {
+          if (adminAction === 'pause') {
+            await tournament.pauseTournament(interaction.guildId, client);
+            await interaction.reply({ content: '⏸️ Turnamen dijeda sementara oleh Admin!', flags: 64 });
+          } else if (adminAction === 'resume') {
+            await tournament.resumeTournament(interaction.guildId, client);
+            await interaction.reply({ content: '▶️ Turnamen dilanjutkan kembali oleh Admin!', flags: 64 });
+          } else if (adminAction === 'stop') {
+            if (client.tournamentTimers && client.tournamentTimers.has(interaction.guildId)) {
+              clearTimeout(client.tournamentTimers.get(interaction.guildId));
+              client.tournamentTimers.delete(interaction.guildId);
+            }
+            const active = tournament.stopTournament(interaction.guildId);
+            if (active && active.channel_id) {
+              // Bersihkan channel secara otomatis agar bersih dari tombol join dll.
+              await tournament.createTournamentChannel(interaction.guild).catch(() => null);
+
+              const channel = interaction.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
+              if (channel && typeof channel.send === 'function') {
+                await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => { });
+              }
+            }
+            await interaction.reply({ content: '✅ Turnamen berhasil dibatalkan dan dibersihkan.', flags: 64 });
+            if (interaction.message) {
+              await interaction.message.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => { });
+            }
+            const adminPanel = require('./adminPanel');
+            await adminPanel.updatePersistentTournamentPanel(interaction.guildId, client).catch(() => { });
+          } else if (adminAction === 'reroll') {
+            await tournament.rerollMatch(interaction.guildId, client);
+            await interaction.reply({ content: '🔄 Duel aktif berhasil di-reroll!', flags: 64 });
+          } else if (adminAction === 'dq' || adminAction === 'forcewin') {
+            const dbModule = require('./database');
+            const match = dbModule.get(
+              'SELECT * FROM tournament_matches WHERE guild_id = ? AND match_status = \'ACTIVE\' LIMIT 1',
+              [interaction.guildId]
+            );
+            if (!match) {
+              return interaction.reply({ content: '❌ Tidak ada pertandingan aktif saat ini!', flags: 64 });
+            }
+
+            const p1Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_1_id]);
+            const p2Pet = dbModule.get('SELECT pet_name FROM tournament_participants WHERE guild_id = ? AND user_id = ?', [interaction.guildId, match.player_2_id]);
+
+            const actionRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_1_id}`)
+                .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p1Pet?.pet_name || 'Player 1'}`)
+                .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId(`cup_admin_act_${adminAction === 'dq' ? 'dq' : 'fw'}_${match.match_id}_${match.player_2_id}`)
+                .setLabel(`${adminAction === 'dq' ? 'DQ' : 'Menangkan'} ${p2Pet?.pet_name || 'Player 2'}`)
+                .setStyle(adminAction === 'dq' ? ButtonStyle.Danger : ButtonStyle.Success)
+            );
+
+            const desc = adminAction === 'dq'
+              ? '⚠️ **Pilih pemain yang ingin DIDISKUALIFIKASI:**'
+              : '👑 **Pilih pemain yang ingin DIMENANGKAN PAKSA:**';
+
+            const components = [actionRow];
+            if (adminAction === 'dq') {
+              const allParticipants = dbModule.all('SELECT * FROM tournament_participants WHERE guild_id = ?', [interaction.guildId]);
+              const selectOptions = allParticipants
+                .filter(p => p.user_id !== match.player_1_id && p.user_id !== match.player_2_id)
+                .slice(0, 25)
+                .map(p => ({
+                  label: `${p.pet_name}`,
+                  value: `cup_admin_act_selectdq_${p.user_id}`,
+                  description: `Pawang: (ID: ${p.user_id.slice(0, 8)}...)`
+                }));
+
+              if (selectOptions.length > 0) {
+                const selectMenu = new StringSelectMenuBuilder()
+                  .setCustomId('cup_admin_select_dq_other')
+                  .setPlaceholder('🚨 Pilih Peserta Lain untuk Didiskualifikasi...')
+                  .addOptions(selectOptions);
+                components.push(new ActionRowBuilder().addComponents(selectMenu));
+              }
+            }
+
+            await interaction.reply({ content: desc, components, flags: 64 });
+          } else if (adminAction === 'extend') {
+            const actionRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`cup_admin_act_ext_${interaction.guildId}_5`)
+                .setLabel('+5 Menit')
+                .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId(`cup_admin_act_ext_${interaction.guildId}_10`)
+                .setLabel('+10 Menit')
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId(`cup_admin_act_ext_${interaction.guildId}_15`)
+                .setLabel('+15 Menit')
+                .setStyle(ButtonStyle.Secondary)
+            );
+            await interaction.reply({ content: '⏱️ **Pilih durasi perpanjangan waktu pendaftaran:**', components: [actionRow], flags: 64 });
+          } else if (adminAction === 'act') {
+            const subAction = parts[3];
+
+            if (subAction === 'dq') {
+              const targetPlayerId = parts[5];
+              await tournament.dqPlayer(interaction.guildId, targetPlayerId, client);
+              await interaction.update({ content: `✅ Pemain <@${targetPlayerId}> berhasil didiskualifikasi!`, components: [] }).catch(() => { });
+            } else if (subAction === 'fw') {
+              const targetPlayerId = parts[5];
+              await tournament.forceWinPlayer(interaction.guildId, targetPlayerId, client);
+              await interaction.update({ content: `✅ Kemenangan paksa diberikan kepada <@${targetPlayerId}>!`, components: [] }).catch(() => { });
+            } else if (subAction === 'ext') {
+              const targetGuildId = parts[4];
+              const mins = parseInt(parts[5]);
+              await tournament.extendRegistration(targetGuildId, mins, client);
+              await interaction.update({ content: `✅ Waktu pendaftaran berhasil diperpanjang sebesar **+${mins} menit**!`, components: [] }).catch(() => { });
+            }
+          }
+        } catch (err) {
+          await interaction.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+        }
+        return;
+      }
+
+      if (interaction.isStringSelectMenu() && customId === 'eco_select_portal_hub_navigation') {
+        customId = interaction.values[0];
+      }
+      const { guildId, user } = interaction;
+      if (!guildId) return;
+
+      // Router interaksi Pasar Lelang Warga (Lelang P2P)
+      if (customId.startsWith('eco_market_') || customId.startsWith('eco_btn_open_marketplace_') || customId.startsWith('eco_auction_') || customId.startsWith('eco_btn_open_auction_')) {
+        const auction = require('./auction');
+        await auction.handleAuctionInteraction(interaction, client);
+        return;
+      }
+
+      try {
+        // Handler untuk tombol prompt membuka portal hub privat
+        if (customId === 'eco_btn_open_portal_hub_private') {
+          const { embed, components, files } = await getPortalHubData(client);
+          await interaction.reply({ embeds: [embed], components, files, flags: 64 });
+          return;
+        }
+
+        // Handler untuk tombol prompt membuka admin panel privat khusus owner
+        if (customId === 'eco_btn_open_admin_panel_private') {
+          if (user.id !== OWNER_ID) {
+            return interaction.reply({ content: '❌ Akses Ditolak! Tombol ini hanya dapat digunakan oleh Owner utama.', flags: 64 });
+          }
+          const adminPanel = require('./adminPanel');
+          await adminPanel.handleAdminPanel(interaction, client);
+          return;
+        }
+
+        // ── PORTAL PERMANEN: TOKO ROLE ──
+        if (customId === 'eco_btn_open_shop_private_perm' || customId === 'eco_btn_open_shop_direct') {
+          await interaction.deferReply({ flags: 64 });
+          const wallet = economy.getWallet(user.id, guildId);
+          const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+          const embed = embeds.shopEmbed(items, wallet);
+
+          const components = [];
+          const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+          );
+          components.push(btnRow);
+
+          if (items.length > 0) {
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('eco_select_buy_role')
+              .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+            const TIER_EMOJIS = {
+              COMMON: '🟢',
+              RARE: '🔵',
+              EPIC: '🟣',
+              LEGENDARY: '👑',
+              MYTHIC: '🌟'
+            };
+
+            const options = items.slice(0, 25).map(item => {
+              const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+              const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+              return new StringSelectMenuOptionBuilder()
+                .setLabel(`${emoji} ${item.role_name}`)
+                .setValue(item.id.toString())
+                .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+            });
+
+            selectMenu.addOptions(options);
+            components.push(new ActionRowBuilder().addComponents(selectMenu));
+          }
+
+          const privateMsg = await interaction.editReply({ embeds: [embed], components });
+          const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+          collector.on('collect', async i => {
+            if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol/Menu ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (i.customId === 'eco_btn_profile') {
+                await i.deferReply({ flags: 64 });
+                const wallet2 = economy.getWallet(user.id, guildId);
+                const porto = stocks.getPortfolio(user.id, guildId);
+                const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+                const userPet = pet.getPet(user.id, guildId);
+                const activeLoan = bank.getActiveLoan(user.id, guildId);
+                const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+                const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
+                const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
+                await i.editReply({ embeds: [profileEmbed] });
+              } else if (i.customId === 'eco_btn_gacha') {
+                const gachaCost = config.gacha.COST || 250;
+                await promptPaymentMethod(i, user.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
+                  await executeGachaRoll({
+                    replyTarget: iConfirm,
+                    user,
+                    guild: iConfirm.guild,
+                    guildId,
+                    client,
+                    isInteraction: true,
+                    member: iConfirm.member,
+                    paymentSource
+                  });
+                  // Perbarui embed utama setelah gacha
+                  const wallet2 = economy.getWallet(user.id, guildId);
+                  const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+                  const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+                  await interaction.editReply({ embeds: [updatedEmbed] }).catch(() => { });
+                });
+              } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
+                const itemId = parseInt(i.values[0]);
+                const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
+                if (!item) {
+                  const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role tersebut tidak terdaftar.');
+                  return i.reply({ embeds: [emb], flags: 64 });
+                }
+                await promptPaymentMethod(i, user.id, guildId, `Role ${item.role_name}`, item.price, async (paymentSource, iConfirm) => {
+                  await executeRolePurchase({
+                    replyTarget: iConfirm,
+                    user,
+                    guild: iConfirm.guild,
+                    guildId,
+                    itemId,
+                    isInteraction: true,
+                    member: iConfirm.member,
+                    paymentSource
+                  });
+                  // Perbarui embed utama setelah pembelian role
+                  const wallet2 = economy.getWallet(user.id, guildId);
+                  const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+                  const updatedEmbed = embeds.shopEmbed(items2, wallet2);
+
+                  // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
+                  const updatedComponents = [];
+                  const freshBtnRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
+                  );
+                  updatedComponents.push(freshBtnRow);
+
+                  if (items2.length > 0) {
+                    const selectMenu = new StringSelectMenuBuilder()
+                      .setCustomId('eco_select_buy_role')
+                      .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
+
+                    const TIER_EMOJIS = {
+                      COMMON: '🟢',
+                      RARE: '🔵',
+                      EPIC: '🟣',
+                      LEGENDARY: '👑',
+                      MYTHIC: '🌟'
+                    };
+
+                    const options = items2.slice(0, 25).map(item => {
+                      const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
+                      const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
+                      return new StringSelectMenuOptionBuilder()
+                        .setLabel(`${emoji} ${item.role_name}`)
+                        .setValue(item.id.toString())
+                        .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
+                    });
+
+                    selectMenu.addOptions(options);
+                    updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
+                  }
+
+                  await interaction.editReply({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => { });
+                });
+              }
+            } catch (err) {
+              console.error('Error handling interaction in shop portal:', err);
+              await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', flags: 64 }).catch(() => { });
+            }
+          });
+
+          collector.on('end', async () => {
+            await interaction.deleteReply().catch(() => { });
+          });
+        }
+
+        // ── PORTAL PERMANEN: BURSA SAHAM ──
+        else if (customId === 'eco_btn_open_market_private_perm') {
+          await interaction.deferReply({ flags: 64 });
+          const activeStocks = stocks.getStocks(guildId);
+          const isOpen = stocks.isMarketOpen();
+          const embed = embeds.marketEmbed(activeStocks, isOpen);
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary)
+          );
+          if (activeStocks.length > 0) {
+            row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
+          }
+
+          const privateMsg = await interaction.editReply({ embeds: [embed], components: [row] });
+          const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
+
+          collector.on('collect', async i => {
+            if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            if (i.customId === 'eco_btn_porto') {
+              await i.deferReply({ flags: 64 });
+              const wallet2 = economy.getWallet(user.id, guildId);
+              const porto = stocks.getPortfolio(user.id, guildId);
+              await i.editReply({ embeds: [embeds.portfolioEmbed(user, porto, wallet2)] });
+            } else if (i.customId === 'eco_btn_profile') {
               await i.deferReply({ flags: 64 });
               const wallet2 = economy.getWallet(user.id, guildId);
               const porto = stocks.getPortfolio(user.id, guildId);
@@ -1520,1413 +1648,1814 @@ function initStockMarket(client) {
               const activeLoan = bank.getActiveLoan(user.id, guildId);
               const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
               const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-              const profileEmbed = embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items);
-              await i.editReply({ embeds: [profileEmbed] });
-            } else if (i.customId === 'eco_btn_gacha') {
-              const gachaCost = config.gacha.COST || 250;
-              await promptPaymentMethod(i, user.id, guildId, 'Gacha Role', gachaCost, async (paymentSource, iConfirm) => {
-                await executeGachaRoll({
-                  replyTarget: iConfirm,
-                  user,
-                  guild: iConfirm.guild,
-                  guildId,
-                  client,
-                  isInteraction: true,
-                  member: iConfirm.member,
-                  paymentSource
-                });
-                // Perbarui embed utama setelah gacha
-                const wallet2 = economy.getWallet(user.id, guildId);
-                const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-                const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-                await interaction.editReply({ embeds: [updatedEmbed] }).catch(() => {});
-              });
-            } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
-              const itemId = parseInt(i.values[0]);
-              const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
-              if (!item) {
-                const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role tersebut tidak terdaftar.');
-                return i.reply({ embeds: [emb], flags: 64 });
-              }
-              await promptPaymentMethod(i, user.id, guildId, `Role ${item.role_name}`, item.price, async (paymentSource, iConfirm) => {
-                await executeRolePurchase({
-                  replyTarget: iConfirm,
-                  user,
-                  guild: iConfirm.guild,
-                  guildId,
-                  itemId,
-                  isInteraction: true,
-                  member: iConfirm.member,
-                  paymentSource
-                });
-                // Perbarui embed utama setelah pembelian role
-                const wallet2 = economy.getWallet(user.id, guildId);
-                const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-                const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-                
-                // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
-                const updatedComponents = [];
-                const freshBtnRow = new ActionRowBuilder().addComponents(
-                  new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
-                  new ButtonBuilder().setCustomId('eco_btn_gacha').setLabel('🎲 Gacha Role').setStyle(ButtonStyle.Danger)
-                );
-                updatedComponents.push(freshBtnRow);
-
-                if (items2.length > 0) {
-                  const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('eco_select_buy_role')
-                    .setPlaceholder('👉 Pilih role untuk dibeli secara langsung...');
-
-                  const TIER_EMOJIS = {
-                    COMMON: '🟢',
-                    RARE: '🔵',
-                    EPIC: '🟣',
-                    LEGENDARY: '👑',
-                    MYTHIC: '🌟'
-                  };
-
-                  const options = items2.slice(0, 25).map(item => {
-                    const emoji = TIER_EMOJIS[item.tier?.toUpperCase()] || '🟢';
-                    const stockText = item.stock === -1 ? '♾️ Tanpa Batas' : (item.stock <= 0 ? 'SOLD OUT' : `Sisa ${item.stock}`);
-                    return new StringSelectMenuOptionBuilder()
-                      .setLabel(`${emoji} ${item.role_name}`)
-                      .setValue(item.id.toString())
-                      .setDescription(`Harga: Rp ${item.price.toLocaleString('id-ID')} | Stok: ${stockText}`);
-                  });
-
-                  selectMenu.addOptions(options);
-                  updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
-                }
-
-                await interaction.editReply({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
-              });
-            }
-          } catch (err) {
-            console.error('Error handling interaction in shop portal:', err);
-            await i.reply({ content: '❌ Terjadi kesalahan saat memproses permintaan Anda.', flags: 64 }).catch(() => { });
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: BURSA SAHAM ──
-      else if (customId === 'eco_btn_open_market_private_perm') {
-        await interaction.deferReply({ flags: 64 });
-        const activeStocks = stocks.getStocks(guildId);
-        const isOpen = stocks.isMarketOpen();
-        const embed = embeds.marketEmbed(activeStocks, isOpen);
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('eco_btn_porto').setLabel('💼 Portofolio').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('eco_btn_profile').setLabel('💰 Profil & Saldo').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('eco_btn_shop').setLabel('🛍️ Toko Role').setStyle(ButtonStyle.Secondary)
-        );
-        if (activeStocks.length > 0) {
-          row.addComponents(new ButtonBuilder().setCustomId('eco_btn_trade').setLabel('📈 Beli/Jual Saham').setStyle(ButtonStyle.Success));
-        }
-
-        const privateMsg = await interaction.editReply({ embeds: [embed], components: [row] });
-        const collector = privateMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 120000 });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          if (i.customId === 'eco_btn_porto') {
-            await i.deferReply({ flags: 64 });
-            const wallet2 = economy.getWallet(user.id, guildId);
-            const porto = stocks.getPortfolio(user.id, guildId);
-            await i.editReply({ embeds: [embeds.portfolioEmbed(user, porto, wallet2)] });
-          } else if (i.customId === 'eco_btn_profile') {
-            await i.deferReply({ flags: 64 });
-            const wallet2 = economy.getWallet(user.id, guildId);
-            const porto = stocks.getPortfolio(user.id, guildId);
-            const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            const userPet = pet.getPet(user.id, guildId);
-            const activeLoan = bank.getActiveLoan(user.id, guildId);
-            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
-            const receivables = database.all('SELECT debtor_id, amount FROM bail_debts WHERE creditor_id = ? AND guild_id = ?', [user.id, guildId]);
-            await i.editReply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items)] });
-          } else if (i.customId === 'eco_btn_shop') {
-            await i.deferReply({ flags: 64 });
-            const wallet2 = economy.getWallet(user.id, guildId);
-            const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
-            await i.editReply({ embeds: [embeds.shopEmbed(items, wallet2)] });
-          } else if (i.customId === 'eco_btn_trade') {
-            await sendInteractiveTradePanel(i, activeStocks[0].stock_ticker, user, guildId, client);
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── DIRECT TRADING PANEL: BURSA SAHAM ──
-      else if (customId === 'eco_btn_open_market_direct') {
-        await interaction.deferReply({ flags: 64 });
-        const activeStocks = stocks.getStocks(guildId);
-        if (activeStocks.length === 0) {
-          return interaction.editReply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
-        }
-        await sendInteractiveTradePanel(interaction, activeStocks[0].stock_ticker, user, guildId, client);
-      }
-
-      // ── PORTAL PERMANEN: BANK SENTRAL ──
-      else if (customId === 'eco_btn_open_bank_private_perm' || customId === 'eco_btn_open_bank_direct') {
-        await interaction.deferReply({ flags: 64 });
-        const getBankDashboardDataPrivate = (targetUserId) => {
-          const wallet = economy.getWallet(targetUserId, guildId);
-          const savings = bank.getSavings(targetUserId, guildId);
-          const activeLoan = bank.getActiveLoan(targetUserId, guildId);
-          const maxLimit = bank.calculateMaxLoanLimit(targetUserId, guildId);
-          const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [targetUserId, guildId]);
-          const hasFriendDebts = debts && debts.length > 0;
-
-          const embed = embeds.bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit);
-
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('bank_btn_deposit').setLabel('📥 Deposit').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('bank_btn_withdraw').setLabel('📤 Tarik').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('bank_btn_loan').setLabel('📜 Pinjam').setStyle(ButtonStyle.Success).setDisabled(!!activeLoan),
-            new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan && !hasFriendDebts),
-            new ButtonBuilder().setCustomId('bank_btn_transfer').setLabel('💸 Transfer').setStyle(ButtonStyle.Primary)
-          );
-
-          return { embeds: [embed], components: [row] };
-        };
-
-        const initialData = getBankDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
-
-        collector.on('collect', async iBank => {
-          if (iBank.user.id !== user.id) return iBank.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          try {
-            if (iBank.customId === 'bank_btn_deposit') {
-              if (robbery.activeHeists.has(guildId)) {
-                return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
-              }
-              const modal = new ModalBuilder()
-                .setCustomId('bank_modal_deposit_perm')
-                .setTitle('🏛️ Deposit Tabungan Bank');
-
-              const amountInput = new TextInputBuilder()
-                .setCustomId('deposit_amount')
-                .setLabel('Jumlah koin (angka atau "all")')
-                .setPlaceholder('Contoh: 5000')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-              await iBank.showModal(modal);
-
-              const submitted = await iBank.awaitModalSubmit({
-                filter: (sub) => sub.customId === 'bank_modal_deposit_perm' && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
-                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
-                    res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                      res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-                  const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
-                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
-                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
-
-                  const successEmb = embeds.bankSuccessEmbed(
-                    'Deposit Tabungan Berhasil!',
-                    `Koin disetor: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
-                    `✂️ Pajak Administrasi (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
-                    `📥 Bersih masuk Bank: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                    `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
-                    `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                    `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
-                    taxSavedMsg
-                  );
-                  await submitted.reply({ embeds: [successEmb], flags: 64 });
-                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], flags: 64 });
-                }
-              }
-            }
-
-            else if (iBank.customId === 'bank_btn_withdraw') {
-              if (robbery.activeHeists.has(guildId)) {
-                return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
-              }
-              const modal = new ModalBuilder()
-                .setCustomId('bank_modal_withdraw_perm')
-                .setTitle('🏛️ Penarikan Saldo Bank');
-
-              const amountInput = new TextInputBuilder()
-                .setCustomId('withdraw_amount')
-                .setLabel('Jumlah koin (angka atau "all")')
-                .setPlaceholder('Contoh: 10000')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-              await iBank.showModal(modal);
-
-              const submitted = await iBank.awaitModalSubmit({
-                filter: (sub) => sub.customId === 'bank_modal_withdraw_perm' && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
-                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
-                    res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                      res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-                  const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
-                    res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
-                      `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
-
-                  const successEmb = embeds.bankSuccessEmbed(
-                    'Penarikan Saldo Berhasil!',
-                    `Koin ditarik: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
-                    `✂️ Pajak Penarikan (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
-                    `💰 Bersih diterima Dompet: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                    `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
-                    `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
-                    `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
-                    taxSavedMsg
-                  );
-                  await submitted.reply({ embeds: [successEmb], flags: 64 });
-                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], flags: 64 });
-                }
-              }
-            }
-
-            else if (iBank.customId === 'bank_btn_loan') {
-              const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('bank_select_tenor_perm')
-                .setPlaceholder('👉 Pilih jangka tempo (Tenor)...')
-                .addOptions(
-                  new StringSelectMenuOptionBuilder().setLabel('1 Hari (Bunga 2%)').setValue('1'),
-                  new StringSelectMenuOptionBuilder().setLabel('3 Hari (Bunga 5%)').setValue('3'),
-                  new StringSelectMenuOptionBuilder().setLabel('7 Hari (Bunga 10%)').setValue('7')
-                );
-
-              const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
-              const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-              const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
-
-              await iBank.reply({
-                content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
-                components: [tenorRow, cancelRow],
-                flags: 64
-              });
-              const askTenorMsg = await iBank.fetchReply();
-
-              const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
-
-              tenorCollector.on('collect', async iTenor => {
-                if (iTenor.user.id !== user.id) return;
-
-                if (iTenor.customId === 'bank_loan_cancel_perm') {
-                  tenorCollector.stop('cancel');
-                  await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
-                } else if (iTenor.customId === 'bank_select_tenor_perm') {
-                  const selectedTenor = parseInt(iTenor.values[0]);
-                  const maxLimit = bank.calculateMaxLoanLimit(user.id, guildId);
-
-                  const modal = new ModalBuilder()
-                    .setCustomId(`bank_modal_loan_${selectedTenor}_perm`)
-                    .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
-
-                  const loanInput = new TextInputBuilder()
-                    .setCustomId('loan_amount')
-                    .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
-                    .setPlaceholder('Contoh: 10000')
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
-
-                  modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
-                  await iTenor.showModal(modal);
-
-                  const submitted = await iTenor.awaitModalSubmit({
-                    filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}_perm` && sub.user.id === user.id,
-                    time: 60000
-                  }).catch(() => null);
-
-                  if (submitted) {
-                    tenorCollector.stop('submitted');
-                    await askTenorMsg.delete().catch(() => { });
-                    try {
-                      const amountStr = submitted.fields.getTextInputValue('loan_amount');
-                      const res = bank.createLoan(user.id, guildId, amountStr, selectedTenor);
-                      const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
-
-                      const successEmb = embeds.bankSuccessEmbed(
-                        'Pinjaman Disetujui!',
-                        `Pinjaman Anda berhasil dicairkan!\n\n` +
-                        `💵 **Pokok:** **Rp ${res.principal.toLocaleString('id-ID')}**\n` +
-                        `📈 **Bunga:** \`${(res.interestRate * 100).toFixed(0)}%\` (Tenor \`${res.tenorDays} Hari\`)\n` +
-                        `💳 **Total Tagihan:** **Rp ${res.totalDue.toLocaleString('id-ID')}**\n` +
-                        `📅 **Jatuh Tempo:** ${dueText}`
-                      );
-
-                      await submitted.reply({ embeds: [successEmb], flags: 64 });
-                      await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
-                    } catch (err) {
-                      await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], flags: 64 });
-                    }
-                  } else {
-                    tenorCollector.stop('timeout');
-                  }
-                }
-              });
-
-              tenorCollector.on('end', async (collected, reason) => {
-                if (reason !== 'submitted' && reason !== 'cancel') {
-                  await askTenorMsg.delete().catch(() => { });
-                }
-              });
-            }
-
-            else if (iBank.customId === 'bank_btn_repay') {
-              try {
-                const activeLoan = bank.getActiveLoan(user.id, guildId);
-                const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
-                const hasFriendDebts = debts && debts.length > 0;
-
-                const handleFriendRepayFlowPrivate = async (iSelectRepay) => {
-                  const friendDebts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
-                  if (!friendDebts || friendDebts.length === 0) {
-                    return iSelectRepay.reply({ content: '❌ Anda tidak memiliki hutang tebusan ke teman.', flags: 64 });
-                  }
-
-                  const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('bank_repay_friend_menu_perm')
-                    .setPlaceholder('👉 Pilih teman yang ingin Anda bayar...');
-
-                  for (const d of friendDebts) {
-                    let displayName = d.creditor_id;
-                    try {
-                      const member = await iSelectRepay.guild.members.fetch(d.creditor_id).catch(() => null);
-                      if (member) displayName = member.displayName;
-                    } catch (err) {}
-
-                    selectMenu.addOptions(
-                      new StringSelectMenuOptionBuilder()
-                        .setLabel(`👥 ${displayName}`)
-                        .setDescription(`Sisa Hutang: Rp ${d.amount.toLocaleString('id-ID')}`)
-                        .setValue(d.creditor_id)
-                    );
-                  }
-
-                  const cancelBtn = new ButtonBuilder().setCustomId('bank_repay_friend_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-                  
-                  const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
-                  const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
-
-                  const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
-                    ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
-                    : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
-
-
-                  const friendCollector = iSelectRepay.channel.createMessageComponentCollector({
-                    filter: i => i.message.id === askFriendMsg.id,
-                    time: 60000
-                  });
-
-                  friendCollector.on('collect', async iFriend => {
-                    if (iFriend.user.id !== user.id) return;
-                    friendCollector.stop();
-
-                    if (iFriend.customId === 'bank_repay_friend_cancel_perm') {
-                      await iFriend.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
-                    } else if (iFriend.customId === 'bank_repay_friend_menu_perm') {
-                      const creditorId = iFriend.values[0];
-                      const specificDebt = database.get('SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?', [guildId, user.id, creditorId]);
-                      if (!specificDebt) {
-                        return iFriend.reply({ content: '❌ Hutang ke user tersebut tidak ditemukan.', flags: 64 });
-                      }
-
-                      const modal = new ModalBuilder()
-                        .setCustomId(`bank_modal_repay_friend_${creditorId}_perm`)
-                        .setTitle('💳 Bayar Hutang Teman');
-
-                      const amountInput = new TextInputBuilder()
-                        .setCustomId('repay_amount')
-                        .setLabel(`Jumlah bayar (Hutang: Rp ${specificDebt.amount.toLocaleString('id-ID')})`)
-                        .setPlaceholder('Contoh: 1000 atau all')
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
-
-                      modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-                      await iFriend.showModal(modal);
-                      await askFriendMsg.delete().catch(() => {});
-
-                      const submitted = await iFriend.awaitModalSubmit({
-                        filter: (sub) => sub.customId === `bank_modal_repay_friend_${creditorId}_perm` && sub.user.id === user.id,
-                        time: 60000
-                      }).catch(() => null);
-
-                      if (submitted) {
-                        try {
-                          const amountStr = submitted.fields.getTextInputValue('repay_amount');
-                          const res = bank.repayFriendDebt(user.id, creditorId, guildId, amountStr);
-
-                          let creditorName = creditorId;
-                          try {
-                            const credMember = await submitted.guild.members.fetch(creditorId).catch(() => null);
-                            if (credMember) creditorName = credMember.displayName;
-                          } catch (err) {}
-
-                          let desc = '';
-                          if (res.isFullyPaid) {
-                            desc = `Selamat! Hutang tebusan Anda kepada **${creditorName}** telah **LUNAS SEPENUHNYA**.\n\n` +
-                              `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                          } else {
-                            desc = `Pembayaran cicilan hutang teman berhasil diproses.\n\n` +
-                              `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                              `⚠️ **Sisa Hutang Ke ${creditorName}:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
-                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                          }
-
-                          await submitted.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Hutang Berhasil!', desc)], flags: 64 });
-                          await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
-                        } catch (err) {
-                          await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
-                        }
-                      }
-                    }
-                  });
-                };
-
-                if (activeLoan && hasFriendDebts) {
-                  // Tampilkan pilihan jenis hutang
-                  const choiceBank = new ButtonBuilder().setCustomId('bank_repay_choice_bank_perm').setLabel('🏛️ Pinjaman Bank').setStyle(ButtonStyle.Primary);
-                  const choiceFriend = new ButtonBuilder().setCustomId('bank_repay_choice_friend_perm').setLabel('👥 Hutang Teman').setStyle(ButtonStyle.Success);
-                  const choiceCancel = new ButtonBuilder().setCustomId('bank_repay_choice_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-                  
-                  const askChoiceMsg = await iBank.reply({
-                    content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
-                    components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
-                    flags: 64,
-                    fetchReply: true
-                  });
-
-
-                  const choiceCollector = iBank.channel.createMessageComponentCollector({
-                    filter: i => i.message.id === askChoiceMsg.id,
-                    time: 60000
-                  });
-
-                  choiceCollector.on('collect', async iChoice => {
-                    if (iChoice.user.id !== user.id) return;
-                    choiceCollector.stop();
-
-                    if (iChoice.customId === 'bank_repay_choice_cancel_perm') {
-                      await iChoice.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
-                    } else if (iChoice.customId === 'bank_repay_choice_bank_perm') {
-                      // Jalankan pelunasan bank
-                      try {
-                        const res = bank.repayLoan(user.id, guildId);
-                        let desc = '';
-                        if (res.isFullyPaid) {
-                          desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                            `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                        } else {
-                          desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
-                            `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                            `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
-                            `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                        }
-                        await iChoice.update({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], content: null, components: [] });
-                        await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
-                      } catch (err) {
-                        await iChoice.update({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], content: null, components: [] });
-                      }
-                    } else if (iChoice.customId === 'bank_repay_choice_friend_perm') {
-                      // Lanjut ke pemilihan teman
-                      await handleFriendRepayFlowPrivate(iChoice);
-                    }
-                  });
-                } else if (activeLoan) {
-                  // Langsung bayar pinjaman bank
-                  const res = bank.repayLoan(user.id, guildId);
-                  let desc = '';
-                  if (res.isFullyPaid) {
-                    desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
-                      `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                      `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                  } else {
-                    desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
-                      `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
-                      `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
-                      `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
-                  }
-                  await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], flags: 64 });
-                  await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
-                } else if (hasFriendDebts) {
-                  // Langsung bayar hutang teman
-                  await handleFriendRepayFlowPrivate(iBank);
-                }
-              } catch (err) {
-                await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
-              }
-            }
-
-            else if (iBank.customId === 'bank_btn_transfer') {
-              const userSelect = new UserSelectMenuBuilder()
-                .setCustomId('bank_transfer_select_target_perm')
-                .setPlaceholder('👤 Pilih Target Penerima Transfer');
-
-              const rowMenu = new ActionRowBuilder().addComponents(userSelect);
-              const cancelBtn = new ButtonBuilder().setCustomId('bank_transfer_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-              const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
-
-              const askTransferMsg = await iBank.reply({
-                content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
-                components: [rowMenu, rowBtn],
-                flags: 64,
-                fetchReply: true
-              });
-
-
-              const transferCollector = iBank.channel.createMessageComponentCollector({
-                filter: i => i.message.id === askTransferMsg.id,
-                time: 60000
-              });
-
-              transferCollector.on('collect', async iSelect => {
-                if (iSelect.user.id !== user.id) return;
-                transferCollector.stop();
-
-                if (iSelect.customId === 'bank_transfer_cancel_perm') {
-                  await iSelect.update({ content: '❌ Transfer dibatalkan.', components: [] });
-                } else if (iSelect.customId === 'bank_transfer_select_target_perm') {
-                  const targetUserId = iSelect.values[0];
-                  if (targetUserId === user.id) {
-                    return iSelect.reply({ content: '❌ Anda tidak bisa mentransfer ke diri sendiri!', flags: 64 });
-                  }
-
-                  const typeButtons = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId(`bank_tf_biasa_perm_${targetUserId}`).setLabel('💸 Transfer Biasa').setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder().setCustomId(`bank_tf_bayar_perm_${targetUserId}`).setLabel('📉 Bayar Hutang').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId(`bank_tf_beri_perm_${targetUserId}`).setLabel('📈 Beri Hutang (Pinjamkan)').setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId('bank_tf_cancel_perm').setLabel('✖️ Batal').setStyle(ButtonStyle.Danger)
-                  );
-
-                  await iSelect.update({
-                    content: `👉 **Pilih tipe transfer tabungan ke <@${targetUserId}>:**`,
-                    components: [typeButtons]
-                  });
-
-                  const typeCollector = iBank.channel.createMessageComponentCollector({
-                    filter: i => i.message.id === askTransferMsg.id,
-                    componentType: ComponentType.Button,
-                    time: 60000
-                  });
-
-                  typeCollector.on('collect', async iType => {
-                    if (iType.user.id !== user.id) return;
-                    typeCollector.stop();
-
-                    if (iType.customId === 'bank_tf_cancel_perm') {
-                      await iType.update({ content: '❌ Transfer dibatalkan.', components: [] });
-                      return;
-                    }
-
-                    const selectedType = iType.customId.split('_')[2]; // biasa, bayar, beri
-
-                    const modal = new ModalBuilder()
-                      .setCustomId(`bank_modal_tf_${selectedType}_perm_${targetUserId}`)
-                      .setTitle('💸 Transfer Tabungan Bank');
-
-                    const amountInput = new TextInputBuilder()
-                      .setCustomId('transfer_amount')
-                      .setLabel('Jumlah koin (angka atau "all")')
-                      .setPlaceholder('Contoh: 10000')
-                      .setStyle(TextInputStyle.Short)
-                      .setRequired(true);
-
-                    modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-                    await iType.showModal(modal);
-                    await askTransferMsg.delete().catch(() => {});
-
-                    const submitted = await iType.awaitModalSubmit({
-                      filter: (sub) => sub.customId === `bank_modal_tf_${selectedType}_perm_${targetUserId}` && sub.user.id === user.id,
-                      time: 60000
-                    }).catch(() => null);
-
-                    if (submitted) {
-                      try {
-                        const amountStr = submitted.fields.getTextInputValue('transfer_amount');
-
-                        if (selectedType === 'bayar') {
-                          const debt = database.get(
-                            'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
-                            [guildId, user.id, targetUserId]
-                          );
-                          if (!debt || debt.amount <= 0) {
-                            return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', `Anda tidak memiliki hutang jaminan ke <@${targetUserId}>!`)], flags: 64 });
-                          }
-                        }
-
-                        // JIKA TIPE = BERI HUTANG (PINJAMKAN) -> TAWARKAN PINJAMAN INTERAKTIF
-                        if (selectedType === 'beri') {
-                          let amount = bank.parseAmount(amountStr);
-                          if (amount === 'all') {
-                            const senderSavings = bank.getSavings(user.id, guildId);
-                            amount = senderSavings.balance;
-                          }
-
-                          if (isNaN(amount) || amount <= 0) {
-                            return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', 'Nominal transfer harus berupa angka di atas 0.')], flags: 64 });
-                          }
-
-                          const senderSavings = bank.getSavings(user.id, guildId);
-                          if (senderSavings.balance < amount) {
-                            return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', `Saldo tabungan Anda tidak mencukupi! Saldo Anda Rp ${senderSavings.balance.toLocaleString('id-ID')}`)], flags: 64 });
-                          }
-
-                          const promptEmbed = new EmbedBuilder()
-                            .setColor(embeds.COLORS.SUCCESS)
-                            .setTitle('🤝 Tawaran Pinjaman Bank (Beri Hutang)')
-                            .setDescription(
-                              `👤 **Pengirim (Kreditur):** <@${user.id}>\n` +
-                              `👤 **Penerima (Debitur):** <@${targetUserId}>\n` +
-                              `💰 **Jumlah Pinjaman:** **Rp ${amount.toLocaleString('id-ID')}**\n\n` +
-                              `📢 <@${targetUserId}>, **<@${user.id}>** ingin meminjamkan koin sebesar **Rp ${amount.toLocaleString('id-ID')}** dari tabungan banknya kepada Anda.\n` +
-                              `Jika Anda **Menerima**, koin akan masuk ke tabungan bank Anda, dan Anda akan **tercatat memiliki hutang** sebesar koin bersih yang diterima ke <@${user.id}>.\n\n` +
-                              `Apakah Anda bersedia menerima pinjaman ini?`
-                            )
-                            .setTimestamp();
-
-                          const promptButtons = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId(`loan_accept_${user.id}_${targetUserId}_${amount}_perm`).setLabel('✅ Terima Pinjaman').setStyle(ButtonStyle.Success),
-                            new ButtonBuilder().setCustomId(`loan_reject_${user.id}_${targetUserId}_${amount}_perm`).setLabel('❌ Tolak Pinjaman').setStyle(ButtonStyle.Danger)
-                          );
-
-                          await submitted.reply({ content: `📨 Tawaran pinjaman Anda sebesar **Rp ${amount.toLocaleString('id-ID')}** telah dikirim ke channel <#${submitted.channelId}> untuk dikonfirmasi oleh <@${targetUserId}>.`, flags: 64 });
-
-                          const promptMessage = await submitted.channel.send({
-                            content: `<@${targetUserId}>`,
-                            embeds: [promptEmbed],
-                            components: [promptButtons]
-                          });
-
-                          const promptCollector = submitted.channel.createMessageComponentCollector({
-                            filter: i => i.message.id === promptMessage.id,
-                            componentType: ComponentType.Button,
-                            time: 120000
-                          });
-
-                          promptCollector.on('collect', async iPrompt => {
-                            if (iPrompt.user.id !== targetUserId) {
-                              return iPrompt.reply({ content: '❌ Hanya penerima pinjaman yang dapat mengklik tombol ini!', flags: 64 });
-                            }
-                            promptCollector.stop();
-
-                            if (iPrompt.customId.startsWith('loan_reject_')) {
-                              const rejectEmbed = new EmbedBuilder()
-                                .setColor(0xC0392B)
-                                .setTitle('❌ Pinjaman Ditolak!')
-                                .setDescription(`Tawaran pinjaman sebesar **Rp ${amount.toLocaleString('id-ID')}** dari <@${user.id}> telah ditolak oleh <@${targetUserId}>.`)
-                                .setTimestamp();
-                              await iPrompt.update({ embeds: [rejectEmbed], components: [] });
-                            } else if (iPrompt.customId.startsWith('loan_accept_')) {
-                              try {
-                                const currentSenderSavings = bank.getSavings(user.id, guildId);
-                                if (currentSenderSavings.balance < amount) {
-                                  throw new Error(`Saldo tabungan pengirim (<@${user.id}>) sudah tidak mencukupi untuk melakukan transfer ini!`);
-                                }
-
-                                const res = bank.transferSavings(user.id, targetUserId, guildId, amount.toString());
-
-                                database.run(
-                                  `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
-                                   VALUES (?, ?, ?, ?) 
-                                   ON CONFLICT(guild_id, debtor_id, creditor_id) 
-                                   DO UPDATE SET amount = amount + EXCLUDED.amount`,
-                                  [guildId, targetUserId, user.id, res.netAmount]
-                                );
-
-                                const newDebt = database.get(
-                                  'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
-                                  [guildId, targetUserId, user.id]
-                                );
-
-                                const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
-                                  res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                                    res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-
-                                const successEmb = embeds.bankSuccessEmbed(
-                                  'Pinjaman Berhasil Diterima! 🤝',
-                                  `Koin dipinjamkan: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
-                                  `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
-                                  `📥 Bersih masuk tabungan Anda: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                                  `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
-                                  `📈 **STATUS HUTANG BARU:**\n` +
-                                  `• Jumlah Pinjaman Baru: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                                  `• Total Hutang Anda ke <@${user.id}>: **Rp ${newDebt.amount.toLocaleString('id-ID')}**\n\n` +
-                                  `🏦 **Sisa Tabungan Pengirim:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
-                                );
-
-                                await iPrompt.update({ embeds: [successEmb], components: [] });
-                              } catch (err) {
-                                await iPrompt.update({ content: `❌ Gagal memproses pinjaman: ${err.message}`, embeds: [], components: [] });
-                              }
-                            }
-                          });
-
-                          promptCollector.on('end', async (collected, reason) => {
-                            if (reason === 'time') {
-                              const timeoutEmbed = new EmbedBuilder()
-                                .setColor(0x7F8C8D)
-                                .setTitle('⏰ Waktu Konfirmasi Habis!')
-                                .setDescription(`Tawaran pinjaman sebesar **Rp ${amount.toLocaleString('id-ID')}** dari <@${user.id}> kepada <@${targetUserId}> telah kedaluwarsa karena tidak direspons.`)
-                                .setTimestamp();
-                              await promptMessage.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
-                            }
-                          });
-
-                          return;
-                        }
-
-                        // JIKA TIPE = BIASA ATAU BAYAR -> TRANSFER LANGSUNG
-                        const res = bank.transferSavings(user.id, targetUserId, guildId, amountStr);
-
-                        let targetName = targetUserId;
-                        try {
-                          const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
-                          if (targetMember) targetName = targetMember.displayName;
-                        } catch (err) {}
-
-                        const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
-                          res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
-                            res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
-
-                        let extraDesc = '';
-                        if (selectedType === 'bayar') {
-                          const debt = database.get(
-                            'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
-                            [guildId, user.id, targetUserId]
-                          );
-                          const paidAmount = Math.min(res.netAmount, debt.amount);
-                          const remains = debt.amount - paidAmount;
-
-                          database.transaction(() => {
-                            if (remains <= 0) {
-                              database.run(
-                                'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
-                                [guildId, user.id, targetUserId]
-                              );
-                            } else {
-                              database.run(
-                                'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
-                                [remains, guildId, user.id, targetUserId]
-                              );
-                            }
-                          })();
-
-                          extraDesc = `\n\n📉 **PEMBAYARAN HUTANG:**\n` +
-                            `• Hutang Awal: **Rp ${debt.amount.toLocaleString('id-ID')}**\n` +
-                            `• Dibayar (dari Net Transfer): **Rp ${paidAmount.toLocaleString('id-ID')}**\n` +
-                            `• Sisa Hutang: ` + (remains > 0 ? `**Rp ${remains.toLocaleString('id-ID')}**` : `✨ **LUNAS!**`);
-                        }
-
-                        const successEmb = embeds.bankSuccessEmbed(
-                          'Transfer Tabungan Berhasil!',
-                          `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
-                          `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
-                          `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
-                          `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
-                          `👉 Penerima: **${targetName}** (<@${targetUserId}>)` +
-                          `${extraDesc}\n\n` +
-                          `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
-                        );
-
-                        await submitted.reply({ embeds: [successEmb], flags: 64 });
-                        await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => {});
-
-                        // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
-                        try {
-                          if (submitted.channelId !== '1510121069783023646') {
-                            const embed = embeds.bankTransferNotificationEmbed(user, targetUserId, res.netAmount, selectedType === 'bayar');
-                            await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
-                          }
-                        } catch (err) {
-                          console.error('Gagal mengirim notifikasi transfer ke channel:', err);
-                        }
-                      } catch (err) {
-                        await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)], flags: 64 });
-                      }
-                    }
-                  });
-                }
-              });
-            }
-          } catch (err) {
-            console.error('Error in bank private collector:', err);
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: INVENTORY SAYA ──
-      else if (customId === 'eco_btn_open_inventory_private_perm' || customId === 'eco_btn_open_inventory_direct') {
-        await interaction.deferReply({ flags: 64 });
-        
-        // Fetch all inventory items (quantity > 0)
-        const inv = database.all(
-          'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
-          [user.id, guildId]
-        );
-
-        // Fetch all pet inventory items (quantity > 0)
-        const petInv = database.all(
-          'SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
-          [user.id, guildId]
-        );
-
-        // ─── MASTER ITEM MAP (dengan kategori & sub-kategori) ───
-        const allItems = {
-          // ── Black Market: Alat Kriminal ──
-          LOCKPICK:  { name: '🗝️ Linggis / Lockpick',       cat: 'BM', sub: 'tool' },
-          MASK:      { name: '🎭 Topeng Samaran',             cat: 'BM', sub: 'tool' },
-          MEAT:      { name: '🥩 Daging Bius',                cat: 'BM', sub: 'tool' },
-          SOAP:      { name: '🧼 Sabun Licin',                cat: 'BM', sub: 'tool' },
-          // ── Black Market: Pertahanan ──
-          BRANKAS:   { name: '🛡️ Brankas Anti-Hacker',       cat: 'BM', sub: 'defense' },
-          // ── Barang Mewah / Luxury ──
-          LAMBO:     { name: '🏎️ Lamborgini Kosan',          cat: 'LUXURY' },
-          GOLD:      { name: '👑 Batangan Emas Murni 24K',    cat: 'LUXURY' },
-          KEY:       { name: '🔑 Kunci Emas Penthouse',       cat: 'LUXURY' },
-          ROLEX:     { name: '⌚ Jam Tangan Rolek Master',    cat: 'LUXURY' },
-          IPHONE:    { name: '📱 iPhone 16 Pro Max',          cat: 'LUXURY' },
-          // ── Kebun: Benih ──
-          SEED_ROSE:       { name: '🌱 Benih Mawar Merah',    cat: 'GARDEN', sub: 'seed' },
-          SEED_TULIP:      { name: '🌱 Benih Bunga Tulip',    cat: 'GARDEN', sub: 'seed' },
-          SEED_LAVENDER:   { name: '🌱 Benih Bunga Lavender', cat: 'GARDEN', sub: 'seed' },
-          SEED_SAKURA:     { name: '🌱 Benih Bunga Sakura',   cat: 'GARDEN', sub: 'seed' },
-          SEED_ORCHID:     { name: '🌱 Benih Anggrek Langka', cat: 'GARDEN', sub: 'seed' },
-          // ── Kebun: Bunga Panen ──
-          FLOWER_ROSE:     { name: '🌹 Mawar Merah',          cat: 'GARDEN', sub: 'flower' },
-          FLOWER_TULIP:    { name: '🌷 Bunga Tulip',          cat: 'GARDEN', sub: 'flower' },
-          FLOWER_LAVENDER: { name: '🪻 Bunga Lavender',       cat: 'GARDEN', sub: 'flower' },
-          FLOWER_SAKURA:   { name: '🌸 Bunga Sakura',         cat: 'GARDEN', sub: 'flower' },
-          FLOWER_ORCHID:   { name: '🪻 Anggrek Langka',       cat: 'GARDEN', sub: 'flower' },
-          // ── Kebun: Buket ──
-          BOUQUET_LOVE:     { name: '💐 Buket Kasih Sayang',  cat: 'GARDEN', sub: 'bouquet' },
-          BOUQUET_PEACE:    { name: '💐 Buket Ketenangan',    cat: 'GARDEN', sub: 'bouquet' },
-          BOUQUET_IMPERIAL: { name: '👑 Buket Legendaris',    cat: 'GARDEN', sub: 'bouquet' },
-          // ── Kebun: Perlengkapan ──
-          GIFT_WRAPPING:    { name: '🎗️ Kertas Kado Premium', cat: 'GARDEN', sub: 'supply' },
-          // ── Pet: Makanan & Perawatan ──
-          FOOD_BASIC:    { name: '🍗 Pakan Pet Biasa',     cat: 'PET', sub: 'care' },
-          FOOD_PREMIUM:  { name: '🥩 Daging Premium',      cat: 'PET', sub: 'care' },
-          WATER:         { name: '🥤 Air Bersih',          cat: 'PET', sub: 'care' },
-          MEDICINE:      { name: '💊 Ramuan Kesehatan',    cat: 'PET', sub: 'care' },
-          TOY:           { name: '⚽ Bola Karet',          cat: 'PET', sub: 'care' },
-          SODA_ENERGY:   { name: '🥤 Soda Energi Pet',    cat: 'PET', sub: 'care' },
-          SOAP_PET:      { name: '🧼 Sabun Mandi Pet',    cat: 'PET', sub: 'care' },
-          // ── Pet: Aksesoris ──
-          COLLAR_IRON:   { name: '🪮 Kalung Besi',        cat: 'PET', sub: 'accessory' },
-          SWORD_TOY:     { name: '⚔️ Pedang Mainan',      cat: 'PET', sub: 'accessory' },
-          SHIELD_TOY:    { name: '🛡️ Tameng Mainan',      cat: 'PET', sub: 'accessory' },
-          LUCKY_AMULET:  { name: '🔮 Jimat Keberuntungan', cat: 'PET', sub: 'accessory' },
-          // ── Pet: XP Booster ──
-          XP_2X: { name: '⚡ XP Booster 2x', cat: 'PET', sub: 'booster' },
-          XP_4X: { name: '⚡ XP Booster 4x', cat: 'PET', sub: 'booster' },
-          XP_6X: { name: '⚡ XP Booster 6x', cat: 'PET', sub: 'booster' },
-          XP_8X: { name: '⚡ XP Booster 8x', cat: 'PET', sub: 'booster' },
-        };
-
-        // ─── Klasifikasi item menurut kategori & sub-kategori ───
-        const categorized = {
-          BM:      { tool: [], defense: [] },
-          LUXURY:  [],
-          GARDEN:  { seed: [], flower: [], bouquet: [], supply: [] },
-          PET:     { care: [], accessory: [], booster: [] },
-          OTHER:   []
-        };
-
-        let totalUniqueItems = 0;
-        let totalQuantity = 0;
-
-        // Proses user_inventory (BM, Luxury, Garden)
-        inv.forEach(item => {
-          const itemKey = item.item_id.toUpperCase();
-          const info = allItems[itemKey];
-          const line = `  ┊ ${info ? info.name : item.item_id} — **x${item.quantity}**`;
-          totalUniqueItems++;
-          totalQuantity += item.quantity;
-
-          if (!info) {
-            categorized.OTHER.push(line);
-          } else if (info.cat === 'BM') {
-            categorized.BM[info.sub || 'tool'].push(line);
-          } else if (info.cat === 'LUXURY') {
-            categorized.LUXURY.push(line);
-          } else if (info.cat === 'GARDEN') {
-            categorized.GARDEN[info.sub || 'supply'].push(line);
-          } else if (info.cat === 'PET') {
-            categorized.PET[info.sub || 'care'].push(line);
-          } else {
-            categorized.OTHER.push(line);
-          }
-        });
-
-        // Proses pet_inventory (Pet items)
-        petInv.forEach(item => {
-          const itemKey = item.item_id.toUpperCase();
-          const info = allItems[itemKey];
-          const line = `  ┊ ${info ? info.name : item.item_id} — **x${item.quantity}**`;
-          totalUniqueItems++;
-          totalQuantity += item.quantity;
-
-          if (info && info.cat === 'PET') {
-            categorized.PET[info.sub || 'care'].push(line);
-          } else {
-            categorized.PET.care.push(line);
-          }
-        });
-
-        // ─── Bangun deskripsi embed ───
-        const hasBM      = categorized.BM.tool.length > 0 || categorized.BM.defense.length > 0;
-        const hasLuxury   = categorized.LUXURY.length > 0;
-        const hasGarden   = categorized.GARDEN.seed.length > 0 || categorized.GARDEN.flower.length > 0 || categorized.GARDEN.bouquet.length > 0 || categorized.GARDEN.supply.length > 0;
-        const hasPet      = categorized.PET.care.length > 0 || categorized.PET.accessory.length > 0 || categorized.PET.booster.length > 0;
-        const hasOther    = categorized.OTHER.length > 0;
-        const isEmpty     = !hasBM && !hasLuxury && !hasGarden && !hasPet && !hasOther;
-
-        let desc = `\`\`\`\n` +
-          `┌──────────────────────────────┐\n` +
-          `│  🎒 INVENTORY PEMAIN         │\n` +
-          `│  Kantong Peralatan & Aset    │\n` +
-          `└──────────────────────────────┘\n` +
-          `\`\`\`\n` +
-          `Halo **${user.username}**! Berikut seluruh barang & aset yang kamu miliki:\n`;
-
-        if (isEmpty) {
-          desc += `\n*Kantongmu benar-benar kosong! 📭*\n` +
-            `*Kunjungi **Pasar Gelap**, **Toko Kebun**, **Toko Mewah**, atau **Toko Pet** untuk mulai berbelanja.*`;
-        } else {
-          desc += `┊ 📦 **Total Jenis Barang:** \`${totalUniqueItems}\` jenis\n` +
-            `┊ 📊 **Total Kuantitas:** \`${totalQuantity}\` unit\n`;
-
-          // ══ KATEGORI 1: BLACK MARKET ══
-          if (hasBM) {
-            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            desc += `🖤 **PASAR GELAP (BLACK MARKET)**\n`;
-            if (categorized.BM.tool.length > 0) {
-              desc += `\n  🔧 *Alat Kriminal:*\n${categorized.BM.tool.join('\n')}\n`;
-            }
-            if (categorized.BM.defense.length > 0) {
-              desc += `\n  🛡️ *Pertahanan:*\n${categorized.BM.defense.join('\n')}\n`;
-            }
-          }
-
-          // ══ KATEGORI 2: BARANG MEWAH ══
-          if (hasLuxury) {
-            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            desc += `💎 **BARANG & ASET MEWAH (LUXURY)**\n\n`;
-            desc += categorized.LUXURY.join('\n') + '\n';
-          }
-
-          // ══ KATEGORI 3: PERKEBUNAN / KEBUN ══
-          if (hasGarden) {
-            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            desc += `🌸 **PERKEBUNAN (COZY GARDEN)**\n`;
-            if (categorized.GARDEN.seed.length > 0) {
-              desc += `\n  🌱 *Stok Benih:*\n${categorized.GARDEN.seed.join('\n')}\n`;
-            }
-            if (categorized.GARDEN.flower.length > 0) {
-              desc += `\n  🌺 *Bunga Hasil Panen:*\n${categorized.GARDEN.flower.join('\n')}\n`;
-            }
-            if (categorized.GARDEN.bouquet.length > 0) {
-              desc += `\n  💐 *Buket Bunga Jadi:*\n${categorized.GARDEN.bouquet.join('\n')}\n`;
-            }
-            if (categorized.GARDEN.supply.length > 0) {
-              desc += `\n  🎗️ *Perlengkapan Kebun:*\n${categorized.GARDEN.supply.join('\n')}\n`;
-            }
-          }
-
-          // ══ KATEGORI 4: PELIHARAAN (PET) ══
-          if (hasPet) {
-            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            desc += `🐾 **PELIHARAAN (PET SHOP)**\n`;
-            if (categorized.PET.care.length > 0) {
-              desc += `\n  🍗 *Makanan, Minuman & Obat:*\n${categorized.PET.care.join('\n')}\n`;
-            }
-            if (categorized.PET.accessory.length > 0) {
-              desc += `\n  🪮 *Aksesoris Pet:*\n${categorized.PET.accessory.join('\n')}\n`;
-            }
-            if (categorized.PET.booster.length > 0) {
-              desc += `\n  ⚡ *XP Booster:*\n${categorized.PET.booster.join('\n')}\n`;
-            }
-          }
-
-          // ══ KATEGORI 5: LAINNYA ══
-          if (hasOther) {
-            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            desc += `📦 **LAINNYA**\n\n`;
-            desc += categorized.OTHER.join('\n') + '\n';
-          }
-
-          desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-        }
-
-        const embed = new EmbedBuilder()
-          .setColor(0x00FFCC)
-          .setTitle('🎒 INVENTORY PEMAIN — KANTONG PERALATAN & ASET')
-          .setThumbnail(user.displayAvatarURL())
-          .setDescription(desc)
-          .setFooter({ text: 'Sistem Inventaris Bot Kosan 1A • Klik Portal Hub untuk belanja!' })
-          .setTimestamp();
-
-        await interaction.editReply({ embeds: [embed] });
-      }
-
-      // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
-      else if (customId === 'eco_btn_open_bm_private_perm' || customId === 'eco_btn_open_bm_direct') {
-        await interaction.deferReply({ flags: 64 });
-        try {
-          const getBmPanelData = (targetUserId, statusMsg = '') => {
-            const wallet = economy.getWallet(targetUserId, guildId);
-            const embed = new EmbedBuilder()
-              .setColor(0x1A1A1A)
-              .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
-              .setDescription(
-                `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
-                (statusMsg ? `🔔 **Notifikasi:** ${statusMsg}\n\n` : '') +
-                `💵 **Saldo Rupiah Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
-                `**Daftar Peralatan Tersedia:**\n\n` +
-                `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
-                `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
-                `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
-                `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
-                `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
-                `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
-                `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
-                `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
-                `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
-                `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
-                `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
-                `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
-                `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
-              )
-              .setFooter({ text: 'Pasar Gelap Bot Kosan 1A • Kerahasiaan Terjamin' })
-              .setTimestamp();
-            return { embeds: [embed] };
-          };
-
-          const bmSelect = new StringSelectMenuBuilder()
-            .setCustomId('bm_select_buy_items')
-            .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
-              new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
-              new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
-              new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
-              new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
-              new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
-            );
-
-          const selectRow = new ActionRowBuilder().addComponents(bmSelect);
-          const exitRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
-          );
-
-          const initialData = getBmPanelData(user.id);
-          const privateMsg = await interaction.editReply({ embeds: initialData.embeds, components: [selectRow, exitRow] });
-          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
-
-          collector.on('collect', async i => {
-            if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
-
-            if (i.customId === 'bm_btn_exit_perm') {
-              collector.stop();
-              await i.update({ content: '👋 Meninggalkan pasar gelap...', embeds: [], components: [] }).catch(() => {});
-              return;
-            }
-
-            if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
-              const itemId = i.values[0];
-              const itemNames = {
-                lockpick: '🗝️ Linggis / Lockpick',
-                mask: '🎭 Topeng Samaran',
-                meat: '🥩 Daging Bius',
-                soap: '🧼 Sabun Licin',
-                handcuffs: '👮 Borgol / Handcuffs',
-                brankas: '🛡️ Brankas Anti-Hacker'
-              };
-              const itemName = itemNames[itemId] || itemId;
-
-              const modal = new ModalBuilder()
-                .setCustomId(`bm_modal_buy_${itemId}`)
-                .setTitle(`Beli ${itemName}`);
-
-              const qtyInput = new TextInputBuilder()
-                .setCustomId('buy_qty')
-                .setLabel('Jumlah yang ingin dibeli')
-                .setPlaceholder('Contoh: 5')
-                .setValue('1')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(4);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-              await i.showModal(modal);
-
-              const submitted = await i.awaitModalSubmit({
-                filter: (sub) => sub.customId === `bm_modal_buy_${itemId}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
-                  const qty = Math.max(1, parseInt(qtyStr) || 1);
-
-                  const itemInfo = bm.BM_ITEMS[itemId.toUpperCase()];
-                  if (!itemInfo) throw new Error('Item tidak ditemukan di pasar gelap!');
-                  const totalPrice = itemInfo.price * qty;
-
-                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = bm.buyItem(user.id, guildId, itemId, qty, paymentSource);
-                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                      
-                      const updatedData = getBmPanelData(user.id, statusMsg);
-                      await interaction.editReply({
-                        embeds: updatedData.embeds,
-                        components: [selectRow, exitRow]
-                      }).catch(() => {});
-
-                      const successEmb = embeds.successEmbed('Pembelian Berhasil!', statusMsg);
-                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 });
-                }
-              }
+              await i.editReply({ embeds: [embeds.profileEmbed(user, wallet2, porto.totalPortfolioValue, i.member, shopItems, userPet, activeLoan, { debts, receivables }, porto.items)] });
+            } else if (i.customId === 'eco_btn_shop') {
+              await i.deferReply({ flags: 64 });
+              const wallet2 = economy.getWallet(user.id, guildId);
+              const items = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
+              await i.editReply({ embeds: [embeds.shopEmbed(items, wallet2)] });
+            } else if (i.customId === 'eco_btn_trade') {
+              await sendInteractiveTradePanel(i, activeStocks[0].stock_ticker, user, guildId, client);
             }
           });
 
           collector.on('end', async () => {
             await interaction.deleteReply().catch(() => { });
           });
-        } catch (err) {
-          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Black Market!', err.message)] }).catch(() => {});
         }
-      }
 
-      // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
-      else if (customId === 'pet_btn_open_pet_private_perm') {
-        await interaction.deferReply({ flags: 64 });
-        const getDashboardPanelPrivate = (targetUserId) => {
-          const userPet = pet.getPet(targetUserId, guildId);
-          const inventory = pet.getInventory(targetUserId, guildId);
-          const allPets = pet.getPetsList(targetUserId, guildId);
-          const embed = embeds.petDashboardEmbed(user, userPet, inventory);
-          const rows = [];
-          const canAdoptMore = allPets.length < 3;
+        // ── DIRECT TRADING PANEL: BURSA SAHAM ──
+        else if (customId === 'eco_btn_open_market_direct') {
+          await interaction.deferReply({ flags: 64 });
+          const activeStocks = stocks.getStocks(guildId);
+          if (activeStocks.length === 0) {
+            return interaction.editReply({ content: '❌ Tidak ada instrumen saham aktif di server ini!' });
+          }
+          await sendInteractiveTradePanel(interaction, activeStocks[0].stock_ticker, user, guildId, client);
+        }
 
-          if (!userPet) {
-            rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi Telur Pet').setStyle(ButtonStyle.Success)));
-          } else {
-            // Build the manage options dropdown
-            const manageOptions = [];
-            
-            manageOptions.push(
-              new StringSelectMenuOptionBuilder()
-                .setLabel('🎰 Gacha Pet')
-                .setDescription('Beli & putar gacha pet acak (Rp 1.000)')
-                .setValue('pet_manage_gacha')
+        // ── PORTAL PERMANEN: BANK SENTRAL ──
+        else if (customId === 'eco_btn_open_bank_private_perm' || customId === 'eco_btn_open_bank_direct') {
+          await interaction.deferReply({ flags: 64 });
+          const getBankDashboardDataPrivate = (targetUserId) => {
+            const wallet = economy.getWallet(targetUserId, guildId);
+            const savings = bank.getSavings(targetUserId, guildId);
+            const activeLoan = bank.getActiveLoan(targetUserId, guildId);
+            const maxLimit = bank.calculateMaxLoanLimit(targetUserId, guildId);
+            const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [targetUserId, guildId]);
+            const hasFriendDebts = debts && debts.length > 0;
+
+            const embed = embeds.bankDashboardEmbed(user, wallet, savings, activeLoan, maxLimit);
+
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('bank_btn_deposit').setLabel('📥 Deposit').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('bank_btn_withdraw').setLabel('📤 Tarik').setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId('bank_btn_loan').setLabel('📜 Pinjam').setStyle(ButtonStyle.Success).setDisabled(!!activeLoan),
+              new ButtonBuilder().setCustomId('bank_btn_repay').setLabel('💳 Bayar').setStyle(ButtonStyle.Danger).setDisabled(!activeLoan && !hasFriendDebts),
+              new ButtonBuilder().setCustomId('bank_btn_transfer').setLabel('💸 Transfer').setStyle(ButtonStyle.Primary)
             );
 
-            if (userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
-              manageOptions.push(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('✨ Upgrade Bintang')
-                  .setDescription('Tingkatkan bintang pet aktif Anda')
-                  .setValue('pet_manage_upgrade')
-              );
-              manageOptions.push(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('🏋️ Gym & Latih Stat')
-                  .setDescription('Kembangkan STR, VIT, DEF, & DEX pet Anda')
-                  .setValue('pet_manage_gym')
-              );
+            return { embeds: [embed], components: [row] };
+          };
+
+          const initialData = getBankDashboardDataPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+          collector.on('collect', async iBank => {
+            if (iBank.user.id !== user.id) return iBank.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (iBank.customId === 'bank_btn_deposit') {
+                if (robbery.activeHeists.has(guildId)) {
+                  return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+                }
+                const modal = new ModalBuilder()
+                  .setCustomId('bank_modal_deposit_perm')
+                  .setTitle('🏛️ Deposit Tabungan Bank');
+
+                const amountInput = new TextInputBuilder()
+                  .setCustomId('deposit_amount')
+                  .setLabel('Jumlah koin (angka atau "all")')
+                  .setPlaceholder('Contoh: 5000')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                await iBank.showModal(modal);
+
+                const submitted = await iBank.awaitModalSubmit({
+                  filter: (sub) => sub.customId === 'bank_modal_deposit_perm' && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const res = bank.depositSavings(user.id, guildId, submitted.fields.getTextInputValue('deposit_amount'));
+                    const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                      res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                        res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                    const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak deposit bank harian!*' :
+                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak deposit dibebaskan 100%!*' :
+                        `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
+                    const successEmb = embeds.bankSuccessEmbed(
+                      'Deposit Tabungan Berhasil!',
+                      `Koin disetor: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                      `✂️ Pajak Administrasi (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                      `📥 Bersih masuk Bank: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                      `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
+                      `🏦 **Saldo Bank Baru:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                      `💵 **Sisa Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                      taxSavedMsg
+                    );
+                    await submitted.reply({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Deposit Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              }
+
+              else if (iBank.customId === 'bank_btn_withdraw') {
+                if (robbery.activeHeists.has(guildId)) {
+                  return iBank.reply({ embeds: [embeds.bankLockdownEmbed(iBank.guild)], flags: 64 });
+                }
+                const modal = new ModalBuilder()
+                  .setCustomId('bank_modal_withdraw_perm')
+                  .setTitle('🏛️ Penarikan Saldo Bank');
+
+                const amountInput = new TextInputBuilder()
+                  .setCustomId('withdraw_amount')
+                  .setLabel('Jumlah koin (angka atau "all")')
+                  .setPlaceholder('Contoh: 10000')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                await iBank.showModal(modal);
+
+                const submitted = await iBank.awaitModalSubmit({
+                  filter: (sub) => sub.customId === 'bank_modal_withdraw_perm' && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const res = bank.withdrawSavings(user.id, guildId, submitted.fields.getTextInputValue('withdraw_amount'));
+                    const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                      res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                        res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+                    const taxSavedMsg = res.roomTier === 'DEFAULT' ? '💡 *Naikkan sewa kamar kosan untuk menikmati potongan pajak penarikan bank harian!*' :
+                      res.roomTier === 'PENTHOUSE' ? '👑 *Keanggotaan Penthouse: Pajak penarikan dibebaskan 100%!*' :
+                        `✨ *Diskon Kamar kosan aktif: Pajak hanya ${res.taxRate}%!*`;
+
+                    const successEmb = embeds.bankSuccessEmbed(
+                      'Penarikan Saldo Berhasil!',
+                      `Koin ditarik: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                      `✂️ Pajak Penarikan (${res.taxRate}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                      `💰 Bersih diterima Dompet: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                      `🏢 Kasta Sewa Kamar: **${roomTierName}**\n\n` +
+                      `🏦 **Sisa Saldo Bank:** **Rp ${res.savingsBalance.toLocaleString('id-ID')}**\n` +
+                      `💵 **Saldo Dompet Baru:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**\n───────────────────\n` +
+                      taxSavedMsg
+                    );
+                    await submitted.reply({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Penarikan Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              }
+
+              else if (iBank.customId === 'bank_btn_loan') {
+                const selectMenu = new StringSelectMenuBuilder()
+                  .setCustomId('bank_select_tenor_perm')
+                  .setPlaceholder('👉 Pilih jangka tempo (Tenor)...')
+                  .addOptions(
+                    new StringSelectMenuOptionBuilder().setLabel('1 Hari (Bunga 2%)').setValue('1'),
+                    new StringSelectMenuOptionBuilder().setLabel('3 Hari (Bunga 5%)').setValue('3'),
+                    new StringSelectMenuOptionBuilder().setLabel('7 Hari (Bunga 10%)').setValue('7')
+                  );
+
+                const tenorRow = new ActionRowBuilder().addComponents(selectMenu);
+                const cancelBtn = new ButtonBuilder().setCustomId('bank_loan_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+                await iBank.reply({
+                  content: '💡 **PILIH JANGKA TEMPO PINJAMAN (TENOR)**\nSilakan pilih jangka waktu pengembalian utang:',
+                  components: [tenorRow, cancelRow],
+                  flags: 64
+                });
+                const askTenorMsg = await iBank.fetchReply();
+
+                const tenorCollector = askTenorMsg.createMessageComponentCollector({ time: 60000 });
+
+                tenorCollector.on('collect', async iTenor => {
+                  if (iTenor.user.id !== user.id) return;
+
+                  if (iTenor.customId === 'bank_loan_cancel_perm') {
+                    tenorCollector.stop('cancel');
+                    await iTenor.update({ content: '❌ Pengajuan pinjaman dibatalkan.', components: [] });
+                  } else if (iTenor.customId === 'bank_select_tenor_perm') {
+                    const selectedTenor = parseInt(iTenor.values[0]);
+                    const maxLimit = bank.calculateMaxLoanLimit(user.id, guildId);
+
+                    const modal = new ModalBuilder()
+                      .setCustomId(`bank_modal_loan_${selectedTenor}_perm`)
+                      .setTitle(`📜 Pinjam Tenor ${selectedTenor} Hari`);
+
+                    const loanInput = new TextInputBuilder()
+                      .setCustomId('loan_amount')
+                      .setLabel(`Jumlah pinjaman (Maks Rp ${maxLimit.toLocaleString('id-ID')})`)
+                      .setPlaceholder('Contoh: 10000')
+                      .setStyle(TextInputStyle.Short)
+                      .setRequired(true);
+
+                    modal.addComponents(new ActionRowBuilder().addComponents(loanInput));
+                    await iTenor.showModal(modal);
+
+                    const submitted = await iTenor.awaitModalSubmit({
+                      filter: (sub) => sub.customId === `bank_modal_loan_${selectedTenor}_perm` && sub.user.id === user.id,
+                      time: 60000
+                    }).catch(() => null);
+
+                    if (submitted) {
+                      tenorCollector.stop('submitted');
+                      await askTenorMsg.delete().catch(() => { });
+                      try {
+                        const amountStr = submitted.fields.getTextInputValue('loan_amount');
+                        const res = bank.createLoan(user.id, guildId, amountStr, selectedTenor);
+                        const dueText = `<t:${res.dueAt}:F> (<t:${res.dueAt}:R>)`;
+
+                        const successEmb = embeds.bankSuccessEmbed(
+                          'Pinjaman Disetujui!',
+                          `Pinjaman Anda berhasil dicairkan!\n\n` +
+                          `💵 **Pokok:** **Rp ${res.principal.toLocaleString('id-ID')}**\n` +
+                          `📈 **Bunga:** \`${(res.interestRate * 100).toFixed(0)}%\` (Tenor \`${res.tenorDays} Hari\`)\n` +
+                          `💳 **Total Tagihan:** **Rp ${res.totalDue.toLocaleString('id-ID')}**\n` +
+                          `📅 **Jatuh Tempo:** ${dueText}`
+                        );
+
+                        await submitted.reply({ embeds: [successEmb], flags: 64 });
+                        await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                      } catch (err) {
+                        await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pinjaman Ditolak!', err.message)], flags: 64 });
+                      }
+                    } else {
+                      tenorCollector.stop('timeout');
+                    }
+                  }
+                });
+
+                tenorCollector.on('end', async (collected, reason) => {
+                  if (reason !== 'submitted' && reason !== 'cancel') {
+                    await askTenorMsg.delete().catch(() => { });
+                  }
+                });
+              }
+
+              else if (iBank.customId === 'bank_btn_repay') {
+                try {
+                  const activeLoan = bank.getActiveLoan(user.id, guildId);
+                  const debts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+                  const hasFriendDebts = debts && debts.length > 0;
+
+                  const handleFriendRepayFlowPrivate = async (iSelectRepay) => {
+                    const friendDebts = database.all('SELECT creditor_id, amount FROM bail_debts WHERE debtor_id = ? AND guild_id = ?', [user.id, guildId]);
+                    if (!friendDebts || friendDebts.length === 0) {
+                      return iSelectRepay.reply({ content: '❌ Anda tidak memiliki hutang tebusan ke teman.', flags: 64 });
+                    }
+
+                    const selectMenu = new StringSelectMenuBuilder()
+                      .setCustomId('bank_repay_friend_menu_perm')
+                      .setPlaceholder('👉 Pilih teman yang ingin Anda bayar...');
+
+                    for (const d of friendDebts) {
+                      let displayName = d.creditor_id;
+                      try {
+                        const member = await iSelectRepay.guild.members.fetch(d.creditor_id).catch(() => null);
+                        if (member) displayName = member.displayName;
+                      } catch (err) { }
+
+                      selectMenu.addOptions(
+                        new StringSelectMenuOptionBuilder()
+                          .setLabel(`👥 ${displayName}`)
+                          .setDescription(`Sisa Hutang: Rp ${d.amount.toLocaleString('id-ID')}`)
+                          .setValue(d.creditor_id)
+                      );
+                    }
+
+                    const cancelBtn = new ButtonBuilder().setCustomId('bank_repay_friend_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+
+                    const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
+                    const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+                    const askFriendMsg = iSelectRepay.replied || iSelectRepay.deferred
+                      ? await iSelectRepay.followUp({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64 })
+                      : await iSelectRepay.reply({ content: '👥 **PILIH TEMAN TARGET PEMBAYARAN**\nSilakan pilih teman yang dihutangi dari menu di bawah:', components: [rowMenu, rowBtn], flags: 64, fetchReply: true });
+
+
+                    const friendCollector = iSelectRepay.channel.createMessageComponentCollector({
+                      filter: i => i.message.id === askFriendMsg.id,
+                      time: 60000
+                    });
+
+                    friendCollector.on('collect', async iFriend => {
+                      if (iFriend.user.id !== user.id) return;
+                      friendCollector.stop();
+
+                      if (iFriend.customId === 'bank_repay_friend_cancel_perm') {
+                        await iFriend.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                      } else if (iFriend.customId === 'bank_repay_friend_menu_perm') {
+                        const creditorId = iFriend.values[0];
+                        const specificDebt = database.get('SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?', [guildId, user.id, creditorId]);
+                        if (!specificDebt) {
+                          return iFriend.reply({ content: '❌ Hutang ke user tersebut tidak ditemukan.', flags: 64 });
+                        }
+
+                        const modal = new ModalBuilder()
+                          .setCustomId(`bank_modal_repay_friend_${creditorId}_perm`)
+                          .setTitle('💳 Bayar Hutang Teman');
+
+                        const amountInput = new TextInputBuilder()
+                          .setCustomId('repay_amount')
+                          .setLabel(`Jumlah bayar (Hutang: Rp ${specificDebt.amount.toLocaleString('id-ID')})`)
+                          .setPlaceholder('Contoh: 1000 atau all')
+                          .setStyle(TextInputStyle.Short)
+                          .setRequired(true);
+
+                        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                        await iFriend.showModal(modal);
+                        await askFriendMsg.delete().catch(() => { });
+
+                        const submitted = await iFriend.awaitModalSubmit({
+                          filter: (sub) => sub.customId === `bank_modal_repay_friend_${creditorId}_perm` && sub.user.id === user.id,
+                          time: 60000
+                        }).catch(() => null);
+
+                        if (submitted) {
+                          try {
+                            const amountStr = submitted.fields.getTextInputValue('repay_amount');
+                            const res = bank.repayFriendDebt(user.id, creditorId, guildId, amountStr);
+
+                            let creditorName = creditorId;
+                            try {
+                              const credMember = await submitted.guild.members.fetch(creditorId).catch(() => null);
+                              if (credMember) creditorName = credMember.displayName;
+                            } catch (err) { }
+
+                            let desc = '';
+                            if (res.isFullyPaid) {
+                              desc = `Selamat! Hutang tebusan Anda kepada **${creditorName}** telah **LUNAS SEPENUHNYA**.\n\n` +
+                                `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                                `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                            } else {
+                              desc = `Pembayaran cicilan hutang teman berhasil diproses.\n\n` +
+                                `💳 **Koin Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                                `⚠️ **Sisa Hutang Ke ${creditorName}:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                                `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                            }
+
+                            await submitted.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Hutang Berhasil!', desc)], flags: 64 });
+                            await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                          } catch (err) {
+                            await submitted.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
+                          }
+                        }
+                      }
+                    });
+                  };
+
+                  if (activeLoan && hasFriendDebts) {
+                    // Tampilkan pilihan jenis hutang
+                    const choiceBank = new ButtonBuilder().setCustomId('bank_repay_choice_bank_perm').setLabel('🏛️ Pinjaman Bank').setStyle(ButtonStyle.Primary);
+                    const choiceFriend = new ButtonBuilder().setCustomId('bank_repay_choice_friend_perm').setLabel('👥 Hutang Teman').setStyle(ButtonStyle.Success);
+                    const choiceCancel = new ButtonBuilder().setCustomId('bank_repay_choice_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+
+                    const askChoiceMsg = await iBank.reply({
+                      content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
+                      components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
+                      flags: 64,
+                      fetchReply: true
+                    });
+
+
+                    const choiceCollector = iBank.channel.createMessageComponentCollector({
+                      filter: i => i.message.id === askChoiceMsg.id,
+                      time: 60000
+                    });
+
+                    choiceCollector.on('collect', async iChoice => {
+                      if (iChoice.user.id !== user.id) return;
+                      choiceCollector.stop();
+
+                      if (iChoice.customId === 'bank_repay_choice_cancel_perm') {
+                        await iChoice.update({ content: '❌ Pembayaran dibatalkan.', components: [] });
+                      } else if (iChoice.customId === 'bank_repay_choice_bank_perm') {
+                        // Jalankan pelunasan bank
+                        try {
+                          const res = bank.repayLoan(user.id, guildId);
+                          let desc = '';
+                          if (res.isFullyPaid) {
+                            desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                              `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                          } else {
+                            desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                              `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                              `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                              `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                          }
+                          await iChoice.update({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], content: null, components: [] });
+                          await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                        } catch (err) {
+                          await iChoice.update({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], content: null, components: [] });
+                        }
+                      } else if (iChoice.customId === 'bank_repay_choice_friend_perm') {
+                        // Lanjut ke pemilihan teman
+                        await handleFriendRepayFlowPrivate(iChoice);
+                      }
+                    });
+                  } else if (activeLoan) {
+                    // Langsung bayar pinjaman bank
+                    const res = bank.repayLoan(user.id, guildId);
+                    let desc = '';
+                    if (res.isFullyPaid) {
+                      desc = `Selamat! Utang pinjaman Anda telah **LUNAS SEPENUHNYA**.\n\n` +
+                        `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                        `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                    } else {
+                      desc = `Pembayaran utang berhasil diproses sebagian.\n\n` +
+                        `💳 **Dibayarkan:** **Rp ${res.amountPaid.toLocaleString('id-ID')}**\n` +
+                        `⚠️ **Sisa Hutang:** **Rp ${res.remainingDebt.toLocaleString('id-ID')}**\n` +
+                        `💵 **Sisa Saldo Dompet:** **Rp ${res.walletBalance.toLocaleString('id-ID')}**`;
+                    }
+                    await iBank.reply({ embeds: [embeds.bankSuccessEmbed('Pembayaran Berhasil!', desc)], flags: 64 });
+                    await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+                  } else if (hasFriendDebts) {
+                    // Langsung bayar hutang teman
+                    await handleFriendRepayFlowPrivate(iBank);
+                  }
+                } catch (err) {
+                  await iBank.reply({ embeds: [embeds.bankErrorEmbed('Pembayaran Gagal!', err.message)], flags: 64 });
+                }
+              }
+
+              else if (iBank.customId === 'bank_btn_transfer') {
+                const userSelect = new UserSelectMenuBuilder()
+                  .setCustomId('bank_transfer_select_target_perm')
+                  .setPlaceholder('👤 Pilih Target Penerima Transfer');
+
+                const rowMenu = new ActionRowBuilder().addComponents(userSelect);
+                const cancelBtn = new ButtonBuilder().setCustomId('bank_transfer_cancel_perm').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
+                const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
+
+                const askTransferMsg = await iBank.reply({
+                  content: '💸 **TRANSFER TABUNGAN BANK**\nSilakan pilih anggota target penerima transfer tabungan bank di bawah ini:',
+                  components: [rowMenu, rowBtn],
+                  flags: 64,
+                  fetchReply: true
+                });
+
+
+                const transferCollector = iBank.channel.createMessageComponentCollector({
+                  filter: i => i.message.id === askTransferMsg.id,
+                  time: 60000
+                });
+
+                transferCollector.on('collect', async iSelect => {
+                  if (iSelect.user.id !== user.id) return;
+                  transferCollector.stop();
+
+                  if (iSelect.customId === 'bank_transfer_cancel_perm') {
+                    await iSelect.update({ content: '❌ Transfer dibatalkan.', components: [] });
+                  } else if (iSelect.customId === 'bank_transfer_select_target_perm') {
+                    const targetUserId = iSelect.values[0];
+                    if (targetUserId === user.id) {
+                      return iSelect.reply({ content: '❌ Anda tidak bisa mentransfer ke diri sendiri!', flags: 64 });
+                    }
+
+                    const typeButtons = new ActionRowBuilder().addComponents(
+                      new ButtonBuilder().setCustomId(`bank_tf_biasa_perm_${targetUserId}`).setLabel('💸 Transfer Biasa').setStyle(ButtonStyle.Primary),
+                      new ButtonBuilder().setCustomId(`bank_tf_bayar_perm_${targetUserId}`).setLabel('📉 Bayar Hutang').setStyle(ButtonStyle.Success),
+                      new ButtonBuilder().setCustomId(`bank_tf_beri_perm_${targetUserId}`).setLabel('📈 Beri Hutang (Pinjamkan)').setStyle(ButtonStyle.Secondary),
+                      new ButtonBuilder().setCustomId('bank_tf_cancel_perm').setLabel('✖️ Batal').setStyle(ButtonStyle.Danger)
+                    );
+
+                    await iSelect.update({
+                      content: `👉 **Pilih tipe transfer tabungan ke <@${targetUserId}>:**`,
+                      components: [typeButtons]
+                    });
+
+                    const typeCollector = iBank.channel.createMessageComponentCollector({
+                      filter: i => i.message.id === askTransferMsg.id,
+                      componentType: ComponentType.Button,
+                      time: 60000
+                    });
+
+                    typeCollector.on('collect', async iType => {
+                      if (iType.user.id !== user.id) return;
+                      typeCollector.stop();
+
+                      if (iType.customId === 'bank_tf_cancel_perm') {
+                        await iType.update({ content: '❌ Transfer dibatalkan.', components: [] });
+                        return;
+                      }
+
+                      const selectedType = iType.customId.split('_')[2]; // biasa, bayar, beri
+
+                      const modal = new ModalBuilder()
+                        .setCustomId(`bank_modal_tf_${selectedType}_perm_${targetUserId}`)
+                        .setTitle('💸 Transfer Tabungan Bank');
+
+                      const amountInput = new TextInputBuilder()
+                        .setCustomId('transfer_amount')
+                        .setLabel('Jumlah koin (angka atau "all")')
+                        .setPlaceholder('Contoh: 10000')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
+
+                      modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+                      await iType.showModal(modal);
+                      await askTransferMsg.delete().catch(() => { });
+
+                      const submitted = await iType.awaitModalSubmit({
+                        filter: (sub) => sub.customId === `bank_modal_tf_${selectedType}_perm_${targetUserId}` && sub.user.id === user.id,
+                        time: 60000
+                      }).catch(() => null);
+
+                      if (submitted) {
+                        try {
+                          const amountStr = submitted.fields.getTextInputValue('transfer_amount');
+
+                          if (selectedType === 'bayar') {
+                            const debt = database.get(
+                              'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                              [guildId, user.id, targetUserId]
+                            );
+                            if (!debt || debt.amount <= 0) {
+                              return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', `Anda tidak memiliki hutang jaminan ke <@${targetUserId}>!`)], flags: 64 });
+                            }
+                          }
+
+                          // JIKA TIPE = BERI HUTANG (PINJAMKAN) -> TAWARKAN PINJAMAN INTERAKTIF
+                          if (selectedType === 'beri') {
+                            let amount = bank.parseAmount(amountStr);
+                            if (amount === 'all') {
+                              const senderSavings = bank.getSavings(user.id, guildId);
+                              amount = senderSavings.balance;
+                            }
+
+                            if (isNaN(amount) || amount <= 0) {
+                              return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', 'Nominal transfer harus berupa angka di atas 0.')], flags: 64 });
+                            }
+
+                            const senderSavings = bank.getSavings(user.id, guildId);
+                            if (senderSavings.balance < amount) {
+                              return submitted.reply({ embeds: [embeds.errorEmbed('Transfer Gagal!', `Saldo tabungan Anda tidak mencukupi! Saldo Anda Rp ${senderSavings.balance.toLocaleString('id-ID')}`)], flags: 64 });
+                            }
+
+                            const promptEmbed = new EmbedBuilder()
+                              .setColor(embeds.COLORS.SUCCESS)
+                              .setTitle('🤝 Tawaran Pinjaman Bank (Beri Hutang)')
+                              .setDescription(
+                                `👤 **Pengirim (Kreditur):** <@${user.id}>\n` +
+                                `👤 **Penerima (Debitur):** <@${targetUserId}>\n` +
+                                `💰 **Jumlah Pinjaman:** **Rp ${amount.toLocaleString('id-ID')}**\n\n` +
+                                `📢 <@${targetUserId}>, **<@${user.id}>** ingin meminjamkan koin sebesar **Rp ${amount.toLocaleString('id-ID')}** dari tabungan banknya kepada Anda.\n` +
+                                `Jika Anda **Menerima**, koin akan masuk ke tabungan bank Anda, dan Anda akan **tercatat memiliki hutang** sebesar koin bersih yang diterima ke <@${user.id}>.\n\n` +
+                                `Apakah Anda bersedia menerima pinjaman ini?`
+                              )
+                              .setTimestamp();
+
+                            const promptButtons = new ActionRowBuilder().addComponents(
+                              new ButtonBuilder().setCustomId(`loan_accept_${user.id}_${targetUserId}_${amount}_perm`).setLabel('✅ Terima Pinjaman').setStyle(ButtonStyle.Success),
+                              new ButtonBuilder().setCustomId(`loan_reject_${user.id}_${targetUserId}_${amount}_perm`).setLabel('❌ Tolak Pinjaman').setStyle(ButtonStyle.Danger)
+                            );
+
+                            await submitted.reply({ content: `📨 Tawaran pinjaman Anda sebesar **Rp ${amount.toLocaleString('id-ID')}** telah dikirim ke channel <#${submitted.channelId}> untuk dikonfirmasi oleh <@${targetUserId}>.`, flags: 64 });
+
+                            const promptMessage = await submitted.channel.send({
+                              content: `<@${targetUserId}>`,
+                              embeds: [promptEmbed],
+                              components: [promptButtons]
+                            });
+
+                            const promptCollector = submitted.channel.createMessageComponentCollector({
+                              filter: i => i.message.id === promptMessage.id,
+                              componentType: ComponentType.Button,
+                              time: 120000
+                            });
+
+                            promptCollector.on('collect', async iPrompt => {
+                              if (iPrompt.user.id !== targetUserId) {
+                                return iPrompt.reply({ content: '❌ Hanya penerima pinjaman yang dapat mengklik tombol ini!', flags: 64 });
+                              }
+                              promptCollector.stop();
+
+                              if (iPrompt.customId.startsWith('loan_reject_')) {
+                                const rejectEmbed = new EmbedBuilder()
+                                  .setColor(0xC0392B)
+                                  .setTitle('❌ Pinjaman Ditolak!')
+                                  .setDescription(`Tawaran pinjaman sebesar **Rp ${amount.toLocaleString('id-ID')}** dari <@${user.id}> telah ditolak oleh <@${targetUserId}>.`)
+                                  .setTimestamp();
+                                await iPrompt.update({ embeds: [rejectEmbed], components: [] });
+                              } else if (iPrompt.customId.startsWith('loan_accept_')) {
+                                try {
+                                  const currentSenderSavings = bank.getSavings(user.id, guildId);
+                                  if (currentSenderSavings.balance < amount) {
+                                    throw new Error(`Saldo tabungan pengirim (<@${user.id}>) sudah tidak mencukupi untuk melakukan transfer ini!`);
+                                  }
+
+                                  const res = bank.transferSavings(user.id, targetUserId, guildId, amount.toString());
+
+                                  database.run(
+                                    `INSERT INTO bail_debts (guild_id, debtor_id, creditor_id, amount) 
+                                   VALUES (?, ?, ?, ?) 
+                                   ON CONFLICT(guild_id, debtor_id, creditor_id) 
+                                   DO UPDATE SET amount = amount + EXCLUDED.amount`,
+                                    [guildId, targetUserId, user.id, res.netAmount]
+                                  );
+
+                                  const newDebt = database.get(
+                                    'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                                    [guildId, targetUserId, user.id]
+                                  );
+
+                                  const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                                    res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                                      res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+
+                                  const successEmb = embeds.bankSuccessEmbed(
+                                    'Pinjaman Berhasil Diterima! 🤝',
+                                    `Koin dipinjamkan: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                                    `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                                    `📥 Bersih masuk tabungan Anda: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                                    `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
+                                    `📈 **STATUS HUTANG BARU:**\n` +
+                                    `• Jumlah Pinjaman Baru: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                                    `• Total Hutang Anda ke <@${user.id}>: **Rp ${newDebt.amount.toLocaleString('id-ID')}**\n\n` +
+                                    `🏦 **Sisa Tabungan Pengirim:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
+                                  );
+
+                                  await iPrompt.update({ embeds: [successEmb], components: [] });
+                                } catch (err) {
+                                  await iPrompt.update({ content: `❌ Gagal memproses pinjaman: ${err.message}`, embeds: [], components: [] });
+                                }
+                              }
+                            });
+
+                            promptCollector.on('end', async (collected, reason) => {
+                              if (reason === 'time') {
+                                const timeoutEmbed = new EmbedBuilder()
+                                  .setColor(0x7F8C8D)
+                                  .setTitle('⏰ Waktu Konfirmasi Habis!')
+                                  .setDescription(`Tawaran pinjaman sebesar **Rp ${amount.toLocaleString('id-ID')}** dari <@${user.id}> kepada <@${targetUserId}> telah kedaluwarsa karena tidak direspons.`)
+                                  .setTimestamp();
+                                await promptMessage.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => { });
+                              }
+                            });
+
+                            return;
+                          }
+
+                          // JIKA TIPE = BIASA ATAU BAYAR -> TRANSFER LANGSUNG
+                          const res = bank.transferSavings(user.id, targetUserId, guildId, amountStr);
+
+                          let targetName = targetUserId;
+                          try {
+                            const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
+                            if (targetMember) targetName = targetMember.displayName;
+                          } catch (err) { }
+
+                          const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
+                            res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
+                              res.roomTier === 'AC' ? '❄️ Kamar AC' : '👑 Penthouse Kosan';
+
+                          let extraDesc = '';
+                          if (selectedType === 'bayar') {
+                            const debt = database.get(
+                              'SELECT amount FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                              [guildId, user.id, targetUserId]
+                            );
+                            const paidAmount = Math.min(res.netAmount, debt.amount);
+                            const remains = debt.amount - paidAmount;
+
+                            database.transaction(() => {
+                              if (remains <= 0) {
+                                database.run(
+                                  'DELETE FROM bail_debts WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                                  [guildId, user.id, targetUserId]
+                                );
+                              } else {
+                                database.run(
+                                  'UPDATE bail_debts SET amount = ? WHERE guild_id = ? AND debtor_id = ? AND creditor_id = ?',
+                                  [remains, guildId, user.id, targetUserId]
+                                );
+                              }
+                            })();
+
+                            extraDesc = `\n\n📉 **PEMBAYARAN HUTANG:**\n` +
+                              `• Hutang Awal: **Rp ${debt.amount.toLocaleString('id-ID')}**\n` +
+                              `• Dibayar (dari Net Transfer): **Rp ${paidAmount.toLocaleString('id-ID')}**\n` +
+                              `• Sisa Hutang: ` + (remains > 0 ? `**Rp ${remains.toLocaleString('id-ID')}**` : `✨ **LUNAS!**`);
+                          }
+
+                          const successEmb = embeds.bankSuccessEmbed(
+                            'Transfer Tabungan Berhasil!',
+                            `Koin ditransfer: **Rp ${res.amount.toLocaleString('id-ID')}**\n` +
+                            `✂️ Pajak Transfer (${res.taxRatePercent}%): **-Rp ${res.tax.toLocaleString('id-ID')}** (Dibakar)\n` +
+                            `📥 Bersih masuk tabungan target: **Rp ${res.netAmount.toLocaleString('id-ID')}**\n` +
+                            `🏢 Kasta Sewa Kamar Pengirim: **${roomTierName}**\n\n` +
+                            `👉 Penerima: **${targetName}** (<@${targetUserId}>)` +
+                            `${extraDesc}\n\n` +
+                            `🏦 **Sisa Tabungan Anda:** **Rp ${res.senderSavingsBalance.toLocaleString('id-ID')}**`
+                          );
+
+                          await submitted.reply({ embeds: [successEmb], flags: 64 });
+                          await interaction.editReply(getBankDashboardDataPrivate(user.id)).catch(() => { });
+
+                          // KIRIM NOTIFIKASI CHANNEL UNTUK PENERIMA
+                          try {
+                            if (submitted.channelId !== '1510121069783023646') {
+                              const embed = embeds.bankTransferNotificationEmbed(user, targetUserId, res.netAmount, selectedType === 'bayar');
+                              await submitted.channel.send({ content: `<@${targetUserId}>`, embeds: [embed] });
+                            }
+                          } catch (err) {
+                            console.error('Gagal mengirim notifikasi transfer ke channel:', err);
+                          }
+                        } catch (err) {
+                          await safeInteractionReply(submitted, { embeds: [embeds.bankErrorEmbed('Transfer Gagal!', err.message)], flags: 64 });
+                        }
+                      }
+                    });
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('Error in bank private collector:', err);
             }
+          });
 
-            manageOptions.push(
-              new StringSelectMenuOptionBuilder()
-                .setLabel('🛒 Toko Pet')
-                .setDescription('Beli pakan, obat-obatan, dan item pet')
-                .setValue('pet_manage_shop')
-            );
+          collector.on('end', async () => {
+            await interaction.deleteReply().catch(() => { });
+          });
+        }
 
-            if (userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
-              manageOptions.push(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('♻️ Daur Ulang Pet')
-                  .setDescription('Daur ulang pet aktif untuk mendapatkan koin/item')
-                  .setValue('pet_manage_recycle')
-              );
-            }
+        // ── PORTAL PERMANEN: INVENTORY SAYA ──
+        else if (customId === 'eco_btn_open_inventory_private_perm' || customId === 'eco_btn_open_inventory_direct') {
+          await interaction.deferReply({ flags: 64 });
 
-            manageOptions.push(
-              new StringSelectMenuOptionBuilder()
-                .setLabel('🧹 Reset Kandang')
-                .setDescription('Hapus pet aktif saat ini secara permanen')
-                .setValue('pet_manage_reset')
-            );
+          // Fetch all inventory items (quantity > 0)
+          const inv = database.all(
+            'SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
+            [user.id, guildId]
+          );
 
-            if (canAdoptMore) {
-              manageOptions.push(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('🛎️ Adopsi Telur Pet')
-                  .setDescription('Adopsi/beli telur pet baru (Rp 1.500)')
-                  .setValue('pet_manage_adopt')
-              );
-            }
+          // Fetch all pet inventory items (quantity > 0)
+          const petInv = database.all(
+            'SELECT item_id, quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND quantity > 0',
+            [user.id, guildId]
+          );
 
-            if (userPet.status === 'DEAD') {
-              manageOptions.push(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('🏥 Dokter Pet')
-                  .setDescription(`Hidupkan kembali pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`)
-                  .setValue('pet_manage_revive')
-              );
-            }
+          // ─── MASTER ITEM MAP (dengan kategori & sub-kategori) ───
+          const allItems = {
+            // ── Black Market: Alat Kriminal ──
+            LOCKPICK: { name: '🗝️ Linggis / Lockpick', cat: 'BM', sub: 'tool' },
+            MASK: { name: '🎭 Topeng Samaran', cat: 'BM', sub: 'tool' },
+            MEAT: { name: '🥩 Daging Bius', cat: 'BM', sub: 'tool' },
+            SOAP: { name: '🧼 Sabun Licin', cat: 'BM', sub: 'tool' },
+            // ── Black Market: Pertahanan ──
+            BRANKAS: { name: '🛡️ Brankas Anti-Hacker', cat: 'BM', sub: 'defense' },
+            // ── Barang Mewah / Luxury ──
+            LAMBO: { name: '🏎️ Lamborgini Kosan', cat: 'LUXURY' },
+            GOLD: { name: '👑 Batangan Emas Murni 24K', cat: 'LUXURY' },
+            KEY: { name: '🔑 Kunci Emas Penthouse', cat: 'LUXURY' },
+            ROLEX: { name: '⌚ Jam Tangan Rolek Master', cat: 'LUXURY' },
+            IPHONE: { name: '📱 iPhone 16 Pro Max', cat: 'LUXURY' },
+            // ── Kebun: Benih ──
+            SEED_ROSE: { name: '🌱 Benih Mawar Merah', cat: 'GARDEN', sub: 'seed' },
+            SEED_TULIP: { name: '🌱 Benih Bunga Tulip', cat: 'GARDEN', sub: 'seed' },
+            SEED_LAVENDER: { name: '🌱 Benih Bunga Lavender', cat: 'GARDEN', sub: 'seed' },
+            SEED_SAKURA: { name: '🌱 Benih Bunga Sakura', cat: 'GARDEN', sub: 'seed' },
+            SEED_ORCHID: { name: '🌱 Benih Anggrek Langka', cat: 'GARDEN', sub: 'seed' },
+            // ── Kebun: Bunga Panen ──
+            FLOWER_ROSE: { name: '🌹 Mawar Merah', cat: 'GARDEN', sub: 'flower' },
+            FLOWER_TULIP: { name: '🌷 Bunga Tulip', cat: 'GARDEN', sub: 'flower' },
+            FLOWER_LAVENDER: { name: '🪻 Bunga Lavender', cat: 'GARDEN', sub: 'flower' },
+            FLOWER_SAKURA: { name: '🌸 Bunga Sakura', cat: 'GARDEN', sub: 'flower' },
+            FLOWER_ORCHID: { name: '🪻 Anggrek Langka', cat: 'GARDEN', sub: 'flower' },
+            // ── Kebun: Buket ──
+            BOUQUET_LOVE: { name: '💐 Buket Kasih Sayang', cat: 'GARDEN', sub: 'bouquet' },
+            BOUQUET_PEACE: { name: '💐 Buket Ketenangan', cat: 'GARDEN', sub: 'bouquet' },
+            BOUQUET_IMPERIAL: { name: '👑 Buket Legendaris', cat: 'GARDEN', sub: 'bouquet' },
+            // ── Kebun: Perlengkapan ──
+            GIFT_WRAPPING: { name: '🎗️ Kertas Kado Premium', cat: 'GARDEN', sub: 'supply' },
+            // ── Pet: Makanan & Perawatan ──
+            FOOD_BASIC: { name: '🍗 Pakan Pet Biasa', cat: 'PET', sub: 'care' },
+            FOOD_PREMIUM: { name: '🥩 Daging Premium', cat: 'PET', sub: 'care' },
+            WATER: { name: '🥤 Air Bersih', cat: 'PET', sub: 'care' },
+            MEDICINE: { name: '💊 Ramuan Kesehatan', cat: 'PET', sub: 'care' },
+            TOY: { name: '⚽ Bola Karet', cat: 'PET', sub: 'care' },
+            SODA_ENERGY: { name: '🥤 Soda Energi Pet', cat: 'PET', sub: 'care' },
+            SOAP_PET: { name: '🧼 Sabun Mandi Pet', cat: 'PET', sub: 'care' },
+            // ── Pet: Aksesoris ──
+            COLLAR_IRON: { name: '🪮 Kalung Besi', cat: 'PET', sub: 'accessory' },
+            SWORD_TOY: { name: '⚔️ Pedang Mainan', cat: 'PET', sub: 'accessory' },
+            SHIELD_TOY: { name: '🛡️ Tameng Mainan', cat: 'PET', sub: 'accessory' },
+            LUCKY_AMULET: { name: '🔮 Jimat Keberuntungan', cat: 'PET', sub: 'accessory' },
+            // ── Pet: XP Booster ──
+            XP_2X: { name: '⚡ XP Booster 2x', cat: 'PET', sub: 'booster' },
+            XP_4X: { name: '⚡ XP Booster 4x', cat: 'PET', sub: 'booster' },
+            XP_6X: { name: '⚡ XP Booster 6x', cat: 'PET', sub: 'booster' },
+            XP_8X: { name: '⚡ XP Booster 8x', cat: 'PET', sub: 'booster' },
+          };
 
-            const manageDropdown = new StringSelectMenuBuilder()
-              .setCustomId('pet_select_manage_actions')
-              .setPlaceholder('⚙️ Kelola Pet (Gacha, Toko, Upgrade, dll)...')
-              .addOptions(manageOptions);
+          // ─── Klasifikasi item menurut kategori & sub-kategori ───
+          const categorized = {
+            BM: { tool: [], defense: [] },
+            LUXURY: [],
+            GARDEN: { seed: [], flower: [], bouquet: [], supply: [] },
+            PET: { care: [], accessory: [], booster: [] },
+            OTHER: []
+          };
 
-            if (userPet.status === 'EGG') {
-              const now = Math.floor(Date.now() / 1000);
-              const isHatched = userPet.hatch_at <= now;
-              const eggComponents = [
-                new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan').setStyle(ButtonStyle.Success).setDisabled(!isHatched),
-                new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-              ];
-              rows.push(new ActionRowBuilder().addComponents(eggComponents));
-              rows.push(new ActionRowBuilder().addComponents(manageDropdown));
-            } else if (userPet.status === 'DEAD') {
-              const deadComponents = [
-                new ButtonBuilder().setCustomId('pet_btn_revive').setLabel(`🏥 Dokter Pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-              ];
-              rows.push(new ActionRowBuilder().addComponents(deadComponents));
-              rows.push(new ActionRowBuilder().addComponents(manageDropdown));
+          let totalUniqueItems = 0;
+          let totalQuantity = 0;
+
+          // Proses user_inventory (BM, Luxury, Garden)
+          inv.forEach(item => {
+            const itemKey = item.item_id.toUpperCase();
+            const info = allItems[itemKey];
+            const line = `  ┊ ${info ? info.name : item.item_id} — **x${item.quantity}**`;
+            totalUniqueItems++;
+            totalQuantity += item.quantity;
+
+            if (!info) {
+              categorized.OTHER.push(line);
+            } else if (info.cat === 'BM') {
+              categorized.BM[info.sub || 'tool'].push(line);
+            } else if (info.cat === 'LUXURY') {
+              categorized.LUXURY.push(line);
+            } else if (info.cat === 'GARDEN') {
+              categorized.GARDEN[info.sub || 'supply'].push(line);
+            } else if (info.cat === 'PET') {
+              categorized.PET[info.sub || 'care'].push(line);
             } else {
-              rows.push(new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('pet_btn_feed').setLabel('🍗 Makan').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('pet_btn_drink').setLabel('🥤 Minum').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('pet_btn_play').setLabel('⚽ Main').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
-              ));
-              
-              const row2Components = [
-                new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(
-                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
-                  userPet.level < 10 &&
-                  userPet.status !== 'ADULT'
-                ),
-                new ButtonBuilder().setCustomId('pet_btn_breed').setLabel('💍 Kawin Silang').setStyle(ButtonStyle.Primary).setDisabled(
-                  !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
-                  userPet.level < 10 &&
-                  userPet.status !== 'ADULT'
-                ),
-                new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Tas Pet').setStyle(ButtonStyle.Primary)
-              ];
-              rows.push(new ActionRowBuilder().addComponents(row2Components));
-
-              const isAutoFeedActive = userPet.auto_feed === 1 || userPet.auto_feed === 2;
-              const autoFeedLabel = isAutoFeedActive ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care (Rp 5.000)';
-              const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
-
-              const row3Components = [
-                new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
-                new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-              ];
-              rows.push(new ActionRowBuilder().addComponents(row3Components));
-              rows.push(new ActionRowBuilder().addComponents(manageDropdown));
+              categorized.OTHER.push(line);
             }
+          });
+
+          // Proses pet_inventory (Pet items)
+          petInv.forEach(item => {
+            const itemKey = item.item_id.toUpperCase();
+            const info = allItems[itemKey];
+            const line = `  ┊ ${info ? info.name : item.item_id} — **x${item.quantity}**`;
+            totalUniqueItems++;
+            totalQuantity += item.quantity;
+
+            if (info && info.cat === 'PET') {
+              categorized.PET[info.sub || 'care'].push(line);
+            } else {
+              categorized.PET.care.push(line);
+            }
+          });
+
+          // ─── Bangun deskripsi embed ───
+          const hasBM = categorized.BM.tool.length > 0 || categorized.BM.defense.length > 0;
+          const hasLuxury = categorized.LUXURY.length > 0;
+          const hasGarden = categorized.GARDEN.seed.length > 0 || categorized.GARDEN.flower.length > 0 || categorized.GARDEN.bouquet.length > 0 || categorized.GARDEN.supply.length > 0;
+          const hasPet = categorized.PET.care.length > 0 || categorized.PET.accessory.length > 0 || categorized.PET.booster.length > 0;
+          const hasOther = categorized.OTHER.length > 0;
+          const isEmpty = !hasBM && !hasLuxury && !hasGarden && !hasPet && !hasOther;
+
+          let desc = `\`\`\`\n` +
+            `┌──────────────────────────────┐\n` +
+            `│  🎒 INVENTORY PEMAIN         │\n` +
+            `│  Kantong Peralatan & Aset    │\n` +
+            `└──────────────────────────────┘\n` +
+            `\`\`\`\n` +
+            `Halo **${user.username}**! Berikut seluruh barang & aset yang kamu miliki:\n`;
+
+          if (isEmpty) {
+            desc += `\n*Kantongmu benar-benar kosong! 📭*\n` +
+              `*Kunjungi **Pasar Gelap**, **Toko Kebun**, **Toko Mewah**, atau **Toko Pet** untuk mulai berbelanja.*`;
+          } else {
+            desc += `┊ 📦 **Total Jenis Barang:** \`${totalUniqueItems}\` jenis\n` +
+              `┊ 📊 **Total Kuantitas:** \`${totalQuantity}\` unit\n`;
+
+            // ══ KATEGORI 1: BLACK MARKET ══
+            if (hasBM) {
+              desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              desc += `🖤 **PASAR GELAP (BLACK MARKET)**\n`;
+              if (categorized.BM.tool.length > 0) {
+                desc += `\n  🔧 *Alat Kriminal:*\n${categorized.BM.tool.join('\n')}\n`;
+              }
+              if (categorized.BM.defense.length > 0) {
+                desc += `\n  🛡️ *Pertahanan:*\n${categorized.BM.defense.join('\n')}\n`;
+              }
+            }
+
+            // ══ KATEGORI 2: BARANG MEWAH ══
+            if (hasLuxury) {
+              desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              desc += `💎 **BARANG & ASET MEWAH (LUXURY)**\n\n`;
+              desc += categorized.LUXURY.join('\n') + '\n';
+            }
+
+            // ══ KATEGORI 3: PERKEBUNAN / KEBUN ══
+            if (hasGarden) {
+              desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              desc += `🌸 **PERKEBUNAN (COZY GARDEN)**\n`;
+              if (categorized.GARDEN.seed.length > 0) {
+                desc += `\n  🌱 *Stok Benih:*\n${categorized.GARDEN.seed.join('\n')}\n`;
+              }
+              if (categorized.GARDEN.flower.length > 0) {
+                desc += `\n  🌺 *Bunga Hasil Panen:*\n${categorized.GARDEN.flower.join('\n')}\n`;
+              }
+              if (categorized.GARDEN.bouquet.length > 0) {
+                desc += `\n  💐 *Buket Bunga Jadi:*\n${categorized.GARDEN.bouquet.join('\n')}\n`;
+              }
+              if (categorized.GARDEN.supply.length > 0) {
+                desc += `\n  🎗️ *Perlengkapan Kebun:*\n${categorized.GARDEN.supply.join('\n')}\n`;
+              }
+            }
+
+            // ══ KATEGORI 4: PELIHARAAN (PET) ══
+            if (hasPet) {
+              desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              desc += `🐾 **PELIHARAAN (PET SHOP)**\n`;
+              if (categorized.PET.care.length > 0) {
+                desc += `\n  🍗 *Makanan, Minuman & Obat:*\n${categorized.PET.care.join('\n')}\n`;
+              }
+              if (categorized.PET.accessory.length > 0) {
+                desc += `\n  🪮 *Aksesoris Pet:*\n${categorized.PET.accessory.join('\n')}\n`;
+              }
+              if (categorized.PET.booster.length > 0) {
+                desc += `\n  ⚡ *XP Booster:*\n${categorized.PET.booster.join('\n')}\n`;
+              }
+            }
+
+            // ══ KATEGORI 5: LAINNYA ══
+            if (hasOther) {
+              desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+              desc += `📦 **LAINNYA**\n\n`;
+              desc += categorized.OTHER.join('\n') + '\n';
+            }
+
+            desc += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━`;
           }
 
-          if (allPets.length > 1) {
-            const selectMenu = new StringSelectMenuBuilder().setCustomId('pet_select_active').setPlaceholder('🐾 Ganti Peliharaan Aktif...');
-            allPets.forEach(p => {
-              const isCurrent = p.is_active === 1;
-              selectMenu.addOptions({
-                label: `${p.pet_name} the ${p.pet_type} (Lv. ${p.level})`,
-                description: isCurrent ? 'Aktif' : 'Klik untuk mengaktifkan',
-                value: p.pet_name,
-                default: isCurrent
-              });
-            });
-            rows.push(new ActionRowBuilder().addComponents(selectMenu));
-          }
-          return { embeds: [embed], components: rows };
-        };
+          const embed = new EmbedBuilder()
+            .setColor(0x00FFCC)
+            .setTitle('🎒 INVENTORY PEMAIN — KANTONG PERALATAN & ASET')
+            .setThumbnail(user.displayAvatarURL())
+            .setDescription(desc)
+            .setFooter({ text: 'Sistem Inventaris Bot Kosan 1A • Klik Portal Hub untuk belanja!' })
+            .setTimestamp();
 
-        const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
-          const wallet2 = economy.getWallet(targetUserId, guildId);
-          const inv = pet.getInventory(targetUserId, guildId);
-          const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
+          await interaction.editReply({ embeds: [embed] });
+        }
 
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('pet_select_shop_item')
-            .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-            .addOptions(getPetShopSelectOptions());
-
-          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-          const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
-          const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
-
-          return { embeds: [embed], components: [selectRow, cancelRow] };
-        };
-
-        const initialData = getDashboardPanelPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
-
-        collector.on('collect', async iPet => {
-          if (iPet.user.id !== user.id) return iPet.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
+        // ── PORTAL PERMANEN: PASAR GELAP (BM) ──
+        else if (customId === 'eco_btn_open_bm_private_perm' || customId === 'eco_btn_open_bm_direct') {
+          await interaction.deferReply({ flags: 64 });
           try {
-            if (iPet.isStringSelectMenu() && iPet.customId === 'pet_select_manage_actions') {
-              const selectedValue = iPet.values[0];
-              if (selectedValue === 'pet_manage_gacha') {
+            const getBmPanelData = (targetUserId, statusMsg = '') => {
+              const wallet = economy.getWallet(targetUserId, guildId);
+              const embed = new EmbedBuilder()
+                .setColor(0x1A1A1A)
+                .setTitle('🕵️‍♂️ PASAR GELAP KOSAN (BLACK MARKET)')
+                .setDescription(
+                  `Selamat datang di pasar gelap kosan, kawan. Butuh barang-barang untuk memuluskan aksi kriminalmu? Kami punya persediaannya...\n\n` +
+                  (statusMsg ? `🔔 **Notifikasi:** ${statusMsg}\n\n` : '') +
+                  `💵 **Saldo Rupiah Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n\n` +
+                  `**Daftar Peralatan Tersedia:**\n\n` +
+                  `🗝️ **Linggis / Lockpick** (\`lockpick\`) - **Rp 450**\n` +
+                  `*Meningkatkan sukses rate rob +15% (peluang patah 20%).*\n\n` +
+                  `🎭 **Topeng Samaran** (\`mask\`) - **Rp 600**\n` +
+                  `*Menyembunyikan namamu saat rob berhasil (sekali pakai).*\n\n` +
+                  `🥩 **Daging Bius** (\`meat\`) - **Rp 350**\n` +
+                  `*Menonaktifkan Alarm & CCTV korban saat rob (sekali pakai).*\n\n` +
+                  `🧼 **Sabun Licin** (\`soap\`) - **Rp 500**\n` +
+                  `*Memotong waktu tahanan penjara 50% jika ketangkap (sekali pakai).*\n\n` +
+                  `👮 **Borgol / Handcuffs** (\`handcuffs\`) - **Rp 500**\n` +
+                  `*Meningkatkan peluang menangkap buronan sebesar +20% saat .arrest.*\n\n` +
+                  `🛡️ **Brankas Anti-Hacker** (\`brankas\`) - **Rp 2.500**\n` +
+                  `*Melindungi saldo bank Anda dari Heist (memotong kehilangan 90% secara pasif).*\n\n` +
+                  `*Pilih barang di menu dropdown di bawah untuk membeli secara privat.*`
+                )
+                .setFooter({ text: 'Pasar Gelap Bot Kosan 1A • Kerahasiaan Terjamin' })
+                .setTimestamp();
+              return { embeds: [embed] };
+            };
+
+            const bmSelect = new StringSelectMenuBuilder()
+              .setCustomId('bm_select_buy_items')
+              .setPlaceholder('🕵️‍♂️ Pilih item Black Market untuk dibeli...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🗝️ Linggis / Lockpick').setDescription('Harga: Rp 450').setValue('lockpick'),
+                new StringSelectMenuOptionBuilder().setLabel('🎭 Topeng Samaran').setDescription('Harga: Rp 600').setValue('mask'),
+                new StringSelectMenuOptionBuilder().setLabel('🥩 Daging Bius').setDescription('Harga: Rp 350').setValue('meat'),
+                new StringSelectMenuOptionBuilder().setLabel('🧼 Sabun Licin').setDescription('Harga: Rp 500').setValue('soap'),
+                new StringSelectMenuOptionBuilder().setLabel('👮 Borgol / Handcuffs').setDescription('Harga: Rp 500').setValue('handcuffs'),
+                new StringSelectMenuOptionBuilder().setLabel('🛡️ Brankas Anti-Hacker').setDescription('Harga: Rp 2.500').setValue('brankas')
+              );
+
+            const selectRow = new ActionRowBuilder().addComponents(bmSelect);
+            const exitRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('bm_btn_exit_perm').setLabel('✖️ Tutup Pasar Gelap').setStyle(ButtonStyle.Danger)
+            );
+
+            const initialData = getBmPanelData(user.id);
+            const privateMsg = await interaction.editReply({ embeds: initialData.embeds, components: [selectRow, exitRow] });
+            const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+            collector.on('collect', async i => {
+              if (i.user.id !== user.id) return i.reply({ content: '❌ Hanya orang yang memanggil menu ini yang bisa menggunakan menu/tombol!', flags: 64 });
+
+              if (i.customId === 'bm_btn_exit_perm') {
+                collector.stop();
+                await i.update({ content: '👋 Meninggalkan pasar gelap...', embeds: [], components: [] }).catch(() => { });
+                return;
+              }
+
+              if (i.isStringSelectMenu() && i.customId === 'bm_select_buy_items') {
+                const itemId = i.values[0];
+                const itemNames = {
+                  lockpick: '🗝️ Linggis / Lockpick',
+                  mask: '🎭 Topeng Samaran',
+                  meat: '🥩 Daging Bius',
+                  soap: '🧼 Sabun Licin',
+                  handcuffs: '👮 Borgol / Handcuffs',
+                  brankas: '🛡️ Brankas Anti-Hacker'
+                };
+                const itemName = itemNames[itemId] || itemId;
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`bm_modal_buy_${itemId}`)
+                  .setTitle(`Beli ${itemName}`);
+
+                const qtyInput = new TextInputBuilder()
+                  .setCustomId('buy_qty')
+                  .setLabel('Jumlah yang ingin dibeli')
+                  .setPlaceholder('Contoh: 5')
+                  .setValue('1')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMinLength(1)
+                  .setMaxLength(4);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+                await i.showModal(modal);
+
+                const submitted = await i.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `bm_modal_buy_${itemId}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                    const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                    const itemInfo = bm.BM_ITEMS[itemId.toUpperCase()];
+                    if (!itemInfo) throw new Error('Item tidak ditemukan di pasar gelap!');
+                    const totalPrice = itemInfo.price * qty;
+
+                    await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = bm.buyItem(user.id, guildId, itemId, qty, paymentSource);
+                        const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+
+                        const updatedData = getBmPanelData(user.id, statusMsg);
+                        await interaction.editReply({
+                          embeds: updatedData.embeds,
+                          components: [selectRow, exitRow]
+                        }).catch(() => { });
+
+                        const successEmb = embeds.successEmbed('Pembelian Berhasil!', statusMsg);
+                        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                      }
+                    });
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              }
+            });
+
+            collector.on('end', async () => {
+              await interaction.deleteReply().catch(() => { });
+            });
+          } catch (err) {
+            await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Black Market!', err.message)] }).catch(() => { });
+          }
+        }
+
+        // ── PORTAL PERMANEN: PUSAT PERAWATAN PET ──
+        else if (customId === 'pet_btn_open_pet_private_perm') {
+          await interaction.deferReply({ flags: 64 });
+          const getDashboardPanelPrivate = (targetUserId) => {
+            const userPet = pet.getPet(targetUserId, guildId);
+            const inventory = pet.getInventory(targetUserId, guildId);
+            const allPets = pet.getPetsList(targetUserId, guildId);
+            const embed = embeds.petDashboardEmbed(user, userPet, inventory);
+            const rows = [];
+            const canAdoptMore = allPets.length < 3;
+
+            if (!userPet) {
+              rows.push(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('pet_btn_nav_adopt').setLabel('🛎️ Adopsi Telur Pet').setStyle(ButtonStyle.Success)));
+            } else {
+              // Build the manage options dropdown
+              const manageOptions = [];
+
+              manageOptions.push(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('🎰 Gacha Pet')
+                  .setDescription('Beli & putar gacha pet acak (Rp 1.000)')
+                  .setValue('pet_manage_gacha')
+              );
+
+              if (userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('✨ Upgrade Bintang')
+                    .setDescription('Tingkatkan bintang pet aktif Anda')
+                    .setValue('pet_manage_upgrade')
+                );
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('🏋️ Gym & Latih Stat')
+                    .setDescription('Kembangkan STR, VIT, DEF, & DEX pet Anda')
+                    .setValue('pet_manage_gym')
+                );
+              }
+
+              manageOptions.push(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('🛒 Toko Pet')
+                  .setDescription('Beli pakan, obat-obatan, dan item pet')
+                  .setValue('pet_manage_shop')
+              );
+
+              if (userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('♻️ Daur Ulang Pet')
+                    .setDescription('Daur ulang pet aktif untuk mendapatkan koin/item')
+                    .setValue('pet_manage_recycle')
+                );
+              }
+
+              manageOptions.push(
+                new StringSelectMenuOptionBuilder()
+                  .setLabel('🧹 Reset Kandang')
+                  .setDescription('Hapus pet aktif saat ini secara permanen')
+                  .setValue('pet_manage_reset')
+              );
+
+              if (canAdoptMore) {
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('🛎️ Adopsi Telur Pet')
+                    .setDescription('Adopsi/beli telur pet baru (Rp 1.500)')
+                    .setValue('pet_manage_adopt')
+                );
+              }
+
+              if (userPet.status === 'DEAD') {
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('🏥 Dokter Pet')
+                    .setDescription(`Hidupkan kembali pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`)
+                    .setValue('pet_manage_revive')
+                );
+              }
+
+              const manageDropdown = new StringSelectMenuBuilder()
+                .setCustomId('pet_select_manage_actions')
+                .setPlaceholder('⚙️ Kelola Pet (Gacha, Toko, Upgrade, dll)...')
+                .addOptions(manageOptions);
+
+              if (userPet.status === 'EGG') {
+                const now = Math.floor(Date.now() / 1000);
+                const isHatched = userPet.hatch_at <= now;
+                const eggComponents = [
+                  new ButtonBuilder().setCustomId('pet_btn_hatch').setLabel('🐣 Tetaskan').setStyle(ButtonStyle.Success).setDisabled(!isHatched),
+                  new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+                ];
+                rows.push(new ActionRowBuilder().addComponents(eggComponents));
+                rows.push(new ActionRowBuilder().addComponents(manageDropdown));
+              } else if (userPet.status === 'DEAD') {
+                const deadComponents = [
+                  new ButtonBuilder().setCustomId('pet_btn_revive').setLabel(`🏥 Dokter Pet (Rp ${(500 * userPet.level).toLocaleString('id-ID')})`).setStyle(ButtonStyle.Primary),
+                  new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+                ];
+                rows.push(new ActionRowBuilder().addComponents(deadComponents));
+                rows.push(new ActionRowBuilder().addComponents(manageDropdown));
+              } else {
+                rows.push(new ActionRowBuilder().addComponents(
+                  new ButtonBuilder().setCustomId('pet_btn_feed').setLabel('🍗 Makan').setStyle(ButtonStyle.Success),
+                  new ButtonBuilder().setCustomId('pet_btn_drink').setLabel('🥤 Minum').setStyle(ButtonStyle.Primary),
+                  new ButtonBuilder().setCustomId('pet_btn_play').setLabel('⚽ Main').setStyle(ButtonStyle.Success),
+                  new ButtonBuilder().setCustomId('pet_btn_cure').setLabel('💊 Obat').setStyle(ButtonStyle.Danger)
+                ));
+
+                const row2Components = [
+                  new ButtonBuilder().setCustomId('pet_btn_work').setLabel('💼 Kerja').setStyle(ButtonStyle.Secondary),
+                  new ButtonBuilder().setCustomId('pet_btn_hunt').setLabel('🏹 Berburu').setStyle(ButtonStyle.Secondary).setDisabled(
+                    !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
+                    userPet.level < 10 &&
+                    userPet.status !== 'ADULT'
+                  ),
+                  new ButtonBuilder().setCustomId('pet_btn_breed').setLabel('💍 Kawin Silang').setStyle(ButtonStyle.Primary).setDisabled(
+                    !(userPet.pet_name.toLowerCase() === 'ramzi' && userPet.user_id === OWNER_ID) &&
+                    userPet.level < 10 &&
+                    userPet.status !== 'ADULT'
+                  ),
+                  new ButtonBuilder().setCustomId('pet_btn_use_booster').setLabel('🎒 Tas Pet').setStyle(ButtonStyle.Primary)
+                ];
+                rows.push(new ActionRowBuilder().addComponents(row2Components));
+
+                const isAutoFeedActive = userPet.auto_feed === 1 || userPet.auto_feed === 2;
+                const autoFeedLabel = isAutoFeedActive ? '🤖 Auto Care: AKTIF' : '🤖 Auto Care (Rp 5.000)';
+                const autoFeedStyle = isAutoFeedActive ? ButtonStyle.Success : ButtonStyle.Secondary;
+
+                const row3Components = [
+                  new ButtonBuilder().setCustomId('pet_btn_autocare').setLabel(autoFeedLabel).setStyle(autoFeedStyle).setDisabled(isAutoFeedActive),
+                  new ButtonBuilder().setCustomId('pet_btn_refresh').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+                ];
+                rows.push(new ActionRowBuilder().addComponents(row3Components));
+                rows.push(new ActionRowBuilder().addComponents(manageDropdown));
+              }
+            }
+
+            if (allPets.length > 1) {
+              const selectMenu = new StringSelectMenuBuilder().setCustomId('pet_select_active').setPlaceholder('🐾 Ganti Peliharaan Aktif...');
+              allPets.forEach(p => {
+                const isCurrent = p.is_active === 1;
+                selectMenu.addOptions({
+                  label: `${p.pet_name} the ${p.pet_type} (Lv. ${p.level})`,
+                  description: isCurrent ? 'Aktif' : 'Klik untuk mengaktifkan',
+                  value: p.pet_name,
+                  default: isCurrent
+                });
+              });
+              rows.push(new ActionRowBuilder().addComponents(selectMenu));
+            }
+            return { embeds: [embed], components: rows };
+          };
+
+          const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
+            const wallet2 = economy.getWallet(targetUserId, guildId);
+            const inv = pet.getInventory(targetUserId, guildId);
+            const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
+
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_item')
+              .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
+              .addOptions(getPetShopSelectOptions());
+
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
+            const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+            return { embeds: [embed], components: [selectRow, cancelRow] };
+          };
+
+          const initialData = getDashboardPanelPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+          collector.on('collect', async iPet => {
+            if (iPet.user.id !== user.id) return iPet.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (iPet.isStringSelectMenu() && iPet.customId === 'pet_select_manage_actions') {
+                const selectedValue = iPet.values[0];
+                if (selectedValue === 'pet_manage_gacha') {
+                  await iPet.deferReply({ flags: 64 });
+                  await handlePetGachaPanel(iPet, client, true);
+                } else if (selectedValue === 'pet_manage_upgrade') {
+                  await iPet.deferReply({ flags: 64 });
+                  await handlePetUpgradePanel(iPet, client, true);
+                } else if (selectedValue === 'pet_manage_shop') {
+                  await iPet.update(getShopPanelDataPrivate(user.id));
+                } else if (selectedValue === 'pet_manage_recycle') {
+                  const allPetsFresh = pet.getPetsList(user.id, guildId);
+                  if (allPetsFresh.length === 0) {
+                    return iPet.reply({ content: '❌ Anda tidak memiliki pet!', flags: 64 });
+                  }
+                  const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('pet_select_recycle_private')
+                    .setPlaceholder('♻️ Pilih pet yang ingin didaur ulang...');
+                  allPetsFresh.forEach(p => {
+                    const star = pet.renderStars(p.star_level || 1);
+                    selectMenu.addOptions(new StringSelectMenuOptionBuilder()
+                      .setLabel(`${p.pet_name} the ${p.pet_type} (${star}, Lv.${p.level})`)
+                      .setDescription(`Recycle → +Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}`)
+                      .setValue(p.pet_name)
+                    );
+                  });
+                  const recycleEmbed = new EmbedBuilder()
+                    .setColor(0xFF5252)
+                    .setTitle('♻️ DAUR ULANG PET ♻️')
+                    .setDescription(`Pilih pet yang ingin didaur ulang. Pet akan dihapus permanen dan Anda menerima **Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}** sebagai kompensasi.\n\n⚠️ **Aksi ini tidak bisa dibatalkan!**`)
+                    .setTimestamp();
+                  const subPrivateMsg = await iPet.reply({
+                    embeds: [recycleEmbed],
+                    components: [new ActionRowBuilder().addComponents(selectMenu)],
+                    flags: 64,
+                    fetchReply: true
+                  });
+
+                  const recycleCollector = subPrivateMsg.createMessageComponentCollector({
+                    componentType: ComponentType.StringSelect,
+                    time: 60000
+                  });
+
+                  recycleCollector.on('collect', async iRecycle => {
+                    if (iRecycle.user.id !== user.id) return;
+                    const targetPetName = iRecycle.values[0];
+                    try {
+                      const res = pet.recyclePet(user.id, guildId, targetPetName);
+                      await iRecycle.update({
+                        embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
+                        components: []
+                      });
+                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    } catch (err) {
+                      await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
+                    }
+                  });
+                } else if (selectedValue === 'pet_manage_reset') {
+                  pet.resetPet(user.id, guildId);
+                  await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+                  collector.stop();
+                } else if (selectedValue === 'pet_manage_adopt') {
+                  const modal = new ModalBuilder()
+                    .setCustomId('pet_modal_adopt_perm')
+                    .setTitle('🛎️ Adopsi Telur Pet Tamagotchi');
+
+                  const nameInput = new TextInputBuilder()
+                    .setCustomId('pet_name')
+                    .setLabel('Nama Pet Anda')
+                    .setPlaceholder('Contoh: Ciko')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                  const typeInput = new TextInputBuilder()
+                    .setCustomId('pet_type')
+                    .setLabel('Jenis Pet (Slime / Dragon / Cat / Golem)')
+                    .setPlaceholder('Ketik jenis pet pilihan Anda')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                  modal.addComponents(
+                    new ActionRowBuilder().addComponents(nameInput),
+                    new ActionRowBuilder().addComponents(typeInput)
+                  );
+
+                  await iPet.showModal(modal);
+
+                  const submitted = await iPet.awaitModalSubmit({
+                    filter: (sub) => sub.customId === 'pet_modal_adopt_perm' && sub.user.id === user.id,
+                    time: 60000
+                  }).catch(() => null);
+
+                  if (submitted) {
+                    try {
+                      const pName = submitted.fields.getTextInputValue('pet_name');
+                      const pType = submitted.fields.getTextInputValue('pet_type');
+
+                      const eggPrice = 1500;
+                      await promptPaymentMethod(submitted, user.id, guildId, `Adopsi Telur Pet ${pName}`, eggPrice, async (paymentSource, iConfirm) => {
+                        try {
+                          const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
+                          const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
+                          await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => { });
+                          await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                        } catch (err) {
+                          const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
+                          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                        }
+                      });
+                    } catch (err) {
+                      await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
+                    }
+                  }
+                } else if (selectedValue === 'pet_manage_revive') {
+                  try {
+                    const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
+                    if (!petObj) {
+                      throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+                    }
+                    const cost = 500 * petObj.level;
+
+                    await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = pet.revivePet(user.id, guildId, paymentSource);
+                        let sisaText = '';
+                        if (paymentSource === 'bank') {
+                          const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                          sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                        } else {
+                          sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                        }
+
+                        const successEmb = embeds.successEmbed(
+                          'Pet Berhasil Dihidupkan! 🏥✨',
+                          `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                          `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                          `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                          `📉 Sisa saldo ${sisaText}.`
+                        );
+                        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                        await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                      }
+                    });
+                  } catch (err) {
+                    await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
+                  }
+                } else if (selectedValue === 'pet_manage_gym') {
+                  await iPet.deferReply({ flags: 64 });
+                  await handlePetGymPanel(iPet, client, true);
+                }
+              } else if (iPet.customId === 'pet_btn_refresh') {
+                await iPet.update(getDashboardPanelPrivate(user.id));
+              } else if (iPet.customId === 'pet_btn_use_booster') {
+                try {
+                  const freshPet = pet.getPet(user.id, guildId);
+                  if (!freshPet) {
+                    return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
+                  }
+                  const inv = pet.getInventory(user.id, guildId);
+                  const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
+
+                  if (usableItems.length === 0) {
+                    return iPet.reply({
+                      embeds: [embeds.warnEmbed(
+                        'Tas Pet Kosong! 🎒',
+                        'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
+                        '🛒 *Silakan gunakan tombol **🛍️ Toko Pet** di Portal Hub (.hub) untuk membeli pakan, obat, soda, sabun, atau booster.*'
+                      )],
+                      flags: 64
+                    });
+                  }
+
+                  const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('pet_select_item_use')
+                    .setPlaceholder('🎒 Pilih item yang ingin digunakan...');
+
+                  usableItems.forEach(item => {
+                    let effectDesc = '';
+                    let cooldownDesc = '';
+
+                    if (item.id === 'FOOD_BASIC') {
+                      effectDesc = '+30 Kenyangan';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.id === 'FOOD_PREMIUM') {
+                      effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.id === 'WATER') {
+                      effectDesc = '+35 Hidrasi';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.id === 'MEDICINE') {
+                      effectDesc = '+50 HP, Sembuhkan Sakit';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.id === 'TOY') {
+                      effectDesc = '+50 Kebahagiaan';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.id === 'SODA_ENERGY') {
+                      effectDesc = 'Reset Cooldown Kerja/Berburu';
+                      cooldownDesc = ' · Cooldown: 30m';
+                    } else if (item.id === 'SOAP_PET') {
+                      effectDesc = 'Mandi Bersih (Hilangkan Bau)';
+                      cooldownDesc = ' · Bebas Cooldown';
+                    } else if (item.multiplier) {
+                      effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
+                      cooldownDesc = ' · Bebas Cooldown';
+                    }
+
+                    if (!effectDesc) {
+                      const rawDesc = item.desc || 'Gunakan item ini';
+                      effectDesc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
+                    }
+
+                    selectMenu.addOptions(
+                      new StringSelectMenuOptionBuilder()
+                        .setLabel(`${item.name} (x${item.quantity})`)
+                        .setDescription(`${effectDesc}${cooldownDesc}`)
+                        .setValue(item.id)
+                    );
+                  });
+
+                  const row = new ActionRowBuilder().addComponents(selectMenu);
+                  const invEmbed = new EmbedBuilder()
+                    .setColor(0x00b0ff)
+                    .setTitle('🎒 INVENTARIS / TAS PET AKTIF 🎒')
+                    .setDescription(
+                      `Silakan pilih item di bawah untuk digunakan pada pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
+                      `*Menggunakan item dari tas langsung memotong kuantitas tanpa perlu auto-buy.*`
+                    )
+                    .setTimestamp();
+
+                  const subPrivateMsg = await iPet.reply({ embeds: [invEmbed], components: [row], flags: 64, fetchReply: true });
+                  const itemCollector = subPrivateMsg.createMessageComponentCollector({
+                    componentType: ComponentType.StringSelect,
+                    time: 60000
+                  });
+
+                  itemCollector.on('collect', async iItemUse => {
+                    if (iItemUse.user.id !== user.id) return;
+                    const selectedItemId = iItemUse.values[0];
+
+                    try {
+                      let result;
+                      let detailDesc = '';
+
+                      if (selectedItemId === 'SOAP_PET') {
+                        result = pet.washPet(user.id, guildId);
+                        detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.`;
+                      } else if (selectedItemId === 'SODA_ENERGY') {
+                        result = pet.useSodaEnergy(user.id, guildId, false, iItemUse.member);
+                        detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
+                          (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
+                          `\n⏱️ *Cooldown: 30 Menit.*`;
+                      } else {
+                        result = pet.useItem(user.id, guildId, selectedItemId, false);
+                        if (result.item.multiplier) {
+                          detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${result.xpGained} XP**${result.levelUp ? ` (Naik ke Level **${result.pet.level}**! 🎉)` : ''}`;
+                        } else {
+                          const mins = Math.floor(result.item.cooldown / 60);
+                          const cooldownText = result.item.cooldown > 0 ? `\n⏱️ *Cooldown: ${mins} Menit.*` : '';
+                          detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).${cooldownText}`;
+                        }
+                      }
+
+                      const successEmb = embeds.successEmbed(
+                        'Penggunaan Item Sukses! ✨',
+                        `Berhasil menggunakan **${pet.PET_ITEMS[selectedItemId].name}** pada pet **${result.pet.pet_name}**!\n\n${detailDesc}`
+                      );
+
+                      await iItemUse.update({ embeds: [successEmb], components: [] });
+                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    } catch (err) {
+                      await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
+                    }
+                  });
+                } catch (err) {
+                  await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Inventaris!', err.message)], flags: 64 });
+                }
+              } else if (iPet.customId === 'pet_btn_reset') {
+                pet.resetPet(user.id, guildId);
+                await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
+                collector.stop();
+              } else if (iPet.customId === 'pet_btn_revive') {
+                try {
+                  const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
+                  if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
+                  const cost = 500 * petObj.level;
+
+                  await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
+                    try {
+                      const res = pet.revivePet(user.id, guildId, paymentSource);
+                      let sisaText = '';
+                      if (paymentSource === 'bank') {
+                        const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                        sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                      } else {
+                        sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                      }
+
+                      const successEmb = embeds.successEmbed(
+                        'Pet Berhasil Dihidupkan! 🏥✨',
+                        `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
+                        `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
+                        `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
+                        `📉 Sisa saldo ${sisaText}.`
+                      );
+                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                    } catch (err) {
+                      const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
+                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                    }
+                  });
+                } catch (err) {
+                  await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
+                }
+              } else if (iPet.customId === 'pet_select_active') {
+                pet.switchActivePet(user.id, guildId, iPet.values[0]);
+                await iPet.update(getDashboardPanelPrivate(user.id));
+              } else if (iPet.customId === 'pet_btn_hatch') {
+                const res = pet.getPet(user.id, guildId);
+                if (res && res.status === 'BABY') {
+                  await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)], flags: 64 });
+                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                }
+              } else if (iPet.customId === 'pet_btn_feed') {
+                const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
+                await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_drink') {
+                const res = pet.useItem(user.id, guildId, 'WATER', true);
+                await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_play') {
+                const res = pet.playWithPet(user.id, guildId);
+                await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_cure') {
+                const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
+                await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_work') {
+                const res = pet.sendToWork(user.id, guildId, iPet.member);
+                await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_hunt') {
+                const res = pet.sendToHunt(user.id, guildId, iPet.member);
+                await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
+                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+              } else if (iPet.customId === 'pet_btn_breed') {
+                try {
+                  const freshPet = pet.getPet(user.id, guildId);
+                  if (!freshPet) {
+                    return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
+                  }
+                  if (freshPet.status !== 'ADULT') {
+                    return iPet.reply({ content: `❌ Pet Anda **${freshPet.pet_name}** belum dewasa (Lv < 10)!`, flags: 64 });
+                  }
+
+                  const selectPartnerMenu = new UserSelectMenuBuilder()
+                    .setCustomId('pet_breed_select_partner')
+                    .setPlaceholder('💞 Pilih warga/partner kawin silang...');
+
+                  const partnerRow = new ActionRowBuilder().addComponents(selectPartnerMenu);
+                  const cancelBtn = new ButtonBuilder()
+                    .setCustomId('pet_btn_cancel_breed')
+                    .setLabel('✖️ Batalkan')
+                    .setStyle(ButtonStyle.Secondary);
+                  const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
+
+                  await iPet.update({
+                    embeds: [
+                      new EmbedBuilder()
+                        .setColor(0xFF80AB)
+                        .setTitle('🔀 PERKAWINAN PET: PILIH PARTNER')
+                        .setDescription(
+                          `Silakan pilih warga server yang ingin Anda ajak kawin silang pet.\n\n` +
+                          `📌 **Syarat Perkawinan:**\n` +
+                          `• Kedua belah pihak harus memiliki **Pet Dewasa (Level >= 10)**\n` +
+                          `• Biaya perkawinan masing-masing adalah **Rp 800**\n` +
+                          `• Pet tidak boleh sedang bau busuk (smelly) atau sakit/terluka`
+                        )
+                    ],
+                    components: [partnerRow, cancelRow]
+                  });
+                } catch (err) {
+                  await iPet.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
+                }
+              } else if (iPet.customId === 'pet_btn_cancel_breed') {
+                await iPet.update(getDashboardPanelPrivate(user.id));
+              } else if (iPet.customId === 'pet_breed_select_partner') {
+                const partnerId = iPet.values[0];
+                if (partnerId === user.id) {
+                  return iPet.reply({ content: '❌ Anda tidak bisa mengawinkan pet dengan diri Anda sendiri!', flags: 64 });
+                }
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`pet_breed_modal_${partnerId}`)
+                  .setTitle('Nama Bayi Pet Baru');
+
+                const nameInput = new TextInputBuilder()
+                  .setCustomId('child_name')
+                  .setLabel('Nama Bayi Pet Anda')
+                  .setPlaceholder('Contoh: Ciko Jr')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMaxLength(25);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+
+                await iPet.showModal(modal);
+
+                const submitted = await iPet.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `pet_breed_modal_${partnerId}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const newName = submitted.fields.getTextInputValue('child_name');
+                    const chalPet = pet.getPet(user.id, guildId);
+                    const partPet = pet.getPet(partnerId, guildId);
+
+                    if (!chalPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Anda tidak memiliki pet aktif!')], flags: 64 });
+                    if (!partPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Partner Anda tidak memiliki pet aktif!')], flags: 64 });
+
+                    if (chalPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Belum Dewasa!', `Pet Anda **${chalPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
+                    if (partPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Partner Belum Dewasa!', `Pet partner **${partPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
+
+                    const chalWallet = economy.getWallet(user.id, guildId);
+                    const partWallet = economy.getWallet(partnerId, guildId);
+
+                    if (chalWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Saldo Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
+                    if (partWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Partner Kurang!', `Saldo partner Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
+
+                    // Kirim proposal perkawinan secara publik di channel
+                    const proposalEmbed = new EmbedBuilder()
+                      .setColor(0xFF80AB)
+                      .setTitle('💕 PENAWARAN PERKAWINAN PET 💕')
+                      .setDescription(
+                        `🔔 <@${partnerId}>! Anda mendapatkan tawaran kawin silang dari <@${user.id}>!\n\n` +
+                        `🦖 **Pet Anda:** **${partPet.pet_name}** (Lv. ${partPet.level} ${partPet.pet_type})\n` +
+                        `⚔️ **Pet Pengirim:** **${chalPet.pet_name}** (Lv. ${chalPet.level} ${chalPet.pet_type})\n` +
+                        `💰 **Biaya Masing-masing:** **Rp 800**\n` +
+                        `🥚 **Nama Telur Anak:** **${newName}**\n\n` +
+                        `*Klik tombol **🟢 Terima Perjodohan** di bawah untuk memulai breeding. Berlaku selama 60 detik!*`
+                      )
+                      .setFooter({ text: 'Rupiah Server Pet Breeding' })
+                      .setTimestamp();
+
+                    const breedRow = new ActionRowBuilder().addComponents(
+                      new ButtonBuilder().setCustomId('pet_breed_accept').setLabel('🟢 Terima Perjodohan').setStyle(ButtonStyle.Success),
+                      new ButtonBuilder().setCustomId('pet_breed_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
+                    );
+
+                    const publicMsg = await interaction.channel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
+
+                    // Beri notifikasi sukses privat ke pemohon & update dashboard
+                    await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke <#${interaction.channel.id}>!`, flags: 64 });
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+
+                    // Buat collector untuk tombol accept/decline di pesan publik
+                    const breedCollector = publicMsg.createMessageComponentCollector({ time: 60000 });
+
+                    breedCollector.on('collect', async iBreed => {
+                      if (iBreed.user.id !== partnerId) {
+                        return iBreed.reply({ content: '❌ Hanya penerima tawaran yang bisa merespon tombol ini!', flags: 64 });
+                      }
+
+                      try {
+                        if (iBreed.customId === 'pet_breed_decline') {
+                          breedCollector.stop();
+                          await publicMsg.delete().catch(() => { });
+                          return iBreed.reply({ content: `🔴 <@${user.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` });
+                        }
+
+                        if (iBreed.customId === 'pet_breed_accept') {
+                          breedCollector.stop();
+                          await publicMsg.delete().catch(() => { });
+
+                          try {
+                            const res = pet.breedPets(user.id, partnerId, guildId, newName);
+                            const successEmb = new EmbedBuilder()
+                              .setColor(0xFF80AB)
+                              .setTitle('🎉 PERKAWINAN PET BERHASIL! 🎉')
+                              .setDescription(
+                                `💕 Perkawinan antara **${chalPet.pet_name}** dan **${partPet.pet_name}** sukses!\n\n` +
+                                `🥚 **Lahir Telur Baru:** **${res.childName}** (Tipe: \`${res.childType}\`)\n` +
+                                `✨ **Trait Warisan:** ${res.trait ? `**${res.trait}**` : '*Tidak ada trait khusus*'}\n` +
+                                `⏳ **Penetasan Telur:** Telur akan menetas <t:${res.hatchAt}:R>.\n\n` +
+                                `💸 Saldo masing-masing terpotong **Rp 800** untuk biaya perkawinan.`
+                              )
+                              .setFooter({ text: 'Gunakan .pet untuk melihat kandang Anda!' })
+                              .setTimestamp();
+
+                            return iBreed.reply({ content: `<@${user.id}> <@${partnerId}>`, embeds: [successEmb] });
+                          } catch (err) {
+                            return iBreed.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)] });
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Error in breed collector:', err);
+                      }
+                    });
+
+                    breedCollector.on('end', async () => {
+                      if (breedCollector.destroyed) return;
+                      await publicMsg.delete().catch(() => { });
+                    });
+
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              } else if (iPet.customId === 'pet_btn_autocare') {
+                try {
+                  const res = pet.unlockAutoCare(user.id, guildId);
+                  const successEmb = embeds.successEmbed(
+                    '🔋 AUTO CARE DIAKTIFKAN! 🔋',
+                    `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
+                    `**Ketentuan Perawatan Otomatis:**\n` +
+                    `• 🍖 Kelaparan $\le$ 50% $\rightarrow$ Kenyangan $+30$ (Potong Rp 150)\n` +
+                    `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
+                    `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
+                  );
+                  await iPet.reply({ embeds: [successEmb], flags: 64 });
+                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
+                }
+              } else if (iPet.customId === 'pet_btn_gacha') {
+                // Redirect ke panel gacha (ephemeral reply)
                 await iPet.deferReply({ flags: 64 });
                 await handlePetGachaPanel(iPet, client, true);
-              } else if (selectedValue === 'pet_manage_upgrade') {
+              } else if (iPet.customId === 'pet_btn_upgrade') {
+                // Redirect ke panel upgrade (ephemeral reply)
                 await iPet.deferReply({ flags: 64 });
                 await handlePetUpgradePanel(iPet, client, true);
-              } else if (selectedValue === 'pet_manage_shop') {
-                await iPet.update(getShopPanelDataPrivate(user.id));
-              } else if (selectedValue === 'pet_manage_recycle') {
+              } else if (iPet.customId === 'pet_btn_recycle') {
                 const allPetsFresh = pet.getPetsList(user.id, guildId);
                 if (allPetsFresh.length === 0) {
                   return iPet.reply({ content: '❌ Anda tidak memiliki pet!', flags: 64 });
@@ -2968,16 +3497,71 @@ function initStockMarket(client) {
                       embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
                       components: []
                     });
-                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
+                    // Refresh private dashboard
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                   } catch (err) {
                     await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
                   }
                 });
-              } else if (selectedValue === 'pet_manage_reset') {
-                pet.resetPet(user.id, guildId);
-                await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
-                collector.stop();
-              } else if (selectedValue === 'pet_manage_adopt') {
+              } else if (iPet.customId === 'pet_btn_nav_shop') {
+                await iPet.update(getShopPanelDataPrivate(user.id));
+              } else if (iPet.customId === 'pet_btn_cancel_shop') {
+                await iPet.update(getDashboardPanelPrivate(user.id));
+              } else if (iPet.customId === 'pet_select_shop_item') {
+                const selectedItemId = iPet.values[0];
+                const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                if (!item) return;
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`pet_modal_buy_${selectedItemId}`)
+                  .setTitle(`Beli ${item.name}`);
+
+                const qtyInput = new TextInputBuilder()
+                  .setCustomId('buy_qty')
+                  .setLabel('Jumlah yang ingin dibeli')
+                  .setPlaceholder('Contoh: 5')
+                  .setValue('1')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMinLength(1)
+                  .setMaxLength(4);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+                await iPet.showModal(modal);
+
+                const submitted = await iPet.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `pet_modal_buy_${selectedItemId}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                    const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                    const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                    if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+                    const totalPrice = itemInfo.price * qty;
+
+                    await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
+                        const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+
+                        await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => { });
+
+                        const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                      }
+                    });
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              } else if (iPet.customId === 'pet_btn_nav_adopt') {
                 const modal = new ModalBuilder()
                   .setCustomId('pet_modal_adopt_perm')
                   .setTitle('🛎️ Adopsi Telur Pet Tamagotchi');
@@ -3018,1608 +3602,1024 @@ function initStockMarket(client) {
                       try {
                         const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
                         const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
-                        await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
+                        await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => { });
                         await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                       } catch (err) {
                         const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
-                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
                       }
                     });
                   } catch (err) {
                     await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
                   }
                 }
-              } else if (selectedValue === 'pet_manage_revive') {
-                try {
-                  const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
-                  if (!petObj) {
-                    throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
-                  }
-                  const cost = 500 * petObj.level;
-
-                  await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = pet.revivePet(user.id, guildId, paymentSource);
-                      let sisaText = '';
-                      if (paymentSource === 'bank') {
-                        const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
-                        sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
-                      } else {
-                        sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
-                      }
-
-                      const successEmb = embeds.successEmbed(
-                        'Pet Berhasil Dihidupkan! 🏥✨',
-                        `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-                        `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-                        `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-                        `📉 Sisa saldo ${sisaText}.`
-                      );
-                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
-                }
-              } else if (selectedValue === 'pet_manage_gym') {
-                await iPet.deferReply({ flags: 64 });
-                await handlePetGymPanel(iPet, client, true);
-              }
-            } else if (iPet.customId === 'pet_btn_refresh') {
-              await iPet.update(getDashboardPanelPrivate(user.id));
-            } else if (iPet.customId === 'pet_btn_use_booster') {
-              try {
-                const freshPet = pet.getPet(user.id, guildId);
-                if (!freshPet) {
-                  return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
-                }
-                const inv = pet.getInventory(user.id, guildId);
-                const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
-
-                if (usableItems.length === 0) {
-                  return iPet.reply({
-                    embeds: [embeds.warnEmbed(
-                      'Tas Pet Kosong! 🎒',
-                      'Anda tidak memiliki item perawatan di persediaan pet Anda!\n\n' +
-                      '🛒 *Silakan gunakan tombol **🛍️ Toko Pet** di Portal Hub (.hub) untuk membeli pakan, obat, soda, sabun, atau booster.*'
-                    )],
-                    flags: 64
-                  });
-                }
-
-                const selectMenu = new StringSelectMenuBuilder()
-                  .setCustomId('pet_select_item_use')
-                  .setPlaceholder('🎒 Pilih item yang ingin digunakan...');
-
-                usableItems.forEach(item => {
-                  let effectDesc = '';
-                  let cooldownDesc = '';
-
-                  if (item.id === 'FOOD_BASIC') {
-                    effectDesc = '+30 Kenyangan';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.id === 'FOOD_PREMIUM') {
-                    effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.id === 'WATER') {
-                    effectDesc = '+35 Hidrasi';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.id === 'MEDICINE') {
-                    effectDesc = '+50 HP, Sembuhkan Sakit';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.id === 'TOY') {
-                    effectDesc = '+50 Kebahagiaan';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.id === 'SODA_ENERGY') {
-                    effectDesc = 'Reset Cooldown Kerja/Berburu';
-                    cooldownDesc = ' · Cooldown: 30m';
-                  } else if (item.id === 'SOAP_PET') {
-                    effectDesc = 'Mandi Bersih (Hilangkan Bau)';
-                    cooldownDesc = ' · Bebas Cooldown';
-                  } else if (item.multiplier) {
-                    effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
-                    cooldownDesc = ' · Bebas Cooldown';
-                  }
-
-                  if (!effectDesc) {
-                    const rawDesc = item.desc || 'Gunakan item ini';
-                    effectDesc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
-                  }
-
-                  selectMenu.addOptions(
-                    new StringSelectMenuOptionBuilder()
-                      .setLabel(`${item.name} (x${item.quantity})`)
-                      .setDescription(`${effectDesc}${cooldownDesc}`)
-                      .setValue(item.id)
-                  );
-                });
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-                const invEmbed = new EmbedBuilder()
-                  .setColor(0x00b0ff)
-                  .setTitle('🎒 INVENTARIS / TAS PET AKTIF 🎒')
-                  .setDescription(
-                    `Silakan pilih item di bawah untuk digunakan pada pet aktif Anda (**${freshPet.pet_name}**):\n\n` +
-                    `*Menggunakan item dari tas langsung memotong kuantitas tanpa perlu auto-buy.*`
-                  )
-                  .setTimestamp();
-
-                const subPrivateMsg = await iPet.reply({ embeds: [invEmbed], components: [row], flags: 64, fetchReply: true });
-                const itemCollector = subPrivateMsg.createMessageComponentCollector({
-                  componentType: ComponentType.StringSelect,
-                  time: 60000
-                });
-
-                itemCollector.on('collect', async iItemUse => {
-                  if (iItemUse.user.id !== user.id) return;
-                  const selectedItemId = iItemUse.values[0];
-
-                  try {
-                    let result;
-                    let detailDesc = '';
-
-                    if (selectedItemId === 'SOAP_PET') {
-                      result = pet.washPet(user.id, guildId);
-                      detailDesc = `🚿 Anda memandikan **${result.pet.pet_name}** menggunakan **Sabun Mandi Pet**!\n🌸 **Hasil:** Kutukan bau busuk hilang total. Pet wangi melati dan siap beraktivitas kembali.`;
-                    } else if (selectedItemId === 'SODA_ENERGY') {
-                      result = pet.useSodaEnergy(user.id, guildId, false, iItemUse.member);
-                      detailDesc = `🥤 Berhasil meminumkan **Soda Energi Pet** pada pet **${result.pet.pet_name}**!\n⚡ Cooldown Kerja & Berburu di-reset!\n` +
-                        (result.gotSick ? `🤢 **ADUH!** Pet overdosis dan **Sakit/Pingsan!** HP anjlok ke 5.` : `📊 Kenyangan: \`${result.pet.hunger}%\` | Hidrasi: \`${result.pet.thirst}%\` | HP: \`${result.pet.health}%\`.`) +
-                        `\n⏱️ *Cooldown: 30 Menit.*`;
-                    } else {
-                      result = pet.useItem(user.id, guildId, selectedItemId, false);
-                      if (result.item.multiplier) {
-                        detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${result.xpGained} XP**${result.levelUp ? ` (Naik ke Level **${result.pet.level}**! 🎉)` : ''}`;
-                      } else {
-                        const mins = Math.floor(result.item.cooldown / 60);
-                        const cooldownText = result.item.cooldown > 0 ? `\n⏱️ *Cooldown: ${mins} Menit.*` : '';
-                        detailDesc = `📊 Status Baru: Kenyangan **${result.pet.hunger}%**, Hidrasi **${result.pet.thirst}%**, HP **${result.pet.health}%**, Kebahagiaan **${result.pet.happiness}%** (+10 XP).${cooldownText}`;
-                      }
-                    }
-
-                    const successEmb = embeds.successEmbed(
-                      'Penggunaan Item Sukses! ✨',
-                      `Berhasil menggunakan **${pet.PET_ITEMS[selectedItemId].name}** pada pet **${result.pet.pet_name}**!\n\n${detailDesc}`
-                    );
-
-                    await iItemUse.update({ embeds: [successEmb], components: [] });
-                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-                  } catch (err) {
-                    await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
-                  }
-                });
-              } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Membuka Inventaris!', err.message)], flags: 64 });
-              }
-            } else if (iPet.customId === 'pet_btn_reset') {
-              pet.resetPet(user.id, guildId);
-              await iPet.update({ content: '🧹 Kandang dibersihkan!', embeds: [], components: [] });
-              collector.stop();
-            } else if (iPet.customId === 'pet_btn_revive') {
-              try {
-                const petObj = database.get('SELECT level, pet_name FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [user.id, guildId]);
-                if (!petObj) throw new Error('Anda tidak memiliki hewan peliharaan aktif!');
-                const cost = 500 * petObj.level;
-
-                await promptPaymentMethod(iPet, user.id, guildId, `Menghidupkan kembali ${petObj.pet_name} (Lv. ${petObj.level})`, cost, async (paymentSource, iConfirm) => {
-                  try {
-                    const res = pet.revivePet(user.id, guildId, paymentSource);
-                    let sisaText = '';
-                    if (paymentSource === 'bank') {
-                      const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
-                      sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
-                    } else {
-                      sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
-                    }
-
-                    const successEmb = embeds.successEmbed(
-                      'Pet Berhasil Dihidupkan! 🏥✨',
-                      `Dokter Pet berhasil menyelamatkan **${res.pet.pet_name}** dari kematian!\n` +
-                      `💰 Biaya Dokter: **Rp ${res.cost.toLocaleString('id-ID')}**\n` +
-                      `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
-                      `📉 Sisa saldo ${sisaText}.`
-                    );
-                    await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-                  } catch (err) {
-                    const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
-                    await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                  }
-                });
-              } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
-              }
-            } else if (iPet.customId === 'pet_select_active') {
-              pet.switchActivePet(user.id, guildId, iPet.values[0]);
-              await iPet.update(getDashboardPanelPrivate(user.id));
-            } else if (iPet.customId === 'pet_btn_hatch') {
-              const res = pet.getPet(user.id, guildId);
-              if (res && res.status === 'BABY') {
-                await iPet.reply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)], flags: 64 });
-                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-              }
-            } else if (iPet.customId === 'pet_btn_feed') {
-              const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_drink') {
-              const res = pet.useItem(user.id, guildId, 'WATER', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_play') {
-              const res = pet.playWithPet(user.id, guildId);
-              await iPet.reply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_cure') {
-              const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
-              await iPet.reply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_work') {
-              const res = pet.sendToWork(user.id, guildId, iPet.member);
-              await iPet.reply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_hunt') {
-              const res = pet.sendToHunt(user.id, guildId, iPet.member);
-              await iPet.reply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)], flags: 64 });
-              await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-            } else if (iPet.customId === 'pet_btn_breed') {
-              try {
-                const freshPet = pet.getPet(user.id, guildId);
-                if (!freshPet) {
-                  return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
-                }
-                if (freshPet.status !== 'ADULT') {
-                  return iPet.reply({ content: `❌ Pet Anda **${freshPet.pet_name}** belum dewasa (Lv < 10)!`, flags: 64 });
-                }
-
-                const selectPartnerMenu = new UserSelectMenuBuilder()
-                  .setCustomId('pet_breed_select_partner')
-                  .setPlaceholder('💞 Pilih warga/partner kawin silang...');
-
-                const partnerRow = new ActionRowBuilder().addComponents(selectPartnerMenu);
-                const cancelBtn = new ButtonBuilder()
-                  .setCustomId('pet_btn_cancel_breed')
-                  .setLabel('✖️ Batalkan')
-                  .setStyle(ButtonStyle.Secondary);
-                const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
-
-                await iPet.update({
-                  embeds: [
-                    new EmbedBuilder()
-                      .setColor(0xFF80AB)
-                      .setTitle('🔀 PERKAWINAN PET: PILIH PARTNER')
-                      .setDescription(
-                        `Silakan pilih warga server yang ingin Anda ajak kawin silang pet.\n\n` +
-                        `📌 **Syarat Perkawinan:**\n` +
-                        `• Kedua belah pihak harus memiliki **Pet Dewasa (Level >= 10)**\n` +
-                        `• Biaya perkawinan masing-masing adalah **Rp 800**\n` +
-                        `• Pet tidak boleh sedang bau busuk (smelly) atau sakit/terluka`
-                      )
-                  ],
-                  components: [partnerRow, cancelRow]
-                });
-              } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
-              }
-            } else if (iPet.customId === 'pet_btn_cancel_breed') {
-              await iPet.update(getDashboardPanelPrivate(user.id));
-            } else if (iPet.customId === 'pet_breed_select_partner') {
-              const partnerId = iPet.values[0];
-              if (partnerId === user.id) {
-                return iPet.reply({ content: '❌ Anda tidak bisa mengawinkan pet dengan diri Anda sendiri!', flags: 64 });
-              }
-
-              const modal = new ModalBuilder()
-                .setCustomId(`pet_breed_modal_${partnerId}`)
-                .setTitle('Nama Bayi Pet Baru');
-
-              const nameInput = new TextInputBuilder()
-                .setCustomId('child_name')
-                .setLabel('Nama Bayi Pet Anda')
-                .setPlaceholder('Contoh: Ciko Jr')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMaxLength(25);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
-
-              await iPet.showModal(modal);
-
-              const submitted = await iPet.awaitModalSubmit({
-                filter: (sub) => sub.customId === `pet_breed_modal_${partnerId}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const newName = submitted.fields.getTextInputValue('child_name');
-                  const chalPet = pet.getPet(user.id, guildId);
-                  const partPet = pet.getPet(partnerId, guildId);
-
-                  if (!chalPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Anda tidak memiliki pet aktif!')], flags: 64 });
-                  if (!partPet) return submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', 'Partner Anda tidak memiliki pet aktif!')], flags: 64 });
-
-                  if (chalPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Belum Dewasa!', `Pet Anda **${chalPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
-                  if (partPet.status !== 'ADULT') return submitted.reply({ embeds: [embeds.errorEmbed('Pet Partner Belum Dewasa!', `Pet partner **${partPet.pet_name}** belum Dewasa (Lv < 10)!`)], flags: 64 });
-
-                  const chalWallet = economy.getWallet(user.id, guildId);
-                  const partWallet = economy.getWallet(partnerId, guildId);
-
-                  if (chalWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Kurang!', `Saldo Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
-                  if (partWallet.balance < 800) return submitted.reply({ embeds: [embeds.errorEmbed('Saldo Partner Kurang!', `Saldo partner Anda tidak mencukupi biaya perkawinan Rp 800!`)], flags: 64 });
-
-                  // Kirim proposal perkawinan secara publik di channel
-                  const proposalEmbed = new EmbedBuilder()
-                    .setColor(0xFF80AB)
-                    .setTitle('💕 PENAWARAN PERKAWINAN PET 💕')
-                    .setDescription(
-                      `🔔 <@${partnerId}>! Anda mendapatkan tawaran kawin silang dari <@${user.id}>!\n\n` +
-                      `🦖 **Pet Anda:** **${partPet.pet_name}** (Lv. ${partPet.level} ${partPet.pet_type})\n` +
-                      `⚔️ **Pet Pengirim:** **${chalPet.pet_name}** (Lv. ${chalPet.level} ${chalPet.pet_type})\n` +
-                      `💰 **Biaya Masing-masing:** **Rp 800**\n` +
-                      `🥚 **Nama Telur Anak:** **${newName}**\n\n` +
-                      `*Klik tombol **🟢 Terima Perjodohan** di bawah untuk memulai breeding. Berlaku selama 60 detik!*`
-                    )
-                    .setFooter({ text: 'Rupiah Server Pet Breeding' })
-                    .setTimestamp();
-
-                  const breedRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('pet_breed_accept').setLabel('🟢 Terima Perjodohan').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId('pet_breed_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
-                  );
-
-                  const publicMsg = await interaction.channel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
-
-                  // Beri notifikasi sukses privat ke pemohon & update dashboard
-                  await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke <#${interaction.channel.id}>!`, flags: 64 });
-                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-
-                  // Buat collector untuk tombol accept/decline di pesan publik
-                  const breedCollector = publicMsg.createMessageComponentCollector({ time: 60000 });
-
-                  breedCollector.on('collect', async iBreed => {
-                    if (iBreed.user.id !== partnerId) {
-                      return iBreed.reply({ content: '❌ Hanya penerima tawaran yang bisa merespon tombol ini!', flags: 64 });
-                    }
-
-                    try {
-                      if (iBreed.customId === 'pet_breed_decline') {
-                        breedCollector.stop();
-                        await publicMsg.delete().catch(() => { });
-                        return iBreed.reply({ content: `🔴 <@${user.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` });
-                      }
-
-                      if (iBreed.customId === 'pet_breed_accept') {
-                        breedCollector.stop();
-                        await publicMsg.delete().catch(() => { });
-
-                        try {
-                          const res = pet.breedPets(user.id, partnerId, guildId, newName);
-                          const successEmb = new EmbedBuilder()
-                            .setColor(0xFF80AB)
-                            .setTitle('🎉 PERKAWINAN PET BERHASIL! 🎉')
-                            .setDescription(
-                              `💕 Perkawinan antara **${chalPet.pet_name}** dan **${partPet.pet_name}** sukses!\n\n` +
-                              `🥚 **Lahir Telur Baru:** **${res.childName}** (Tipe: \`${res.childType}\`)\n` +
-                              `✨ **Trait Warisan:** ${res.trait ? `**${res.trait}**` : '*Tidak ada trait khusus*'}\n` +
-                              `⏳ **Penetasan Telur:** Telur akan menetas <t:${res.hatchAt}:R>.\n\n` +
-                              `💸 Saldo masing-masing terpotong **Rp 800** untuk biaya perkawinan.`
-                            )
-                            .setFooter({ text: 'Gunakan .pet untuk melihat kandang Anda!' })
-                            .setTimestamp();
-
-                          return iBreed.reply({ content: `<@${user.id}> <@${partnerId}>`, embeds: [successEmb] });
-                        } catch (err) {
-                          return iBreed.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)] });
-                        }
-                      }
-                    } catch (err) {
-                      console.error('Error in breed collector:', err);
-                    }
-                  });
-
-                  breedCollector.on('end', async () => {
-                    if (breedCollector.destroyed) return;
-                    await publicMsg.delete().catch(() => { });
-                  });
-
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)], flags: 64 });
-                }
-              }
-            } else if (iPet.customId === 'pet_btn_autocare') {
-              try {
-                const res = pet.unlockAutoCare(user.id, guildId);
-                const successEmb = embeds.successEmbed(
-                  '🔋 AUTO CARE DIAKTIFKAN! 🔋',
-                  `Sinyal sensor otomatis pada kalung pet **${res.petName}** telah dinyalakan!\n\n` +
-                  `**Ketentuan Perawatan Otomatis:**\n` +
-                  `• 🍖 Kelaparan $\le$ 50% $\rightarrow$ Kenyangan $+30$ (Potong Rp 150)\n` +
-                  `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
-                  `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
-                );
-                await iPet.reply({ embeds: [successEmb], flags: 64 });
-                await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)], flags: 64 });
-              }
-            } else if (iPet.customId === 'pet_btn_gacha') {
-              // Redirect ke panel gacha (ephemeral reply)
-              await iPet.deferReply({ flags: 64 });
-              await handlePetGachaPanel(iPet, client, true);
-            } else if (iPet.customId === 'pet_btn_upgrade') {
-              // Redirect ke panel upgrade (ephemeral reply)
-              await iPet.deferReply({ flags: 64 });
-              await handlePetUpgradePanel(iPet, client, true);
-            } else if (iPet.customId === 'pet_btn_recycle') {
-              const allPetsFresh = pet.getPetsList(user.id, guildId);
-              if (allPetsFresh.length === 0) {
-                return iPet.reply({ content: '❌ Anda tidak memiliki pet!', flags: 64 });
-              }
-              const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('pet_select_recycle_private')
-                .setPlaceholder('♻️ Pilih pet yang ingin didaur ulang...');
-              allPetsFresh.forEach(p => {
-                const star = pet.renderStars(p.star_level || 1);
-                selectMenu.addOptions(new StringSelectMenuOptionBuilder()
-                  .setLabel(`${p.pet_name} the ${p.pet_type} (${star}, Lv.${p.level})`)
-                  .setDescription(`Recycle → +Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}`)
-                  .setValue(p.pet_name)
-                );
-              });
-              const recycleEmbed = new EmbedBuilder()
-                .setColor(0xFF5252)
-                .setTitle('♻️ DAUR ULANG PET ♻️')
-                .setDescription(`Pilih pet yang ingin didaur ulang. Pet akan dihapus permanen dan Anda menerima **Rp ${pet.RECYCLE_REWARD.toLocaleString('id-ID')}** sebagai kompensasi.\n\n⚠️ **Aksi ini tidak bisa dibatalkan!**`)
-                .setTimestamp();
-              const subPrivateMsg = await iPet.reply({
-                embeds: [recycleEmbed],
-                components: [new ActionRowBuilder().addComponents(selectMenu)],
-                flags: 64,
-                fetchReply: true
-              });
-
-              const recycleCollector = subPrivateMsg.createMessageComponentCollector({
-                componentType: ComponentType.StringSelect,
-                time: 60000
-              });
-
-              recycleCollector.on('collect', async iRecycle => {
-                if (iRecycle.user.id !== user.id) return;
-                const targetPetName = iRecycle.values[0];
-                try {
-                  const res = pet.recyclePet(user.id, guildId, targetPetName);
-                  await iRecycle.update({
-                    embeds: [embeds.successEmbed('Recycle Berhasil! ♻️', `Pet **${res.petName}** telah didaur ulang.\n💰 **+Rp ${res.reward.toLocaleString('id-ID')}** ditambahkan ke dompet.`)],
-                    components: []
-                  });
-                  // Refresh private dashboard
-                  await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
-                } catch (err) {
-                  await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
-                }
-              });
-            } else if (iPet.customId === 'pet_btn_nav_shop') {
-              await iPet.update(getShopPanelDataPrivate(user.id));
-            } else if (iPet.customId === 'pet_btn_cancel_shop') {
-              await iPet.update(getDashboardPanelPrivate(user.id));
-            } else if (iPet.customId === 'pet_select_shop_item') {
-              const selectedItemId = iPet.values[0];
-              const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
-              if (!item) return;
-
-              const modal = new ModalBuilder()
-                .setCustomId(`pet_modal_buy_${selectedItemId}`)
-                .setTitle(`Beli ${item.name}`);
-
-              const qtyInput = new TextInputBuilder()
-                .setCustomId('buy_qty')
-                .setLabel('Jumlah yang ingin dibeli')
-                .setPlaceholder('Contoh: 5')
-                .setValue('1')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(4);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-              await iPet.showModal(modal);
-
-              const submitted = await iPet.awaitModalSubmit({
-                filter: (sub) => sub.customId === `pet_modal_buy_${selectedItemId}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
-                  const qty = Math.max(1, parseInt(qtyStr) || 1);
-
-                  const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
-                  if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
-                  const totalPrice = itemInfo.price * qty;
-
-                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
-                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                      
-                      await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
-
-                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
-                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
-                }
-              }
-            } else if (iPet.customId === 'pet_btn_nav_adopt') {
-              const modal = new ModalBuilder()
-                .setCustomId('pet_modal_adopt_perm')
-                .setTitle('🛎️ Adopsi Telur Pet Tamagotchi');
-
-              const nameInput = new TextInputBuilder()
-                .setCustomId('pet_name')
-                .setLabel('Nama Pet Anda')
-                .setPlaceholder('Contoh: Ciko')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-              const typeInput = new TextInputBuilder()
-                .setCustomId('pet_type')
-                .setLabel('Jenis Pet (Slime / Dragon / Cat / Golem)')
-                .setPlaceholder('Ketik jenis pet pilihan Anda')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
-
-              modal.addComponents(
-                new ActionRowBuilder().addComponents(nameInput),
-                new ActionRowBuilder().addComponents(typeInput)
-              );
-
-              await iPet.showModal(modal);
-
-              const submitted = await iPet.awaitModalSubmit({
-                filter: (sub) => sub.customId === 'pet_modal_adopt_perm' && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const pName = submitted.fields.getTextInputValue('pet_name');
-                  const pType = submitted.fields.getTextInputValue('pet_type');
-
-                  const eggPrice = 1500;
-                  await promptPaymentMethod(submitted, user.id, guildId, `Adopsi Telur Pet ${pName}`, eggPrice, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = pet.adoptPet(user.id, guildId, pName, pType, paymentSource);
-                      const statusMsg = `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** diadopsi seharga **Rp 1.500**!`;
-                      await iConfirm.update({ embeds: [embeds.successEmbed('Adopsi Sukses! 🥚', statusMsg)], components: [] }).catch(() => {});
-                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Adopsi Gagal!', err.message)], flags: 64 });
-                }
-              }
-            }
-          } catch (err) {
-            await iPet.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: TOKO PET ──
-      else if (customId === 'pet_btn_open_shop_private_perm') {
-        await interaction.deferReply({ flags: 64 });
-
-        const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
-          const wallet2 = economy.getWallet(targetUserId, guildId);
-          const inv = pet.getInventory(targetUserId, guildId);
-          const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
-
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('pet_select_shop_item_perm')
-            .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-            .addOptions(getPetShopSelectOptions());
-
-          const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-          const closeBtn = new ButtonBuilder().setCustomId('pet_btn_close_shop_perm').setLabel('✖️ Tutup Toko').setStyle(ButtonStyle.Danger);
-          const closeRow = new ActionRowBuilder().addComponents(closeBtn);
-
-          return { embeds: [embed], components: [selectRow, closeRow] };
-        };
-
-        const initialData = getShopPanelDataPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
-
-        collector.on('collect', async iShop => {
-          if (iShop.user.id !== user.id) return iShop.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          try {
-            if (iShop.customId === 'pet_btn_close_shop_perm') {
-              await privateMsg.delete().catch(() => {});
-              collector.stop();
-            } else if (iShop.customId === 'pet_select_shop_item_perm') {
-              const selectedItemId = iShop.values[0];
-              const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
-              if (!item) return;
-
-              const modal = new ModalBuilder()
-                .setCustomId(`pet_modal_buy_perm_${selectedItemId}`)
-                .setTitle(`Beli ${item.name}`);
-
-              const qtyInput = new TextInputBuilder()
-                .setCustomId('buy_qty')
-                .setLabel('Jumlah yang ingin dibeli')
-                .setPlaceholder('Contoh: 5')
-                .setValue('1')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(4);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-              await iShop.showModal(modal);
-
-              const submitted = await iShop.awaitModalSubmit({
-                filter: (sub) => sub.customId === `pet_modal_buy_perm_${selectedItemId}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
-                  const qty = Math.max(1, parseInt(qtyStr) || 1);
-                  
-                  const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
-                  if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
-                  const totalPrice = itemInfo.price * qty;
-
-                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
-                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                      
-                      await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => {});
-
-                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
-                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
-                }
-              }
-            }
-          } catch (err) {
-            await iShop.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: KOSAN (.kos) ──
-      else if (customId === 'eco_btn_open_kos_private_perm' || customId === 'eco_btn_open_kos_direct') {
-        await interaction.deferReply({ flags: 64 });
-        try {
-          const kos = require('./kos');
-
-          const getKosDashboardDataPrivate = (targetUserId) => {
-            const wallet = economy.getWallet(targetUserId, guildId);
-            const activeRental = kos.getActiveRental(targetUserId, guildId);
-            const upgrades = kos.getUpgrades(targetUserId, guildId);
-            const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
-
-            const row = new ActionRowBuilder().addComponents(
-              new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
-              new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
-              new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-            );
-
-            return { embeds: [embed], components: [row] };
-          };
-
-          const getSewaPanelDataPrivate = (targetUserId) => {
-            const currentRental = kos.getActiveRental(targetUserId, guildId);
-            const embed = embeds.kosRoomListEmbed(currentRental);
-
-            const selectMenu = new StringSelectMenuBuilder()
-              .setCustomId('kos_select_room_perm')
-              .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
-              .addOptions(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('💨 Kamar Kipas Angin (Rp 150)')
-                  .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
-                  .setValue('KIPAS'),
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('❄️ Kamar AC (Rp 350)')
-                  .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
-                  .setValue('AC'),
-                new StringSelectMenuOptionBuilder()
-                  .setLabel('👑 Penthouse Kosan (Rp 800)')
-                  .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
-                  .setValue('PENTHOUSE')
-              );
-
-            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-            const backBtn = new ButtonBuilder()
-              .setCustomId('kos_btn_back_dashboard_perm')
-              .setLabel('✖️ Kembali ke Dashboard')
-              .setStyle(ButtonStyle.Secondary);
-            const backRow = new ActionRowBuilder().addComponents(backBtn);
-
-            return { embeds: [embed], components: [selectRow, backRow] };
-          };
-
-          const getUpgradePanelDataPrivate = (targetUserId) => {
-            const ownedUpgrades = kos.getUpgrades(targetUserId, guildId);
-            const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
-
-            const selectMenu = new StringSelectMenuBuilder()
-              .setCustomId('kos_select_upgrade_perm')
-              .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
-
-            const upgradesConfig = config.kos.UPGRADES;
-            Object.keys(upgradesConfig).forEach(key => {
-              const up = upgradesConfig[key];
-              const isOwned = ownedUpgrades.some(o => o.id === up.id);
-
-              selectMenu.addOptions(
-                new StringSelectMenuOptionBuilder()
-                  .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
-                  .setDescription(up.desc.substring(0, 100))
-                  .setValue(up.id)
-              );
-            });
-
-            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
-            const backBtn = new ButtonBuilder()
-              .setCustomId('kos_btn_back_dashboard_perm')
-              .setLabel('✖️ Kembali ke Dashboard')
-              .setStyle(ButtonStyle.Secondary);
-            const backRow = new ActionRowBuilder().addComponents(backBtn);
-
-            return { embeds: [embed], components: [selectRow, backRow] };
-          };
-
-          const initialData = getKosDashboardDataPrivate(user.id);
-          const privateMsg = await interaction.editReply({ ...initialData });
-          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
-
-          collector.on('collect', async iKos => {
-            if (iKos.user.id !== user.id) return iKos.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-            try {
-              if (iKos.customId === 'kos_btn_refresh_perm') {
-                await iKos.update(getKosDashboardDataPrivate(user.id));
-              } else if (iKos.customId === 'kos_btn_nav_sewa_perm') {
-                await iKos.update(getSewaPanelDataPrivate(user.id));
-              } else if (iKos.customId === 'kos_btn_nav_upgrade_perm') {
-                await iKos.update(getUpgradePanelDataPrivate(user.id));
-              } else if (iKos.customId === 'kos_btn_back_dashboard_perm') {
-                await iKos.update(getKosDashboardDataPrivate(user.id));
-              } else if (iKos.customId === 'kos_select_room_perm') {
-                const selectedRoom = iKos.values[0];
-                try {
-                  const res = kos.rentRoom(user.id, guildId, selectedRoom);
-                  const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
-
-                  const successEmb = embeds.kosSuccessReceiptEmbed(
-                    'Transaksi Persewaan Kamar Berhasil! 🛌',
-                    `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
-                    `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
-                    `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
-                    `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
-                  );
-
-                  await iKos.reply({ embeds: [successEmb], flags: 64 });
-                  await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
-                  await iKos.reply({ embeds: [errorEmb], flags: 64 });
-                }
-              } else if (iKos.customId === 'kos_select_upgrade_perm') {
-                const selectedUpgrade = iKos.values[0];
-                try {
-                  const res = kos.buyUpgrade(user.id, guildId, selectedUpgrade);
-
-                  const successEmb = embeds.kosSuccessReceiptEmbed(
-                    'Transaksi Belanja Fasilitas Berhasil! 🛒',
-                    `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
-                    `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
-                    `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
-                    `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
-                  );
-
-                  await iKos.reply({ embeds: [successEmb], flags: 64 });
-                  await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
-                  await iKos.reply({ embeds: [errorEmb], flags: 64 });
-                }
               }
             } catch (err) {
-              console.error('Error in Kos permanent collector:', err);
+              await iPet.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
             }
           });
 
           collector.on('end', async () => {
             await interaction.deleteReply().catch(() => { });
           });
-        } catch (err) {
-          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Menu Kosan!', err.message)] }).catch(() => {});
         }
-      }
 
-      // ── PORTAL PERMANEN: COZY FLOWER GARDEN ──
-      else if (customId === 'eco_btn_open_garden_private_perm') {
-        await interaction.deferReply({ flags: 64 });
-        
-        let selectedRecipientId = null;
+        // ── PORTAL PERMANEN: TOKO PET ──
+        else if (customId === 'pet_btn_open_shop_private_perm') {
+          await interaction.deferReply({ flags: 64 });
 
-        const getGardenDashboardDataPrivate = (targetUserId) => {
-          const slots = garden.getGardenSlots(targetUserId, guildId);
-          const wallet = economy.getWallet(targetUserId, guildId);
-          const embed = embeds.gardenEmbed(user, slots, wallet.last_water_at);
+          const getShopPanelDataPrivate = (targetUserId, statusMsg = '') => {
+            const wallet2 = economy.getWallet(targetUserId, guildId);
+            const inv = pet.getInventory(targetUserId, guildId);
+            const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
 
-          const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_btn_water_all_perm').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success)
-          );
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_item_perm')
+              .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
+              .addOptions(getPetShopSelectOptions());
 
-          const manageDropdown = new StringSelectMenuBuilder()
-            .setCustomId('garden_select_manage_actions')
-            .setPlaceholder('⚙️ Kelola Kebun (Toko, Crafting, Jual, Gift)...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🛒 Toko Benih').setDescription('Beli benih bunga baru dan kertas kado').setValue('go_shop'),
-              new StringSelectMenuOptionBuilder().setLabel('💐 Rangkai Buket (Crafting)').setDescription('Rangkai bunga segar menjadi buket bunga indah').setValue('go_craft'),
-              new StringSelectMenuOptionBuilder().setLabel('💰 Jual Bunga').setDescription('Jual hasil panen bunga langsung untuk koin').setValue('go_sell_menu'),
-              new StringSelectMenuOptionBuilder().setLabel('🎁 Kirim Kado').setDescription('Kirim kado buket bunga kepada warga lain').setValue('go_gift_menu')
-            );
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const closeBtn = new ButtonBuilder().setCustomId('pet_btn_close_shop_perm').setLabel('✖️ Tutup Toko').setStyle(ButtonStyle.Danger);
+            const closeRow = new ActionRowBuilder().addComponents(closeBtn);
 
-          const row_manage = new ActionRowBuilder().addComponents(manageDropdown);
-
-          const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('garden_select_plant_perm')
-            .setPlaceholder('🌱 Pilih benih & slot untuk menanam...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_3'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_1'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_2'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_3'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_1'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_2'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_3')
-            );
-
-          const row2 = new ActionRowBuilder().addComponents(selectMenu);
-
-          return { embeds: [embed], components: [row1, row_manage, row2] };
-        };
-
-        const getGardenShopDataPrivate = (targetUserId, statusMsg = '') => {
-          const walletShop = economy.getWallet(targetUserId, guildId);
-          const embed = embeds.gardenShopEmbed(user, walletShop, statusMsg);
-
-          const shopSelect = new StringSelectMenuBuilder()
-            .setCustomId('garden_select_buy_seeds')
-            .setPlaceholder('🛒 Pilih Benih / Item untuk Dibeli...')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Benih Mawar').setDescription('Harga: Rp 80').setValue('buy_rose'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Benih Tulip').setDescription('Harga: Rp 150').setValue('buy_tulip'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Benih Lavender').setDescription('Harga: Rp 250').setValue('buy_lavender'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Benih Sakura').setDescription('Harga: Rp 500').setValue('buy_sakura'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Benih Anggrek').setDescription('Harga: Rp 1.200').setValue('buy_orchid'),
-              new StringSelectMenuOptionBuilder().setLabel('🎗️ Kertas Kado').setDescription('Harga: Rp 100').setValue('buy_wrapping')
-            );
-
-          const shopRow1 = new ActionRowBuilder().addComponents(shopSelect);
-          const shopRow2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Secondary)
-          );
-
-          return { embeds: [embed], components: [shopRow1, shopRow2] };
-        };
-
-        const getGardenCraftDataPrivate = (targetUserId) => {
-          const craftRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_craft_love_perm').setLabel('💖 Resep Love').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('garden_craft_peace_perm').setLabel('🪻 Resep Peace').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('garden_craft_imperial_perm').setLabel('👑 Resep Imperial').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
-          );
-
-          return { embeds: [embeds.bouquetCraftEmbed(user, guildId)], components: [craftRow] };
-        };
-
-        const getGardenSellDataPrivate = (targetUserId) => {
-          const inv = database.all(
-            `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
-            [targetUserId, guildId]
-          );
-
-          const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
-          inv.forEach(item => {
-            const key = item.item_id.replace('FLOWER_', '').toUpperCase();
-            if (stock[key] !== undefined) {
-              stock[key] = item.quantity;
-            }
-          });
-
-          const embed = new EmbedBuilder()
-            .setColor(0x10B981)
-            .setTitle('💰 PASAR JUAL BUNGA KEBUN')
-            .setThumbnail(user.displayAvatarURL())
-            .setDescription(
-              `Di sini Anda dapat menjual bunga hasil panen Anda secara instan untuk mendapatkan koin:\n\n` +
-              `🌹 **Mawar Merah**: Punya: \`${stock.ROSE} kuntum\` · Harga: **Rp 105** / kuntum\n` +
-              `🌷 **Bunga Tulip**: Punya: \`${stock.TULIP} kuntum\` · Harga: **Rp 200** / kuntum\n` +
-              `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 350** / kuntum\n` +
-              `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 750** / kuntum\n` +
-              `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 2.000** / kuntum\n\n` +
-              `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki, atau pilih opsi dari menu di bawah untuk menjual dalam jumlah tertentu.*`
-            )
-            .setTimestamp();
-
-          const sellRow1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_sell_rose_all_perm').setLabel('🌹 Jual Mawar (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ROSE <= 0),
-            new ButtonBuilder().setCustomId('garden_sell_tulip_all_perm').setLabel('🌷 Jual Tulip (All)').setStyle(ButtonStyle.Success).setDisabled(stock.TULIP <= 0),
-            new ButtonBuilder().setCustomId('garden_sell_lavender_all_perm').setLabel('🪻 Jual Lavender (All)').setStyle(ButtonStyle.Success).setDisabled(stock.LAVENDER <= 0)
-          );
-
-          const sellRow2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_sell_sakura_all_perm').setLabel('🌸 Jual Sakura (All)').setStyle(ButtonStyle.Success).setDisabled(stock.SAKURA <= 0),
-            new ButtonBuilder().setCustomId('garden_sell_orchid_all_perm').setLabel('👑 Jual Anggrek (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ORCHID <= 0),
-            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
-          );
-
-          const hasAnyFlowers = stock.ROSE > 0 || stock.TULIP > 0 || stock.LAVENDER > 0 || stock.SAKURA > 0 || stock.ORCHID > 0;
-
-          const sellQtySelect = new StringSelectMenuBuilder()
-            .setCustomId('garden_select_sell_qty')
-            .setPlaceholder('💰 Pilih Bunga untuk Dijual (Jumlah Tertentu)...')
-            .setDisabled(!hasAnyFlowers)
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('🌹 Jual Mawar Merah (Custom Qty)').setValue('sell_qty_rose'),
-              new StringSelectMenuOptionBuilder().setLabel('🌷 Jual Bunga Tulip (Custom Qty)').setValue('sell_qty_tulip'),
-              new StringSelectMenuOptionBuilder().setLabel('🪻 Jual Bunga Lavender (Custom Qty)').setValue('sell_qty_lavender'),
-              new StringSelectMenuOptionBuilder().setLabel('🌸 Jual Bunga Sakura (Custom Qty)').setValue('sell_qty_sakura'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Jual Anggrek Langka (Custom Qty)').setValue('sell_qty_orchid')
-            );
-
-          const sellRow3 = new ActionRowBuilder().addComponents(sellQtySelect);
-
-          return { embeds: [embed], components: [sellRow1, sellRow2, sellRow3] };
-        };
-
-        const getGardenGiftDataPrivate = (targetUserId, recId = null) => {
-          const inv = database.all(
-            `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'BOUQUET_%' AND quantity > 0`,
-            [targetUserId, guildId]
-          );
-
-          const stock = { LOVE: 0, PEACE: 0, IMPERIAL: 0 };
-          inv.forEach(item => {
-            const key = item.item_id.replace('BOUQUET_', '').toUpperCase();
-            if (stock[key] !== undefined) {
-              stock[key] = item.quantity;
-            }
-          });
-
-          const recipientText = recId ? `🎯 **Penerima Terpilih**: <@${recId}>\n*Silakan pilih jenis buket di bawah untuk mengirim kado.*` : '❌ **Belum ada penerima terpilih**.\n*Silakan pilih penerima menggunakan menu dropdown anggota di bawah.*';
-
-          const embed = new EmbedBuilder()
-            .setColor(0xD4AF37)
-            .setTitle('🎁 KIRIM KADO BUKET BUNGA')
-            .setThumbnail(user.displayAvatarURL())
-            .setDescription(
-              `Kirimkan buket kado bunga indah kepada warga lain untuk memberikan mereka **Daily Passive Buff** (+koin klaim harian):\n\n` +
-              `💖 **Buket Kasih Sayang**: Punya: \`${stock.LOVE} buket\` (Buff: +Rp 15 / daily)\n` +
-              `🪻 **Buket Ketenangan**: Punya: \`${stock.PEACE} buket\` (Buff: +Rp 35 / daily)\n` +
-              `👑 **Buket Legendaris**: Punya: \`${stock.IMPERIAL} buket\` (Buff: +Rp 80 / daily)\n\n` +
-              `${recipientText}`
-            )
-            .setTimestamp();
-
-          const userSelect = new UserSelectMenuBuilder()
-            .setCustomId('garden_gift_select_user_perm')
-            .setPlaceholder('👥 1. Pilih Warga Penerima Kado');
-
-          const userRow = new ActionRowBuilder().addComponents(userSelect);
-
-          const bouquetSelect = new StringSelectMenuBuilder()
-            .setCustomId('garden_gift_select_bouquet_perm')
-            .setPlaceholder('💐 2. Pilih Buket yang Ingin Dikirim')
-            .addOptions(
-              new StringSelectMenuOptionBuilder().setLabel('💐 Buket Kasih Sayang (Love)').setValue('LOVE'),
-              new StringSelectMenuOptionBuilder().setLabel('💐 Buket Ketenangan (Peace)').setValue('PEACE'),
-              new StringSelectMenuOptionBuilder().setLabel('👑 Buket Legendaris (Imperial)').setValue('IMPERIAL')
-            );
-
-          const bouquetRow = new ActionRowBuilder().addComponents(bouquetSelect);
-
-          const btnRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
-          );
-
-          return { embeds: [embed], components: [userRow, bouquetRow, btnRow] };
-        };
-
-        const initialData = getGardenDashboardDataPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const collector = privateMsg.createMessageComponentCollector({ time: 300000 });
-
-        collector.on('collect', async i => {
-          if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          try {
-            if (i.isStringSelectMenu() && i.customId === 'garden_select_plant_perm') {
-              const val = i.values[0];
-              const parts = val.split('_');
-              const flowerKey = parts[1];
-              const slotIdx = parseInt(parts[2]);
-
-              await i.deferReply({ flags: 64 }).catch(() => { });
-
-              try {
-                const res = garden.plantSeed(user.id, guildId, slotIdx, flowerKey);
-                await i.editReply({
-                  embeds: [embeds.successEmbed(
-                    '🌱 Penanaman Berhasil!',
-                    `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
-                    `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
-                  )]
-                }).catch(() => { });
-
-                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.isUserSelectMenu() && i.customId === 'garden_gift_select_user_perm') {
-              selectedRecipientId = i.values[0];
-              await i.update(getGardenGiftDataPrivate(user.id, selectedRecipientId)).catch(() => { });
-            }
-
-            else if (i.isStringSelectMenu() && i.customId === 'garden_gift_select_bouquet_perm') {
-              const bouquetKey = i.values[0];
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                if (!selectedRecipientId) {
-                  throw new Error('Silakan tentukan warga penerima kado terlebih dahulu!');
-                }
-                const res = garden.giftBouquet(user.id, selectedRecipientId, guildId, bouquetKey);
-                const successEmb = embeds.successEmbed(
-                  '🎁 Kirim Kado Buket Sukses!',
-                  `Anda berhasil mengirimkan **${res.bouquetName}** kepada <@${selectedRecipientId}>!\n\n` +
-                  `✉️ *Pesan Kado: "${res.messageText}"*\n\n` +
-                  `✨ Penerima mendapatkan **Daily Passive Buff** (+Rp ${res.buffAmount} koin) untuk klaim harian (.daily) mereka selama ${res.durationHours} jam!`
-                );
-                
-                selectedRecipientId = null; // reset
-                await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal mengirim kado: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.customId === 'garden_btn_water_all_perm') {
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const res = garden.waterPlant(user.id, guildId, 'all');
-                const successEmb = embeds.successEmbed(
-                  '💦 Penyiraman Berhasil!',
-                  `Berhasil menyiram **${res.wateredCount}** tanaman (Slot: **${res.slotsWatered.join(', ')}**).\n` +
-                  `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
-                );
-
-                await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.customId === 'garden_btn_harvest_all_perm') {
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const slots = garden.getGardenSlots(user.id, guildId);
-                const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
-
-                if (harvestable.length === 0) {
-                  await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => { });
-                  return;
-                }
-
-                const harvestedNames = [];
-                harvestable.forEach(s => {
-                  const res = garden.harvestPlant(user.id, guildId, s.slot_index);
-                  harvestedNames.push(`Slot #${res.slotIndex}: **${res.flowerName}**`);
-                });
-
-                const successEmb = embeds.successEmbed(
-                  '🧺 Panen Bunga Sukses!',
-                  `Berhasil memanen **${harvestedNames.length}** kuntum bunga segar:\n` +
-                  harvestedNames.map(name => `• ${name}`).join('\n') + `\n\n` +
-                  `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
-                );
-
-                await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.isStringSelectMenu() && i.customId === 'garden_select_manage_actions') {
-              const action = i.values[0];
-              if (action === 'go_shop') {
-                await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
-              } else if (action === 'go_craft') {
-                await i.update(getGardenCraftDataPrivate(user.id)).catch(() => { });
-              } else if (action === 'go_sell_menu') {
-                await i.update(getGardenSellDataPrivate(user.id)).catch(() => { });
-              } else if (action === 'go_gift_menu') {
-                selectedRecipientId = null;
-                await i.update(getGardenGiftDataPrivate(user.id)).catch(() => { });
-              }
-            }
-
-            else if (i.isStringSelectMenu() && i.customId === 'garden_select_buy_seeds') {
-              const itemKey = i.values[0].replace('buy_', '');
-              const itemNames = {
-                rose: 'Benih Mawar',
-                tulip: 'Benih Bunga Tulip',
-                lavender: 'Benih Bunga Lavender',
-                sakura: 'Benih Bunga Sakura',
-                orchid: 'Benih Anggrek Langka',
-                wrapping: 'Kertas Kado'
-              };
-              const itemName = itemNames[itemKey] || itemKey;
-
-              const modal = new ModalBuilder()
-                .setCustomId(`garden_modal_buy_${itemKey}`)
-                .setTitle(`Beli ${itemName}`);
-
-              const qtyInput = new TextInputBuilder()
-                .setCustomId('buy_qty')
-                .setLabel('Jumlah yang ingin dibeli')
-                .setPlaceholder('Contoh: 5')
-                .setValue('1')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(4);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-              await i.showModal(modal);
-
-              const submitted = await i.awaitModalSubmit({
-                filter: (sub) => sub.customId === `garden_modal_buy_${itemKey}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const qtyStr = submitted.fields.getTextInputValue('buy_qty');
-                  const qty = Math.max(1, parseInt(qtyStr) || 1);
-
-                  const key = itemKey.toUpperCase();
-                  let pricePerItem = 0;
-                  let itemName = '';
-                  if (key === 'WRAPPING') {
-                    pricePerItem = config.garden.GIFT_WRAPPING_PRICE;
-                    itemName = '🎗️ Kertas Kado Premium';
-                  } else {
-                    const flowerConf = config.garden.FLOWERS[key];
-                    if (!flowerConf) throw new Error('Item tidak valid!');
-                    pricePerItem = flowerConf.seedPrice;
-                    itemName = `🌱 Benih ${flowerConf.name}`;
-                  }
-                  const totalPrice = pricePerItem * qty;
-
-                  await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemName}`, totalPrice, async (paymentSource, iConfirm) => {
-                    try {
-                      const res = garden.buySeed(user.id, guildId, itemKey, qty, paymentSource);
-                      const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
-                      
-                      await interaction.editReply(getGardenShopDataPrivate(user.id, statusMsg)).catch(() => {});
-
-                      const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
-                      await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                    } catch (err) {
-                      const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-                      await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-                    }
-                  });
-                } catch (err) {
-                  await safeInteractionReply(submitted, { embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
-                }
-              }
-            }
-
-            else if (i.isStringSelectMenu() && i.customId === 'garden_select_sell_qty') {
-              const itemKey = i.values[0].replace('sell_qty_', '');
-              const itemNames = {
-                rose: 'Mawar Merah',
-                tulip: 'Bunga Tulip',
-                lavender: 'Bunga Lavender',
-                sakura: 'Bunga Sakura',
-                orchid: 'Anggrek Langka'
-              };
-              const itemName = itemNames[itemKey] || itemKey;
-
-              const inv = database.all(
-                `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
-                [user.id, guildId]
-              );
-              const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
-              inv.forEach(item => {
-                const key = item.item_id.replace('FLOWER_', '').toUpperCase();
-                if (stock[key] !== undefined) {
-                  stock[key] = item.quantity;
-                }
-              });
-              const currentStock = stock[itemKey.toUpperCase()] || 0;
-
-              const modal = new ModalBuilder()
-                .setCustomId(`garden_modal_sell_${itemKey}`)
-                .setTitle(`Jual ${itemName}`);
-
-              const qtyInput = new TextInputBuilder()
-                .setCustomId('sell_qty')
-                .setLabel('Jumlah yang ingin dijual')
-                .setPlaceholder(`Maksimal stok Anda: ${currentStock}`)
-                .setValue('1')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(4);
-
-              modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-              await i.showModal(modal);
-
-              const submitted = await i.awaitModalSubmit({
-                filter: (sub) => sub.customId === `garden_modal_sell_${itemKey}` && sub.user.id === user.id,
-                time: 60000
-              }).catch(() => null);
-
-              if (submitted) {
-                try {
-                  const qtyStr = submitted.fields.getTextInputValue('sell_qty');
-                  const qty = parseInt(qtyStr);
-                  if (isNaN(qty) || qty <= 0) {
-                    throw new Error('Jumlah penjualan harus berupa angka di atas 0!');
-                  }
-
-                  const res = garden.sellFlowers(user.id, guildId, itemKey, qty);
-                  const successEmb = embeds.successEmbed(
-                    '💰 Penjualan Bunga Sukses!',
-                    `Anda berhasil menjual **${res.quantitySold} kuntum** bunga **${res.flowerName}** Anda seharga **Rp ${res.earnings.toLocaleString('id-ID')}**!\n\n` +
-                    `💸 Saldo dompet Anda sekarang: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-                  );
-                  await submitted.reply({ embeds: [successEmb], flags: 64 }).catch(() => {});
-                  await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
-                } catch (err) {
-                  await submitted.reply({ embeds: [embeds.errorEmbed('Penjualan Gagal!', err.message)], flags: 64 }).catch(() => {});
-                }
-              }
-            }
-
-            else if (i.customId.startsWith('garden_sell_') && i.customId.endsWith('_all_perm')) {
-              const flowerKey = i.customId.replace('garden_sell_', '').replace('_all_perm', '');
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const res = garden.sellFlowers(user.id, guildId, flowerKey, 'all');
-                const successEmb = embeds.successEmbed(
-                  '💰 Penjualan Bunga Sukses!',
-                  `Anda berhasil menjual seluruh (**${res.quantitySold} kuntum**) bunga **${res.flowerName}** Anda!\n\n` +
-                  `🪙 Uang didapat: **+Rp ${res.earnings.toLocaleString('id-ID')}**\n` +
-                  `💸 Sisa dompet Anda: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
-                );
-                await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal menjual bunga: ${err.message}` }).catch(() => { });
-              }
-            }
-
-            else if (i.customId === 'garden_btn_back_perm') {
-              await i.update(getGardenDashboardDataPrivate(user.id)).catch(() => { });
-            }
-
-            else if (i.customId.startsWith('garden_craft_') && i.customId.endsWith('_perm')) {
-              const recipe = i.customId.replace('garden_craft_', '').replace('_perm', '');
-              await i.deferReply({ flags: 64 }).catch(() => { });
-              try {
-                const res = garden.craftBouquet(user.id, guildId, recipe);
-                const successEmb = embeds.successEmbed(
-                  '💐 Buket Berhasil Dirangkai!',
-                  `Selamat! Anda berhasil merangkai **${res.bouquetName}**.\n\n` +
-                  `*${res.desc}*\n\n` +
-                  `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
-                );
-
-                await i.editReply({ embeds: [successEmb] }).catch(() => { });
-                await interaction.editReply(getGardenCraftDataPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => { });
-              }
-            }
-          } catch (err) {
-            console.error("Error in garden private interaction collector:", err);
-          }
-        });
-
-        collector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: GACHA PET ──
-      else if (customId === 'pet_btn_gacha_hub') {
-        await interaction.deferReply({ flags: 64 });
-        await handlePetGachaPanel(interaction, client, true);
-      }
-
-      // ── PORTAL PERMANEN: UPGRADE BINTANG PET ──
-      else if (customId === 'pet_btn_upgrade_hub') {
-        await interaction.deferReply({ flags: 64 });
-        await handlePetUpgradePanel(interaction, client, true);
-      }
-
-      // ── PORTAL PERMANEN: UNDIAN LOTRE ──
-      else if (customId === 'eco_btn_lottery_hub') {
-        await interaction.deferReply({ flags: 64 });
-
-        const getLotteryPanelPrivate = (targetUserId) => {
-          const pool = lottery.getPool(guildId);
-          const userTickets = lottery.getUserTickets(targetUserId, guildId);
-          const participants = lottery.getParticipants(guildId);
-          const participantCount = participants.length;
-          const ticketPrice = config.lottery?.TICKET_PRICE || 100;
-          const burnPercent = config.lottery?.BURN_PERCENT || 15;
-
-          const winChance = pool.total_tickets > 0 
-            ? ((userTickets / pool.total_tickets) * 100).toFixed(2)
-            : '0.00';
-
-          const embed = new EmbedBuilder()
-            .setColor(0xFFD700)
-            .setTitle('🎟️ 🏆 LOTRE MINGGUAN BOT KOSAN 1A')
-            .setDescription(
-              `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
-              `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `📈 **Status Pool Saat Ini:**\n` +
-              `┊ 💰 Total Pool Hadiah: **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n` +
-              `┊ 🎫 Total Tiket Terjual: **${pool.total_tickets} tiket**\n` +
-              `┊ 👥 Jumlah Peserta: **${participantCount} orang**\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `👤 **Status Anda (<@${targetUserId}>):**\n` +
-              `┊ 🎫 Jumlah Tiket: **${userTickets} tiket**\n` +
-              `┊ 🎯 Peluang Menang: **${winChance}%**\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-              `📋 **Informasi Lotre:**\n` +
-              `┊ 🪙 Harga Tiket: **Rp ${ticketPrice.toLocaleString('id-ID')}** per tiket\n` +
-              `┊ 🔥 Koin Dibakar: **${burnPercent}%** dari total pool akan dibakar (dihapus) saat undian untuk stabilitas ekonomi.\n` +
-              `┊ ⏱️ Jadwal Undian: Setiap **Minggu pukul 21:00 WIB**`
-            )
-            .setTimestamp()
-            .setFooter({ text: 'Lotre Mingguan • Semoga Beruntung!' });
-
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('lottery_btn_buy_1').setLabel('🎫 Beli 1 Tiket').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('lottery_btn_buy_10').setLabel('🎫 Beli 10 Tiket').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('lottery_btn_buy_50').setLabel('🎫 Beli 50 Tiket').setStyle(ButtonStyle.Danger)
-          );
-
-          return { embeds: [embed], components: [row] };
-        };
-
-        const initialData = getLotteryPanelPrivate(user.id);
-        const privateMsg = await interaction.editReply({ ...initialData });
-        const lotCollector = privateMsg.createMessageComponentCollector({ time: 60000 });
-
-        lotCollector.on('collect', async iLot => {
-          if (iLot.user.id !== user.id) return iLot.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-
-          let qty = 1;
-          if (iLot.customId === 'lottery_btn_buy_10') qty = 10;
-          else if (iLot.customId === 'lottery_btn_buy_50') qty = 50;
-
-          try {
-            const ticketPrice = config.lottery.TICKET_PRICE || 100;
-            const totalCost = ticketPrice * qty;
-
-            await promptPaymentMethod(iLot, user.id, guildId, `${qty} Tiket Lotre`, totalCost, async (paymentSource, iConfirm) => {
-              try {
-                const res = lottery.buyTickets(user.id, guildId, qty, paymentSource);
-                let sisaText = '';
-                if (paymentSource === 'bank') {
-                  const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
-                  sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
-                } else {
-                  sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
-                }
-
-                const successEmb = embeds.successEmbed(
-                  'Tiket Lotre Berhasil Dibeli! 🎟️✨',
-                  `Anda telah membeli **${res.quantity} tiket** seharga **Rp ${res.totalCost.toLocaleString('id-ID')}**!\n` +
-                  `📦 Tiket terdaftar atas nama Anda.\n\n` +
-                  `📊 Sisa saldo ${sisaText}.`
-                );
-                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
-                await interaction.editReply(getLotteryPanelPrivate(user.id)).catch(() => { });
-              } catch (err) {
-                const errEmb = embeds.errorEmbed('Pembelian Tiket Gagal!', err.message);
-                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
-              }
-            });
-          } catch (err) {
-            await iLot.reply({ embeds: [embeds.errorEmbed('Pembelian Tiket Gagal!', err.message)], flags: 64 });
-          }
-        });
-
-        lotCollector.on('end', async () => {
-          await interaction.deleteReply().catch(() => { });
-        });
-      }
-
-      // ── PORTAL PERMANEN: MISI HARIAN KOSAN 1A ──
-      else if (customId === 'pet_btn_open_quests_private_perm') {
-        await interaction.deferReply({ flags: 64 });
-
-        try {
-          const getQuestPanelPrivate = (targetUserId) => {
-            const quests = pet.getOrCreateDailyQuests(targetUserId, guildId);
-            
-            const getQuestEmoji = (progress, target) => {
-              return progress >= target ? '✅' : '⏳';
-            };
-
-            const getQuestText = (qType, progress, target) => {
-              let descText = '';
-              switch (qType) {
-                case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
-                case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
-                case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
-                case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
-                case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
-                case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
-                case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
-                case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
-                case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
-                case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
-                case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
-                case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
-                case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
-                case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
-                case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
-                default: descText = `Misi Harian`;
-              }
-              return `${descText} (${progress}/${target})`;
-            };
-
-            let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
-            
-            descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
-            descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
-            descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
-
-            const allCompleted = 
-              quests.quest_1_progress >= quests.quest_1_target &&
-              quests.quest_2_progress >= quests.quest_2_target &&
-              quests.quest_3_progress >= quests.quest_3_target;
-
-            const row = new ActionRowBuilder();
-
-            if (quests.reward_claimed === 1) {
-              descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
-              row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
-            } else {
-              if (allCompleted) {
-                descText += `✨ **Status:** Semua misi selesai! Klik tombol **Klaim Hadiah** di bawah ini untuk mengambil hadiah harian! 🎁`;
-                row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success));
-              } else {
-                descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
-                row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
-              }
-            }
-
-            row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
-
-            const questEmbed = new EmbedBuilder()
-              .setColor(0x3498DB)
-              .setTitle(`📋 MISI HARIAN KOSAN 1A — ${user.username}`)
-              .setDescription(descText)
-              .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-              .setTimestamp();
-
-            return { embeds: [questEmbed], components: [row] };
+            return { embeds: [embed], components: [selectRow, closeRow] };
           };
 
-          const privateMsg = await interaction.editReply(getQuestPanelPrivate(user.id));
-          const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+          const initialData = getShopPanelDataPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+          collector.on('collect', async iShop => {
+            if (iShop.user.id !== user.id) return iShop.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            try {
+              if (iShop.customId === 'pet_btn_close_shop_perm') {
+                await privateMsg.delete().catch(() => { });
+                collector.stop();
+              } else if (iShop.customId === 'pet_select_shop_item_perm') {
+                const selectedItemId = iShop.values[0];
+                const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                if (!item) return;
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`pet_modal_buy_perm_${selectedItemId}`)
+                  .setTitle(`Beli ${item.name}`);
+
+                const qtyInput = new TextInputBuilder()
+                  .setCustomId('buy_qty')
+                  .setLabel('Jumlah yang ingin dibeli')
+                  .setPlaceholder('Contoh: 5')
+                  .setValue('1')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMinLength(1)
+                  .setMaxLength(4);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+                await iShop.showModal(modal);
+
+                const submitted = await iShop.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `pet_modal_buy_perm_${selectedItemId}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                    const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                    const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
+                    if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
+                    const totalPrice = itemInfo.price * qty;
+
+                    await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemInfo.name}`, totalPrice, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = pet.buyItem(user.id, guildId, selectedItemId, qty, paymentSource);
+                        const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
+
+                        await interaction.editReply(getShopPanelDataPrivate(user.id, statusMsg)).catch(() => { });
+
+                        const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                      }
+                    });
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              }
+            } catch (err) {
+              await iShop.reply({ content: `❌ Gagal: ${err.message}`, flags: 64 }).catch(() => { });
+            }
+          });
+
+          collector.on('end', async () => {
+            await interaction.deleteReply().catch(() => { });
+          });
+        }
+
+        // ── PORTAL PERMANEN: KOSAN (.kos) ──
+        else if (customId === 'eco_btn_open_kos_private_perm' || customId === 'eco_btn_open_kos_direct') {
+          await interaction.deferReply({ flags: 64 });
+          try {
+            const kos = require('./kos');
+
+            const getKosDashboardDataPrivate = (targetUserId) => {
+              const wallet = economy.getWallet(targetUserId, guildId);
+              const activeRental = kos.getActiveRental(targetUserId, guildId);
+              const upgrades = kos.getUpgrades(targetUserId, guildId);
+              const embed = embeds.kosDashboardEmbed(interaction.user, wallet, activeRental, upgrades);
+
+              const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('kos_btn_nav_sewa_perm').setLabel('🛎️ Sewa Kamar').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('kos_btn_nav_upgrade_perm').setLabel('🛒 Belanja Fasilitas').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('kos_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+              );
+
+              return { embeds: [embed], components: [row] };
+            };
+
+            const getSewaPanelDataPrivate = (targetUserId) => {
+              const currentRental = kos.getActiveRental(targetUserId, guildId);
+              const embed = embeds.kosRoomListEmbed(currentRental);
+
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('kos_select_room_perm')
+                .setPlaceholder('👉 Pilih kasta kamar untuk disewa...')
+                .addOptions(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('💨 Kamar Kipas Angin (Rp 150)')
+                    .setDescription('Bonus Daily +Rp 5 | Durasi 3 Hari')
+                    .setValue('KIPAS'),
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('❄️ Kamar AC (Rp 350)')
+                    .setDescription('Bonus Daily +Rp 15 | Pajak Transfer 8% | 3 Hari')
+                    .setValue('AC'),
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('👑 Penthouse Kosan (Rp 800)')
+                    .setDescription('Daily +Rp 40 | Pajak Transfer 5% | Pajak Jual Saham 10%')
+                    .setValue('PENTHOUSE')
+                );
+
+              const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+              const backBtn = new ButtonBuilder()
+                .setCustomId('kos_btn_back_dashboard_perm')
+                .setLabel('✖️ Kembali ke Dashboard')
+                .setStyle(ButtonStyle.Secondary);
+              const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+              return { embeds: [embed], components: [selectRow, backRow] };
+            };
+
+            const getUpgradePanelDataPrivate = (targetUserId) => {
+              const ownedUpgrades = kos.getUpgrades(targetUserId, guildId);
+              const embed = embeds.kosUpgradeListEmbed(ownedUpgrades);
+
+              const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('kos_select_upgrade_perm')
+                .setPlaceholder('👉 Pilih furniture/fasilitas untuk dibeli...');
+
+              const upgradesConfig = config.kos.UPGRADES;
+              Object.keys(upgradesConfig).forEach(key => {
+                const up = upgradesConfig[key];
+                const isOwned = ownedUpgrades.some(o => o.id === up.id);
+
+                selectMenu.addOptions(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel(`${up.name} (${isOwned ? 'Miliki' : `Rp ${up.price}`})`)
+                    .setDescription(up.desc.substring(0, 100))
+                    .setValue(up.id)
+                );
+              });
+
+              const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+              const backBtn = new ButtonBuilder()
+                .setCustomId('kos_btn_back_dashboard_perm')
+                .setLabel('✖️ Kembali ke Dashboard')
+                .setStyle(ButtonStyle.Secondary);
+              const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+              return { embeds: [embed], components: [selectRow, backRow] };
+            };
+
+            const initialData = getKosDashboardDataPrivate(user.id);
+            const privateMsg = await interaction.editReply({ ...initialData });
+            const collector = privateMsg.createMessageComponentCollector({ time: 180000 });
+
+            collector.on('collect', async iKos => {
+              if (iKos.user.id !== user.id) return iKos.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+              try {
+                if (iKos.customId === 'kos_btn_refresh_perm') {
+                  await iKos.update(getKosDashboardDataPrivate(user.id));
+                } else if (iKos.customId === 'kos_btn_nav_sewa_perm') {
+                  await iKos.update(getSewaPanelDataPrivate(user.id));
+                } else if (iKos.customId === 'kos_btn_nav_upgrade_perm') {
+                  await iKos.update(getUpgradePanelDataPrivate(user.id));
+                } else if (iKos.customId === 'kos_btn_back_dashboard_perm') {
+                  await iKos.update(getKosDashboardDataPrivate(user.id));
+                } else if (iKos.customId === 'kos_select_room_perm') {
+                  const selectedRoom = iKos.values[0];
+                  try {
+                    const res = kos.rentRoom(user.id, guildId, selectedRoom);
+                    const dueText = `<t:${res.endsAt}:F> (<t:${res.endsAt}:R>)`;
+
+                    const successEmb = embeds.kosSuccessReceiptEmbed(
+                      'Transaksi Persewaan Kamar Berhasil! 🛌',
+                      `Selamat! Kamu resmi menyewa **${res.name}**!\n\n` +
+                      `💰 **Harga Sewa:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                      `📅 **Masa Aktif s/d:** ${dueText}\n\n` +
+                      `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                    );
+
+                    await iKos.reply({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    const errorEmb = embeds.errorEmbed('Penyewaan Kamar Gagal!', err.message);
+                    await iKos.reply({ embeds: [errorEmb], flags: 64 });
+                  }
+                } else if (iKos.customId === 'kos_select_upgrade_perm') {
+                  const selectedUpgrade = iKos.values[0];
+                  try {
+                    const res = kos.buyUpgrade(user.id, guildId, selectedUpgrade);
+
+                    const successEmb = embeds.kosSuccessReceiptEmbed(
+                      'Transaksi Belanja Fasilitas Berhasil! 🛒',
+                      `Selamat! Kamu berhasil membeli fasilitas **${res.name}**!\n\n` +
+                      `💰 **Harga Beli:** **Rp ${res.price.toLocaleString('id-ID')}**\n` +
+                      `✨ **Status:** Terpasang secara permanen di kamarmu.\n\n` +
+                      `📉 Sisa saldo dompetmu sekarang adalah **Rp ${res.walletBalance.toLocaleString('id-ID')}**.`
+                    );
+
+                    await iKos.reply({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getKosDashboardDataPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    const errorEmb = embeds.errorEmbed('Belanja Fasilitas Gagal!', err.message);
+                    await iKos.reply({ embeds: [errorEmb], flags: 64 });
+                  }
+                }
+              } catch (err) {
+                console.error('Error in Kos permanent collector:', err);
+              }
+            });
+
+            collector.on('end', async () => {
+              await interaction.deleteReply().catch(() => { });
+            });
+          } catch (err) {
+            await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Menu Kosan!', err.message)] }).catch(() => { });
+          }
+        }
+
+        // ── PORTAL PERMANEN: COZY FLOWER GARDEN ──
+        else if (customId === 'eco_btn_open_garden_private_perm') {
+          await interaction.deferReply({ flags: 64 });
+
+          let selectedRecipientId = null;
+
+          const getGardenDashboardDataPrivate = (targetUserId) => {
+            const slots = garden.getGardenSlots(targetUserId, guildId);
+            const wallet = economy.getWallet(targetUserId, guildId);
+            const embed = embeds.gardenEmbed(user, slots, wallet.last_water_at);
+
+            const row1 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_btn_water_all_perm').setLabel('💦 Siram Semua').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('garden_btn_harvest_all_perm').setLabel('🧺 Panen Semua').setStyle(ButtonStyle.Success)
+            );
+
+            const manageDropdown = new StringSelectMenuBuilder()
+              .setCustomId('garden_select_manage_actions')
+              .setPlaceholder('⚙️ Kelola Kebun (Toko, Crafting, Jual, Gift)...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🛒 Toko Benih').setDescription('Beli benih bunga baru dan kertas kado').setValue('go_shop'),
+                new StringSelectMenuOptionBuilder().setLabel('💐 Rangkai Buket (Crafting)').setDescription('Rangkai bunga segar menjadi buket bunga indah').setValue('go_craft'),
+                new StringSelectMenuOptionBuilder().setLabel('💰 Jual Bunga').setDescription('Jual hasil panen bunga langsung untuk koin').setValue('go_sell_menu'),
+                new StringSelectMenuOptionBuilder().setLabel('🎁 Kirim Kado').setDescription('Kirim kado buket bunga kepada warga lain').setValue('go_gift_menu')
+              );
+
+            const row_manage = new ActionRowBuilder().addComponents(manageDropdown);
+
+            const selectMenu = new StringSelectMenuBuilder()
+              .setCustomId('garden_select_plant_perm')
+              .setPlaceholder('🌱 Pilih benih & slot untuk menanam...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #1').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_1'),
+                new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #2').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_2'),
+                new StringSelectMenuOptionBuilder().setLabel('🌹 Tanam Mawar - Slot #3').setDescription('Mawar Merah (Common • Tumbuh: 30 Menit)').setValue('plant_rose_3'),
+                new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #1').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_1'),
+                new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #2').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_2'),
+                new StringSelectMenuOptionBuilder().setLabel('🌷 Tanam Tulip - Slot #3').setDescription('Bunga Tulip (Common • Tumbuh: 1 Jam)').setValue('plant_tulip_3'),
+                new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #1').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_1'),
+                new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #2').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_2'),
+                new StringSelectMenuOptionBuilder().setLabel('🪻 Tanam Lavender - Slot #3').setDescription('Lavender (Rare • Tumbuh: 2 Jam)').setValue('plant_lavender_3'),
+                new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #1').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_1'),
+                new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #2').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_2'),
+                new StringSelectMenuOptionBuilder().setLabel('🌸 Tanam Sakura - Slot #3').setDescription('Sakura (Rare • Tumbuh: 4 Jam)').setValue('plant_sakura_3'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #1').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_1'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #2').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_2'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Tanam Anggrek - Slot #3').setDescription('Anggrek Langka (Epic • Tumbuh: 8 Jam)').setValue('plant_orchid_3')
+              );
+
+            const row2 = new ActionRowBuilder().addComponents(selectMenu);
+
+            return { embeds: [embed], components: [row1, row_manage, row2] };
+          };
+
+          const getGardenShopDataPrivate = (targetUserId, statusMsg = '') => {
+            const walletShop = economy.getWallet(targetUserId, guildId);
+            const embed = embeds.gardenShopEmbed(user, walletShop, statusMsg);
+
+            const shopSelect = new StringSelectMenuBuilder()
+              .setCustomId('garden_select_buy_seeds')
+              .setPlaceholder('🛒 Pilih Benih / Item untuk Dibeli...')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🌹 Benih Mawar').setDescription('Harga: Rp 80').setValue('buy_rose'),
+                new StringSelectMenuOptionBuilder().setLabel('🌷 Benih Tulip').setDescription('Harga: Rp 150').setValue('buy_tulip'),
+                new StringSelectMenuOptionBuilder().setLabel('🪻 Benih Lavender').setDescription('Harga: Rp 250').setValue('buy_lavender'),
+                new StringSelectMenuOptionBuilder().setLabel('🌸 Benih Sakura').setDescription('Harga: Rp 500').setValue('buy_sakura'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Benih Anggrek').setDescription('Harga: Rp 1.200').setValue('buy_orchid'),
+                new StringSelectMenuOptionBuilder().setLabel('🎗️ Kertas Kado').setDescription('Harga: Rp 100').setValue('buy_wrapping')
+              );
+
+            const shopRow1 = new ActionRowBuilder().addComponents(shopSelect);
+            const shopRow2 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali ke Kebun').setStyle(ButtonStyle.Secondary)
+            );
+
+            return { embeds: [embed], components: [shopRow1, shopRow2] };
+          };
+
+          const getGardenCraftDataPrivate = (targetUserId) => {
+            const craftRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_craft_love_perm').setLabel('💖 Resep Love').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('garden_craft_peace_perm').setLabel('🪻 Resep Peace').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('garden_craft_imperial_perm').setLabel('👑 Resep Imperial').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Success)
+            );
+
+            return { embeds: [embeds.bouquetCraftEmbed(user, guildId)], components: [craftRow] };
+          };
+
+          const getGardenSellDataPrivate = (targetUserId) => {
+            const inv = database.all(
+              `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
+              [targetUserId, guildId]
+            );
+
+            const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
+            inv.forEach(item => {
+              const key = item.item_id.replace('FLOWER_', '').toUpperCase();
+              if (stock[key] !== undefined) {
+                stock[key] = item.quantity;
+              }
+            });
+
+            const embed = new EmbedBuilder()
+              .setColor(0x10B981)
+              .setTitle('💰 PASAR JUAL BUNGA KEBUN')
+              .setThumbnail(user.displayAvatarURL())
+              .setDescription(
+                `Di sini Anda dapat menjual bunga hasil panen Anda secara instan untuk mendapatkan koin:\n\n` +
+                `🌹 **Mawar Merah**: Punya: \`${stock.ROSE} kuntum\` · Harga: **Rp 105** / kuntum\n` +
+                `🌷 **Bunga Tulip**: Punya: \`${stock.TULIP} kuntum\` · Harga: **Rp 200** / kuntum\n` +
+                `🪻 **Bunga Lavender**: Punya: \`${stock.LAVENDER} kuntum\` · Harga: **Rp 350** / kuntum\n` +
+                `🌸 **Bunga Sakura**: Punya: \`${stock.SAKURA} kuntum\` · Harga: **Rp 750** / kuntum\n` +
+                `🪻 **Anggrek Langka**: Punya: \`${stock.ORCHID} kuntum\` · Harga: **Rp 2.000** / kuntum\n\n` +
+                `*Klik tombol di bawah ini untuk menjual seluruh stok bunga yang Anda miliki, atau pilih opsi dari menu di bawah untuk menjual dalam jumlah tertentu.*`
+              )
+              .setTimestamp();
+
+            const sellRow1 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_sell_rose_all_perm').setLabel('🌹 Jual Mawar (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ROSE <= 0),
+              new ButtonBuilder().setCustomId('garden_sell_tulip_all_perm').setLabel('🌷 Jual Tulip (All)').setStyle(ButtonStyle.Success).setDisabled(stock.TULIP <= 0),
+              new ButtonBuilder().setCustomId('garden_sell_lavender_all_perm').setLabel('🪻 Jual Lavender (All)').setStyle(ButtonStyle.Success).setDisabled(stock.LAVENDER <= 0)
+            );
+
+            const sellRow2 = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_sell_sakura_all_perm').setLabel('🌸 Jual Sakura (All)').setStyle(ButtonStyle.Success).setDisabled(stock.SAKURA <= 0),
+              new ButtonBuilder().setCustomId('garden_sell_orchid_all_perm').setLabel('👑 Jual Anggrek (All)').setStyle(ButtonStyle.Success).setDisabled(stock.ORCHID <= 0),
+              new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
+            );
+
+            const hasAnyFlowers = stock.ROSE > 0 || stock.TULIP > 0 || stock.LAVENDER > 0 || stock.SAKURA > 0 || stock.ORCHID > 0;
+
+            const sellQtySelect = new StringSelectMenuBuilder()
+              .setCustomId('garden_select_sell_qty')
+              .setPlaceholder('💰 Pilih Bunga untuk Dijual (Jumlah Tertentu)...')
+              .setDisabled(!hasAnyFlowers)
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('🌹 Jual Mawar Merah (Custom Qty)').setValue('sell_qty_rose'),
+                new StringSelectMenuOptionBuilder().setLabel('🌷 Jual Bunga Tulip (Custom Qty)').setValue('sell_qty_tulip'),
+                new StringSelectMenuOptionBuilder().setLabel('🪻 Jual Bunga Lavender (Custom Qty)').setValue('sell_qty_lavender'),
+                new StringSelectMenuOptionBuilder().setLabel('🌸 Jual Bunga Sakura (Custom Qty)').setValue('sell_qty_sakura'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Jual Anggrek Langka (Custom Qty)').setValue('sell_qty_orchid')
+              );
+
+            const sellRow3 = new ActionRowBuilder().addComponents(sellQtySelect);
+
+            return { embeds: [embed], components: [sellRow1, sellRow2, sellRow3] };
+          };
+
+          const getGardenGiftDataPrivate = (targetUserId, recId = null) => {
+            const inv = database.all(
+              `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'BOUQUET_%' AND quantity > 0`,
+              [targetUserId, guildId]
+            );
+
+            const stock = { LOVE: 0, PEACE: 0, IMPERIAL: 0 };
+            inv.forEach(item => {
+              const key = item.item_id.replace('BOUQUET_', '').toUpperCase();
+              if (stock[key] !== undefined) {
+                stock[key] = item.quantity;
+              }
+            });
+
+            const recipientText = recId ? `🎯 **Penerima Terpilih**: <@${recId}>\n*Silakan pilih jenis buket di bawah untuk mengirim kado.*` : '❌ **Belum ada penerima terpilih**.\n*Silakan pilih penerima menggunakan menu dropdown anggota di bawah.*';
+
+            const embed = new EmbedBuilder()
+              .setColor(0xD4AF37)
+              .setTitle('🎁 KIRIM KADO BUKET BUNGA')
+              .setThumbnail(user.displayAvatarURL())
+              .setDescription(
+                `Kirimkan buket kado bunga indah kepada warga lain untuk memberikan mereka **Daily Passive Buff** (+koin klaim harian):\n\n` +
+                `💖 **Buket Kasih Sayang**: Punya: \`${stock.LOVE} buket\` (Buff: +Rp 15 / daily)\n` +
+                `🪻 **Buket Ketenangan**: Punya: \`${stock.PEACE} buket\` (Buff: +Rp 35 / daily)\n` +
+                `👑 **Buket Legendaris**: Punya: \`${stock.IMPERIAL} buket\` (Buff: +Rp 80 / daily)\n\n` +
+                `${recipientText}`
+              )
+              .setTimestamp();
+
+            const userSelect = new UserSelectMenuBuilder()
+              .setCustomId('garden_gift_select_user_perm')
+              .setPlaceholder('👥 1. Pilih Warga Penerima Kado');
+
+            const userRow = new ActionRowBuilder().addComponents(userSelect);
+
+            const bouquetSelect = new StringSelectMenuBuilder()
+              .setCustomId('garden_gift_select_bouquet_perm')
+              .setPlaceholder('💐 2. Pilih Buket yang Ingin Dikirim')
+              .addOptions(
+                new StringSelectMenuOptionBuilder().setLabel('💐 Buket Kasih Sayang (Love)').setValue('LOVE'),
+                new StringSelectMenuOptionBuilder().setLabel('💐 Buket Ketenangan (Peace)').setValue('PEACE'),
+                new StringSelectMenuOptionBuilder().setLabel('👑 Buket Legendaris (Imperial)').setValue('IMPERIAL')
+              );
+
+            const bouquetRow = new ActionRowBuilder().addComponents(bouquetSelect);
+
+            const btnRow = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('garden_btn_back_perm').setLabel('🏡 Kembali').setStyle(ButtonStyle.Secondary)
+            );
+
+            return { embeds: [embed], components: [userRow, bouquetRow, btnRow] };
+          };
+
+          const initialData = getGardenDashboardDataPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const collector = privateMsg.createMessageComponentCollector({ time: 300000 });
 
           collector.on('collect', async i => {
             if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
 
             try {
-              if (i.customId === 'pet_quests_btn_refresh_perm') {
-                await i.update(getQuestPanelPrivate(user.id));
-              } else if (i.customId === 'pet_quests_btn_claim_perm') {
+              if (i.isStringSelectMenu() && i.customId === 'garden_select_plant_perm') {
+                const val = i.values[0];
+                const parts = val.split('_');
+                const flowerKey = parts[1];
+                const slotIdx = parseInt(parts[2]);
+
+                await i.deferReply({ flags: 64 }).catch(() => { });
+
                 try {
-                  const res = pet.claimDailyQuestReward(user.id, guildId);
-                  const successEmb = embeds.successEmbed(
-                    'Misi Harian Kosan 1A Selesai! 🎉🎁',
-                    `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
-                    `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
-                    `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
-                    `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
-                  );
-                  await i.reply({ embeds: [successEmb], flags: 64 });
-                  await interaction.editReply(getQuestPanelPrivate(user.id)).catch(() => { });
+                  const res = garden.plantSeed(user.id, guildId, slotIdx, flowerKey);
+                  await i.editReply({
+                    embeds: [embeds.successEmbed(
+                      '🌱 Penanaman Berhasil!',
+                      `Benih **${res.flowerName}** berhasil ditanam di **Slot #${res.slotIndex}**!\n\n` +
+                      `💦 Jangan lupa menyiram tanaman Anda agar tumbuh lebih cepat.`
+                    )]
+                  }).catch(() => { });
+
+                  await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
                 } catch (err) {
-                  await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
+                  await i.editReply({ content: `❌ Gagal menanam: ${err.message}` }).catch(() => { });
+                }
+              }
+
+              else if (i.isUserSelectMenu() && i.customId === 'garden_gift_select_user_perm') {
+                selectedRecipientId = i.values[0];
+                await i.update(getGardenGiftDataPrivate(user.id, selectedRecipientId)).catch(() => { });
+              }
+
+              else if (i.isStringSelectMenu() && i.customId === 'garden_gift_select_bouquet_perm') {
+                const bouquetKey = i.values[0];
+                await i.deferReply({ flags: 64 }).catch(() => { });
+                try {
+                  if (!selectedRecipientId) {
+                    throw new Error('Silakan tentukan warga penerima kado terlebih dahulu!');
+                  }
+                  const res = garden.giftBouquet(user.id, selectedRecipientId, guildId, bouquetKey);
+                  const successEmb = embeds.successEmbed(
+                    '🎁 Kirim Kado Buket Sukses!',
+                    `Anda berhasil mengirimkan **${res.bouquetName}** kepada <@${selectedRecipientId}>!\n\n` +
+                    `✉️ *Pesan Kado: "${res.messageText}"*\n\n` +
+                    `✨ Penerima mendapatkan **Daily Passive Buff** (+Rp ${res.buffAmount} koin) untuk klaim harian (.daily) mereka selama ${res.durationHours} jam!`
+                  );
+
+                  selectedRecipientId = null; // reset
+                  await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                  await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.editReply({ content: `❌ Gagal mengirim kado: ${err.message}` }).catch(() => { });
+                }
+              }
+
+              else if (i.customId === 'garden_btn_water_all_perm') {
+                await i.deferReply({ flags: 64 }).catch(() => { });
+                try {
+                  const res = garden.waterPlant(user.id, guildId, 'all');
+                  const successEmb = embeds.successEmbed(
+                    '💦 Penyiraman Berhasil!',
+                    `Berhasil menyiram **${res.wateredCount}** tanaman (Slot: **${res.slotsWatered.join(', ')}**).\n` +
+                    `Tanaman tumbuh 30 menit lebih cepat! Cooldown ember air disetel kembali.`
+                  );
+
+                  await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                  await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.editReply({ content: `❌ Gagal menyiram: ${err.message}` }).catch(() => { });
+                }
+              }
+
+              else if (i.customId === 'garden_btn_harvest_all_perm') {
+                await i.deferReply({ flags: 64 }).catch(() => { });
+                try {
+                  const slots = garden.getGardenSlots(user.id, guildId);
+                  const harvestable = slots.filter(s => s.seed_id && s.growthProgress >= 100);
+
+                  if (harvestable.length === 0) {
+                    await i.editReply({ content: '❌ Tidak ada tanaman yang siap dipanen di kebun Anda!' }).catch(() => { });
+                    return;
+                  }
+
+                  const harvestedNames = [];
+                  harvestable.forEach(s => {
+                    const res = garden.harvestPlant(user.id, guildId, s.slot_index);
+                    harvestedNames.push(`Slot #${res.slotIndex}: **${res.flowerName}**`);
+                  });
+
+                  const successEmb = embeds.successEmbed(
+                    '🧺 Panen Bunga Sukses!',
+                    `Berhasil memanen **${harvestedNames.length}** kuntum bunga segar:\n` +
+                    harvestedNames.map(name => `• ${name}`).join('\n') + `\n\n` +
+                    `Bunga kini tersimpan aman di inventory Anda! Rangkai buket bunga indah di menu \`.buket\`.`
+                  );
+
+                  await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                  await interaction.editReply(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.editReply({ content: `❌ Gagal memanen: ${err.message}` }).catch(() => { });
+                }
+              }
+
+              else if (i.isStringSelectMenu() && i.customId === 'garden_select_manage_actions') {
+                const action = i.values[0];
+                if (action === 'go_shop') {
+                  await i.update(getGardenShopDataPrivate(user.id)).catch(() => { });
+                } else if (action === 'go_craft') {
+                  await i.update(getGardenCraftDataPrivate(user.id)).catch(() => { });
+                } else if (action === 'go_sell_menu') {
+                  await i.update(getGardenSellDataPrivate(user.id)).catch(() => { });
+                } else if (action === 'go_gift_menu') {
+                  selectedRecipientId = null;
+                  await i.update(getGardenGiftDataPrivate(user.id)).catch(() => { });
+                }
+              }
+
+              else if (i.isStringSelectMenu() && i.customId === 'garden_select_buy_seeds') {
+                const itemKey = i.values[0].replace('buy_', '');
+                const itemNames = {
+                  rose: 'Benih Mawar',
+                  tulip: 'Benih Bunga Tulip',
+                  lavender: 'Benih Bunga Lavender',
+                  sakura: 'Benih Bunga Sakura',
+                  orchid: 'Benih Anggrek Langka',
+                  wrapping: 'Kertas Kado'
+                };
+                const itemName = itemNames[itemKey] || itemKey;
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`garden_modal_buy_${itemKey}`)
+                  .setTitle(`Beli ${itemName}`);
+
+                const qtyInput = new TextInputBuilder()
+                  .setCustomId('buy_qty')
+                  .setLabel('Jumlah yang ingin dibeli')
+                  .setPlaceholder('Contoh: 5')
+                  .setValue('1')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMinLength(1)
+                  .setMaxLength(4);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+                await i.showModal(modal);
+
+                const submitted = await i.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `garden_modal_buy_${itemKey}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const qtyStr = submitted.fields.getTextInputValue('buy_qty');
+                    const qty = Math.max(1, parseInt(qtyStr) || 1);
+
+                    const key = itemKey.toUpperCase();
+                    let pricePerItem = 0;
+                    let itemName = '';
+                    if (key === 'WRAPPING') {
+                      pricePerItem = config.garden.GIFT_WRAPPING_PRICE;
+                      itemName = '🎗️ Kertas Kado Premium';
+                    } else {
+                      const flowerConf = config.garden.FLOWERS[key];
+                      if (!flowerConf) throw new Error('Item tidak valid!');
+                      pricePerItem = flowerConf.seedPrice;
+                      itemName = `🌱 Benih ${flowerConf.name}`;
+                    }
+                    const totalPrice = pricePerItem * qty;
+
+                    await promptPaymentMethod(submitted, user.id, guildId, `${qty}x ${itemName}`, totalPrice, async (paymentSource, iConfirm) => {
+                      try {
+                        const res = garden.buySeed(user.id, guildId, itemKey, qty, paymentSource);
+                        const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
+
+                        await interaction.editReply(getGardenShopDataPrivate(user.id, statusMsg)).catch(() => { });
+
+                        const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
+                        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                      } catch (err) {
+                        const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
+                        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                      }
+                    });
+                  } catch (err) {
+                    await safeInteractionReply(submitted, { embeds: [embeds.errorEmbed('Belanja Gagal!', err.message)], flags: 64 });
+                  }
+                }
+              }
+
+              else if (i.isStringSelectMenu() && i.customId === 'garden_select_sell_qty') {
+                const itemKey = i.values[0].replace('sell_qty_', '');
+                const itemNames = {
+                  rose: 'Mawar Merah',
+                  tulip: 'Bunga Tulip',
+                  lavender: 'Bunga Lavender',
+                  sakura: 'Bunga Sakura',
+                  orchid: 'Anggrek Langka'
+                };
+                const itemName = itemNames[itemKey] || itemKey;
+
+                const inv = database.all(
+                  `SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id LIKE 'FLOWER_%' AND quantity > 0`,
+                  [user.id, guildId]
+                );
+                const stock = { ROSE: 0, TULIP: 0, LAVENDER: 0, SAKURA: 0, ORCHID: 0 };
+                inv.forEach(item => {
+                  const key = item.item_id.replace('FLOWER_', '').toUpperCase();
+                  if (stock[key] !== undefined) {
+                    stock[key] = item.quantity;
+                  }
+                });
+                const currentStock = stock[itemKey.toUpperCase()] || 0;
+
+                const modal = new ModalBuilder()
+                  .setCustomId(`garden_modal_sell_${itemKey}`)
+                  .setTitle(`Jual ${itemName}`);
+
+                const qtyInput = new TextInputBuilder()
+                  .setCustomId('sell_qty')
+                  .setLabel('Jumlah yang ingin dijual')
+                  .setPlaceholder(`Maksimal stok Anda: ${currentStock}`)
+                  .setValue('1')
+                  .setStyle(TextInputStyle.Short)
+                  .setRequired(true)
+                  .setMinLength(1)
+                  .setMaxLength(4);
+
+                modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+                await i.showModal(modal);
+
+                const submitted = await i.awaitModalSubmit({
+                  filter: (sub) => sub.customId === `garden_modal_sell_${itemKey}` && sub.user.id === user.id,
+                  time: 60000
+                }).catch(() => null);
+
+                if (submitted) {
+                  try {
+                    const qtyStr = submitted.fields.getTextInputValue('sell_qty');
+                    const qty = parseInt(qtyStr);
+                    if (isNaN(qty) || qty <= 0) {
+                      throw new Error('Jumlah penjualan harus berupa angka di atas 0!');
+                    }
+
+                    const res = garden.sellFlowers(user.id, guildId, itemKey, qty);
+                    const successEmb = embeds.successEmbed(
+                      '💰 Penjualan Bunga Sukses!',
+                      `Anda berhasil menjual **${res.quantitySold} kuntum** bunga **${res.flowerName}** Anda seharga **Rp ${res.earnings.toLocaleString('id-ID')}**!\n\n` +
+                      `💸 Saldo dompet Anda sekarang: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                    );
+                    await submitted.reply({ embeds: [successEmb], flags: 64 }).catch(() => { });
+                    await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    await submitted.reply({ embeds: [embeds.errorEmbed('Penjualan Gagal!', err.message)], flags: 64 }).catch(() => { });
+                  }
+                }
+              }
+
+              else if (i.customId.startsWith('garden_sell_') && i.customId.endsWith('_all_perm')) {
+                const flowerKey = i.customId.replace('garden_sell_', '').replace('_all_perm', '');
+                await i.deferReply({ flags: 64 }).catch(() => { });
+                try {
+                  const res = garden.sellFlowers(user.id, guildId, flowerKey, 'all');
+                  const successEmb = embeds.successEmbed(
+                    '💰 Penjualan Bunga Sukses!',
+                    `Anda berhasil menjual seluruh (**${res.quantitySold} kuntum**) bunga **${res.flowerName}** Anda!\n\n` +
+                    `🪙 Uang didapat: **+Rp ${res.earnings.toLocaleString('id-ID')}**\n` +
+                    `💸 Sisa dompet Anda: **Rp ${res.walletBalance.toLocaleString('id-ID')}**`
+                  );
+                  await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                  await interaction.editReply(getGardenSellDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.editReply({ content: `❌ Gagal menjual bunga: ${err.message}` }).catch(() => { });
+                }
+              }
+
+              else if (i.customId === 'garden_btn_back_perm') {
+                await i.update(getGardenDashboardDataPrivate(user.id)).catch(() => { });
+              }
+
+              else if (i.customId.startsWith('garden_craft_') && i.customId.endsWith('_perm')) {
+                const recipe = i.customId.replace('garden_craft_', '').replace('_perm', '');
+                await i.deferReply({ flags: 64 }).catch(() => { });
+                try {
+                  const res = garden.craftBouquet(user.id, guildId, recipe);
+                  const successEmb = embeds.successEmbed(
+                    '💐 Buket Berhasil Dirangkai!',
+                    `Selamat! Anda berhasil merangkai **${res.bouquetName}**.\n\n` +
+                    `*${res.desc}*\n\n` +
+                    `Buket bunga kini berada di inventory Anda. Gunakan perintah \`.gift-buket\` untuk mengirimkannya ke warga lain.`
+                  );
+
+                  await i.editReply({ embeds: [successEmb] }).catch(() => { });
+                  await interaction.editReply(getGardenCraftDataPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  await i.editReply({ content: `❌ Gagal merangkai: ${err.message}` }).catch(() => { });
                 }
               }
             } catch (err) {
-              console.error("Error in quests private interaction collector:", err);
+              console.error("Error in garden private interaction collector:", err);
             }
           });
 
           collector.on('end', async () => {
             await interaction.deleteReply().catch(() => { });
           });
-        } catch (err) {
-          await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] }).catch(() => {});
         }
-      }
 
-    } catch (err) {
-      console.error('Error handling permanent portal click:', err);
-    }
+        // ── PORTAL PERMANEN: GACHA PET ──
+        else if (customId === 'pet_btn_gacha_hub') {
+          await interaction.deferReply({ flags: 64 });
+          await handlePetGachaPanel(interaction, client, true);
+        }
+
+        // ── PORTAL PERMANEN: UPGRADE BINTANG PET ──
+        else if (customId === 'pet_btn_upgrade_hub') {
+          await interaction.deferReply({ flags: 64 });
+          await handlePetUpgradePanel(interaction, client, true);
+        }
+
+        // ── PORTAL PERMANEN: UNDIAN LOTRE ──
+        else if (customId === 'eco_btn_lottery_hub') {
+          await interaction.deferReply({ flags: 64 });
+
+          const getLotteryPanelPrivate = (targetUserId) => {
+            const pool = lottery.getPool(guildId);
+            const userTickets = lottery.getUserTickets(targetUserId, guildId);
+            const participants = lottery.getParticipants(guildId);
+            const participantCount = participants.length;
+            const ticketPrice = config.lottery?.TICKET_PRICE || 100;
+            const burnPercent = config.lottery?.BURN_PERCENT || 15;
+
+            const winChance = pool.total_tickets > 0
+              ? ((userTickets / pool.total_tickets) * 100).toFixed(2)
+              : '0.00';
+
+            const embed = new EmbedBuilder()
+              .setColor(0xFFD700)
+              .setTitle('🎟️ 🏆 LOTRE MINGGUAN BOT KOSAN 1A')
+              .setDescription(
+                `🍀 **Selamat datang di Lotre Mingguan Server!**\n` +
+                `Beli tiket sekarang dan menangkan total pool koin terkumpul! Setiap tiket yang Anda beli akan menambah total hadiah pool.\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `📈 **Status Pool Saat Ini:**\n` +
+                `┊ 💰 Total Pool Hadiah: **Rp ${pool.total_pool.toLocaleString('id-ID')}**\n` +
+                `┊ 🎫 Total Tiket Terjual: **${pool.total_tickets} tiket**\n` +
+                `┊ 👥 Jumlah Peserta: **${participantCount} orang**\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `👤 **Status Anda (<@${targetUserId}>):**\n` +
+                `┊ 🎫 Jumlah Tiket: **${userTickets} tiket**\n` +
+                `┊ 🎯 Peluang Menang: **${winChance}%**\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `📋 **Informasi Lotre:**\n` +
+                `┊ 🪙 Harga Tiket: **Rp ${ticketPrice.toLocaleString('id-ID')}** per tiket\n` +
+                `┊ 🔥 Koin Dibakar: **${burnPercent}%** dari total pool akan dibakar (dihapus) saat undian untuk stabilitas ekonomi.\n` +
+                `┊ ⏱️ Jadwal Undian: Setiap **Minggu pukul 21:00 WIB**`
+              )
+              .setTimestamp()
+              .setFooter({ text: 'Lotre Mingguan • Semoga Beruntung!' });
+
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId('lottery_btn_buy_1').setLabel('🎫 Beli 1 Tiket').setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId('lottery_btn_buy_10').setLabel('🎫 Beli 10 Tiket').setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId('lottery_btn_buy_50').setLabel('🎫 Beli 50 Tiket').setStyle(ButtonStyle.Danger)
+            );
+
+            return { embeds: [embed], components: [row] };
+          };
+
+          const initialData = getLotteryPanelPrivate(user.id);
+          const privateMsg = await interaction.editReply({ ...initialData });
+          const lotCollector = privateMsg.createMessageComponentCollector({ time: 60000 });
+
+          lotCollector.on('collect', async iLot => {
+            if (iLot.user.id !== user.id) return iLot.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+            let qty = 1;
+            if (iLot.customId === 'lottery_btn_buy_10') qty = 10;
+            else if (iLot.customId === 'lottery_btn_buy_50') qty = 50;
+
+            try {
+              const ticketPrice = config.lottery.TICKET_PRICE || 100;
+              const totalCost = ticketPrice * qty;
+
+              await promptPaymentMethod(iLot, user.id, guildId, `${qty} Tiket Lotre`, totalCost, async (paymentSource, iConfirm) => {
+                try {
+                  const res = lottery.buyTickets(user.id, guildId, qty, paymentSource);
+                  let sisaText = '';
+                  if (paymentSource === 'bank') {
+                    const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
+                    sisaText = `Tabungan bank: **Rp ${bankSavings.balance.toLocaleString('id-ID')}**`;
+                  } else {
+                    sisaText = `Dompet Anda: **Rp ${economy.getWallet(user.id, guildId).balance.toLocaleString('id-ID')}**`;
+                  }
+
+                  const successEmb = embeds.successEmbed(
+                    'Tiket Lotre Berhasil Dibeli! 🎟️✨',
+                    `Anda telah membeli **${res.quantity} tiket** seharga **Rp ${res.totalCost.toLocaleString('id-ID')}**!\n` +
+                    `📦 Tiket terdaftar atas nama Anda.\n\n` +
+                    `📊 Sisa saldo ${sisaText}.`
+                  );
+                  await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
+                  await interaction.editReply(getLotteryPanelPrivate(user.id)).catch(() => { });
+                } catch (err) {
+                  const errEmb = embeds.errorEmbed('Pembelian Tiket Gagal!', err.message);
+                  await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
+                }
+              });
+            } catch (err) {
+              await iLot.reply({ embeds: [embeds.errorEmbed('Pembelian Tiket Gagal!', err.message)], flags: 64 });
+            }
+          });
+
+          lotCollector.on('end', async () => {
+            await interaction.deleteReply().catch(() => { });
+          });
+        }
+
+        // ── PORTAL PERMANEN: MISI HARIAN KOSAN 1A ──
+        else if (customId === 'pet_btn_open_quests_private_perm') {
+          await interaction.deferReply({ flags: 64 });
+
+          try {
+            const getQuestPanelPrivate = (targetUserId) => {
+              const quests = pet.getOrCreateDailyQuests(targetUserId, guildId);
+
+              const getQuestEmoji = (progress, target) => {
+                return progress >= target ? '✅' : '⏳';
+              };
+
+              const getQuestText = (qType, progress, target) => {
+                let descText = '';
+                switch (qType) {
+                  case 'WORK': descText = `Bekerja bersama pet (\`.pet work\`) sebanyak 3 kali`; break;
+                  case 'HUNT': descText = `Kirim pet berburu (\`.pet hunt\`) sebanyak 2 kali`; break;
+                  case 'FEED': descText = `Beri pet makan atau minum sebanyak 2 kali`; break;
+                  case 'PLAY': descText = `Ajak pet bermain (\`.pet play\`) sebanyak 2 kali`; break;
+                  case 'WATER': descText = `Siram tanaman di kebun (\`.garden water\`) sebanyak 2 kali`; break;
+                  case 'EXPEDITION': descText = `Ikut ekspedisi pet (\`.pet expedition\`) sebanyak 1 kali`; break;
+                  case 'SELL_FLOWER': descText = `Jual bunga hasil panen (💰 Jual Bunga) sebanyak 2 kali`; break;
+                  case 'GIFT_BOUQUET': descText = `Kirim kado buket bunga (🎁 Kirim Kado) sebanyak 1 kali`; break;
+                  case 'ROB': descText = `Sukses merampok warga (\`.rob\`) sebanyak 1 kali`; break;
+                  case 'HEIST': descText = `Ikut serta dalam operasi bank heist (\`.heist\`) sebanyak 1 kali`; break;
+                  case 'CASINO': descText = `Bermain Casino Coinflip/Slots (\`.cf\` / \`.slot\`) sebanyak 2 kali`; break;
+                  case 'STOCK_BUY': descText = `Membeli saham di bursa (\`.saham beli\`) sebanyak 2 kali`; break;
+                  case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
+                  case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
+                  case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
+                  default: descText = `Misi Harian`;
+                }
+                return `${descText} (${progress}/${target})`;
+              };
+
+              let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
+
+              descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
+              descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
+              descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
+
+              const allCompleted =
+                quests.quest_1_progress >= quests.quest_1_target &&
+                quests.quest_2_progress >= quests.quest_2_target &&
+                quests.quest_3_progress >= quests.quest_3_target;
+
+              const row = new ActionRowBuilder();
+
+              if (quests.reward_claimed === 1) {
+                descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
+                row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
+              } else {
+                if (allCompleted) {
+                  descText += `✨ **Status:** Semua misi selesai! Klik tombol **Klaim Hadiah** di bawah ini untuk mengambil hadiah harian! 🎁`;
+                  row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success));
+                } else {
+                  descText += `⏳ **Status:** Masih ada misi yang belum diselesaikan. Teruslah bermain!`;
+                  row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_claim_perm').setLabel('🎁 Klaim Hadiah').setStyle(ButtonStyle.Success).setDisabled(true));
+                }
+              }
+
+              row.addComponents(new ButtonBuilder().setCustomId('pet_quests_btn_refresh_perm').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary));
+
+              const questEmbed = new EmbedBuilder()
+                .setColor(0x3498DB)
+                .setTitle(`📋 MISI HARIAN KOSAN 1A — ${user.username}`)
+                .setDescription(descText)
+                .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+                .setTimestamp();
+
+              return { embeds: [questEmbed], components: [row] };
+            };
+
+            const privateMsg = await interaction.editReply(getQuestPanelPrivate(user.id));
+            const collector = privateMsg.createMessageComponentCollector({ time: 120000 });
+
+            collector.on('collect', async i => {
+              if (i.user.id !== user.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+
+              try {
+                if (i.customId === 'pet_quests_btn_refresh_perm') {
+                  await i.update(getQuestPanelPrivate(user.id));
+                } else if (i.customId === 'pet_quests_btn_claim_perm') {
+                  try {
+                    const res = pet.claimDailyQuestReward(user.id, guildId);
+                    const successEmb = embeds.successEmbed(
+                      'Misi Harian Kosan 1A Selesai! 🎉🎁',
+                      `Selamat! Anda berhasil menyelesaikan seluruh misi harian Kosan 1A hari ini!\n\n` +
+                      `💰 **Bonus Uang:** **Rp ${res.rewardAmount.toLocaleString('id-ID')}**\n` +
+                      `🎫 **Bonus Tiket Gacha:** **1x Tiket Gacha Pet Gratis** (TICKET_GACHA)\n` +
+                      `🎒 **Hadiah Kotak Hadiah Pet:** Anda mendapatkan **1x ${res.dropItemName}** yang telah ditambahkan ke inventory Anda!`
+                    );
+                    await i.reply({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getQuestPanelPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    await i.reply({ embeds: [embeds.errorEmbed('Gagal Klaim Hadiah!', err.message)], flags: 64 });
+                  }
+                }
+              } catch (err) {
+                console.error("Error in quests private interaction collector:", err);
+              }
+            });
+
+            collector.on('end', async () => {
+              await interaction.deleteReply().catch(() => { });
+            });
+          } catch (err) {
+            await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] }).catch(() => { });
+          }
+        }
+
+      } catch (err) {
+        console.error('Error handling permanent portal click:', err);
+      }
     } catch (globalInteractionErr) {
       console.error('Global Error in stockmarket interactionCreate listener:', globalInteractionErr);
       try {
         if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => {});
+          await interaction.followUp({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => { });
         } else {
-          await interaction.reply({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => {});
+          await interaction.reply({ content: '❌ Terjadi kesalahan internal saat memproses interaksi ini.', flags: 64 }).catch(() => { });
         }
       } catch (sendErr) {
         console.error('Failed to send interaction error reply:', sendErr.message);
@@ -4798,14 +4798,14 @@ async function handleEconomyChat(message) {
   // --- SPATIAL RETENTION: CHAT TREASURE CHEST SPAWNING ---
   if (guildId) {
     const channelName = message.channel?.name?.toLowerCase() || '';
-    const isSpecialChannel = 
-      channelName.includes('bot') || 
-      channelName.includes('spam') || 
-      channelName.includes('command') || 
-      channelName.includes('test') || 
-      channelName.includes('staff') || 
-      channelName.includes('log') || 
-      channelName.includes('mod') || 
+    const isSpecialChannel =
+      channelName.includes('bot') ||
+      channelName.includes('spam') ||
+      channelName.includes('command') ||
+      channelName.includes('test') ||
+      channelName.includes('staff') ||
+      channelName.includes('log') ||
+      channelName.includes('mod') ||
       channelName.includes('admin') ||
       channelName.includes('saham') ||
       channelName.includes('bursa') ||
@@ -4853,7 +4853,7 @@ async function handleEconomyChat(message) {
           .setFooter({ text: 'Bot Kosan 1A Active Gamification • Harta Karun Obrolan' })
           .setTimestamp();
 
-        message.channel.send({ embeds: [chestEmbed] }).catch(() => {});
+        message.channel.send({ embeds: [chestEmbed] }).catch(() => { });
       }
     }
   }
@@ -5049,9 +5049,9 @@ async function handleKosUpgradeCommand(message, client) {
 async function handlePetCardCommand(message, client, args) {
   const { guildId, author } = message;
   const targetUser = message.mentions.users.first() || author;
-  
+
   // Kirim sinyal typing untuk pengalaman UI premium
-  await message.channel.sendTyping().catch(() => {});
+  await message.channel.sendTyping().catch(() => { });
 
   const activePet = pet.getPet(targetUser.id, guildId);
   if (!activePet) {
@@ -5112,7 +5112,7 @@ async function handlePetCommand(message, client, args) {
 
     try {
       const quests = pet.getOrCreateDailyQuests(author.id, guildId);
-      
+
       const getQuestEmoji = (progress, target) => {
         return progress >= target ? '✅' : '⏳';
       };
@@ -5141,7 +5141,7 @@ async function handlePetCommand(message, client, args) {
       };
 
       let descText = `Selesaikan seluruh misi harian Kosan 1A hari ini untuk mendapatkan bonus **Rp 300**, **1x Tiket Gacha Pet Gratis** (TICKET_GACHA), dan **1x Kotak Hadiah Pet** (Pet Lootbox) berisi item acak!\n\n`;
-      
+
       descText += `${getQuestEmoji(quests.quest_1_progress, quests.quest_1_target)} **Misi 1:** ${getQuestText(quests.quest_1_type, quests.quest_1_progress, quests.quest_1_target)}\n`;
       descText += `${getQuestEmoji(quests.quest_2_progress, quests.quest_2_target)} **Misi 2:** ${getQuestText(quests.quest_2_type, quests.quest_2_progress, quests.quest_2_target)}\n`;
       descText += `${getQuestEmoji(quests.quest_3_progress, quests.quest_3_target)} **Misi 3:** ${getQuestText(quests.quest_3_type, quests.quest_3_progress, quests.quest_3_target)}\n\n`;
@@ -5149,11 +5149,11 @@ async function handlePetCommand(message, client, args) {
       if (quests.reward_claimed === 1) {
         descText += `✅ **Status:** Hadiah harian hari ini sudah diambil! Kembali lagi besok untuk misi baru. 🌅`;
       } else {
-        const allCompleted = 
+        const allCompleted =
           quests.quest_1_progress >= quests.quest_1_target &&
           quests.quest_2_progress >= quests.quest_2_target &&
           quests.quest_3_progress >= quests.quest_3_target;
-        
+
         if (allCompleted) {
           descText += `✨ **Status:** Semua misi selesai! Ketik **\`.pet misi claim\`** sekarang untuk mengambil hadiah harian! 🎁`;
         } else {
@@ -5279,7 +5279,7 @@ async function handlePetCommand(message, client, args) {
         try {
           if (i.customId === 'pet_btn_close_panel') {
             collector.stop();
-            await replyMsg.delete().catch(() => {});
+            await replyMsg.delete().catch(() => { });
           } else if (i.customId === 'pet_btn_tower_sweep') {
             await i.deferReply({ flags: 64 });
             try {
@@ -5292,9 +5292,9 @@ async function handlePetCommand(message, client, args) {
                 `📊 Status Baru Pet: Kelaparan \`${pet.getPet(author.id, guildId).hunger}%\`, Kehausan \`${pet.getPet(author.id, guildId).thirst}%\`.`
               );
               await i.editReply({ embeds: [successEmb] });
-              
+
               const freshPet = pet.getPet(author.id, guildId);
-              await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+              await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
             } catch (err) {
               await i.editReply({ embeds: [embeds.errorEmbed('Sweep Gagal! 🧹', err.message)] });
             }
@@ -5311,25 +5311,25 @@ async function handlePetCommand(message, client, args) {
                 new ButtonBuilder().setCustomId('pet_btn_tower_climb_confirm').setLabel('🟢 Gunakan Soda/Rp 500').setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId('pet_btn_tower_climb_cancel').setLabel('🔴 Batal').setStyle(ButtonStyle.Secondary)
               );
-              
+
               const confMsg = await i.editReply({ embeds: [confirmEmb], components: [confirmRow] });
               const confCollector = confMsg.createMessageComponentCollector({ time: 30000, max: 1 });
-              
+
               confCollector.on('collect', async iConf => {
                 if (iConf.user.id !== author.id) return iConf.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
                 await iConf.deferUpdate();
-                
+
                 if (iConf.customId === 'pet_btn_tower_climb_confirm') {
                   try {
                     const fightRes = pet.climbTower(author.id, guildId, true);
                     const fightEmbed = embeds.petBattleLogEmbed(
-                      fightRes.isWin 
-                        ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉` 
+                      fightRes.isWin
+                        ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉`
                         : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
                       fightRes.logs,
                       fightRes.isWin
                     );
-                    
+
                     if (fightRes.isWin) {
                       let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
                       if (fightRes.gotCheckpointReward) {
@@ -5339,11 +5339,11 @@ async function handlePetCommand(message, client, args) {
                     } else {
                       fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
                     }
-                    
+
                     await i.editReply({ embeds: [fightEmbed], components: [] });
-                    
+
                     const freshPet = pet.getPet(author.id, guildId);
-                    await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+                    await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
                   } catch (err) {
                     await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)], components: [] });
                   }
@@ -5356,13 +5356,13 @@ async function handlePetCommand(message, client, args) {
               try {
                 const fightRes = pet.climbTower(author.id, guildId, false);
                 const fightEmbed = embeds.petBattleLogEmbed(
-                  fightRes.isWin 
-                    ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉` 
+                  fightRes.isWin
+                    ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉`
                     : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
                   fightRes.logs,
                   fightRes.isWin
                 );
-                
+
                 if (fightRes.isWin) {
                   let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
                   if (fightRes.gotCheckpointReward) {
@@ -5372,11 +5372,11 @@ async function handlePetCommand(message, client, args) {
                 } else {
                   fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
                 }
-                
+
                 await i.editReply({ embeds: [fightEmbed] });
-                
+
                 const freshPet = pet.getPet(author.id, guildId);
-                await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => {});
+                await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
               } catch (err) {
                 await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)] });
               }
@@ -5390,7 +5390,7 @@ async function handlePetCommand(message, client, args) {
       collector.on('end', async () => {
         const freshData = getTowerPanelData(author.id, guildId, activePet);
         freshData.components = [];
-        await replyMsg.edit(freshData).catch(() => {});
+        await replyMsg.edit(freshData).catch(() => { });
       });
 
     } catch (err) {
@@ -5417,7 +5417,7 @@ async function handlePetCommand(message, client, args) {
         const boss = pet.getOrCreateWorldBoss(gId);
         const weekStart = pet.getWeekStartString();
         const participant = database.get('SELECT * FROM world_boss_participants WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?', [userId, gId, freshPet.pet_name, weekStart]);
-        
+
         const embed = embeds.petRaidEmbed(author, freshPet, boss, participant);
 
         const row = new ActionRowBuilder().addComponents(
@@ -5438,15 +5438,15 @@ async function handlePetCommand(message, client, args) {
         try {
           if (i.customId === 'pet_btn_close_panel') {
             collector.stop();
-            await replyMsg.delete().catch(() => {});
+            await replyMsg.delete().catch(() => { });
           } else if (i.customId === 'pet_btn_raid_soda') {
             await i.deferReply({ flags: 64 });
             try {
               const freshPet = pet.getPet(author.id, guildId);
               const fightRes = pet.attackWorldBoss(author.id, guildId, true);
-              
+
               const fightEmbed = embeds.petBattleLogEmbed(
-                fightRes.bossKilled 
+                fightRes.bossKilled
                   ? `🎉 WORLD BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
                   : `⚔️ LAPORAN SERANGAN WORLD BOSS ⚔️`,
                 fightRes.logs,
@@ -5462,9 +5462,9 @@ async function handlePetCommand(message, client, args) {
               }
 
               await i.editReply({ embeds: [fightEmbed] });
-              
+
               const pFresh = pet.getPet(author.id, guildId);
-              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => { });
             } catch (err) {
               await i.editReply({ embeds: [embeds.errorEmbed('Serangan Gagal! 🥤', err.message)] });
             }
@@ -5473,9 +5473,9 @@ async function handlePetCommand(message, client, args) {
             try {
               const freshPet = pet.getPet(author.id, guildId);
               const fightRes = pet.attackWorldBoss(author.id, guildId, false);
-              
+
               const fightEmbed = embeds.petBattleLogEmbed(
-                fightRes.bossKilled 
+                fightRes.bossKilled
                   ? `🎉 WORLD BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
                   : `⚔️ LAPORAN SERANGAN WORLD BOSS ⚔️`,
                 fightRes.logs,
@@ -5491,9 +5491,9 @@ async function handlePetCommand(message, client, args) {
               }
 
               await i.editReply({ embeds: [fightEmbed] });
-              
+
               const pFresh = pet.getPet(author.id, guildId);
-              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => {});
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => { });
             } catch (err) {
               await i.editReply({ embeds: [embeds.errorEmbed('Serangan Gagal! ⚔️', err.message)] });
             }
@@ -5506,7 +5506,7 @@ async function handlePetCommand(message, client, args) {
       collector.on('end', async () => {
         const freshData = getRaidPanelData(author.id, guildId, activePet);
         freshData.components = [];
-        await replyMsg.edit(freshData).catch(() => {});
+        await replyMsg.edit(freshData).catch(() => { });
       });
 
     } catch (err) {
@@ -5559,10 +5559,10 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.adoptPet(author.id, guildId, petName, petType, paymentSource);
           const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil dibeli seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>. Ketik \`.pet\` untuk merawat.`);
-          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
         } catch (err) {
           const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
-          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
         }
       });
     } catch (err) {
@@ -5674,10 +5674,10 @@ async function handlePetCommand(message, client, args) {
         try {
           const res = pet.buyItem(author.id, guildId, itemId, qty, paymentSource);
           const successEmb = embeds.successEmbed('Pembelian Sukses! 🛒', `Berhasil membeli **${qty} pcs ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!\n📦 Persediaan Anda saat ini: \`${res.newInventoryQty} pcs\`.`);
-          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
         } catch (err) {
           const errEmb = embeds.errorEmbed('Pembelian Gagal!', err.message);
-          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
         }
       });
     } catch (err) {
@@ -5788,10 +5788,10 @@ async function handlePetCommand(message, client, args) {
             `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
             `📉 Sisa saldo ${sisaText}.`
           );
-          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
         } catch (err) {
           const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
-          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+          await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
         }
       });
     } catch (err) {
@@ -5949,7 +5949,7 @@ async function handlePetCommand(message, client, args) {
         );
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
-      
+
       const petCardModule = require('./petCard');
       let petExplorer = await petCardModule.getExpeditionMapListAttachment(pet.EXPEDITION_MAPS);
       if (!petExplorer) {
@@ -5970,7 +5970,7 @@ async function handlePetCommand(message, client, args) {
       const chosenMapId = await new Promise((resolve) => {
         collector.on('collect', async interaction => {
           const val = parseInt(interaction.values[0]);
-          await interaction.deferUpdate().catch(() => {});
+          await interaction.deferUpdate().catch(() => { });
           collector.stop();
           resolve(val);
         });
@@ -5979,7 +5979,7 @@ async function handlePetCommand(message, client, args) {
           if (reason === 'time' && collected.size === 0) {
             const disabledSelectMenu = StringSelectMenuBuilder.from(selectMenu).setDisabled(true);
             const disabledRow = new ActionRowBuilder().addComponents(disabledSelectMenu);
-            replyMsg.edit({ components: [disabledRow] }).catch(() => {});
+            replyMsg.edit({ components: [disabledRow] }).catch(() => { });
             resolve(null);
           }
         });
@@ -5996,7 +5996,7 @@ async function handlePetCommand(message, client, args) {
     const guildLobbies = Array.from(activeLobby.values()).filter(l => l.guildId === guildId);
     if (guildLobbies.length >= 2) {
       const emb = embeds.warnEmbed('Lobi Penuh!', 'Maksimal **2 lobi ekspedisi pet aktif** telah tercapai secara bersamaan di server ini! Silakan tunggu salah satu selesai.');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
 
@@ -6004,19 +6004,19 @@ async function handlePetCommand(message, client, args) {
     const lobbyKey = `${guildId}-${author.id}`;
     if (activeLobby.has(lobbyKey)) {
       const emb = embeds.warnEmbed('Lobi Aktif!', 'Anda sudah memiliki lobi ekspedisi pet yang sedang berjalan!');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
 
     const initiatorPet = pet.getPet(author.id, guildId);
     if (!initiatorPet || initiatorPet.status === 'DEAD' || initiatorPet.status === 'EGG') {
       const emb = embeds.errorEmbed('Gagal Memulai!', 'Peliharaan aktif Anda sedang mati, berupa telur, atau Anda tidak memilikinya!');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
     if (initiatorPet.health < 40) {
       const emb = embeds.errorEmbed('HP Kurang!', `Pet Anda **${initiatorPet.pet_name}** terlalu lelah/sakit (HP ${initiatorPet.health}% < 40) untuk ekspedisi!`);
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
 
@@ -6024,14 +6024,14 @@ async function handlePetCommand(message, client, args) {
       pet.checkExpeditionLimit(author.id, guildId, true); // dryRun = true
     } catch (err) {
       const emb = embeds.errorEmbed('Batas Ekspedisi Tercapai!', err.message);
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
 
     const wallet = economy.getWallet(author.id, guildId);
     if (wallet.balance < 250) {
       const emb = embeds.errorEmbed('Saldo Kurang!', 'Anda memerlukan minimal Rp 250 untuk biaya ransum ekspedisi!');
-      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => {});
+      if (promptMsgToEdit) return promptMsgToEdit.edit({ content: null, embeds: [emb], components: [], attachments: [] }).catch(() => { });
       return message.reply({ embeds: [emb] });
     }
 
@@ -6096,7 +6096,7 @@ async function handlePetCommand(message, client, args) {
       components: [row]
     };
     if (lobbyFiles.length > 0) replyMsgOpts.files = lobbyFiles;
-    
+
     let replyMsg;
     if (promptMsgToEdit) {
       replyMsgOpts.attachments = [];
@@ -6122,7 +6122,7 @@ async function handlePetCommand(message, client, args) {
         }
 
         // Hapus tombol dari pesan lobi saat ini
-        await replyMsg.edit({ components: [] }).catch(() => {});
+        await replyMsg.edit({ components: [] }).catch(() => { });
 
         // ⭐ LOADING SCREEN: Animasi transisi premium sebelum pertandingan dimulai
         const loadingParticipantsData = [];
@@ -6159,7 +6159,7 @@ async function handlePetCommand(message, client, args) {
           try {
             const loadingImg = new AttachmentBuilder('./assets/expedition_loading.png', { name: 'expedition_loading.png' });
             loadingFiles.push(loadingImg);
-          } catch (err) {}
+          } catch (err) { }
         }
         const loadingOpts = {
           content: `⏳ **Petualangan Tim Pet ke ${selectedMap.name} dimulai!** Bersiaplah...`,
@@ -6168,16 +6168,16 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (loadingFiles.length > 0) loadingOpts.files = loadingFiles;
-        await replyMsg.edit(loadingOpts).catch(() => {});
+        await replyMsg.edit(loadingOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 3000)); // Loading screen 3 detik
 
         // ⭐ STAGE 1 TRANSITION: Animasi transisi ke Stage 1
         let s1TransAtt = null;
         try {
           s1TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(1, 'Pemilihan Jalur Tim', selectedMap, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s1TransAtt) s1TransAtt = getMapAttachment(mapChoice);
-        
+
         const s1TransOpts = {
           content: `🚪 **[STAGE 1] Memasuki Area:** Pemilihan Jalur Tim...`,
           embeds: [],
@@ -6185,7 +6185,7 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s1TransAtt) s1TransOpts.files = [s1TransAtt];
-        await replyMsg.edit(s1TransOpts).catch(() => {});
+        await replyMsg.edit(s1TransOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
         const stage1Row = new ActionRowBuilder().addComponents(
@@ -6197,7 +6197,7 @@ async function handlePetCommand(message, client, args) {
         let s1Att = null;
         try {
           s1Att = await petCardModule.getStage1PathSelectionAttachment(selectedMap, author.username, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s1Att) s1Att = getMapAttachment(mapChoice);
 
         const s1EditOpts = {
@@ -6207,7 +6207,7 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s1Att) s1EditOpts.files = [s1Att];
-        await replyMsg.edit(s1EditOpts).catch(() => {});
+        await replyMsg.edit(s1EditOpts).catch(() => { });
 
         const pathCollector = replyMsg.createMessageComponentCollector({
           filter: i => i.user.id === author.id && ['exp_path_safe', 'exp_path_shortcut', 'exp_path_swamp'].includes(i.customId),
@@ -6253,7 +6253,7 @@ async function handlePetCommand(message, client, args) {
               pathChoice = 'SAFE';
               pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
             }
-            await i.deferUpdate().catch(() => {});
+            await i.deferUpdate().catch(() => { });
             resolve();
           });
 
@@ -6269,7 +6269,7 @@ async function handlePetCommand(message, client, args) {
         let s1dAtt = null;
         try {
           s1dAtt = await petCardModule.getStage1ResultAttachment(selectedMap, author.username, pathText, pathChoice, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s1dAtt) s1dAtt = getMapAttachment(mapChoice);
 
         const s1dOpts = {
@@ -6279,14 +6279,14 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s1dAtt) s1dOpts.files = [s1dAtt];
-        await replyMsg.edit(s1dOpts).catch(() => {});
+        await replyMsg.edit(s1dOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 2000));
 
         // ⭐ STAGE 2 TRANSITION: Animasi transisi ke Stage 2
         let s2TransAtt = null;
         try {
           s2TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(2, 'Kejadian Acak', selectedMap, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s2TransAtt) s2TransAtt = getMapAttachment(mapChoice);
 
         const s2TransOpts = {
@@ -6296,7 +6296,7 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s2TransAtt) s2TransOpts.files = [s2TransAtt];
-        await replyMsg.edit(s2TransOpts).catch(() => {});
+        await replyMsg.edit(s2TransOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
         // 📦 STAGE 2: KEJADIAN ACAK (Random Encounter Event)
@@ -6320,7 +6320,7 @@ async function handlePetCommand(message, client, args) {
           let s2cAtt = null;
           try {
             s2cAtt = await petCardModule.getStage2ChestAttachment(selectedMap, author.username, hasLockpick, mapChoice);
-          } catch (err) {}
+          } catch (err) { }
           if (!s2cAtt) s2cAtt = getMapAttachment(mapChoice);
 
           const s2cOpts = {
@@ -6330,7 +6330,7 @@ async function handlePetCommand(message, client, args) {
             attachments: []
           };
           if (s2cAtt) s2cOpts.files = [s2cAtt];
-          await replyMsg.edit(s2cOpts).catch(() => {});
+          await replyMsg.edit(s2cOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
             filter: i => i.user.id === author.id && ['exp_event_lockpick', 'exp_event_force', 'exp_event_leave'].includes(i.customId),
@@ -6371,7 +6371,7 @@ async function handlePetCommand(message, client, args) {
                 eventChoice = 'LEAVE';
                 eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
               }
-              await i.deferUpdate().catch(() => {});
+              await i.deferUpdate().catch(() => { });
               resolve();
             });
 
@@ -6393,7 +6393,7 @@ async function handlePetCommand(message, client, args) {
           let s2wAtt = null;
           try {
             s2wAtt = await petCardModule.getStage2WaterfallAttachment(selectedMap, author.username, mapChoice);
-          } catch (err) {}
+          } catch (err) { }
           if (!s2wAtt) s2wAtt = getMapAttachment(mapChoice);
 
           const s2wOpts = {
@@ -6403,7 +6403,7 @@ async function handlePetCommand(message, client, args) {
             attachments: []
           };
           if (s2wAtt) s2wOpts.files = [s2wAtt];
-          await replyMsg.edit(s2wOpts).catch(() => {});
+          await replyMsg.edit(s2wOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
             filter: i => i.user.id === author.id && ['exp_event_drink', 'exp_event_leave'].includes(i.customId),
@@ -6432,7 +6432,7 @@ async function handlePetCommand(message, client, args) {
                 eventChoice = 'LEAVE';
                 eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
               }
-              await i.deferUpdate().catch(() => {});
+              await i.deferUpdate().catch(() => { });
               resolve();
             });
 
@@ -6449,7 +6449,7 @@ async function handlePetCommand(message, client, args) {
         let s2dAtt = null;
         try {
           s2dAtt = await petCardModule.getStage2ResultAttachment(selectedMap, author.username, eventText, isChest, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s2dAtt) s2dAtt = getMapAttachment(mapChoice);
 
         const s2dOpts = {
@@ -6459,14 +6459,14 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s2dAtt) s2dOpts.files = [s2dAtt];
-        await replyMsg.edit(s2dOpts).catch(() => {});
+        await replyMsg.edit(s2dOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 2000));
 
         // ⭐ STAGE 3 TRANSITION: Animasi transisi ke Boss Battle
         let s3TransAtt = null;
         try {
           s3TransAtt = await petCardModule.getExpeditionStageTransitionAttachment(3, 'Pertempuran Bos Akhir', selectedMap, mapChoice);
-        } catch (err) {}
+        } catch (err) { }
         if (!s3TransAtt) s3TransAtt = getMapAttachment(mapChoice);
 
         const s3TransOpts = {
@@ -6476,7 +6476,7 @@ async function handlePetCommand(message, client, args) {
           attachments: []
         };
         if (s3TransAtt) s3TransOpts.files = [s3TransAtt];
-        await replyMsg.edit(s3TransOpts).catch(() => {});
+        await replyMsg.edit(s3TransOpts).catch(() => { });
         await new Promise(r => setTimeout(r, 2000)); // Transition 2 detik
 
         // ⚔️ STAGE 3: PERTEMPURAN BOS AKHIR (QTE Turn-Based & Hasil)
@@ -6509,7 +6509,7 @@ async function handlePetCommand(message, client, args) {
             const member = membersMap[targetUserId] || await message.guild.members.fetch(targetUserId).catch(() => null);
             const targetMemberName = member ? member.user.username : 'Pawang';
             qteAtt = await petCardModule.getExpeditionQteStepAttachment(stepNumber, totalSteps, bossName, targetMemberName, petObj, mapChoice);
-          } catch (err) {}
+          } catch (err) { }
           if (!qteAtt) qteAtt = getMapAttachment(mapChoice);
 
           const qteOpts = {
@@ -6519,7 +6519,7 @@ async function handlePetCommand(message, client, args) {
             attachments: []
           };
           if (qteAtt) qteOpts.files = [qteAtt];
-          await replyMsg.edit(qteOpts).catch(() => {});
+          await replyMsg.edit(qteOpts).catch(() => { });
 
           // Setup collector interaksi tombol
           const qteCollector = replyMsg.createMessageComponentCollector({
@@ -6535,7 +6535,7 @@ async function handlePetCommand(message, client, args) {
                 if (iQte.user.id === targetUserId) {
                   turnCompleted = true;
                   qteCollector.stop('success');
-                  await iQte.deferUpdate().catch(() => {});
+                  await iQte.deferUpdate().catch(() => { });
                   resolveTurn();
                 } else if (currentLobby.participants.includes(iQte.user.id)) {
                   // Pengklik adalah kru lain (Interference)
@@ -6543,11 +6543,11 @@ async function handlePetCommand(message, client, args) {
                   failedUserId = iQte.user.id;
                   reasonType = 'Interference';
                   qteCollector.stop('interference');
-                  await iQte.deferUpdate().catch(() => {});
+                  await iQte.deferUpdate().catch(() => { });
                   resolveTurn();
                 } else {
                   // Pengklik bukan peserta lobi ekspedisi
-                  await iQte.reply({ content: '❌ Anda tidak ikut dalam ekspedisi ini!', flags: 64 }).catch(() => {});
+                  await iQte.reply({ content: '❌ Anda tidak ikut dalam ekspedisi ini!', flags: 64 }).catch(() => { });
                 }
               }
             });
@@ -6577,7 +6577,7 @@ async function handlePetCommand(message, client, args) {
             const member = membersMap[failedUserId] || await message.guild.members.fetch(failedUserId).catch(() => null);
             const failedMemberName = member ? member.user.username : 'Pawang';
             failAtt = await petCardModule.getExpeditionQteFailureAttachment(selectedMap.name, failedMemberName, reasonType, failResults, mapChoice, message.guild);
-          } catch (err) {}
+          } catch (err) { }
           if (!failAtt) failAtt = getMapAttachment(mapChoice);
 
           const failFiles = [];
@@ -6585,7 +6585,7 @@ async function handlePetCommand(message, client, args) {
           try {
             const petExplorer = new AttachmentBuilder('./assets/pet_explorer.png', { name: 'pet_explorer.png' });
             failFiles.push(petExplorer);
-          } catch (err) {}
+          } catch (err) { }
 
           const failOpts = {
             content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
@@ -6735,14 +6735,14 @@ async function handlePetCommand(message, client, args) {
           const endTimeUnix = currentLobby.endTimeUnix || Math.floor((Date.now() + 30000) / 1000);
           const petCard = require('./petCard');
           const lobbyCardAttachment = await petCard.getExpeditionLobbyAttachment(
-             author.id,
-             selectedMap,
-             participantsData,
-             calc.successRate,
-             elementalLogsTextVal,
-             endTimeUnix,
-             mapChoice,
-             guild
+            author.id,
+            selectedMap,
+            participantsData,
+            calc.successRate,
+            elementalLogsTextVal,
+            endTimeUnix,
+            mapChoice,
+            guild
           );
 
           const joinFiles = [];
@@ -6785,11 +6785,11 @@ async function handlePetCommand(message, client, args) {
         console.error('Error in expedition lobby collector:', err);
         try {
           if (iExp.replied || iExp.deferred) {
-            await iExp.followUp({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => {});
+            await iExp.followUp({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => { });
           } else {
-            await iExp.reply({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => {});
+            await iExp.reply({ embeds: [embeds.errorEmbed('Terjadi Kesalahan!', err.message)], flags: 64 }).catch(() => { });
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     });
 
@@ -7076,11 +7076,11 @@ async function handlePetCommand(message, client, args) {
                 `❤️ HP: **${res.pet.health}%** | 🍖 Kenyangan: **${res.pet.hunger}%** | 💧 Hidrasi: **${res.pet.thirst}%**\n\n` +
                 `📉 Sisa saldo ${sisaText}.`
               );
-              await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+              await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
               collector.stop();
             } catch (err) {
               const errEmb = embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message);
-              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
             }
           });
         } catch (err) {
@@ -7102,14 +7102,14 @@ async function handlePetCommand(message, client, args) {
       // ── TOMBOL GACHA PET ──
       else if (iPet.customId === 'pet_btn_gacha') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
         return handlePetGachaPanel(message, client, false);
       }
 
       // ── TOMBOL UPGRADE BINTANG ──
       else if (iPet.customId === 'pet_btn_upgrade') {
         collector.stop();
-        await replyMsg.delete().catch(() => {});
+        await replyMsg.delete().catch(() => { });
         return handlePetUpgradePanel(message, client, false);
       }
 
@@ -7158,7 +7158,7 @@ async function handlePetCommand(message, client, args) {
               components: []
             });
             // Refresh dashboard
-            await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => {});
+            await replyMsg.edit(getDashboardPanel(author.id, guildId)).catch(() => { });
           } catch (err) {
             await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
           }
@@ -7208,12 +7208,12 @@ async function handlePetCommand(message, client, args) {
                 const res = pet.adoptPet(author.id, guildId, pName, pType, paymentSource);
                 const successEmb = embeds.successEmbed('Adopsi Sukses! 🥚', `Selamat! Telur pet **${res.pet_name}** the **${res.pet_type}** berhasil diadopsi seharga **Rp 1.500**!\n⏳ Telur akan menetas <t:${res.hatch_at}:R>.`);
 
-                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
                 collector.stop();
                 await replyMsg.delete().catch(() => { });
               } catch (err) {
                 const errEmb = embeds.errorEmbed('Adopsi Gagal!', err.message);
-                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
               }
             });
           } catch (err) {
@@ -7581,18 +7581,18 @@ async function handleGardenCommand(message, client, args, commandName) {
                 try {
                   const res = garden.buySeed(author.id, guildId, itemKey, qty, paymentSource);
                   const statusMsg = `✅ Berhasil membeli **${qty}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!`;
-                  
+
                   const walletShop = economy.getWallet(author.id, guildId);
                   await replyMsg.edit({
                     embeds: [embeds.gardenShopEmbed(author, walletShop, statusMsg)],
                     components: [shopRow1, shopRow2, shopRow3]
-                  }).catch(() => {});
+                  }).catch(() => { });
 
                   const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
-                  await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                  await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
                 } catch (err) {
                   const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-                  await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                  await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
                 }
               });
             } catch (err) {
@@ -7711,10 +7711,10 @@ async function handleGardenCommand(message, client, args, commandName) {
               `Anda berhasil membeli **${res.quantityBought}x ${res.itemName}** seharga **Rp ${res.cost.toLocaleString('id-ID')}**!\n\n` +
               `💰 Saldo tersisa: ${sisaText}.`
             );
-            await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+            await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
           } catch (err) {
             const errEmb = embeds.errorEmbed('Pembelian Gagal!', err.message);
-            await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+            await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
           }
         });
       } catch (err) {
@@ -7947,10 +7947,10 @@ async function handleBlackMarketCommand(message, client, args) {
           `🎒 Jumlah di kantongmu sekarang: **x${res.newQty}**.\n\n` +
           `📉 Sisa saldo ${sisaText}.`
         );
-        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+        await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
       } catch (err) {
         const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
-        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
       }
     });
   }
@@ -8048,7 +8048,7 @@ async function handleBlackMarketCommand(message, client, args) {
         collector.stop();
       } catch (err) {
         const errEmb = embeds.errorEmbed('Transaksi Gagal!', err.message);
-        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+        await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
       }
     });
   });
@@ -8122,7 +8122,7 @@ async function handleSlotCommand(message, client, args) {
 
   try {
     const casino = require('./casino');
-    
+
     // Cek saldo awal sebelum memulai animasi agar tidak bisa exploit spin gratis
     const wallet = economy.getWallet(author.id, guildId);
     let bet = 0;
@@ -8145,14 +8145,14 @@ async function handleSlotCommand(message, client, args) {
 
     // Tampilkan animasi rolling
     const spinMsg = await message.reply('🎰 **[ GACHA SLOT... ]** Mesin dihidupkan, tuas ditarik... 🪙');
-    
+
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     await delay(1000);
-    await spinMsg.edit('🎰 `[ SPINNING REELS ] ─── [ 🔄 🔄 🔄 ]` Menyusun simbol...').catch(() => {});
+    await spinMsg.edit('🎰 `[ SPINNING REELS ] ─── [ 🔄 🔄 🔄 ]` Menyusun simbol...').catch(() => { });
     await delay(1200);
-    await spinMsg.edit('🎰 `[ STOPPING REEL 1 ] ── [ ⏳ 🔄 🔄 ]` Mengunci kolom pertama...').catch(() => {});
+    await spinMsg.edit('🎰 `[ STOPPING REEL 1 ] ── [ ⏳ 🔄 🔄 ]` Mengunci kolom pertama...').catch(() => { });
     await delay(1000);
-    
+
     const res = casino.spinSlot(author.id, guildId, betInput);
 
     if (res.won) {
@@ -8556,15 +8556,15 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
     } catch (err) {
       if (!iGacha.replied && !iGacha.deferred) {
-        await iGacha.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+        await iGacha.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => { });
       } else {
-        await iGacha.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+        await iGacha.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => { });
       }
     }
   });
 
   collector.on('end', async () => {
-    await editGachaMessage({ components: [] }).catch(() => {});
+    await editGachaMessage({ components: [] }).catch(() => { });
   });
 }
 
@@ -8601,16 +8601,16 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
     const unusedTp = pData.unused_tp || 0;
     const starBonus = pet.getStarBonuses(pData.star_level || 1);
     const maxHP = pet.getMaxHP(pData);
-    
+
     // ATK Damage
     const speciesBaseAtk = pet.GACHA_SPECIES[pData.pet_type]?.baseAtk || 10;
     const totalAtk = speciesBaseAtk + pData.level * 5 + (pData.stat_str || 0) * 2;
-    
+
     // DEF (Damage Reduction)
     const speciesBaseDef = pet.GACHA_SPECIES[pData.pet_type]?.baseDef || 0;
     const defGym = Math.min(50, (pData.stat_def || 0) * 0.5);
     const totalDefPct = (speciesBaseDef) + (starBonus.defBonusPct * 100) + defGym;
-    
+
     // DEX (Crit Rate & Expedition Success)
     const critRate = Math.min(35, (pData.stat_dex || 0) * 0.5);
     const expSuccess = Math.min(5, (pData.stat_dex || 0) * 0.1);
@@ -8673,9 +8673,9 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
 
   const editMessage = async (payload) => {
     if (isInteraction) {
-      await context.editReply(payload).catch(() => {});
+      await context.editReply(payload).catch(() => { });
     } else {
-      await replyMsg.edit(payload).catch(() => {});
+      await replyMsg.edit(payload).catch(() => { });
     }
   };
 
@@ -8688,9 +8688,9 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
       if (iGym.customId === 'pet_gym_btn_close') {
         collector.stop();
         if (isInteraction) {
-          await context.deleteReply().catch(() => {});
+          await context.deleteReply().catch(() => { });
         } else {
-          await replyMsg.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
           await handlePetCommand(context, client, []);
         }
         return;
@@ -8701,7 +8701,7 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
           .setColor(0xFF5252)
           .setTitle('⚠️ KONFIRMASI RESET STAT GYM ⚠️')
           .setDescription(`Apakah Anda yakin ingin me-reset seluruh alokasi stat pet Anda kembali ke 0?\n\n💰 **Biaya:** Rp 1.000 koin.\n✨ Seluruh Poin Latihan (TP) akan dikembalikan utuh.`);
-        
+
         const confirmRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('pet_gym_reset_confirm').setLabel('Yes, Reset!').setStyle(ButtonStyle.Danger),
           new ButtonBuilder().setCustomId('pet_gym_reset_cancel').setLabel('Batal').setStyle(ButtonStyle.Secondary)
@@ -8725,7 +8725,7 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
             `💸 Biaya reset **Rp ${res.cost.toLocaleString('id-ID')}** koin dipotong dari dompet Anda.\n` +
             `🔴 **${res.pointsRefunded} Poin Latihan (TP)** telah dikembalikan ke pool sisa TP.`
           );
-          
+
           await iGym.update({ embeds: [successEmb], components: [] });
           await new Promise(r => setTimeout(r, 3000));
           await editMessage(getGymPanelData(author.id, guildId));
@@ -8763,7 +8763,7 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
       const finalData = getGymPanelData(author.id, guildId);
       finalData.components = [];
       await editMessage(finalData);
-    } catch (err) {}
+    } catch (err) { }
   });
 }
 
@@ -9008,15 +9008,15 @@ async function handlePetUpgradePanel(context, client, isInteraction = false) {
 
     } catch (err) {
       if (!iUpgrade.replied && !iUpgrade.deferred) {
-        await iUpgrade.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+        await iUpgrade.reply({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => { });
       } else {
-        await iUpgrade.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => {});
+        await iUpgrade.followUp({ content: `❌ Error: ${err.message}`, flags: 64 }).catch(() => { });
       }
     }
   });
 
   collector.on('end', async () => {
-    await editUpgradeMessage({ components: [] }).catch(() => {});
+    await editUpgradeMessage({ components: [] }).catch(() => { });
   });
 }
 
@@ -9103,7 +9103,7 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
           try {
             const qtyStr = submitted.fields.getTextInputValue('buy_qty');
             const qty = Math.max(1, parseInt(qtyStr) || 1);
-            
+
             const itemInfo = pet.PET_ITEMS[selectedItemId.toUpperCase()];
             if (!itemInfo) throw new Error('Item tidak ditemukan di toko pet!');
             const totalPrice = itemInfo.price * qty;
@@ -9112,14 +9112,14 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
               try {
                 const res = pet.buyItem(author.id, guildId, selectedItemId, qty, paymentSource);
                 const statusMsg = `✅ Berhasil membeli **${qty}x ${res.item.name}** seharga **Rp ${res.totalPrice.toLocaleString('id-ID')}**!`;
-                
-                await replyMsg.edit(getShopPanelData(author.id, guildId, statusMsg)).catch(() => {});
+
+                await replyMsg.edit(getShopPanelData(author.id, guildId, statusMsg)).catch(() => { });
 
                 const successEmb = embeds.successEmbed('Belanja Sukses!', statusMsg);
-                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => {});
+                await iConfirm.update({ embeds: [successEmb], components: [] }).catch(() => { });
               } catch (err) {
                 const errEmb = embeds.errorEmbed('Belanja Gagal!', err.message);
-                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+                await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
               }
             });
           } catch (err) {
@@ -9213,7 +9213,7 @@ async function handlePetPvPCommand(message, opponent, bet, client) {
         try {
           // Eksekusi PvP
           const result = pet.executePvP(author.id, opponent.id, guildId, bet);
-          
+
           let files = [];
           // ── Visual PvP Result Card (Premium Canvas) ──
           try {
@@ -9453,7 +9453,7 @@ async function handlePetAdminCommand(message, client, args) {
  */
 async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isInteraction, member, paymentSource = 'pocket' }) {
   const gachaCost = config.gacha.COST || 250;
-  
+
   let balance = 0;
   if (paymentSource === 'bank') {
     const bankSavings = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [user.id, guildId]) || { balance: 0 };
@@ -9941,7 +9941,7 @@ async function handleEconomyCommands(message, client) {
     const isBlacklisted = database.get('SELECT 1 FROM bot_blacklist WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
     if (isBlacklisted) {
       const warnMsg = await message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Anda telah di-blacklist oleh Admin/Owner dan tidak dapat menggunakan perintah bot ini.')] });
-      setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+      setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
       return true;
     }
   }
@@ -9949,7 +9949,7 @@ async function handleEconomyCommands(message, client) {
   // ── PENGALIHAN PERINTAH LAMA KE PORTAL HUB (.hub) ──
   const redirectedCommands = ['shop', 'rolemarket', 'market', 'saham', 'bank', 'bm', 'blackmarket', 'kos', 'kosan'];
   if (redirectedCommands.includes(commandName)) {
-    await message.delete().catch(() => {});
+    await message.delete().catch(() => { });
     const redirectEmb = embeds.warnEmbed(
       'Perintah Dialihkan! 🌐',
       `<@${author.id}>, perintah \`.${commandName}\` kini sudah tidak dapat digunakan lagi.\n\n` +
@@ -9996,7 +9996,7 @@ async function handleEconomyCommands(message, client) {
     const replyMsg = await message.channel.send({ embeds: [redirectEmb], components }).catch(() => null);
     if (replyMsg) {
       setTimeout(() => {
-        replyMsg.delete().catch(() => {});
+        replyMsg.delete().catch(() => { });
       }, 15000);
     }
     return true;
@@ -10005,22 +10005,22 @@ async function handleEconomyCommands(message, client) {
   // ── PROTEKSI AKTIF EKSPEDISI PET DI CHANNEL ──
   const expeditionLocks = client.expeditionLocks = client.expeditionLocks || new Map();
   if (expeditionLocks.has(message.channelId)) {
-    await message.delete().catch(() => {});
+    await message.delete().catch(() => { });
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${author.id}>, **Pet Ekspedisi** sedang berlangsung di channel ini! Harap tunggu sampai ekspedisi selesai sebelum menggunakan perintah bot.`
     }).catch(() => null);
-    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
     return true;
   }
 
   // ── PROTEKSI AKTIF PET SAFARI DI CHANNEL ──
   const safariLocks = client.safariLocks = client.safariLocks || new Map();
   if (safariLocks.has(message.channelId)) {
-    await message.delete().catch(() => {});
+    await message.delete().catch(() => { });
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${author.id}>, **Pet Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai sebelum menggunakan perintah bot.`
     }).catch(() => null);
-    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+    if (warnMsg) setTimeout(() => warnMsg.delete().catch(() => { }), 5000);
     return true;
   }
 
@@ -10028,14 +10028,14 @@ async function handleEconomyCommands(message, client) {
   if (message.channelId === '1508417228624887928') {
     const activeLobby = robbery.activeHeists.get(guildId);
     if (activeLobby && commandName !== 'heist') {
-      await message.delete().catch(() => {});
+      await message.delete().catch(() => { });
       const warnMsg = await message.channel.send({
         content: `⚠️ <@${author.id}>, sistem **Bank Heist** saat ini sedang berjalan! Harap tunggu sampai operasi Heist selesai sebelum menggunakan perintah bot lain.`
       }).catch(() => null);
 
       if (warnMsg) {
         setTimeout(() => {
-          warnMsg.delete().catch(() => {});
+          warnMsg.delete().catch(() => { });
         }, 5000);
       }
       return true;
@@ -10045,14 +10045,14 @@ async function handleEconomyCommands(message, client) {
   // ── RESTRIKSI SALURAN UNTUK .ROB DAN .HEIST ──
   const allowedRobChannels = ['1508417228624887928', '1503324994153873458'];
   if ((commandName === 'rob' || commandName === 'heist') && !allowedRobChannels.includes(message.channelId)) {
-    await message.delete().catch(() => {});
+    await message.delete().catch(() => { });
     const warnMsg = await message.channel.send({
       content: `⚠️ <@${author.id}>, perintah \`.rob\` dan \`.heist\` hanya diperbolehkan di saluran khusus perampokan: <#1508417228624887928>!`
     }).catch(() => null);
 
     if (warnMsg) {
       setTimeout(() => {
-        warnMsg.delete().catch(() => {});
+        warnMsg.delete().catch(() => { });
       }, 5000);
     }
     return true;
@@ -10526,7 +10526,7 @@ async function handleEconomyCommands(message, client) {
             ? embeds.successEmbed(resultTitle, resultDesc)
             : embeds.errorEmbed(resultTitle, resultDesc);
 
-          await iChase.update({ embeds: [finalEmb], components: [] }).catch(() => {});
+          await iChase.update({ embeds: [finalEmb], components: [] }).catch(() => { });
         });
 
         chaseCollector.on('end', async () => {
@@ -10565,7 +10565,7 @@ async function handleEconomyCommands(message, client) {
               `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
 
             const failEmb = embeds.errorEmbed(resultTitle, resultDesc);
-            await chaseMsg.edit({ embeds: [failEmb], components: [] }).catch(() => {});
+            await chaseMsg.edit({ embeds: [failEmb], components: [] }).catch(() => { });
           }
         });
       };
@@ -10630,7 +10630,7 @@ async function handleEconomyCommands(message, client) {
                 )
                 .setTimestamp()
                 .setFooter({ text: 'Sistem Keamanan Kerajaan • Keamanan Bot Kosan 1A' });
-              
+
               await message.reply({ embeds: [zapEmbed] });
               return;
             }
@@ -10705,7 +10705,7 @@ async function handleEconomyCommands(message, client) {
             `🔒 **Hukuman Penjara:** Dijebloskan ke **sel selama 10 jam**!`
           );
 
-          await iAlarm.update({ embeds: [caughtEmb], components: [] }).catch(() => {});
+          await iAlarm.update({ embeds: [caughtEmb], components: [] }).catch(() => { });
         });
 
         alarmCollector.on('end', async () => {
@@ -10717,7 +10717,7 @@ async function handleEconomyCommands(message, client) {
                 .setStyle(ButtonStyle.Danger)
                 .setDisabled(true)
             );
-            await alarmMsg.edit({ components: [disabledRow] }).catch(() => {});
+            await alarmMsg.edit({ components: [disabledRow] }).catch(() => { });
 
             // Lanjutkan perampokan
             await executeRobberyAction();
@@ -10845,7 +10845,7 @@ async function handleEconomyCommands(message, client) {
                 embeds: [loadingEmbed],
                 components: [],
                 files: [lobbyLoadingImg]
-              }).catch(() => {});
+              }).catch(() => { });
               await new Promise(r => setTimeout(r, 3000)); // Loading screen selama 3 detik
 
               const participants = currentLobby.participants;
@@ -11076,7 +11076,7 @@ async function handleEconomyCommands(message, client) {
                 if (!targetUserObj) {
                   try {
                     targetUserObj = await client.users.fetch(step.targetUserId);
-                  } catch (e) {}
+                  } catch (e) { }
                 }
 
                 const stepAttachment = await petCard.getHeistStepAttachment(
@@ -11093,7 +11093,7 @@ async function handleEconomyCommands(message, client) {
                   embeds: [stepEmbed],
                   components: [stepRow],
                   files: stepAttachment ? [stepAttachment] : []
-                }).catch(() => {});
+                }).catch(() => { });
 
                 // Buat collector QTE selama 6 detik
                 const qteCollector = replyMsg.createMessageComponentCollector({
@@ -11109,29 +11109,29 @@ async function handleEconomyCommands(message, client) {
                       if (iQte.user.id === step.targetUserId) {
                         stepSuccess = true;
                         qteCollector.stop('success');
-                        await iQte.deferUpdate().catch(() => {});
+                        await iQte.deferUpdate().catch(() => { });
                         resolveQte();
-                      } 
+                      }
                       // Cek apakah pengklik adalah peserta heist lain (Interference Instafail!)
                       else if (participants.includes(iQte.user.id)) {
                         isHeistFailed = true;
                         qteCollector.stop('interference');
-                        
+
                         // Heist gagal instan karena salah klik
                         const res = robbery.executeHeistQteFailure(guildId, iQte.user.id, 'Interference');
                         const failEmbed = embeds.heistQteFailureEmbed(guild, iQte.user.id, 'Interference', participants);
                         const failAttachment = await petCard.getHeistFailureAttachment(iQte.user, 'Interference');
-                        
-                        await iQte.deferUpdate().catch(() => {});
+
+                        await iQte.deferUpdate().catch(() => { });
                         await replyMsg.edit({
                           content: `❌ **HEIST GAGAL: OPERASI DIGAGALKAN OLEH KRU!**`,
                           embeds: [failEmbed],
                           components: [],
                           files: failAttachment ? [failAttachment] : []
-                        }).catch(() => {});
-                        
+                        }).catch(() => { });
+
                         resolveQte();
-                      } 
+                      }
                       // Pengklik bukan peserta heist
                       else {
                         await iQte.reply({ content: `❌ Anda tidak berpartisipasi dalam perampokan ini!`, flags: 64 });
@@ -11149,18 +11149,18 @@ async function handleEconomyCommands(message, client) {
                     // Jika waktu habis (6 detik) dan tidak ditekan
                     if (!stepSuccess && !isHeistFailed) {
                       isHeistFailed = true;
-                      
+
                       const res = robbery.executeHeistQteFailure(guildId, step.targetUserId, 'Timeout');
                       const failEmbed = embeds.heistQteFailureEmbed(guild, step.targetUserId, 'Timeout', participants);
                       const failedUserObj = client.users.cache.get(step.targetUserId) || null;
                       const failAttachment = await petCard.getHeistFailureAttachment(failedUserObj, 'Timeout');
-                      
+
                       await replyMsg.edit({
                         content: `❌ **HEIST GAGAL: WAKTU REAKSI TIM HABIS!**`,
                         embeds: [failEmbed],
                         components: [],
                         files: failAttachment ? [failAttachment] : []
-                      }).catch(() => {});
+                      }).catch(() => { });
                     }
                     resolveQte();
                   });
@@ -11915,7 +11915,7 @@ async function handleEconomyCommands(message, client) {
                   try {
                     const member = await iSelectRepay.guild.members.fetch(d.creditor_id).catch(() => null);
                     if (member) displayName = member.displayName;
-                  } catch (err) {}
+                  } catch (err) { }
 
                   selectMenu.addOptions(
                     new StringSelectMenuOptionBuilder()
@@ -11926,7 +11926,7 @@ async function handleEconomyCommands(message, client) {
                 }
 
                 const cancelBtn = new ButtonBuilder().setCustomId('bank_repay_friend_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-                
+
                 const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
                 const rowBtn = new ActionRowBuilder().addComponents(cancelBtn);
 
@@ -11963,7 +11963,7 @@ async function handleEconomyCommands(message, client) {
 
                     modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
                     await iFriend.showModal(modal);
-                    await askFriendMsg.delete().catch(() => {});
+                    await askFriendMsg.delete().catch(() => { });
 
                     const submitted = await iFriend.awaitModalSubmit({
                       filter: (sub) => sub.customId === `bank_modal_repay_friend_${creditorId}` && sub.user.id === author.id,
@@ -11979,7 +11979,7 @@ async function handleEconomyCommands(message, client) {
                         try {
                           const credMember = await submitted.guild.members.fetch(creditorId).catch(() => null);
                           if (credMember) creditorName = credMember.displayName;
-                        } catch (err) {}
+                        } catch (err) { }
 
                         let desc = '';
                         if (res.isFullyPaid) {
@@ -12009,7 +12009,7 @@ async function handleEconomyCommands(message, client) {
                 const choiceBank = new ButtonBuilder().setCustomId('bank_repay_choice_bank').setLabel('🏛️ Pinjaman Bank').setStyle(ButtonStyle.Primary);
                 const choiceFriend = new ButtonBuilder().setCustomId('bank_repay_choice_friend').setLabel('👥 Hutang Teman').setStyle(ButtonStyle.Success);
                 const choiceCancel = new ButtonBuilder().setCustomId('bank_repay_choice_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary);
-                
+
                 const askChoiceMsg = await iBank.reply({
                   content: '❓ **PILIH UTANG YANG AKAN DIBAYAR**\nAnda memiliki pinjaman bank aktif dan hutang tebusan ke teman. Mana yang ingin Anda bayar?',
                   components: [new ActionRowBuilder().addComponents(choiceBank, choiceFriend, choiceCancel)],
@@ -12152,7 +12152,7 @@ async function handleEconomyCommands(message, client) {
 
                   modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
                   await iType.showModal(modal);
-                  await askTransferMsg.delete().catch(() => {});
+                  await askTransferMsg.delete().catch(() => { });
 
                   const submitted = await iType.awaitModalSubmit({
                     filter: (sub) => sub.customId === `bank_modal_tf_${selectedType}_${targetUserId}` && sub.user.id === author.id,
@@ -12287,7 +12287,7 @@ async function handleEconomyCommands(message, client) {
                               .setTitle('⏰ Waktu Konfirmasi Habis!')
                               .setDescription(`Tawaran pinjaman sebesar **Rp ${amount.toLocaleString('id-ID')}** dari <@${author.id}> kepada <@${targetUserId}> telah kedaluwarsa karena tidak direspons.`)
                               .setTimestamp();
-                            await promptMessage.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => {});
+                            await promptMessage.edit({ embeds: [timeoutEmbed], components: [] }).catch(() => { });
                           }
                         });
 
@@ -12301,7 +12301,7 @@ async function handleEconomyCommands(message, client) {
                       try {
                         const targetMember = await submitted.guild.members.fetch(targetUserId).catch(() => null);
                         if (targetMember) targetName = targetMember.displayName;
-                      } catch (err) {}
+                      } catch (err) { }
 
                       const roomTierName = res.roomTier === 'DEFAULT' ? 'Biasa / Tanpa Sewa' :
                         res.roomTier === 'KIPAS' ? '💨 Kamar Kipas Angin' :
@@ -12404,8 +12404,8 @@ async function handleEconomyCommands(message, client) {
           embeds: [embeds.errorEmbed('Cooldown!', `Perintah ini sedang cooldown. Silakan tunggu **${remaining} detik** lagi.`)]
         });
         setTimeout(() => {
-          reply.delete().catch(() => {});
-          message.delete().catch(() => {});
+          reply.delete().catch(() => { });
+          message.delete().catch(() => { });
         }, 3000);
         return true;
       }
@@ -12414,7 +12414,7 @@ async function handleEconomyCommands(message, client) {
 
       const targetUser = message.mentions.users.first() || author;
       const targetMember = message.mentions.members.first() || message.member || await guild.members.fetch(targetUser.id).catch(() => null);
-      
+
       const wallet = economy.getWallet(targetUser.id, guildId);
       const porto = stocks.getPortfolio(targetUser.id, guildId);
       const shopItems = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
@@ -12429,10 +12429,10 @@ async function handleEconomyCommands(message, client) {
       const kosRental = database.get('SELECT room_tier, ends_at FROM kos_rentals WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
       const kosUpgrades = database.all('SELECT upgrade_id FROM kos_upgrades WHERE user_id = ? AND guild_id = ?', [targetUser.id, guildId]);
       const gardenSlots = database.all('SELECT slot_index, seed_id, planted_at, last_watered_at, water_count FROM garden_slots WHERE user_id = ? AND guild_id = ? ORDER BY slot_index ASC', [targetUser.id, guildId]);
-      
+
       const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
       const dailyQuest = database.get('SELECT * FROM user_daily_quests WHERE user_id = ? AND guild_id = ? AND quest_date = ?', [targetUser.id, guildId, todayStr]);
-      
+
       const lotteryTickets = lottery.getUserTickets(targetUser.id, guildId);
       const lotteryPool = lottery.getPool(guildId);
 
@@ -12494,7 +12494,7 @@ async function handleEconomyCommands(message, client) {
         try {
           const row = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [uid, gid]);
           if (row) bal = row.balance;
-        } catch (e) {}
+        } catch (e) { }
         return bal;
       };
 
@@ -12619,18 +12619,18 @@ async function handleEconomyCommands(message, client) {
 
       collector.on('end', async (collected, reason) => {
         if (reason === 'closed') {
-          await replyMsg.delete().catch(() => {});
-          await message.delete().catch(() => {});
+          await replyMsg.delete().catch(() => { });
+          await message.delete().catch(() => { });
         } else {
           // Nonaktifkan tombol secara elegan setelah timeout
           await replyMsg.edit({
             components: [buildProfileButtons(currentTab, true), buildCloseButton(true)]
-          }).catch(() => {});
+          }).catch(() => { });
 
           // Hapus pesan 15 detik kemudian
           setTimeout(() => {
-            replyMsg.delete().catch(() => {});
-            message.delete().catch(() => {});
+            replyMsg.delete().catch(() => { });
+            message.delete().catch(() => { });
           }, 15000);
         }
       });
@@ -12773,7 +12773,7 @@ async function handleEconomyCommands(message, client) {
         database.transaction(() => {
           // 1. Catat klaim
           database.run('INSERT INTO promo_claims (code, user_id) VALUES (?, ?)', [code, author.id]);
-          
+
           // 2. Increment claims count
           database.run('UPDATE promo_codes SET current_claims = current_claims + 1 WHERE code = ?', [code]);
 
@@ -12938,10 +12938,10 @@ async function handleEconomyCommands(message, client) {
                   `💡 *Undian otomatis dilakukan setiap hari Minggu pukul 21:00 WIB.*`
                 )
                 .setTimestamp();
-              await iConfirm.update({ embeds: [successEmbed], components: [] }).catch(() => {});
+              await iConfirm.update({ embeds: [successEmbed], components: [] }).catch(() => { });
             } catch (err) {
               const errEmb = embeds.errorEmbed('Gagal Membeli Tiket Lotre', err.message);
-              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => {});
+              await iConfirm.update({ embeds: [errEmb], components: [] }).catch(() => { });
             }
           });
         } catch (err) {
@@ -12959,7 +12959,7 @@ async function handleEconomyCommands(message, client) {
       const ticketPrice = config.lottery?.TICKET_PRICE || 100;
       const burnPercent = config.lottery?.BURN_PERCENT || 15;
 
-      const winChance = pool.total_tickets > 0 
+      const winChance = pool.total_tickets > 0
         ? ((userTickets / pool.total_tickets) * 100).toFixed(2)
         : '0.00';
 
@@ -13338,7 +13338,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ content: '❌ Belum ada data ekonomi untuk server ini.' });
       }
 
-      await message.channel.sendTyping().catch(() => {});
+      await message.channel.sendTyping().catch(() => { });
 
       await Promise.all(richData.map(async u => {
         if (client.users.cache.has(u.userId)) return;
@@ -13466,7 +13466,7 @@ async function handleEconomyCommands(message, client) {
               const wallet2 = economy.getWallet(author.id, guildId);
               const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
               const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-              await shopMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+              await shopMsg.edit({ embeds: [updatedEmbed] }).catch(() => { });
             });
           } else if (i.isStringSelectMenu() && i.customId === 'eco_select_buy_role') {
             const itemId = parseInt(i.values[0]);
@@ -13490,7 +13490,7 @@ async function handleEconomyCommands(message, client) {
               const wallet2 = economy.getWallet(author.id, guildId);
               const items2 = database.all('SELECT * FROM shop_items WHERE guild_id = ?', [guildId]);
               const updatedEmbed = embeds.shopEmbed(items2, wallet2);
-              
+
               // Perbarui juga opsi select menu karena sisa stok kemungkinan berubah
               const updatedComponents = [];
               const freshBtnRow = new ActionRowBuilder().addComponents(
@@ -13525,7 +13525,7 @@ async function handleEconomyCommands(message, client) {
                 updatedComponents.push(new ActionRowBuilder().addComponents(selectMenu));
               }
 
-              await shopMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => {});
+              await shopMsg.edit({ embeds: [updatedEmbed], components: updatedComponents }).catch(() => { });
             });
           }
         } catch (err) {
@@ -13723,7 +13723,7 @@ async function handleEconomyCommands(message, client) {
         const user = client.users.cache.get(d.userId);
         const username = user ? user.username : `<@${d.userId}>`;
         listText += `> 💰 **${username}** Menerima **Rp ${d.amount.toLocaleString('id-ID')}** dari **${d.ticker}**\n` +
-                    `> ┊ 📈 *Rate:* \`${d.rate}%\` · ⚡ *Skor Aktif:* \`${d.activity}\` · 📦 *Hold:* \`${d.shares} lbr\`\n`;
+          `> ┊ 📈 *Rate:* \`${d.rate}%\` · ⚡ *Skor Aktif:* \`${d.activity}\` · 📦 *Hold:* \`${d.shares} lbr\`\n`;
       });
       if (distributions.length > 10) {
         listText += `> *...dan ${distributions.length - 10} transaksi dividen lainnya!*`;
@@ -13752,9 +13752,9 @@ async function handleEconomyCommands(message, client) {
             {
               name: '📊 Ringkasan Distribusi',
               value: `├─ 👥 **Total Penerima:** \`${uniqueRecipients} Warga\`\n` +
-                     `├─ 💸 **Total Transaksi:** \`${distributions.length} Transaksi\`\n` +
-                     `├─ 💰 **Dana Cair:** **Rp ${totalPayout.toLocaleString('id-ID')}**\n` +
-                     `└─ 🏆 **Penerima Tertinggi:** ${topPayoutText}`,
+                `├─ 💸 **Total Transaksi:** \`${distributions.length} Transaksi\`\n` +
+                `├─ 💰 **Dana Cair:** **Rp ${totalPayout.toLocaleString('id-ID')}**\n` +
+                `└─ 🏆 **Penerima Tertinggi:** ${topPayoutText}`,
               inline: false
             },
             {
@@ -13860,9 +13860,9 @@ async function handleEconomyCommands(message, client) {
           await tournament.updateRegistrationEmbed(guildId, client);
 
           if (statusMsg) {
-            await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});
+            await statusMsg.edit({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => { });
           } else {
-            await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => {});
+            await message.reply({ embeds: [embeds.successEmbed('Turnamen Dimulai!', `Pendaftaran turnamen telah dibuka di channel <#${targetChannelId}> dan akan ditutup <t:${endRegAt}:R>.`)] }).catch(() => { });
           }
 
           // Kirim Dashboard Admin Control Panel
@@ -13889,9 +13889,9 @@ async function handleEconomyCommands(message, client) {
         } catch (err) {
           const errMsg = embeds.errorEmbed('Gagal Memulai Turnamen!', err.message);
           if (statusMsg) {
-            return statusMsg.edit({ embeds: [errMsg] }).catch(() => {});
+            return statusMsg.edit({ embeds: [errMsg] }).catch(() => { });
           }
-          return message.reply({ embeds: [errMsg] }).catch(() => {});
+          return message.reply({ embeds: [errMsg] }).catch(() => { });
         }
       }
 
@@ -13907,7 +13907,7 @@ async function handleEconomyCommands(message, client) {
             if (oldChan) {
               const oldMsg = await oldChan.messages.fetch(event.admin_panel_message_id).catch(() => null);
               if (oldMsg) {
-                await oldMsg.delete().catch(() => {});
+                await oldMsg.delete().catch(() => { });
               }
             }
           }
@@ -13939,7 +13939,7 @@ async function handleEconomyCommands(message, client) {
 
             const channel = message.guild.channels.cache.get(active.channel_id) || await client.channels.fetch(active.channel_id).catch(() => null);
             if (channel && typeof channel.send === 'function') {
-              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => {});
+              await channel.send({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen/Liga Admin Cup telah dibatalkan oleh Administrator.\nSeluruh chat pendaftaran telah dibersihkan.').setTimestamp()] }).catch(() => { });
             }
           }
 
@@ -13948,7 +13948,7 @@ async function handleEconomyCommands(message, client) {
             if (adminChan) {
               const adminMsg = await adminChan.messages.fetch(active.admin_panel_message_id).catch(() => null);
               if (adminMsg) {
-                await adminMsg.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => {});
+                await adminMsg.edit({ embeds: [new EmbedBuilder().setColor(0xFF0000).setTitle('❌ TURNAMEN DIBATALKAN').setDescription('Turnamen ini telah dibatalkan oleh Admin.')], components: [] }).catch(() => { });
               }
             }
           }
@@ -15152,7 +15152,7 @@ async function handleEconomyCommands(message, client) {
         return message.reply({ content: '❌ Akses Ditolak! Perintah ini dikunci khusus untuk Owner utama.', flags: 64 });
       }
 
-      await message.delete().catch(() => {});
+      await message.delete().catch(() => { });
 
       const promptEmbed = new EmbedBuilder()
         .setColor(0x7C4DFF)
@@ -15167,7 +15167,7 @@ async function handleEconomyCommands(message, client) {
 
       const promptMsg = await message.channel.send({ embeds: [promptEmbed], components: [btnRow] });
       setTimeout(() => {
-        promptMsg.delete().catch(() => {});
+        promptMsg.delete().catch(() => { });
       }, 20000);
 
       return true;
@@ -15291,7 +15291,7 @@ async function handleEconomyCommands(message, client) {
               await adminChannel.bulkDelete(fetched);
             } catch (err) {
               for (const msg of fetched.values()) {
-                await msg.delete().catch(() => {});
+                await msg.delete().catch(() => { });
               }
             }
           }
@@ -15325,7 +15325,7 @@ async function handleEconomyCommands(message, client) {
 
       try {
         let settings = database.get('SELECT * FROM ebyus_settings WHERE guild_id = ?', [guild.id]);
-        
+
         const TARGET_CHAN_ID = '1513187966074490890';
         let tourChannel = guild.channels.cache.get(TARGET_CHAN_ID) || await guild.channels.fetch(TARGET_CHAN_ID).catch(() => null);
 
@@ -15359,7 +15359,7 @@ async function handleEconomyCommands(message, client) {
               await tourChannel.bulkDelete(fetched);
             } catch (err) {
               for (const msg of fetched.values()) {
-                await msg.delete().catch(() => {});
+                await msg.delete().catch(() => { });
               }
             }
           }

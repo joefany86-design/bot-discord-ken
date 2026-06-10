@@ -211,19 +211,22 @@ function drawProgressBar(ctx, x, y, width, height, percentage, colorStart, color
 
   // Label teks (di dalam bar)
   if (label) {
-    ctx.font = 'bold 11px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.textAlign = 'left';
-    ctx.fillText(label, x + 8, y + height / 2 + 4);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + 8, y + height / 2);
   }
 
   // Value teks (di dalam bar, kanan)
   if (valueText) {
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.textAlign = 'right';
-    ctx.fillText(valueText, x + width - 8, y + height / 2 + 4);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(valueText, x + width - 8, y + height / 2);
   }
+  ctx.textBaseline = 'alphabetic'; // reset baseline
 }
 
 /**
@@ -536,11 +539,11 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   let badgeX = infoX;
   const maxBadgeX = 490 - 15; // 475
 
-  const drawBadgeWithWrap = (text, bgColor, textColor = '#FFFFFF', fontSize = 10) => {
+  const drawBadgeWithWrap = (text, bgColor, textColor = '#FFFFFF', fontSize = 12) => {
     ctx.font = `bold ${fontSize}px "DejaVu Sans", sans-serif`;
     const w = ctx.measureText(text).width + 20; // padX = 10
     if (badgeX + w > maxBadgeX) {
-      infoY += 22;
+      infoY += 26;
       badgeX = infoX;
     }
     const realW = drawBadge(ctx, badgeX, infoY, text, bgColor, textColor, fontSize);
@@ -548,34 +551,34 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   };
 
   // Rarity badge
-  drawBadgeWithWrap(rarity, rarityTheme.primary, '#FFFFFF', 10);
+  drawBadgeWithWrap(rarity, rarityTheme.primary, '#FFFFFF', 12);
 
   // Element badge
-  drawBadgeWithWrap(element, 'rgba(255,255,255,0.15)', '#FFFFFF', 10);
+  drawBadgeWithWrap(element, 'rgba(255,255,255,0.15)', '#FFFFFF', 12);
 
   // Trait badge(s)
   if (pet.trait) {
-    drawBadgeWithWrap(pet.trait.toUpperCase(), 'rgba(255,200,0,0.2)', '#FFD54F', 10);
+    drawBadgeWithWrap(pet.trait.toUpperCase(), 'rgba(255,200,0,0.2)', '#FFD54F', 12);
   }
 
   // Second trait (gacha_trait2)
   if (pet.gacha_trait2) {
-    drawBadgeWithWrap(pet.gacha_trait2.toUpperCase(), 'rgba(255,200,0,0.2)', '#FFD54F', 10);
+    drawBadgeWithWrap(pet.gacha_trait2.toUpperCase(), 'rgba(255,200,0,0.2)', '#FFD54F', 12);
   }
 
   // Accessory badge
   if (pet.accessory) {
     const accNames = { COLLAR_IRON: 'Kalung Besi', SWORD_TOY: 'Pedang Mainan', SHIELD_TOY: 'Tameng Mainan', LUCKY_AMULET: 'Jimat Keberuntungan' };
     const accName = accNames[pet.accessory] || pet.accessory;
-    drawBadgeWithWrap(accName.toUpperCase(), 'rgba(100,255,200,0.15)', '#80CBC4', 10);
+    drawBadgeWithWrap(accName.toUpperCase(), 'rgba(100,255,200,0.15)', '#80CBC4', 12);
   }
 
   // ── [6] STATS BARS (kanan atas) ──
   const barX = 490;
   let barY = 48;
   const barWidth = 395;
-  const barHeight = 18;
-  const barGap = 6;
+  const barHeight = 22;
+  const barGap = 8;
 
   // HP Bar
   const hpPct = Math.min(1, Math.max(0, pet.health / maxHP));
@@ -621,25 +624,25 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   ctx.stroke();
 
   // Stats title
-  ctx.font = 'bold 13px "DejaVu Sans", sans-serif';
+  ctx.font = 'bold 15px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.textAlign = 'left';
   ctx.fillText('COMBAT STATS', statsX, statsY + 18);
 
   // Stats grid (2 rows x 4 cols)
-  const gridY1 = statsY + 30;
-  const gridY2 = statsY + 62;
+  const gridY1 = statsY + 36;
+  const gridY2 = statsY + 74;
   const colWidth = 160;
 
   const drawStatItem = (x, y, label, value, color) => {
-    ctx.font = '11px "DejaVu Sans", sans-serif';
+    ctx.font = '13px "DejaVu Sans", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.textAlign = 'left';
     ctx.fillText(label, x, y);
 
-    ctx.font = 'bold 18px "DejaVu Sans", sans-serif';
+    ctx.font = 'bold 22px "DejaVu Sans", sans-serif';
     ctx.fillStyle = color;
-    ctx.fillText(value, x, y + 22);
+    ctx.fillText(value, x, y + 24);
   };
 
   // Row 1: ATK, DEF, PvP Record
@@ -666,8 +669,8 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   ctx.stroke();
 
   // ── [9] AUTO-FEED & EXPEDITION & CURSE STATUS ──
-  let bottomY = sep2Y + 16;
-  ctx.font = '12px "DejaVu Sans", sans-serif';
+  let bottomY = sep2Y + 18;
+  ctx.font = '14px "DejaVu Sans", sans-serif';
   ctx.textAlign = 'left';
 
   // Column 1: Auto-Feed
@@ -675,10 +678,10 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText('Auto-Feed:', statsX, bottomY);
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.fillText(autoFeedLabel, statsX + 75, bottomY);
+  ctx.fillText(autoFeedLabel, statsX + 85, bottomY);
 
   // Column 2: Expedition Status
-  const expX = statsX + 260;
+  const expX = statsX + 280;
   const nowSec = Math.floor(Date.now() / 1000);
   const expCooldown = options.expeditionCooldownUntil || 0;
   const expCount = options.dailyExpeditionCount || 0;
@@ -692,19 +695,19 @@ async function generatePetCard(pet, ownerUser, options = {}) {
     const secs = sisaSec % 60;
     const cdStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     ctx.fillStyle = '#FF5252';
-    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
-    ctx.fillText(`COOLDOWN (${cdStr})`, expX + 65, bottomY);
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.fillText(`COOLDOWN (${cdStr})`, expX + 75, bottomY);
   } else {
     const tiketSisa = Math.max(0, 6 - expCount);
     ctx.fillStyle = tiketSisa > 0 ? '#00E676' : '#FF9800';
-    ctx.font = 'bold 12px "DejaVu Sans", sans-serif';
-    ctx.fillText(`${tiketSisa}/6 Tiket`, expX + 65, bottomY);
+    ctx.font = 'bold 14px "DejaVu Sans", sans-serif';
+    ctx.fillText(`${tiketSisa}/6 Tiket`, expX + 75, bottomY);
   }
-  ctx.font = '12px "DejaVu Sans", sans-serif'; // reset font style
+  ctx.font = '14px "DejaVu Sans", sans-serif'; // reset font style
 
   // Column 1 Line 2: Curse Status
   if (pet.curse_until && pet.curse_until > nowSec) {
-    const curseY = bottomY + 18;
+    const curseY = bottomY + 20;
     ctx.fillStyle = '#FF5252';
     ctx.fillText(`Kutukan: ${pet.curse_type || 'Curse'} (aktif)`, statsX, curseY);
   }
@@ -734,7 +737,7 @@ async function generatePetCard(pet, ownerUser, options = {}) {
       ctx.drawImage(ownerImg, oaCx - oaR, oaCy - oaR, oaR * 2, oaR * 2);
       ctx.restore();
 
-      ctx.font = '12px "DejaVu Sans", sans-serif';
+      ctx.font = '14px "DejaVu Sans", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.textAlign = 'left';
       const ownerName = ownerUser.username || ownerUser.displayName || 'User';
@@ -743,7 +746,7 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   }
 
   // Watermark (kanan bawah)
-  ctx.font = '11px "DejaVu Sans", sans-serif';
+  ctx.font = '13px "DejaVu Sans", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.textAlign = 'right';
   ctx.fillText('Kosan 1A RPG · Pet Card', CARD_WIDTH - 30, footerY + 6);
