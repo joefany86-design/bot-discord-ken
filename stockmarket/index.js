@@ -6431,49 +6431,59 @@ async function handlePetCommand(message, client, args) {
 
         await new Promise((resolve) => {
           pathCollector.on('collect', async i => {
-            await i.deferUpdate().catch(() => { });
-            if (i.customId === 'exp_path_shortcut') {
-              pathChoice = 'SHORTCUT';
-              pathText = '🧗 Jalur Pintas Terjal';
-              // DB update immediately: -15 HP to all participant pets
-              currentLobby.participants.forEach(pId => {
-                const p = pet.getPet(pId, guildId);
-                if (p) {
-                  const newHealth = Math.max(5, p.health - 15);
-                  database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
-                }
-              });
-              pathText += '\n└─ Seluruh pet kru kelelahan setelah memanjat tebing terjal (**-15 HP**).';
-            } else if (i.customId === 'exp_path_swamp') {
-              pathChoice = 'SWAMP';
-              pathText = '🌲 Rawa Beracun';
-              // DB update immediately: 30% chance of getting smelly or injured
-              const cursedPets = [];
-              const now = Math.floor(Date.now() / 1000);
-              currentLobby.participants.forEach(pId => {
-                const p = pet.getPet(pId, guildId);
-                if (p && Math.random() < 0.30) {
-                  const isSmelly = Math.random() < 0.50;
-                  const curseType = isSmelly ? 'smelly' : 'injured';
-                  const curseUntil = now + 3600;
-                  database.run('UPDATE user_pets SET curse_type = ?, curse_until = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [curseType, curseUntil, pId, guildId, p.pet_name]);
-                  cursedPets.push(`**${p.pet_name}** (${isSmelly ? '🤢 Bau Busuk' : '🩹 Terluka'})`);
-                }
-              });
-              pathText += `\n└─ Menyusup melewati rawa berlumpur. ${cursedPets.length > 0 ? `Pet berikut terkena efek negatif: ${cursedPets.join(', ')}.` : 'Beruntung tidak ada pet yang terkena efek buruk rawa.'}`;
-            } else {
-              pathChoice = 'SAFE';
-              pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
+            try {
+              await i.deferUpdate().catch(() => { });
+              if (i.customId === 'exp_path_shortcut') {
+                pathChoice = 'SHORTCUT';
+                pathText = '🧗 Jalur Pintas Terjal';
+                // DB update immediately: -15 HP to all participant pets
+                currentLobby.participants.forEach(pId => {
+                  const p = pet.getPet(pId, guildId);
+                  if (p) {
+                    const newHealth = Math.max(5, p.health - 15);
+                    database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
+                  }
+                });
+                pathText += '\n└─ Seluruh pet kru kelelahan setelah memanjat tebing terjal (**-15 HP**).';
+              } else if (i.customId === 'exp_path_swamp') {
+                pathChoice = 'SWAMP';
+                pathText = '🌲 Rawa Beracun';
+                // DB update immediately: 30% chance of getting smelly or injured
+                const cursedPets = [];
+                const now = Math.floor(Date.now() / 1000);
+                currentLobby.participants.forEach(pId => {
+                  const p = pet.getPet(pId, guildId);
+                  if (p && Math.random() < 0.30) {
+                    const isSmelly = Math.random() < 0.50;
+                    const curseType = isSmelly ? 'smelly' : 'injured';
+                    const curseUntil = now + 3600;
+                    database.run('UPDATE user_pets SET curse_type = ?, curse_until = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [curseType, curseUntil, pId, guildId, p.pet_name]);
+                    cursedPets.push(`**${p.pet_name}** (${isSmelly ? '🤢 Bau Busuk' : '🩹 Terluka'})`);
+                  }
+                });
+                pathText += `\n└─ Menyusup melewati rawa berlumpur. ${cursedPets.length > 0 ? `Pet berikut terkena efek negatif: ${cursedPets.join(', ')}.` : 'Beruntung tidak ada pet yang terkena efek buruk rawa.'}`;
+              } else {
+                pathChoice = 'SAFE';
+                pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
+              }
+            } catch (err) {
+              console.error('[Expedition Stage 1 pathCollector collect error]:', err);
+            } finally {
+              resolve();
             }
-            resolve();
           });
 
           pathCollector.on('end', (collected) => {
-            if (collected.size === 0) {
-              pathChoice = 'SAFE';
-              pathText = '🛣️ Jalur Aman (Batas waktu habis, otomatis mengambil Jalur Aman)';
+            try {
+              if (collected.size === 0) {
+                pathChoice = 'SAFE';
+                pathText = '🛣️ Jalur Aman (Batas waktu habis, otomatis mengambil Jalur Aman)';
+              }
+            } catch (err) {
+              console.error('[Expedition Stage 1 pathCollector end error]:', err);
+            } finally {
+              resolve();
             }
-            resolve();
           });
         });
 
