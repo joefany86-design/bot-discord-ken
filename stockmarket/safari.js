@@ -70,6 +70,16 @@ const BIOMES = {
     species: ['PEGASUS', 'KIRIN', 'BEHEMOTH', 'ARCHDRAGON', 'TYPHON'],
     color: 0x9B59B6,
     description: 'Puncak tertinggi bersalju abadi. Tempat persemayaman naga purba kosmik.\n🪙 **Biaya Masuk:** **Rp 250**\n🐾 *Spesies liar: Pegasus, Kirin, Behemoth, Archdragon, Typhon*'
+  },
+  desert: {
+    id: 'desert',
+    name: '🏜️ Gurun Sunyi (Silent Desert)',
+    cost: 200,
+    catchMultiplier: 0.80,
+    escapeMultiplier: 1.20,
+    species: ['KIRIN', 'KITSUNE', 'CERBERUS', 'GOLEM', 'IFRIT'],
+    color: 0xF1C40F,
+    description: 'Gurun pasir tandus yang menyimpan sisa-sisa peradaban kuno. Hati-hati badai pasir!\n🪙 **Biaya Masuk:** **Rp 200**\n🐾 *Spesies liar: Kirin, Kitsune, Cerberus, Golem, Ifrit*'
   }
 };
 
@@ -385,17 +395,21 @@ async function handlePetSafariCommand(message, client, args) {
     .setFooter({ text: 'Gunakan tombol di bawah untuk masuk ke biome | Cooldown 3 menit' })
     .setTimestamp();
 
-  const row = new ActionRowBuilder().addComponents(
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('safari_biome_forest').setLabel('🌳 Forest').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('safari_biome_volcano').setLabel('🌋 Volcano').setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId('safari_biome_abyss').setLabel('🌊 Abyss').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('safari_biome_mountain').setLabel('⛰️ Peak').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('safari_biome_mountain').setLabel('⛰️ Peak').setStyle(ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('safari_biome_desert').setLabel('🏜️ Desert').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('safari_biome_cancel').setLabel('✖️ Batalkan').setStyle(ButtonStyle.Secondary)
   );
 
   const replyMsg = await message.reply({
     embeds: [biomeEmbed],
-    components: [row]
+    components: [row1, row2]
   });
   const collector = replyMsg.createMessageComponentCollector({ time: 60000 });
 
