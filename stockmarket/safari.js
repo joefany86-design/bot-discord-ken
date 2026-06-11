@@ -567,50 +567,50 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     return iconFilled.repeat(filled) + iconEmpty.repeat(10 - filled);
   };
 
-  const catchBar = drawProgressBar(currentCatchChance, 1.0, '🎯', '⬛');
-  const escapeBar = drawProgressBar(displayEscape, 1.0, '🏃‍♂️', '⬛');
+  const catchBar = drawProgressBar(currentCatchChance, 1.0, '🟩', '⬛');
+  const escapeBar = drawProgressBar(displayEscape, 1.0, '🟥', '⬛');
+
+  const cleanWeatherDesc = weatherDesc.includes(':') 
+    ? weatherDesc.substring(weatherDesc.indexOf(':') + 1).trim() 
+    : weatherDesc;
 
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
-    .setTitle(`🐾 SAFARI WILD ENCOUNTER — ${state.pet.emoji} ${state.pet.typeName.toUpperCase()} 🐾`)
+    .setTitle(`🐾 Safari Encounter — ${state.pet.emoji} ${state.pet.typeName}`)
     .setDescription(
-      `🏞️ **Biome:** ${biome.name}\n` +
-      `⛅ **Cuaca:** ${state.weather}\n` +
-      `ℹ️ ${weatherDesc}\n` +
-      `💬 *“${state.pet.description || 'Spesies liar tangguh dan sangat waspada.'}”*\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      `*“${state.pet.description || 'Spesies liar tangguh dan sangat waspada.'}”*\n\n` +
+      `🏞️ **${biome.name}** (${state.weather})\n` +
+      `*${cleanWeatherDesc}*`
     )
     .addFields(
       {
-        name: '📊 STATS PET LIAR',
-        value: `• **Kelangkaan:** \`${state.pet.rarity}\`\n` +
-               `• **Level:** \`${state.pet.level}\`\n` +
-               `• **Elemen:** \`${state.pet.gacha_element || state.pet.element}\`\n` +
-               `${state.pet.trait ? `• **Trait:** \`${state.pet.trait}\`\n` : ''}` +
-               `• **Kondisi:** \`${statusBadge}\``,
+        name: '📊 Status Pet',
+        value: `🧬 **Rarity:** \`${state.pet.rarity}\` (\`Lv. ${state.pet.level}\`)\n` +
+               `💧 **Element:** \`${state.pet.gacha_element || state.pet.element}\`\n` +
+               `${state.pet.trait ? `✨ **Trait:** \`${state.pet.trait}\`\n` : ''}` +
+               `❤️ **Kondisi:** \`${statusBadge}\``,
         inline: true
       },
       {
-        name: '🎯 CHANCES & BARS',
-        value: `• **Peluang Tangkap:** \`${Math.round(currentCatchChance * 100)}%\`\n` +
-               `[ ${catchBar} ]\n\n` +
-               `• **Risiko Kabur:** \`${Math.round(displayEscape * 100)}%\`\n` +
-               `[ ${escapeBar} ]`,
+        name: '🎯 Peluang & Risiko',
+        value: `🟢 **Tangkap:** \`${Math.round(currentCatchChance * 100)}%\`\n` +
+               `\`[ ${catchBar} ]\`\n\n` +
+               `🔴 **Kabur:** \`${Math.round(displayEscape * 100)}%\`\n` +
+               `\`[ ${escapeBar} ]\``,
         inline: true
       },
       {
-        name: '🎒 Kantong Perlengkapan Safari',
-        value: `🥎 **Safari Ball:** \`${state.balls} / 5\` | 🍖 **Safari Bait:** \`${state.baits} / 3\` | 💫 **Mainan Pet:** \`${state.toys} / 3\``,
+        name: '🎒 Perlengkapan',
+        value: `🥎 **Safari Ball:** \`${state.balls}/5\`   •   🍖 **Bait:** \`${state.baits}/3\`   •   💫 **Toy:** \`${state.toys}/3\``,
         inline: false
       },
       {
-        name: '📝 Log Aktivitas Safari',
-        value: logText,
+        name: '📝 Log Aktivitas',
+        value: `> ${logText.replace(/\n/g, '\n> ')}`,
         inline: false
       }
     )
-    .setFooter({ text: `Giliran: ${state.turns} | Selesaikan sesi agar cooldown tidak menggantung` })
-    .setTimestamp();
+    .setFooter({ text: `Turn: ${state.turns} | Selesaikan sesi sebelum cooldown hang` });
 
   if (petImgUrl) {
     mainEmbed.setImage(petImgUrl);
