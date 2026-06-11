@@ -515,6 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const backupDbBtn = document.getElementById('backup-db-btn');
   const restartBotBtn = document.getElementById('restart-bot-btn');
   const dashboardRestartBotBtn = document.getElementById('dashboard-restart-bot-btn');
+  const botLogsConsole = document.getElementById('bot-logs-console');
+  const botLogsAutoRefresh = document.getElementById('bot-logs-auto-refresh');
+  const refreshBotLogsBtn = document.getElementById('refresh-bot-logs-btn');
 
   // Modal elements
   const giveModal = document.getElementById('give-modal');
@@ -626,6 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (activeTabId === 'logs') {
       fetchLogs();
       fetchDetailedStats(); // Loads backups selector
+      fetchBotLogs();
     } else if (activeTabId === 'sql') {
       fetchDatabaseSchema();
     } else if (activeTabId === 'promos') {
@@ -1709,6 +1713,48 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dashboardRestartBotBtn) {
     dashboardRestartBotBtn.addEventListener('click', () => triggerBotRestart(dashboardRestartBotBtn));
   }
+
+  async function fetchBotLogs() {
+    if (!botLogsConsole) return;
+    try {
+      const res = await secureFetch('/api/admin/bot/logs');
+      const data = await res.json();
+      if (data.success) {
+        botLogsConsole.textContent = data.logs || 'Belum ada log dari PM2 atau bot belum dijalankan di PM2.';
+        // Auto scroll to bottom
+        botLogsConsole.scrollTop = botLogsConsole.scrollHeight;
+      } else {
+        botLogsConsole.textContent = 'Gagal memuat log: ' + data.logs;
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') {
+        botLogsConsole.textContent = 'Gagal memuat log akibat masalah jaringan/koneksi.';
+      }
+    }
+  }
+
+  if (refreshBotLogsBtn) {
+    refreshBotLogsBtn.addEventListener('click', () => {
+      fetchBotLogs();
+    });
+  }
+
+  let botLogsInterval = null;
+  function startBotLogsPolling() {
+    if (botLogsInterval) clearInterval(botLogsInterval);
+    botLogsInterval = setInterval(() => {
+      // Check if logs tab is currently active
+      const activeSection = document.querySelector('.content-section.active');
+      const isLogsActive = activeSection && activeSection.id === 'section-logs';
+      const isAutoRefreshChecked = botLogsAutoRefresh && botLogsAutoRefresh.checked;
+      
+      if (isLogsActive && isAutoRefreshChecked) {
+        fetchBotLogs();
+      }
+    }, 3000);
+  }
+  
+  startBotLogsPolling();
 
   // --- Modal Controllers (Quick Give) ---
   function closeQuickGiveModal() {

@@ -955,6 +955,27 @@ const server = http.createServer((req, res) => {
         sendJSON(res, 500, { success: false, message: err.message });
       }
     }
+    else if (pathname === '/api/admin/bot/logs' && req.method === 'GET') {
+      try {
+        const { exec } = require('child_process');
+        // Reads last 150 lines from PM2 stdout/stderr files with error redirection
+        exec('tail -n 150 ~/.pm2/logs/bot-2026-out.log ~/.pm2/logs/bot-2026-error.log ~/.pm2/logs/bot-2026-err.log 2>/dev/null', (err, stdout, stderr) => {
+          if (err) {
+            // Fallback command if direct files read failed
+            exec('pm2 logs bot-2026 --lines 50 --raw --no-daemon', { timeout: 3500 }, (err2, stdout2, stderr2) => {
+              if (err2 && !stdout2) {
+                return sendJSON(res, 200, { success: true, logs: 'Belum ada log console yang tersimpan untuk bot-2026.' });
+              }
+              return sendJSON(res, 200, { success: true, logs: stdout2 || stderr2 || '' });
+            });
+            return;
+          }
+          sendJSON(res, 200, { success: true, logs: stdout });
+        });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
     else if (pathname === '/api/admin/query' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
