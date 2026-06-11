@@ -614,22 +614,34 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
   const statusBadge = state.sleepTurns > 0 ? '💤 TERTIDUR' : '⚠️ WASPADA';
   const petImgUrl = embeds.getPetImage(state.pet);
 
-  // Bikin bar visual untuk parameter
-  const drawProgressBar = (val, max = 1.0, iconFilled = '🟩', iconEmpty = '⬛') => {
+  // Bikin bar visual untuk parameter dengan gradasi dinamis
+  const drawProgressBar = (val, max = 1.0, type = 'catch') => {
     const filled = Math.max(0, Math.min(10, Math.round((val / max) * 10)));
-    return iconFilled.repeat(filled) + iconEmpty.repeat(10 - filled);
+    let iconFilled = '🟩';
+    if (type === 'catch') {
+      if (val < 0.20) iconFilled = '🟥';
+      else if (val <= 0.50) iconFilled = '🟨';
+      else iconFilled = '🟩';
+    } else { // escape
+      if (val < 0.15) iconFilled = '🟩';
+      else if (val <= 0.35) iconFilled = '🟨';
+      else iconFilled = '🟥';
+    }
+    return iconFilled.repeat(filled) + '⬛'.repeat(10 - filled);
   };
 
-  const catchBar = drawProgressBar(currentCatchChance, 1.0, '🟩', '⬛');
-  const escapeBar = drawProgressBar(displayEscape, 1.0, '🟥', '⬛');
+  const catchBar = drawProgressBar(currentCatchChance, 1.0, 'catch');
+  const escapeBar = drawProgressBar(displayEscape, 1.0, 'escape');
 
   const cleanWeatherDesc = weatherDesc.includes(':') 
     ? weatherDesc.substring(weatherDesc.indexOf(':') + 1).trim() 
     : weatherDesc;
 
+  const sleepPrefix = state.sleepTurns > 0 ? '💤 ' : '';
+
   const mainEmbed = new EmbedBuilder()
     .setColor(biome.color)
-    .setTitle(`🐾 Safari Encounter — ${state.pet.emoji} ${state.pet.typeName}`)
+    .setTitle(`🐾 Safari Encounter — ${sleepPrefix}${state.pet.emoji} ${state.pet.typeName}`)
     .setDescription(
       `*“${state.pet.description || 'Spesies liar tangguh dan sangat waspada.'}”*\n\n` +
       `🏞️ **${biome.name}** (${state.weather})\n` +
