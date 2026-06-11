@@ -507,13 +507,13 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
   const weathers = ['CERAH', 'HUJAN', 'BADAI', 'KABUT'];
   const weather = weathers[Math.floor(Math.random() * weathers.length)];
 
-  // Buat thread publik baru untuk sesi safari player
+  // Buat thread privat baru untuk sesi safari player (menghindari pesan sistem "started a thread")
   let thread;
   try {
     thread = await replyMsg.channel.threads.create({
       name: `🌳 Safari - ${author.username}`,
       autoArchiveDuration: 60,
-      type: ChannelType.GuildPublicThread,
+      type: ChannelType.GuildPrivateThread,
       reason: 'Sesi Game Pet Safari'
     });
     // Kirim pesan sambutan di dalam thread untuk mengundang user
@@ -523,13 +523,9 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
     thread = replyMsg.channel;
   }
 
-  // Edit pesan biome di channel utama untuk menautkan thread jika berhasil dibuat
+  // Hapus pesan panel pemilihan biome di channel utama agar tidak mengotori chat
   if (thread.id !== replyMsg.channel.id) {
-    await replyMsg.edit({
-      content: `🌳 **Safari Dimulai!** Wilayah **${biome.name}** sedang dijelajahi oleh <@${author.id}>. Silakan masuk ke area berburu Anda di <#${thread.id}>.`,
-      embeds: [],
-      components: []
-    }).catch(() => {});
+    await replyMsg.delete().catch(() => {});
   }
 
   // Inisialisasi State Safari
