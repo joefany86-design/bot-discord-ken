@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType } = require('discord.js');
 const db = require('./database');
 const { logPetAction } = db;
 const economy = require('./economy');
@@ -13,6 +13,45 @@ const activeSafaris = new Map();
 function releaseLock(client, channelId) {
   if (client && client.safariLocks) {
     client.safariLocks.delete(channelId);
+  }
+}
+
+// Helper untuk mengakhiri sesi safari, mengirim notifikasi hasil akhir, dan menghapus thread sementara
+async function endSafariSession(interaction, state, author, client, result) {
+  try {
+    deleteSafariState(author.id, state.guildId);
+    releaseLock(client, state.channelId);
+
+    const thread = client.channels.cache.get(state.channelId) || await client.channels.fetch(state.channelId).catch(() => null);
+    if (thread && thread.isThread()) {
+      const parentChannel = thread.parent || await client.channels.fetch(thread.parentId).catch(() => null);
+      if (parentChannel) {
+        if (typeof result === 'string') {
+          await parentChannel.send({ content: result }).catch(() => {});
+        } else if (result && result.embeds) {
+          await parentChannel.send({ content: `<@${author.id}>`, ...result }).catch(() => {});
+        } else if (result) {
+          await parentChannel.send({ content: `<@${author.id}>`, embeds: [result] }).catch(() => {});
+        }
+      }
+      setTimeout(async () => {
+        await thread.delete().catch(() => {});
+      }, 3000);
+    } else {
+      const payload = typeof result === 'string'
+        ? { content: result, embeds: [], components: [] }
+        : (result && result.embeds ? { embeds: result.embeds, components: [] } : { embeds: [result], components: [] });
+
+      if (interaction) {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply(payload).catch(() => {});
+        } else {
+          await interaction.update(payload).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error in endSafariSession:', err);
   }
 }
 
@@ -328,24 +367,18 @@ async function handlePetSafariCommand(message, client, args) {
   // Cek apakah ada sesi safari aktif di database
   const existingState = loadSafariState(author.id, guildId);
   if (existingState) {
-    // Verifikasi lock channel terlebih dahulu
-    const safariLocks = client.safariLocks = client.safariLocks || new Map();
-    const lock = safariLocks.get(message.channelId);
-    
-    // Jika lock kadaluwarsa (lebih dari 5 menit), hapus lock lama
-    if (lock && Date.now() > lock.expiresAt) {
-      safariLocks.delete(message.channelId);
+    const thread = client.channels.cache.get(existingState.channelId) || await client.channels.fetch(existingState.channelId).catch(() => null);
+    if (!thread) {
+      deleteSafariState(author.id, guildId);
+    } else {
+      const replyMsg = await thread.send({ content: `🔄 **Melanjutkan Sesi Safari Sebelumnya yang Belum Selesai, <@${author.id}>...**` }).catch(() => null);
+      if (replyMsg) {
+        await message.reply({ content: `🔄 **Safari dilanjutkan!** Silakan masuk ke area berburu Anda di <#${thread.id}>.` }).catch(() => {});
+        return renderSafariScreen(message, replyMsg, existingState, author, client);
+      } else {
+        deleteSafariState(author.id, guildId);
+      }
     }
-    
-    if (safariLocks.has(message.channelId) && safariLocks.get(message.channelId).userId !== author.id) {
-      return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
-    }
-    
-    // Pasang lock channel baru
-    safariLocks.set(message.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
-    
-    const replyMsg = await message.reply({ content: '🔄 **Melanjutkan Sesi Safari Sebelumnya yang Belum Selesai...**' });
-    return renderSafariScreen(message, replyMsg, existingState, author, client);
   }
 
   // Cek Cooldown (3 Menit) dari database SQLite
@@ -355,18 +388,6 @@ async function handlePetSafariCommand(message, client, args) {
     const epochSec = Math.floor(cooldownEnd / 1000);
     return message.reply({ content: `⏳ **Safari dalam Cooldown!** Anda terlalu lelah untuk menjelajah. Harap tunggu <t:${epochSec}:R> lagi.` });
   }
-
-  // Check and set channel lock for Safari with expiration (5 minutes)
-  const safariLocks = client.safariLocks = client.safariLocks || new Map();
-  if (safariLocks.has(message.channelId)) {
-    const lock = safariLocks.get(message.channelId);
-    if (Date.now() > lock.expiresAt) {
-      safariLocks.delete(message.channelId);
-    } else {
-      return message.reply({ content: '⚠️ **Safari** sedang berlangsung di channel ini! Harap tunggu sampai safari selesai.' });
-    }
-  }
-  safariLocks.set(message.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
 
   // Get hunting mastery stats from db
   let mastery = { level: 1, xp: 0 };
@@ -486,12 +507,37 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
   const weathers = ['CERAH', 'HUJAN', 'BADAI', 'KABUT'];
   const weather = weathers[Math.floor(Math.random() * weathers.length)];
 
+  // Buat thread publik baru untuk sesi safari player
+  let thread;
+  try {
+    thread = await replyMsg.channel.threads.create({
+      name: `🌳 Safari - ${author.username}`,
+      autoArchiveDuration: 60,
+      type: ChannelType.GuildPublicThread,
+      reason: 'Sesi Game Pet Safari'
+    });
+    // Kirim pesan sambutan di dalam thread untuk mengundang user
+    await thread.send({ content: `👋 Selamat datang di arena berburu Anda, <@${author.id}>! Bersiaplah menemui pet liar.` }).catch(() => {});
+  } catch (err) {
+    console.error('Gagal membuat thread safari, fallback ke channel biasa:', err);
+    thread = replyMsg.channel;
+  }
+
+  // Edit pesan biome di channel utama untuk menautkan thread jika berhasil dibuat
+  if (thread.id !== replyMsg.channel.id) {
+    await replyMsg.edit({
+      content: `🌳 **Safari Dimulai!** Wilayah **${biome.name}** sedang dijelajahi oleh <@${author.id}>. Silakan masuk ke area berburu Anda di <#${thread.id}>.`,
+      embeds: [],
+      components: []
+    }).catch(() => {});
+  }
+
   // Inisialisasi State Safari
   const state = {
     userId: author.id,
     guildId,
     biome: biomeKey,
-    channelId: replyMsg.channelId,
+    channelId: thread.id,
     pet: wildPet,
     balls: 5,
     baits: 3,
@@ -511,8 +557,15 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
 
   saveSafariState(author.id, guildId, state);
 
-  // Jalankan render update screen
-  await renderSafariScreen(interaction, replyMsg, state, author, client);
+  // Jalankan render update screen di dalam thread
+  let gameMsg;
+  if (thread.id !== replyMsg.channel.id) {
+    gameMsg = await thread.send({ content: '🔄 Menyiapkan arena perburuan...' });
+  } else {
+    gameMsg = replyMsg;
+  }
+
+  await renderSafariScreen(null, gameMsg, state, author, client);
 }
 
 /**
@@ -664,10 +717,6 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
     }
   }
 
-  // Perbarui channel lock timestamp agar tetap aktif
-  const safariLocks = client.safariLocks = client.safariLocks || new Map();
-  safariLocks.set(state.channelId, { userId: author.id, expiresAt: Date.now() + 300000 });
-
   // Buat collector baru untuk giliran ini
   const turnCollector = updatedMsg.createMessageComponentCollector({
     filter: (btnInteraction) => btnInteraction.user.id === author.id,
@@ -688,9 +737,7 @@ async function renderSafariScreen(interaction, replyMsg, state, author, client) 
 
   turnCollector.on('end', async (collected, reason) => {
     if (reason === 'time') {
-      deleteSafariState(author.id, state.guildId);
-      releaseLock(client, state.channelId);
-      await updatedMsg.edit({ content: `⏳ Sesi Safari berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`, embeds: [], components: [], files: [] }).catch(() => {});
+      await endSafariSession(null, state, author, client, `⏳ Sesi Safari <@${author.id}> berakhir karena terlalu lama mendiamkan pet liar. Pet melarikan diri ke dalam semak-semak!`);
     }
   });
 }
@@ -730,9 +777,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
   }
 
   if (action === 'safari_act_flee') {
-    deleteSafariState(author.id, state.guildId);
-    releaseLock(client, state.channelId);
-    return interaction.editReply({ content: '🏃‍♂️ Anda melarikan diri dari wilayah safari secara aman.', embeds: [], components: [] });
+    return endSafariSession(interaction, state, author, client, `🏃‍♂️ <@${author.id}> melarikan diri dari wilayah safari secara aman.`);
   }
 
   // --- AKSI: DEKATI PERLAHAN ---
@@ -741,13 +786,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     const escapeFrightChance = state.weather === 'KABUT' ? 0.05 : 0.20;
 
     if (Math.random() < escapeFrightChance) {
-      deleteSafariState(author.id, state.guildId);
-      releaseLock(client, state.channelId);
-      return interaction.editReply({
-        content: `💨 **Pet Terkejut!** Langkah kaki Anda terlalu berisik. **${state.pet.typeName}** terkejut dan langsung kabur terbirit-birit ke dalam semak-semak!`,
-        embeds: [],
-        components: []
-      });
+      return endSafariSession(interaction, state, author, client, `💨 **Pet Terkejut!** Langkah kaki <@${author.id}> terlalu berisik. **${state.pet.typeName}** terkejut dan langsung kabur terbirit-birit ke dalam semak-semak!`);
     }
 
     state.sneakCount++;
@@ -782,13 +821,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
-        deleteSafariState(author.id, state.guildId);
-        releaseLock(client, state.channelId);
-        return interaction.editReply({
-          content: `💨 **Pet Melarikan Diri!** Saat Anda menyuapkan umpan, gerakan Anda mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`,
-          embeds: [],
-          components: []
-        });
+        return endSafariSession(interaction, state, author, client, `💨 **Pet Melarikan Diri!** Saat <@${author.id}> menyuapkan umpan, gerakan yang mendadak mengejutkannya. **${state.pet.typeName}** liar lari menghindar dan kabur!`);
       }
     }
 
@@ -817,13 +850,7 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty - (state.baitFed * 0.05));
       const passiveEscapeChance = finalEscapeChance * 0.25; // 25% dari peluang kabur penuh
       if (Math.random() < passiveEscapeChance) {
-        deleteSafariState(author.id, state.guildId);
-        releaseLock(client, state.channelId);
-        return interaction.editReply({
-          content: `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuatnya takut. **${state.pet.typeName}** terkejut dan langsung kabur!`,
-          embeds: [],
-          components: []
-        });
+        return endSafariSession(interaction, state, author, client, `💨 **Pet Melarikan Diri!** Bunyi mainan yang gemerincing membuat pet takut. **${state.pet.typeName}** terkejut dan langsung kabur!`);
       }
     }
 
@@ -895,7 +922,6 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
     const roll = Math.random();
     if (roll < finalCatchChance) {
       // BERHASIL TANGKAP!
-      deleteSafariState(author.id, state.guildId);
       return handleCaptureSuccess(interaction, replyMsg, state, author, client);
     }
 
@@ -912,26 +938,14 @@ async function handleSafariTurn(interaction, replyMsg, state, author, client) {
 
     // Habis Bola = Kalah
     if (state.balls <= 0) {
-      deleteSafariState(author.id, state.guildId);
-      releaseLock(client, state.channelId);
-      return interaction.editReply({
-        content: `😢 **Safari Ball Habis!** Anda kehabisan bola safari. **${state.pet.typeName}** liar berjalan santai menjauh ke dalam hutan gelap.`,
-        embeds: [],
-        components: []
-      });
+      return endSafariSession(interaction, state, author, client, `😢 **Safari Ball Habis!** <@${author.id}> kehabisan bola safari. **${state.pet.typeName}** liar berjalan santai menjauh ke dalam hutan gelap.`);
     }
 
     // Cek Pelarian Pet (Jika tidak sedang tidur)
     if (state.sleepTurns === 0) {
       const finalEscapeChance = Math.max(0.01, state.pet.baseEscape * biome.escapeMultiplier + state.escapeBonus + state.sneakPenalty + weatherEscapeBonus - (state.baitFed * 0.05));
       if (Math.random() < finalEscapeChance) {
-        deleteSafariState(author.id, state.guildId);
-        releaseLock(client, state.channelId);
-        return interaction.editReply({
-          content: `💨 **Pet Melarikan Diri!** Guncangan bola membuatnya ketakutan. **${state.pet.typeName}** melompat cepat dan menghilang di antara semak-semak!`,
-          embeds: [],
-          components: []
-        });
+        return endSafariSession(interaction, state, author, client, `💨 **Pet Melarikan Diri!** Guncangan bola membuat pet ketakutan. **${state.pet.typeName}** melompat cepat dan menghilang di antara semak-semak!`);
       }
     }
 
@@ -991,6 +1005,9 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
         choiceProcessed = true;
         choiceCollector.stop();
 
+        // Defer update immediately to prevent interaction timeout
+        await iChoice.deferUpdate().catch(() => {});
+
         // Mengamankan proses rilis pet dengan transaksi SQLite agar koin/item tidak terduplikasi
         let rewards = null;
         db.transaction(() => {
@@ -1017,8 +1034,8 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
           )
           .setTimestamp();
 
-        releaseLock(client, state.channelId);
-        return iChoice.update({ embeds: [releaseEmbed], components: [] });
+        await endSafariSession(iChoice, state, author, client, releaseEmbed);
+        return;
       }
 
       if (iChoice.customId === 'safari_choice_adopt') {
@@ -1135,8 +1152,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
             .setThumbnail(embeds.getPetImage(state.pet))
             .setTimestamp();
 
-          releaseLock(client, state.channelId);
-          await safeReply(modalInteraction, { embeds: [adoptEmbed] });
+          await endSafariSession(modalInteraction, state, author, client, adoptEmbed);
           await updatedMsg.delete().catch(() => {});
         } catch (errModal) {
           // Abaikan timeout modal, berikan pet default name jika ditutup
@@ -1182,8 +1198,7 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
               )
               .setTimestamp();
 
-            releaseLock(client, state.channelId);
-            await replyMsg.reply({ embeds: [adoptEmbed] }).catch(() => {});
+            await endSafariSession(null, state, author, client, adoptEmbed);
             await updatedMsg.delete().catch(() => {});
           } else {
             console.error('Error modal submit:', errModal);
@@ -1197,14 +1212,17 @@ async function handleCaptureSuccess(interaction, replyMsg, state, author, client
 
   choiceCollector.on('end', async (collected, reason) => {
     if (!choiceProcessed) {
-      deleteSafariState(author.id, state.guildId);
-      releaseLock(client, state.channelId);
       // Disable buttons on updatedMsg
       const disabledRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('safari_choice_adopt').setLabel('📥 Adopsi').setStyle(ButtonStyle.Success).setDisabled(true),
         new ButtonBuilder().setCustomId('safari_choice_release').setLabel('💰 Rilis & Jual').setStyle(ButtonStyle.Primary).setDisabled(true)
       );
-      await updatedMsg.edit({ content: '⏳ Keputusan adopsi/rilis kedaluwarsa karena tidak ada respon. Pet liar melarikan diri kembali ku hutan!', components: [disabledRow] }).catch(() => {});
+      const timeoutEmbed = new EmbedBuilder()
+        .setColor(0xCCCCCC)
+        .setTitle('⏳ WAKTU HABIS')
+        .setDescription(`Keputusan adopsi/rilis <@${author.id}> kedaluwarsa karena tidak ada respon. Pet liar melarikan diri kembali ke hutan!`);
+      
+      await endSafariSession(null, state, author, client, { embeds: [timeoutEmbed], components: [disabledRow] });
     }
   });
 }
