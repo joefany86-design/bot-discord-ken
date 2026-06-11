@@ -13,6 +13,8 @@ echo "-> Menghubungkan ke VPS (202.10.45.104) untuk deploy..."
 ssh root@202.10.45.104 "cd /root/bot-discord-2026 && \
                        echo '-> [VPS] Mengambil update dari GitHub...' && \
                        git pull origin main && \
+                       echo '-> [VPS] Menulis flag deploy...' && \
+                       git log -1 --pretty=format:'{\"commit\":\"%h\",\"message\":\"%s\",\"author\":\"%an\"}' > deploy_flag.json && \
                        echo '-> [VPS] Menginstall dependencies...' && \
                        npm install --production && \
                        echo '-> [VPS] Mereload PM2...' && \

@@ -739,6 +739,37 @@ client.once('ready', () => {
 
   // STOCK MARKET & EKONOMI SERVER ("RUPIAH SERVER")
   initStockMarket(client);
+
+  // Cek apakah ada update/deploy baru untuk diumumkan ke warga
+  const deployFlagPath = path.join(__dirname, 'deploy_flag.json');
+  if (fs.existsSync(deployFlagPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(deployFlagPath, 'utf8'));
+      fs.unlinkSync(deployFlagPath); // Hapus agar tidak duplikasi kirim saat restart biasa
+
+      const announcementChannel = client.channels.cache.get(config.ANNOUNCEMENT_CHANNEL_ID) 
+        || await client.channels.fetch(config.ANNOUNCEMENT_CHANNEL_ID).catch(() => null);
+
+      if (announcementChannel) {
+        const updateEmbed = new EmbedBuilder()
+          .setColor(0x00FF88) // Light green accent
+          .setTitle('🚀 BOT UPDATE & DEPLOYMENT COMPLETED')
+          .setDescription(
+            `Halo Warga **${targetGuild ? targetGuild.name : 'Kosan 1A'}**! 👋✨\n\n` +
+            `Sistem baru saja diperbarui dan dideploy ulang setelah melakukan beberapa pembaruan/riset.\n\n` +
+            `**📝 Catatan Update:**\n` +
+            `> \`${data.message || 'Tidak ada pesan deskripsi.'}\`\n\n` +
+            `*Bot Sentinel telah kembali online secara penuh dan siap digunakan kembali.*`
+          )
+          .setFooter({ text: `Commit: ${data.commit || 'N/A'} | Author: ${data.author || 'N/A'}` })
+          .setTimestamp();
+
+        await announcementChannel.send({ content: '@everyone', embeds: [updateEmbed] }).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Gagal memproses deploy flag / mengirim pengumuman:', err);
+    }
+  }
 });
 
 
