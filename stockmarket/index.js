@@ -6421,12 +6421,12 @@ async function handlePetCommand(message, client, args) {
         await replyMsg.edit(s1EditOpts).catch(() => { });
 
         const pathCollector = replyMsg.createMessageComponentCollector({
-          time: 15000,
-          max: 1
+          time: 15000
         });
 
         let pathChoice = 'SAFE';
         let pathText = '🛣️ Jalur Aman';
+        let hasChosen = false;
 
         await new Promise((resolve) => {
           pathCollector.on('collect', async i => {
@@ -6436,6 +6436,7 @@ async function handlePetCommand(message, client, args) {
                 await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa memilih jalur!', flags: 64 }).catch(() => { });
                 return;
               }
+              hasChosen = true;
               await i.deferUpdate().catch(() => { });
               if (i.customId === 'exp_path_shortcut') {
                 pathChoice = 'SHORTCUT';
@@ -6470,16 +6471,16 @@ async function handlePetCommand(message, client, args) {
                 pathChoice = 'SAFE';
                 pathText = '🛣️ Jalur Aman\n└─ Perjalanan aman lancar tanpa risiko ekstra.';
               }
+              pathCollector.stop();
             } catch (err) {
               console.error('[Expedition Stage 1 pathCollector collect error]:', err);
-            } finally {
-              resolve();
+              pathCollector.stop();
             }
           });
 
-          pathCollector.on('end', (collected) => {
+          pathCollector.on('end', () => {
             try {
-              if (collected.size === 0) {
+              if (!hasChosen) {
                 pathChoice = 'SAFE';
                 pathText = '🛣️ Jalur Aman (Batas waktu habis, otomatis mengambil Jalur Aman)';
               }
@@ -6558,9 +6559,10 @@ async function handlePetCommand(message, client, args) {
           await replyMsg.edit(s2cOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
-            time: 15000,
-            max: 1
+            time: 15000
           });
+
+          let hasChosenEvent = false;
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
@@ -6570,6 +6572,7 @@ async function handlePetCommand(message, client, args) {
                   await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa menentukan aksi event!', flags: 64 }).catch(() => { });
                   return;
                 }
+                hasChosenEvent = true;
                 await i.deferUpdate().catch(() => { });
                 if (i.customId === 'exp_event_lockpick') {
                   eventChoice = 'LOCKPICK';
@@ -6602,16 +6605,16 @@ async function handlePetCommand(message, client, args) {
                   eventChoice = 'LEAVE';
                   eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
                 }
+                eventCollector.stop();
               } catch (err) {
                 console.error('[Expedition Stage 2 chest collector collect error]:', err);
-              } finally {
-                resolve();
+                eventCollector.stop();
               }
             });
 
-            eventCollector.on('end', (collected) => {
+            eventCollector.on('end', () => {
               try {
-                if (collected.size === 0) {
+                if (!hasChosenEvent) {
                   eventChoice = 'LEAVE';
                   eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati peti)';
                 }
@@ -6645,9 +6648,10 @@ async function handlePetCommand(message, client, args) {
           await replyMsg.edit(s2wOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
-            time: 15000,
-            max: 1
+            time: 15000
           });
+
+          let hasChosenEvent = false;
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
@@ -6657,6 +6661,7 @@ async function handlePetCommand(message, client, args) {
                   await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa menentukan aksi event!', flags: 64 }).catch(() => { });
                   return;
                 }
+                hasChosenEvent = true;
                 await i.deferUpdate().catch(() => { });
                 if (i.customId === 'exp_event_drink') {
                   eventChoice = 'DRINK';
@@ -6677,16 +6682,16 @@ async function handlePetCommand(message, client, args) {
                   eventChoice = 'LEAVE';
                   eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
                 }
+                eventCollector.stop();
               } catch (err) {
                 console.error('[Expedition Stage 2 waterfall collector collect error]:', err);
-              } finally {
-                resolve();
+                eventCollector.stop();
               }
             });
 
-            eventCollector.on('end', (collected) => {
+            eventCollector.on('end', () => {
               try {
-                if (collected.size === 0) {
+                if (!hasChosenEvent) {
                   eventChoice = 'LEAVE';
                   eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati)';
                 }
