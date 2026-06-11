@@ -5283,6 +5283,8 @@ async function handlePetCardCommand(message, client, args) {
   }
 }
 
+const towerActiveUsers = new Set();
+
 /**
  * Helper untuk menampilkan dan memproses Dashboard Pet Tamagotchi
  */
@@ -5487,11 +5489,19 @@ async function handlePetCommand(message, client, args) {
       collector.on('collect', async i => {
         if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
 
+        // Pengecekan in-memory transaction lock untuk mencegah race conditions
+        if (['pet_btn_tower_sweep', 'pet_btn_tower_climb'].includes(i.customId)) {
+          if (towerActiveUsers.has(author.id)) {
+            return i.reply({ content: '❌ Anda memiliki pertempuran atau sapu bersih menara yang sedang berjalan. Mohon bersabar!', flags: 64 });
+          }
+        }
+
         try {
           if (i.customId === 'pet_btn_close_panel') {
             collector.stop();
             await replyMsg.delete().catch(() => { });
           } else if (i.customId === 'pet_btn_tower_sweep') {
+            towerActiveUsers.add(author.id);
             await i.deferReply({ flags: 64 });
             try {
               const res = pet.sweepTower(author.id, guildId);
@@ -5508,61 +5518,79 @@ async function handlePetCommand(message, client, args) {
               await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
             } catch (err) {
               await i.editReply({ embeds: [embeds.errorEmbed('Sweep Gagal! 🧹', err.message)] });
+            } finally {
+              towerActiveUsers.delete(author.id);
             }
           } else if (i.customId === 'pet_btn_tower_climb') {
             const tState = pet.getTowerState(author.id, guildId);
             if (tState.daily_attempts >= 5) {
+              towerActiveUsers.add(author.id);
               await i.deferReply({ flags: 64 });
-              const confirmEmb = embeds.warnEmbed(
-                'Konfirmasi Tiket Masuk! 🎫',
-                `Kuota harian (5/5) Anda sudah habis!\n` +
-                `Apakah Anda ingin menggunakan **1x 🥤 Soda Energi Pet** atau membayar **Rp 500 koin** untuk masuk kembali?`
-              );
-              const confirmRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('pet_btn_tower_climb_confirm').setLabel('🟢 Gunakan Soda/Rp 500').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('pet_btn_tower_climb_cancel').setLabel('🔴 Batal').setStyle(ButtonStyle.Secondary)
-              );
+              try {
+                const confirmEmb = embeds.warnEmbed(
+                  'Konfirmasi Tiket Masuk! 🎫',
+                  `Kuota harian (5/5) Anda sudah habis!\n` +
+                  `Apakah Anda ingin menggunakan **1x 🥤 Soda Energi Pet** atau membayar **Rp 500 koin** untuk masuk kembali?`
+                );
+                const confirmRow = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder().setCustomId('pet_btn_tower_climb_confirm').setLabel('🟢 Gunakan Soda/Rp 500').setStyle(ButtonStyle.Success),
+                  new ButtonBuilder().setCustomId('pet_btn_tower_climb_cancel').setLabel('🔴 Batal').setStyle(ButtonStyle.Secondary)
+                );
 
-              const confMsg = await i.editReply({ embeds: [confirmEmb], components: [confirmRow] });
-              const confCollector = confMsg.createMessageComponentCollector({ time: 30000, max: 1 });
+                const confMsg = await i.editReply({ embeds: [confirmEmb], components: [confirmRow] });
+                const confCollector = confMsg.createMessageComponentCollector({ time: 30000, max: 1 });
 
-              confCollector.on('collect', async iConf => {
-                if (iConf.user.id !== author.id) return iConf.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
-                await iConf.deferUpdate();
+                confCollector.on('collect', async iConf => {
+                  if (iConf.user.id !== author.id) return iConf.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+                  await iConf.deferUpdate();
 
-                if (iConf.customId === 'pet_btn_tower_climb_confirm') {
-                  try {
-                    const fightRes = pet.climbTower(author.id, guildId, true);
-                    const fightEmbed = embeds.petBattleLogEmbed(
-                      fightRes.isWin
-                        ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉`
-                        : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
-                      fightRes.logs,
-                      fightRes.isWin
-                    );
+                  if (iConf.customId === 'pet_btn_tower_climb_confirm') {
+                    try {
+                      const fightRes = pet.climbTower(author.id, guildId, true);
+                      const fightEmbed = embeds.petBattleLogEmbed(
+                        fightRes.isWin
+                          ? `🎉 KEMENANGAN LANTAI ${fightRes.floor}! 🎉`
+                          : `💀 KEKALAHAN LANTAI ${fightRes.floor}! 💀`,
+                        fightRes.logs,
+                        fightRes.isWin
+                      );
 
-                    if (fightRes.isWin) {
-                      let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
-                      if (fightRes.gotCheckpointReward) {
-                        rewardText += `\n🎁 **Bonus Lantai Boss:** Mendapatkan **1x ${fightRes.checkpointRewardName}**!`;
+                      if (fightRes.isWin) {
+                        let rewardText = `💰 **Koin:** **Rp ${fightRes.rewardCoins.toLocaleString('id-ID')}** | 🌟 **XP:** **+${fightRes.rewardXp} XP**`;
+                        if (fightRes.gotCheckpointReward) {
+                          rewardText += `\n🎁 **Bonus Lantai Boss:** Mendapatkan **1x ${fightRes.checkpointRewardName}**!`;
+                        }
+                        fightEmbed.addFields({ name: '🎁 Hadiah Kemenangan', value: rewardText });
+                      } else {
+                        fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
                       }
-                      fightEmbed.addFields({ name: '🎁 Hadiah Kemenangan', value: rewardText });
-                    } else {
-                      fightEmbed.addFields({ name: '🩹 Status Pet', value: 'Pet Anda pingsan dan statusnya menjadi **LEMAS/WEAK** dengan 1 HP. Segera obati dia!' });
+
+                      await i.editReply({ embeds: [fightEmbed], components: [] });
+
+                      const freshPet = pet.getPet(author.id, guildId);
+                      await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
+                    } catch (err) {
+                      await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)], components: [] });
+                    } finally {
+                      towerActiveUsers.delete(author.id);
                     }
-
-                    await i.editReply({ embeds: [fightEmbed], components: [] });
-
-                    const freshPet = pet.getPet(author.id, guildId);
-                    await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
-                  } catch (err) {
-                    await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)], components: [] });
+                  } else {
+                    await i.editReply({ embeds: [embeds.warnEmbed('Tantangan Dibatalkan! 🎫', 'Anda telah membatalkan tantangan Menara Ujian.')], components: [] });
+                    towerActiveUsers.delete(author.id);
                   }
-                } else {
-                  await i.editReply({ embeds: [embeds.warnEmbed('Tantangan Dibatalkan! 🎫', 'Anda telah membatalkan tantangan Menara Ujian.')], components: [] });
-                }
-              });
+                });
+
+                confCollector.on('end', (collected, reason) => {
+                  if (reason === 'time') {
+                    towerActiveUsers.delete(author.id);
+                  }
+                });
+              } catch (err) {
+                towerActiveUsers.delete(author.id);
+                await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)], components: [] });
+              }
             } else {
+              towerActiveUsers.add(author.id);
               await i.deferReply({ flags: 64 });
               try {
                 const fightRes = pet.climbTower(author.id, guildId, false);
@@ -5590,6 +5618,8 @@ async function handlePetCommand(message, client, args) {
                 await replyMsg.edit(getTowerPanelData(author.id, guildId, freshPet)).catch(() => { });
               } catch (err) {
                 await i.editReply({ embeds: [embeds.errorEmbed('Pertempuran Gagal! ⚔️', err.message)] });
+              } finally {
+                towerActiveUsers.delete(author.id);
               }
             }
           }

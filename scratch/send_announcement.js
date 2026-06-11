@@ -1,117 +1,91 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
-const token = process.env.DISCORD_TOKEN;
-const channelId = '1510920596127481988';
-
-if (!token) {
-  console.error('Error: DISCORD_TOKEN tidak ditemukan di file .env');
-  process.exit(1);
-}
-
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
+});
 
 client.once('ready', async () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+  console.log(`🤖 Bot logged in as ${client.user.tag}`);
   
-  try {
-    const channel = await client.channels.fetch(channelId);
-    if (!channel) {
-      console.error(`Error: Channel dengan ID ${channelId} tidak ditemukan.`);
-      process.exit(1);
-    }
+  const channelId = '1510920596127481988';
+  const channel = await client.channels.fetch(channelId).catch(err => {
+    console.error('Failed to fetch channel:', err);
+    return null;
+  });
 
-    console.log(`Mengirim pengumuman premium ke channel: #${channel.name}`);
+  if (!channel) {
+    console.error(`Channel with ID ${channelId} not found!`);
+    process.exit(1);
+  }
 
-    // Embed 1: Header Banner (Royal Violet)
-    const headerEmbed = new EmbedBuilder()
-      .setColor(0x7C4DFF) // Royal Violet
-      .setTitle('📢 EXPANSION UPDATE: NEW PETS ARRIVED!')
-      .setDescription(
-        `Halo warga **${channel.guild.name}**! 🌅\n` +
-        `Kabar gembira bagi seluruh Trainer peliharaan! Sistem kependudukan Kosan 1A baru saja merilis **9 Spesies Pet Baru** tingkat **Epic** & **Legendary** yang siap Anda dapatkan melalui Gacha atau jinakkan secara langsung di Safari liar!`
-      )
-      .setImage('https://media.tenor.com/eKcQ9MT2dR8AAAAC/uwu-cute.gif')
-      .setTimestamp();
-
-    // Embed 2: Epic Pets (Amethyst Purple)
-    const epicEmbed = new EmbedBuilder()
-      .setColor(0x9B59B6) // Amethyst Purple
-      .setTitle('🟣 DAFTAR PET BARU — KELAS [ EPIC ]')
-      .setDescription('Pet langka dengan elemen khusus dan stats seimbang:')
-      .addFields(
-        {
-          name: '🧜‍♀️ Siren (WATER)',
-          value: '• **Deskripsi**: Makhluk laut bersuara merdu. Menghipnotis lawan dengan kidung air abadi.\n• **Combat**: ATK: `Siren Melody` | DEF: `Aqua Wall`\n• **Habitat**: 🌊 Danau Abyss (abyss)',
-          inline: false
-        },
-        {
-          name: '🦄 Pegasus (DRAGON)',
-          value: '• **Deskripsi**: Kuda bersayap suci penjaga langit. Pelari cepat pembawa keajaiban.\n• **Combat**: ATK: `Wind Tempest` | DEF: `Divine Feather`\n• **Habitat**: ⛰️ Pegunungan Kuno (mountain)',
-          inline: false
-        },
-        {
-          name: '🦊 Kitsune (FIRE)',
-          value: '• **Deskripsi**: Rubah ekor sembilan legendaris. Memanipulasi api mistis biru pelindung jiwa.\n• **Combat**: ATK: `Fox Fire` | DEF: `Illusion Shield`\n• **Habitat**: 🌋 Lembah Volcanic (volcano)',
-          inline: false
-        },
-        {
-          name: '⚡ Kirin (DRAGON)',
-          value: '• **Deskripsi**: Rusa petir mitologi pembawa kemakmuran. Langkah kakinya memicu guntur.\n• **Combat**: ATK: `Kirin Judgement` | DEF: `Lightning Cloak`\n• **Habitat**: ⛰️ Pegunungan Kuno (mountain)',
-          inline: false
-        },
-        {
-          name: '❄️ Yeti (WATER)',
-          value: '• **Deskripsi**: Raksasa salju penjaga puncak es dingin. Kekuatannya mampu membekukan lawan.\n• **Combat**: ATK: `Yeti Smash` | DEF: `Frost Armor`\n• **Habitat**: 🌊 Danau Abyss (abyss)',
-          inline: false
-        }
-      )
-      .setTimestamp();
-
-    // Embed 3: Legendary Pets (Vibrant Gold)
-    const legendaryEmbed = new EmbedBuilder()
-      .setColor(0xFFD700) // Vibrant Gold
-      .setTitle('🟡 DAFTAR PET BARU — KELAS [ LEGENDARY ]')
-      .setDescription(
-        'Pet legendaris super tangguh! Membawa **buff permanen +25% pendapatan koin saat Bekerja/Hunt** dan terlahir dengan **2 Trait Acak** sekaligus!'
-      )
-      .addFields(
-        {
-          name: '🐺 Cerberus (FIRE)',
-          value: '• **Deskripsi**: Anjing berkepala tiga penjaga neraka. Menguasai api jahanam pembakar jiwa.\n• **Combat**: ATK: `Triple Bite` | DEF: `Underworld Shield`\n• **Habitat**: 🌋 Lembah Volcanic (volcano)',
-          inline: false
-        },
-        {
-          name: '🌪️ Typhon (DRAGON)',
-          value: '• **Deskripsi**: Bapa dari segala monster mitologi. Membawa kekuatan badai penghancur dimensi.\n• **Combat**: ATK: `Typhoon Blast` | DEF: `Tempest Shield`\n• **Habitat**: ⛰️ Pegunungan Kuno (mountain)',
-          inline: false
-        },
-        {
-          name: '⚔️ Valkyrie (EARTH)',
-          value: '• **Deskripsi**: Ksatria wanita pemandu jiwa pejuang. Memiliki pertahanan emas yang tak tertembus.\n• **Combat**: ATK: `Valkyrie Strike` | DEF: `Aegis Guard`\n• **Habitat**: 🌊 Danau Abyss (abyss)',
-          inline: false
-        },
-        {
-          name: '👹 Ifrit (FIRE)',
-          value: '• **Deskripsi**: Raja jin api dari gurun terdalam berkekuatan destruktif tinggi.\n• **Combat**: ATK: `Hellfire Inferno` | DEF: `Magma Shield`\n• **Habitat**: 🌋 Lembah Volcanic (volcano)',
-          inline: false
-        }
-      )
-      .setFooter({ text: 'Sentinel Bot System • Kosan A1 Updates' })
-      .setTimestamp();
-
-    await channel.send({ 
-      content: '🔔 **PEMBERITAHUAN UPDATE WARGA: SPESIES PET BARU KOSAN 1A**',
-      embeds: [headerEmbed, epicEmbed, legendaryEmbed] 
+  const embed = new EmbedBuilder()
+    .setTitle('🏰 MENARA UJIAN (TOWER OF TRIALS) — TANTANGAN PVE SOLO!')
+    .setURL('https://discord.com')
+    .setDescription(
+      'Uji batas kemampuan hewan peliharaan Anda! Panjat **Menara Ujian (Tower of Trials)** dengan total **50 lantai** yang penuh dengan rintangan dan monster penjaga. Tunjukkan bahwa pet Anda adalah petarung terkuat! ⚔️🛡️'
+    )
+    .setColor('#F1C40F') // Golden premium color
+    .addFields([
+      {
+        name: '⚔️ Cara Bermain',
+        value: 
+          '1️⃣ Ketik perintah **`.pet tower`** di chat.\n' +
+          '2️⃣ Klik tombol **`⚔️ Tantang Lantai`** pada panel kontrol untuk memulai simulasi pertempuran.\n' +
+          '3️⃣ **Menang:** Pet Anda akan naik ke lantai berikutnya, mendapatkan koin, dan memperoleh XP Pet!\n' +
+          '4️⃣ **Kalah:** Pet Anda akan pingsan (status menjadi **WEAK/LEMAS** dengan sisa **1 HP**). Obati pet Anda terlebih dahulu sebelum menantang kembali.',
+        inline: false
+      },
+      {
+        name: '🎫 Kuota Harian & Tiket Masuk',
+        value: 
+          '• Setiap warga mendapatkan **5x Percobaan Gratis** setiap harinya.\n' +
+          '• Jika kuota harian habis, Anda tetap bisa masuk dengan membayar biaya masuk sebesar **Rp 500 koin** atau menggunakan **1x 🥤 Soda Energi Pet**.',
+        inline: false
+      },
+      {
+        name: '🎁 Hadiah Lantai Menara',
+        value: 
+          '🏆 **Koin & XP:** Setiap lantai memberikan hadiah yang terus meningkat seiring bertambahnya kesulitan:\n' +
+          '• **Lantai 1 - 10 (🟢 Mudah):** Rp 500 - Rp 1.500\n' +
+          '• **Lantai 11 - 20 (🟡 Sedang):** Rp 2.000 - Rp 4.500\n' +
+          '• **Lantai 21 - 40 (🔴 Sulit):** Rp 5.000 - Rp 12.000\n' +
+          '• **Lantai 41 - 50 (💀 Ekstrem):** Rp 15.000 - Rp 50.000\n\n' +
+          '🔥 **Lantai Boss (Kelipatan 5):** Setiap menyelesaikan lantai kelipatan 5, Anda dijamin mendapatkan hadiah bonus tambahan berupa **1x 🎟️ Tiket Gacha Pet**!',
+        inline: false
+      },
+      {
+        name: '🧹 Fitur Sapu Bersih (Sweep)',
+        value: 
+          '• Malas memanjat satu per satu setiap hari? Gunakan tombol **`🧹 Sapu Bersih`**!\n' +
+          '• Anda dapat melakukan Sweep **sekali sehari** untuk langsung mengklaim **10% dari total koin & XP** dari semua lantai yang sudah pernah Anda taklukkan (Maksimal **Rp 15.000**).\n' +
+          '• **Syarat Sweep:** Status kesejahteraan pet (Hunger, Thirst, Happiness) wajib berada di atas **50%**.',
+        inline: false
+      },
+      {
+        name: '💡 Tips Sukses',
+        value: 
+          '• **Latih Stat:** Naikkan level pet Anda lalu alokasikan Poin Latihan (TP) di **`.pet gym`** untuk meningkatkan STR, VIT, DEF, atau DEX.\n' +
+          '• **Manfaatkan Elemen:** Sesuaikan pet aktif Anda dengan elemen boss di lantai tersebut untuk mempermudah kemenangan!',
+        inline: false
+      }
+    ])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/619/619043.png') // Nice Castle/Tower icon
+    .setTimestamp()
+    .setFooter({
+      text: 'Sentinel Bot RPG System • Kosan 1A',
+      iconURL: client.user.displayAvatarURL()
     });
 
-    console.log('✅ Pengumuman berhasil dikirim!');
+  try {
+    await channel.send({ embeds: [embed] });
+    console.log('✅ Premium embed announcement successfully sent!');
   } catch (err) {
-    console.error('❌ Gagal mengirim pengumuman:', err);
+    console.error('Failed to send announcement:', err);
   } finally {
     client.destroy();
     process.exit(0);
   }
 });
 
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);

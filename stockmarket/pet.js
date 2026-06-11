@@ -3829,7 +3829,7 @@ function climbTower(userId, guildId, useSoda) {
   const petCritChance = Math.min(0.35, petDex * 0.005);
 
   let round = 1;
-  const maxRounds = 10;
+  const maxRounds = 30;
   let isWin = false;
 
   logs.push(`⚔️ **Pertempuran Dimulai!** **${petObj.pet_name}** (HP: ${petHP}/${getMaxHP(petObj)}) VS **${boss.name}** (HP: ${boss.hp})`);
