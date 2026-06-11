@@ -127,6 +127,11 @@ function depositSavings(userId, guildId, amountInput) {
       [netDeposit, userId, guildId]
     );
 
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_BANK_DEPOSIT');
+    }
+
     // Catat transaksi
     db.run(
       'INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, ?, ?)',
@@ -194,6 +199,11 @@ function withdrawSavings(userId, guildId, amountInput) {
       'UPDATE wallets SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
       [netReceive, userId, guildId]
     );
+
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_BANK_WITHDRAW');
+    }
 
     // Catat transaksi
     db.run(
@@ -471,6 +481,11 @@ function transferSavings(fromUserId, toUserId, guildId, amountInput) {
       'UPDATE bank_savings SET balance = balance + ? WHERE user_id = ? AND guild_id = ?',
       [netAmount, toUserId, guildId]
     );
+
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_BANK_TRANSFER');
+    }
 
     // Catat transaksi pengirim (TRANSFER_OUT)
     db.run(

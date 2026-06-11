@@ -1618,6 +1618,11 @@ async function endPvPGamePvP(interaction, client, combatData, winnerId, reason) 
     economy.subtractBalance(loserId, guildId, betAmount, 'PET_PVP_BET_LOST');
     economy.addBalance(winnerId, guildId, prizePool - betAmount, 'PET_PVP_BET_WON');
 
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_PVP_BATTLE');
+    }
+
     db.run(
       `UPDATE user_pets SET health = ?, happiness = ?, xp = ?, level = ?, pvp_wins = pvp_wins + 1, last_interaction_at = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [wHP, wHappy, wXp, wLevel, Math.floor(Date.now() / 1000), winnerId, guildId, winnerName]

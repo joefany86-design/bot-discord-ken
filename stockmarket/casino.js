@@ -72,6 +72,12 @@ function coinflip(userId, guildId, betInput, guessInput) {
       // Kemenangan bersih = taruhan dikembalikan + (keuntungan - pajak 5%)
       // Jadi total penambahan saldo adalah finalReceive
       economy.addBalance(userId, guildId, finalReceive, 'CASINO_COINFLIP_WIN');
+      
+      // Kirim pajak ke owner
+      if (tax > 0) {
+        economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_COINFLIP');
+      }
+
       newBalance = economy.getWallet(userId, guildId).balance;
     } else {
       economy.subtractBalance(userId, guildId, bet, 'CASINO_COINFLIP_LOSE');

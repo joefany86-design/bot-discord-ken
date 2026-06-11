@@ -784,6 +784,11 @@ async function checkAndCloseExpiredAuctions(client) {
             const sellerShare = bidAmount - tax;
             economy.addBalance(item.seller_id, guildId, sellerShare, 'AUCTION_SELL');
             
+            // Kirim pajak ke owner
+            if (tax > 0) {
+              economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_AUCTION');
+            }
+            
             endMsgStr = `🏆 **LELANG ID ${aId} RESMI SELESAI!**\n\n` +
               `📦 **Barang:** ${item.item_type === 'PET' ? `🐾 Pet: **${itemId}**` : `**${ITEM_MAP[itemId]?.name || itemId}** x${qty}`}\n` +
               `👤 **Pemenang:** <@${winnerId}>\n` +

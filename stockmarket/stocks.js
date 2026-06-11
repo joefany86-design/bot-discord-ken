@@ -333,6 +333,11 @@ function sellStock(userId, guildId, ticker, shares, member = null) {
     // 1. Tambahkan saldo koin user
     economy.addBalance(userId, guildId, finalRevenue, 'SELL', stock.channel_id);
 
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_STOCK_SELL');
+    }
+
     // Update record transaksi terbaru untuk mengisi field shares dan price_per_share
     db.run(
       `UPDATE transactions 

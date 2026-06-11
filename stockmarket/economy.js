@@ -427,6 +427,11 @@ function transferBalance(fromUserId, toUserId, guildId, amount, member = null) {
     // Tambahkan ke penerima (dikurangi pajak)
     addBalance(toUserId, guildId, amountToReceive, 'TRANSFER_IN', fromUserId);
 
+    // Kirim pajak ke owner
+    if (tax > 0) {
+      addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_TRANSFER');
+    }
+
     console.log(`💸 Transfer: ${fromUserId} -> ${toUserId} senilai Rp ${amount} (Penerima dapat Rp ${amountToReceive}, Pajak Rp ${tax} - Rate ${taxRatePercent}%)`);
   })();
 

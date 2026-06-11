@@ -640,10 +640,17 @@ function initScheduler(client) {
           const netChange = interestAmount - securityFeeAmount;
 
           // 6. Jalankan update saldo bank (capping di minimal Rp 0 jika menyusut di bawah 0)
+          const oldBalance = account.balance;
           database.run(
             'UPDATE bank_savings SET balance = CASE WHEN balance + ? < 0 THEN 0 ELSE balance + ? END, last_interest_at = ? WHERE user_id = ? AND guild_id = ?',
             [netChange, netChange, nowUnix, userId, guild.id]
           );
+          const updatedAccount = database.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guild.id]);
+          const newBalanceVal = updatedAccount ? updatedAccount.balance : 0;
+          const actualFeePaid = Math.max(0, oldBalance + interestAmount - newBalanceVal);
+          if (actualFeePaid > 0) {
+            economy.addBalance(config.OWNER_ID, guild.id, actualFeePaid, 'TAX_COLLECT_DAILY_SECURITY');
+          }
 
           if (netChange > 0) {
             totalInterestDistributed += netChange;
@@ -876,13 +883,20 @@ function initScheduler(client) {
           const taxAmount = Math.floor(account.balance * (bracket.rate / 100));
           if (taxAmount <= 0) return;
 
+          const actualTaxCollected = Math.min(account.balance, taxAmount);
+
           // Potong saldo tabungan
           database.run(
             'UPDATE bank_savings SET balance = CASE WHEN balance - ? < 0 THEN 0 ELSE balance - ? END WHERE user_id = ? AND guild_id = ?',
             [taxAmount, taxAmount, account.user_id, guild.id]
           );
 
-          totalTaxCollected += taxAmount;
+          if (actualTaxCollected > 0) {
+            const economy = require('./economy');
+            economy.addBalance(config.OWNER_ID, guild.id, actualTaxCollected, 'TAX_COLLECT_PROGRESSIVE');
+          }
+
+          totalTaxCollected += actualTaxCollected;
           accountsTaxed++;
         });
 

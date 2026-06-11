@@ -648,11 +648,40 @@ const server = http.createServer((req, res) => {
             if (isNaN(taxPct) || taxPct <= 0 || taxPct > 100) {
               return sendJSON(res, 400, { success: false, message: 'Persentase pajak tidak valid!' });
             }
-            db.prepare(`
-              UPDATE wallets 
-              SET balance = MAX(1000, CAST(balance * (1.0 - (? / 100.0)) AS INTEGER)) 
-              WHERE guild_id = ?
-            `).run(taxPct, config.TARGET_GUILD_ID);
+            
+            db.transaction(() => {
+              // Hitung jumlah saldo non-owner sebelum kena pajak
+              const beforeRow = db.prepare('SELECT SUM(balance) as total FROM wallets WHERE guild_id = ? AND user_id != ?').get(config.TARGET_GUILD_ID, config.OWNER_ID);
+              const beforeSum = beforeRow ? (beforeRow.total || 0) : 0;
+
+              // Terapkan pajak massal hanya ke pengguna selain owner
+              db.prepare(`
+                UPDATE wallets 
+                SET balance = MAX(1000, CAST(balance * (1.0 - (? / 100.0)) AS INTEGER)) 
+                WHERE guild_id = ? AND user_id != ?
+              `).run(taxPct, config.TARGET_GUILD_ID, config.OWNER_ID);
+
+              // Hitung jumlah saldo non-owner setelah kena pajak
+              const afterRow = db.prepare('SELECT SUM(balance) as total FROM wallets WHERE guild_id = ? AND user_id != ?').get(config.TARGET_GUILD_ID, config.OWNER_ID);
+              const afterSum = afterRow ? (afterRow.total || 0) : 0;
+
+              const totalTaxCollected = Math.max(0, beforeSum - afterSum);
+              if (totalTaxCollected > 0) {
+                // Pastikan dompet owner terdaftar
+                const ownerWallet = db.prepare('SELECT 1 FROM wallets WHERE user_id = ? AND guild_id = ?').get(config.OWNER_ID, config.TARGET_GUILD_ID);
+                if (!ownerWallet) {
+                  const now = Math.floor(Date.now() / 1000);
+                  db.prepare(`INSERT INTO wallets (user_id, guild_id, balance, total_earned, last_message_at, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(config.OWNER_ID, config.TARGET_GUILD_ID, totalTaxCollected, totalTaxCollected, 0, now);
+                } else {
+                  db.prepare('UPDATE wallets SET balance = balance + ?, total_earned = total_earned + ? WHERE user_id = ? AND guild_id = ?').run(totalTaxCollected, totalTaxCollected, config.OWNER_ID, config.TARGET_GUILD_ID);
+                }
+                
+                // Catat transaksi penambahan koin pajak ke owner
+                db.prepare('INSERT INTO transactions (user_id, guild_id, type, amount) VALUES (?, ?, "TAX_COLLECT_MASS", ?)')
+                  .run(config.OWNER_ID, config.TARGET_GUILD_ID, totalTaxCollected);
+              }
+            })();
+
             appendLog(`Applied mass wealth tax of ${taxPct}% on wallets`);
             sendJSON(res, 200, { success: true, message: `Pajak massal sebesar ${taxPct}% berhasil ditarik!` });
           }
