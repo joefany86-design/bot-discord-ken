@@ -507,13 +507,12 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
   const weathers = ['CERAH', 'HUJAN', 'BADAI', 'KABUT'];
   const weather = weathers[Math.floor(Math.random() * weathers.length)];
 
-  // Buat thread privat baru untuk sesi safari player (menghindari pesan sistem "started a thread")
+  // Buat thread publik baru dari pesan replyMsg agar channel utama tetap bersih saat replyMsg dihapus
   let thread;
   try {
-    thread = await replyMsg.channel.threads.create({
+    thread = await replyMsg.startThread({
       name: `🌳 Safari - ${author.username}`,
       autoArchiveDuration: 60,
-      type: ChannelType.GuildPrivateThread,
       reason: 'Sesi Game Pet Safari'
     });
     // Kirim pesan sambutan di dalam thread untuk mengundang user
