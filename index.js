@@ -747,8 +747,9 @@ client.once('ready', async () => {
       const data = JSON.parse(fs.readFileSync(deployFlagPath, 'utf8'));
       fs.unlinkSync(deployFlagPath); // Hapus agar tidak duplikasi kirim saat restart biasa
 
-      const announcementChannel = client.channels.cache.get(config.ANNOUNCEMENT_CHANNEL_ID) 
-        || await client.channels.fetch(config.ANNOUNCEMENT_CHANNEL_ID).catch(() => null);
+      const targetChannelId = '1514736636628439151';
+      const announcementChannel = client.channels.cache.get(targetChannelId) 
+        || await client.channels.fetch(targetChannelId).catch(() => null);
 
       if (announcementChannel) {
         const updateEmbed = new EmbedBuilder()
