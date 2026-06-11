@@ -3577,14 +3577,40 @@ function initStockMarket(client) {
                       new ButtonBuilder().setCustomId('pet_breed_decline').setLabel('🔴 Tolak').setStyle(ButtonStyle.Danger)
                     );
 
-                    const publicMsg = await interaction.channel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
+                    const partnerUser = await client.users.fetch(partnerId).catch(() => null);
+                    let targetMsg = null;
+                    let sentViaDM = false;
+
+                    if (partnerUser) {
+                      try {
+                        targetMsg = await partnerUser.send({
+                          content: `🔔 Anda mendapatkan penawaran perkawinan pet dari <@${user.id}>!`,
+                          embeds: [proposalEmbed],
+                          components: [breedRow]
+                        });
+                        sentViaDM = true;
+                      } catch (dmErr) {
+                        sentViaDM = false;
+                      }
+                    }
+
+                    if (!sentViaDM) {
+                      const botCmdChannelId = config.channels.BOT_COMMAND;
+                      const botCmdChannel = (interaction.guild ? interaction.guild.channels.cache.get(botCmdChannelId) : null) || await client.channels.fetch(botCmdChannelId).catch(() => null);
+                      if (botCmdChannel) {
+                        targetMsg = await botCmdChannel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
+                      } else {
+                        targetMsg = await interaction.channel.send({ content: `<@${partnerId}>`, embeds: [proposalEmbed], components: [breedRow] });
+                      }
+                    }
 
                     // Beri notifikasi sukses privat ke pemohon & update dashboard
-                    await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke <#${interaction.channel.id}>!`, flags: 64 });
+                    const locationText = sentViaDM ? 'DM partner Anda' : `<#${targetMsg.channel.id}>`;
+                    await submitted.reply({ content: `✅ Penawaran perkawinan pet berhasil dikirim ke ${locationText}!`, flags: 64 });
                     await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
 
-                    // Buat collector untuk tombol accept/decline di pesan publik
-                    const breedCollector = publicMsg.createMessageComponentCollector({ time: 60000 });
+                    // Buat collector untuk tombol accept/decline di pesan proposal
+                    const breedCollector = targetMsg.createMessageComponentCollector({ time: 60000 });
 
                     breedCollector.on('collect', async iBreed => {
                       if (iBreed.user.id !== partnerId) {
@@ -3594,13 +3620,20 @@ function initStockMarket(client) {
                       try {
                         if (iBreed.customId === 'pet_breed_decline') {
                           breedCollector.stop();
-                          await publicMsg.delete().catch(() => { });
+                          await targetMsg.delete().catch(() => { });
+                          
+                          if (sentViaDM) {
+                            const initiatorUser = await client.users.fetch(user.id).catch(() => null);
+                            if (initiatorUser) {
+                              await initiatorUser.send({ content: `🔴 Tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` }).catch(() => {});
+                            }
+                          }
                           return iBreed.reply({ content: `🔴 <@${user.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` });
                         }
 
                         if (iBreed.customId === 'pet_breed_accept') {
                           breedCollector.stop();
-                          await publicMsg.delete().catch(() => { });
+                          await targetMsg.delete().catch(() => { });
 
                           try {
                             const res = pet.breedPets(user.id, partnerId, guildId, newName);
@@ -3617,6 +3650,12 @@ function initStockMarket(client) {
                               .setFooter({ text: 'Gunakan .pet untuk melihat kandang Anda!' })
                               .setTimestamp();
 
+                            if (sentViaDM) {
+                              const initiatorUser = await client.users.fetch(user.id).catch(() => null);
+                              if (initiatorUser) {
+                                await initiatorUser.send({ content: `🎉 Perkawinan pet Anda dengan <@${partnerId}> berhasil!`, embeds: [successEmb] }).catch(() => {});
+                              }
+                            }
                             return iBreed.reply({ content: `<@${user.id}> <@${partnerId}>`, embeds: [successEmb] });
                           } catch (err) {
                             return iBreed.reply({ embeds: [embeds.errorEmbed('Breeding Gagal!', err.message)] });
@@ -3629,7 +3668,7 @@ function initStockMarket(client) {
 
                     breedCollector.on('end', async () => {
                       if (breedCollector.destroyed) return;
-                      await publicMsg.delete().catch(() => { });
+                      await targetMsg.delete().catch(() => { });
                     });
 
                   } catch (err) {
