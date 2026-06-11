@@ -93,8 +93,9 @@
         </a>
       </nav>
 
-      <div class="sidebar-footer">
+      <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
         <button id="backup-db-btn" class="btn btn-primary btn-block">💾 Backup SQLite</button>
+        <button id="restart-bot-btn" class="btn btn-danger btn-block" style="background-color: #d9383a; border-color: #d9383a;">🔄 Restart Bot</button>
       </div>
     </aside>
 
@@ -191,6 +192,16 @@
             </div>
             <div class="form-actions" style="margin-top: 16px;">
               <button id="save-abyus-btn" class="btn btn-emerald">💾 Simpan Konfigurasi</button>
+            </div>
+          </div>
+
+          <div class="details-card" style="margin-top: 20px;">
+            <h3>🛠️ System & Bot Controls</h3>
+            <p style="color: var(--color-text-muted); font-size: 13px; margin-bottom: 16px;">
+              Jika bot mengalami kendala, hang, atau terjadi bug pada interaksi Discord, Anda dapat melakukan restart proses bot secara paksa melalui PM2.
+            </p>
+            <div class="form-actions">
+              <button id="dashboard-restart-bot-btn" class="btn btn-danger" style="background-color: rgba(248, 81, 73, 0.15); color: var(--color-red); border: 1px solid rgba(248, 81, 73, 0.2);">🔄 Restart Bot Proses</button>
             </div>
           </div>
         </div>

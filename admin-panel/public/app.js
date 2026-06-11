@@ -513,6 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dbBackupsSelector = document.getElementById('db-backups-selector');
   const restoreDbBtn = document.getElementById('restore-db-btn');
   const backupDbBtn = document.getElementById('backup-db-btn');
+  const restartBotBtn = document.getElementById('restart-bot-btn');
+  const dashboardRestartBotBtn = document.getElementById('dashboard-restart-bot-btn');
 
   // Modal elements
   const giveModal = document.getElementById('give-modal');
@@ -1672,6 +1674,41 @@ document.addEventListener('DOMContentLoaded', () => {
       backupDbBtn.textContent = '💾 Backup SQLite';
     }
   });
+
+  async function triggerBotRestart(buttonEl) {
+    if (!confirm('Apakah Anda yakin ingin me-restart proses Discord Bot?')) {
+      return;
+    }
+    const originalText = buttonEl.textContent;
+    buttonEl.disabled = true;
+    buttonEl.textContent = '🔄 Mengirim...';
+    try {
+      const res = await secureFetch('/api/admin/bot/restart', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Bot berhasil di-restart!', 'success');
+        if (window.SoundEffects && SoundEffects.playSuccess) SoundEffects.playSuccess();
+        fetchLogs();
+      } else {
+        showToast('Gagal: ' + data.message, 'error');
+        if (window.SoundEffects && SoundEffects.playWarning) SoundEffects.playWarning();
+      }
+    } catch (err) {
+      if (err.message !== 'Unauthorized') {
+        showToast('Koneksi server gagal saat me-restart bot', 'error');
+      }
+    } finally {
+      buttonEl.disabled = false;
+      buttonEl.textContent = originalText;
+    }
+  }
+
+  if (restartBotBtn) {
+    restartBotBtn.addEventListener('click', () => triggerBotRestart(restartBotBtn));
+  }
+  if (dashboardRestartBotBtn) {
+    dashboardRestartBotBtn.addEventListener('click', () => triggerBotRestart(dashboardRestartBotBtn));
+  }
 
   // --- Modal Controllers (Quick Give) ---
   function closeQuickGiveModal() {

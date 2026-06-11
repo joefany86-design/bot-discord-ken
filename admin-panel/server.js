@@ -931,6 +931,30 @@ const server = http.createServer((req, res) => {
         sendJSON(res, 500, { success: false, message: err.message });
       }
     }
+    else if (pathname === '/api/admin/bot/restart' && req.method === 'POST') {
+      try {
+        const { exec } = require('child_process');
+        appendLog('Restarting bot-2026 process via PM2 command...');
+        exec('pm2 restart bot-2026', (err, stdout, stderr) => {
+          if (err) {
+            console.warn('Failed to restart bot via global PM2, trying npx pm2...', err.message);
+            exec('npx pm2 restart bot-2026', (err2, stdout2, stderr2) => {
+              if (err2) {
+                appendLog(`Failed to restart bot: ${err2.message}`);
+                return sendJSON(res, 500, { success: false, message: `Gagal me-restart bot: ${err2.message}` });
+              }
+              appendLog('Bot successfully restarted via npx pm2 restart');
+              sendJSON(res, 200, { success: true, message: 'Bot berhasil di-restart!' });
+            });
+            return;
+          }
+          appendLog('Bot successfully restarted via pm2 restart');
+          sendJSON(res, 200, { success: true, message: 'Bot berhasil di-restart!' });
+        });
+      } catch (err) {
+        sendJSON(res, 500, { success: false, message: err.message });
+      }
+    }
     else if (pathname === '/api/admin/query' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
