@@ -6421,7 +6421,6 @@ async function handlePetCommand(message, client, args) {
         await replyMsg.edit(s1EditOpts).catch(() => { });
 
         const pathCollector = replyMsg.createMessageComponentCollector({
-          filter: i => i.user.id === author.id && ['exp_path_safe', 'exp_path_shortcut', 'exp_path_swamp'].includes(i.customId),
           time: 15000,
           max: 1
         });
@@ -6432,6 +6431,11 @@ async function handlePetCommand(message, client, args) {
         await new Promise((resolve) => {
           pathCollector.on('collect', async i => {
             try {
+              console.log(`[pathCollector] Clicked customId=${i.customId}, clicked by=${i.user.id} (${i.user.username}), author.id=${author.id}`);
+              if (i.user.id !== author.id) {
+                await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa memilih jalur!', flags: 64 }).catch(() => { });
+                return;
+              }
               await i.deferUpdate().catch(() => { });
               if (i.customId === 'exp_path_shortcut') {
                 pathChoice = 'SHORTCUT';
@@ -6554,54 +6558,68 @@ async function handlePetCommand(message, client, args) {
           await replyMsg.edit(s2cOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
-            filter: i => i.user.id === author.id && ['exp_event_lockpick', 'exp_event_force', 'exp_event_leave'].includes(i.customId),
             time: 15000,
             max: 1
           });
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
-              await i.deferUpdate().catch(() => { });
-              if (i.customId === 'exp_event_lockpick') {
-                eventChoice = 'LOCKPICK';
-                eventText = '🗝️ Menggunakan Lockpick';
-                eventSuccess = true;
-                // Subtract 1 lockpick immediately
-                database.run("UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'LOCKPICK'", [author.id, guildId]);
-                eventText += '\n└─ Peti terbuka dengan mudah! Satu kawan beruntung mendapat drop item langka.';
-              } else if (i.customId === 'exp_event_force') {
-                eventChoice = 'FORCE';
-                if (Math.random() < 0.40) {
-                  eventSuccess = true;
-                  eventText = '💥 Mendobrak Paksa (Berhasil!)';
-                  eventText += '\n└─ Peti terbuka! Menemukan barang jarahan tambahan.';
-                } else {
-                  eventSuccess = false;
-                  forceChestExploded = true;
-                  eventText = '💥 Mendobrak Paksa (Gagal & Meledak!)';
-                  // Subtract 15 HP from all pets immediately
-                  currentLobby.participants.forEach(pId => {
-                    const p = pet.getPet(pId, guildId);
-                    if (p) {
-                      const newHealth = Math.max(5, p.health - 15);
-                      database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
-                    }
-                  });
-                  eventText += '\n└─ DUAR! Ranjau ledakan meledak! Semua pet kehilangan **-15 HP**.';
+              try {
+                console.log(`[eventCollector Chest] Clicked customId=${i.customId}, clicked by=${i.user.id} (${i.user.username}), author.id=${author.id}`);
+                if (i.user.id !== author.id) {
+                  await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa menentukan aksi event!', flags: 64 }).catch(() => { });
+                  return;
                 }
-              } else {
-                eventChoice = 'LEAVE';
-                eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
+                await i.deferUpdate().catch(() => { });
+                if (i.customId === 'exp_event_lockpick') {
+                  eventChoice = 'LOCKPICK';
+                  eventText = '🗝️ Menggunakan Lockpick';
+                  eventSuccess = true;
+                  // Subtract 1 lockpick immediately
+                  database.run("UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'LOCKPICK'", [author.id, guildId]);
+                  eventText += '\n└─ Peti terbuka dengan mudah! Satu kawan beruntung mendapat drop item langka.';
+                } else if (i.customId === 'exp_event_force') {
+                  eventChoice = 'FORCE';
+                  if (Math.random() < 0.40) {
+                    eventSuccess = true;
+                    eventText = '💥 Mendobrak Paksa (Berhasil!)';
+                    eventText += '\n└─ Peti terbuka! Menemukan barang jarahan tambahan.';
+                  } else {
+                    eventSuccess = false;
+                    forceChestExploded = true;
+                    eventText = '💥 Mendobrak Paksa (Gagal & Meledak!)';
+                    // Subtract 15 HP from all pets immediately
+                    currentLobby.participants.forEach(pId => {
+                      const p = pet.getPet(pId, guildId);
+                      if (p) {
+                        const newHealth = Math.max(5, p.health - 15);
+                        database.run('UPDATE user_pets SET health = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, pId, guildId, p.pet_name]);
+                      }
+                    });
+                    eventText += '\n└─ DUAR! Ranjau ledakan meledak! Semua pet kehilangan **-15 HP**.';
+                  }
+                } else {
+                  eventChoice = 'LEAVE';
+                  eventText = '🏃 Lewati\n└─ Melewati peti kuno dengan aman.';
+                }
+              } catch (err) {
+                console.error('[Expedition Stage 2 chest collector collect error]:', err);
+              } finally {
+                resolve();
               }
-              resolve();
             });
 
             eventCollector.on('end', (collected) => {
-              if (collected.size === 0) {
-                eventChoice = 'LEAVE';
-                eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati peti)';
+              try {
+                if (collected.size === 0) {
+                  eventChoice = 'LEAVE';
+                  eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati peti)';
+                }
+              } catch (err) {
+                console.error('[Expedition Stage 2 chest collector end error]:', err);
+              } finally {
+                resolve();
               }
-              resolve();
             });
           });
         } else {
@@ -6627,42 +6645,56 @@ async function handlePetCommand(message, client, args) {
           await replyMsg.edit(s2wOpts).catch(() => { });
 
           const eventCollector = replyMsg.createMessageComponentCollector({
-            filter: i => i.user.id === author.id && ['exp_event_drink', 'exp_event_leave'].includes(i.customId),
             time: 15000,
             max: 1
           });
 
           await new Promise((resolve) => {
             eventCollector.on('collect', async i => {
-              await i.deferUpdate().catch(() => { });
-              if (i.customId === 'exp_event_drink') {
-                eventChoice = 'DRINK';
-                eventText = '💧 Minum Bersama';
-                waterRefreshed = true;
-                // Add +20 HP & +20 Hydration immediately
-                currentLobby.participants.forEach(pId => {
-                  const p = pet.getPet(pId, guildId);
-                  if (p) {
-                    const maxHP = pet.getMaxHP(p);
-                    const newHealth = Math.min(maxHP, p.health + 20);
-                    const newThirst = Math.min(100, p.thirst + 20);
-                    database.run('UPDATE user_pets SET health = ?, thirst = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, newThirst, pId, guildId, p.pet_name]);
-                  }
-                });
-                eventText += '\n└─ Segar! Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.';
-              } else {
-                eventChoice = 'LEAVE';
-                eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
+              try {
+                console.log(`[eventCollector Waterfall] Clicked customId=${i.customId}, clicked by=${i.user.id} (${i.user.username}), author.id=${author.id}`);
+                if (i.user.id !== author.id) {
+                  await i.reply({ content: '❌ Hanya Komandan (pembuat lobi) yang bisa menentukan aksi event!', flags: 64 }).catch(() => { });
+                  return;
+                }
+                await i.deferUpdate().catch(() => { });
+                if (i.customId === 'exp_event_drink') {
+                  eventChoice = 'DRINK';
+                  eventText = '💧 Minum Bersama';
+                  waterRefreshed = true;
+                  // Add +20 HP & +20 Hydration immediately
+                  currentLobby.participants.forEach(pId => {
+                    const p = pet.getPet(pId, guildId);
+                    if (p) {
+                      const maxHP = pet.getMaxHP(p);
+                      const newHealth = Math.min(maxHP, p.health + 20);
+                      const newThirst = Math.min(100, p.thirst + 20);
+                      database.run('UPDATE user_pets SET health = ?, thirst = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [newHealth, newThirst, pId, guildId, p.pet_name]);
+                    }
+                  });
+                  eventText += '\n└─ Segar! Seluruh pet memulihkan **+20 HP & +20 Hidrasi**.';
+                } else {
+                  eventChoice = 'LEAVE';
+                  eventText = '🏃 Lewati\n└─ Melewati air terjun suci.';
+                }
+              } catch (err) {
+                console.error('[Expedition Stage 2 waterfall collector collect error]:', err);
+              } finally {
+                resolve();
               }
-              resolve();
             });
 
             eventCollector.on('end', (collected) => {
-              if (collected.size === 0) {
-                eventChoice = 'LEAVE';
-                eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati)';
+              try {
+                if (collected.size === 0) {
+                  eventChoice = 'LEAVE';
+                  eventText = '🏃 Lewati (Batas waktu habis, otomatis melewati)';
+                }
+              } catch (err) {
+                console.error('[Expedition Stage 2 waterfall collector end error]:', err);
+              } finally {
+                resolve();
               }
-              resolve();
             });
           });
         }
