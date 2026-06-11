@@ -314,15 +314,13 @@ function renderAuctionEmbed(guildId, userId, client) {
     .setTitle('🔨 BURSA PASAR LELANG WARGA — KOSAN 1A')
     .setThumbnail('https://cdn-icons-png.flaticon.com/512/3429/3429765.png')
     .setDescription(
-      `\`\`\`\n` +
-      `┌──────────────────────────────────────────┐\n` +
-      `│    ⚖️ BURSA PASAR LELANG WARGA KOSAN ⚖️  │\n` +
-      `│   Tawar & Menangkan Aset Antar Warga     │\n` +
-      `└──────────────────────────────────────────┘\n` +
-      `\`\`\`\n` +
-      `Selamat datang di **Pasar Lelang Warga**! Cari barang kebun, item pet, atau pet langka dan ajukan penawaran (*bid*).\n\n` +
-      `💵 **Saldo Anda:** **Rp ${wallet.balance.toLocaleString('id-ID')}**\n` +
-      `📌 *Koin Anda didebit langsung saat menawar (escrow) dan di-refund otomatis jika kalah bid. Pemenang lelang dipotong pajak bursa 10% (dibakar).*`
+      `⚡ *Selamat datang di Bursa Lelang Terbuka Warga Kosan 1A! Cari barang kebun, item pet, atau pet langka dan ajukan penawaran terbaik Anda.* \n\n` +
+      `💵 **Dompet Anda:** \`Rp ${wallet.balance.toLocaleString('id-ID')}\`\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📌 **Ketentuan & Aturan Bursa:**\n` +
+      `• Penawaran (*bid*) langsung memotong saldo (escrow) dan di-refund otomatis jika Anda tersalip.\n` +
+      `• Pemenang lelang dikenakan pajak bursa sebesar **10%** yang akan didepositkan ke owner/negara.\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
     )
     .setFooter({ text: 'Gunakan tombol di bawah untuk Lelang atau Tarik Lelang Anda.' })
     .setTimestamp();
@@ -333,7 +331,10 @@ function renderAuctionEmbed(guildId, userId, client) {
       value: '> *Belum ada warga yang melelang barang saat ini. Klik tombol **🔨 Lelang Barang** di bawah untuk memulai lelang pertama!*' 
     });
   } else {
-    let listContent = '';
+    let fieldsArray = [];
+    let currentFieldContent = '';
+    let fieldCount = 1;
+
     for (let idx = 0; idx < auctions.length; idx++) {
       const item = auctions[idx];
       const sellerName = item.seller_id 
@@ -357,24 +358,32 @@ function renderAuctionEmbed(guildId, userId, client) {
         ? item.current_bid + Math.max(10, Math.round(item.min_bid * 0.05)) 
         : item.min_bid;
 
-      const entry = `\`[#${idx + 1}]\` 🆔 **\`ID: ${item.id}\`**\n` +
-                    ` ┗ 🛍️ ${itemLabel}\n` +
-                    ` ┗ 💰 Bid Saat Ini: **Rp ${item.current_bid.toLocaleString('id-ID')}** (oleh ${bidderName})\n` +
-                    ` ┗ 🔨 Min. Bid Lanjutan: **Rp ${nextMinBid.toLocaleString('id-ID')}**\n` +
-                    ` ┗ 👤 Penjual: ${item.seller_id ? `<@${item.seller_id}>` : sellerName}\n` +
-                    ` ┗ ⏳ Sisa Waktu: <t:${item.ends_at}:R> (<t:${item.ends_at}:f>)\n\n`;
+      const entry = `\`[#${idx + 1}]\` 🏷️ **ID: ${item.id}** — ${itemLabel}\n` +
+                    ` ├─ 💰 Bid Saat Ini: **Rp ${item.current_bid.toLocaleString('id-ID')}** (${bidderName})\n` +
+                    ` ├─ 🔨 Min Bid Lanjutan: **Rp ${nextMinBid.toLocaleString('id-ID')}**\n` +
+                    ` ├─ 👤 Penjual: ${item.seller_id ? `<@${item.seller_id}>` : sellerName}\n` +
+                    ` └─ ⏳ Sisa Waktu: <t:${item.ends_at}:R>\n\n`;
 
-      if ((listContent + entry).length > 950) {
-        listContent += `*...dan ${auctions.length - idx} lelang lainnya.*`;
-        break;
+      if ((currentFieldContent + entry).length > 1000) {
+        fieldsArray.push({
+          name: fieldCount === 1 ? `⚖️ DAFTAR BARANG YANG SEDANG DILELANG (${auctions.length}):` : `⚖️ DAFTAR LELANG (Lanjutan - Bagian ${fieldCount}):`,
+          value: currentFieldContent.trim()
+        });
+        currentFieldContent = entry;
+        fieldCount++;
+      } else {
+        currentFieldContent += entry;
       }
-      listContent += entry;
     }
 
-    embed.addFields({
-      name: `⚖️ DAFTAR BARANG YANG SEDANG DILELANG (${auctions.length}):`,
-      value: listContent.trim() || '> *Tidak ada data*'
-    });
+    if (currentFieldContent.trim().length > 0) {
+      fieldsArray.push({
+        name: fieldCount === 1 ? `⚖️ DAFTAR BARANG YANG SEDANG DILELANG (${auctions.length}):` : `⚖️ DAFTAR LELANG (Lanjutan - Bagian ${fieldCount}):`,
+        value: currentFieldContent.trim()
+      });
+    }
+
+    embed.addFields(fieldsArray);
   }
 
   const components = [];
