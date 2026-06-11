@@ -35,6 +35,10 @@ async function endSafariSession(interaction, state, author, client, result) {
         }
       }
       setTimeout(async () => {
+        const parentMessage = await parentChannel.messages.fetch(thread.id).catch(() => null);
+        if (parentMessage) {
+          await parentMessage.delete().catch(() => {});
+        }
         await thread.delete().catch(() => {});
       }, 3000);
     } else {
@@ -522,9 +526,13 @@ async function startSafariEncounter(interaction, replyMsg, biomeKey, author, gui
     thread = replyMsg.channel;
   }
 
-  // Hapus pesan panel pemilihan biome di channel utama agar tidak mengotori chat
+  // Edit pesan panel pemilihan biome di channel utama agar ringkas dan thread tetap terlihat secara publik
   if (thread.id !== replyMsg.channel.id) {
-    await replyMsg.delete().catch(() => {});
+    await replyMsg.edit({
+      content: `🌳 Sesi Safari <@${author.id}> sedang berlangsung! Silakan tonton di <#${thread.id}>.`,
+      embeds: [],
+      components: []
+    }).catch(() => {});
   }
 
   // Inisialisasi State Safari
