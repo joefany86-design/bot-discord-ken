@@ -757,11 +757,8 @@ client.once('ready', async () => {
           .setDescription(
             `Halo Warga **${targetGuild ? targetGuild.name : 'Kosan 1A'}**! 👋✨\n\n` +
             `Sistem baru saja diperbarui dan dideploy ulang setelah melakukan beberapa pembaruan/riset.\n\n` +
-            `**📝 Catatan Update:**\n` +
-            `> \`${data.message || 'Tidak ada pesan deskripsi.'}\`\n\n` +
             `*Bot Sentinel telah kembali online secara penuh dan siap digunakan kembali.*`
           )
-          .setFooter({ text: `Commit: ${data.commit || 'N/A'} | Author: ${data.author || 'N/A'}` })
           .setTimestamp();
 
         await announcementChannel.send({ content: '@everyone', embeds: [updateEmbed] }).catch(() => {});
