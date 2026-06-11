@@ -619,13 +619,13 @@ function startRealtimeLeaderboard(client) {
   }
 
   leaderboardInterval = setInterval(async () => {
-    // ── 1. KANGLOMERAT LEADERBOARD ──
+    // ── 1. KANGLOMERAT LEADERBOARD (WEALTH) ──
     try {
-      const richChanId = config.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418';
-      const richChannel = await client.channels.fetch(richChanId).catch(() => null);
-      if (richChannel) {
-        const guildId = richChannel.guild.id;
-        const guildName = richChannel.guild.name;
+      const lbChanId = config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308';
+      const leaderboardChannel = await client.channels.fetch(lbChanId).catch(() => null);
+      if (leaderboardChannel) {
+        const guildId = leaderboardChannel.guild.id;
+        const guildName = leaderboardChannel.guild.name;
 
         const richData = economy.getLeaderboard(guildId, 10);
         await Promise.all(richData.map(async u => {
@@ -650,7 +650,7 @@ function startRealtimeLeaderboard(client) {
 
         const lbAtt = await petCard.getLeaderboardAttachment('HALL OF WEALTH — ' + guildName, standings, 'Rp');
         const richEmbed = embeds.leaderboardEmbed(guildName, richData, client, !!lbAtt);
-        await updateLeaderboardMsg(richChannel, richEmbed, 'WEALTH', lbAtt ? [lbAtt] : []);
+        await updateLeaderboardMsg(leaderboardChannel, richEmbed, 'WEALTH', lbAtt ? [lbAtt] : []);
       }
     } catch (err) {
       console.error('❌ Error updating realtime rich leaderboard:', err);
@@ -659,71 +659,67 @@ function startRealtimeLeaderboard(client) {
     // Stagger/delay 5 detik
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // ── 2. TOP PET EKSPEDISI LEADERBOARD ──
+    // ── 2. TOP PET LEVEL & PVP LEADERBOARD ──
     try {
-      const petChanId = config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308';
-      const petChannel = await client.channels.fetch(petChanId).catch(() => null);
-      if (petChannel) {
-        const guildId = petChannel.guild.id;
-        const guildName = petChannel.guild.name;
+      const lbChanId = config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308';
+      const leaderboardChannel = await client.channels.fetch(lbChanId).catch(() => null);
+      if (leaderboardChannel) {
+        const guildId = leaderboardChannel.guild.id;
+        const guildName = leaderboardChannel.guild.name;
 
-        // ── TOP EXPEDITION EARNERS ──
-        const topExpedition = database.all(
-          `SELECT t.user_id, SUM(t.amount) as total_earned, COUNT(t.id) as total_runs,
-                  p.pet_name, p.pet_type, p.level, p.trait, p.status
-           FROM transactions t
-           LEFT JOIN user_pets p ON t.user_id = p.user_id AND t.guild_id = p.guild_id AND p.is_active = 1
-           WHERE t.guild_id = ? AND t.type = 'PET_EXPEDITION_REWARD'
-           GROUP BY t.user_id
-           ORDER BY total_earned DESC
-           LIMIT 10`,
-          [guildId]
-        );
-
-        await Promise.all(topExpedition.map(async u => {
-          if (client.users.cache.has(u.user_id)) return;
-          try { await client.users.fetch(u.user_id); } catch (e) { }
+        const topPets = pet.getPetLeaderboard(guildId, 'level', 10);
+        await Promise.all(topPets.map(async p => {
+          if (client.users.cache.has(p.user_id)) return;
+          try { await client.users.fetch(p.user_id); } catch (e) { }
         }));
 
-        // Build Expedition Embed
-        const expEmbed = embeds.petExpeditionLeaderboardEmbed(guildName, topExpedition, client);
-        await updateLeaderboardMsg(petChannel, expEmbed, 'EXPEDITION');
+        const petEmbed = embeds.petLeaderboardEmbed(guildName, topPets, 'level', client);
+        await updateLeaderboardMsg(leaderboardChannel, petEmbed, 'PET HALL OF FAME');
       }
     } catch (err) {
-      console.error('❌ Error updating realtime pet expedition leaderboard:', err);
+      console.error('❌ Error updating realtime pet leaderboard:', err);
     }
 
     // Stagger/delay 5 detik
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // ── 3. DAILY LEADERBOARD ──
+    // ── 3. TOP TRADER LEADERBOARD ──
     try {
-      const dailyChanId = config.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662';
-      const dailyChannel = await client.channels.fetch(dailyChanId).catch(() => null);
-      if (dailyChannel) {
-        const guildId = dailyChannel.guild.id;
-        const guildName = dailyChannel.guild.name;
+      const lbChanId = config.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308';
+      const leaderboardChannel = await client.channels.fetch(lbChanId).catch(() => null);
+      if (leaderboardChannel) {
+        const guildId = leaderboardChannel.guild.id;
+        const guildName = leaderboardChannel.guild.name;
 
-        const now = new Date();
-        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
-        const query = `
-          SELECT user_id, balance, last_active_date, streak_days 
-          FROM wallets 
-          WHERE guild_id = ? AND (last_active_date IS NULL OR last_active_date != ?)
-          ORDER BY balance DESC
-          LIMIT 10
-        `;
-        const list = database.all(query, [guildId, todayStr]);
+        const topTraders = database.all(
+          `SELECT p.user_id, SUM(p.shares * s.current_price - p.total_invested) as total_profit,
+                  SUM(p.shares * s.current_price) as portfolio_value, SUM(p.total_invested) as total_invested
+           FROM portfolios p
+           JOIN stocks s ON p.channel_id = s.channel_id AND p.guild_id = s.guild_id
+           WHERE p.guild_id = ?
+           GROUP BY p.user_id
+           ORDER BY total_profit DESC
+           LIMIT 10`,
+          [guildId]
+        );
 
-        await Promise.all(list.map(async u => {
+        await Promise.all(topTraders.map(async u => {
           if (client.users.cache.has(u.user_id)) return;
           try { await client.users.fetch(u.user_id); } catch (e) { }
         }));
-        const dailyEmbed = embeds.dailyLeaderboardEmbed(guildName, list, client);
-        await updateLeaderboardMsg(dailyChannel, dailyEmbed, 'TARGET ROB');
+
+        const traderList = topTraders.map(row => ({
+          userId: row.user_id,
+          totalProfit: row.total_profit,
+          portfolioValue: row.portfolio_value,
+          totalInvested: row.total_invested
+        }));
+
+        const traderEmbed = embeds.topTraderLeaderboardEmbed(guildName, traderList, client);
+        await updateLeaderboardMsg(leaderboardChannel, traderEmbed, 'TOP TRADER');
       }
     } catch (err) {
-      console.error('❌ Error updating realtime daily leaderboard:', err);
+      console.error('❌ Error updating realtime top trader leaderboard:', err);
     }
 
     // Stagger/delay 5 detik
@@ -6820,7 +6816,12 @@ async function handlePetCommand(message, client, args) {
           const targetUserId = currentLobby.participants[idx];
           const petObj = pet.getPet(targetUserId, guildId);
           const stepNumber = idx + 1;
-          const durationSeconds = 6;
+          let durationSeconds = 6;
+          if (mapChoice <= 3) {
+            durationSeconds = 8;
+          } else if (mapChoice >= 8) {
+            durationSeconds = 4;
+          }
           const endTimeUnix = Math.floor((Date.now() + durationSeconds * 1000) / 1000);
 
           // Buat embeds dan action row tombol QTE
@@ -6861,17 +6862,15 @@ async function handlePetCommand(message, client, args) {
                 // Cek apakah pengklik adalah target yang benar
                 if (iQte.user.id === targetUserId) {
                   turnCompleted = true;
-                  qteCollector.stop('success');
                   await iQte.deferUpdate().catch(() => { });
-                  resolveTurn();
+                  qteCollector.stop('success');
                 } else if (currentLobby.participants.includes(iQte.user.id)) {
                   // Pengklik adalah kru lain (Interference)
                   qteFailed = true;
                   failedUserId = iQte.user.id;
                   reasonType = 'Interference';
-                  qteCollector.stop('interference');
                   await iQte.deferUpdate().catch(() => { });
-                  resolveTurn();
+                  qteCollector.stop('interference');
                 } else {
                   // Pengklik bukan peserta lobi ekspedisi
                   await iQte.reply({ content: '❌ Anda tidak ikut dalam ekspedisi ini!', flags: 64 }).catch(() => { });

@@ -1776,14 +1776,29 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
   // Pastikan wallet terdaftar
   economy.getWallet(userId, guildId);
 
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
   const wallet = db.get(
-    'SELECT daily_expedition_count, expedition_cooldown_until FROM wallets WHERE user_id = ? AND guild_id = ?',
+    'SELECT daily_expedition_count, expedition_cooldown_until, last_expedition_date FROM wallets WHERE user_id = ? AND guild_id = ?',
     [userId, guildId]
   );
 
   const nowUnix = Math.floor(Date.now() / 1000);
+  let lastExpDate = wallet ? (wallet.last_expedition_date || '') : '';
   let cooldownUntil = wallet ? (wallet.expedition_cooldown_until || 0) : 0;
   let currentCount = wallet ? (wallet.daily_expedition_count || 0) : 0;
+
+  // 0. Jika hari telah berganti, reset count dan cooldown ke 0
+  if (lastExpDate !== todayStr) {
+    currentCount = 0;
+    cooldownUntil = 0;
+    if (!dryRun) {
+      db.run(
+        'UPDATE wallets SET daily_expedition_count = 0, expedition_cooldown_until = 0, last_expedition_date = ? WHERE user_id = ? AND guild_id = ?',
+        [todayStr, userId, guildId]
+      );
+    }
+  }
 
   // 1. Cek jika masih dalam masa cooldown
   if (nowUnix < cooldownUntil) {
@@ -1805,8 +1820,8 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
     currentCount = 0;
     if (!dryRun) {
       db.run(
-        'UPDATE wallets SET daily_expedition_count = 0 WHERE user_id = ? AND guild_id = ?',
-        [userId, guildId]
+        'UPDATE wallets SET daily_expedition_count = 0, last_expedition_date = ? WHERE user_id = ? AND guild_id = ?',
+        [todayStr, userId, guildId]
       );
     }
   }
@@ -1823,9 +1838,9 @@ function checkExpeditionLimit(userId, guildId, dryRun = false) {
 
     db.run(
       `UPDATE wallets 
-       SET daily_expedition_count = ?, expedition_cooldown_until = ? 
+       SET daily_expedition_count = ?, expedition_cooldown_until = ?, last_expedition_date = ? 
        WHERE user_id = ? AND guild_id = ?`,
-      [nextCount, nextCooldown, userId, guildId]
+      [nextCount, nextCooldown, todayStr, userId, guildId]
     );
     
     return nextCount;

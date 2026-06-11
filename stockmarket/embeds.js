@@ -1356,8 +1356,8 @@ module.exports = {
         const crownEmoji = idx === 0 ? ' 👑' : '';
 
         ranks += `${medal} ${name}${crownEmoji}\n` +
-          `  💵 Dompet: \`${formatCurrency(user.balance)}\` · 📊 Saham: \`${formatCurrency(user.portfolioValue)}\` · 🏦 Bank: \`${formatCurrency(user.bankBalance)}\`\n` +
-          `  💎 **Aset: ${formatCurrency(user.totalWealth)}**\n\n`;
+          `┣ 💎 **Total Aset:** **${formatCurrency(user.totalWealth)}**\n` +
+          `┗ 💵 Dompet: \`${formatCurrency(user.balance)}\` · 🏦 Bank: \`${formatCurrency(user.bankBalance)}\` · 📊 Saham: \`${formatCurrency(user.portfolioValue)}\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
@@ -1477,6 +1477,46 @@ module.exports = {
     return embed.setFooter({ text: 'Ikuti ekspedisi pet bersama teman! Ketik .pet expedition' }).setTimestamp();
   },
 
+  // 7e. Embed Papan Peringkat Top Trader (Stock Portfolio P/L Leaderboard)
+  topTraderLeaderboardEmbed(guildName, list, client) {
+    const guild = client.guilds.cache.find(g => g.name === guildName);
+    const iconUrl = guild ? guild.iconURL({ dynamic: true, size: 256 }) : null;
+
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setTitle(`📈 TOP TRADER LEADERBOARD — ${guildName.toUpperCase()}`)
+      .setDescription(
+        `📈 **PAPAN PERINGKAT PORTOFOLIO SAHAM** — Stock Trader 2026\n\n` +
+        `> *10 trader dengan estimasi keuntungan (P/L) portofolio aktif tertinggi.*`
+      );
+
+    if (iconUrl) {
+      embed.setThumbnail(iconUrl);
+    } else {
+      embed.setThumbnail('https://cdn-icons-png.flaticon.com/512/2422/2422796.png');
+    }
+
+    if (list.length === 0) {
+      embed.addFields({ name: '🚫 Kosong', value: '> *Belum ada data portofolio saham di server ini.*' });
+    } else {
+      let ranks = '';
+      list.forEach((user, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        const member = client.users.cache.get(user.userId);
+        const name = member ? `**${member.username}**` : `<@${user.userId}>`;
+        const profitSign = user.totalProfit >= 0 ? '+' : '';
+        const trendEmoji = user.totalProfit > 0 ? '📈' : user.totalProfit < 0 ? '📉' : '↔️';
+
+        ranks += `${medal} ${name}\n` +
+          `┣ 📈 **P/L:** **${profitSign}${formatCurrency(user.totalProfit)}** ${trendEmoji}\n` +
+          `┗ 📊 Valuasi: \`${formatCurrency(user.portfolioValue)}\` · 📥 Investasi: \`${formatCurrency(user.totalInvested)}\`\n\n`;
+      });
+      embed.setDescription(embed.data.description + '\n\n' + ranks);
+    }
+
+    return embed.setFooter({ text: 'Beli/jual saham untuk memperebutkan peringkat teratas!' }).setTimestamp();
+  },
+
   // 7a. Embed Papan Peringkat Pet (Pet Leaderboard)
   petLeaderboardEmbed(guildName, topPets, category, client) {
     const guild = client.guilds.cache.find(g => g.name === guildName);
@@ -1548,9 +1588,9 @@ module.exports = {
         const thirstVal = Math.round(p.thirst || 0);
         const happyVal = Math.round(p.happiness || 0);
 
-        ranks += `${medal} **${p.pet_name}** — *Milik ${ownerName}*\n` +
-          `  • 🐾 *${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}* • ${categoryDetail}\n` +
-          `  • 🧬 ❤️\`${hpVal}%\` 🍖\`${hungerVal}%\` 💧\`${thirstVal}%\` ⚽\`${happyVal}%\` • \`${getTierLabel(p.level)}\` • \`🟢 ${p.status.toUpperCase()}\`\n\n`;
+        ranks += `${medal} **${p.pet_name}** (${getSpeciesName(p.pet_type.toUpperCase())}${traitLabel}) · *Pawang: ${ownerName}*\n` +
+          `┣ 📊 **${categoryDetail}** · \`${getTierLabel(p.level)}\` · \`🟢 ${p.status.toUpperCase()}\`\n` +
+          `┗ 🧬 HP: \`${hpVal}%\` · 🍖 Lapar: \`${hungerVal}%\` · 💧 Thirst: \`${thirstVal}%\` · ⚽ Mood: \`${happyVal}%\`\n\n`;
       });
       embed.setDescription(embed.data.description + '\n\n' + ranks);
     }
