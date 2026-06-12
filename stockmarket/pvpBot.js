@@ -136,7 +136,8 @@ function getOrCreatePvPState(userId, guildId, petName) {
  */
 function generateBotForTier(tierKey, petObj = null) {
   const tierIndex = TIERS.indexOf(tierKey);
-  let scaleMultiplier = 1.05 + (tierIndex * 0.015); // Starts at 1.05 for Bronze V, goes up to 1.47 for Immortal!
+  // Starts at 1.30 for Bronze V, goes up to 2.42 for Immortal! (Significant increase in difficulty)
+  let scaleMultiplier = 1.30 + (tierIndex * 0.04); 
 
   let playerTotalStats = 0;
   if (petObj) {
@@ -146,14 +147,25 @@ function generateBotForTier(tierKey, petObj = null) {
   const basePoints = Math.max(15, playerTotalStats);
   const totalPoints = Math.round(basePoints * scaleMultiplier);
 
-  let trait = '';
-  if (tierIndex >= 5) { // Silver and above
-    const traits = ['STURDY', 'WARRIOR'];
-    trait = traits[Math.floor(Math.random() * traits.length)];
-  }
-
   const archetypes = ['TANKER', 'GLASS_CANNON', 'ASSASSIN', 'BALANCED'];
   const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
+
+  // Tentukan trait untuk bot berdasarkan kasta liga
+  let trait = '';
+  let gacha_trait2 = '';
+
+  if (tierIndex >= 10) { // Gold ke atas: Bot mendapatkan KEDUA trait tempur (WARRIOR & STURDY)
+    trait = 'WARRIOR';
+    gacha_trait2 = 'STURDY';
+  } else { // Bronze & Silver: Bot mendapatkan trait tempur sesuai arketipe
+    if (archetype === 'TANKER') {
+      trait = 'STURDY';
+    } else if (archetype === 'GLASS_CANNON' || archetype === 'ASSASSIN') {
+      trait = 'WARRIOR';
+    } else {
+      trait = Math.random() < 0.5 ? 'STURDY' : 'WARRIOR';
+    }
+  }
 
   let str = 0, vit = 0, def = 0, dex = 0;
 
@@ -220,7 +232,8 @@ function generateBotForTier(tierKey, petObj = null) {
     stat_def: def,
     stat_dex: dex,
     tier: tierKey,
-    trait: trait
+    trait: trait,
+    gacha_trait2: gacha_trait2
   };
 }
 
@@ -256,7 +269,12 @@ function getPvpStatsDescription(petObj, pvpState) {
          `• 🥤 **Tantangan Harian:** **${pvpState.daily_attempts}/5** gratis terpakai hari ini.`;
 }
 
-async function showPvPArena(message, client) {
+async function showPvPArena(message, client, args = []) {
+  const subAction = args[1] ? args[1].toLowerCase() : null;
+  if (subAction === 'hof' || subAction === 'history' || subAction === 'juara') {
+    return showPvPHallOfFame(message, client);
+  }
+
   const { guildId, author } = message;
   const petObj = pet.getPet(author.id, guildId);
 
@@ -300,10 +318,71 @@ async function showPvPArena(message, client) {
     new ButtonBuilder()
       .setCustomId(`pvpbot_leaderboard`)
       .setLabel('🏆 Papan Peringkat')
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`pvpbot_hof`)
+      .setLabel('🏅 Hall of Fame')
+      .setStyle(ButtonStyle.Success)
   );
 
   return message.reply({ embeds: [embed], components: [row] });
+}
+
+async function showPvPHallOfFame(messageOrInteraction, client) {
+  const isInteraction = typeof messageOrInteraction.reply === 'function' && 
+                        typeof messageOrInteraction.isRepliable === 'function' && 
+                        messageOrInteraction.isRepliable();
+  
+  try {
+    const list = db.all("SELECT * FROM pvp_season_history ORDER BY season_number DESC, rank_number ASC LIMIT 30");
+    
+    const embed = new EmbedBuilder()
+      .setColor(0x00FFBB)
+      .setTitle('🏅 HALL OF FAME — JUARA SEASON PVP BOT')
+      .setTimestamp();
+
+    if (!list || list.length === 0) {
+      embed.setDescription('*Belum ada riwayat juara season terdahulu. Jadilah yang pertama menjuarai season ini! 🏆*');
+    } else {
+      const seasons = {};
+      for (const row of list) {
+        if (!seasons[row.season_number]) {
+          seasons[row.season_number] = [];
+        }
+        seasons[row.season_number].push(row);
+      }
+
+      let desc = 'Berikut adalah daftar legenda yang berhasil menduduki podium teratas pada Season reset sebelumnya:\n\n';
+      
+      const sortedSeasonNums = Object.keys(seasons).map(Number).sort((a, b) => b - a);
+      for (const sNum of sortedSeasonNums) {
+        desc += `👑 **SEASON ${sNum}**\n`;
+        const rows = seasons[sNum].sort((a, b) => a.rank_number - b.rank_number);
+        for (const row of rows) {
+          const medal = row.rank_number === 1 ? '🥇' : row.rank_number === 2 ? '🥈' : '🥉';
+          desc += `${medal} **Rank #${row.rank_number}**: <@${row.user_id}> dengan Pet **${row.pet_name}**\n` +
+                  `   🏆 *Pangkat Akhir:* **${getFriendlyTierName(row.tier)}** (${row.points} LP)\n` +
+                  `   🎁 *Hadiah:* ${row.reward_desc}\n`;
+        }
+        desc += '\n';
+      }
+      embed.setDescription(desc);
+    }
+
+    if (isInteraction) {
+      await messageOrInteraction.reply({ embeds: [embed], flags: 64 });
+    } else {
+      await messageOrInteraction.reply({ embeds: [embed] });
+    }
+  } catch (err) {
+    console.error('[PvP HoF] Error fetching Hall of Fame:', err);
+    const errEmb = new EmbedBuilder().setColor(0xFF3366).setDescription(`❌ Gagal mengambil Hall of Fame: ${err.message}`);
+    if (isInteraction) {
+      await messageOrInteraction.reply({ embeds: [errEmb], flags: 64 });
+    } else {
+      await messageOrInteraction.reply({ embeds: [errEmb] });
+    }
+  }
 }
 
 /**
@@ -550,6 +629,7 @@ async function startPvPChallenge(interaction, client, petName) {
         base_atk_bonus_pct: pStats.baseAtkBonus,
         base_def_bonus_pct: petObj.base_def_bonus_pct || 0.0,
         trait: petObj.trait || '',
+        gacha_trait2: petObj.gacha_trait2 || '',
         accessory: petObj.accessory || null,
         chosenAction: null
       },
@@ -572,6 +652,7 @@ async function startPvPChallenge(interaction, client, petName) {
         base_atk_bonus_pct: 0.0,
         base_def_bonus_pct: 0.0,
         trait: botOpponent.trait || '',
+        gacha_trait2: botOpponent.gacha_trait2 || '',
         accessory: null,
         chosenAction: null,
         tier: botOpponent.tier
@@ -639,7 +720,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
   // Attacker buffs
   let atkMultiplier = attacker.pet_type === 'DRAGON' ? 1.15 : 1.0;
-  if (attacker.trait === 'WARRIOR') atkMultiplier += 0.15;
+  if (attacker.trait === 'WARRIOR' || (attacker.gacha_trait2 && attacker.gacha_trait2.includes('WARRIOR'))) atkMultiplier += 0.15;
   if (attacker.accessory === 'SWORD_TOY') atkMultiplier += 0.15;
   atkMultiplier += (attacker.base_atk_bonus_pct || 0.0);
 
@@ -651,7 +732,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
   // Defender buffs
   let defMultiplier = 1.0;
-  if (defender.trait === 'STURDY') defMultiplier *= 0.85;
+  if (defender.trait === 'STURDY' || (defender.gacha_trait2 && defender.gacha_trait2.includes('STURDY'))) defMultiplier *= 0.85;
 
   // Dodge & Crit
   const baseDodgeChance = Math.min(0.40, (defender.stat_dex || 0) * 0.008);
@@ -1234,10 +1315,13 @@ async function resetRankedSeason(client) {
       return b.points - a.points;
     });
 
+    const historyCountRow = db.get("SELECT COUNT(DISTINCT season_number) as count FROM pvp_season_history");
+    const seasonNum = (historyCountRow ? historyCountRow.count : 0) + 1;
+
     const top3 = sortedList.slice(0, 3);
     const channelId = '1513187966074490890';
     
-    let announcementText = `🏆 **RESET RANKED SEASON ARENA PVP BOT** 🏆\n` +
+    let announcementText = `🏆 **RESET RANKED SEASON ARENA PVP BOT (SEASON ${seasonNum})** 🏆\n` +
                            `Musim ini telah resmi berakhir! Terima kasih kepada semua Trainer yang telah berjuang keras.\n\n` +
                            `👑 **Top 3 Juara Season Ini:**\n`;
 
@@ -1263,7 +1347,88 @@ async function resetRankedSeason(client) {
           );
         })();
       }
+
+      // Hadiah tambahan Pet Mythic acak untuk peringkat 1
+      if (i === 0) {
+        try {
+          const mythicList = ['FENRIR', 'BAHAMUT', 'KRAKEN', 'JORMUNGANDR'];
+          const chosenType = mythicList[Math.floor(Math.random() * mythicList.length)];
+          const petInfo = pet.GACHA_SPECIES[chosenType];
+          
+          const mythicNames = {
+            FENRIR: 'Fenrir',
+            BAHAMUT: 'Bahamut',
+            KRAKEN: 'Kraken',
+            JORMUNGANDR: 'Jormungandr'
+          };
+          const baseName = mythicNames[chosenType] || 'Mythic';
+          
+          let petName = baseName;
+          let suffix = 1;
+          while (true) {
+            const exists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [row.user_id, row.guild_id, petName]);
+            if (!exists) break;
+            petName = `${baseName} ${suffix}`;
+            suffix++;
+          }
+
+          const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [row.user_id, row.guild_id]);
+          const petCount = countRow ? countRow.count : 0;
+          const isActive = petCount === 0 ? 1 : 0;
+
+          const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
+          const shuffledTraits = [...allTraits].sort(() => Math.random() - 0.5);
+          const trait1 = shuffledTraits[0];
+          const trait2 = shuffledTraits.slice(1, 3).join(',');
+
+          const now = Math.floor(Date.now() / 1000);
+          db.run(
+            `INSERT INTO user_pets 
+             (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness,
+              last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, gacha_trait2, star_level)
+             VALUES (?, ?, ?, ?, 'ADULT', 1, 0, ?, 100, 100, 100, ?, 0, ?, ?, ?, 'SEASON_RESET', 'MYTHIC', ?, ?, 1)`,
+            [row.user_id, row.guild_id, petName, chosenType, petInfo.baseHP, now, now, isActive,
+             trait1, petInfo.element, trait2]
+          );
+
+          db.logPetAction(row.guild_id, row.user_id, null, petName, 'SEASON_RESET_REWARD', `Menerima Pet Mythic ${chosenType} (${petName}) dari Hadiah Top 1 Season Reset.`);
+          
+          announcementText += `   ⭐ *Hadiah Spesial Juara 1:* **Pet Mythic ${petInfo.emoji} ${petName}** (${chosenType})!\n`;
+
+          // Simpan Riwayat Juara 1 ke Hall of Fame
+          const rewardDesc = `Pet Mythic ${petInfo.emoji} ${petName} (${chosenType}) & +1500 XP Pet`;
+          db.run(
+            `INSERT INTO pvp_season_history (season_number, user_id, guild_id, pet_name, tier, points, rank_number, reward_desc, reset_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [seasonNum, row.user_id, row.guild_id, row.pet_name, row.tier, row.points, 1, rewardDesc, now]
+          );
+
+        } catch (mythicErr) {
+          console.error('[PvP Season Reset] Failed to award mythic pet to top player:', mythicErr);
+        }
+      } else {
+        // Simpan Riwayat Juara 2 & 3 ke Hall of Fame
+        try {
+          const rewardDesc = `+${prizeXp} XP Pet`;
+          const now = Math.floor(Date.now() / 1000);
+          db.run(
+            `INSERT INTO pvp_season_history (season_number, user_id, guild_id, pet_name, tier, points, rank_number, reward_desc, reset_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [seasonNum, row.user_id, row.guild_id, row.pet_name, row.tier, row.points, i + 1, rewardDesc, now]
+          );
+        } catch(hofErr) {
+          console.error('[PvP Season Reset] Failed to save Top 2/3 to HOF:', hofErr);
+        }
+      }
     }
+
+    announcementText += `\n🎁 **Hadiah Season Berdasarkan Kasta Terakhir:**\n` +
+                        `• **Master / Grandmaster / Legend / Immortal:** Rp 100.000 & 5x Tiket Gacha\n` +
+                        `• **Diamond:** Rp 50.000 & 3x Tiket Gacha\n` +
+                        `• **Platinum:** Rp 25.000 & 2x Tiket Gacha\n` +
+                        `• **Gold:** Rp 10.000 & 1x Tiket Gacha\n` +
+                        `• **Silver:** Rp 5.000\n` +
+                        `• **Bronze:** Rp 2.000\n`;
 
     announcementText += `\n📉 **Demosi Season Baru (Seluruh Pemain diturunkan 5 Divisi / 1 Kasta):**\n`;
 
@@ -1277,10 +1442,40 @@ async function resetRankedSeason(client) {
           `UPDATE user_pet_pvp_bot SET tier = ?, points = 0 WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
           [nextTier, row.user_id, row.guild_id, row.pet_name]
         );
+
+        // Berikan hadiah berbasis kasta akhir sebelum demosi
+        let coinsPrize = 0;
+        let ticketsPrize = 0;
+        const tier = row.tier;
+
+        if (tier.startsWith('IMMORTAL') || tier.startsWith('LEGEND') || tier.startsWith('GRANDMASTER') || tier.startsWith('MASTER')) {
+          coinsPrize = 100000;
+          ticketsPrize = 5;
+        } else if (tier.startsWith('DIAMOND')) {
+          coinsPrize = 50000;
+          ticketsPrize = 3;
+        } else if (tier.startsWith('PLATINUM')) {
+          coinsPrize = 25000;
+          ticketsPrize = 2;
+        } else if (tier.startsWith('GOLD')) {
+          coinsPrize = 10000;
+          ticketsPrize = 1;
+        } else if (tier.startsWith('SILVER')) {
+          coinsPrize = 5000;
+        } else if (tier.startsWith('BRONZE')) {
+          coinsPrize = 2000;
+        }
+
+        if (coinsPrize > 0) {
+          economy.addBalance(row.user_id, row.guild_id, coinsPrize, 'SEASON_RESET_COIN');
+        }
+        if (ticketsPrize > 0) {
+          pet.addGachaTickets(row.user_id, row.guild_id, ticketsPrize);
+        }
       }
     })();
 
-    announcementText += `\n✅ Semua pangkat pemain berhasil didegradasi. Selamat berjuang kembali di Season baru! ⚔️`;
+    announcementText += `\n✅ Semua pangkat pemain berhasil didegradasi. Selamat berjuang kembali di Season baru! ⚔️`;;
 
     try {
       const settingsRow = db.get("SELECT tournament_admin_channel_id FROM ebyus_settings LIMIT 1");
@@ -1878,6 +2073,8 @@ module.exports = {
   TIER_TITLES,
   resetRankedSeason,
   startInteractivePvP,
-  handlePvPActionPvP
+  handlePvPActionPvP,
+  generateBotForTier,
+  showPvPHallOfFame
 };
 

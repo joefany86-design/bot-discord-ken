@@ -846,6 +846,26 @@ function initSchema() {
       run: () => {
         addColumn('user_pet_pvp_bot', 'win_streak', 'INTEGER DEFAULT 0');
       }
+    },
+    {
+      version: 22,
+      description: "Membuat tabel pvp_season_history untuk menyimpan riwayat juara / Hall of Fame PvP Arena",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS pvp_season_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            season_number INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            pet_name TEXT NOT NULL,
+            tier TEXT NOT NULL,
+            points INTEGER NOT NULL,
+            rank_number INTEGER NOT NULL,
+            reward_desc TEXT NOT NULL,
+            reset_at INTEGER NOT NULL
+          )
+        `);
+      }
     }
   ];
 

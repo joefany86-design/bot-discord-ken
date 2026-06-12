@@ -1156,6 +1156,10 @@ function initStockMarket(client) {
         await pvpBot.showPvPLeaderboard(interaction, client);
         return;
       }
+      if (customId === 'pvpbot_hof') {
+        await pvpBot.showPvPHallOfFame(interaction, client);
+        return;
+      }
       if (customId === 'pvpbot_act_atk') {
         await pvpBot.handlePvPAction(interaction, client, 'atk');
         return;
@@ -5492,7 +5496,7 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: PVPBOT ARENA ──
   if (subCommand === 'pvpbot' || subCommand === 'arena') {
-    return pvpBot.showPvPArena(message, client);
+    return pvpBot.showPvPArena(message, client, args);
   }
 
   // ── SUB-PERINTAH: TOWER ──
