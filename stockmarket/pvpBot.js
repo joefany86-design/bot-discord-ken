@@ -666,16 +666,50 @@ async function startPvPChallenge(interaction, client, petName) {
       combatData.logs.push(`⚠️ **Cuaca Ekstrem Terdeteksi:** **${weatherName}**! *(${weatherDesc})*`);
     }
 
+    // Kirim pesan undangan/notifikasi di channel utama terlebih dahulu
+    const replyMsg = await interaction.channel.send({
+      content: `⚔️ **Arena PvP Bot**: Mempersiapkan pertarungan untuk <@${user.id}>...`
+    });
+
+    let thread;
+    try {
+      thread = await replyMsg.startThread({
+        name: `⚔️ Arena - ${user.username}`,
+        autoArchiveDuration: 60,
+        reason: 'Sesi Game PvP Bot'
+      });
+      // Kirim pesan sambutan di dalam thread
+      await thread.send({ content: `👋 Selamat datang di Arena Tempur, <@${user.id}>! Bersiaplah melawan perwakilan bot.` }).catch(() => {});
+    } catch (err) {
+      console.error('Gagal membuat thread pvp, fallback ke channel biasa:', err);
+      thread = interaction.channel;
+    }
+
+    if (thread.id !== interaction.channel.id) {
+      await replyMsg.edit({
+        content: `⚔️ Pertandingan Arena PvP Bot <@${user.id}> sedang berlangsung! Silakan tonton di <#${thread.id}>.`
+      }).catch(() => {});
+    }
+
     const payload = getBattleEmbedData(combatData);
     const vsAttachment = await petCard.getArenaVsCardAttachment(petObj, botOpponent, pvpState.tier, combatData.arena.key);
     if (vsAttachment) {
       payload.files = [vsAttachment];
       payload.embeds[0].setImage('attachment://arena_vs.png');
     }
-    const battleMsg = await interaction.channel.send(payload);
+
+    let battleMsg;
+    if (thread.id !== interaction.channel.id) {
+      battleMsg = await thread.send(payload);
+    } else {
+      battleMsg = replyMsg;
+      await battleMsg.edit(payload);
+    }
 
     combatData.messageId = battleMsg.id;
-    combatData.channelId = interaction.channel.id;
+    combatData.channelId = thread.id;
+    combatData.parentMessageId = replyMsg.id;
+    combatData.parentChannelId = interaction.channel.id;
 
     // Simpan game state di memori
     client.activePvPBotGames.set(user.id, combatData);
@@ -1219,6 +1253,27 @@ async function endPvPGame(interaction, client, combatData, result) {
     } catch (err) {
       console.error('Failed to fetch pvp battle message for timeout:', err);
     }
+  }
+
+  // Jika pertarungan berjalan di dalam thread, kirim hasil ke channel utama dan hapus thread
+  try {
+    const thread = client.channels.cache.get(combatData.channelId) || await client.channels.fetch(combatData.channelId).catch(() => null);
+    if (thread && thread.isThread()) {
+      const parentChannel = thread.parent || await client.channels.fetch(thread.parentId).catch(() => null);
+      if (parentChannel) {
+        await parentChannel.send({ content: `<@${userId}>`, embeds: [resultEmbed] }).catch(() => {});
+      }
+      setTimeout(async () => {
+        if (combatData.parentMessageId && parentChannel) {
+          const parentMsg = await parentChannel.messages.fetch(combatData.parentMessageId).catch(() => null);
+          if (parentMsg) await parentMsg.delete().catch(() => {});
+        }
+        await thread.delete().catch(() => {});
+      }, 3000);
+      return;
+    }
+  } catch (err) {
+    console.error('Failed to cleanup thread in endPvPGame:', err);
   }
 
   if (messageToEdit) {
