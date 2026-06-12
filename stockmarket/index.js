@@ -1164,6 +1164,10 @@ function initStockMarket(client) {
         await pvpBot.handlePvPAction(interaction, client, 'atk');
         return;
       }
+      if (customId === 'pvpbot_act_skill1' || customId === 'pvpbot_act_skill2') {
+        await pvpBot.handlePvPAction(interaction, client, customId === 'pvpbot_act_skill1' ? 'skill1' : 'skill2');
+        return;
+      }
       if (customId === 'pvpbot_act_def') {
         await pvpBot.handlePvPAction(interaction, client, 'def');
         return;
@@ -1174,6 +1178,10 @@ function initStockMarket(client) {
       }
       if (customId === 'pvpbot_act_surr') {
         await pvpBot.handlePvPAction(interaction, client, 'surr');
+        return;
+      }
+      if (customId.startsWith('pvpbot_bet_')) {
+        await pvpBot.handleBetInteraction(interaction, client);
         return;
       }
       if (customId === 'pvpbot_act_item') {
@@ -1250,6 +1258,10 @@ function initStockMarket(client) {
       // Player-vs-Player (PvP) Interactive Actions
       if (customId === 'pvp_act_atk') {
         await pvpBot.handlePvPActionPvP(interaction, client, 'atk');
+        return;
+      }
+      if (customId === 'pvp_act_skill1' || customId === 'pvp_act_skill2') {
+        await pvpBot.handlePvPActionPvP(interaction, client, customId === 'pvp_act_skill1' ? 'skill1' : 'skill2');
         return;
       }
       if (customId === 'pvp_act_def') {

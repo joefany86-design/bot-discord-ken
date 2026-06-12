@@ -80,6 +80,25 @@ const COLORS = {
   IMMORTAL: 0xFFD700
 };
 
+const ELEMENT_SKILLS = {
+  FIRE: [
+    { key: 'burn_slash', name: '🔥 Ledakan Bara', desc: 'Deals 1.0x damage, 60% chance to Burn target for 2 turns.' },
+    { key: 'flame_claw', name: '⚔️ Cakar Api', desc: 'Deals 1.2x damage, high crit chance (+15% crit).' }
+  ],
+  WATER: [
+    { key: 'water_jet', name: '🌊 Tembakan Air', desc: 'Deals 0.8x damage, heals self for 15% Max HP.' },
+    { key: 'frost_shield', name: '❄️ Pembekuan', desc: 'Deals 0.7x damage, gains +20% Dodge for 2 turns.' }
+  ],
+  EARTH: [
+    { key: 'ancient_wall', name: '🧱 Tameng Purba', desc: 'Gains a shield (absorbs 30% damage for 2 turns) and deals 0.6x damage.' },
+    { key: 'earthquake', name: '🪨 Gempa Bumi', desc: 'Deals 1.1x damage, reduces target\'s DEF by 20% for 2 turns.' }
+  ],
+  DRAGON: [
+    { key: 'cosmic_breath', name: '🐉 Cosmic Breath', desc: 'Deals 1.2x damage (ignores 20% of target\'s DEF).' },
+    { key: 'dragon_rage', name: '⚡ Dragon Rage', desc: 'Deals 0.9x damage, increases ATK by 25% for 2 turns.' }
+  ]
+};
+
 const ARENAS = [
   { key: 'VOLCANO', name: '🌋 Gunung Berapi (VOLCANO)', element: 'FIRE', desc: 'Pet berelemen FIRE mendapat +20% damage!' },
   { key: 'OCEAN', name: '🌊 Samudra Dalam (OCEAN)', element: 'WATER', desc: 'Pet berelemen WATER mendapat +20% damage!' },
@@ -415,6 +434,9 @@ function getBattleEmbedData(combatData) {
     if (actor.shieldTurns > 0) buffs.push(`🛡️ Shield (${actor.shieldTurns}T)`);
     if (actor.burnTurns > 0) buffs.push(`🔥 Burn (${actor.burnTurns}T)`);
     if (actor.isDefending) buffs.push(`🛡️ Defending`);
+    if (actor.dodgeBonusTurns > 0) buffs.push(`💨 Dodge +20% (${actor.dodgeBonusTurns}T)`);
+    if (actor.defBonusTurns > 0) buffs.push(`🧱 Def Reduced (${actor.defBonusTurns}T)`);
+    if (actor.atkBonusTurns > 0) buffs.push(`⚔️ ATK +25% (${actor.atkBonusTurns}T)`);
     return buffs.length > 0 ? buffs.join(' · ') : '*Normal*';
   };
 
@@ -427,6 +449,9 @@ function getBattleEmbedData(combatData) {
       arenaInfo +
       `🏟️ **Ronde ${combatData.turnCount}**\n` +
       `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
+      `👟 **Action Speed Gauge:**\n` +
+      `• **${p.name}**: \`${p.gauge || 0} / 100\`\n` +
+      `• **${b.name}**: \`${b.gauge || 0} / 100\`\n\n` +
       `🐾 **${p.name}** *(Elemen: ${p.gacha_element})*\n` +
       `├─ ❤️ HP: ${playerHPBar}\n` +
       `├─ ⚡ SP: ${playerSPBar}\n` +
@@ -438,7 +463,7 @@ function getBattleEmbedData(combatData) {
       `📝 **Log Pertempuran:**\n` +
       `\`\`\`diff\n` +
       combatData.logs.slice(-5).map(line => {
-        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang') || line.includes('memberikan')) return `+ ${line}`;
+        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang') || line.includes('memberikan') || line.includes('DOUBLE ACTION')) return `+ ${line}`;
         if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('melarikan')) return `- ${line}`;
         return `  ${line}`;
       }).join('\n') +
@@ -446,32 +471,40 @@ function getBattleEmbedData(combatData) {
     )
     .setFooter({ text: 'Gunakan tombol di bawah untuk bertindak!' });
 
-  const row = new ActionRowBuilder().addComponents(
+  const skillsList = ELEMENT_SKILLS[p.gacha_element] || ELEMENT_SKILLS.EARTH;
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvpbot_act_atk')
       .setLabel('🗡️ Serang')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('pvpbot_act_def')
-      .setLabel('🛡️ Bertahan')
+      .setCustomId('pvpbot_act_skill1')
+      .setLabel(skillsList[0].name)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('pvpbot_act_skill2')
+      .setLabel(skillsList[1].name)
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_ult')
       .setLabel('🔥 Ultimate')
       .setStyle(ButtonStyle.Danger)
-      .setDisabled(p.energy < 60), // Memerlukan minimal 60 SP
+      .setDisabled(p.energy < 60)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvpbot_act_item')
       .setLabel('🎒 Item')
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Secondary)
       .setDisabled(p.hasUsedItem),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_surr')
-      .setLabel('🏳️')
+      .setLabel('🏳️ Menyerah')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embeds: [embed], components: [row] };
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 /**
@@ -666,9 +699,17 @@ async function startPvPChallenge(interaction, client, petName) {
       combatData.logs.push(`⚠️ **Cuaca Ekstrem Terdeteksi:** **${weatherName}**! *(${weatherDesc})*`);
     }
 
+    const betRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`pvpbot_bet_start_${user.id}`)
+        .setLabel('💸 Pasang Taruhan (Bet)')
+        .setStyle(ButtonStyle.Success)
+    );
+
     // Kirim pesan undangan/notifikasi di channel utama terlebih dahulu
     const replyMsg = await interaction.channel.send({
-      content: `⚔️ **Arena PvP Bot**: Mempersiapkan pertarungan untuk <@${user.id}>...`
+      content: `⚔️ **Arena PvP Bot**: <@${user.id}> menantang **${botOpponent.name}** di **${randomArena.name}**!\n*Ayo dukung dan pasang taruhan koin Anda!*`,
+      components: [betRow]
     });
 
     let thread;
@@ -687,7 +728,8 @@ async function startPvPChallenge(interaction, client, petName) {
 
     if (thread.id !== interaction.channel.id) {
       await replyMsg.edit({
-        content: `⚔️ Pertandingan Arena PvP Bot <@${user.id}> sedang berlangsung! Silakan tonton di <#${thread.id}>.`
+        content: `⚔️ Pertandingan Arena PvP Bot <@${user.id}> sedang berlangsung! Silakan tonton di <#${thread.id}>. Taruhan masih dibuka!`,
+        components: [betRow]
       }).catch(() => {});
     }
 
@@ -770,7 +812,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
   // Dodge & Crit
   const baseDodgeChance = Math.min(0.40, (defender.stat_dex || 0) * 0.008);
-  const dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
+  let dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
   let critChance = Math.min(0.35, (attacker.stat_dex || 0) * 0.005);
 
   if (actionType === 'ult' && attacker.gacha_element === 'DRAGON') {
@@ -785,13 +827,53 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
   const arenaSuffix = arenaBuffApplied ? ' 🏟️**[BUFF ARENA]**' : '';
 
-  if (actionType === 'atk') {
-    isDodged = Math.random() < dodgeChance;
+  // Handle skills custom effects
+  let skill = null;
+  const skillsList = ELEMENT_SKILLS[attacker.gacha_element] || ELEMENT_SKILLS.EARTH;
+  if (actionType === 'skill1') skill = skillsList[0];
+  if (actionType === 'skill2') skill = skillsList[1];
+
+  let skillMult = 1.0;
+  if (skill) {
+    if (skill.key === 'flame_claw') {
+      skillMult = 1.2;
+      critChance += 0.15;
+    } else if (skill.key === 'water_jet') {
+      skillMult = 0.8;
+    } else if (skill.key === 'frost_shield') {
+      skillMult = 0.7;
+    } else if (skill.key === 'ancient_wall') {
+      skillMult = 0.6;
+    } else if (skill.key === 'earthquake') {
+      skillMult = 1.1;
+    } else if (skill.key === 'cosmic_breath') {
+      skillMult = 1.2;
+      defenderDEF = defenderDEF * 0.8; // Ignores 20% DEF
+    } else if (skill.key === 'dragon_rage') {
+      skillMult = 0.9;
+      attacker.atkBonusTurns = 2;
+    }
+  }
+
+  if (attacker.atkBonusTurns > 0) {
+    atkMultiplier += 0.25;
+  }
+  if (defender.defBonusTurns > 0) {
+    defenderDEF = defenderDEF * 0.8;
+  }
+
+  let finalDodgeChance = dodgeChance;
+  if (defender.dodgeBonusTurns > 0) {
+    finalDodgeChance += 0.20;
+  }
+
+  if (actionType === 'atk' || actionType === 'skill1' || actionType === 'skill2') {
+    isDodged = Math.random() < finalDodgeChance;
     if (isDodged) {
       logMsg = `💨 **${attacker.name}** melancarkan serangan, namun **${defender.name}** berhasil menghindar!`;
     } else {
       isCrit = Math.random() < critChance;
-      let rawDmg = Math.round(attackerATK * atkMultiplier * arenaMultiplier * (0.8 + Math.random() * 0.4));
+      let rawDmg = Math.round(attackerATK * skillMult * atkMultiplier * arenaMultiplier * (0.8 + Math.random() * 0.4));
       if (isCrit) rawDmg = Math.round(rawDmg * 1.5);
 
       let defFactor = defenderDEF / 150;
@@ -817,7 +899,30 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
       defender.hp = Math.max(0, defender.hp - damage);
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
-      logMsg = `⚔️ **${attacker.name}** menyerang **${defender.name}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
+      
+      const actionName = skill ? `Skill **[${skill.name}]**` : 'serangan biasa';
+      logMsg = `⚔️ **${attacker.name}** menggunakan ${actionName} ke **${defender.name}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
+
+      // Apply skill side-effects on hit
+      if (skill) {
+        if (skill.key === 'burn_slash' && Math.random() < 0.60) {
+          defender.burnTurns = 2;
+          logMsg += ` dan membakar tubuh lawan! (Burn 2 Turn)`;
+        } else if (skill.key === 'water_jet') {
+          const heal = Math.round(attacker.maxHP * 0.15);
+          attacker.hp = Math.min(attacker.maxHP, attacker.hp + heal);
+          logMsg += ` dan memulihkan diri sebesar **${heal} HP**!`;
+        } else if (skill.key === 'frost_shield') {
+          attacker.dodgeBonusTurns = 2;
+          logMsg += ` dan meningkatkan peluang menghindar! (Dodge +20% 2 Turn)`;
+        } else if (skill.key === 'ancient_wall') {
+          attacker.shieldTurns = 2;
+          logMsg += ` dan memicu Zirah Pelindung! (Shield 2 Turn)`;
+        } else if (skill.key === 'earthquake') {
+          defender.defBonusTurns = 2;
+          logMsg += ` dan melemahkan pertahanan lawan! (DEF -20% 2 Turn)`;
+        }
+      }
     }
 
   } else if (actionType === 'ult') {
@@ -934,52 +1039,53 @@ async function handlePvPAction(interaction, client, actionType) {
     return endPvPGame(interaction, client, combatData, 'lose');
   }
 
-  // --- BOT DECISION AI (Archetype-based) ---
+  // --- BOT DECISION AI (Archetype-based & Predictive) ---
   let botAction = 'atk';
   const arch = b.archetype || 'BALANCED';
 
-  if (arch === 'TANKER') {
-    // TANKER: Fokus pertahanan dan bertahan ketika SP penuh, sesekali melepaskan ult
-    if (b.energy >= 60) {
-      const r = Math.random();
-      if (r < 0.20) botAction = 'ult';
-      else if (r < 0.70) botAction = 'def';
-      else botAction = 'atk';
-    } else {
-      // Lebih sering def
-      botAction = Math.random() < 0.50 ? 'def' : 'atk';
-    }
-  } else if (arch === 'GLASS_CANNON') {
-    // GLASS_CANNON: Super agresif! Peluang 0% untuk bertahan. Langsung ult jika SP >= 60.
-    if (b.energy >= 60) {
-      botAction = 'ult';
-    } else {
-      botAction = 'atk';
-    }
-  } else if (arch === 'ASSASSIN') {
-    // ASSASSIN: Jika HP lawan di bawah 30% dan SP >= 60, prioritaskan Ultimate 100% untuk finishing blow.
-    if (p.hp < p.maxHP * 0.30 && b.energy >= 60) {
-      botAction = 'ult';
-    } else if (b.energy >= 60) {
-      const r = Math.random();
-      if (r < 0.70) botAction = 'ult';
-      else if (r < 0.90) botAction = 'atk';
-      else botAction = 'def';
-    } else {
-      botAction = Math.random() < 0.60 ? 'atk' : 'def';
-    }
+  const botSpec = pet.GACHA_SPECIES[b.pet_type];
+  const botBaseAtk = botSpec ? (botSpec.baseAtk || 10) : 10;
+  const estimatedDmg = (botBaseAtk + b.stat_str * 6) * 1.5;
+
+  if (p.hp < estimatedDmg * 1.6 && b.energy >= 60) {
+    botAction = 'ult';
+  } else if (p.energy >= 60 && Math.random() < 0.65) {
+    botAction = b.gacha_element === 'EARTH' ? 'skill1' : 'def';
   } else {
-    // BALANCED (dan default)
-    if (b.energy >= 60) {
-      const r = Math.random();
-      if (r < 0.30) botAction = 'ult';
-      else if (r < 0.70) botAction = 'atk';
-      else botAction = 'def';
+    if (arch === 'TANKER') {
+      if (b.energy >= 60 && Math.random() < 0.30) {
+        botAction = 'ult';
+      } else {
+        const r = Math.random();
+        if (r < 0.45) botAction = 'skill1';
+        else if (r < 0.75) botAction = 'def';
+        else botAction = 'atk';
+      }
+    } else if (arch === 'GLASS_CANNON') {
+      if (b.energy >= 60) {
+        botAction = 'ult';
+      } else {
+        botAction = Math.random() < 0.50 ? 'skill2' : 'atk';
+      }
+    } else if (arch === 'ASSASSIN') {
+      if (b.energy >= 60 && Math.random() < 0.80) {
+        botAction = 'ult';
+      } else {
+        botAction = Math.random() < 0.60 ? 'skill2' : 'atk';
+      }
     } else {
-      botAction = Math.random() < 0.60 ? 'atk' : 'def';
+      if (b.energy >= 60 && Math.random() < 0.40) {
+        botAction = 'ult';
+      } else {
+        const r = Math.random();
+        if (r < 0.40) botAction = 'atk';
+        else if (r < 0.70) botAction = 'skill1';
+        else botAction = 'def';
+      }
     }
   }
   b.chosenAction = botAction;
+
   if (actionType === 'item_med') {
     p.hp = Math.min(p.maxHP, p.hp + 150);
     p.hasUsedItem = true;
@@ -992,6 +1098,24 @@ async function handlePvPAction(interaction, client, actionType) {
     p.chosenAction = 'item_soda';
   } else {
     p.chosenAction = actionType;
+  }
+
+  // Find messageToEdit early for animation effect
+  let messageToEdit = null;
+  if (interaction && interaction.message && (!interaction.message.flags || (interaction.message.flags.bitfield & 64) === 0)) {
+    messageToEdit = interaction.message;
+  } else if (combatData.channelId && combatData.messageId) {
+    try {
+      const channel = await client.channels.fetch(combatData.channelId);
+      if (channel) {
+        messageToEdit = await channel.messages.fetch(combatData.messageId);
+      }
+    } catch (err) {}
+  }
+
+  if (messageToEdit) {
+    await messageToEdit.edit({ content: `⏳ **${p.name}** sedang menyerang! Bot sedang menganalisis gerakan...`, components: [] }).catch(() => {});
+    await new Promise(resolve => setTimeout(resolve, 1200));
   }
 
   // --- ATURAN COMBAT RESOLUTION ---
@@ -1010,38 +1134,63 @@ async function handlePvPAction(interaction, client, actionType) {
     combatData.logs.push(`🛡️ **${b.name}** memasang kuda-kuda bertahan! (+35 SP)`);
   }
 
-  // 2. Tambah SP Serang Biasa
-  if (p.chosenAction === 'atk') p.energy = Math.min(100, p.energy + 20);
-  if (b.chosenAction === 'atk') b.energy = Math.min(100, b.energy + 20);
+  // 2. Tambah SP Serang Biasa / Skill
+  if (['atk', 'skill1', 'skill2'].includes(p.chosenAction)) p.energy = Math.min(100, p.energy + 20);
+  if (['atk', 'skill1', 'skill2'].includes(b.chosenAction)) b.energy = Math.min(100, b.energy + 20);
 
-  // 3. DEX Speed Check
+  // 3. JRPG Speed Gauge System
+  p.gauge = (p.gauge || 0) + (p.stat_dex || 10) * 1.2;
+  b.gauge = (b.gauge || 0) + (b.stat_dex || 10) * 1.2;
+
   let first = p;
   let second = b;
-  if (b.stat_dex > p.stat_dex) {
+  let doubleActionActor = null;
+
+  if (b.gauge > p.gauge) {
     first = b;
     second = p;
-  } else if (p.stat_dex === b.stat_dex) {
+  } else if (p.gauge === b.gauge) {
     if (Math.random() < 0.5) {
       first = b;
       second = p;
     }
   }
 
-  // 4. Eksekusi Aksi
-  if (first.hp > 0 && ['atk', 'ult'].includes(first.chosenAction)) {
-    executeSingleAction(first, second, first.chosenAction, combatData);
+  first.gauge = Math.max(0, first.gauge - 100);
+  if (first.gauge >= 80) {
+    doubleActionActor = first;
+    first.gauge = Math.max(0, first.gauge - 80);
   }
-  if (second.hp > 0 && ['atk', 'ult'].includes(second.chosenAction)) {
+
+  // 4. Eksekusi Aksi
+  if (first.hp > 0 && ['atk', 'ult', 'skill1', 'skill2'].includes(first.chosenAction)) {
+    executeSingleAction(first, second, first.chosenAction, combatData);
+    if (doubleActionActor === first && second.hp > 0) {
+      combatData.logs.push(`⚡ **[DOUBLE ACTION]** Kecepatan luar biasa! **${first.name}** mendapat giliran ekstra!`);
+      executeSingleAction(first, second, 'atk', combatData);
+    }
+  }
+  if (second.hp > 0 && ['atk', 'ult', 'skill1', 'skill2'].includes(second.chosenAction)) {
     executeSingleAction(second, first, second.chosenAction, combatData);
+    if (doubleActionActor === second && first.hp > 0) {
+      combatData.logs.push(`⚡ **[DOUBLE ACTION]** Kecepatan luar biasa! **${second.name}** mendapat giliran ekstra!`);
+      executeSingleAction(second, first, 'atk', combatData);
+    }
   }
 
   // 5. Terapkan Burn
   applyBurnDamage(p, combatData);
   applyBurnDamage(b, combatData);
 
-  // 6. Shield Decay
+  // 6. Shield & Buff Decay
   if (p.shieldTurns > 0) p.shieldTurns--;
   if (b.shieldTurns > 0) b.shieldTurns--;
+  if (p.atkBonusTurns > 0) p.atkBonusTurns--;
+  if (p.defBonusTurns > 0) p.defBonusTurns--;
+  if (p.dodgeBonusTurns > 0) p.dodgeBonusTurns--;
+  if (b.atkBonusTurns > 0) b.atkBonusTurns--;
+  if (b.defBonusTurns > 0) b.defBonusTurns--;
+  if (b.dodgeBonusTurns > 0) b.dodgeBonusTurns--;
 
   // 6b. Terapkan Weather Damage
   if (combatData.weather && combatData.weather !== 'CLEAR') {
@@ -1054,7 +1203,6 @@ async function handlePvPAction(interaction, client, actionType) {
 
   // 7. Cek Kondisi Game Over
   if (p.hp <= 0 && b.hp <= 0) {
-    // Mati bersamaan
     if (p.stat_dex >= b.stat_dex) {
       return endPvPGame(interaction, client, combatData, 'win');
     } else {
@@ -1072,25 +1220,9 @@ async function handlePvPAction(interaction, client, actionType) {
   combatData.turnCount++;
   combatData.isProcessing = false;
 
-  // Reset timer timeout 60 detik untuk turn berikutnya
   resetPvPTimeout(combatData, client);
 
-  // Update embed & buttons
   const payload = getBattleEmbedData(combatData);
-  let messageToEdit = null;
-  if (interaction && interaction.message && (!interaction.message.flags || (interaction.message.flags.bitfield & 64) === 0)) {
-    messageToEdit = interaction.message;
-  } else if (combatData.channelId && combatData.messageId) {
-    try {
-      const channel = await client.channels.fetch(combatData.channelId);
-      if (channel) {
-        messageToEdit = await channel.messages.fetch(combatData.messageId);
-      }
-    } catch (err) {
-      console.error('Failed to fetch pvp battle message for update:', err);
-    }
-  }
-
   if (messageToEdit) {
     await messageToEdit.edit(payload).catch(() => {});
   }
@@ -1224,6 +1356,41 @@ async function endPvPGame(interaction, client, combatData, result) {
       [nextHP, nextHappiness, xpResult.newXp, xpResult.newLevel, Math.floor(Date.now() / 1000), userId, guildId, petObj.pet_name]
     );
   })();
+
+  // Process spectator bets
+  if (combatData.bets && combatData.bets.length > 0) {
+    const winningChoice = result === 'win' ? 'player' : 'bot';
+    const totalPlayerBets = combatData.bets.filter(b => b.choice === 'player').reduce((sum, b) => sum + b.amount, 0);
+    const totalBotBets = combatData.bets.filter(b => b.choice === 'bot').reduce((sum, b) => sum + b.amount, 0);
+    const totalPool = totalPlayerBets + totalBotBets;
+
+    const winners = combatData.bets.filter(b => b.choice === winningChoice);
+    const totalWinningBets = winners.reduce((sum, b) => sum + b.amount, 0);
+
+    let betLogs = '\n\n💸 **Hasil Taruhan Penonton:**\n';
+    if (winners.length === 0) {
+      betLogs += `• Tidak ada penonton yang memenangkan taruhan kali ini.\n`;
+      if (totalPool > 0) {
+        economy.addBalance(config.OWNER_ID, guildId, totalPool, 'TAX_COLLECT_PVP_BATTLE');
+      }
+    } else {
+      const losingPool = totalPool - totalWinningBets;
+      const tax = Math.floor(losingPool * 0.10);
+      const netLosingPool = losingPool - tax;
+
+      if (tax > 0) {
+        economy.addBalance(config.OWNER_ID, guildId, tax, 'TAX_COLLECT_PVP_BATTLE');
+      }
+
+      for (const bet of winners) {
+        const share = bet.amount / totalWinningBets;
+        const prize = Math.floor(bet.amount + share * netLosingPool);
+        economy.addBalance(bet.userId, guildId, prize, 'PVP_BET_WON');
+        betLogs += `• <@${bet.userId}> menang **Rp ${prize.toLocaleString('id-ID')} koin**! (Modal: Rp ${bet.amount.toLocaleString('id-ID')})\n`;
+      }
+    }
+    resultDesc += betLogs;
+  }
 
   const resultEmbed = new EmbedBuilder()
     .setColor(result === 'win' ? 0x10B981 : 0xFF3366)
@@ -1705,6 +1872,9 @@ function getBattleEmbedDataPvP(combatData) {
     if (actor.shieldTurns > 0) buffs.push(`🛡️ Shield (${actor.shieldTurns}T)`);
     if (actor.burnTurns > 0) buffs.push(`🔥 Burn (${actor.burnTurns}T)`);
     if (actor.isDefending) buffs.push(`🛡️ Defending`);
+    if (actor.dodgeBonusTurns > 0) buffs.push(`💨 Dodge +20% (${actor.dodgeBonusTurns}T)`);
+    if (actor.defBonusTurns > 0) buffs.push(`🧱 Def Reduced (${actor.defBonusTurns}T)`);
+    if (actor.atkBonusTurns > 0) buffs.push(`⚔️ ATK +25% (${actor.atkBonusTurns}T)`);
     return buffs.length > 0 ? buffs.join(' · ') : '*Normal*';
   };
 
@@ -1722,6 +1892,9 @@ function getBattleEmbedDataPvP(combatData) {
       arenaInfo +
       `🏟️ **Ronde ${combatData.turnCount}**\n` +
       `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
+      `👟 **Action Speed Gauge:**\n` +
+      `• **${p1.name}**: \`${p1.gauge || 0} / 100\`\n` +
+      `• **${p2.name}**: \`${p2.gauge || 0} / 100\`\n\n` +
       `🐾 **${p1.name}** (<@${p1.id}>) · ${getStatusText(p1)}\n` +
       `├─ ❤️ HP: ${p1HPBar}\n` +
       `├─ ⚡ SP: ${p1SPBar}\n` +
@@ -1733,7 +1906,7 @@ function getBattleEmbedDataPvP(combatData) {
       `📝 **Log Pertempuran:**\n` +
       `\`\`\`diff\n` +
       combatData.logs.slice(-5).map(line => {
-        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang') || line.includes('memberikan')) return `+ ${line}`;
+        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('menyerang') || line.includes('memberikan') || line.includes('DOUBLE ACTION')) return `+ ${line}`;
         if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('melarikan') || line.includes('menyerah')) return `- ${line}`;
         return `  ${line}`;
       }).join('\n') +
@@ -1741,30 +1914,37 @@ function getBattleEmbedDataPvP(combatData) {
     )
     .setFooter({ text: 'Taruhan: Rp ' + combatData.betAmount.toLocaleString('id-ID') + ' koin' });
 
-  const row = new ActionRowBuilder().addComponents(
+  const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvp_act_atk')
       .setLabel('🗡️ Serang')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('pvp_act_def')
-      .setLabel('🛡️ Bertahan')
+      .setCustomId('pvp_act_skill1')
+      .setLabel('🔮 Skill 1')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('pvp_act_skill2')
+      .setLabel('🔮 Skill 2')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvp_act_ult')
       .setLabel('🔥 Ultimate')
-      .setStyle(ButtonStyle.Danger),
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvp_act_item')
       .setLabel('🎒 Item')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('pvp_act_surr')
-      .setLabel('🏳️')
+      .setLabel('🏳️ Menyerah')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embeds: [embed], components: [row] };
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 /**
@@ -1870,33 +2050,76 @@ async function handlePvPActionPvP(interaction, client, actionType) {
       combatData.logs.push(`🛡️ **${p2.name}** memasang kuda-kuda bertahan! (+35 SP)`);
     }
 
-    if (p1.chosenAction === 'atk') p1.energy = Math.min(100, p1.energy + 20);
-    if (p2.chosenAction === 'atk') p2.energy = Math.min(100, p2.energy + 20);
+    if (['atk', 'skill1', 'skill2'].includes(p1.chosenAction)) p1.energy = Math.min(100, p1.energy + 20);
+    if (['atk', 'skill1', 'skill2'].includes(p2.chosenAction)) p2.energy = Math.min(100, p2.energy + 20);
+
+    let messageToEdit = null;
+    if (combatData.channelId && combatData.messageId) {
+      try {
+        const channel = await client.channels.fetch(combatData.channelId);
+        if (channel) {
+          messageToEdit = await channel.messages.fetch(combatData.messageId);
+        }
+      } catch (err) {}
+    }
+
+    if (messageToEdit) {
+      await messageToEdit.edit({ content: `⏳ Kedua pet sedang beradu mekanik! Ronde dihitung...`, components: [] }).catch(() => {});
+      await new Promise(resolve => setTimeout(resolve, 1200));
+    }
+
+    // 3. JRPG Speed Gauge System
+    p1.gauge = (p1.gauge || 0) + (p1.stat_dex || 10) * 1.2;
+    p2.gauge = (p2.gauge || 0) + (p2.stat_dex || 10) * 1.2;
 
     let first = p1;
     let second = p2;
-    if (p2.stat_dex > p1.stat_dex) {
+    let doubleActionActor = null;
+
+    if (p2.gauge > p1.gauge) {
       first = p2;
       second = p1;
-    } else if (p1.stat_dex === p2.stat_dex) {
+    } else if (p1.gauge === p2.gauge) {
       if (Math.random() < 0.5) {
         first = p2;
         second = p1;
       }
     }
 
-    if (first.hp > 0 && ['atk', 'ult'].includes(first.chosenAction)) {
-      executeSingleAction(first, second, first.chosenAction, combatData);
+    first.gauge = Math.max(0, first.gauge - 100);
+    if (first.gauge >= 80) {
+      doubleActionActor = first;
+      first.gauge = Math.max(0, first.gauge - 80);
     }
-    if (second.hp > 0 && ['atk', 'ult'].includes(second.chosenAction)) {
+
+    // 4. Eksekusi Aksi
+    if (first.hp > 0 && ['atk', 'ult', 'skill1', 'skill2'].includes(first.chosenAction)) {
+      executeSingleAction(first, second, first.chosenAction, combatData);
+      if (doubleActionActor === first && second.hp > 0) {
+        combatData.logs.push(`⚡ **[DOUBLE ACTION]** Kecepatan luar biasa! **${first.name}** mendapat giliran ekstra!`);
+        executeSingleAction(first, second, 'atk', combatData);
+      }
+    }
+    if (second.hp > 0 && ['atk', 'ult', 'skill1', 'skill2'].includes(second.chosenAction)) {
       executeSingleAction(second, first, second.chosenAction, combatData);
+      if (doubleActionActor === second && first.hp > 0) {
+        combatData.logs.push(`⚡ **[DOUBLE ACTION]** Kecepatan luar biasa! **${second.name}** mendapat giliran ekstra!`);
+        executeSingleAction(second, first, 'atk', combatData);
+      }
     }
 
     applyBurnDamage(p1, combatData);
     applyBurnDamage(p2, combatData);
 
+    // Shield & Buff Decay
     if (p1.shieldTurns > 0) p1.shieldTurns--;
     if (p2.shieldTurns > 0) p2.shieldTurns--;
+    if (p1.atkBonusTurns > 0) p1.atkBonusTurns--;
+    if (p1.defBonusTurns > 0) p1.defBonusTurns--;
+    if (p1.dodgeBonusTurns > 0) p1.dodgeBonusTurns--;
+    if (p2.atkBonusTurns > 0) p2.atkBonusTurns--;
+    if (p2.defBonusTurns > 0) p2.defBonusTurns--;
+    if (p2.dodgeBonusTurns > 0) p2.dodgeBonusTurns--;
 
     // 6b. Terapkan Weather Damage
     if (combatData.weather && combatData.weather !== 'CLEAR') {
@@ -1927,18 +2150,6 @@ async function handlePvPActionPvP(interaction, client, actionType) {
     resetPvPTimeoutPvP(combatData, client);
 
     const payload = getBattleEmbedDataPvP(combatData);
-    let messageToEdit = null;
-    if (combatData.channelId && combatData.messageId) {
-      try {
-        const channel = await client.channels.fetch(combatData.channelId);
-        if (channel) {
-          messageToEdit = await channel.messages.fetch(combatData.messageId);
-        }
-      } catch (err) {
-        console.error('Failed to fetch pvp battle message for update:', err);
-      }
-    }
-
     if (messageToEdit) {
       await messageToEdit.edit(payload).catch(() => {});
     }
@@ -1951,9 +2162,7 @@ async function handlePvPActionPvP(interaction, client, actionType) {
         if (channel) {
           messageToEdit = await channel.messages.fetch(combatData.messageId);
         }
-      } catch (err) {
-        console.error('Failed to fetch pvp battle message for update:', err);
-      }
+      } catch (err) {}
     }
 
     if (messageToEdit) {
@@ -2117,6 +2326,87 @@ async function endPvPGamePvP(interaction, client, combatData, winnerId, reason) 
   }
 }
 
+async function handleBetInteraction(interaction, client) {
+  const { StringSelectMenuBuilder } = require('discord.js');
+  const customId = interaction.customId;
+  const user = interaction.user;
+  const guildId = interaction.guildId;
+
+  const parts = customId.split('_');
+  const action = parts[2];
+  const trainerId = parts[3];
+
+  const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(trainerId) : null;
+  if (!combatData) {
+    if (interaction.isStringSelectMenu()) {
+      return interaction.update({ content: '❌ Pertandingan tidak ditemukan atau telah berakhir!', components: [] });
+    }
+    return interaction.reply({ content: '❌ Pertandingan tidak ditemukan atau telah berakhir!', flags: 64 });
+  }
+
+  if (user.id === trainerId) {
+    return interaction.reply({ content: '❌ Anda tidak bisa bertaruh pada pertandingan Anda sendiri!', flags: 64 });
+  }
+
+  if (action === 'start') {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`pvpbot_bet_side_${trainerId}_player`)
+        .setLabel(`🐾 Dukung Pet (${combatData.player.name})`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`pvpbot_bet_side_${trainerId}_bot`)
+        .setLabel(`🤖 Dukung Bot (${combatData.bot.name})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+    return interaction.reply({ content: 'Silakan pilih pihak yang ingin Anda dukung:', components: [row], flags: 64 });
+  }
+
+  if (action === 'side') {
+    const side = parts[4];
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`pvpbot_bet_select_${trainerId}_${side}`)
+      .setPlaceholder('Pilih jumlah koin taruhan...')
+      .addOptions([
+        { label: 'Rp 2.000 koin', value: '2000' },
+        { label: 'Rp 5.000 koin', value: '5000' },
+        { label: 'Rp 10.000 koin', value: '10000' },
+        { label: 'Rp 25.000 koin', value: '25000' },
+        { label: 'Rp 50.000 koin', value: '50000' }
+      ]);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    return interaction.update({ content: `Dukungan: **${side === 'player' ? 'Pet Trainer' : 'Bot Musuh'}**.\nSekarang pilih jumlah taruhan Anda:`, components: [row] });
+  }
+
+  if (action === 'select') {
+    const side = parts[4];
+    const amount = parseInt(interaction.values[0]);
+
+    const wallet = economy.getWallet(user.id, guildId);
+    if (!wallet || wallet.balance < amount) {
+      return interaction.update({ content: `❌ Saldo Dompet Anda tidak cukup! (Milik Anda: Rp ${wallet?.balance?.toLocaleString('id-ID') || 0})`, components: [] });
+    }
+
+    economy.subtractBalance(user.id, guildId, amount, 'PVP_SPECTATOR_BET');
+
+    combatData.bets = combatData.bets || [];
+    const existingBet = combatData.bets.find(b => b.userId === user.id);
+    if (existingBet) {
+      economy.addBalance(user.id, guildId, existingBet.amount, 'PVP_BET_REFUND');
+      existingBet.amount = amount;
+      existingBet.choice = side;
+    } else {
+      combatData.bets.push({ userId: user.id, choice: side, amount });
+    }
+
+    return interaction.update({
+      content: `✅ **Taruhan Berhasil!**\nAnda memasang **Rp ${amount.toLocaleString('id-ID')}** koin untuk mendukung **${side === 'player' ? 'Pet Trainer' : 'Bot Musuh'}**!`,
+      components: []
+    });
+  }
+}
+
 module.exports = {
   showPvPArena,
   startPvPChallenge,
@@ -2130,6 +2420,7 @@ module.exports = {
   startInteractivePvP,
   handlePvPActionPvP,
   generateBotForTier,
-  showPvPHallOfFame
+  showPvPHallOfFame,
+  handleBetInteraction
 };
 

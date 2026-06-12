@@ -866,6 +866,13 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 23,
+      description: "Menambahkan kolom equipped_skills ke user_pets untuk menyimpan skill aktif pet",
+      run: () => {
+        addColumn('user_pets', 'equipped_skills', "TEXT DEFAULT NULL");
+      }
     }
   ];
 
