@@ -155,8 +155,8 @@ function getOrCreatePvPState(userId, guildId, petName) {
  */
 function generateBotForTier(tierKey, petObj = null) {
   const tierIndex = TIERS.indexOf(tierKey);
-  // Starts at 1.15 for Bronze V, goes up to 2.13 for Immortal! (Slightly nerfed for better balance)
-  let scaleMultiplier = 1.15 + (tierIndex * 0.035); 
+  // Starts at 0.95 for Bronze V, goes up to 1.65 for Immortal (balanced scaling)
+  let scaleMultiplier = 0.95 + (tierIndex * 0.025); 
 
   let playerTotalStats = 0;
   if (petObj) {
@@ -169,21 +169,16 @@ function generateBotForTier(tierKey, petObj = null) {
   const archetypes = ['TANKER', 'GLASS_CANNON', 'ASSASSIN', 'BALANCED'];
   const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
 
-  // Tentukan trait untuk bot berdasarkan kasta liga
+  // Tentukan trait untuk bot sesuai arketipe secara adil (Hanya 1 trait aktif, tidak ganda)
   let trait = '';
   let gacha_trait2 = '';
 
-  if (tierIndex >= 10) { // Gold ke atas: Bot mendapatkan KEDUA trait tempur (WARRIOR & STURDY)
+  if (archetype === 'TANKER') {
+    trait = 'STURDY';
+  } else if (archetype === 'GLASS_CANNON' || archetype === 'ASSASSIN') {
     trait = 'WARRIOR';
-    gacha_trait2 = 'STURDY';
-  } else { // Bronze & Silver: Bot mendapatkan trait tempur sesuai arketipe
-    if (archetype === 'TANKER') {
-      trait = 'STURDY';
-    } else if (archetype === 'GLASS_CANNON' || archetype === 'ASSASSIN') {
-      trait = 'WARRIOR';
-    } else {
-      trait = Math.random() < 0.5 ? 'STURDY' : 'WARRIOR';
-    }
+  } else {
+    trait = Math.random() < 0.5 ? 'STURDY' : 'WARRIOR';
   }
 
   let str = 0, vit = 0, def = 0, dex = 0;
@@ -804,8 +799,8 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
   // Bot Silver Passive: Adrenaline
   if (attacker.tier && attacker.tier.startsWith('SILVER') && attacker.hp < attacker.maxHP * 0.35) {
-    atkMultiplier += 0.25;
-    combatData.logs.push(`⚡ **[PASIF BOT]** **${attacker.name}** memicu **Adrenaline** (+25% ATK)!`);
+    atkMultiplier += 0.15;
+    combatData.logs.push(`⚡ **[PASIF BOT]** **${attacker.name}** memicu **Adrenaline** (+15% ATK)!`);
   }
 
   // Defender buffs
@@ -821,10 +816,10 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
     critChance = Math.min(0.55, critChance + 0.20);
   }
 
-  // Element advantage (+25% ATK)
+  // Element advantage (+40% ATK)
   const isAdv = pet.isElementAdvantage(attacker.gacha_element, defender.gacha_element);
   if (isAdv) {
-    atkMultiplier += 0.25;
+    atkMultiplier += 0.40;
   }
 
   const arenaSuffix = arenaBuffApplied ? ' 🏟️**[BUFF ARENA]**' : '';
@@ -886,7 +881,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
       // Bot Bronze Passive: Iron Skin
       if (defender.tier && defender.tier.startsWith('BRONZE')) {
-        const reduced = Math.round(damage * 0.15);
+        const reduced = Math.round(damage * 0.10);
         damage = Math.max(1, damage - reduced);
         combatData.logs.push(`🛡️ **[PASIF BOT]** Zirah **Iron Skin** milik **${defender.name}** menyerap **${reduced} DMG**!`);
       }
@@ -959,7 +954,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
       // Bot Bronze Passive: Iron Skin
       if (defender.tier && defender.tier.startsWith('BRONZE')) {
-        const reduced = Math.round(damage * 0.15);
+        const reduced = Math.round(damage * 0.10);
         damage = Math.max(1, damage - reduced);
         combatData.logs.push(`🛡️ **[PASIF BOT]** Zirah **Iron Skin** milik **${defender.name}** menyerap **${reduced} DMG**!`);
       }
