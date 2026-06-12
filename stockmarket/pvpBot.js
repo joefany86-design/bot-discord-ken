@@ -1162,7 +1162,7 @@ async function handlePvPAction(interaction, client, actionType) {
 
   // 3. JRPG Speed Gauge System
   p.gauge = (p.gauge || 0) + (p.stat_dex || 10) * 1.2;
-  b.gauge = (b.gauge || 0) + (b.stat_dex || 10) * 1.2;
+  b.gauge = (b.gauge || 0) + (b.stat_dex || 10) * 0.95; // Dikurangi agar bot tidak terlalu mendominasi giliran
 
   let first = p;
   let second = b;
@@ -1179,9 +1179,11 @@ async function handlePvPAction(interaction, client, actionType) {
   }
 
   first.gauge = Math.max(0, first.gauge - 100);
-  if (first.gauge >= 80) {
+  // Pemain butuh 80 gauge sisa untuk Double Action, sedangkan Bot butuh 95 gauge sisa agar lebih adil
+  const doubleActionThreshold = (first === p) ? 80 : 95;
+  if (first.gauge >= doubleActionThreshold) {
     doubleActionActor = first;
-    first.gauge = Math.max(0, first.gauge - 80);
+    first.gauge = Math.max(0, first.gauge - doubleActionThreshold);
   }
 
   // 4. Eksekusi Aksi
