@@ -136,8 +136,8 @@ function getOrCreatePvPState(userId, guildId, petName) {
  */
 function generateBotForTier(tierKey, petObj = null) {
   const tierIndex = TIERS.indexOf(tierKey);
-  // Starts at 1.30 for Bronze V, goes up to 2.42 for Immortal! (Significant increase in difficulty)
-  let scaleMultiplier = 1.30 + (tierIndex * 0.04); 
+  // Starts at 1.15 for Bronze V, goes up to 2.13 for Immortal! (Slightly nerfed for better balance)
+  let scaleMultiplier = 1.15 + (tierIndex * 0.035); 
 
   let playerTotalStats = 0;
   if (petObj) {
