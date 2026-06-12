@@ -832,6 +832,20 @@ function initSchema() {
         addColumn('user_pets', 'iv_vit', 'INTEGER DEFAULT 0');
         addColumn('user_pets', 'iv_dex', 'INTEGER DEFAULT 0');
       }
+    },
+    {
+      version: 20,
+      description: "Menambahkan kolom gym_fatigue ke user_pets untuk mekanik Hardcore PvP Bot",
+      run: () => {
+        addColumn('user_pets', 'gym_fatigue', 'INTEGER DEFAULT 0');
+      }
+    },
+    {
+      version: 21,
+      description: "Menambahkan kolom win_streak ke user_pet_pvp_bot untuk fitur Win-Streak",
+      run: () => {
+        addColumn('user_pet_pvp_bot', 'win_streak', 'INTEGER DEFAULT 0');
+      }
     }
   ];
 

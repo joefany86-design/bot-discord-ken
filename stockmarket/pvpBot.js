@@ -134,9 +134,17 @@ function getOrCreatePvPState(userId, guildId, petName) {
 /**
  * Menghasilkan statistik bot secara dinamis berdasarkan tier pemain saat ini dengan spesialisasi acak
  */
-function generateBotForTier(tierKey) {
+function generateBotForTier(tierKey, petObj = null) {
   const tierIndex = TIERS.indexOf(tierKey);
-  const totalPoints = 15 + tierIndex * 8;
+  let scaleMultiplier = 0.85 + (tierIndex * 0.01); // 0.85 to 1.13 depending on tier index
+
+  let playerTotalStats = 0;
+  if (petObj) {
+    playerTotalStats = (petObj.stat_str || 0) + (petObj.stat_vit || 0) + (petObj.stat_def || 0) + (petObj.stat_dex || 0);
+  }
+
+  const basePoints = Math.max(15, playerTotalStats);
+  const totalPoints = Math.round(basePoints * scaleMultiplier);
 
   const archetypes = ['TANKER', 'GLASS_CANNON', 'ASSASSIN', 'BALANCED'];
   const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
@@ -204,7 +212,8 @@ function generateBotForTier(tierKey) {
     stat_str: str,
     stat_vit: vit,
     stat_def: def,
-    stat_dex: dex
+    stat_dex: dex,
+    tier: tierKey
   };
 }
 
@@ -216,12 +225,24 @@ function getPvpStatsDescription(petObj, pvpState) {
 
   const totalGymStats = (petObj.stat_str || 0) + (petObj.stat_vit || 0) + (petObj.stat_def || 0) + (petObj.stat_dex || 0);
 
+  // Status Efek & Debuff Aktif
+  const activeDebuffs = [];
+  if ((petObj.hunger || 0) < 50) activeDebuffs.push('🍗 **Debuff Lapar** (ATK -20%)');
+  if ((petObj.thirst || 0) < 50) activeDebuffs.push('💧 **Debuff Haus** (DEX -30%)');
+  const nowUnix = Math.floor(Date.now() / 1000);
+  if (petObj.curse_type === 'injured' && petObj.curse_until > nowUnix) {
+    activeDebuffs.push('🤕 **Cedera Tempur** (Semua Stat -25%)');
+  }
+  const debuffText = activeDebuffs.length > 0 ? activeDebuffs.join(', ') : '✅ *Normal*';
+
   return `🏋️ **Statistik Tempur Arena (Berdasarkan Gym):**\n` +
          `• ❤️ **Max HP:** \`${maxHP} HP\` *(+10 per VIT)*\n` +
          `• ⚔️ **Base ATK:** \`${baseAtk} DMG\` *(+3 per STR)*\n` +
          `• 🛡️ **Damage Reduction:** \`${defPercent.toFixed(1)}%\` *(+0.5% per DEF, maks 75%)*\n` +
          `• ⚡ **Crit Chance:** \`${critPercent.toFixed(1)}%\` *(+0.5% per DEX, maks 40%)*\n` +
          `• 👟 **Total Gym Stats:** \`${totalGymStats} Poin\`\n` +
+         `• 🔋 **Gym Fatigue:** \`${petObj.gym_fatigue || 0}/100%\` *(Maks 100% untuk latihan)*\n` +
+         `• ✨ **Kondisi Fisik:** ${debuffText}\n` +
          `\n🏆 **Liga Progres PvP Bot:**\n` +
          `• 🌟 **Tier/Pangkat:** **${getFriendlyTierName(pvpState.tier)}**\n` +
          `• 📊 **Poin Liga:** **${pvpState.tier === 'IMMORTAL' ? `${pvpState.points} LP` : `${pvpState.points}/100 LP`}** *(Win +25, Lose -10)*\n` +
@@ -381,6 +402,38 @@ function resetPvPTimeout(combatData, client) {
   }, 60000);
 }
 
+function calculateEffectiveStats(petObj, nowUnix) {
+  let str = petObj.stat_str || 0;
+  let vit = petObj.stat_vit || 0;
+  let def = petObj.stat_def || 0;
+  let dex = petObj.stat_dex || 0;
+  let baseAtkBonus = petObj.base_atk_bonus_pct || 0.0;
+  const logs = [];
+
+  // Debuff Hunger (< 50) -> ATK -20%
+  if ((petObj.hunger || 0) < 50) {
+    baseAtkBonus -= 0.20;
+    logs.push(`⚠️ **Debuff Kelaparan!** **${petObj.pet_name}** sangat lapar (Kenyangan < 50%), ATK berkurang 20%!`);
+  }
+
+  // Debuff Thirst (< 50) -> DEX -30%
+  if ((petObj.thirst || 0) < 50) {
+    dex = Math.round(dex * 0.70);
+    logs.push(`⚠️ **Debuff Kehausan!** **${petObj.pet_name}** sangat haus (Hidrasi < 50%), DEX berkurang 30%!`);
+  }
+
+  // Injured Status -> All Stats -25%
+  if (petObj.curse_type === 'injured' && petObj.curse_until > nowUnix) {
+    str = Math.round(str * 0.75);
+    vit = Math.round(vit * 0.75);
+    def = Math.round(def * 0.75);
+    dex = Math.round(dex * 0.75);
+    logs.push(`⚠️ **Status Cedera!** **${petObj.pet_name}** bertarung dalam kondisi cedera parah, seluruh statistik tempur berkurang 25%!`);
+  }
+
+  return { str, vit, def, dex, baseAtkBonus, logs };
+}
+
 /**
  * Memulai tantangan PvP vs Bot interaktif (Ronde 1)
  */
@@ -434,11 +487,32 @@ async function startPvPChallenge(interaction, client, petName) {
       );
     }
 
+    // Increment Quest Progress
+    pet.incrementQuestProgress(user.id, guildId, 'PVP_BOT', 1);
+
     const randomArena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
-    const botOpponent = generateBotForTier(pvpState.tier);
+    const botOpponent = generateBotForTier(pvpState.tier, petObj);
+
+    // Weather hazard selection (20% chance)
+    let weather = 'CLEAR';
+    let weatherName = 'Cerah';
+    let weatherDesc = '';
+    if (Math.random() < 0.20) {
+      const weathers = [
+        { key: 'SANDSTORM', name: '🌪️ Badai Pasir', desc: 'Kedua pet terkena 3% Max HP damage di akhir setiap turn!' },
+        { key: 'ACID_RAIN', name: '🌧️ Hujan Asam', desc: 'Kedua pet terkena 3% Max HP damage di akhir setiap turn!' }
+      ];
+      const selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
+      weather = selectedWeather.key;
+      weatherName = selectedWeather.name;
+      weatherDesc = selectedWeather.desc;
+    }
+
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const pStats = calculateEffectiveStats(petObj, nowUnix);
 
     // Hitung status tempur awal berbasis Gym Stats (TANPA Level)
-    const playerMaxHP = 100 + (petObj.stat_vit || 0) * 10;
+    const playerMaxHP = 100 + pStats.vit * 10;
     const botMaxHP = 100 + botOpponent.stat_vit * 10;
 
     // Siapkan object game state
@@ -447,6 +521,8 @@ async function startPvPChallenge(interaction, client, petName) {
       userId: user.id,
       turnCount: 1,
       arena: randomArena,
+      weather: weather,
+      weatherName: weatherName,
       logs: [`⚔️ Pertandingan liga dimulai di **${randomArena.name}** melawan **${botOpponent.name}**!`],
       player: {
         name: petObj.pet_name,
@@ -460,11 +536,11 @@ async function startPvPChallenge(interaction, client, petName) {
         shieldTurns: 0,
         hasUsedUltimate: false,
         hasUsedItem: false,
-        stat_str: petObj.stat_str || 0,
-        stat_vit: petObj.stat_vit || 0,
-        stat_def: petObj.stat_def || 0,
-        stat_dex: petObj.stat_dex || 0,
-        base_atk_bonus_pct: petObj.base_atk_bonus_pct || 0.0,
+        stat_str: pStats.str,
+        stat_vit: pStats.vit,
+        stat_def: pStats.def,
+        stat_dex: pStats.dex,
+        base_atk_bonus_pct: pStats.baseAtkBonus,
         base_def_bonus_pct: petObj.base_def_bonus_pct || 0.0,
         trait: petObj.trait || '',
         accessory: petObj.accessory || null,
@@ -490,9 +566,17 @@ async function startPvPChallenge(interaction, client, petName) {
         base_def_bonus_pct: 0.0,
         trait: '',
         accessory: null,
-        chosenAction: null
+        chosenAction: null,
+        tier: botOpponent.tier
       }
     };
+
+    if (pStats.logs.length > 0) {
+      combatData.logs.push(...pStats.logs);
+    }
+    if (weather !== 'CLEAR') {
+      combatData.logs.push(`⚠️ **Cuaca Ekstrem Terdeteksi:** **${weatherName}**! *(${weatherDesc})*`);
+    }
 
     const payload = getBattleEmbedData(combatData);
     const vsAttachment = await petCard.getArenaVsCardAttachment(petObj, botOpponent, pvpState.tier, combatData.arena.key);
@@ -552,6 +636,12 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
   if (attacker.accessory === 'SWORD_TOY') atkMultiplier += 0.15;
   atkMultiplier += (attacker.base_atk_bonus_pct || 0.0);
 
+  // Bot Silver Passive: Adrenaline
+  if (attacker.tier && attacker.tier.startsWith('SILVER') && attacker.hp < attacker.maxHP * 0.35) {
+    atkMultiplier += 0.25;
+    combatData.logs.push(`⚡ **[PASIF BOT]** **${attacker.name}** memicu **Adrenaline** (+25% ATK)!`);
+  }
+
   // Defender buffs
   let defMultiplier = 1.0;
   if (defender.trait === 'STURDY') defMultiplier *= 0.85;
@@ -587,6 +677,13 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       damage = Math.round(rawDmg * (1 - defFactor) * defMultiplier);
       if (defender.isDefending) damage = Math.round(damage * 0.5);
 
+      // Bot Bronze Passive: Iron Skin
+      if (defender.tier && defender.tier.startsWith('BRONZE')) {
+        const reduced = Math.round(damage * 0.15);
+        damage = Math.max(1, damage - reduced);
+        combatData.logs.push(`🛡️ **[PASIF BOT]** Zirah **Iron Skin** milik **${defender.name}** menyerap **${reduced} DMG**!`);
+      }
+
       // Shield reduction (absorb 40%)
       if (defender.shieldTurns > 0) {
         const shieldReduced = Math.round(damage * 0.40);
@@ -619,6 +716,13 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       if (defFactor > 0.8) defFactor = 0.8;
       damage = Math.round(rawDmg * (1 - defFactor) * defMultiplier);
       if (defender.isDefending) damage = Math.round(damage * 0.5);
+
+      // Bot Bronze Passive: Iron Skin
+      if (defender.tier && defender.tier.startsWith('BRONZE')) {
+        const reduced = Math.round(damage * 0.15);
+        damage = Math.max(1, damage - reduced);
+        combatData.logs.push(`🛡️ **[PASIF BOT]** Zirah **Iron Skin** milik **${defender.name}** menyerap **${reduced} DMG**!`);
+      }
 
       if (defender.shieldTurns > 0) {
         const shieldReduced = Math.round(damage * 0.40);
@@ -817,6 +921,15 @@ async function handlePvPAction(interaction, client, actionType) {
   if (p.shieldTurns > 0) p.shieldTurns--;
   if (b.shieldTurns > 0) b.shieldTurns--;
 
+  // 6b. Terapkan Weather Damage
+  if (combatData.weather && combatData.weather !== 'CLEAR') {
+    const pDmg = Math.round(p.maxHP * 0.03);
+    const bDmg = Math.round(b.maxHP * 0.03);
+    p.hp = Math.max(0, p.hp - pDmg);
+    b.hp = Math.max(0, b.hp - bDmg);
+    combatData.logs.push(`🌪️ **[CUACA]** **${combatData.weatherName}** menerjang arena! **${p.name}** terkena **${pDmg} DMG** & **${b.name}** terkena **${bDmg} DMG**!`);
+  }
+
   // 7. Cek Kondisi Game Over
   if (p.hp <= 0 && b.hp <= 0) {
     // Mati bersamaan
@@ -892,7 +1005,16 @@ async function endPvPGame(interaction, client, combatData, result) {
 
   if (result === 'win') {
     winXp = 50 + currentTierIndex * 10;
-    let nextPoints = pvpState.points + 25;
+    
+    const newStreak = (pvpState.win_streak || 0) + 1;
+    let pointsBonus = 0;
+    let streakAnnounceText = '';
+    if (newStreak >= 3) {
+      pointsBonus = 10;
+      streakAnnounceText = `🔥 **WIN STREAK!** Kemenangan beruntun ke-${newStreak}! Mendapatkan bonus **+10 LP**!\n`;
+    }
+
+    let nextPoints = pvpState.points + 25 + pointsBonus;
     let nextTier = pvpState.tier;
 
     if (nextPoints >= 100) {
@@ -905,7 +1027,7 @@ async function endPvPGame(interaction, client, combatData, result) {
         rankChangesText = `👑 Pertahankan kejayaan Anda di Puncak Immortal!`;
       }
     } else {
-      rankChangesText = `📈 LP bertambah **+25 LP** *(Poin sekarang: ${nextPoints}/100 LP)*`;
+      rankChangesText = `📈 LP bertambah **+${25 + pointsBonus} LP** *(Poin sekarang: ${nextPoints}/100 LP)*`;
     }
 
     const currentHighestIndex = TIERS.indexOf(pvpState.highest_tier_reached || 'BRONZE_V');
@@ -914,13 +1036,14 @@ async function endPvPGame(interaction, client, combatData, result) {
 
     db.transaction(() => {
       db.run(
-        'UPDATE user_pet_pvp_bot SET tier = ?, points = ?, highest_tier_reached = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
-        [nextTier, nextPoints, updatedHighestTier, userId, guildId, petObj.pet_name]
+        'UPDATE user_pet_pvp_bot SET tier = ?, points = ?, highest_tier_reached = ?, win_streak = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [nextTier, nextPoints, updatedHighestTier, newStreak, userId, guildId, petObj.pet_name]
       );
     })();
 
     resultTitle = `🎉 KEMENANGAN ARENA!`;
     resultDesc = `**${petObj.pet_name}** berhasil menaklukkan **${combatData.bot.name}**!\n\n` +
+                 streakAnnounceText +
                  `✨ **Reward XP Pet:** **+${winXp} XP**\n` +
                  `${rankChangesText}\n\n` +
                  `🔋 **Status HP Pet:** Sisa HP Anda **${nextHP}%** *(Dampak bertarung -10% HP)*`;
@@ -957,13 +1080,14 @@ async function endPvPGame(interaction, client, combatData, result) {
 
     db.transaction(() => {
       db.run(
-        'UPDATE user_pet_pvp_bot SET tier = ?, points = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        'UPDATE user_pet_pvp_bot SET tier = ?, points = ?, win_streak = 0 WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
         [nextTier, nextPoints, userId, guildId, petObj.pet_name]
       );
     })();
 
     resultTitle = `💀 KEKALAHAN ARENA!`;
     resultDesc = `**${petObj.pet_name}** tumbang dalam pertarungan melawan **${combatData.bot.name}**!\n\n` +
+                 `🔥 **Win Streak terputus!** Streak kembali ke 0.\n` +
                  `${rankChangesText}\n\n` +
                  `🔋 **Status HP Pet:** Sisa HP Anda **${nextHP}%** *(Dampak kekalahan -30% HP)*`;
   }
@@ -1196,9 +1320,27 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
 
   const randomArena = ARENAS[Math.floor(Math.random() * ARENAS.length)];
 
-  // Hitung status tempur awal berbasis Gym Stats (TANPA Level untuk stats, sama seperti pvpBot)
-  const challengerMaxHP = 100 + (challengerPet.stat_vit || 0) * 10;
-  const opponentMaxHP = 100 + (opponentPet.stat_vit || 0) * 10;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const p1Stats = calculateEffectiveStats(challengerPet, nowUnix);
+  const p2Stats = calculateEffectiveStats(opponentPet, nowUnix);
+
+  const challengerMaxHP = 100 + p1Stats.vit * 10;
+  const opponentMaxHP = 100 + p2Stats.vit * 10;
+
+  // Weather hazard selection (20% chance)
+  let weather = 'CLEAR';
+  let weatherName = 'Cerah';
+  let weatherDesc = '';
+  if (Math.random() < 0.20) {
+    const weathers = [
+      { key: 'SANDSTORM', name: '🌪️ Badai Pasir', desc: 'Kedua pet terkena 3% Max HP damage di akhir setiap turn!' },
+      { key: 'ACID_RAIN', name: '🌧️ Hujan Asam', desc: 'Kedua pet terkena 3% Max HP damage di akhir setiap turn!' }
+    ];
+    const selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
+    weather = selectedWeather.key;
+    weatherName = selectedWeather.name;
+    weatherDesc = selectedWeather.desc;
+  }
 
   const combatData = {
     guildId,
@@ -1207,6 +1349,8 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
     betAmount,
     turnCount: 1,
     arena: randomArena,
+    weather: weather,
+    weatherName: weatherName,
     logs: [`⚔️ Pertandingan taruhan Rp ${betAmount.toLocaleString('id-ID')} koin dimulai di **${randomArena.name}**!`],
     p1: {
       id: challengerId,
@@ -1221,11 +1365,11 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
       shieldTurns: 0,
       hasUsedUltimate: false,
       hasUsedItem: false,
-      stat_str: challengerPet.stat_str || 0,
-      stat_vit: challengerPet.stat_vit || 0,
-      stat_def: challengerPet.stat_def || 0,
-      stat_dex: challengerPet.stat_dex || 0,
-      base_atk_bonus_pct: challengerPet.base_atk_bonus_pct || 0.0,
+      stat_str: p1Stats.str,
+      stat_vit: p1Stats.vit,
+      stat_def: p1Stats.def,
+      stat_dex: p1Stats.dex,
+      base_atk_bonus_pct: p1Stats.baseAtkBonus,
       base_def_bonus_pct: challengerPet.base_def_bonus_pct || 0.0,
       trait: challengerPet.trait || '',
       accessory: challengerPet.accessory || null,
@@ -1244,17 +1388,27 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
       shieldTurns: 0,
       hasUsedUltimate: false,
       hasUsedItem: false,
-      stat_str: opponentPet.stat_str || 0,
-      stat_vit: opponentPet.stat_vit || 0,
-      stat_def: opponentPet.stat_def || 0,
-      stat_dex: opponentPet.stat_dex || 0,
-      base_atk_bonus_pct: opponentPet.base_atk_bonus_pct || 0.0,
+      stat_str: p2Stats.str,
+      stat_vit: p2Stats.vit,
+      stat_def: p2Stats.def,
+      stat_dex: p2Stats.dex,
+      base_atk_bonus_pct: p2Stats.baseAtkBonus,
       base_def_bonus_pct: opponentPet.base_def_bonus_pct || 0.0,
       trait: opponentPet.trait || '',
       accessory: opponentPet.accessory || null,
       chosenAction: null
     }
   };
+
+  if (p1Stats.logs.length > 0) {
+    combatData.logs.push(...p1Stats.logs);
+  }
+  if (p2Stats.logs.length > 0) {
+    combatData.logs.push(...p2Stats.logs);
+  }
+  if (weather !== 'CLEAR') {
+    combatData.logs.push(`⚠️ **Cuaca Ekstrem Terdeteksi:** **${weatherName}**! *(${weatherDesc})*`);
+  }
 
   const payload = getBattleEmbedDataPvP(combatData);
   const oppPetForCard = { ...opponentPet, name: opponentPet.pet_name };
@@ -1486,6 +1640,15 @@ async function handlePvPActionPvP(interaction, client, actionType) {
 
     if (p1.shieldTurns > 0) p1.shieldTurns--;
     if (p2.shieldTurns > 0) p2.shieldTurns--;
+
+    // 6b. Terapkan Weather Damage
+    if (combatData.weather && combatData.weather !== 'CLEAR') {
+      const p1Dmg = Math.round(p1.maxHP * 0.03);
+      const p2Dmg = Math.round(p2.maxHP * 0.03);
+      p1.hp = Math.max(0, p1.hp - p1Dmg);
+      p2.hp = Math.max(0, p2.hp - p2Dmg);
+      combatData.logs.push(`🌪️ **[CUACA]** **${combatData.weatherName}** menerjang arena! **${p1.name}** terkena **${p1Dmg} DMG** & **${p2.name}** terkena **${p2Dmg} DMG**!`);
+    }
 
     if (p1.hp <= 0 && p2.hp <= 0) {
       if (p1.stat_dex >= p2.stat_dex) {

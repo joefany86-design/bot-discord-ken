@@ -5382,6 +5382,7 @@ async function handlePetCommand(message, client, args) {
           case 'BANK_DEPOSIT': descText = `Menabung koin di Bank (\`.bank nabung\`) sebanyak 1 kali`; break;
           case 'GARDEN_PLANT': descText = `Menanam benih bunga (\`.tanam\`) sebanyak 2 kali`; break;
           case 'GARDEN_HARVEST': descText = `Memanen bunga matang (\`.panen\`) sebanyak 2 kali`; break;
+          case 'PVP_BOT': descText = `Bertanding di PvP Bot Arena (\`.pet pvpbot\`) sebanyak 2 kali`; break;
           default: descText = `Misi Harian`;
         }
         return `${descText} (${progress}/${target})`;

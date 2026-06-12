@@ -372,13 +372,13 @@ function applyDecay(pet) {
 
   if (isGodPet(pet)) {
     const maxHP = getMaxHP(pet);
-    if (pet.hunger === 100 && pet.thirst === 100 && pet.happiness === 100 && pet.health === maxHP && pet.status === 'ADULT') {
+    if (pet.hunger === 100 && pet.thirst === 100 && pet.happiness === 100 && pet.health === maxHP && pet.status === 'ADULT' && (pet.gym_fatigue || 0) === 0) {
       return pet;
     }
     const now = Math.floor(Date.now() / 1000);
     db.run(
       `UPDATE user_pets 
-       SET hunger = 100, thirst = 100, happiness = 100, health = ?, status = 'ADULT', last_interaction_at = ?
+       SET hunger = 100, thirst = 100, happiness = 100, health = ?, status = 'ADULT', last_interaction_at = ?, gym_fatigue = 0
        WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
       [maxHP, now, pet.user_id, pet.guild_id, pet.pet_name]
     );
@@ -389,6 +389,7 @@ function applyDecay(pet) {
       happiness: 100,
       health: maxHP,
       status: 'ADULT',
+      gym_fatigue: 0,
       last_interaction_at: now
     };
   }
@@ -400,6 +401,8 @@ function applyDecay(pet) {
   const now = Math.floor(Date.now() / 1000);
   const elapsedSeconds = now - pet.last_interaction_at;
   const elapsedHours = elapsedSeconds / 3600;
+
+  const newFatigue = Math.max(0, (pet.gym_fatigue || 0) - Math.floor(elapsedHours * 10));
 
   if (elapsedHours < 0.25) {
     return pet;
@@ -576,9 +579,9 @@ function applyDecay(pet) {
 
   db.run(
     `UPDATE user_pets 
-     SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?, accessory = ?
+     SET hunger = ?, thirst = ?, happiness = ?, health = ?, status = ?, last_interaction_at = ?, accessory = ?, gym_fatigue = ?
      WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, finalAccessory, pet.user_id, pet.guild_id, pet.pet_name]
+    [newHunger, newThirst, newHappiness, newHealth, newStatus, now, finalAccessory, newFatigue, pet.user_id, pet.guild_id, pet.pet_name]
   );
 
   return {
@@ -589,7 +592,8 @@ function applyDecay(pet) {
     health: newHealth,
     status: newStatus,
     last_interaction_at: now,
-    accessory: finalAccessory
+    accessory: finalAccessory,
+    gym_fatigue: newFatigue
   };
 }
 
@@ -948,7 +952,8 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
 
   // 2. Validasi status spesifik dengan batas HP dinamis
   const maxHP = getMaxHP(pet);
-  if (!item.multiplier && item.cures && pet.health >= maxHP) {
+  const isInjured = pet.curse_type === 'injured' && pet.curse_until > Math.floor(Date.now() / 1000);
+  if (!item.multiplier && item.cures && pet.health >= maxHP && pet.status !== 'SICK' && !isInjured) {
     throw new Error('Pet Anda dalam kondisi sangat sehat, tidak memerlukan obat-obatan!');
   }
 
@@ -2607,7 +2612,8 @@ function getOrCreateDailyQuests(userId, guildId) {
     { type: 'STOCK_BUY', target: 2 },
     { type: 'BANK_DEPOSIT', target: 1 },
     { type: 'GARDEN_PLANT', target: 2 },
-    { type: 'GARDEN_HARVEST', target: 2 }
+    { type: 'GARDEN_HARVEST', target: 2 },
+    { type: 'PVP_BOT', target: 2 }
   ];
 
   // Shuffle pool dan ambil 3 item teratas
@@ -2897,6 +2903,10 @@ function trainPet(userId, guildId) {
     throw new Error('Pet Anda sedang terluka parah 🤕! Obati dia terlebih dahulu.');
   }
 
+  if ((petObj.gym_fatigue || 0) >= 100) {
+    throw new Error('❌ Pet Anda terlalu lelah berlatih! Istirahatkan pet terlebih dahulu agar ototnya pulih.');
+  }
+
   if (petObj.health < 40) {
     throw new Error('Pet Anda terlalu lemah/lelah (HP < 40) untuk berlatih!');
   }
@@ -2912,6 +2922,7 @@ function trainPet(userId, guildId) {
 
   const now = Math.floor(Date.now() / 1000);
   const maxHP = getMaxHP(petObj);
+  const newFatigue = Math.min(100, (petObj.gym_fatigue || 0) + 20);
 
   db.transaction(() => {
     // Kurangi koin
@@ -2930,9 +2941,9 @@ function trainPet(userId, guildId) {
 
     db.run(
       `UPDATE user_pets 
-       SET xp = ?, level = ?, hunger = ?, thirst = ?, health = ?, last_interaction_at = ?
+       SET xp = ?, level = ?, hunger = ?, thirst = ?, health = ?, last_interaction_at = ?, gym_fatigue = ?
        WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
-      [newXp, newLevel, newHunger, newThirst, newHealth, now, userId, guildId, petObj.pet_name]
+      [newXp, newLevel, newHunger, newThirst, newHealth, now, newFatigue, userId, guildId, petObj.pet_name]
     );
   })();
 
