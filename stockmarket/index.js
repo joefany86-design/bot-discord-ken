@@ -5334,6 +5334,7 @@ const towerActiveUsers = new Set();
 async function handlePetCommand(message, client, args) {
   const { guildId, author, guild } = message;
   const subCommand = args[0] ? args[0].toLowerCase() : null;
+  console.log(`[Diagnostic] handlePetCommand invoked. subCommand: "${subCommand}" | channel ID: "${message.channelId}"`);
 
   // ── SUB-PERINTAH: SAFARI / CATCH ──
   if (subCommand === 'safari' || subCommand === 'catch' || subCommand === 'tangkap') {
@@ -5496,6 +5497,7 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: PVPBOT ARENA ──
   if (subCommand === 'pvpbot' || subCommand === 'arena') {
+    console.log(`[Diagnostic] pvpbot command received from user: ${author.id} in channel ID: ${message.channelId}`);
     // Hanya izinkan di channel ⚔️┃pvp-bot-arena (1515061723294601468) atau channel test (1503324994153873458)
     if (message.channelId !== '1515061723294601468' && message.channelId !== '1503324994153873458') {
       return message.reply({
@@ -10461,15 +10463,27 @@ async function handleEconomyCommands(message, client) {
   if (['pet', 'pet-admin'].includes(commandName)) {
     const subCommand = args[0] ? args[0].toLowerCase() : null;
     const isSafariCommand = commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand);
-    const allowedChannelId = isSafariCommand ? '1513927968379109436' : '1509762623917265137';
+    const isPvPBotCommand = commandName === 'pet' && ['pvpbot', 'arena'].includes(subCommand);
+    
+    let allowedChannelId = '1509762623917265137';
+    if (isSafariCommand) {
+      allowedChannelId = '1513927968379109436';
+    } else if (isPvPBotCommand) {
+      allowedChannelId = '1515061723294601468';
+    }
 
     if (message.channelId !== allowedChannelId) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
-        const warnEmb = isSafariCommand
-          ? embeds.safariChannelRestrictionEmbed()
-          : embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
+        let warnEmb;
+        if (isSafariCommand) {
+          warnEmb = embeds.safariChannelRestrictionEmbed();
+        } else if (isPvPBotCommand) {
+          warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah Arena PvP Bot (`.pet pvpbot`) hanya dapat digunakan di saluran khusus: <#1515061723294601468>!');
+        } else {
+          warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
+        }
         await autoReply({ embeds: [warnEmb] });
         return true; // Berhenti memproses perintah
       }
