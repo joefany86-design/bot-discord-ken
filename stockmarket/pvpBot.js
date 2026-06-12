@@ -1357,6 +1357,25 @@ async function endPvPGame(interaction, client, combatData, result) {
     );
   })();
 
+  const resultEmbed = new EmbedBuilder()
+    .setColor(result === 'win' ? 0x10B981 : 0xFF3366)
+    .setTitle(resultTitle)
+    .setDescription(`🐾 **${petObj.pet_name}** bertarung melawan **${combatData.bot.name}** di **${combatData.arena.name}**!`)
+    .addFields([
+      {
+        name: '🎁 Hadiah & XP Laga',
+        value: `• **XP Didapat:** \`+${winXp} XP\`\n` +
+               `• **Pangkat:** ${rankChangesText}`,
+        inline: true
+      },
+      {
+        name: '🔋 Kondisi Akhir Pet',
+        value: `• **Sisa HP:** \`${Math.min(100, nextHP)}%\` *(Dampak: -${result === 'win' ? 10 : 30}% HP)*\n` +
+               `• **Kesenangan:** \`${nextHappiness}%\``,
+        inline: true
+      }
+    ]);
+
   // Process spectator bets
   if (combatData.bets && combatData.bets.length > 0) {
     const winningChoice = result === 'win' ? 'player' : 'bot';
@@ -1367,9 +1386,9 @@ async function endPvPGame(interaction, client, combatData, result) {
     const winners = combatData.bets.filter(b => b.choice === winningChoice);
     const totalWinningBets = winners.reduce((sum, b) => sum + b.amount, 0);
 
-    let betLogs = '\n\n💸 **Hasil Taruhan Penonton:**\n';
+    let betFormatted = '';
     if (winners.length === 0) {
-      betLogs += `• Tidak ada penonton yang memenangkan taruhan kali ini.\n`;
+      betFormatted = `• Tidak ada penonton yang memenangkan taruhan kali ini.`;
       if (totalPool > 0) {
         economy.addBalance(config.OWNER_ID, guildId, totalPool, 'TAX_COLLECT_PVP_BATTLE');
       }
@@ -1386,27 +1405,24 @@ async function endPvPGame(interaction, client, combatData, result) {
         const share = bet.amount / totalWinningBets;
         const prize = Math.floor(bet.amount + share * netLosingPool);
         economy.addBalance(bet.userId, guildId, prize, 'PVP_BET_WON');
-        betLogs += `• <@${bet.userId}> menang **Rp ${prize.toLocaleString('id-ID')} koin**! (Modal: Rp ${bet.amount.toLocaleString('id-ID')})\n`;
+        betFormatted += `• <@${bet.userId}> menang **Rp ${prize.toLocaleString('id-ID')} koin**! *(Modal: Rp ${bet.amount.toLocaleString('id-ID')})*\n`;
       }
     }
-    resultDesc += betLogs;
+    resultEmbed.addFields([{ name: '💸 Taruhan Penonton', value: betFormatted, inline: false }]);
   }
 
-  const resultEmbed = new EmbedBuilder()
-    .setColor(result === 'win' ? 0x10B981 : 0xFF3366)
-    .setTitle(resultTitle)
-    .setDescription(
-      resultDesc + `\n\n` +
-      `📝 **Log Akhir Pertandingan:**\n` +
-      `\`\`\`diff\n` +
+  resultEmbed.addFields([{
+    name: '📝 Log Akhir Pertandingan',
+    value: `\`\`\`diff\n` +
       combatData.logs.map(line => {
-        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('memberikan') || line.includes('menyerang')) return `+ ${line}`;
+        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('memberikan') || line.includes('menyerang') || line.includes('DOUBLE ACTION')) return `+ ${line}`;
         if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('menyerah')) return `- ${line}`;
         return `  ${line}`;
       }).join('\n').substring(0, 1000) +
-      `\`\`\``
-    )
-    .setTimestamp();
+      `\`\`\``,
+    inline: false
+  }])
+  .setTimestamp();
 
   let messageToEdit = null;
   if (interaction && interaction.message && (!interaction.message.flags || (interaction.message.flags.bitfield & 64) === 0)) {
