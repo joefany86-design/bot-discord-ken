@@ -5496,6 +5496,17 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: PVPBOT ARENA ──
   if (subCommand === 'pvpbot' || subCommand === 'arena') {
+    // Hanya izinkan di channel ⚔️┃pvp-bot-arena (1515061723294601468) atau channel test (1503324994153873458)
+    if (message.channelId !== '1515061723294601468' && message.channelId !== '1503324994153873458') {
+      return message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0xFF3366)
+            .setTitle('⛔ Akses Ditolak!')
+            .setDescription('Perintah Arena PvP Bot hanya dapat digunakan di channel khusus <#1515061723294601468>!')
+        ]
+      });
+    }
     return pvpBot.showPvPArena(message, client, args);
   }
 
