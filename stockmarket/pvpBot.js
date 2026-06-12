@@ -664,7 +664,8 @@ async function startPvPChallenge(interaction, client, petName) {
         trait: petObj.trait || '',
         gacha_trait2: petObj.gacha_trait2 || '',
         accessory: petObj.accessory || null,
-        chosenAction: null
+        chosenAction: null,
+        statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
       },
       bot: {
         name: botOpponent.name,
@@ -688,7 +689,8 @@ async function startPvPChallenge(interaction, client, petName) {
         gacha_trait2: botOpponent.gacha_trait2 || '',
         accessory: null,
         chosenAction: null,
-        tier: botOpponent.tier
+        tier: botOpponent.tier,
+        statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
       }
     };
 
@@ -871,6 +873,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
     isDodged = Math.random() < finalDodgeChance;
     if (isDodged) {
       logMsg = `💨 **${attacker.name}** melancarkan serangan, namun **${defender.name}** berhasil menghindar!`;
+      if (defender.statsRecap) defender.statsRecap.dodges++;
     } else {
       isCrit = Math.random() < critChance;
       let rawDmg = Math.round(attackerATK * skillMult * atkMultiplier * arenaMultiplier * (0.8 + Math.random() * 0.4));
@@ -903,6 +906,15 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       const actionName = skill ? `Skill **[${skill.name}]**` : 'serangan biasa';
       logMsg = `⚔️ **${attacker.name}** menggunakan ${actionName} ke **${defender.name}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
 
+      // Stats tracking
+      if (attacker.statsRecap) {
+        attacker.statsRecap.damageDealt += damage;
+        if (isCrit) attacker.statsRecap.crits++;
+      }
+      if (defender.statsRecap) {
+        defender.statsRecap.damageAbsorbed += Math.max(0, rawDmg - damage);
+      }
+
       // Apply skill side-effects on hit
       if (skill) {
         if (skill.key === 'burn_slash' && Math.random() < 0.60) {
@@ -932,6 +944,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
     const isMissed = Math.random() < 0.30;
     if (isMissed) {
       logMsg = `💨 **${attacker.name}** melancarkan Jurus Ultimate, namun meleset!`;
+      if (defender.statsRecap) defender.statsRecap.dodges++;
     } else {
       isCrit = Math.random() < critChance;
       
@@ -972,6 +985,15 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       const ultName = ultNames[element] || '💥 Ultimate Strike';
 
       logMsg = `🔥 **${attacker.name}** menggunakan Ultimate **${ultName}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
+
+      // Stats tracking
+      if (attacker.statsRecap) {
+        attacker.statsRecap.damageDealt += damage;
+        if (isCrit) attacker.statsRecap.crits++;
+      }
+      if (defender.statsRecap) {
+        defender.statsRecap.damageAbsorbed += Math.max(0, rawDmg - damage);
+      }
       
       // Efek elemental tambahan (40% peluang)
       if (Math.random() < 0.40) {
@@ -1357,6 +1379,9 @@ async function endPvPGame(interaction, client, combatData, result) {
     );
   })();
 
+  const pRecap = combatData.player.statsRecap || { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 };
+  const bRecap = combatData.bot.statsRecap || { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 };
+
   const resultEmbed = new EmbedBuilder()
     .setColor(result === 'win' ? 0x10B981 : 0xFF3366)
     .setTitle(resultTitle)
@@ -1372,6 +1397,20 @@ async function endPvPGame(interaction, client, combatData, result) {
         name: '🔋 Kondisi Akhir Pet',
         value: `• **Sisa HP:** \`${Math.min(100, nextHP)}%\` *(Dampak: -${result === 'win' ? 10 : 30}% HP)*\n` +
                `• **Kesenangan:** \`${nextHappiness}%\``,
+        inline: true
+      },
+      {
+        name: `📊 Statistik: ${combatData.player.name}`,
+        value: `• **Dmg Dealt:** \`${pRecap.damageDealt} DMG\`\n` +
+               `• **Dmg Blocked:** \`${pRecap.damageAbsorbed} DMG\`\n` +
+               `• **Crit / Dodge:** \`${pRecap.crits}x\` / \`${pRecap.dodges}x\``,
+        inline: true
+      },
+      {
+        name: `📊 Statistik: ${combatData.bot.name}`,
+        value: `• **Dmg Dealt:** \`${bRecap.damageDealt} DMG\`\n` +
+               `• **Dmg Blocked:** \`${bRecap.damageAbsorbed} DMG\`\n` +
+               `• **Crit / Dodge:** \`${bRecap.crits}x\` / \`${bRecap.dodges}x\``,
         inline: true
       }
     ]);
@@ -1813,7 +1852,8 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
       base_def_bonus_pct: challengerPet.base_def_bonus_pct || 0.0,
       trait: challengerPet.trait || '',
       accessory: challengerPet.accessory || null,
-      chosenAction: null
+      chosenAction: null,
+      statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
     },
     p2: {
       id: opponentId,
@@ -1836,7 +1876,8 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
       base_def_bonus_pct: opponentPet.base_def_bonus_pct || 0.0,
       trait: opponentPet.trait || '',
       accessory: opponentPet.accessory || null,
-      chosenAction: null
+      chosenAction: null,
+      statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
     }
   };
 
@@ -2309,20 +2350,50 @@ async function endPvPGamePvP(interaction, client, combatData, winnerId, reason) 
     console.error('[PvP] Gagal membuat visual PvP card:', e.message);
   }
 
+  const p1Recap = combatData.p1.statsRecap || { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 };
+  const p2Recap = combatData.p2.statsRecap || { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 };
+
   const resultEmbed = new EmbedBuilder()
     .setColor(0x10B981)
     .setTitle(resultTitle)
-    .setDescription(
-      resultDesc + `\n\n` +
-      `📝 **Log Akhir Pertandingan:**\n` +
-      `\`\`\`diff\n` +
-      combatData.logs.map(line => {
-        if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('memberikan') || line.includes('menyerang')) return `+ ${line}`;
-        if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('menyerah')) return `- ${line}`;
-        return `  ${line}`;
-      }).join('\n').substring(0, 1000) +
-      `\`\`\``
-    )
+    .setDescription(`🐾 **${winnerName}** berhasil memenangkan duel melawan **${loserName}**!`)
+    .addFields([
+      {
+        name: '🎁 Hasil Pertandingan',
+        value: `• **Pemenang:** <@${winnerId}>\n• **Hadiah Bersih:** Rp \`${prizePool.toLocaleString('id-ID')}\` koin`,
+        inline: true
+      },
+      {
+        name: '🔋 XP Pet Didapat',
+        value: `• **${winnerName}**: \`+50 XP\`\n• **${loserName}**: \`+20 XP\``,
+        inline: true
+      },
+      {
+        name: `📊 Statistik: ${combatData.p1.name}`,
+        value: `• **Dmg Dealt:** \`${p1Recap.damageDealt} DMG\`\n` +
+               `• **Dmg Blocked:** \`${p1Recap.damageAbsorbed} DMG\`\n` +
+               `• **Crit / Dodge:** \`${p1Recap.crits}x\` / \`${p1Recap.dodges}x\``,
+        inline: true
+      },
+      {
+        name: `📊 Statistik: ${combatData.p2.name}`,
+        value: `• **Dmg Dealt:** \`${p2Recap.damageDealt} DMG\`\n` +
+               `• **Dmg Blocked:** \`${p2Recap.damageAbsorbed} DMG\`\n` +
+               `• **Crit / Dodge:** \`${p2Recap.crits}x\` / \`${p2Recap.dodges}x\``,
+        inline: true
+      },
+      {
+        name: '📝 Log Akhir Pertandingan',
+        value: `\`\`\`diff\n` +
+          combatData.logs.map(line => {
+            if (line.includes('KEMENANGAN') || line.includes('CRITICAL') || line.includes('memberikan') || line.includes('menyerang') || line.includes('DOUBLE ACTION')) return `+ ${line}`;
+            if (line.includes('KEKALAHAN') || line.includes('membalas') || line.includes('tumbang') || line.includes('menyerah')) return `- ${line}`;
+            return `  ${line}`;
+          }).join('\n').substring(0, 1000) +
+          `\`\`\``,
+        inline: false
+      }
+    ])
     .setTimestamp();
 
   let messageToEdit = null;
