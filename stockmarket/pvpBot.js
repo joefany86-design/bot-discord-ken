@@ -136,7 +136,7 @@ function getOrCreatePvPState(userId, guildId, petName) {
  */
 function generateBotForTier(tierKey, petObj = null) {
   const tierIndex = TIERS.indexOf(tierKey);
-  let scaleMultiplier = 0.85 + (tierIndex * 0.01); // 0.85 to 1.13 depending on tier index
+  let scaleMultiplier = 1.05 + (tierIndex * 0.015); // Starts at 1.05 for Bronze V, goes up to 1.47 for Immortal!
 
   let playerTotalStats = 0;
   if (petObj) {
@@ -145,6 +145,12 @@ function generateBotForTier(tierKey, petObj = null) {
 
   const basePoints = Math.max(15, playerTotalStats);
   const totalPoints = Math.round(basePoints * scaleMultiplier);
+
+  let trait = '';
+  if (tierIndex >= 5) { // Silver and above
+    const traits = ['STURDY', 'WARRIOR'];
+    trait = traits[Math.floor(Math.random() * traits.length)];
+  }
 
   const archetypes = ['TANKER', 'GLASS_CANNON', 'ASSASSIN', 'BALANCED'];
   const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
@@ -213,7 +219,8 @@ function generateBotForTier(tierKey, petObj = null) {
     stat_vit: vit,
     stat_def: def,
     stat_dex: dex,
-    tier: tierKey
+    tier: tierKey,
+    trait: trait
   };
 }
 
@@ -564,7 +571,7 @@ async function startPvPChallenge(interaction, client, petName) {
         stat_dex: botOpponent.stat_dex,
         base_atk_bonus_pct: 0.0,
         base_def_bonus_pct: 0.0,
-        trait: '',
+        trait: botOpponent.trait || '',
         accessory: null,
         chosenAction: null,
         tier: botOpponent.tier
