@@ -5805,7 +5805,7 @@ async function handlePetCommand(message, client, args) {
         
         embed.addFields({
           name: `👥 Antrean Raid Co-op (${registrations.length}/5)`,
-          value: regNames + `\n\n👉 Klik **🎟️ Daftar Co-op** untuk mendaftarkan pet aktif Anda.\n👉 Klik **⚔️ Mulai Co-op** jika minimal 3 pet terdaftar.`
+          value: regNames + `\n\n👉 Pilih pet Anda dari menu pilihan di bawah untuk mendaftar.\n👉 Klik **⚔️ Mulai Co-op** jika minimal 3 pet terdaftar.`
         });
 
         const row1 = new ActionRowBuilder().addComponents(
@@ -5814,12 +5814,48 @@ async function handlePetCommand(message, client, args) {
           new ButtonBuilder().setCustomId('pet_btn_close_panel').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
         );
 
-        const row2 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('pet_btn_raid_coop_register').setLabel('🎟️ Daftar Co-op (Rp 2.500)').setStyle(ButtonStyle.Success).setDisabled(boss.status !== 'ACTIVE'),
+        // Fetch eligible pets of the panel owner (author)
+        const allPets = pet.getPetsList(userId, gId) || [];
+        const eligiblePets = allPets.filter(p => p.status === 'ADULT' && p.level >= 10 && p.health >= 20 && p.hunger >= 20 && p.thirst >= 20);
+        const userRegistered = registrations.some(r => r.user_id === userId);
+
+        const rows = [row1];
+
+        if (boss.status === 'ACTIVE' && eligiblePets.length > 0 && !userRegistered) {
+          const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('pet_select_raid_register')
+            .setPlaceholder('🎟️ Pilih pet Anda untuk didaftarkan (Rp 2.500)...');
+
+          eligiblePets.forEach(p => {
+            selectMenu.addOptions({
+              label: `🐾 ${p.pet_name} (Lv. ${p.level} ${p.pet_type})`,
+              value: `pet_reg_${p.pet_name}`,
+              description: `HP: ${Math.round(p.health)}% | Makan: ${Math.round(p.hunger)}% | Haus: ${Math.round(p.thirst)}%`
+            });
+          });
+
+          rows.push(new ActionRowBuilder().addComponents(selectMenu));
+        } else {
+          let btnLabel = '🎟️ Daftar Co-op (Rp 2.500)';
+          if (userRegistered) btnLabel = '✅ Anda Sudah Terdaftar';
+          else if (eligiblePets.length === 0) btnLabel = '❌ Tidak Ada Pet ADULT Lv. 10+';
+
+          const rowRegDummy = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('pet_btn_raid_coop_register_dummy')
+              .setLabel(btnLabel)
+              .setStyle(ButtonStyle.Success)
+              .setDisabled(true)
+          );
+          rows.push(rowRegDummy);
+        }
+
+        const rowStart = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('pet_btn_raid_coop_start').setLabel('⚔️ Mulai Co-op Raid').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE' || registrations.length < 3)
         );
+        rows.push(rowStart);
 
-        return { embeds: [embed], components: [row1, row2] };
+        return { embeds: [embed], components: rows };
       };
 
       const panelData = getRaidPanelData(author.id, guildId, activePet);
@@ -5827,7 +5863,7 @@ async function handlePetCommand(message, client, args) {
       const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
 
       collector.on('collect', async i => {
-        if (!['pet_btn_raid_coop_register', 'pet_btn_raid_coop_start'].includes(i.customId)) {
+        if (!['pet_btn_raid_coop_start'].includes(i.customId)) {
           if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
         }
 
@@ -5835,10 +5871,12 @@ async function handlePetCommand(message, client, args) {
           if (i.customId === 'pet_btn_close_panel') {
             collector.stop();
             await replyMsg.delete().catch(() => { });
-          } else if (i.customId === 'pet_btn_raid_coop_register') {
+          } else if (i.customId === 'pet_select_raid_register') {
             await i.deferReply({ flags: 64 });
             try {
-              const result = pet.registerPetToRaid(i.user.id, guildId, null);
+              const selectedValue = i.values[0];
+              const petName = selectedValue.replace('pet_reg_', '');
+              const result = pet.registerPetToRaid(i.user.id, guildId, petName);
               
               await i.editReply({ 
                 content: `✅ **Pendaftaran Sukses!** Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${i.user.id}> telah terdaftar ke antrean Raid Boss.\n💰 Biaya Rp 2.500 koin telah dipotong.` 
