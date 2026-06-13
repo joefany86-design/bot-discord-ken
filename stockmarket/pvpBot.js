@@ -233,7 +233,39 @@ function generateBotForTier(tierKey, petObj = null) {
     ]
   };
 
-  const templates = botTemplates[archetype];
+  let templates = botTemplates[archetype];
+  
+  // Counter-Element Pick logic based on Tier and player pet element
+  if (petObj) {
+    const playerEl = (petObj.gacha_element || 'EARTH').toUpperCase();
+    let counterElement = '';
+    if (playerEl === 'FIRE') counterElement = 'WATER';
+    else if (playerEl === 'EARTH') counterElement = 'FIRE';
+    else if (playerEl === 'WATER') counterElement = Math.random() < 0.5 ? 'EARTH' : 'DRAGON';
+    else if (playerEl === 'DRAGON') counterElement = 'DRAGON';
+
+    let counterChance = 0.0;
+    if (tierIndex >= 10 && tierIndex < 20) { // GOLD & PLATINUM
+      counterChance = 0.50;
+    } else if (tierIndex >= 20) { // DIAMOND & ABOVE
+      counterChance = 0.80;
+    }
+
+    if (counterElement && Math.random() < counterChance) {
+      let filtered = templates.filter(t => t.element === counterElement);
+      if (filtered.length > 0) {
+        templates = filtered;
+      } else {
+        // Fallback to searching other archetypes if chosen archetype lacks the element
+        const allTemplates = Object.values(botTemplates).flat();
+        filtered = allTemplates.filter(t => t.element === counterElement);
+        if (filtered.length > 0) {
+          templates = filtered;
+        }
+      }
+    }
+  }
+
   const template = templates[Math.floor(Math.random() * templates.length)];
 
   return {
@@ -446,6 +478,14 @@ function getBattleEmbedData(combatData) {
     return buffs.length > 0 ? buffs.join(' · ') : '*Normal*';
   };
 
+  const sortedGauges = [
+    { name: `🐾 ${p.name}`, gauge: p.gauge || 0 },
+    { name: `🤖 ${b.name}`, gauge: b.gauge || 0 }
+  ].sort((a, b) => b.gauge - a.gauge);
+  const timelineText = `🏃 **Urutan Giliran Berikutnya:**\n` +
+                       `• **${sortedGauges[0].name}** (Gauge: \`${Math.round(sortedGauges[0].gauge)}/100\`)\n` +
+                       `• **${sortedGauges[1].name}** (Gauge: \`${Math.round(sortedGauges[1].gauge)}/100\`)\n\n`;
+
   const arenaInfo = combatData.arena ? `🏟️ **Lokasi: ${combatData.arena.name}**\n*ℹ️ ${combatData.arena.desc}*\n\n` : '';
 
   const embed = new EmbedBuilder()
@@ -456,8 +496,9 @@ function getBattleEmbedData(combatData) {
       `🏟️ **Ronde ${combatData.turnCount}**\n` +
       `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
       `👟 **Action Speed Gauge:**\n` +
-      `• **${p.name}**: \`${p.gauge || 0} / 100\`\n` +
-      `• **${b.name}**: \`${b.gauge || 0} / 100\`\n\n` +
+      `• **${p.name}**: \`${Math.round(p.gauge || 0)} / 100\`\n` +
+      `• **${b.name}**: \`${Math.round(b.gauge || 0)} / 100\`\n\n` +
+      timelineText +
       `🐾 **${p.name}** *(Elemen: ${p.gacha_element})*\n` +
       `├─ ❤️ HP: ${playerHPBar}\n` +
       `├─ ⚡ SP: ${playerSPBar}\n` +
@@ -481,19 +522,19 @@ function getBattleEmbedData(combatData) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvpbot_act_atk')
-      .setLabel('🗡️ Serang')
+      .setLabel('🗡️ Serang (+20 SP)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_skill1')
-      .setLabel(skillsList[0].name)
+      .setLabel(`${skillsList[0].name} (+20 SP)`)
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_skill2')
-      .setLabel(skillsList[1].name)
+      .setLabel(`${skillsList[1].name} (+20 SP)`)
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_ult')
-      .setLabel('🔥 Ultimate')
+      .setLabel(`🔥 Ultimate (60 SP)`)
       .setStyle(ButtonStyle.Danger)
       .setDisabled(p.energy < 60)
   );
@@ -647,6 +688,9 @@ async function startPvPChallenge(interaction, client, petName) {
     const botBaseHP = botSpeciesInfo ? (botSpeciesInfo.baseHP || 100) : 100;
     const botMaxHP = (botBaseHP + botOpponent.stat_vit * 10) * 4;
 
+    const botTierIndex = TIERS.indexOf(botOpponent.tier || 'BRONZE_V');
+    const startShield = botTierIndex >= 25 ? 3 : 0; // Master, Grandmaster, Legend, Immortal start with 3 turns shield
+
     // Siapkan object game state
     const combatData = {
       guildId,
@@ -690,7 +734,7 @@ async function startPvPChallenge(interaction, client, petName) {
         energy: 0,
         isDefending: false,
         burnTurns: 0,
-        shieldTurns: 0,
+        shieldTurns: startShield,
         hasUsedUltimate: false,
         stat_str: botOpponent.stat_str,
         stat_vit: botOpponent.stat_vit,
@@ -706,6 +750,10 @@ async function startPvPChallenge(interaction, client, petName) {
         statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
       }
     };
+
+    if (startShield > 0) {
+      combatData.logs.push(`🛡️ **[PASIF BOT]** **${botOpponent.name}** memulai laga dengan Zirah Pelindung (3 Turn)!`);
+    }
 
     if (pStats.logs.length > 0) {
       combatData.logs.push(...pStats.logs);
@@ -830,6 +878,28 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
   let dodgeChance = defender.isDefending ? baseDodgeChance + 0.20 : baseDodgeChance;
   let critChance = Math.min(0.35, (attacker.stat_dex || 0) * 0.005);
 
+  // Bot passive Crit/Dodge scaling based on tier
+  if (attacker.tier) {
+    const tIndex = TIERS.indexOf(attacker.tier);
+    if (tIndex >= 20 && tIndex < 25) { // DIAMOND
+      critChance += 0.10;
+    } else if (tIndex >= 25 && tIndex < 28) { // MASTER, GRANDMASTER
+      critChance += 0.15;
+    } else if (tIndex >= 28) { // LEGEND, IMMORTAL
+      critChance += 0.20;
+    }
+  }
+  if (defender.tier) {
+    const tIndex = TIERS.indexOf(defender.tier);
+    if (tIndex >= 20 && tIndex < 25) { // DIAMOND
+      dodgeChance += 0.05;
+    } else if (tIndex >= 25 && tIndex < 28) { // MASTER, GRANDMASTER
+      dodgeChance += 0.10;
+    } else if (tIndex >= 28) { // LEGEND, IMMORTAL
+      dodgeChance += 0.15;
+    }
+  }
+
   if (actionType === 'ult' && attacker.gacha_element === 'DRAGON') {
     critChance = Math.min(0.55, critChance + 0.20);
   }
@@ -914,6 +984,16 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       if (damage < 1) damage = 1;
 
       defender.hp = Math.max(0, defender.hp - damage);
+
+      // Rage passive for Legend / Immortal bots
+      if (isCrit && defender.tier) {
+        const tIndex = TIERS.indexOf(defender.tier);
+        if (tIndex >= 27) { // LEGEND (27), IMMORTAL (28)
+          defender.energy = Math.min(100, defender.energy + 20);
+          combatData.logs.push(`⚡ **[PASIF BOT]** Terkena Critical Strike memicu amarah **${defender.name}**! (+20 SP)`);
+        }
+      }
+
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
       
       const actionName = skill ? `Skill **[${skill.name}]**` : 'serangan biasa';
@@ -986,6 +1066,16 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       if (damage < 1) damage = 1;
 
       defender.hp = Math.max(0, defender.hp - damage);
+
+      // Rage passive for Legend / Immortal bots
+      if (isCrit && defender.tier) {
+        const tIndex = TIERS.indexOf(defender.tier);
+        if (tIndex >= 27) { // LEGEND (27), IMMORTAL (28)
+          defender.energy = Math.min(100, defender.energy + 20);
+          combatData.logs.push(`⚡ **[PASIF BOT]** Terkena Critical Strike memicu amarah **${defender.name}**! (+20 SP)`);
+        }
+      }
+
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
       
       const element = attacker.gacha_element;
@@ -1079,9 +1169,13 @@ async function handlePvPAction(interaction, client, actionType) {
     return endPvPGame(interaction, client, combatData, 'lose');
   }
 
-  // --- BOT DECISION AI (Archetype-based & Predictive & Smart Survival) ---
+  // --- BOT DECISION AI (Archetype-based & Predictive & Smart Survival & Item Usage) ---
   let botAction = 'atk';
   const arch = b.archetype || 'BALANCED';
+
+  if (b.hasUsedItem === undefined) {
+    b.hasUsedItem = false;
+  }
 
   const botSpec = pet.GACHA_SPECIES[b.pet_type];
   const botBaseAtk = botSpec ? (botSpec.baseAtk || 10) : 10;
@@ -1091,66 +1185,98 @@ async function handlePvPAction(interaction, client, actionType) {
   const playerBaseAtk = playerSpec ? (playerSpec.baseAtk || 10) : 10;
   const estimatedPlayerDmg = (playerBaseAtk + p.stat_str * 6) * 1.5;
 
-  // 1. EXECUTE INSTINCT (If bot's Ultimate or Skill can kill player, and bot has energy, use it!)
-  if (b.energy >= 60 && p.hp <= estimatedBotDmg * 2.0) {
+  const tierIndexForItems = TIERS.indexOf(b.tier || 'BRONZE_V');
+  const botHasItems = tierIndexForItems >= 5; // SILVER_V and above (index 5)
+  let botUsedItemThisTurn = false;
+
+  // 1. VIRTUAL ITEM USAGE
+  if (botHasItems && !b.hasUsedItem) {
+    // Virtual Medicine (heals 25% if HP is low < 30%)
+    if (b.hp < b.maxHP * 0.30) {
+      const healAmt = Math.round(b.maxHP * 0.25);
+      b.hp = Math.min(b.maxHP, b.hp + healAmt);
+      b.hasUsedItem = true;
+      botUsedItemThisTurn = true;
+      combatData.logs.push(`🎒 **${b.name}** menggunakan **Ramuan Kesehatan**! (+${healAmt} HP)`);
+      botAction = 'def'; // Defend turn when using item
+    }
+    // Virtual Soda Energy (gains 50 SP if energy < 30% and player HP is high. Platinum (index 15) and above)
+    else if (tierIndexForItems >= 15 && b.energy < 30 && p.hp > p.maxHP * 0.50 && Math.random() < 0.40) {
+      b.energy = Math.min(100, b.energy + 50);
+      b.hasUsedItem = true;
+      botUsedItemThisTurn = true;
+      combatData.logs.push(`🥤 **${b.name}** meminum **Soda Energi**! (+50 SP)`);
+      botAction = 'atk';
+    }
+  }
+
+  if (botUsedItemThisTurn) {
+    // Action already finalized
+  }
+  // 2. EXECUTE INSTINCT (If bot's Ultimate can kill player, and bot has energy, use it!)
+  else if (b.energy >= 60 && p.hp <= estimatedBotDmg * 2.2) {
     botAction = 'ult';
   }
-  // 2. SURVIVAL INSTINCT (If bot HP is low (< 35% Max HP))
+  // 3. SURVIVAL INSTINCT (If bot HP is low (< 35% Max HP))
   else if (b.hp < b.maxHP * 0.35) {
-    // If bot has high energy and Ultimate heals (Water) or shields (Earth)
-    if (b.energy >= 60 && ['WATER', 'EARTH'].includes(b.gacha_element)) {
+    if (b.energy >= 60) {
       botAction = 'ult';
     } else {
-      // Prioritize healing/shielding skills or defending
       const r = Math.random();
       if (b.gacha_element === 'WATER' && r < 0.70) {
         botAction = 'skill1'; // water_jet heals 15%
       } else if (b.gacha_element === 'EARTH' && r < 0.70) {
         botAction = 'skill1'; // ancient_wall shields 30%
       } else {
-        botAction = 'def'; // Defend reduces damage by 50%
+        botAction = 'def';
       }
     }
   }
-  // 3. PREDICTIVE COUNTER (If player has Ultimate ready, attempt to defend/block)
-  else if (p.energy >= 60 && Math.random() < 0.75) {
-    // If bot has shield skill ready (Earth), use it, otherwise defend
+  // 4. PREDICTIVE COUNTER (If player has Ultimate ready, attempt to defend/block)
+  else if (p.energy >= 60 && Math.random() < 0.80) {
     if (b.gacha_element === 'EARTH' && Math.random() < 0.50) {
       botAction = 'skill1';
     } else {
       botAction = 'def';
     }
   }
-  // 4. STANDARD ARCHETYPE AI (If none of the above situational triggers occur)
+  // 5. STANDARD ARCHETYPE AI (Intelligent decision tree)
   else {
+    const r = Math.random();
     if (arch === 'TANKER') {
-      if (b.energy >= 60 && Math.random() < 0.35) {
+      if (b.energy >= 60 && Math.random() < 0.40) {
         botAction = 'ult';
       } else {
-        const r = Math.random();
-        if (r < 0.50) botAction = 'skill1';
-        else if (r < 0.80) botAction = 'def';
+        if (r < 0.40) botAction = 'skill1'; // shield/heal
+        else if (r < 0.65) botAction = 'def';
+        else if (r < 0.90) botAction = 'skill2'; // debuff
         else botAction = 'atk';
       }
     } else if (arch === 'GLASS_CANNON') {
-      if (b.energy >= 60) {
+      if (b.energy >= 60 && Math.random() < 0.80) {
         botAction = 'ult';
       } else {
-        botAction = Math.random() < 0.60 ? 'skill2' : 'atk';
+        if (r < 0.45) botAction = 'skill2'; // high damage/crit
+        else if (r < 0.75) botAction = 'skill1'; // burn/status
+        else if (r < 0.95) botAction = 'atk';
+        else botAction = 'def';
       }
     } else if (arch === 'ASSASSIN') {
-      if (b.energy >= 60 && Math.random() < 0.85) {
+      if (b.energy >= 60 && Math.random() < 0.75) {
         botAction = 'ult';
       } else {
-        botAction = Math.random() < 0.70 ? 'skill2' : 'atk';
+        if (r < 0.45) botAction = 'skill2'; // high damage/buff
+        else if (r < 0.80) botAction = 'skill1'; // ignore def/speed
+        else if (r < 0.95) botAction = 'atk';
+        else botAction = 'def';
       }
-    } else {
-      if (b.energy >= 60 && Math.random() < 0.45) {
+    } else { // BALANCED
+      if (b.energy >= 60 && Math.random() < 0.50) {
         botAction = 'ult';
       } else {
-        const r = Math.random();
-        if (r < 0.40) botAction = 'atk';
-        else if (r < 0.75) botAction = 'skill1';
+        if (r < 0.30) botAction = 'skill1';
+        else if (r < 0.60) botAction = 'skill2';
+        else if (r < 0.85) botAction = 'atk';
         else botAction = 'def';
       }
     }
@@ -2003,6 +2129,14 @@ function getBattleEmbedDataPvP(combatData) {
 
   const arenaInfo = combatData.arena ? `🏟️ **Lokasi: ${combatData.arena.name}**\n*ℹ️ ${combatData.arena.desc}*\n\n` : '';
 
+  const sortedGauges = [
+    { name: `🐾 ${p1.name}`, gauge: p1.gauge || 0 },
+    { name: `⚔️ ${p2.name}`, gauge: p2.gauge || 0 }
+  ].sort((a, b) => b.gauge - a.gauge);
+  const timelineText = `🏃 **Urutan Giliran Berikutnya:**\n` +
+                       `• **${sortedGauges[0].name}** (Gauge: \`${Math.round(sortedGauges[0].gauge)}/100\`)\n` +
+                       `• **${sortedGauges[1].name}** (Gauge: \`${Math.round(sortedGauges[1].gauge)}/100\`)\n\n`;
+
   const embed = new EmbedBuilder()
     .setColor(0x7C4DFF)
     .setTitle(`⚔️ PVP ARENA: ${p1.name} VS ${p2.name}`)
@@ -2011,8 +2145,9 @@ function getBattleEmbedDataPvP(combatData) {
       `🏟️ **Ronde ${combatData.turnCount}**\n` +
       `Pilihlah tindakan pet Anda untuk giliran ini. Gunakan tombol di bawah ini!\n\n` +
       `👟 **Action Speed Gauge:**\n` +
-      `• **${p1.name}**: \`${p1.gauge || 0} / 100\`\n` +
-      `• **${p2.name}**: \`${p2.gauge || 0} / 100\`\n\n` +
+      `• **${p1.name}**: \`${Math.round(p1.gauge || 0)} / 100\`\n` +
+      `• **${p2.name}**: \`${Math.round(p2.gauge || 0)} / 100\`\n\n` +
+      timelineText +
       `🐾 **${p1.name}** (<@${p1.id}>) · ${getStatusText(p1)}\n` +
       `├─ ❤️ HP: ${p1HPBar}\n` +
       `├─ ⚡ SP: ${p1SPBar}\n` +
@@ -2035,19 +2170,19 @@ function getBattleEmbedDataPvP(combatData) {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvp_act_atk')
-      .setLabel('🗡️ Serang')
+      .setLabel('🗡️ Serang (+20 SP)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('pvp_act_skill1')
-      .setLabel('🔮 Skill 1')
+      .setLabel('🔮 Skill 1 (+20 SP)')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvp_act_skill2')
-      .setLabel('🔮 Skill 2')
+      .setLabel('🔮 Skill 2 (+20 SP)')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('pvp_act_ult')
-      .setLabel('🔥 Ultimate')
+      .setLabel('🔥 Ultimate (60 SP)')
       .setStyle(ButtonStyle.Danger)
   );
 
@@ -2575,6 +2710,7 @@ module.exports = {
   handlePvPActionPvP,
   generateBotForTier,
   showPvPHallOfFame,
-  handleBetInteraction
+  handleBetInteraction,
+  executeSingleAction
 };
 
