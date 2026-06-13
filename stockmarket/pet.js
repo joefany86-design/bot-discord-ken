@@ -18,7 +18,8 @@ const PET_ITEMS = {
   XP_2X: { id: 'XP_2X', name: '⚡ XP Booster 2x', price: 3000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 2.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 2x secara permanen.' },
   XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 6000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
   XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 9000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
-  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 12000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' }
+  XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 12000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' },
+  MYSTERY_BOX_ANCIENT: { id: 'MYSTERY_BOX_ANCIENT', name: '🎁 Kotak Misteri Peliharaan Kuno', price: 0, type: 'CONSUMABLE', desc: 'Kotak hadiah legendaris dari kekalahan Raid Boss. Buka untuk menetaskan pet langka acak!' }
 };
 
 // Konfigurasi Spesies Pet
@@ -900,7 +901,47 @@ function buyItem(userId, guildId, itemId, quantity = 1, paymentSource = 'pocket'
 /**
  * Memberikan item perawatan ke pet (Feed, Drink, Play, Cure).
  */
-function useItem(userId, guildId, itemId, autoBuy = true) {
+function useItem(userId, guildId, itemId, autoBuy = true, petName = null) {
+  const itemKey = itemId.toUpperCase();
+  const item = PET_ITEMS[itemKey];
+  if (!item) {
+    throw new Error('Item perawatan tidak valid!');
+  }
+
+  if (itemKey === 'MYSTERY_BOX_ANCIENT') {
+    if (!petName || petName.trim() === '') {
+      throw new Error('Harap berikan nama untuk pet baru Anda! Contoh: `.pet use MYSTERY_BOX_ANCIENT Kuro`');
+    }
+    
+    // Cek slot kandang
+    const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [userId, guildId]);
+    const count = countRow ? countRow.count : 0;
+    if (count >= 3) {
+      throw new Error('Kandang pet Anda sudah penuh (Maksimal 3 Pet)! Daur ulang (recycle) pet lama Anda terlebih dahulu.');
+    }
+    
+    // Cek kuota item di user_inventory
+    const exist = db.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MYSTERY_BOX_ANCIENT'", [userId, guildId]);
+    if (!exist || exist.quantity <= 0) {
+      throw new Error('Anda tidak memiliki 🎁 Kotak Misteri Peliharaan Kuno di inventory Anda!');
+    }
+    
+    // Kurangi item
+    db.run("UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'MYSTERY_BOX_ANCIENT'", [userId, guildId]);
+    db.run("DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MYSTERY_BOX_ANCIENT' AND quantity <= 0", [userId, guildId]);
+    
+    // Roll pet
+    const pullResult = _rollAncientBox();
+    const newPet = saveGachaPet(userId, guildId, pullResult, petName);
+    
+    return {
+      item,
+      pet: newPet,
+      pullResult,
+      isAncientBox: true
+    };
+  }
+
   let pet = getPet(userId, guildId);
   if (!pet) {
     throw new Error('Anda tidak memiliki hewan peliharaan!');
@@ -910,12 +951,6 @@ function useItem(userId, guildId, itemId, autoBuy = true) {
   }
   if (pet.status === 'DEAD') {
     throw new Error('Pet Anda telah meninggal dunia 🪦. Ketik `.pet reset` untuk mengadopsi yang baru.');
-  }
-
-  const itemKey = itemId.toUpperCase();
-  const item = PET_ITEMS[itemKey];
-  if (!item) {
-    throw new Error('Item perawatan tidak valid!');
   }
 
   // Cek batas status pet (100% capacity)
@@ -3305,6 +3340,47 @@ function _rollOnce() {
   };
 }
 
+function _rollAncientBox() {
+  const roll = Math.random();
+  let rarity;
+  let speciesPool;
+  let trait = '';
+  let trait2 = '';
+
+  if (roll < 0.15) {
+    rarity = 'LEGENDARY';
+    speciesPool = ['LEVIATHAN', 'BEHEMOTH', 'ARCHDRAGON'];
+    // 2 random unique traits
+    const shuffled = [...GACHA_TRAIT_LEGENDARY].sort(() => Math.random() - 0.5);
+    trait = shuffled[0];
+    trait2 = shuffled[1];
+  } else if (roll < 0.50) {
+    rarity = 'EPIC';
+    speciesPool = ['PHOENIX', 'TURTLE'];
+    trait = GACHA_TRAIT_EPIC[0]; // SURVIVOR
+  } else {
+    rarity = 'RARE';
+    speciesPool = ['DRAGON'];
+    trait = GACHA_TRAIT_RARE[Math.floor(Math.random() * GACHA_TRAIT_RARE.length)];
+  }
+
+  const speciesId = speciesPool[Math.floor(Math.random() * speciesPool.length)];
+  const species = GACHA_SPECIES[speciesId];
+
+  return {
+    speciesId,
+    species,
+    rarity,
+    trait,
+    trait2,
+    baseHP: species.baseHP,
+    baseAtk: species.baseAtk,
+    baseDef: species.baseDef,
+    element: species.element,
+    workBuff: species.workBuff,
+  };
+}
+
 /**
  * Menyimpan satu hasil gacha ke database (user harus memiliki slot kandang tersisa).
  * petName: nama yang diberikan user.
@@ -4333,6 +4409,303 @@ function distributeWorldBossRewards(guildId, lastHitUserId = null, targetWeekSta
   };
 }
 
+function registerPetToRaid(userId, guildId, petName = null) {
+  // Check if user has already registered a pet in this guild
+  const existingReg = db.get('SELECT * FROM pet_raid_registrations WHERE guild_id = ? AND user_id = ?', [guildId, userId]);
+  if (existingReg) {
+    throw new Error(`Anda sudah mendaftarkan pet **${existingReg.pet_name}** Anda ke Raid!`);
+  }
+
+  // Get pet
+  let pet;
+  if (!petName || petName.trim() === '') {
+    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [userId, guildId]);
+    if (!pet) {
+      throw new Error('Anda tidak memiliki pet aktif untuk didaftarkan! Silakan tentukan nama pet Anda.');
+    }
+  } else {
+    pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, guildId, petName]);
+    if (!pet) {
+      throw new Error(`Peliharaan bernama **${petName}** tidak ditemukan!`);
+    }
+  }
+
+  if (pet.status !== 'ADULT') {
+    throw new Error('Hanya pet dewasa (ADULT / Lv. 10+) yang bisa mendaftar Raid Boss!');
+  }
+  if (pet.level < 10) {
+    throw new Error('Level pet minimal harus Lv. 10 untuk ikut Raid Boss!');
+  }
+  if (pet.health < 20 || pet.hunger < 20 || pet.thirst < 20) {
+    throw new Error('Pet Anda terlalu lelah, lapar, atau haus (HP, Hunger, Thirst harus >= 20) untuk mendaftar Raid Boss!');
+  }
+
+  // Deduct fee: Rp 2.500
+  const wallet = economy.getWallet(userId, guildId);
+  if (wallet.coins < 2500) {
+    throw new Error('Saldo Anda tidak mencukupi untuk biaya pendaftaran Raid Boss (Dibutuhkan Rp 2.500 koin)!');
+  }
+
+  economy.subtractBalance(userId, guildId, 2500, 'PET_RAID_REGISTER');
+  db.run(
+    'INSERT INTO pet_raid_registrations (guild_id, user_id, pet_name, registered_at) VALUES (?, ?, ?, ?)',
+    [guildId, userId, pet.pet_name, Math.floor(Date.now() / 1000)]
+  );
+
+  db.logPetAction(guildId, userId, null, pet.pet_name, 'PET_RAID_REGISTER', `Mendaftarkan pet ke Raid Boss. Membayar biaya Rp 2.500.`);
+
+  return {
+    userId,
+    guildId,
+    petName: pet.pet_name,
+    pet
+  };
+}
+
+function executeWorldRaid(guildId) {
+  const participants = db.all('SELECT * FROM pet_raid_registrations WHERE guild_id = ? ORDER BY registered_at ASC', [guildId]);
+  if (participants.length < 3) {
+    throw new Error(`Dibutuhkan minimal 3 pet terdaftar untuk memulai Raid Boss (Saat ini terdaftar: ${participants.length})!`);
+  }
+  if (participants.length > 5) {
+    throw new Error(`Maksimal 5 pet terdaftar untuk satu sesi Raid Boss! (Saat ini terdaftar: ${participants.length})`);
+  }
+
+  const boss = getOrCreateWorldBoss(guildId);
+  if (boss.status !== 'ACTIVE' || boss.current_hp <= 0) {
+    throw new Error('World Boss sudah berhasil dikalahkan minggu ini!');
+  }
+
+  // Load pets data
+  const team = [];
+  let totalLevel = 0;
+  for (const p of participants) {
+    const pet = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [p.user_id, guildId, p.pet_name]);
+    if (!pet) {
+      throw new Error(`Pet **${p.pet_name}** milik salah satu peserta tidak ditemukan!`);
+    }
+    team.push({
+      ...pet,
+      currentHP: pet.health
+    });
+    totalLevel += pet.level;
+  }
+
+  const teamPower = Math.round(totalLevel / team.length);
+  const recommendedLevel = boss.boss_type === 'DRAGON' ? 40 : 30;
+
+  // Level Penalty
+  const levelDiff = recommendedLevel - teamPower;
+  const levelPenaltyPct = levelDiff > 0 ? Math.min(0.75, levelDiff * 0.05) : 0;
+  const levelMult = 1.0 - levelPenaltyPct;
+
+  // Session Boss HP
+  const sessionBossHpMax = Math.round((15000 + teamPower * 500) * team.length);
+  let sessionBossHp = sessionBossHpMax;
+
+  const logs = [];
+  logs.push(`⚔️ **Sesi Raid Dimulai!** Tim pet menyerang **${boss.boss_name}** (Recommended Level: ${recommendedLevel})!`);
+  logs.push(`👥 **Jumlah Anggota Tim:** ${team.length} Pet (Rata-rata Level: ${teamPower})`);
+  if (levelPenaltyPct > 0) {
+    logs.push(`⚠️ **Penalti Level:** Level tim lebih rendah dari level rekomendasi Boss! (-${Math.round(levelPenaltyPct * 100)}% ATK)`);
+  }
+
+  let totalDamageDealt = 0;
+  let lastHitUserId = null;
+  let lastHitPetName = null;
+  let victory = false;
+
+  // 5-Turn Combat Simulator
+  for (let turn = 1; turn <= 5; turn++) {
+    logs.push(`\n**[ TURN ${turn} / 5 ]**`);
+    
+    // 1. Pets Attack
+    for (const pet of team) {
+      if (pet.currentHP <= 0) continue;
+
+      const speciesInfo = GACHA_SPECIES[pet.pet_type];
+      const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+      const petBaseAtk = specBaseAtk + pet.level * 5 + (pet.stat_str || 0) * 2;
+
+      let petAtkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
+      if (pet.trait === 'WARRIOR') petAtkMult += 0.15;
+      if (pet.accessory === 'SWORD_TOY') petAtkMult += 0.15;
+      petAtkMult += (pet.base_atk_bonus_pct || 0.0);
+      petAtkMult *= levelMult;
+
+      // Element advantage against boss
+      const hasAdvantage = isElementAdvantage(pet.gacha_element, boss.boss_type);
+      if (hasAdvantage) {
+        petAtkMult *= 1.25;
+      }
+
+      let dmg = Math.round(petBaseAtk * petAtkMult * (0.8 + Math.random() * 0.4));
+      
+      const petDex = pet.stat_dex || 0;
+      const petCritChance = Math.min(0.35, petDex * 0.005);
+      const isCrit = Math.random() < petCritChance;
+      if (isCrit) {
+        dmg = Math.round(dmg * 1.5);
+      }
+
+      sessionBossHp = Math.max(0, sessionBossHp - dmg);
+      totalDamageDealt += dmg;
+
+      let hitText = `🐾 **${pet.pet_name}** menyerang dan memberikan **${dmg} DMG**!`;
+      if (hasAdvantage) hitText += ' (🔥 *Advantage!*)';
+      if (isCrit) hitText += ' 💥 **CRITICAL HIT!**';
+      logs.push(hitText);
+
+      if (sessionBossHp <= 0) {
+        lastHitUserId = pet.user_id;
+        lastHitPetName = pet.pet_name;
+        victory = true;
+        break;
+      }
+    }
+
+    if (victory) {
+      logs.push(`\n🎉 **World Boss berhasil dikalahkan!**`);
+      break;
+    }
+
+    // 2. Boss Attacks All Pets
+    const bossBaseAtk = 120 + turn * 40;
+    logs.push(`💥 **${boss.boss_name}** membalas dengan serangan area!`);
+    
+    for (const pet of team) {
+      if (pet.currentHP <= 0) continue;
+
+      const speciesInfo = GACHA_SPECIES[pet.pet_type];
+      const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+      
+      let petDefMult = 1.0;
+      if (pet.trait === 'STURDY') petDefMult *= 0.85;
+      if (pet.accessory === 'SHIELD_TOY') petDefMult *= 0.85;
+
+      const petDefGym = Math.min(0.50, (pet.stat_def || 0) * 0.005);
+      const petDamageTakenMult = (1.0 - (specBaseDef / 100)) * petDefMult * (1.0 - (pet.base_def_bonus_pct || 0.0)) * (1.0 - petDefGym);
+
+      let bossDmg = Math.round(bossBaseAtk * (0.8 + Math.random() * 0.4));
+      bossDmg = Math.round(bossDmg * petDamageTakenMult);
+
+      pet.currentHP = Math.max(0, pet.currentHP - bossDmg);
+      logs.push(` 💥 **${pet.pet_name}** menerima **${bossDmg} DMG** (Sisa HP: ${pet.currentHP}/${getMaxHP(pet)})`);
+
+      if (pet.currentHP <= 0) {
+        logs.push(` 🤕 **${pet.pet_name}** pingsan!`);
+      }
+    }
+
+    // Check if whole team is down
+    const aliveCount = team.filter(p => p.currentHP > 0).length;
+    if (aliveCount === 0) {
+      logs.push(`\n💀 **Seluruh tim telah gugur! Raid gagal.**`);
+      break;
+    }
+  }
+
+  if (!victory && sessionBossHp > 0) {
+    logs.push(`\n⌛ **Waktu habis!** Pertarungan 5 turn berakhir dan World Boss masih berdiri (Sisa HP Boss: ${sessionBossHp}/${sessionBossHpMax}).`);
+  }
+
+  // --- POST COMBAT ---
+  const rewardList = [];
+  
+  if (victory) {
+    // Distribute Jackpot Rp 15,000 - Rp 35,000 divided equally
+    const jackpot = Math.floor(Math.random() * (35000 - 15000 + 1)) + 15000;
+    const share = Math.floor(jackpot / team.length);
+
+    team.forEach(pet => {
+      // Add balance
+      economy.addBalance(pet.user_id, guildId, share, 'PET_RAID_WIN');
+
+      // Add 1x MYSTERY_BOX_ANCIENT
+      const exist = db.get("SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MYSTERY_BOX_ANCIENT'", [pet.user_id, guildId]);
+      if (exist) {
+        db.run("UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = 'MYSTERY_BOX_ANCIENT'", [pet.user_id, guildId]);
+      } else {
+        db.run("INSERT INTO user_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, 'MYSTERY_BOX_ANCIENT', 1)", [pet.user_id, guildId]);
+      }
+
+      rewardList.push({
+        userId: pet.user_id,
+        petName: pet.pet_name,
+        coins: share,
+        item: '🎁 Kotak Misteri Peliharaan Kuno'
+      });
+
+      db.logPetAction(guildId, pet.user_id, null, pet.pet_name, 'PET_RAID_WIN', `Menang Raid Boss ${boss.boss_name}. Menerima Rp ${share.toLocaleString('id-ID')} dan 1x MYSTERY_BOX_ANCIENT.`);
+    });
+
+    // Update global World Boss HP
+    const newGlobalHp = Math.max(0, boss.current_hp - totalDamageDealt);
+    const bossStatus = newGlobalHp === 0 ? 'DEFEATED' : 'ACTIVE';
+    db.run(
+      'UPDATE world_boss SET current_hp = ?, status = ? WHERE guild_id = ? AND week_start = ?',
+      [newGlobalHp, bossStatus, guildId, boss.week_start]
+    );
+
+    // If global boss defeated, distribute global rewards as well
+    if (newGlobalHp === 0) {
+      distributeWorldBossRewards(guildId, lastHitUserId, boss.week_start);
+    }
+  }
+
+  // HP consequences: all participating pets lose 80% of their MAX HP
+  team.forEach(pet => {
+    const maxHP = getMaxHP(pet);
+    let newHealth = Math.max(0, pet.health - Math.round(maxHP * 0.8));
+
+    let finalAccessory = pet.accessory;
+    let finalStatus = pet.status;
+    let savedBy = null;
+
+    if (newHealth <= 0) {
+      if (petHasTrait(pet, 'SURVIVOR')) {
+        newHealth = 1;
+        finalStatus = 'WEAK';
+        savedBy = 'SURVIVOR';
+      } else if (pet.accessory === 'LUCKY_AMULET') {
+        newHealth = 20;
+        finalStatus = pet.level >= 10 ? 'ADULT' : 'BABY';
+        finalAccessory = ''; // Jimat hancur
+        savedBy = 'LUCKY_AMULET';
+      } else {
+        newHealth = 0;
+        finalStatus = 'DEAD';
+      }
+    } else if (newHealth < 20) {
+      finalStatus = 'WEAK';
+    }
+
+    db.run(
+      'UPDATE user_pets SET health = ?, status = ?, accessory = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [newHealth, finalStatus, finalAccessory, pet.user_id, guildId, pet.pet_name]
+    );
+
+    if (newHealth === 0 && finalStatus === 'DEAD') {
+      db.logPetAction(guildId, pet.user_id, null, pet.pet_name, 'PET_RAID_DEATH', `Pet mati di pertempuran Raid Boss ${boss.boss_name}!`);
+    } else if (savedBy) {
+      db.logPetAction(guildId, pet.user_id, null, pet.pet_name, 'PET_RAID_SAVE', `Pet terselamatkan dari kematian di pertempuran Raid Boss ${boss.boss_name} oleh ${savedBy}.`);
+    }
+  });
+
+  // Clear registrations
+  db.run('DELETE FROM pet_raid_registrations WHERE guild_id = ?', [guildId]);
+
+  return {
+    bossName: boss.boss_name,
+    victory,
+    lastHitUserId,
+    lastHitPetName,
+    totalDamageDealt,
+    rewards: rewardList,
+    logs
+  };
+}
+
 module.exports = {
   // Config & utils
   PET_ITEMS,
@@ -4407,6 +4780,8 @@ module.exports = {
   getOrCreateWorldBoss,
   attackWorldBoss,
   distributeWorldBossRewards,
+  registerPetToRaid,
+  executeWorldRaid,
 };
 
 

@@ -5723,6 +5723,63 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: RAID / BOSS ──
   if (subCommand === 'raid' || subCommand === 'worldboss' || subCommand === 'boss') {
+    const action = args[1] ? args[1].toLowerCase() : null;
+
+    if (action === 'register') {
+      try {
+        const regPetName = args.slice(2).join(' ');
+        const result = pet.registerPetToRaid(author.id, guildId, regPetName);
+        
+        const successEmb = embeds.successEmbed(
+          'Pendaftaran Raid Sukses! ⚔️🎟️',
+          `Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${author.id}> berhasil didaftarkan ke antrean Raid Boss!\n\n` +
+          `💰 Biaya pendaftaran **Rp 2.500** telah dipotong dari dompet Anda.\n` +
+          `💡 Ketik \`.pet boss start\` setelah minimal 3 pet (maksimal 5 pet) terdaftar untuk memulai pertempuran!`
+        );
+        return message.reply({ embeds: [successEmb] });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Pendaftaran Raid Gagal!', err.message)] });
+      }
+    }
+
+    if (action === 'start') {
+      try {
+        const fightRes = pet.executeWorldRaid(guildId);
+
+        const title = fightRes.victory
+          ? `🎉 RAID BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
+          : `💀 BATTLE REPORT: RAID BOSS ${fightRes.bossName} GAGAL! 💀`;
+
+        const fightEmbed = embeds.petBattleLogEmbed(
+          title,
+          fightRes.logs,
+          fightRes.victory
+        );
+
+        fightEmbed.addFields({ 
+          name: '📊 Ringkasan Sesi Raid', 
+          value: `• **Total Damage Tim:** ${fightRes.totalDamageDealt.toLocaleString('id-ID')} DMG\n` +
+                 `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
+                 (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
+        });
+
+        if (fightRes.victory && fightRes.rewards.length > 0) {
+          const rewardLog = fightRes.rewards.map(r => `• <@${r.userId}> (Pet: ${r.petName}): **Rp ${r.coins.toLocaleString('id-ID')} koin** + 1x ${r.item}`).join('\n');
+          fightEmbed.addFields({ name: '🎁 Distribusi Hadiah Raid', value: rewardLog.substring(0, 1024) });
+        }
+
+        fightEmbed.addFields({
+          name: '⚠️ Efek Samping Pertempuran',
+          value: `Seluruh pet yang berpartisipasi telah kehabisan tenaga dan menderita pengurangan **80% Max HP**!\n` +
+                 `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
+        });
+
+        return message.reply({ embeds: [fightEmbed] });
+      } catch (err) {
+        return message.reply({ embeds: [embeds.errorEmbed('Raid Gagal Dimulai!', err.message)] });
+      }
+    }
+
     const activePet = pet.getPet(author.id, guildId);
     if (!activePet) {
       return message.reply({ embeds: [embeds.petDashboardEmbed(author, null, [])] });
@@ -5741,6 +5798,15 @@ async function handlePetCommand(message, client, args) {
         const participant = database.get('SELECT * FROM world_boss_participants WHERE user_id = ? AND guild_id = ? AND pet_name = ? AND week_start = ?', [userId, gId, freshPet.pet_name, weekStart]);
 
         const embed = embeds.petRaidEmbed(author, freshPet, boss, participant);
+
+        // Fetch current co-op registrations
+        const registrations = database.all('SELECT * FROM pet_raid_registrations WHERE guild_id = ?', [gId]);
+        const regNames = registrations.length > 0 ? registrations.map(r => `• <@${r.user_id}> (Pet: **${r.pet_name}**)`).join('\n') : '*Belum ada pet terdaftar dalam antrean.*';
+        
+        embed.addFields({
+          name: `👥 Antrean Raid Co-op (${registrations.length}/5)`,
+          value: regNames + `\n\n👉 Daftar pet Anda dengan \`.pet boss register\` (Rp 2.500)\n👉 Mulai pertarungan dengan \`.pet boss start\` (Min. 3 Pet)`
+        });
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('pet_btn_raid_attack').setLabel('⚔️ Serang Boss').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE'),

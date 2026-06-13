@@ -252,10 +252,20 @@ function generateBotForTier(tierKey, petObj = null) {
 }
 
 function getPvpStatsDescription(petObj, pvpState) {
-  const maxHP = 100 + (petObj.stat_vit || 0) * 10;
-  const baseAtk = 20 + (petObj.stat_str || 0) * 3;
-  const defPercent = Math.min(75, (petObj.stat_def || 0) * 0.5);
-  const critPercent = Math.min(40, (petObj.stat_dex || 0) * 0.5);
+  const speciesInfo = pet.GACHA_SPECIES[petObj.pet_type];
+  const specBaseHp = speciesInfo ? (speciesInfo.baseHP || 100) : 100;
+  const starLevel = petObj.star_level || 1;
+  const hpBonus = (starLevel - 1) * 15;
+  const maxHP = specBaseHp + hpBonus + (petObj.stat_vit || 0) * 10;
+  
+  const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
+  const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+  
+  const baseAtk = specBaseAtk + (petObj.stat_str || 0) * 6;
+  const defenderDEF = specBaseDef + (petObj.stat_def || 0) * 2.0;
+  const defPercent = Math.min(80, (defenderDEF / 150) * 100);
+  const critPercent = Math.min(35, (petObj.stat_dex || 0) * 0.5);
+  const dodgePercent = Math.min(40, (petObj.stat_dex || 0) * 0.8);
 
   const totalGymStats = (petObj.stat_str || 0) + (petObj.stat_vit || 0) + (petObj.stat_def || 0) + (petObj.stat_dex || 0);
 
@@ -271,9 +281,10 @@ function getPvpStatsDescription(petObj, pvpState) {
 
   return `🏋️ **Statistik Tempur Arena (Berdasarkan Gym):**\n` +
          `• ❤️ **Max HP:** \`${maxHP} HP\` *(+10 per VIT)*\n` +
-         `• ⚔️ **Base ATK:** \`${baseAtk} DMG\` *(+3 per STR)*\n` +
-         `• 🛡️ **Damage Reduction:** \`${defPercent.toFixed(1)}%\` *(+0.5% per DEF, maks 75%)*\n` +
-         `• ⚡ **Crit Chance:** \`${critPercent.toFixed(1)}%\` *(+0.5% per DEX, maks 40%)*\n` +
+         `• ⚔️ **Base ATK:** \`${baseAtk} DMG\` *(Spesies: ${specBaseAtk}, +6 per STR)*\n` +
+         `• 🛡️ **Damage Reduction:** \`${defPercent.toFixed(1)}%\` *(Spesies: ${specBaseDef}, +2.0 per DEF, maks 80%)*\n` +
+         `• ⚡ **Crit Chance:** \`${critPercent.toFixed(1)}%\` *(+0.5% per DEX, maks 35%)*\n` +
+         `• 💨 **Dodge Chance:** \`${dodgePercent.toFixed(1)}%\` *(+0.8% per DEX, maks 40%)*\n` +
          `• 👟 **Total Gym Stats:** \`${totalGymStats} Poin\`\n` +
          `• 🔋 **Gym Fatigue:** \`${petObj.gym_fatigue || 0}/100%\` *(Maks 100% untuk latihan)*\n` +
          `• ✨ **Kondisi Fisik:** ${debuffText}\n` +
@@ -625,9 +636,16 @@ async function startPvPChallenge(interaction, client, petName) {
     const nowUnix = Math.floor(Date.now() / 1000);
     const pStats = calculateEffectiveStats(petObj, nowUnix);
 
-    // Hitung status tempur awal berbasis Gym Stats (TANPA Level)
-    const playerMaxHP = 100 + pStats.vit * 10;
-    const botMaxHP = 100 + botOpponent.stat_vit * 10;
+    // Hitung status tempur awal berbasis Gym Stats (TANPA Level), memperhitungkan Spesies Base HP dan Bintang/Fusion
+    const playerSpeciesInfo = pet.GACHA_SPECIES[petObj.pet_type];
+    const playerBaseHP = playerSpeciesInfo ? (playerSpeciesInfo.baseHP || 100) : 100;
+    const playerStarLevel = petObj.star_level || 1;
+    const playerHpBonus = (playerStarLevel - 1) * 15;
+    const playerMaxHP = playerBaseHP + playerHpBonus + pStats.vit * 10;
+
+    const botSpeciesInfo = pet.GACHA_SPECIES[botOpponent.pet_type];
+    const botBaseHP = botSpeciesInfo ? (botSpeciesInfo.baseHP || 100) : 100;
+    const botMaxHP = botBaseHP + botOpponent.stat_vit * 10;
 
     // Siapkan object game state
     const combatData = {

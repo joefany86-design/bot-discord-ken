@@ -873,6 +873,21 @@ function initSchema() {
       run: () => {
         addColumn('user_pets', 'equipped_skills', "TEXT DEFAULT NULL");
       }
+    },
+    {
+      version: 24,
+      description: "Membuat tabel pet_raid_registrations untuk pendaftaran tim World Boss mingguan",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS pet_raid_registrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            pet_name TEXT NOT NULL,
+            registered_at INTEGER NOT NULL
+          )
+        `);
+      }
     }
   ];
 
