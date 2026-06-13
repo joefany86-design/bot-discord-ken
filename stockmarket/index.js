@@ -7000,7 +7000,10 @@ async function handlePetCommand(message, client, args) {
           expLocksQte.delete(currentLobby.channelId);
 
           if (thread) {
-            await message.channel.send(failOpts).catch(() => {});
+            await message.channel.send({
+              content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
+              files: failFiles
+            }).catch(() => {});
             setTimeout(async () => {
               await starterMsg.delete().catch(() => {});
               await thread.delete().catch(() => {});
@@ -7059,7 +7062,10 @@ async function handlePetCommand(message, client, args) {
         expLocksRes.delete(currentLobby.channelId);
 
         if (thread) {
-          await message.channel.send(resOpts).catch(() => {});
+          await message.channel.send({
+            content: participantMentions,
+            files: resFiles
+          }).catch(() => {});
           setTimeout(async () => {
             await starterMsg.delete().catch(() => {});
             await thread.delete().catch(() => {});
