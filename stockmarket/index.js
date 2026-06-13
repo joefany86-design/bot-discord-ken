@@ -5805,15 +5805,21 @@ async function handlePetCommand(message, client, args) {
         
         embed.addFields({
           name: `👥 Antrean Raid Co-op (${registrations.length}/5)`,
-          value: regNames + `\n\n👉 Daftar pet Anda dengan \`.pet boss register\` (Rp 2.500)\n👉 Mulai pertarungan dengan \`.pet boss start\` (Min. 3 Pet)`
+          value: regNames + `\n\n👉 Klik **🎟️ Daftar Co-op** untuk mendaftarkan pet aktif Anda.\n👉 Klik **⚔️ Mulai Co-op** jika minimal 3 pet terdaftar.`
         });
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('pet_btn_raid_attack').setLabel('⚔️ Serang Boss').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE'),
-          new ButtonBuilder().setCustomId('pet_btn_raid_soda').setLabel('🥤 Gunakan Soda (+1 Serang)').setStyle(ButtonStyle.Primary).setDisabled(boss.status !== 'ACTIVE'),
+        const row1 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_btn_raid_attack').setLabel('⚔️ Serang Boss (Solo)').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE'),
+          new ButtonBuilder().setCustomId('pet_btn_raid_soda').setLabel('🥤 Gunakan Soda (+1 Solo)').setStyle(ButtonStyle.Primary).setDisabled(boss.status !== 'ACTIVE'),
           new ButtonBuilder().setCustomId('pet_btn_close_panel').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
         );
-        return { embeds: [embed], components: [row] };
+
+        const row2 = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('pet_btn_raid_coop_register').setLabel('🎟️ Daftar Co-op (Rp 2.500)').setStyle(ButtonStyle.Success).setDisabled(boss.status !== 'ACTIVE'),
+          new ButtonBuilder().setCustomId('pet_btn_raid_coop_start').setLabel('⚔️ Mulai Co-op Raid').setStyle(ButtonStyle.Danger).setDisabled(boss.status !== 'ACTIVE' || registrations.length < 3)
+        );
+
+        return { embeds: [embed], components: [row1, row2] };
       };
 
       const panelData = getRaidPanelData(author.id, guildId, activePet);
@@ -5821,12 +5827,68 @@ async function handlePetCommand(message, client, args) {
       const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
 
       collector.on('collect', async i => {
-        if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+        if (!['pet_btn_raid_coop_register', 'pet_btn_raid_coop_start'].includes(i.customId)) {
+          if (i.user.id !== author.id) return i.reply({ content: '❌ Tombol ini bukan milik Anda!', flags: 64 });
+        }
 
         try {
           if (i.customId === 'pet_btn_close_panel') {
             collector.stop();
             await replyMsg.delete().catch(() => { });
+          } else if (i.customId === 'pet_btn_raid_coop_register') {
+            await i.deferReply({ flags: 64 });
+            try {
+              const result = pet.registerPetToRaid(i.user.id, guildId, null);
+              
+              await i.editReply({ 
+                content: `✅ **Pendaftaran Sukses!** Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${i.user.id}> telah terdaftar ke antrean Raid Boss.\n💰 Biaya Rp 2.500 koin telah dipotong.` 
+              });
+
+              const pFresh = pet.getPet(author.id, guildId);
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => { });
+            } catch (err) {
+              await i.editReply({ content: `❌ **Pendaftaran Gagal:** ${err.message}` });
+            }
+          } else if (i.customId === 'pet_btn_raid_coop_start') {
+            await i.deferReply();
+            try {
+              const fightRes = pet.executeWorldRaid(guildId);
+
+              const title = fightRes.victory
+                ? `🎉 RAID BOSS ${fightRes.bossName} BERHASIL DIKALAHKAN! 🎉`
+                : `💀 BATTLE REPORT: RAID BOSS ${fightRes.bossName} GAGAL! 💀`;
+
+              const fightEmbed = embeds.petBattleLogEmbed(
+                title,
+                fightRes.logs,
+                fightRes.victory
+              );
+
+              fightEmbed.addFields({ 
+                name: '📊 Ringkasan Sesi Raid', 
+                value: `• **Total Damage Tim:** ${fightRes.totalDamageDealt.toLocaleString('id-ID')} DMG\n` +
+                       `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
+                       (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
+              });
+
+              if (fightRes.victory && fightRes.rewards.length > 0) {
+                const rewardLog = fightRes.rewards.map(r => `• <@${r.userId}> (Pet: ${r.petName}): **Rp ${r.coins.toLocaleString('id-ID')} koin** + 1x ${r.item}`).join('\n');
+                fightEmbed.addFields({ name: '🎁 Distribusi Hadiah Raid', value: rewardLog.substring(0, 1024) });
+              }
+
+              fightEmbed.addFields({
+                name: '⚠️ Efek Samping Pertempuran',
+                value: `Seluruh pet yang berpartisipasi telah kehabisan tenaga dan menderita pengurangan **80% Max HP**!\n` +
+                       `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
+              });
+
+              await i.editReply({ embeds: [fightEmbed] });
+
+              const pFresh = pet.getPet(author.id, guildId);
+              await replyMsg.edit(getRaidPanelData(author.id, guildId, pFresh)).catch(() => { });
+            } catch (err) {
+              await i.editReply({ content: `❌ **Gagal Memulai Raid:** ${err.message}` });
+            }
           } else if (i.customId === 'pet_btn_raid_soda') {
             await i.deferReply({ flags: 64 });
             try {
