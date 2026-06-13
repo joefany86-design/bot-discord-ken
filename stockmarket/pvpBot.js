@@ -256,7 +256,7 @@ function getPvpStatsDescription(petObj, pvpState) {
   const specBaseHp = speciesInfo ? (speciesInfo.baseHP || 100) : 100;
   const starLevel = petObj.star_level || 1;
   const hpBonus = (starLevel - 1) * 15;
-  const maxHP = specBaseHp + hpBonus + (petObj.stat_vit || 0) * 10;
+  const maxHP = (specBaseHp + hpBonus + (petObj.stat_vit || 0) * 10) * 4;
   
   const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
   const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
@@ -641,11 +641,11 @@ async function startPvPChallenge(interaction, client, petName) {
     const playerBaseHP = playerSpeciesInfo ? (playerSpeciesInfo.baseHP || 100) : 100;
     const playerStarLevel = petObj.star_level || 1;
     const playerHpBonus = (playerStarLevel - 1) * 15;
-    const playerMaxHP = playerBaseHP + playerHpBonus + pStats.vit * 10;
+    const playerMaxHP = (playerBaseHP + playerHpBonus + pStats.vit * 10) * 4;
 
     const botSpeciesInfo = pet.GACHA_SPECIES[botOpponent.pet_type];
     const botBaseHP = botSpeciesInfo ? (botSpeciesInfo.baseHP || 100) : 100;
-    const botMaxHP = botBaseHP + botOpponent.stat_vit * 10;
+    const botMaxHP = (botBaseHP + botOpponent.stat_vit * 10) * 4;
 
     // Siapkan object game state
     const combatData = {
@@ -1158,9 +1158,10 @@ async function handlePvPAction(interaction, client, actionType) {
   b.chosenAction = botAction;
 
   if (actionType === 'item_med') {
-    p.hp = Math.min(p.maxHP, p.hp + 150);
+    const healAmt = Math.round(p.maxHP * 0.25);
+    p.hp = Math.min(p.maxHP, p.hp + healAmt);
     p.hasUsedItem = true;
-    combatData.logs.push(`🎒 **${p.name}** menggunakan **Ramuan Kesehatan**! (+150 HP)`);
+    combatData.logs.push(`🎒 **${p.name}** menggunakan **Ramuan Kesehatan**! (+${healAmt} HP)`);
     p.chosenAction = 'item_med';
   } else if (actionType === 'item_soda') {
     p.energy = Math.min(100, p.energy + 50);
@@ -1854,8 +1855,17 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
   const p1Stats = calculateEffectiveStats(challengerPet, nowUnix);
   const p2Stats = calculateEffectiveStats(opponentPet, nowUnix);
 
-  const challengerMaxHP = 100 + p1Stats.vit * 10;
-  const opponentMaxHP = 100 + p2Stats.vit * 10;
+  const p1SpeciesInfo = pet.GACHA_SPECIES[challengerPet.pet_type];
+  const p1BaseHP = p1SpeciesInfo ? (p1SpeciesInfo.baseHP || 100) : 100;
+  const p1StarLevel = challengerPet.star_level || 1;
+  const p1HpBonus = (p1StarLevel - 1) * 15;
+  const challengerMaxHP = (p1BaseHP + p1HpBonus + p1Stats.vit * 10) * 4;
+
+  const p2SpeciesInfo = pet.GACHA_SPECIES[opponentPet.pet_type];
+  const p2BaseHP = p2SpeciesInfo ? (p2SpeciesInfo.baseHP || 100) : 100;
+  const p2StarLevel = opponentPet.star_level || 1;
+  const p2HpBonus = (p2StarLevel - 1) * 15;
+  const opponentMaxHP = (p2BaseHP + p2HpBonus + p2Stats.vit * 10) * 4;
 
   // Weather hazard selection (20% chance)
   let weather = 'CLEAR';
@@ -2133,9 +2143,10 @@ async function handlePvPActionPvP(interaction, client, actionType) {
   }
 
   if (actionType === 'item_med') {
-    actor.hp = Math.min(actor.maxHP, actor.hp + 150);
+    const healAmt = Math.round(actor.maxHP * 0.25);
+    actor.hp = Math.min(actor.maxHP, actor.hp + healAmt);
     actor.hasUsedItem = true;
-    combatData.logs.push(`🎒 **${actor.name}** menggunakan **Ramuan Kesehatan**! (+150 HP)`);
+    combatData.logs.push(`🎒 **${actor.name}** menggunakan **Ramuan Kesehatan**! (+${healAmt} HP)`);
     actor.chosenAction = 'item_med';
   } else if (actionType === 'item_soda') {
     actor.energy = Math.min(100, actor.energy + 50);
