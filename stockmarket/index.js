@@ -10735,20 +10735,38 @@ async function handleEconomyCommands(message, client) {
     }
   }
 
+  // ── FILTER SALURAN KHUSUS RAID (Channel ID: 1512795629720698981) ──
+  if (message.channelId === '1512795629720698981') {
+    const subCommand = args[0] ? args[0].toLowerCase() : null;
+    const isRaid = commandName === 'pet' && ['raid', 'worldboss', 'boss'].includes(subCommand);
+    if (!isRaid) {
+      const isOwner = author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        const warnEmb = embeds.warnEmbed('Saluran Khusus Raid! ⚔️', 'Saluran ini hanya dapat digunakan untuk **World Boss / Pet Raid** (`.pet boss` / `.pet raid`)! Silakan gunakan channel yang sesuai untuk perintah lainnya.');
+        await autoReply({ embeds: [warnEmb] });
+        return true; // Berhenti memproses perintah
+      }
+    }
+  }
+
   // 2. Jika mengetik perintah pet di channel lain, blokir (kecuali admin/owner)
   if (['pet', 'pet-admin'].includes(commandName)) {
     const subCommand = args[0] ? args[0].toLowerCase() : null;
     const isSafariCommand = commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand);
     const isPvPBotCommand = commandName === 'pet' && ['pvpbot', 'arena'].includes(subCommand);
+    const isRaidCommand = commandName === 'pet' && ['raid', 'worldboss', 'boss'].includes(subCommand);
     
-    let allowedChannelId = '1509762623917265137';
+    let allowedChannelIds = ['1509762623917265137'];
     if (isSafariCommand) {
-      allowedChannelId = '1513927968379109436';
+      allowedChannelIds = ['1513927968379109436'];
     } else if (isPvPBotCommand) {
-      allowedChannelId = '1515061723294601468';
+      allowedChannelIds = ['1515061723294601468'];
+    } else if (isRaidCommand) {
+      allowedChannelIds = ['1512795629720698981', '1503324994153873458'];
     }
 
-    if (message.channelId !== allowedChannelId) {
+    if (!allowedChannelIds.includes(message.channelId)) {
       const isOwner = author.id === OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
       if (!isOwner && !isAdmin) {
@@ -10757,6 +10775,8 @@ async function handleEconomyCommands(message, client) {
           warnEmb = embeds.safariChannelRestrictionEmbed();
         } else if (isPvPBotCommand) {
           warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah Arena PvP Bot (`.pet pvpbot`) hanya dapat digunakan di saluran khusus: <#1515061723294601468>!');
+        } else if (isRaidCommand) {
+          warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah World Boss Raid (`.pet boss`) hanya dapat digunakan di saluran khusus: <#1512795629720698981>!');
         } else {
           warnEmb = embeds.warnEmbed('Saluran Khusus! 🐾', 'Perintah bermain pet (`.pet`) hanya dapat digunakan di saluran khusus pet: <#1509762623917265137>!');
         }
