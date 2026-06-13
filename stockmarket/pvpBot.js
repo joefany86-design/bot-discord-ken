@@ -557,20 +557,20 @@ async function startPvPChallenge(interaction, client, petName) {
   // Set lock agar tidak double spam arena
   client.activePvPBotGames = client.activePvPBotGames || new Map();
   if (client.activePvPBotGames.has(user.id)) {
-    return interaction.reply({ content: '❌ Pet Anda sedang dalam arena tempur aktif! Harap selesaikan pertarungan Anda.', flags: 64 });
+    return interaction.reply({ content: '❌ Pet Anda sedang dalam arena tempur aktif! Harap selesaikan pertarungan Anda.', flags: 64 }).catch(() => {});
   }
 
   await interaction.deferUpdate().catch(() => {});
 
   const petObj = pet.getPet(user.id, guildId);
   if (!petObj || petObj.pet_name !== petName) {
-    return interaction.followUp({ content: '❌ Terjadi kesalahan! Pet tidak ditemukan.', flags: 64 });
+    return interaction.followUp({ content: '❌ Terjadi kesalahan! Pet tidak ditemukan.', flags: 64 }).catch(() => {});
   }
   if (petObj.status === 'DEAD' || petObj.status === 'EGG') {
-    return interaction.followUp({ content: '❌ Kondisi pet Anda tidak memenuhi syarat tanding!', flags: 64 });
+    return interaction.followUp({ content: '❌ Kondisi pet Anda tidak memenuhi syarat tanding!', flags: 64 }).catch(() => {});
   }
   if (petObj.health < 20) {
-    return interaction.followUp({ content: '❌ Pet Anda terlalu lelah (HP < 20)! Pulihkan terlebih dahulu sebelum tanding.', flags: 64 });
+    return interaction.followUp({ content: '❌ Pet Anda terlalu lelah (HP < 20)! Pulihkan terlebih dahulu sebelum tanding.', flags: 64 }).catch(() => {});
   }
 
   const pvpState = getOrCreatePvPState(user.id, guildId, petObj.pet_name);
@@ -584,7 +584,7 @@ async function startPvPChallenge(interaction, client, petName) {
       return interaction.followUp({
         content: '❌ **Kuota harian habis!** Anda telah menggunakan 5 tantangan gratis hari ini. Gunakan **🥤 Soda Energi Pet** untuk bertanding kembali.',
         flags: 64
-      });
+      }).catch(() => {});
     }
     usedSoda = true;
   }
@@ -1036,15 +1036,20 @@ async function handlePvPAction(interaction, client, actionType) {
   const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(user.id) : null;
   if (!combatData) {
     if (interaction && typeof interaction.reply === 'function') {
-      return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+      return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => {});
     }
     return;
   }
 
-  if (combatData.isProcessing) return;
+  if (combatData.isProcessing) {
+    if (interaction && !interaction.replied && !interaction.deferred && typeof interaction.deferUpdate === 'function') {
+      await interaction.deferUpdate().catch(() => {});
+    }
+    return;
+  }
   combatData.isProcessing = true;
 
-  if (interaction && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
+  if (interaction && !interaction.replied && !interaction.deferred && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
     await interaction.deferUpdate().catch(() => {});
   }
 
@@ -2036,10 +2041,15 @@ async function handlePvPActionPvP(interaction, client, actionType) {
 
   const combatData = client.activePvPGames ? client.activePvPGames.get(user.id) : null;
   if (!combatData) {
-    return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 });
+    return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => {});
   }
 
-  if (combatData.isProcessing) return;
+  if (combatData.isProcessing) {
+    if (interaction && !interaction.replied && !interaction.deferred && typeof interaction.deferUpdate === 'function') {
+      await interaction.deferUpdate().catch(() => {});
+    }
+    return;
+  }
 
   const p1 = combatData.p1;
   const p2 = combatData.p2;
@@ -2048,7 +2058,7 @@ async function handlePvPActionPvP(interaction, client, actionType) {
   const enemy = actor === p1 ? p2 : p1;
 
   if (!actor) {
-    return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 });
+    return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 }).catch(() => {});
   }
 
   if (actionType === 'surr') {
@@ -2058,18 +2068,18 @@ async function handlePvPActionPvP(interaction, client, actionType) {
   }
 
   if (actor.chosenAction) {
-    return interaction.reply({ content: '❌ Anda sudah memilih tindakan untuk giliran ini!', flags: 64 });
+    return interaction.reply({ content: '❌ Anda sudah memilih tindakan untuk giliran ini!', flags: 64 }).catch(() => {});
   }
 
   if (actionType === 'ult' && actor.energy < 60) {
-    return interaction.reply({ content: '❌ Energi Pet Anda tidak cukup (butuh 60 SP)!', flags: 64 });
+    return interaction.reply({ content: '❌ Energi Pet Anda tidak cukup (butuh 60 SP)!', flags: 64 }).catch(() => {});
   }
 
   if ((actionType === 'item_med' || actionType === 'item_soda') && actor.hasUsedItem) {
-    return interaction.reply({ content: '❌ Anda sudah menggunakan item di pertarungan ini!', flags: 64 });
+    return interaction.reply({ content: '❌ Anda sudah menggunakan item di pertarungan ini!', flags: 64 }).catch(() => {});
   }
 
-  if (interaction && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
+  if (interaction && !interaction.replied && !interaction.deferred && typeof interaction.deferUpdate === 'function' && !interaction.ephemeral) {
     await interaction.deferUpdate().catch(() => {});
   }
 
