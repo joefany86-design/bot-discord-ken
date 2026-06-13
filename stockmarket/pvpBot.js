@@ -1079,47 +1079,78 @@ async function handlePvPAction(interaction, client, actionType) {
     return endPvPGame(interaction, client, combatData, 'lose');
   }
 
-  // --- BOT DECISION AI (Archetype-based & Predictive) ---
+  // --- BOT DECISION AI (Archetype-based & Predictive & Smart Survival) ---
   let botAction = 'atk';
   const arch = b.archetype || 'BALANCED';
 
   const botSpec = pet.GACHA_SPECIES[b.pet_type];
   const botBaseAtk = botSpec ? (botSpec.baseAtk || 10) : 10;
-  const estimatedDmg = (botBaseAtk + b.stat_str * 6) * 1.5;
+  const estimatedBotDmg = (botBaseAtk + b.stat_str * 6) * 1.5;
 
-  if (p.hp < estimatedDmg * 1.6 && b.energy >= 60) {
+  const playerSpec = pet.GACHA_SPECIES[p.pet_type];
+  const playerBaseAtk = playerSpec ? (playerSpec.baseAtk || 10) : 10;
+  const estimatedPlayerDmg = (playerBaseAtk + p.stat_str * 6) * 1.5;
+
+  // 1. EXECUTE INSTINCT (If bot's Ultimate or Skill can kill player, and bot has energy, use it!)
+  if (b.energy >= 60 && p.hp <= estimatedBotDmg * 2.0) {
     botAction = 'ult';
-  } else if (p.energy >= 60 && Math.random() < 0.65) {
-    botAction = b.gacha_element === 'EARTH' ? 'skill1' : 'def';
-  } else {
+  }
+  // 2. SURVIVAL INSTINCT (If bot HP is low (< 35% Max HP))
+  else if (b.hp < b.maxHP * 0.35) {
+    // If bot has high energy and Ultimate heals (Water) or shields (Earth)
+    if (b.energy >= 60 && ['WATER', 'EARTH'].includes(b.gacha_element)) {
+      botAction = 'ult';
+    } else {
+      // Prioritize healing/shielding skills or defending
+      const r = Math.random();
+      if (b.gacha_element === 'WATER' && r < 0.70) {
+        botAction = 'skill1'; // water_jet heals 15%
+      } else if (b.gacha_element === 'EARTH' && r < 0.70) {
+        botAction = 'skill1'; // ancient_wall shields 30%
+      } else {
+        botAction = 'def'; // Defend reduces damage by 50%
+      }
+    }
+  }
+  // 3. PREDICTIVE COUNTER (If player has Ultimate ready, attempt to defend/block)
+  else if (p.energy >= 60 && Math.random() < 0.75) {
+    // If bot has shield skill ready (Earth), use it, otherwise defend
+    if (b.gacha_element === 'EARTH' && Math.random() < 0.50) {
+      botAction = 'skill1';
+    } else {
+      botAction = 'def';
+    }
+  }
+  // 4. STANDARD ARCHETYPE AI (If none of the above situational triggers occur)
+  else {
     if (arch === 'TANKER') {
-      if (b.energy >= 60 && Math.random() < 0.30) {
+      if (b.energy >= 60 && Math.random() < 0.35) {
         botAction = 'ult';
       } else {
         const r = Math.random();
-        if (r < 0.45) botAction = 'skill1';
-        else if (r < 0.75) botAction = 'def';
+        if (r < 0.50) botAction = 'skill1';
+        else if (r < 0.80) botAction = 'def';
         else botAction = 'atk';
       }
     } else if (arch === 'GLASS_CANNON') {
       if (b.energy >= 60) {
         botAction = 'ult';
       } else {
-        botAction = Math.random() < 0.50 ? 'skill2' : 'atk';
-      }
-    } else if (arch === 'ASSASSIN') {
-      if (b.energy >= 60 && Math.random() < 0.80) {
-        botAction = 'ult';
-      } else {
         botAction = Math.random() < 0.60 ? 'skill2' : 'atk';
       }
+    } else if (arch === 'ASSASSIN') {
+      if (b.energy >= 60 && Math.random() < 0.85) {
+        botAction = 'ult';
+      } else {
+        botAction = Math.random() < 0.70 ? 'skill2' : 'atk';
+      }
     } else {
-      if (b.energy >= 60 && Math.random() < 0.40) {
+      if (b.energy >= 60 && Math.random() < 0.45) {
         botAction = 'ult';
       } else {
         const r = Math.random();
         if (r < 0.40) botAction = 'atk';
-        else if (r < 0.70) botAction = 'skill1';
+        else if (r < 0.75) botAction = 'skill1';
         else botAction = 'def';
       }
     }
