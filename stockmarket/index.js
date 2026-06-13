@@ -6407,12 +6407,50 @@ async function handlePetCommand(message, client, args) {
     };
     if (lobbyFiles.length > 0) replyMsgOpts.files = lobbyFiles;
 
-    let replyMsg;
+    let starterMsg;
     if (promptMsgToEdit) {
       replyMsgOpts.attachments = [];
-      replyMsg = await promptMsgToEdit.edit(replyMsgOpts);
+      starterMsg = await promptMsgToEdit.edit(replyMsgOpts);
     } else {
-      replyMsg = await message.reply(replyMsgOpts);
+      starterMsg = await message.reply(replyMsgOpts);
+    }
+
+    let thread;
+    try {
+      thread = await starterMsg.startThread({
+        name: `🧭 Ekspedisi - ${author.username}`,
+        autoArchiveDuration: 60,
+        reason: 'Sesi Game Pet Ekspedisi'
+      });
+    } catch (err) {
+      console.error('Gagal membuat thread ekspedisi:', err);
+    }
+
+    let replyMsg;
+    if (thread) {
+      // Hapus lock dari channel utama dan pindahkan ke thread ID
+      expeditionLocks.delete(message.channelId);
+      lobby.channelId = thread.id;
+      expeditionLocks.set(thread.id, lobbyKey);
+
+      // Edit starter message di channel utama
+      await starterMsg.edit({
+        content: `📣 **Lobi Ekspedisi Tim Pet di ${selectedMap.name} oleh <@${author.id}> telah dibuka!**\n👉 Silakan masuk dan bergabung di <#${thread.id}>!`,
+        embeds: [],
+        components: [],
+        files: [],
+        attachments: []
+      }).catch(() => {});
+
+      // Kirim pesan lobi di dalam thread
+      const threadLobbyOpts = {
+        content: `📣 **Lobi Ekspedisi Tim Pet dibuka di ${selectedMap.name}!** Bersiaplah!\n*Waktu bergabung tersisa:* <t:${endTimeUnix}:R>`,
+        components: [row]
+      };
+      if (lobbyFiles.length > 0) threadLobbyOpts.files = lobbyFiles;
+      replyMsg = await thread.send(threadLobbyOpts);
+    } else {
+      replyMsg = starterMsg;
     }
 
     lobby.timeout = setTimeout(async () => {
@@ -6959,7 +6997,15 @@ async function handlePetCommand(message, client, args) {
           });
           // Release expedition lock
           const expLocksQte = client.expeditionLocks || new Map();
-          expLocksQte.delete(message.channelId);
+          expLocksQte.delete(currentLobby.channelId);
+
+          if (thread) {
+            await message.channel.send(failOpts).catch(() => {});
+            setTimeout(async () => {
+              await starterMsg.delete().catch(() => {});
+              await thread.delete().catch(() => {});
+            }, 5000);
+          }
           return;
         }
 
@@ -7010,13 +7056,28 @@ async function handlePetCommand(message, client, args) {
         });
         // Release expedition lock setelah selesai
         const expLocksRes = client.expeditionLocks || new Map();
-        expLocksRes.delete(message.channelId);
+        expLocksRes.delete(currentLobby.channelId);
+
+        if (thread) {
+          await message.channel.send(resOpts).catch(() => {});
+          setTimeout(async () => {
+            await starterMsg.delete().catch(() => {});
+            await thread.delete().catch(() => {});
+          }, 5000);
+        }
       } catch (err) {
         console.error(err);
         await message.channel.send({ content: `❌ Ekspedisi gagal diselesaikan: ${err.message}` });
         // Release expedition lock on error
         const expLocksErr = client.expeditionLocks || new Map();
-        expLocksErr.delete(message.channelId);
+        expLocksErr.delete(currentLobby.channelId);
+
+        if (thread) {
+          setTimeout(async () => {
+            await starterMsg.delete().catch(() => {});
+            await thread.delete().catch(() => {});
+          }, 5000);
+        }
       }
     }, 30000);
 
@@ -7123,7 +7184,7 @@ async function handlePetCommand(message, client, args) {
 
           // Release expedition lock on cancel
           const expLocksCancel = client.expeditionLocks || new Map();
-          expLocksCancel.delete(message.channelId);
+          expLocksCancel.delete(lobby.channelId);
 
           lobby.participants.forEach(pId => {
             economy.addBalance(pId, guildId, 250, 'PET_EXPEDITION_REFUND');
@@ -7136,6 +7197,13 @@ async function handlePetCommand(message, client, args) {
             components: []
           }).catch(() => { });
           collector.stop();
+
+          if (thread) {
+            setTimeout(async () => {
+              await starterMsg.delete().catch(() => {});
+              await thread.delete().catch(() => {});
+            }, 5000);
+          }
         }
       } catch (err) {
         console.error('Error in expedition lobby collector:', err);
