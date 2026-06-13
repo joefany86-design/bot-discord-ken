@@ -5723,6 +5723,18 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: RAID / BOSS ──
   if (subCommand === 'raid' || subCommand === 'worldboss' || subCommand === 'boss') {
+    // Hanya izinkan di channel 1512795629720698981 atau channel test 1503324994153873458
+    if (message.channelId !== '1512795629720698981' && message.channelId !== '1503324994153873458') {
+      return message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0xFF3366)
+            .setTitle('⛔ Akses Ditolak!')
+            .setDescription('Perintah World Boss Raid hanya dapat digunakan di channel khusus <#1512795629720698981>!')
+        ]
+      });
+    }
+
     const action = args[1] ? args[1].toLowerCase() : null;
 
     if (action === 'register') {
