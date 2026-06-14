@@ -396,12 +396,40 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
   const ctx = canvas.getContext('2d');
 
+  let eqATK = 0, eqDEF = 0, eqHP = 0, eqDEX = 0;
+  let activeEquips = [];
+  try {
+    const db = require('./database');
+    const eq = require('./equipment');
+    activeEquips = db.all(
+      'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+      [pet.user_id, pet.guild_id, pet.pet_name]
+    );
+    if (activeEquips.length > 0) {
+      const eqBonuses = eq.getPetEquipmentStatsBonus(pet.user_id, pet.guild_id, pet.pet_name, pet.gacha_element);
+      eqATK = eqBonuses.ATK || 0;
+      eqDEF = eqBonuses.DEF || 0;
+      eqHP = eqBonuses.HP || 0;
+      eqDEX = eqBonuses.DEX || 0;
+    }
+  } catch (err) {
+    console.error('[PetCard] Gagal load equipment:', err);
+  }
+
   const element = (pet.gacha_element || 'EARTH').toUpperCase();
   const rarity = (pet.gacha_rarity || 'COMMON').toUpperCase();
   const rarityTheme = RARITY_COLORS[rarity] || RARITY_COLORS.COMMON;
   const elementTheme = ELEMENT_THEMES[element] || ELEMENT_THEMES.EARTH;
   const starCount = Math.min(5, Math.max(1, pet.star_level || 1));
-  const maxHP = options.maxHP || 100;
+
+  let baseMaxHP = 100;
+  try {
+    const petModule = require('./pet');
+    baseMaxHP = petModule.getMaxHP(pet);
+  } catch (e) {
+    baseMaxHP = (pet.pet_type === 'SLIME' ? 120 : 100) + (pet.star_level - 1) * 15 + (pet.stat_vit || 0) * 3;
+  }
+  const maxHP = baseMaxHP + eqHP;
   const xpNeeded = options.xpNeeded || (pet.level * 100);
 
   // ── [1] BACKGROUND ELEMEN ──
@@ -576,6 +604,18 @@ async function generatePetCard(pet, ownerUser, options = {}) {
     drawBadgeWithWrap(accName.toUpperCase(), 'rgba(100,255,200,0.15)', '#80CBC4', 12);
   }
 
+  // JRPG Equipment badges
+  if (activeEquips && activeEquips.length > 0) {
+    const eq = require('./equipment');
+    const eqEmojis = { WEAPON: '⚔️ ', ARMOR: '🛡️ ', RING: '💍 ' };
+    activeEquips.forEach(item => {
+      const eff = eq.getEquipmentEffectiveStats(item, pet.gacha_element);
+      const prefix = eqEmojis[item.equip_type] || '';
+      const text = `${prefix}[+${item.level}] ${item.equip_name} (${item.stat_type} +${eff.effectiveValue})`;
+      drawBadgeWithWrap(text.toUpperCase(), 'rgba(0,210,255,0.15)', '#00D2FF', 12);
+    });
+  }
+
   // ── [6] STATS BARS (kanan atas) ──
   const barX = 490;
   let barY = 48;
@@ -651,15 +691,24 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   // Row 1: ATK, DEF, PvP Record
   const speciesInfo = getGachaSpecies(pet.pet_type);
   const baseAtk = (speciesInfo ? speciesInfo.baseAtk : 10) + pet.level * 5 + (pet.stat_str || 0) * 2;
-  const baseDef = speciesInfo ? speciesInfo.baseDef : 0;
+  const totalAtk = baseAtk + eqATK * 2;
 
-  drawStatItem(statsX, gridY1, 'ATK', String(baseAtk), '#FF7043');
-  drawStatItem(statsX + colWidth, gridY1, 'DEF', `${baseDef}%`, '#42A5F5');
+  let baseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+  try {
+    const petModule = require('./pet');
+    const starBonus = petModule.getStarBonuses(pet.star_level || 1);
+    baseDef += (starBonus.defBonusPct * 100);
+  } catch (e) {}
+  baseDef += Math.min(50, (pet.stat_def || 0) * 0.5);
+  const totalDef = baseDef + eqDEF * 0.5;
+
+  drawStatItem(statsX, gridY1, 'ATK', eqATK ? `${totalAtk} (+${eqATK * 2})` : String(totalAtk), '#FF7043');
+  drawStatItem(statsX + colWidth, gridY1, 'DEF', eqDEF ? `${totalDef.toFixed(1)}% (+${(eqDEF * 0.5).toFixed(1)}%)` : `${totalDef.toFixed(1)}%`, '#42A5F5');
   drawStatItem(statsX + colWidth * 2, gridY1, 'PVP', `${pet.pvp_wins || 0}W / ${pet.pvp_losses || 0}L`, '#FFD54F');
 
   // Row 2: STR, DEX, VIT
   drawStatItem(statsX, gridY2, 'STR', String(pet.stat_str || 0), '#EF5350');
-  drawStatItem(statsX + colWidth, gridY2, 'DEX', String(pet.stat_dex || 0), '#66BB6A');
+  drawStatItem(statsX + colWidth, gridY2, 'DEX', eqDEX ? `${(pet.stat_dex || 0) + eqDEX} (+${eqDEX})` : String(pet.stat_dex || 0), '#66BB6A');
   drawStatItem(statsX + colWidth * 2, gridY2, 'VIT', String(pet.stat_vit || 0), '#AB47BC');
 
   // ── [8] HORIZONTAL SEPARATOR ──
