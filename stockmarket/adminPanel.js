@@ -4962,48 +4962,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    const sysSelect = new StringSelectMenuBuilder()
-      .setCustomId('admin_abyus_select_system')
-      .setPlaceholder('💾 Sistem & Pemeliharaan Database...');
-
-    sysSelect.addOptions(
-      new StringSelectMenuOptionBuilder()
-        .setLabel('💾 Backup Database SQLite')
-        .setDescription('Buat cadangan database ekonomi saat ini')
-        .setValue('system_db_backup'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('💾 Restore Database SQLite')
-        .setDescription('Pulihkan database dari cadangan yang tersedia')
-        .setValue('system_db_restore'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('Prune Log Transaksi Lama (>30 hari)')
-        .setDescription('Hapus log transaksi lama untuk menghemat ruang')
-        .setValue('system_db_prune'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🎟️ Buat Kode Promo Baru (Modal)')
-        .setDescription('Membuat kode voucher promo/redeem baru untuk warga')
-        .setValue('system_create_promo'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🎟️ Kelola Kode Promo Aktif')
-        .setDescription('Lihat daftar voucher aktif dan hapus voucher')
-        .setValue('system_promo_list'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🔒 Toggle Mode Pemeliharaan (Maintenance)')
-        .setDescription('Aktifkan/nonaktifkan mode pemeliharaan bot secara instan')
-        .setValue('system_toggle_maintenance'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('📢 Broadcast Pengumuman Kustom (Modal)')
-        .setDescription('Kirim pesan/embed pengumuman kustom ke channel berita')
-        .setValue('system_custom_broadcast'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('📊 Monitor Kesehatan Database')
-        .setDescription('Tinjau ukuran berkas database, baris log, dan status tabel SQLite')
-        .setValue('system_db_health')
-    );
-
-    const sysRow = new ActionRowBuilder().addComponents(sysSelect);
-
-    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2, sysRow] };
+    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2] };
   };
 
   const initialData = getAbyusPanelData(guildId);
@@ -5348,382 +5307,6 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           await sub.reply({ content: `🎒 Sukses menyetel hadiah item massal ke **${qty}x ${itemId}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
           const fresh = getAbyusPanelData(guildId);
           await replyMsg.edit(fresh).catch(() => { });
-        }
-      }
-      else if (iAbyus.customId === 'admin_abyus_select_system') {
-        const action = iAbyus.values[0];
-
-        if (action === 'system_db_backup') {
-          await iAbyus.deferReply({ flags: 64 });
-          try {
-            const backupsDir = path.join(__dirname, '../backups');
-            if (!fs.existsSync(backupsDir)) {
-              fs.mkdirSync(backupsDir, { recursive: true });
-            }
-            const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').substring(0, 19);
-            const backupFile = path.join(backupsDir, `economy_backup_${timestamp}.db`);
-            
-            fs.copyFileSync(config.DATABASE_PATH, backupFile);
-
-            await iAbyus.editReply({ content: `💾 **BACKUP DATABASE SUKSES!**\n\nDatabase saat ini telah dicadangkan secara aman ke:\n\`${backupFile}\`` });
-          } catch (err) {
-            console.error('Backup database failed:', err);
-            await iAbyus.editReply({ content: `❌ Gagal mem-backup database: ${err.message}` });
-          }
-        }
-        else if (action === 'system_db_restore') {
-          await iAbyus.deferReply({ flags: 64 });
-          const backupsDir = path.join(__dirname, '../backups');
-          if (!fs.existsSync(backupsDir) || fs.readdirSync(backupsDir).length === 0) {
-            return iAbyus.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan database di folder backups.' });
-          }
-
-          const files = fs.readdirSync(backupsDir)
-            .filter(f => f.endsWith('.db'))
-            .sort((a, b) => fs.statSync(path.join(backupsDir, b)).mtimeMs - fs.statSync(path.join(backupsDir, a)).mtimeMs)
-            .slice(0, 5);
-
-          if (files.length === 0) {
-            return iAbyus.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan (.db) di folder backups.' });
-          }
-
-          const restoreSelect = new StringSelectMenuBuilder()
-            .setCustomId('admin_abyus_restore_file_select')
-            .setPlaceholder('💾 Pilih Berkas Cadangan untuk Di-restore');
-
-          files.forEach(f => {
-            const size = fs.statSync(path.join(backupsDir, f)).size;
-            const sizeKb = Math.round(size / 1024);
-            restoreSelect.addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel(f.substring(0, 80))
-                .setDescription(`Ukuran: ${sizeKb} KB`)
-                .setValue(f)
-            );
-          });
-
-          const row = new ActionRowBuilder().addComponents(restoreSelect);
-          const restoreMsg = await iAbyus.editReply({
-            content: '⚠️ **RESTORE DATABASE (KRITIS)** ⚠️\n\nPilih berkas cadangan di bawah ini untuk dipulihkan. Tindakan ini akan menutup koneksi database aktif saat ini dan menimpa database utama!',
-            components: [row]
-          });
-
-          const restoreCollector = restoreMsg.createMessageComponentCollector({ time: 30000 });
-          restoreCollector.on('collect', async iRestore => {
-            if (iRestore.user.id !== author.id) return;
-            const fileToRestore = iRestore.values[0];
-            const backupPath = path.join(backupsDir, fileToRestore);
-
-            const confirmed = await askConfirmation(iRestore, author.id, `RESTORE DATABASE UTAMA MENGGUNAKAN CADANGAN \`${fileToRestore}\``);
-            if (!confirmed) {
-              restoreCollector.stop();
-              return;
-            }
-
-            try {
-              database.restoreBackup(backupPath);
-              await iRestore.followUp({ content: `✅ **RESTORE DATABASE BERHASIL!** Database utama telah dipulihkan menggunakan cadangan \`${fileToRestore}\`.`, flags: 64 });
-            } catch (restoreErr) {
-              console.error('Failed to restore backup:', restoreErr);
-              await iRestore.followUp({ content: `❌ Gagal merestore backup: ${restoreErr.message}`, flags: 64 });
-            }
-
-            restoreCollector.stop();
-            await restoreMsg.delete().catch(() => {});
-          });
-        }
-        else if (action === 'system_db_prune') {
-          const confirmed = await askConfirmation(iAbyus, author.id, "MEMBERSIHKAN LOG TRANSAKSI lama (>30 hari terakhir) untuk optimasi ukuran DB");
-          if (!confirmed) return;
-
-          try {
-            const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 86400;
-            database.run('DELETE FROM transactions WHERE created_at < ?', [thirtyDaysAgo]);
-            await iAbyus.followUp({ content: `🧹 **PRUNING SUKSES!** Berhasil menghapus baris log transaksi lama yang berumur lebih dari 30 hari.`, flags: 64 });
-          } catch (pruneErr) {
-            console.error('Pruning failed:', pruneErr);
-            await iAbyus.followUp({ content: `❌ Gagal melakukan pruning: ${pruneErr.message}`, flags: 64 });
-          }
-        }
-        else if (action === 'system_create_promo') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_abyus_create_promo_modal')
-            .setTitle('Buat Kode Promo Baru (Abyus)');
-
-          const codeInput = new TextInputBuilder()
-            .setCustomId('promo_code')
-            .setLabel('Kode Promo (Alfanumerik)')
-            .setPlaceholder('Contoh: KOSANMANTAP2026')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const coinsInput = new TextInputBuilder()
-            .setCustomId('promo_coins')
-            .setLabel('Hadiah Koin (0 jika tidak ada)')
-            .setPlaceholder('Contoh: 5000')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const itemInput = new TextInputBuilder()
-            .setCustomId('promo_item_id')
-            .setLabel('ID Item Hadiah (Kosongkan jika tidak ada)')
-            .setPlaceholder('Contoh: FOOD_PREMIUM atau LOCKPICK')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-          const qtyInput = new TextInputBuilder()
-            .setCustomId('promo_item_qty')
-            .setLabel('Jumlah Item Hadiah (0 jika tidak ada)')
-            .setPlaceholder('Contoh: 3')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(false);
-
-          const quotaInput = new TextInputBuilder()
-            .setCustomId('promo_quota')
-            .setLabel('Kuota Klaim (-1 untuk tanpa batas)')
-            .setPlaceholder('Contoh: 50')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(codeInput),
-            new ActionRowBuilder().addComponents(coinsInput),
-            new ActionRowBuilder().addComponents(itemInput),
-            new ActionRowBuilder().addComponents(qtyInput),
-            new ActionRowBuilder().addComponents(quotaInput)
-          );
-          await iAbyus.showModal(modal);
-
-          const sub = await iAbyus.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_abyus_create_promo_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            const pCode = sub.fields.getTextInputValue('promo_code').toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-            const pCoins = parseInt(sub.fields.getTextInputValue('promo_coins')) || 0;
-            const pItemId = sub.fields.getTextInputValue('promo_item_id').toUpperCase().trim() || null;
-            const pItemQty = parseInt(sub.fields.getTextInputValue('promo_item_qty')) || 0;
-            const pQuota = parseInt(sub.fields.getTextInputValue('promo_quota'));
-
-            if (!pCode) {
-              return sub.reply({ content: '❌ Kode promo tidak boleh kosong dan harus alfanumerik!', flags: 64 });
-            }
-            if (isNaN(pQuota)) {
-              return sub.reply({ content: '❌ Kuota klaim harus berupa angka bulat (-1 untuk tanpa batas)!', flags: 64 });
-            }
-
-            const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7; // Aktif 7 hari
-
-            // Simpan ke database
-            const exist = database.get('SELECT 1 FROM promo_codes WHERE code = ?', [pCode]);
-            if (exist) {
-              database.run(
-                'UPDATE promo_codes SET reward_coins = ?, reward_item_id = ?, reward_item_qty = ?, max_claims = ?, current_claims = 0, expires_at = ? WHERE code = ?',
-                [pCoins, pItemId, pItemQty, pQuota, expiresAt, pCode]
-              );
-            } else {
-              database.run(
-                'INSERT INTO promo_codes (code, reward_coins, reward_item_id, reward_item_qty, max_claims, current_claims, expires_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
-                [pCode, pCoins, pItemId, pItemQty, pQuota, expiresAt]
-              );
-            }
-
-            let rewardStr = '';
-            if (pCoins > 0) rewardStr += `• 🪙 Koin: **Rp ${pCoins.toLocaleString('id-ID')}**\n`;
-            if (pItemId && pItemQty > 0) rewardStr += `• 📦 Item: **${pItemQty}x \`${pItemId}\`**\n`;
-
-            await sub.reply({
-              content: `🎟️ **SUKSES MEMBUAT KODE PROMO!**\n\n` +
-                `• Kode: **${pCode}**\n` +
-                `• Kuota: **${pQuota === -1 ? 'Unlimited' : pQuota + ' orang'}**\n` +
-                `• Berlaku s/d: <t:${expiresAt}:F> (<t:${expiresAt}:R>)\n` +
-                `• Hadiah:\n${rewardStr || '• (Tidak ada hadiah)'}`,
-              flags: 64
-            });
-
-            const fresh = getAbyusPanelData(guildId);
-            await replyMsg.edit(fresh).catch(() => { });
-          }
-        }
-        else if (action === 'system_promo_list') {
-          await iAbyus.deferReply({ flags: 64 });
-          const promos = database.all('SELECT * FROM promo_codes ORDER BY created_at DESC LIMIT 10');
-          if (promos.length === 0) {
-            return iAbyus.editReply({ content: 'ℹ️ Belum ada kode promo terdaftar di database.' });
-          }
-
-          let listText = '🎟️ **DAFTAR KODE PROMO AKTIF (10 TERBARU):**\n\n';
-          promos.forEach((p, idx) => {
-            const limitText = p.max_claims === -1 ? 'Unlimited' : `${p.current_claims}/${p.max_claims}`;
-            const timeText = p.expires_at > 0 ? `<t:${p.expires_at}:R>` : '`Abadi`';
-            listText += `${idx + 1}. **${p.code}** — 👥 Klaim: \`${limitText}\` | ⏳ Exp: ${timeText}\n` +
-              `   └ 🎁 Hadiah: Rp ${p.reward_coins.toLocaleString('id-ID')} koin ${p.reward_item_id ? `+ ${p.reward_item_qty}x \`${p.reward_item_id}\`` : ''}\n`;
-          });
-
-          const delSelect = new StringSelectMenuBuilder()
-            .setCustomId('admin_abyus_promo_delete_select')
-            .setPlaceholder('🗑️ Pilih Kode Promo yang Ingin Dihapus');
-
-          promos.forEach(p => {
-            delSelect.addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel(`Hapus: ${p.code}`)
-                .setDescription(`Sita kode promo ${p.code}`)
-                .setValue(p.code)
-            );
-          });
-
-          const selectRow = new ActionRowBuilder().addComponents(delSelect);
-          const listMsg = await iAbyus.editReply({ content: listText, components: [selectRow] });
-
-          const delCollector = listMsg.createMessageComponentCollector({
-            filter: (d) => d.customId === 'admin_abyus_promo_delete_select' && d.user.id === author.id,
-            time: 30000,
-            max: 1
-          });
-
-          delCollector.on('collect', async (iDel) => {
-            const codeToDel = iDel.values[0];
-            database.run('DELETE FROM promo_codes WHERE code = ?', [codeToDel]);
-            database.run('DELETE FROM promo_claims WHERE code = ?', [codeToDel]);
-            await iDel.reply({ content: `🗑️ Kode promo **${codeToDel}** beserta log klaimnya berhasil dihapus!`, flags: 64 });
-            await listMsg.delete().catch(() => { });
-          });
-        }
-        else if (action === 'system_toggle_maintenance') {
-          const settings = getOrCreateEbyusSettings(guildId);
-          const newMaint = settings.maintenance_mode === 1 ? 0 : 1;
-          database.run('UPDATE ebyus_settings SET maintenance_mode = ? WHERE guild_id = ?', [newMaint, guildId]);
-          
-          await iAbyus.reply({
-            content: `🔒 **MODE PEMELIHARAAN (MAINTENANCE) DIPERBARUI!**\n\nStatus saat ini: ${newMaint === 1 ? '🔴 **AKTIF (Bot terkunci untuk warga)**' : '🟢 **NONAKTIF (Normal)**'}\n\n*Admin dan Owner tetap dapat menggunakan bot.*`,
-            flags: 64
-          });
-          const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => { });
-        }
-        else if (action === 'system_custom_broadcast') {
-          const modal = new ModalBuilder()
-            .setCustomId('admin_abyus_custom_broadcast_modal')
-            .setTitle('Kirim Pengumuman Kustom');
-
-          const chanInput = new TextInputBuilder()
-            .setCustomId('bc_channel_id')
-            .setLabel('ID Channel Berita / Announcement')
-            .setPlaceholder('Masukkan ID Channel (Contoh: 1514736636628439151)')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const titleInput = new TextInputBuilder()
-            .setCustomId('bc_title')
-            .setLabel('Judul Pengumuman')
-            .setPlaceholder('Contoh: 🚀 PEMBARUAN FITUR BOT KOSAN')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const descInput = new TextInputBuilder()
-            .setCustomId('bc_desc')
-            .setLabel('Isi Pesan Pengumuman')
-            .setPlaceholder('Tulis pesan pengumuman di sini...')
-            .setStyle(TextInputStyle.Paragraph)
-            .setRequired(true);
-
-          const mentionInput = new TextInputBuilder()
-            .setCustomId('bc_mention')
-            .setLabel('Mention (everyone / here / none)')
-            .setPlaceholder('Ketik everyone, here, atau none')
-            .setValue('none')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(chanInput),
-            new ActionRowBuilder().addComponents(titleInput),
-            new ActionRowBuilder().addComponents(descInput),
-            new ActionRowBuilder().addComponents(mentionInput)
-          );
-          await iAbyus.showModal(modal);
-
-          const sub = await iAbyus.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_abyus_custom_broadcast_modal' && s.user.id === author.id,
-            time: 120000
-          }).catch(() => null);
-
-          if (sub) {
-            const targetChanId = sub.fields.getTextInputValue('bc_channel_id').trim();
-            const bcTitle = sub.fields.getTextInputValue('bc_title').trim();
-            const bcDesc = sub.fields.getTextInputValue('bc_desc').trim();
-            const bcMention = sub.fields.getTextInputValue('bc_mention').trim().toLowerCase();
-
-            const targetChan = client.channels.cache.get(targetChanId) 
-              || await client.channels.fetch(targetChanId).catch(() => null);
-
-            if (!targetChan) {
-              return sub.reply({ content: `❌ Channel dengan ID \`${targetChanId}\` tidak ditemukan atau bot tidak memiliki akses ke sana!`, flags: 64 });
-            }
-
-            const bcEmbed = new EmbedBuilder()
-              .setColor(0x00FF88)
-              .setTitle(bcTitle)
-              .setDescription(bcDesc)
-              .setTimestamp()
-              .setFooter({ text: `Sentinel Broadcast • Administrator ${author.username}` });
-
-            let mentionContent = '';
-            if (bcMention === 'everyone') mentionContent = '@everyone';
-            else if (bcMention === 'here') mentionContent = '@here';
-
-            await targetChan.send({ content: mentionContent || undefined, embeds: [bcEmbed] });
-
-            await sub.reply({ content: `📢 **PENGUMUMAN BERHASIL DISIARKAN!**\n\nDikirim ke channel: <#${targetChanId}>`, flags: 64 });
-          }
-        }
-        else if (action === 'system_db_health') {
-          await iAbyus.deferReply({ flags: 64 });
-          try {
-            const fs = require('fs');
-            const path = require('path');
-            
-            // Check Database Size
-            const dbPath = config.DATABASE_PATH;
-            const stats = fs.statSync(dbPath);
-            const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
-            
-            // Row counts
-            const walletsCount = (database.get('SELECT COUNT(*) as count FROM wallets') || { count: 0 }).count;
-            const petsCount = (database.get('SELECT COUNT(*) as count FROM user_pets') || { count: 0 }).count;
-            const transCount = (database.get('SELECT COUNT(*) as count FROM transactions') || { count: 0 }).count;
-            const logsCount = (database.get('SELECT COUNT(*) as count FROM user_pet_logs') || { count: 0 }).count;
-            
-            // Backups count
-            const backupsDir = path.join(__dirname, '../backups');
-            const backupsCount = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir).filter(f => f.endsWith('.db')).length : 0;
-            
-            const healthEmbed = new EmbedBuilder()
-              .setColor(0x00E5FF)
-              .setTitle('📊 DASHBOARD MONITOR KESEHATAN DATABASE')
-              .setDescription(
-                `Berikut adalah status kesehatan dan statistik database SQLite Sentinel Bot:\n\n` +
-                `📁 **Info Berkas Database:**\n` +
-                `• File Path: \`${dbPath}\`\n` +
-                `• Ukuran Berkas: \`${sizeMb} MB\`\n` +
-                `• Total File Cadangan (Backups): \`${backupsCount} file cadangan\`\n\n` +
-                `📊 **Statistik Baris Data:**\n` +
-                `• Warga Terdaftar (wallets): \`${walletsCount} baris\`\n` +
-                `• Total Pet Terdaftar (user_pets): \`${petsCount} baris\`\n` +
-                `• Total Log Transaksi (transactions): \`${transCount} baris\`\n` +
-                `• Total Log Aktivitas Pet (user_pet_logs): \`${logsCount} baris\`\n\n` +
-                `🟢 **Status SQLite Engine**: \`SEHAT (Operational)\``
-              )
-              .setTimestamp()
-              .setFooter({ text: 'Sentinel Database Health Monitor' });
-              
-            await iAbyus.editReply({ embeds: [healthEmbed] });
-          } catch (healthErr) {
-            console.error('Database health check failed:', healthErr);
-            await iAbyus.editReply({ content: `❌ Gagal memuat data kesehatan database: ${healthErr.message}` });
-          }
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
@@ -6962,7 +6545,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `🦁 **Pet & Turnamen:** Pet Tamagotchi, Turnamen Pet, Quest & Misi\n` +
         `🏦 **Ekonomi & Bursa:** Bank & Finansial, Bursa Saham, Shop & VC, Ledger\n` +
         `🌱 **Gameplay & Aktivitas:** Robbery & Lapas, Cozy Garden, Troll & Prank\n` +
-        `⚙️ **Sistem & Manajemen:** Abyus & Event, Warga, Gift & Event Rewards`
+        `⚙️ **Sistem & Manajemen:** Pemeliharaan & Sistem, Abyus & Event, Warga, Gift & Event Rewards`
       )
       .setImage('attachment://admin_dashboard.png')
       .setTimestamp()
@@ -7046,6 +6629,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setLabel('─── ⚙️ SISTEM & MANAJEMEN ───')
         .setDescription('Sub-menu pengaturan bot, warga, dan event hadiah')
         .setValue('_separator_system'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚙️ Pemeliharaan & Sistem')
+        .setDescription('Toggle maintenance, db health, backup/restore db, broadcast kustom')
+        .setValue('panel_system')
+        .setEmoji('⚙️'),
       new StringSelectMenuOptionBuilder()
         .setLabel('⚡ Abyus & Event')
         .setDescription('Atur gacha mode, multiplier chat, broadcast event, stop event')
@@ -7271,6 +6859,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
           else if (val === 'panel_rob') await handleAdminRobberyPanel(iHub, client);
           else if (val === 'panel_saham') await handleAdminSahamPanel(iHub, client);
           else if (val === 'panel_abyus') await handleAdminAbyusPanel(iHub, client);
+          else if (val === 'panel_system') await handleAdminSystemPanel(iHub, client);
           else if (val === 'panel_shop') await handleAdminShopPanel(iHub, client);
           else if (val === 'panel_garden') await handleAdminGardenPanel(iHub, client);
           else if (val === 'panel_quests') await handleAdminQuestPanel(iHub, client);
@@ -8971,6 +8560,510 @@ async function handleAdminGiftPanel(messageOrInteraction, client) {
   return true;
 }
 
+async function handleAdminSystemPanel(messageOrInteraction, client) {
+  const isInteraction = !messageOrInteraction.author;
+  const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
+  const guildId = messageOrInteraction.guildId;
+
+  if (!guildId) return false;
+
+  const getSystemPanelData = (gId) => {
+    const settings = getOrCreateEbyusSettings(gId);
+    const maintStatusText = settings.maintenance_mode === 1 ? '🔴 **AKTIF (Bot Terkunci untuk Warga)**' : '🟢 **Nonaktif (Normal)**';
+
+    let embed = new EmbedBuilder()
+      .setColor(0x7C4DFF) // Royal Violet
+      .setTitle('⚙️ ADMIN CONTROL PANEL — SISTEM & PEMELIHARAAN')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setDescription(
+        `Kelola performa sistem bot, backup/restore database, toggle mode pemeliharaan, atau kirim pengumuman resmi warga:\n\n` +
+        `🔒 **Mode Pemeliharaan (Maintenance)**: ${maintStatusText}\n` +
+        `🟢 **Status SQLite Engine**: \`SEHAT (Operational)\``
+      )
+      .setTimestamp()
+      .setFooter({ text: 'Sentinel Admin • Sistem & Pemeliharaan' });
+
+    const systemSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_system_select_action')
+      .setPlaceholder('⚙️ Pilih Tindakan Pemeliharaan...');
+
+    systemSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔒 Toggle Mode Pemeliharaan (Maintenance)')
+        .setDescription('Aktifkan/nonaktifkan mode pemeliharaan bot secara instan')
+        .setValue('system_toggle_maintenance'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📢 Broadcast Pengumuman Kustom (Modal)')
+        .setDescription('Kirim pesan/embed pengumuman kustom ke channel berita')
+        .setValue('system_custom_broadcast'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Buat Kode Promo Baru (Modal)')
+        .setDescription('Membuat kode voucher promo/redeem baru untuk warga')
+        .setValue('system_create_promo'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Kelola Kode Promo Aktif')
+        .setDescription('Lihat daftar voucher aktif dan hapus voucher')
+        .setValue('system_promo_list'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📊 Monitor Kesehatan Database')
+        .setDescription('Tinjau ukuran berkas database, baris log, dan status tabel SQLite')
+        .setValue('system_db_health'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💾 Backup Database SQLite')
+        .setDescription('Buat cadangan database ekonomi saat ini')
+        .setValue('system_db_backup'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💾 Restore Database SQLite')
+        .setDescription('Pulihkan database dari cadangan yang tersedia')
+        .setValue('system_db_restore'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🧹 Prune Log Transaksi Lama (>30 hari)')
+        .setDescription('Hapus log transaksi lama untuk menghemat ruang')
+        .setValue('system_db_prune')
+    );
+
+    const actionRow = new ActionRowBuilder().addComponents(systemSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('admin_system_btn_back')
+        .setLabel('🔙 Kembali ke Hub')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('admin_system_btn_close')
+        .setLabel('❌ Tutup Panel')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [actionRow, btnRow] };
+  };
+
+  const initialData = getSystemPanelData(guildId);
+  let replyMsg;
+
+  if (isInteraction) {
+    await messageOrInteraction.update(initialData);
+    replyMsg = messageOrInteraction.message;
+  } else {
+    replyMsg = await messageOrInteraction.reply(initialData);
+  }
+
+  const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
+
+  collector.on('collect', async iSystem => {
+    const isOwner = iSystem.user.id === config.OWNER_ID;
+    const isAdmin = iSystem.member && iSystem.member.permissions.has(PermissionsBitField.Flags.Administrator);
+    if (!isOwner && !isAdmin) {
+      return iSystem.reply({ content: '❌ Akses Ditolak! Tombol/menu dashboard ini dikunci khusus untuk Owner utama & Administrator server.', flags: 64 });
+    }
+
+    try {
+      if (iSystem.customId === 'admin_system_btn_back') {
+        collector.stop('transition');
+        await handleAdminPanel(iSystem, client);
+      }
+      else if (iSystem.customId === 'admin_system_btn_close') {
+        collector.stop();
+        await replyMsg.delete().catch(() => { });
+      }
+      else if (iSystem.customId === 'admin_system_select_action') {
+        const action = iSystem.values[0];
+
+        if (action === 'system_toggle_maintenance') {
+          const settings = getOrCreateEbyusSettings(guildId);
+          const newMaint = settings.maintenance_mode === 1 ? 0 : 1;
+          database.run('UPDATE ebyus_settings SET maintenance_mode = ? WHERE guild_id = ?', [newMaint, guildId]);
+          
+          await iSystem.reply({
+            content: `🔒 **MODE PEMELIHARAAN (MAINTENANCE) DIPERBARUI!**\n\nStatus saat ini: ${newMaint === 1 ? '🔴 **AKTIF (Bot terkunci untuk warga)**' : '🟢 **NONAKTIF (Normal)**'}\n\n*Admin dan Owner tetap dapat menggunakan bot.*`,
+            flags: 64
+          });
+          const fresh = getSystemPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'system_custom_broadcast') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_system_custom_broadcast_modal')
+            .setTitle('Kirim Pengumuman Kustom');
+
+          const chanInput = new TextInputBuilder()
+            .setCustomId('bc_channel_id')
+            .setLabel('ID Channel Berita / Announcement')
+            .setPlaceholder('Masukkan ID Channel (Contoh: 1514736636628439151)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const titleInput = new TextInputBuilder()
+            .setCustomId('bc_title')
+            .setLabel('Judul Pengumuman')
+            .setPlaceholder('Contoh: 🚀 PEMBARUAN FITUR BOT KOSAN')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const descInput = new TextInputBuilder()
+            .setCustomId('bc_desc')
+            .setLabel('Isi Pesan Pengumuman')
+            .setPlaceholder('Tulis pesan pengumuman di sini...')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true);
+
+          const mentionInput = new TextInputBuilder()
+            .setCustomId('bc_mention')
+            .setLabel('Mention (everyone / here / none)')
+            .setPlaceholder('Ketik everyone, here, atau none')
+            .setValue('none')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(chanInput),
+            new ActionRowBuilder().addComponents(titleInput),
+            new ActionRowBuilder().addComponents(descInput),
+            new ActionRowBuilder().addComponents(mentionInput)
+          );
+          await iSystem.showModal(modal);
+
+          const sub = await iSystem.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_system_custom_broadcast_modal' && s.user.id === author.id,
+            time: 120000
+          }).catch(() => null);
+
+          if (sub) {
+            const targetChanId = sub.fields.getTextInputValue('bc_channel_id').trim();
+            const bcTitle = sub.fields.getTextInputValue('bc_title').trim();
+            const bcDesc = sub.fields.getTextInputValue('bc_desc').trim();
+            const bcMention = sub.fields.getTextInputValue('bc_mention').trim().toLowerCase();
+
+            const targetChan = client.channels.cache.get(targetChanId) 
+              || await client.channels.fetch(targetChanId).catch(() => null);
+
+            if (!targetChan) {
+              return sub.reply({ content: `❌ Channel dengan ID \`${targetChanId}\` tidak ditemukan atau bot tidak memiliki akses ke sana!`, flags: 64 });
+            }
+
+            const bcEmbed = new EmbedBuilder()
+              .setColor(0x00FF88)
+              .setTitle(bcTitle)
+              .setDescription(bcDesc)
+              .setTimestamp()
+              .setFooter({ text: `Sentinel Broadcast • Administrator ${author.username}` });
+
+            let mentionContent = '';
+            if (bcMention === 'everyone') mentionContent = '@everyone';
+            else if (bcMention === 'here') mentionContent = '@here';
+
+            await targetChan.send({ content: mentionContent || undefined, embeds: [bcEmbed] });
+
+            await sub.reply({ content: `📢 **PENGUMUMAN BERHASIL DISIARKAN!**\n\nDikirim ke channel: <#${targetChanId}>`, flags: 64 });
+          }
+        }
+        else if (action === 'system_create_promo') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_system_create_promo_modal')
+            .setTitle('Buat Kode Promo Baru');
+
+          const codeInput = new TextInputBuilder()
+            .setCustomId('promo_code')
+            .setLabel('Kode Promo (Alfanumerik)')
+            .setPlaceholder('Contoh: KOSANMANTAP2026')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const coinsInput = new TextInputBuilder()
+            .setCustomId('promo_coins')
+            .setLabel('Hadiah Koin (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 5000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const itemInput = new TextInputBuilder()
+            .setCustomId('promo_item_id')
+            .setLabel('ID Item Hadiah (Kosongkan jika tidak ada)')
+            .setPlaceholder('Contoh: FOOD_PREMIUM atau LOCKPICK')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('promo_item_qty')
+            .setLabel('Jumlah Item Hadiah (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 3')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const quotaInput = new TextInputBuilder()
+            .setCustomId('promo_quota')
+            .setLabel('Kuota Klaim (-1 untuk tanpa batas)')
+            .setPlaceholder('Contoh: 50')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(codeInput),
+            new ActionRowBuilder().addComponents(coinsInput),
+            new ActionRowBuilder().addComponents(itemInput),
+            new ActionRowBuilder().addComponents(qtyInput),
+            new ActionRowBuilder().addComponents(quotaInput)
+          );
+          await iSystem.showModal(modal);
+
+          const sub = await iSystem.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_system_create_promo_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const pCode = sub.fields.getTextInputValue('promo_code').toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+            const pCoins = parseInt(sub.fields.getTextInputValue('promo_coins')) || 0;
+            const pItemId = sub.fields.getTextInputValue('promo_item_id').toUpperCase().trim() || null;
+            const pItemQty = parseInt(sub.fields.getTextInputValue('promo_item_qty')) || 0;
+            const pQuota = parseInt(sub.fields.getTextInputValue('promo_quota'));
+
+            if (!pCode) {
+              return sub.reply({ content: '❌ Kode promo tidak boleh kosong dan harus alfanumerik!', flags: 64 });
+            }
+            if (isNaN(pQuota)) {
+              return sub.reply({ content: '❌ Kuota klaim harus berupa angka bulat (-1 untuk tanpa batas)!', flags: 64 });
+            }
+
+            const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7; // Aktif 7 hari
+
+            // Simpan ke database
+            const exist = database.get('SELECT 1 FROM promo_codes WHERE code = ?', [pCode]);
+            if (exist) {
+              database.run(
+                'UPDATE promo_codes SET reward_coins = ?, reward_item_id = ?, reward_item_qty = ?, max_claims = ?, current_claims = 0, expires_at = ? WHERE code = ?',
+                [pCoins, pItemId, pItemQty, pQuota, expiresAt, pCode]
+              );
+            } else {
+              database.run(
+                'INSERT INTO promo_codes (code, reward_coins, reward_item_id, reward_item_qty, max_claims, current_claims, expires_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+                [pCode, pCoins, pItemId, pItemQty, pQuota, expiresAt]
+              );
+            }
+
+            let rewardStr = '';
+            if (pCoins > 0) rewardStr += `• 🪙 Koin: **Rp ${pCoins.toLocaleString('id-ID')}**\n`;
+            if (pItemId && pItemQty > 0) rewardStr += `• 📦 Item: **${pItemQty}x \`${pItemId}\`**\n`;
+
+            await sub.reply({
+              content: `🎟️ **SUKSES MEMBUAT KODE PROMO!**\n\n` +
+                `• Kode: **${pCode}**\n` +
+                `• Kuota: **${pQuota === -1 ? 'Unlimited' : pQuota + ' orang'}**\n` +
+                `• Berlaku s/d: <t:${expiresAt}:F> (<t:${expiresAt}:R>)\n` +
+                `• Hadiah:\n${rewardStr || '• (Tidak ada hadiah)'}`,
+              flags: 64
+            });
+
+            const fresh = getSystemPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (action === 'system_promo_list') {
+          await iSystem.deferReply({ flags: 64 });
+          const promos = database.all('SELECT * FROM promo_codes ORDER BY created_at DESC LIMIT 10');
+          if (promos.length === 0) {
+            return iSystem.editReply({ content: 'ℹ️ Belum ada kode promo terdaftar di database.' });
+          }
+
+          let listText = '🎟️ **DAFTAR KODE PROMO AKTIF (10 TERBARU):**\n\n';
+          promos.forEach((p, idx) => {
+            const limitText = p.max_claims === -1 ? 'Unlimited' : `${p.current_claims}/${p.max_claims}`;
+            const timeText = p.expires_at > 0 ? `<t:${p.expires_at}:R>` : '`Abadi`';
+            listText += `${idx + 1}. **${p.code}** — 👥 Klaim: \`${limitText}\` | ⏳ Exp: ${timeText}\n` +
+              `   └ 🎁 Hadiah: Rp ${p.reward_coins.toLocaleString('id-ID')} koin ${p.reward_item_id ? `+ ${p.reward_item_qty}x \`${p.reward_item_id}\`` : ''}\n`;
+          });
+
+          const delSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_system_promo_delete_select')
+            .setPlaceholder('🗑️ Pilih Kode Promo yang Ingin Dihapus');
+
+          promos.forEach(p => {
+            delSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(`Hapus: ${p.code}`)
+                .setDescription(`Sita kode promo ${p.code}`)
+                .setValue(p.code)
+            );
+          });
+
+          const selectRow = new ActionRowBuilder().addComponents(delSelect);
+          const listMsg = await iSystem.editReply({ content: listText, components: [selectRow] });
+
+          const delCollector = listMsg.createMessageComponentCollector({
+            filter: (d) => d.customId === 'admin_system_promo_delete_select' && d.user.id === author.id,
+            time: 30000,
+            max: 1
+          });
+
+          delCollector.on('collect', async (iDel) => {
+            const codeToDel = iDel.values[0];
+            database.run('DELETE FROM promo_codes WHERE code = ?', [codeToDel]);
+            database.run('DELETE FROM promo_claims WHERE code = ?', [codeToDel]);
+            await iDel.reply({ content: `🗑️ Kode promo **${codeToDel}** beserta log klaimnya berhasil dihapus!`, flags: 64 });
+            await listMsg.delete().catch(() => { });
+          });
+        }
+        else if (action === 'system_db_health') {
+          await iSystem.deferReply({ flags: 64 });
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Check Database Size
+            const dbPath = config.DATABASE_PATH;
+            const stats = fs.statSync(dbPath);
+            const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
+            
+            // Row counts
+            const walletsCount = (database.get('SELECT COUNT(*) as count FROM wallets') || { count: 0 }).count;
+            const petsCount = (database.get('SELECT COUNT(*) as count FROM user_pets') || { count: 0 }).count;
+            const transCount = (database.get('SELECT COUNT(*) as count FROM transactions') || { count: 0 }).count;
+            const logsCount = (database.get('SELECT COUNT(*) as count FROM user_pet_logs') || { count: 0 }).count;
+            
+            // Backups count
+            const backupsDir = path.join(__dirname, '../backups');
+            const backupsCount = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir).filter(f => f.endsWith('.db')).length : 0;
+            
+            const healthEmbed = new EmbedBuilder()
+              .setColor(0x00E5FF)
+              .setTitle('📊 DASHBOARD MONITOR KESEHATAN DATABASE')
+              .setDescription(
+                `Berikut adalah status kesehatan dan statistik database SQLite Sentinel Bot:\n\n` +
+                `📁 **Info Berkas Database:**\n` +
+                `• File Path: \`${dbPath}\`\n` +
+                `• Ukuran Berkas: \`${sizeMb} MB\`\n` +
+                `• Total File Cadangan (Backups): \`${backupsCount} file cadangan\`\n\n` +
+                `📊 **Statistik Baris Data:**\n` +
+                `• Warga Terdaftar (wallets): \`${walletsCount} baris\`\n` +
+                `• Total Pet Terdaftar (user_pets): \`${petsCount} baris\`\n` +
+                `• Total Log Transaksi (transactions): \`${transCount} baris\`\n` +
+                `• Total Log Aktivitas Pet (user_pet_logs): \`${logsCount} baris\`\n\n` +
+                `🟢 **Status SQLite Engine**: \`SEHAT (Operational)\``
+              )
+              .setTimestamp()
+              .setFooter({ text: 'Sentinel Database Health Monitor' });
+              
+            await iSystem.editReply({ embeds: [healthEmbed] });
+          } catch (healthErr) {
+            console.error('Database health check failed:', healthErr);
+            await iSystem.editReply({ content: `❌ Gagal memuat data kesehatan database: ${healthErr.message}` });
+          }
+        }
+        else if (action === 'system_db_backup') {
+          await iSystem.deferReply({ flags: 64 });
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const backupsDir = path.join(__dirname, '../backups');
+            if (!fs.existsSync(backupsDir)) {
+              fs.mkdirSync(backupsDir, { recursive: true });
+            }
+            const timestamp = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').substring(0, 19);
+            const backupFile = path.join(backupsDir, `economy_backup_${timestamp}.db`);
+            
+            fs.copyFileSync(config.DATABASE_PATH, backupFile);
+
+            await iSystem.editReply({ content: `💾 **BACKUP DATABASE SUKSES!**\n\nDatabase saat ini telah dicadangkan secara aman ke:\n\`${backupFile}\`` });
+          } catch (err) {
+            console.error('Backup database failed:', err);
+            await iSystem.editReply({ content: `❌ Gagal mem-backup database: ${err.message}` });
+          }
+        }
+        else if (action === 'system_db_restore') {
+          await iSystem.deferReply({ flags: 64 });
+          const fs = require('fs');
+          const path = require('path');
+          const backupsDir = path.join(__dirname, '../backups');
+          if (!fs.existsSync(backupsDir) || fs.readdirSync(backupsDir).length === 0) {
+            return iSystem.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan database di folder backups.' });
+          }
+
+          const files = fs.readdirSync(backupsDir)
+            .filter(f => f.endsWith('.db'))
+            .sort((a, b) => fs.statSync(path.join(backupsDir, b)).mtimeMs - fs.statSync(path.join(backupsDir, a)).mtimeMs)
+            .slice(0, 5);
+
+          if (files.length === 0) {
+            return iSystem.editReply({ content: 'ℹ️ Tidak ditemukan berkas cadangan (.db) di folder backups.' });
+          }
+
+          const restoreSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_system_restore_file_select')
+            .setPlaceholder('💾 Pilih Berkas Cadangan untuk Di-restore');
+
+          files.forEach(f => {
+            const size = fs.statSync(path.join(backupsDir, f)).size;
+            const sizeKb = Math.round(size / 1024);
+            restoreSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(f.substring(0, 80))
+                .setDescription(`Ukuran: ${sizeKb} KB`)
+                .setValue(f)
+            );
+          });
+
+          const row = new ActionRowBuilder().addComponents(restoreSelect);
+          const restoreMsg = await iSystem.editReply({
+            content: '⚠️ **RESTORE DATABASE (KRITIS)** ⚠️\n\nPilih berkas cadangan di bawah ini untuk dipulihkan. Tindakan ini akan menutup koneksi database aktif saat ini dan menimpa database utama!',
+            components: [row]
+          });
+
+          const restoreCollector = restoreMsg.createMessageComponentCollector({ time: 30000 });
+          restoreCollector.on('collect', async iRestore => {
+            if (iRestore.user.id !== author.id) return;
+            const fileToRestore = iRestore.values[0];
+            const backupPath = path.join(backupsDir, fileToRestore);
+
+            const confirmed = await askConfirmation(iRestore, author.id, `RESTORE DATABASE UTAMA MENGGUNAKAN CADANGAN \`${fileToRestore}\``);
+            if (!confirmed) {
+              restoreCollector.stop();
+              return;
+            }
+
+            try {
+              database.restoreBackup(backupPath);
+              await iRestore.followUp({ content: `✅ **RESTORE DATABASE BERHASIL!** Database utama telah dipulihkan menggunakan cadangan \`${fileToRestore}\`.`, flags: 64 });
+            } catch (restoreErr) {
+              console.error('Failed to restore backup:', restoreErr);
+              await iRestore.followUp({ content: `❌ Gagal merestore backup: ${restoreErr.message}`, flags: 64 });
+            }
+
+            restoreCollector.stop();
+            await restoreMsg.delete().catch(() => {});
+          });
+        }
+        else if (action === 'system_db_prune') {
+          const confirmed = await askConfirmation(iSystem, author.id, "MEMBERSIHKAN LOG TRANSAKSI lama (>30 hari terakhir) untuk optimasi ukuran DB");
+          if (!confirmed) return;
+
+          try {
+            const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 86400;
+            database.run('DELETE FROM transactions WHERE created_at < ?', [thirtyDaysAgo]);
+            await iSystem.followUp({ content: `🧹 **PRUNING SUKSES!** Berhasil menghapus baris log transaksi lama yang berumur lebih dari 30 hari.`, flags: 64 });
+          } catch (pruneErr) {
+            console.error('Pruning failed:', pruneErr);
+            await iSystem.followUp({ content: `❌ Gagal melakukan pruning: ${pruneErr.message}`, flags: 64 });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error in System Panel Interaction:', err);
+      await iSystem.reply({ content: `❌ Terjadi kesalahan: ${err.message}`, flags: 64 }).catch(() => { });
+    }
+  });
+
+  collector.on('end', async (collected, reason) => {
+    if (reason === 'transition') return;
+    try {
+      const fresh = getSystemPanelData(guildId);
+      fresh.components = [];
+      await replyMsg.edit(fresh).catch(() => { });
+    } catch (e) { }
+  });
+
+  return true;
+}
+
 module.exports = {
   handleAdminPanel,
   handleAdminTournamentPanel,
@@ -8987,6 +9080,7 @@ module.exports = {
   handleAdminQuestPanel,
   handleAdminWargaPanel,
   handleAdminGiftPanel,
+  handleAdminSystemPanel,
   isOwnerGodModeActive,
   isOwnerProtectionActive,
   toggleOwnerProtection,
