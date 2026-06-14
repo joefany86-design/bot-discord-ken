@@ -747,6 +747,7 @@ async function startPvPChallenge(interaction, client, petName) {
         accessory: null,
         chosenAction: null,
         tier: botOpponent.tier,
+        itemsUsedCount: 0,
         statsRecap: { damageDealt: 0, damageAbsorbed: 0, dodges: 0, crits: 0 }
       }
     };
@@ -1034,7 +1035,16 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
     attacker.energy = Math.max(0, attacker.energy - 60);
     attacker.hasUsedUltimate = true;
 
-    const isMissed = Math.random() < 0.30;
+    let missChance = 0.30;
+    if (attacker.tier) {
+      const attTierIndex = TIERS.indexOf(attacker.tier);
+      if (attTierIndex >= 20) { // Diamond & Above
+        missChance = 0.05; // 5% miss chance
+      } else if (attTierIndex >= 10) { // Gold / Platinum
+        missChance = 0.10; // 10% miss chance
+      }
+    }
+    const isMissed = Math.random() < missChance;
     if (isMissed) {
       logMsg = `💨 **${attacker.name}** melancarkan Jurus Ultimate, namun meleset!`;
       if (defender.statsRecap) defender.statsRecap.dodges++;
@@ -1185,27 +1195,37 @@ async function handlePvPAction(interaction, client, actionType) {
   const playerBaseAtk = playerSpec ? (playerSpec.baseAtk || 10) : 10;
   const estimatedPlayerDmg = (playerBaseAtk + p.stat_str * 6) * 1.5;
 
+  if (b.itemsUsedCount === undefined) {
+    b.itemsUsedCount = 0;
+  }
+
   const tierIndexForItems = TIERS.indexOf(b.tier || 'BRONZE_V');
   const botHasItems = tierIndexForItems >= 5; // SILVER_V and above (index 5)
+  let maxBotItems = 1;
+  if (tierIndexForItems >= 20) {
+    maxBotItems = 3; // Diamond & Above gets 3 uses
+  } else if (tierIndexForItems >= 10) {
+    maxBotItems = 2; // Gold / Platinum gets 2 uses
+  }
   let botUsedItemThisTurn = false;
 
   // 1. VIRTUAL ITEM USAGE
-  if (botHasItems && !b.hasUsedItem) {
+  if (botHasItems && b.itemsUsedCount < maxBotItems) {
     // Virtual Medicine (heals 25% if HP is low < 30%)
     if (b.hp < b.maxHP * 0.30) {
       const healAmt = Math.round(b.maxHP * 0.25);
       b.hp = Math.min(b.maxHP, b.hp + healAmt);
-      b.hasUsedItem = true;
+      b.itemsUsedCount++;
       botUsedItemThisTurn = true;
-      combatData.logs.push(`🎒 **${b.name}** menggunakan **Ramuan Kesehatan**! (+${healAmt} HP)`);
+      combatData.logs.push(`🎒 **${b.name}** menggunakan **Ramuan Kesehatan**! (+${healAmt} HP) [Sisa Item: ${maxBotItems - b.itemsUsedCount}]`);
       botAction = 'def'; // Defend turn when using item
     }
     // Virtual Soda Energy (gains 50 SP if energy < 30% and player HP is high. Platinum (index 15) and above)
     else if (tierIndexForItems >= 15 && b.energy < 30 && p.hp > p.maxHP * 0.50 && Math.random() < 0.40) {
       b.energy = Math.min(100, b.energy + 50);
-      b.hasUsedItem = true;
+      b.itemsUsedCount++;
       botUsedItemThisTurn = true;
-      combatData.logs.push(`🥤 **${b.name}** meminum **Soda Energi**! (+50 SP)`);
+      combatData.logs.push(`🥤 **${b.name}** meminum **Soda Energi**! (+50 SP) [Sisa Item: ${maxBotItems - b.itemsUsedCount}]`);
       botAction = 'atk';
     }
   }
@@ -1337,8 +1357,10 @@ async function handlePvPAction(interaction, client, actionType) {
   if (['atk', 'skill1', 'skill2'].includes(b.chosenAction)) b.energy = Math.min(100, b.energy + 20);
 
   // 3. JRPG Speed Gauge System
+  const botTierIndex = TIERS.indexOf(b.tier || 'BRONZE_V');
+  const botSpeedMult = botTierIndex >= 10 ? 1.2 : 0.95; // Gold V (10) and above gets same speed scaling as player
   p.gauge = (p.gauge || 0) + (p.stat_dex || 10) * 1.2;
-  b.gauge = (b.gauge || 0) + (b.stat_dex || 10) * 0.95; // Dikurangi agar bot tidak terlalu mendominasi giliran
+  b.gauge = (b.gauge || 0) + (b.stat_dex || 10) * botSpeedMult;
 
   let first = p;
   let second = b;
@@ -1355,8 +1377,11 @@ async function handlePvPAction(interaction, client, actionType) {
   }
 
   first.gauge = Math.max(0, first.gauge - 100);
-  // Pemain butuh 80 gauge sisa untuk Double Action, sedangkan Bot butuh 95 gauge sisa agar lebih adil
-  const doubleActionThreshold = (first === p) ? 80 : 95;
+  // Pemain butuh 80 gauge sisa untuk Double Action. Bot di Gold V ke atas juga butuh 80, lainnya 95.
+  let doubleActionThreshold = 95;
+  if (first === p || (first === b && botTierIndex >= 10)) {
+    doubleActionThreshold = 80;
+  }
   if (first.gauge >= doubleActionThreshold) {
     doubleActionActor = first;
     first.gauge = Math.max(0, first.gauge - doubleActionThreshold);

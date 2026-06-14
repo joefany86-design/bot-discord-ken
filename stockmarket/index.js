@@ -9244,11 +9244,11 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
         `🐾 **Spesies:** ${pData.pet_type} (Lv. ${pData.level}) | ${star}\n` +
         `✨ **Poin Latihan Tersedia (TP):** 🔴 **${unusedTp} Poin**\n\n` +
         `📊 **ATRIBUT STAT GYM SAAT INI:**\n` +
-        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK)\n` +
-        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP)\n` +
-        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi Damage)\n` +
-        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | +${expSuccess.toFixed(1)}% Sukses Eksp)\n\n` +
-        `🔥 **TOTAL KEKUATAN COMBAT & UTILITY:**\n` +
+        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK | **+${(pData.stat_str || 0) * 6} ATK di PvP**)\n` +
+        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP | **+${(pData.stat_vit || 0) * 40} HP di PvP**)\n` +
+        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi DMG | **+${((pData.stat_def || 0) * 1.33).toFixed(1)}% di PvP**)\n` +
+        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)\n\n` +
+        `🔥 **TOTAL KEKUATAN COMBAT & UTILITY (Non-PvP):**\n` +
         `• ❤️ **Max HP:** \`${maxHP} HP\`\n` +
         `• ⚔️ **ATK Damage:** \`${totalAtk} ATK\`\n` +
         `• 🛡️ **Damage Reduction:** \`${totalDefPct.toFixed(1)}%\`\n` +
