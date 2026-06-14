@@ -1040,7 +1040,7 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
       let attackActionText = 'serangan biasa';
       try {
         const eq = require('./equipment');
-        const activeEquips = eq.getPetEquipment(combatData.userId || attacker.id, guildId, attacker.name);
+        const activeEquips = eq.getPetEquipment(combatData.userId || attacker.id, combatData.guildId, attacker.name);
         const weaponItem = activeEquips.find(e => e.equip_type === 'WEAPON');
         if (weaponItem && weaponItem.durability > 0) {
           const matchedEmoji = weaponItem.elementMatch ? ' 🌟' : '';
