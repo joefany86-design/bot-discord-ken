@@ -957,9 +957,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               newStatus = level >= 10 ? 'ADULT' : (newStatus === 'EGG' ? 'EGG' : 'BABY');
             }
 
-            database.run('UPDATE user_pets SET level = ?, status = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [level, newStatus, selectedTargetUserId, guildId]);
+            const tpToAdd = Math.max(0, (level - petData.level) * 3);
+            database.run('UPDATE user_pets SET level = ?, status = ?, unused_tp = unused_tp + ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [level, newStatus, tpToAdd, selectedTargetUserId, guildId]);
 
-            await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**)`, flags: 64 });
+            await sub.reply({ content: `🦁 Sukses mengatur level pet milik <@${selectedTargetUserId}> menjadi Level **${level}**! (Status: **${newStatus}**, Sisa TP bertambah: **+${tpToAdd}**)`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => { });
           }
