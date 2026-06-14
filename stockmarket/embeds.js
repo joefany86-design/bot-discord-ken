@@ -3205,7 +3205,7 @@ module.exports = {
       `• 🛡️ Equip: ${accText}\n` +
       `• 🔋 Auto: \`${pet.auto_feed === 2 ? 'VIP (Gratis)' : (pet.auto_feed === 1 ? 'Aktif' : 'Nonaktif')}\` · ⚡ Boost: \`${multText}\`\n\n` +
       `📊 **STATUS VITALITAS**\n` +
-      `• ❤️ HP: ${pbarHp}${hpStatusLabel}\n` +
+      `• ❤️ HP: ${pbarHp} \`(${maxHP * 4} PvP HP)\`${hpStatusLabel}\n` +
       `• ✨ XP: ${pbarXp}\n` +
       `• 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
       `⚔️ **JURUS TEMPUR**\n` +
