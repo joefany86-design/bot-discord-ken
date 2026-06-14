@@ -1961,11 +1961,29 @@ function calculateSuccessRate(guildId, participantIds, mapId, pathChoice = 'SAFE
       logs.push(`• **${ap.pet.pet_name}** (${petDisplay} vs Bos ${selectedMap.element}): ${elementMod > 0 ? `🟢 Keuntungan Elemen +${elementMod}%` : `🔴 Kelemahan Elemen ${elementMod}%`}`);
     }
 
-    // Modifikasi DEX (Kelincahan: +0.1% sukses flat per DEX, max +5.0%)
-    const dexBonus = Math.min(5.0, (ap.pet.stat_dex || 0) * 0.1);
+    // Modifikasi DEX (Kelincahan: +0.1% sukses flat per DEX, max +5.0% - termasuk equipment)
+    let eqBonuses = { ATK: 0, DEF: 0, HP: 0, DEX: 0 };
+    try {
+      const eq = require('./equipment');
+      const petEl = ap.pet.gacha_element || (GACHA_SPECIES[petType] ? GACHA_SPECIES[petType].element : '') || '';
+      eqBonuses = eq.getPetEquipmentStatsBonus(ap.userId, guildId, ap.pet.pet_name, petEl) || { ATK: 0, DEF: 0, HP: 0, DEX: 0 };
+    } catch (e) {}
+
+    const totalDex = (ap.pet.stat_dex || 0) + (eqBonuses.DEX || 0);
+    const dexBonus = Math.min(5.0, totalDex * 0.1);
     if (dexBonus > 0) {
       totalModifications += dexBonus;
       logs.push(`• **${ap.pet.pet_name}** (DEX Bonus Kelincahan): +${dexBonus.toFixed(1)}% Peluang Sukses`);
+    }
+
+    // Equipment Power Bonus (ATK + DEF + HP/10)
+    const equipPower = (eqBonuses.ATK || 0) + (eqBonuses.DEF || 0) + Math.floor((eqBonuses.HP || 0) / 10);
+    if (equipPower > 0) {
+      const equipBonus = Math.min(10.0, equipPower * 0.02); // +1% per 50 power, max 10%
+      if (equipBonus > 0) {
+        totalModifications += equipBonus;
+        logs.push(`• **${ap.pet.pet_name}** (Bonus Equipment Power +${equipPower}): +${equipBonus.toFixed(1)}% Peluang Sukses`);
+      }
     }
   });
 
@@ -2152,6 +2170,12 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
       activePets.forEach(ap => {
         // Increment daily expedition count
         checkExpeditionLimit(ap.userId, guildId, false);
+
+        // Decrease durability of equipped items by 5 points
+        db.run(
+          "UPDATE pet_equipment SET durability = CASE WHEN durability - 5 < 0 THEN 0 ELSE durability - 5 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
+          [ap.userId, guildId, ap.pet.pet_name]
+        );
 
         // Berikan Koin
         economy.addBalance(ap.userId, guildId, prizePerPerson, 'PET_EXPEDITION_REWARD');
@@ -3636,6 +3660,12 @@ function executeExpeditionQteFailure(guildId, participantIds, failedUserId, reas
     activePets.forEach(ap => {
       // Increment daily expedition count
       checkExpeditionLimit(ap.userId, guildId, false);
+
+      // Decrease durability of equipped items by 5 points
+      db.run(
+        "UPDATE pet_equipment SET durability = CASE WHEN durability - 5 < 0 THEN 0 ELSE durability - 5 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
+        [ap.userId, guildId, ap.pet.pet_name]
+      );
 
       const isGod = isGodPet(ap.pet);
       const maxHP = getMaxHP(ap.pet);
