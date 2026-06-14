@@ -910,6 +910,15 @@ function initSchema() {
         db.exec("CREATE INDEX IF NOT EXISTS idx_pet_equipment_user_guild ON pet_equipment (user_id, guild_id)");
         db.exec("CREATE INDEX IF NOT EXISTS idx_pet_equipment_equipped ON pet_equipment (guild_id, user_id, equipped_pet)");
       }
+    },
+    {
+      version: 26,
+      description: "Menambahkan kolom durability, max_durability, dan element ke tabel pet_equipment",
+      run: () => {
+        addColumn('pet_equipment', 'durability', 'INTEGER DEFAULT 100');
+        addColumn('pet_equipment', 'max_durability', 'INTEGER DEFAULT 100');
+        addColumn('pet_equipment', 'element', "TEXT DEFAULT 'NONE'");
+      }
     }
   ];
 

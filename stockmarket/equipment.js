@@ -4,6 +4,7 @@ const db = require('./database');
 const EQUIP_TYPES = ['WEAPON', 'ARMOR', 'RING'];
 const RARITIES = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'];
 const STAT_TYPES = ['ATK', 'HP', 'DEF', 'DEX'];
+const ELEMENTS = ['FIRE', 'WATER', 'EARTH', 'DRAGON', 'NONE'];
 
 const STAT_BY_TYPE_AND_RARITY = {
   WEAPON: {
@@ -66,7 +67,7 @@ const EQUIP_NAMES = {
 };
 
 /**
- * Generate a random equipment drop
+ * Generate a random equipment drop with element and durability support
  */
 function generateRandomEquipment(userId, guildId) {
   // Roll rarity: COMMON 60%, RARE 25%, EPIC 11%, LEGENDARY 4%
@@ -100,12 +101,19 @@ function generateRandomEquipment(userId, guildId) {
   const names = EQUIP_NAMES[type][rarity];
   const baseName = names[Math.floor(Math.random() * names.length)];
 
+  // Assign random element (40% chance for an element, 60% chance NONE)
+  let element = 'NONE';
+  if (Math.random() < 0.40) {
+    const elList = ['FIRE', 'WATER', 'EARTH', 'DRAGON'];
+    element = elList[Math.floor(Math.random() * elList.length)];
+  }
+
   // Insert into DB
   const stmt = db.db.prepare(`
-    INSERT INTO pet_equipment (user_id, guild_id, equip_name, equip_type, rarity, stat_type, stat_value, level, equipped_pet)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, NULL)
+    INSERT INTO pet_equipment (user_id, guild_id, equip_name, equip_type, rarity, stat_type, stat_value, level, equipped_pet, durability, max_durability, element)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, NULL, 100, 100, ?)
   `);
-  const result = stmt.run(userId, guildId, baseName, type, rarity, statType, statValue);
+  const result = stmt.run(userId, guildId, baseName, type, rarity, statType, statValue, element);
   
   return {
     id: result.lastInsertRowid,
@@ -117,40 +125,65 @@ function generateRandomEquipment(userId, guildId) {
     stat_type: statType,
     stat_value: statValue,
     level: 1,
-    equipped_pet: null
+    equipped_pet: null,
+    durability: 100,
+    max_durability: 100,
+    element: element
   };
 }
 
 /**
- * Calculates current stats of an equipment based on its level
+ * Calculates current stats of an equipment based on its level, durability, and elemental affinity
  */
-function getEquipmentEffectiveStats(equip) {
+function getEquipmentEffectiveStats(equip, petElement = null) {
   if (!equip) return null;
-  // Stat increases by +10% per level above 1
-  const multiplier = 1 + (equip.level - 1) * 0.10;
+
+  // If durability is 0, item stats are disabled
+  const currentDurability = equip.durability !== undefined ? equip.durability : 100;
+  if (currentDurability <= 0) {
+    return {
+      ...equip,
+      effectiveValue: 0,
+      baseMultiplier: 0,
+      affinityMultiplier: 0,
+      durability: 0
+    };
+  }
+
+  // Base refinement multiplier (+10% per level above +1)
+  let multiplier = 1 + (equip.level - 1) * 0.10;
+
+  // Elemental Affinity Matching (Requirement 4): +15% bonus if elements match
+  let matched = false;
+  if (petElement && equip.element && equip.element !== 'NONE' && equip.element === petElement) {
+    multiplier += 0.15;
+    matched = true;
+  }
+
   const effectiveValue = Math.floor(equip.stat_value * multiplier);
   return {
     ...equip,
-    effectiveValue
+    effectiveValue,
+    elementMatch: matched
   };
 }
 
 /**
  * Get all equipment currently equipped on a pet
  */
-function getPetEquipment(userId, guildId, petName) {
+function getPetEquipment(userId, guildId, petName, petElement = null) {
   const items = db.all(
     'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
     [userId, guildId, petName]
   );
-  return items.map(getEquipmentEffectiveStats);
+  return items.map(item => getEquipmentEffectiveStats(item, petElement));
 }
 
 /**
  * Calculate total stats bonus from all equipment on a pet
  */
-function getPetEquipmentStatsBonus(userId, guildId, petName) {
-  const items = getPetEquipment(userId, guildId, petName);
+function getPetEquipmentStatsBonus(userId, guildId, petName, petElement = null) {
+  const items = getPetEquipment(userId, guildId, petName, petElement);
   const bonuses = { ATK: 0, DEF: 0, HP: 0, DEX: 0 };
   for (const item of items) {
     if (bonuses[item.stat_type] !== undefined) {
@@ -168,5 +201,6 @@ module.exports = {
   FORGE_RATES,
   EQUIP_TYPES,
   RARITIES,
-  STAT_TYPES
+  STAT_TYPES,
+  ELEMENTS
 };

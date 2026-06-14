@@ -6099,7 +6099,7 @@ async function handlePetCommand(message, client, args) {
     // Ambil tas/inventory equipment user
     const inventory = db.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
     if (inventory.length === 0) {
-      return message.reply({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) untuk mendapatkan equipment dengan peluang 15%!')] });
+      return message.reply({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) atau Gacha (`.pet equipment-gacha`) untuk mendapatkan equipment!')] });
     }
 
     const embed = new EmbedBuilder()
@@ -6107,13 +6107,21 @@ async function handlePetCommand(message, client, args) {
       .setTitle(`🎒 TAS EQUIPMENT PET: ${author.username} 🎒`)
       .setDescription(
         inventory.map(item => {
-          const eff = eq.getEquipmentEffectiveStats(item);
+          // Check element match if equipped
+          let petEl = null;
+          if (item.equipped_pet) {
+            const petObj = db.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [author.id, guildId, item.equipped_pet]);
+            if (petObj) petEl = petObj.gacha_element;
+          }
+          const eff = eq.getEquipmentEffectiveStats(item, petEl);
           const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
+          const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
+          const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
           return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
-                 `> Tipe: \`${item.equip_type}\` | Stat: **+${eff.effectiveValue} ${item.stat_type}**\n` +
-                 `> Status: ${equippedText}`;
+                 `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
+                 `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
         }).join('\n\n') +
-        `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*`
+        `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*\n*Gunakan \`.pet repair <id_equipment>\` untuk memperbaiki ketahanan (durability) equipment.*`
       )
       .setTimestamp();
     return message.reply({ embeds: [embed] });
@@ -6159,7 +6167,7 @@ async function handlePetCommand(message, client, args) {
       const successEmb = embeds.successEmbed(
         'Equipment Dipasang! 🛡️',
         `Berhasil memasang **[+${equip.level}] ${equip.equip_name}** ke **${petObj.pet_name}**!\n` +
-        `Pet Anda sekarang mendapat tambahan stat **+${equip.stat_value} ${equip.stat_type}**.`
+        `Pet Anda sekarang mendapat tambahan stat.`
       );
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
@@ -6254,6 +6262,87 @@ async function handlePetCommand(message, client, args) {
       }
     } catch (err) {
       return message.reply({ embeds: [embeds.errorEmbed('Forge Gagal!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: REPAIR (Perbaikan Durability) ──
+  if (subCommand === 'repair') {
+    const equipIdArg = args[1];
+    if (!equipIdArg) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet repair <id_equipment>`\nContoh: `.pet repair 12`')] });
+    }
+
+    const equipId = parseInt(equipIdArg);
+    if (isNaN(equipId)) {
+      return message.reply({ embeds: [embeds.errorEmbed('ID Salah!', 'ID Equipment harus berupa angka!')] });
+    }
+
+    const equip = db.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [equipId, author.id, guildId]);
+    if (!equip) {
+      return message.reply({ embeds: [embeds.errorEmbed('Equipment Tidak Ditemukan!', `Perlengkapan dengan ID \`${equipId}\` tidak ditemukan di tas Anda.`)] });
+    }
+
+    const maxDur = equip.max_durability || 100;
+    const curDur = equip.durability !== undefined ? equip.durability : 100;
+    if (curDur >= maxDur) {
+      return message.reply({ embeds: [embeds.warnEmbed('Durability Penuh!', `Perlengkapan **${equip.equip_name}** Anda masih dalam kondisi prima (\`${curDur}/${maxDur}\`!)`)] });
+    }
+
+    const missingDur = maxDur - curDur;
+    const repairCost = missingDur * 25; // 25 koin per durability point yang hilang
+
+    const wallet = economy.getWallet(author.id, guildId);
+    if (wallet.balance < repairCost) {
+      return message.reply({ embeds: [embeds.errorEmbed('Saldo Tidak Cukup!', `Biaya perbaikan durability perlengkapan ini membutuhkan **Rp ${repairCost.toLocaleString('id-ID')}** koin.\nSaldo Anda saat ini: Rp ${wallet.balance.toLocaleString('id-ID')}`)] });
+    }
+
+    try {
+      db.transaction(() => {
+        economy.subtractBalance(author.id, guildId, repairCost, 'PET_EQUIPMENT_REPAIR');
+        db.run('UPDATE pet_equipment SET durability = max_durability WHERE id = ?', [equip.id]);
+      })();
+
+      const successEmb = embeds.successEmbed(
+        '🔧 PERBAIKAN SELESAI! 🔧',
+        `Perlengkapan **${equip.equip_name}** berhasil diperbaiki kembali ke ketahanan maksimal (\`${maxDur}/${maxDur}\`)!\n` +
+        `💸 Biaya perbaikan: **Rp ${repairCost.toLocaleString('id-ID')} koin**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Perbaiki!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: EQUIPMENT-GACHA (Gacha Perlengkapan JRPG) ──
+  if (subCommand === 'equipment-gacha' || subCommand === 'gacha-equipment' || subCommand === 'gacha-equip') {
+    const gachaCost = 5000; // Rp 5.000 koin per roll
+    const wallet = economy.getWallet(author.id, guildId);
+    if (wallet.balance < gachaCost) {
+      return message.reply({ embeds: [embeds.errorEmbed('Saldo Tidak Cukup!', `Biaya Gacha JRPG Equipment membutuhkan **Rp ${gachaCost.toLocaleString('id-ID')}** koin.\nSaldo Anda saat ini: Rp ${wallet.balance.toLocaleString('id-ID')}`)] });
+    }
+
+    try {
+      const eq = require('./equipment');
+      let newEquip;
+      db.transaction(() => {
+        economy.subtractBalance(author.id, guildId, gachaCost, 'PET_EQUIPMENT_GACHA');
+        newEquip = eq.generateRandomEquipment(author.id, guildId);
+      })();
+
+      const elementEmoji = newEquip.element !== 'NONE' ? ` (${newEquip.element === 'FIRE' ? '🔥' : newEquip.element === 'WATER' ? '🌊' : newEquip.element === 'EARTH' ? '🪨' : '🐉'} ${newEquip.element})` : '';
+      const successEmb = embeds.successEmbed(
+        '🎁 GACHA EQUIPMENT BERHASIL! 🎁',
+        `Anda melakukan Gacha JRPG Perlengkapan seharga **Rp ${gachaCost.toLocaleString('id-ID')}** koin!\n\n` +
+        `🎉 **Anda mendapatkan:**\n` +
+        `• Nama: **${newEquip.equip_name}**\n` +
+        `• Tipe: \`${newEquip.equip_type}\`${elementEmoji}\n` +
+        `• Kelangkaan: **${newEquip.rarity}**\n` +
+        `• Stat Awal: **+${newEquip.stat_value} ${newEquip.stat_type}**\n\n` +
+        `*Gunakan \`.pet bag\` untuk memeriksa inventaris tas Anda.*`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gacha Gagal!', err.message)] });
     }
   }
 

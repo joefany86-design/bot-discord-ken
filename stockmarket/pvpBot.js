@@ -580,7 +580,8 @@ function calculateEffectiveStats(petObj, nowUnix) {
   // Fetch and apply equipment bonuses
   try {
     const eq = require('./equipment');
-    const eqBonuses = eq.getPetEquipmentStatsBonus(petObj.user_id, petObj.guild_id, petObj.pet_name);
+    const petElement = petObj.gacha_element || 'EARTH';
+    const eqBonuses = eq.getPetEquipmentStatsBonus(petObj.user_id, petObj.guild_id, petObj.pet_name, petElement);
     if (eqBonuses) {
       if (eqBonuses.ATK > 0) {
         str += eqBonuses.ATK; // weapon ATK acts as STR / flat ATK scaling
@@ -594,9 +595,13 @@ function calculateEffectiveStats(petObj, nowUnix) {
       if (eqBonuses.DEX > 0) {
         dex += eqBonuses.DEX;
       }
-      const activeEquips = eq.getPetEquipment(petObj.user_id, petObj.guild_id, petObj.pet_name);
+      const activeEquips = eq.getPetEquipment(petObj.user_id, petObj.guild_id, petObj.pet_name, petElement);
       if (activeEquips.length > 0) {
-        const itemNames = activeEquips.map(e => `[+${e.level}] ${e.equip_name}`).join(', ');
+        const itemNames = activeEquips.map(e => {
+          const matchedText = e.elementMatch ? ` 🌟 [Affinity Match]` : '';
+          const brokenText = e.durability <= 0 ? ' (Rusak!)' : '';
+          return `[+${e.level}] ${e.equip_name}${matchedText}${brokenText}`;
+        }).join(', ');
         logs.push(`🛡️ **Equipment Aktif:** Memakai ${itemNames} (Bonus Stat diterapkan!)`);
       }
     }
@@ -680,6 +685,12 @@ async function startPvPChallenge(interaction, client, petName) {
         [user.id, guildId, petObj.pet_name]
       );
     }
+
+    // Reduce durability (1-2 points) of equipped items (Requirement 3)
+    db.run(
+      "UPDATE pet_equipment SET durability = CASE WHEN durability - 2 < 0 THEN 0 ELSE durability - 2 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
+      [user.id, guildId, petObj.pet_name]
+    );
 
     // Increment Quest Progress
     pet.incrementQuestProgress(user.id, guildId, 'PVP_BOT', 1);
@@ -2067,6 +2078,20 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
 
   const challengerPet = pet.getPet(challengerId, guildId);
   const opponentPet = pet.getPet(opponentId, guildId);
+
+  // Reduce durability (1-2 points) of equipped items for both players (Requirement 3)
+  if (challengerPet) {
+    db.run(
+      "UPDATE pet_equipment SET durability = CASE WHEN durability - 2 < 0 THEN 0 ELSE durability - 2 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
+      [challengerId, guildId, challengerPet.pet_name]
+    );
+  }
+  if (opponentPet) {
+    db.run(
+      "UPDATE pet_equipment SET durability = CASE WHEN durability - 2 < 0 THEN 0 ELSE durability - 2 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
+      [opponentId, guildId, opponentPet.pet_name]
+    );
+  }
 
   if (!challengerPet || !opponentPet) {
     return interaction.reply({ content: '❌ Terjadi kesalahan! Pet tidak ditemukan.', flags: 64 });
