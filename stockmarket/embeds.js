@@ -3421,7 +3421,8 @@ module.exports = {
       (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
       `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
       `📦 **Persediaan Anda Saat Ini:**\n` +
-      (inventory.length > 0 ? inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n') : '*Tas pet Anda kosong.*');
+      (inventory.length > 0 ? inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n') : '*Tas pet Anda kosong.*') +
+      `\n\n👉 *Beli manual:* \`.pet buy-item <item_id> [jumlah]\``;
 
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
@@ -3446,14 +3447,14 @@ module.exports = {
           else if (item.id === 'PET_RENAME') effectDesc = 'Kartu untuk mengubah nama pet aktif';
           else if (item.id === 'COLLAR_IRON') effectDesc = 'Aksesori: +20 DEF permanen (PvP/Raid)';
           else if (item.id === 'SWORD_TOY') effectDesc = 'Aksesori: +15% ATK permanen (PvP/Raid)';
-          else if (item.id === 'SHIELD_TOY') effectDesc = 'Aksesori: -15% DMG diterima permanen (PvP/Raid)';
+          else if (item.id === 'SHIELD_TOY') effectDesc = 'Aksesori: -15% DMG diterima (PvP/Raid)';
           else if (item.id === 'LUCKY_AMULET') effectDesc = 'Jimat sekali pakai pelindung dari kematian PvP';
           
           if (!effectDesc) effectDesc = item.desc;
 
-          return `• **${item.name}** — **${formatCurrency(item.price)}**\n  *Efek: ${effectDesc}*\n  👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``;
+          return `• **${item.name}** — **${formatCurrency(item.price)}** (*ID: ${item.id.toLowerCase()}*)\n  *Efek: ${effectDesc}*`;
         })
-        .join('\n\n');
+        .join('\n');
 
       embed.addFields({
         name: cat.title,
