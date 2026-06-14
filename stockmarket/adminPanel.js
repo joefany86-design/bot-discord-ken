@@ -6826,7 +6826,13 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `💰 **Koin Beredar:** \`Rp ${(totalCoins || 0).toLocaleString('id-ID')}\`\n\n` +
         `🪙 **Chat Multiplier:** \`${multiplier}x\`\n` +
         `🎰 **Gacha Mode:** \`${gachaMode}\`\n` +
-        `📢 **Status Event:** ${eventStatusText}`
+        `📢 **Status Event:** ${eventStatusText}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📁 **KATEGORI MENU:**\n` +
+        `🦁 **Pet & Turnamen:** Pet Tamagotchi, Turnamen Pet, Quest & Misi\n` +
+        `🏦 **Ekonomi & Bursa:** Bank & Finansial, Bursa Saham, Shop & VC, Ledger\n` +
+        `🌱 **Gameplay & Aktivitas:** Robbery & Lapas, Cozy Garden, Troll & Prank\n` +
+        `⚙️ **Sistem & Manajemen:** Abyus & Event, Warga, Gift & Event Rewards`
       )
       .setImage('attachment://admin_dashboard.png')
       .setTimestamp()
@@ -6837,6 +6843,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
       .setPlaceholder('⚙️ Pilih Sub-Panel Kontrol...');
 
     selectMenu.addOptions(
+      // --- PET & TURNAMEN ---
+      new StringSelectMenuOptionBuilder()
+        .setLabel('─── 🦁 PET & TURNAMEN ───')
+        .setDescription('Sub-menu pengelolaan peliharaan, turnamen, dan quest')
+        .setValue('_separator_pet'),
       new StringSelectMenuOptionBuilder()
         .setLabel('🐾 Pet Tamagotchi')
         .setDescription('Sembuhkan HP, tetas telur, atur level, atau reset pet')
@@ -6848,45 +6859,68 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setValue('panel_tournament')
         .setEmoji('🏆'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('📋 Quest & Misi Pet')
+        .setDescription('Selesaikan quests, reset quests, kirim lootbox')
+        .setValue('panel_quests')
+        .setEmoji('📋'),
+
+      // --- EKONOMI & BURSA ---
+      new StringSelectMenuOptionBuilder()
+        .setLabel('─── 🏦 EKONOMI & BURSA ───')
+        .setDescription('Sub-menu pengelolaan uang, saham, toko, dan ledger audit')
+        .setValue('_separator_economy'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('🏦 Bank & Finansial')
         .setDescription('Suntik/potong koin, reset ekonomi, hapus pinjaman, bansos')
         .setValue('panel_bank')
         .setEmoji('🏦'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('🚓 Robbery & Lapas')
-        .setDescription('Bebaskan tahanan Lapas, reset global cooldown bank robbery')
-        .setValue('panel_rob')
-        .setEmoji('🚓'),
       new StringSelectMenuOptionBuilder()
         .setLabel('📈 Bursa Saham')
         .setDescription('Tambah/hapus saham, drop harga, bull/crash event, dividen')
         .setValue('panel_saham')
         .setEmoji('📈'),
       new StringSelectMenuOptionBuilder()
-        .setLabel('⚡ Abyus & Event')
-        .setDescription('Atur gacha mode, multiplier chat, broadcast event, stop event')
-        .setValue('panel_abyus')
-        .setEmoji('⚡'),
-      new StringSelectMenuOptionBuilder()
         .setLabel('🎭 Shop & VC ToD')
         .setDescription('Manajemen penjualan role server, set stok role, control ToD VC')
         .setValue('panel_shop')
         .setEmoji('🎭'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📊 Audit Ledger')
+        .setDescription('Log keluar masuk koin global/target, statistik sirkulasi total')
+        .setValue('panel_ledger')
+        .setEmoji('📊'),
+
+      // --- GAMEPLAY & AKTIVITAS ---
+      new StringSelectMenuOptionBuilder()
+        .setLabel('─── 🌱 GAMEPLAY & AKTIVITAS ───')
+        .setDescription('Sub-menu pengelolaan kriminalitas, kebun, dan keusilan')
+        .setValue('_separator_gameplay'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚓 Robbery & Lapas')
+        .setDescription('Bebaskan tahanan Lapas, reset global cooldown bank robbery')
+        .setValue('panel_rob')
+        .setEmoji('🚓'),
       new StringSelectMenuOptionBuilder()
         .setLabel('🌱 Cozy Garden')
         .setDescription('Siram instan, percepat mekar bunga, reset garden, gift benih')
         .setValue('panel_garden')
         .setEmoji('🌱'),
       new StringSelectMenuOptionBuilder()
-        .setLabel('📋 Quest & Misi Pet')
-        .setDescription('Selesaikan quests, reset quests, kirim lootbox')
-        .setValue('panel_quests')
-        .setEmoji('📋'),
-      new StringSelectMenuOptionBuilder()
         .setLabel('😜 Troll & Prank')
         .setDescription('Kutuk pet bau, alarm copet palsu, ilusi bursa hancur, sel VIP reot')
         .setValue('panel_troll')
         .setEmoji('😜'),
+
+      // --- SISTEM & MANAJEMEN ---
+      new StringSelectMenuOptionBuilder()
+        .setLabel('─── ⚙️ SISTEM & MANAJEMEN ───')
+        .setDescription('Sub-menu pengaturan bot, warga, dan event hadiah')
+        .setValue('_separator_system'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚡ Abyus & Event')
+        .setDescription('Atur gacha mode, multiplier chat, broadcast event, stop event')
+        .setValue('panel_abyus')
+        .setEmoji('⚡'),
       new StringSelectMenuOptionBuilder()
         .setLabel('👥 Citizen (Warga)')
         .setDescription('Lihat status warga, atur status penjara, blacklist warga')
@@ -6896,12 +6930,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setLabel('🎁 Gift & Event Rewards')
         .setDescription('Bagi-bagi hadiah massal, event reward, set bonus')
         .setValue('panel_gift')
-        .setEmoji('🎁'),
-      new StringSelectMenuOptionBuilder()
-        .setLabel('📊 Audit Ledger')
-        .setDescription('Log keluar masuk koin global/target, statistik sirkulasi total')
-        .setValue('panel_ledger')
-        .setEmoji('📊')
+        .setEmoji('🎁')
     );
 
     const selectRow = new ActionRowBuilder().addComponents(selectMenu);
@@ -7101,6 +7130,9 @@ async function handleAdminPanel(messageOrInteraction, client) {
       try {
         if (iHub.customId === 'admin_hub_select_panel') {
           const val = iHub.values[0];
+          if (val.startsWith('_separator_')) {
+            return iHub.reply({ content: '❌ Pilihan tersebut adalah judul kategori, silakan pilih sub-panel di bawahnya!', flags: 64 });
+          }
           collector.stop('transition');
 
           if (val === 'panel_pet') await handleAdminPetPanel(iHub, client);
