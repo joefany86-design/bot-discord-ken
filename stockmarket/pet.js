@@ -1011,6 +1011,73 @@ function useItem(userId, guildId, itemId, autoBuy = true, petName = null) {
     throw new Error('Untuk menggunakan **Kartu Ganti Nama Pet**, silakan gunakan perintah:\n👉 `.pet rename <nama_baru>`');
   }
 
+  if (item.type === 'ACCESSORY') {
+    let pet = getPet(userId, guildId);
+    if (!pet) {
+      throw new Error('Anda tidak memiliki hewan peliharaan!');
+    }
+    if (pet.status === 'EGG') {
+      throw new Error('Pet Anda masih berupa telur! Mengerami telur dengan ketik `.pet` / `.pet hatch`!');
+    }
+    if (pet.status === 'DEAD') {
+      throw new Error('Pet Anda telah meninggal dunia 🪦. Ketik `.pet reset` untuk mengadopsi yang baru.');
+    }
+    if (pet.accessory === item.id) {
+      throw new Error(`Pet Anda sudah menggunakan aksesoris **${item.name}**!`);
+    }
+
+    const qty = getItemQuantity(userId, guildId, item.id);
+    if (qty <= 0) {
+      throw new Error(`Anda tidak memiliki **${item.name}**! Beli dulu di toko pet.`);
+    }
+
+    const oldAccessory = pet.accessory;
+
+    db.transaction(() => {
+      // Potong 1 item dari inventory
+      db.run(
+        'UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+        [userId, guildId, item.id]
+      );
+      db.run(
+        'DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0',
+        [userId, guildId, item.id]
+      );
+
+      // Kembalikan aksesoris lama (jika ada) ke inventory
+      if (oldAccessory) {
+        const exist = db.get('SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?', [userId, guildId, oldAccessory]);
+        if (exist) {
+          db.run(
+            'UPDATE pet_inventory SET quantity = quantity + 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+            [userId, guildId, oldAccessory]
+          );
+        } else {
+          db.run(
+            'INSERT INTO pet_inventory (user_id, guild_id, item_id, quantity) VALUES (?, ?, ?, 1)',
+            [userId, guildId, oldAccessory]
+          );
+        }
+      }
+
+      // Update aksesoris pet
+      db.run(
+        'UPDATE user_pets SET accessory = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+        [item.id, userId, guildId, pet.pet_name]
+      );
+    })();
+
+    // Ambil ulang status pet terbaru
+    const updatedPet = getPet(userId, guildId);
+
+    return {
+      item,
+      pet: updatedPet,
+      oldAccessory,
+      isEquipAccessory: true
+    };
+  }
+
   if (itemKey === 'MYSTERY_BOX_ANCIENT') {
     if (!petName || petName.trim() === '') {
       throw new Error('Harap berikan nama untuk pet baru Anda! Contoh: `.pet use MYSTERY_BOX_ANCIENT Kuro`');

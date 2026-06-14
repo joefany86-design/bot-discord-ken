@@ -3371,7 +3371,7 @@ function initStockMarket(client) {
                     return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
                   }
                   const inv = pet.getInventory(user.id, guildId);
-                  const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
+                  const usableItems = inv.filter(item => item.quantity > 0);
 
                   if (usableItems.length === 0) {
                     return iPet.reply({
@@ -3505,7 +3505,10 @@ function initStockMarket(client) {
                           `\n⏱️ *Cooldown: 30 Menit.*`;
                       } else {
                         result = pet.useItem(user.id, guildId, selectedItemId, false);
-                        if (result.item.multiplier) {
+                        if (result.isEquipAccessory) {
+                          const oldAccText = result.oldAccessory ? ` (Aksesoris sebelumnya **${pet.PET_ITEMS[result.oldAccessory].name}** dikembalikan ke tas)` : '';
+                          detailDesc = `🔮 Berhasil memasangkan aksesoris **${result.item.name}** pada pet **${result.pet.pet_name}**!${oldAccText}`;
+                        } else if (result.item.multiplier) {
                           detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${result.xpGained} XP**${result.levelUp ? ` (Naik ke Level **${result.pet.level}**! 🎉)` : ''}`;
                         } else {
                           const mins = Math.floor(result.item.cooldown / 60);
@@ -7941,7 +7944,7 @@ async function handlePetCommand(message, client, args) {
             return iPet.reply({ content: '❌ Anda tidak memiliki pet aktif!', flags: 64 });
           }
           const inv = pet.getInventory(author.id, guildId);
-          const usableItems = inv.filter(item => item.quantity > 0 && item.type !== 'ACCESSORY');
+          const usableItems = inv.filter(item => item.quantity > 0);
 
           if (usableItems.length === 0) {
             return iPet.reply({
@@ -8075,7 +8078,10 @@ async function handlePetCommand(message, client, args) {
                   `\n⏱️ *Cooldown: 30 Menit.*`;
               } else {
                 result = pet.useItem(author.id, guildId, selectedItemId, false);
-                if (result.item.multiplier) {
+                if (result.isEquipAccessory) {
+                  const oldAccText = result.oldAccessory ? ` (Aksesoris sebelumnya **${pet.PET_ITEMS[result.oldAccessory].name}** dikembalikan ke tas)` : '';
+                  detailDesc = `🔮 Berhasil memasangkan aksesoris **${result.item.name}** pada pet **${result.pet.pet_name}**!${oldAccText}`;
+                } else if (result.item.multiplier) {
                   detailDesc = `📈 Pengali XP Pet Anda sekarang menjadi **${result.item.multiplier}x** secara permanen!`;
                 } else {
                   const mins = Math.floor(result.item.cooldown / 60);
