@@ -2981,6 +2981,30 @@ module.exports = {
     else if (pet.accessory === 'SHIELD_TOY') accText = '🛡️ Tameng Mainan *(PvP DEF +15%)*';
     else if (pet.accessory === 'LUCKY_AMULET') accText = '🔮 Jimat Keberuntungan *(Resist Mati 1x)*';
 
+    // Fetch JRPG Equipment for status text
+    try {
+      const eq = require('./equipment');
+      const activeEquips = db.all(
+        'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+        [pet.user_id, pet.guild_id, pet.pet_name]
+      );
+      if (activeEquips.length > 0) {
+        const eqEmojis = { WEAPON: '⚔️ ', ARMOR: '🛡️ ', RING: '💍 ' };
+        const eqParts = activeEquips.map(item => {
+          const eff = eq.getEquipmentEffectiveStats(item, pet.gacha_element);
+          const prefix = eqEmojis[item.equip_type] || '';
+          return `${prefix}[+${item.level}] ${item.equip_name} (${item.stat_type} +${eff.effectiveValue})`;
+        });
+        if (pet.accessory) {
+          accText = `${accText} | ${eqParts.join(' | ')}`;
+        } else {
+          accText = eqParts.join(' | ');
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching equips for status embed:', err);
+    }
+
     const autoFeedLabel = pet.auto_feed === 2 ? '👑 VIP (Gratis)' : (pet.auto_feed === 1 ? '✅ ...' : '❌ Nonaktif');
 
     const elementEmojis = {
