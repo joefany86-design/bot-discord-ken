@@ -201,6 +201,11 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         .setDisabled(!targetUserId);
 
       actionSelect.addOptions(
+        // --- PERAWATAN & STATUS ---
+        new StringSelectMenuOptionBuilder()
+          .setLabel('─── 🩹 PERAWATAN & STATUS ───')
+          .setDescription('Tindakan pemulihan status, HP, dan visual pet')
+          .setValue('_separator_care'),
         new StringSelectMenuOptionBuilder()
           .setLabel('❤️ Sembuhkan & Pulihkan Pet')
           .setDescription('Mengisi HP, Kenyangan, Hidrasi & Kebahagiaan Pet menjadi 100%')
@@ -214,9 +219,19 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           .setDescription('Mengatur telur agar siap menetas saat ini juga')
           .setValue('action_hatch_pet'),
         new StringSelectMenuOptionBuilder()
-          .setLabel('🛡️ Reset Cooldown Ekspedisi')
-          .setDescription('Mereset batas harian & cooldown ekspedisi pet target')
-          .setValue('action_reset_expedition_cooldown'),
+          .setLabel('🔋 Toggle VIP Auto-Feed')
+          .setDescription('Toggle fitur Auto-Feed Gratis (VIP) untuk pet target')
+          .setValue('action_toggle_vip_autofeed'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
+          .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
+          .setValue('action_set_custom_image_modal'),
+
+        // --- PENGEMBANGAN & STATS ---
+        new StringSelectMenuOptionBuilder()
+          .setLabel('─── 🦁 PENGEMBANGAN & STATS ───')
+          .setDescription('Tindakan memodifikasi level, bintang, trait, dan status latihan')
+          .setValue('_separator_stats'),
         new StringSelectMenuOptionBuilder()
           .setLabel('🧪 Suntik Custom XP Pet (Modal)')
           .setDescription('Menambahkan jumlah XP tertentu ke Pet target')
@@ -230,6 +245,10 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           .setDescription('Mengubah Trait khusus (MUTANT, GENIUS, dll) pet target')
           .setValue('action_change_trait_pet_modal'),
         new StringSelectMenuOptionBuilder()
+          .setLabel('⭐ Paksa Bintang Pet (Modal)')
+          .setDescription('Mengubah tingkat bintang pet aktif anggota target secara langsung (1-5)')
+          .setValue('action_force_star_modal'),
+        new StringSelectMenuOptionBuilder()
           .setLabel('🏋️ Modifikasi Stat Gym Pet (Modal)')
           .setDescription('Ubah nilai STR, VIT, DEF, DEX & sisa TP target sekaligus')
           .setValue('action_set_gym_stats_modal'),
@@ -237,14 +256,48 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           .setLabel('🏋️ Reset Stat Gym Pet (Gratis)')
           .setDescription('Reset stat pet ke 0 dan refund TP gratis tanpa potong koin')
           .setValue('action_admin_reset_gym'),
+
+        // --- AKTIVITAS & MISI ---
+        new StringSelectMenuOptionBuilder()
+          .setLabel('─── ⚔️ AKTIVITAS & MISI ───')
+          .setDescription('Tindakan mereset cooldown dan progres pet di menara/ekspedisi')
+          .setValue('_separator_activity'),
         new StringSelectMenuOptionBuilder()
           .setLabel('⏳ Reset Cooldown Aktivitas')
           .setDescription('Reset cooldown Bekerja, Berburu, & Bermain pet target')
           .setValue('action_reset_activity_cooldowns'),
         new StringSelectMenuOptionBuilder()
-          .setLabel('🔋 Toggle VIP Auto-Feed')
-          .setDescription('Toggle fitur Auto-Feed Gratis (VIP) untuk pet target')
-          .setValue('action_toggle_vip_autofeed'),
+          .setLabel('🛡️ Reset Cooldown Ekspedisi')
+          .setDescription('Mereset batas harian & cooldown ekspedisi pet target')
+          .setValue('action_reset_expedition_cooldown'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏰 Atur Lantai Menara Ujian (Modal)')
+          .setDescription('Mengatur progres lantai Menara Ujian pet target')
+          .setValue('action_admin_set_floor_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🏰 Reset Tiket Harian Menara')
+          .setDescription('Mereset batas percobaan harian Menara Ujian pet target')
+          .setValue('action_admin_reset_tower_attempts'),
+
+        // --- WORLD BOSS ---
+        new StringSelectMenuOptionBuilder()
+          .setLabel('─── 👾 WORLD BOSS ───')
+          .setDescription('Kontrol memunculkan atau mengalahkan World Boss mingguan')
+          .setValue('_separator_boss'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('👹 Spawn World Boss (Modal)')
+          .setDescription('Spawn atau modifikasi status World Boss minggu ini')
+          .setValue('action_admin_spawn_boss_modal'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('☠️ Kalahkan World Boss Instan')
+          .setDescription('Mengurangi HP World Boss menjadi 0 untuk memicu distribusi hadiah')
+          .setValue('action_admin_kill_boss'),
+
+        // --- TINDAKAN BERBAHAYA ---
+        new StringSelectMenuOptionBuilder()
+          .setLabel('─── ⚙️ TINDAKAN BERBAHAYA ───')
+          .setDescription('Menghapus data pet atau memberikan pet / tiket gacha baru')
+          .setValue('_separator_danger'),
         new StringSelectMenuOptionBuilder()
           .setLabel('💀 Reset Data Pet Kandang')
           .setDescription('Menghapus total Pet target dari kandang (database)')
@@ -256,31 +309,7 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
         new StringSelectMenuOptionBuilder()
           .setLabel('🎟️ Tambah Tiket Gacha (Modal)')
           .setDescription('Menambahkan tiket gacha gratis ke inventaris anggota target')
-          .setValue('action_add_ticket_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('⭐ Paksa Bintang Pet (Modal)')
-          .setDescription('Mengubah tingkat bintang pet aktif anggota target secara langsung (1-5)')
-          .setValue('action_force_star_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('🏰 Atur Lantai Menara Ujian (Modal)')
-          .setDescription('Mengatur progres lantai Menara Ujian pet target')
-          .setValue('action_admin_set_floor_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('🏰 Reset Tiket Harian Menara')
-          .setDescription('Mereset batas percobaan harian Menara Ujian pet target')
-          .setValue('action_admin_reset_tower_attempts'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('👹 Spawn World Boss (Modal)')
-          .setDescription('Spawn atau modifikasi status World Boss minggu ini')
-          .setValue('action_admin_spawn_boss_modal'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('☠️ Kalahkan World Boss Instan')
-          .setDescription('Mengurangi HP World Boss menjadi 0 untuk memicu distribusi hadiah')
-          .setValue('action_admin_kill_boss'),
-        new StringSelectMenuOptionBuilder()
-          .setLabel('📸 Ubah Gambar Pet Custom (Modal)')
-          .setDescription('Mengubah atau menghapus gambar/GIF custom pet target')
-          .setValue('action_set_custom_image_modal')
+          .setValue('action_add_ticket_modal')
       );
 
       const actionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -803,6 +832,9 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
       }
       else if (iPet.customId === 'admin_pet_select_action') {
         const action = iPet.values[0];
+        if (action.startsWith('_separator_')) {
+          return iPet.reply({ content: '❌ Pilihan tersebut adalah judul kategori, silakan pilih tindakan di bawahnya!', flags: 64 });
+        }
         if (!selectedTargetUserId) {
           return iPet.reply({ content: '❌ Silakan pilih target anggota terlebih dahulu!', flags: 64 });
         }
