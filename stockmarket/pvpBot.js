@@ -1036,7 +1036,22 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
 
       const critText = isCrit ? ' 💥 **CRITICAL STRIKE!**' : '';
       
-      const actionName = skill ? `Skill **[${skill.name}]**` : 'serangan biasa';
+      // Fetch equipped Weapon name dynamically for aesthetic combat logs
+      let attackActionText = 'serangan biasa';
+      try {
+        const eq = require('./equipment');
+        const activeEquips = eq.getPetEquipment(combatData.userId || attacker.id, guildId, attacker.name);
+        const weaponItem = activeEquips.find(e => e.equip_type === 'WEAPON');
+        if (weaponItem && weaponItem.durability > 0) {
+          const matchedEmoji = weaponItem.elementMatch ? ' 🌟' : '';
+          const elEmoji = weaponItem.element !== 'NONE' ? ` [${weaponItem.element}]` : '';
+          attackActionText = `senjata **[+${weaponItem.level}] ${weaponItem.equip_name}**${elEmoji}${matchedEmoji}`;
+        }
+      } catch (err) {
+        console.error('Error fetching weapon for combat log:', err);
+      }
+
+      const actionName = skill ? `Skill **[${skill.name}]**` : attackActionText;
       logMsg = `⚔️ **${attacker.name}** menggunakan ${actionName} ke **${defender.name}** sebesar **${damage} DMG**!${critText}${arenaSuffix}`;
 
       // Stats tracking
