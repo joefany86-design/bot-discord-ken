@@ -2907,7 +2907,27 @@ module.exports = {
     if (isInjured) statusEmoji = '🤕 Terluka';
 
     const statusColor = isSick ? COLORS.ERROR : isWeak ? COLORS.WARN : cardColor;
-    const maxHP = getMaxHP(pet);
+    
+    let eqATK = 0, eqDEF = 0, eqHP = 0, eqDEX = 0;
+    try {
+      const eq = require('./equipment');
+      const activeEquips = db.all(
+        'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+        [pet.user_id, pet.guild_id, pet.pet_name]
+      );
+      if (activeEquips.length > 0) {
+        const eqBonuses = eq.getPetEquipmentStatsBonus(pet.user_id, pet.guild_id, pet.pet_name, pet.gacha_element);
+        eqATK = eqBonuses.ATK || 0;
+        eqDEF = eqBonuses.DEF || 0;
+        eqHP = eqBonuses.HP || 0;
+        eqDEX = eqBonuses.DEX || 0;
+      }
+    } catch (err) {
+      console.error('[Embeds] Gagal load equipment untuk status:', err);
+    }
+
+    const baseMaxHP = getMaxHP(pet);
+    const maxHP = baseMaxHP + eqHP;
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
     // Custom Progress Bars (8 Segmen)
@@ -3042,7 +3062,8 @@ module.exports = {
 
     // Statistik Tempur (Menghitung formula PvP yang sebenarnya)
     const specBaseAtk = speciesInfo ? (speciesInfo.baseAtk || 10) : 10;
-    const baseAtk = specBaseAtk + pet.level * 5;
+    const baseAtk = specBaseAtk + pet.level * 5 + (pet.stat_str || 0) * 2;
+    const totalAtk = baseAtk + eqATK * 2;
 
     let atkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
     const atkModifiers = [];
@@ -3062,14 +3083,19 @@ module.exports = {
       atkModifiers.push(`Bintang +${Math.round(pet.base_atk_bonus_pct * 100)}%`);
     }
 
-    const finalAtkMin = Math.round(baseAtk * atkMult * 0.8);
-    const finalAtkMax = Math.round(baseAtk * atkMult * 1.2);
-    let atkDesc = `\`${Math.round(baseAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
-    if (atkModifiers.length > 0) {
-      atkDesc += ` *(Bonus: ${atkModifiers.join(' + ')})*`;
+    const finalAtkMin = Math.round(totalAtk * atkMult * 0.8);
+    const finalAtkMax = Math.round(totalAtk * atkMult * 1.2);
+    let atkDesc = `\`${Math.round(totalAtk * atkMult)} ATK\` ➔ **${finalAtkMin}-${finalAtkMax} DMG**`;
+    const bonusLabels = [];
+    if (pet.stat_str > 0) bonusLabels.push(`STR +${pet.stat_str * 2}`);
+    if (eqATK > 0) bonusLabels.push(`Equip +${eqATK * 2}`);
+    if (atkModifiers.length > 0) bonusLabels.push(...atkModifiers);
+    if (bonusLabels.length > 0) {
+      atkDesc += ` *(Bonus: ${bonusLabels.join(' + ')})*`;
     }
 
     const specBaseDef = speciesInfo ? (speciesInfo.baseDef || 0) : 0;
+    const defGym = Math.min(50, (pet.stat_def || 0) * 0.5);
     let defMult = 1.0;
     const defModifiers = [];
     if (specBaseDef > 0) {
@@ -3088,13 +3114,19 @@ module.exports = {
     }
 
     const totalDefMult = (1.0 - (specBaseDef / 100)) * defMult * (1.0 - (pet.base_def_bonus_pct || 0.0));
-    const finalDefReduction = Math.round((1.0 - totalDefMult) * 100);
+    const baseDefReduction = Math.round((1.0 - totalDefMult) * 100);
+    const finalDefReduction = baseDefReduction + defGym + (eqDEF * 0.5);
 
     let defDesc = finalDefReduction > 0
-      ? `\`-${finalDefReduction}% DMG\` diterima`
+      ? `\`-${finalDefReduction.toFixed(1)}% DMG\` diterima`
       : '❌ Tidak Ada';
-    if (defModifiers.length > 0) {
-      defDesc += ` *(Bonus: ${defModifiers.join(' + ')})*`;
+    
+    const defBonusLabels = [];
+    if (pet.stat_def > 0) defBonusLabels.push(`DEF +${defGym.toFixed(1)}%`);
+    if (eqDEF > 0) defBonusLabels.push(`Equip +${(eqDEF * 0.5).toFixed(1)}%`);
+    if (defModifiers.length > 0) defBonusLabels.push(...defModifiers);
+    if (defBonusLabels.length > 0) {
+      defDesc += ` *(Bonus: ${defBonusLabels.join(' + ')})*`;
     }
 
     const PET_MOVES = {
