@@ -159,7 +159,7 @@ function petHasTrait(pet, traitName) {
   return traits.includes(traitName);
 }
 
-// Dapatkan Max HP dinamis berdasarkan spesies dan bintang
+// Dapatkan Max HP dinamis berdasarkan spesies, bintang, dan JRPG Equipment
 function getMaxHP(pet) {
   if (!pet) return 100;
   const speciesInfo = GACHA_SPECIES[pet.pet_type];
@@ -167,7 +167,24 @@ function getMaxHP(pet) {
   const starLevel = pet.star_level || 1;
   const hpBonus = (starLevel - 1) * 15;
   const vitBonus = (pet.stat_vit || 0) * 3; // +3 Max HP per Vitality
-  return baseHP + hpBonus + vitBonus;
+  const baseMax = baseHP + hpBonus + vitBonus;
+
+  let eqHP = 0;
+  try {
+    const activeEquips = db.all(
+      'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+      [pet.user_id, pet.guild_id, pet.pet_name]
+    );
+    if (activeEquips.length > 0) {
+      const eq = require('./equipment');
+      const eqBonuses = eq.getPetEquipmentStatsBonus(pet.user_id, pet.guild_id, pet.pet_name, pet.gacha_element);
+      eqHP = eqBonuses.HP || 0;
+    }
+  } catch (e) {
+    // Fallback if db/equipment module not loaded
+  }
+
+  return baseMax + eqHP;
 }
 
 
