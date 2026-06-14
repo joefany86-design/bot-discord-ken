@@ -7452,7 +7452,7 @@ async function handleAdminQuestPanel(messageOrInteraction, client, initialTarget
 const PET_ITEM_IDS = [
   'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
   'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
-  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X', 'PET_RENAME'
 ];
 
 function updateAdminInventory(userId, guildId, itemId, quantityChange) {
@@ -7711,7 +7711,8 @@ async function handleAdminWargaPanel(messageOrInteraction, client, initialTarget
         new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 2X (XP_2X)').setValue('XP_2X'),
         new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 4X (XP_4X)').setValue('XP_4X'),
         new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 6X (XP_6X)').setValue('XP_6X'),
-        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 8X (XP_8X)').setValue('XP_8X')
+        new StringSelectMenuOptionBuilder().setLabel('⚡ Booster XP 8X (XP_8X)').setValue('XP_8X'),
+        new StringSelectMenuOptionBuilder().setLabel('🏷️ Kartu Ganti Nama Pet (PET_RENAME)').setValue('PET_RENAME')
       );
 
       const selectRow = new ActionRowBuilder().addComponents(itemSelect);

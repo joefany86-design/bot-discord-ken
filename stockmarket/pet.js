@@ -19,7 +19,8 @@ const PET_ITEMS = {
   XP_4X: { id: 'XP_4X', name: '⚡ XP Booster 4x', price: 6000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 4.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 4x secara permanen.' },
   XP_6X: { id: 'XP_6X', name: '⚡ XP Booster 6x', price: 9000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 6.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 6x secara permanen.' },
   XP_8X: { id: 'XP_8X', name: '⚡ XP Booster 8x', price: 12000, hunger: 0, thirst: 0, hp: 0, happiness: 0, multiplier: 8.0, cooldown: 0, desc: 'Booster energi untuk mempercepat peningkatan XP pet sebesar 8x secara permanen.' },
-  MYSTERY_BOX_ANCIENT: { id: 'MYSTERY_BOX_ANCIENT', name: '🎁 Kotak Misteri Peliharaan Kuno', price: 0, type: 'CONSUMABLE', desc: 'Kotak hadiah legendaris dari kekalahan Raid Boss. Buka untuk menetaskan pet langka acak!' }
+  MYSTERY_BOX_ANCIENT: { id: 'MYSTERY_BOX_ANCIENT', name: '🎁 Kotak Misteri Peliharaan Kuno', price: 0, type: 'CONSUMABLE', desc: 'Kotak hadiah legendaris dari kekalahan Raid Boss. Buka untuk menetaskan pet langka acak!' },
+  PET_RENAME: { id: 'PET_RENAME', name: '🏷️ Kartu Ganti Nama Pet', price: 10000, desc: 'Gunakan kartu ini untuk mengubah nama peliharaan aktif Anda secara instan. Ketik: .pet rename <nama_baru>' }
 };
 
 // Konfigurasi Spesies Pet
@@ -792,6 +793,87 @@ function resetPet(userId, guildId) {
 }
 
 /**
+ * Mengganti nama pet aktif menggunakan Kartu Ganti Nama Pet (PET_RENAME).
+ */
+function renamePet(userId, guildId, newName) {
+  const petObj = getPet(userId, guildId);
+  if (!petObj) {
+    throw new Error('Anda tidak memiliki peliharaan aktif untuk diganti namanya.');
+  }
+
+  if (petObj.status === 'DEAD') {
+    throw new Error('Pet Anda sudah meninggal! Anda tidak bisa mengganti nama pet yang mati.');
+  }
+
+  const sanitized = sanitizePetName(newName);
+
+  if (petObj.pet_name === sanitized) {
+    throw new Error(`Nama pet Anda sudah **"${sanitized}"**!`);
+  }
+
+  const cardQty = getItemQuantity(userId, guildId, 'PET_RENAME');
+  if (cardQty <= 0) {
+    throw new Error('Anda tidak memiliki 🏷️ Kartu Ganti Nama Pet! Beli terlebih dahulu di toko pet seharga Rp 10.000.');
+  }
+
+  const nameExists = db.get(
+    'SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)',
+    [userId, guildId, sanitized]
+  );
+  if (nameExists) {
+    throw new Error(`Anda sudah memiliki peliharaan dengan nama **"${sanitized}"**! Harap gunakan nama lain.`);
+  }
+
+  const oldName = petObj.pet_name;
+
+  db.transaction(() => {
+    // Potong 1 Kartu Ganti Nama Pet
+    db.run(
+      'UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?',
+      [userId, guildId, 'PET_RENAME']
+    );
+    db.run(
+      'DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0',
+      [userId, guildId, 'PET_RENAME']
+    );
+
+    // Update pet_name di tabel user_pets
+    db.run(
+      'UPDATE user_pets SET pet_name = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [sanitized, userId, guildId, oldName]
+    );
+
+    // Update equipped_pet di tabel pet_equipment
+    db.run(
+      'UPDATE pet_equipment SET equipped_pet = ? WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+      [sanitized, userId, guildId, oldName]
+    );
+
+    // Update pet_name di tabel user_pet_pvp_bot
+    db.run(
+      'UPDATE user_pet_pvp_bot SET pet_name = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [sanitized, userId, guildId, oldName]
+    );
+
+    // Update pet_name di tabel world_boss_participants
+    db.run(
+      'UPDATE world_boss_participants SET pet_name = ? WHERE user_id = ? AND guild_id = ? AND pet_name = ?',
+      [sanitized, userId, guildId, oldName]
+    );
+
+    // Update pet_name di tabel tournament_participants
+    db.run(
+      'UPDATE tournament_participants SET pet_name = ? WHERE guild_id = ? AND user_id = ? AND pet_name = ?',
+      [sanitized, guildId, userId, oldName]
+    );
+
+    db.logPetAction(guildId, userId, null, sanitized, 'RENAME', `Mengubah nama pet dari "${oldName}" menjadi "${sanitized}" menggunakan 🏷️ Kartu Ganti Nama Pet.`);
+  })();
+
+  return sanitized;
+}
+
+/**
  * Mendapatkan daftar inventory barang pet.
  */
 function getInventory(userId, guildId) {
@@ -923,6 +1005,10 @@ function useItem(userId, guildId, itemId, autoBuy = true, petName = null) {
   const item = PET_ITEMS[itemKey];
   if (!item) {
     throw new Error('Item perawatan tidak valid!');
+  }
+
+  if (itemKey === 'PET_RENAME') {
+    throw new Error('Untuk menggunakan **Kartu Ganti Nama Pet**, silakan gunakan perintah:\n👉 `.pet rename <nama_baru>`');
   }
 
   if (itemKey === 'MYSTERY_BOX_ANCIENT') {
@@ -4795,6 +4881,7 @@ module.exports = {
   getPet,
   adoptPet,
   resetPet,
+  renamePet,
   getInventory,
   buyItem,
   useItem,

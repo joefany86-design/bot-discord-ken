@@ -1261,7 +1261,7 @@ async function endMatch(matchId, winnerId, reason, client) {
 const PET_ITEM_IDS = [
   'FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'MEDICINE', 'TOY', 'SODA_ENERGY', 'SOAP_PET',
   'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET',
-  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X'
+  'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X', 'PET_RENAME'
 ];
 
 function giveUserItem(userId, guildId, itemId, quantity) {

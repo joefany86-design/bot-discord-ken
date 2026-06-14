@@ -6600,6 +6600,24 @@ async function handlePetCommand(message, client, args) {
     }
   }
 
+  // ── SUB-PERINTAH: RENAME / GANTI NAMA ──
+  if (subCommand === 'rename' || subCommand === 'gantinama' || subCommand === 'ganti-nama') {
+    const newName = args.slice(1).join(' ');
+    if (!newName) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet rename <nama_baru>`\nContoh: `.pet rename Ciko`')] });
+    }
+    try {
+      const sanitized = pet.renamePet(author.id, guildId, newName);
+      const successEmb = embeds.successEmbed(
+        'Ganti Nama Pet Sukses! 🏷️',
+        `Nama peliharaan aktif Anda berhasil diubah menjadi **"${sanitized}"** menggunakan **Kartu Ganti Nama Pet**!`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Ganti Nama Gagal!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: BREED (KAWIN SILANG) ──
   if (subCommand === 'breed') {
     const partnerUser = message.mentions.users.first();
