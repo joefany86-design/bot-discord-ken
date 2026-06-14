@@ -48,16 +48,18 @@ async function safeInteractionReply(interaction, options) {
 const balCooldowns = new Map();
 // Helper to build pet shop options dynamically from pet.PET_ITEMS
 function getPetShopSelectOptions() {
-  return Object.keys(pet.PET_ITEMS).map(key => {
-    const item = pet.PET_ITEMS[key];
-    const label = `${item.name} (Rp ${item.price.toLocaleString('id-ID')})`;
-    const rawDesc = item.desc || '';
-    const desc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
-    return new StringSelectMenuOptionBuilder()
-      .setLabel(label)
-      .setDescription(desc)
-      .setValue(item.id);
-  });
+  return Object.keys(pet.PET_ITEMS)
+    .filter(key => pet.PET_ITEMS[key].price > 0)
+    .map(key => {
+      const item = pet.PET_ITEMS[key];
+      const label = `${item.name} (Rp ${item.price.toLocaleString('id-ID')})`;
+      const rawDesc = item.desc || '';
+      const desc = rawDesc.length > 95 ? rawDesc.substring(0, 92) + '...' : rawDesc;
+      return new StringSelectMenuOptionBuilder()
+        .setLabel(label)
+        .setDescription(desc)
+        .setValue(item.id);
+    });
 }
 
 /**
