@@ -859,8 +859,7 @@ async function getPortalHubData(client) {
   );
 
   const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('pet_btn_open_equipment_private_perm').setLabel('🎒 Tas Equipment').setStyle(ButtonStyle.Primary)
+    new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success)
   );
 
   const components = [row1, row2, row3];
