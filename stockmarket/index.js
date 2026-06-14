@@ -6571,11 +6571,25 @@ async function handlePetCommand(message, client, args) {
         return message.reply({ embeds: [embeds.successEmbed('Penggunaan Soda Energi Sukses! 🥤', descText)] });
       }
 
-      const res = pet.useItem(author.id, guildId, itemId, false);
+      const petNameArg = args.slice(2).join(' ');
+      const res = pet.useItem(author.id, guildId, itemId, false, petNameArg);
+      
+      let descText = '';
+      if (res.isAncientBox) {
+        const star = pet.renderStars(res.pet.star_level || 1);
+        descText = `🎉 **Selamat!** Anda telah menetaskan **${res.pullResult.name}** (${res.pullResult.rarity} ${star})!\n` +
+                   `🐾 Nama Pet: **${res.pet.pet_name}**\n` +
+                   `❤️ HP: **${res.pet.health}%** | 🍗 Kenyangan: **${res.pet.hunger}%**\n\n` +
+                   `*Pet telah dimasukkan ke kandang Anda secara aktif!*`;
+      } else if (res.item.multiplier) {
+        descText = `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${res.xpGained} XP**${res.levelUp ? ` (Naik ke Level **${res.pet.level}**! 🎉)` : ''}`;
+      } else {
+        descText = `📊 Status baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`;
+      }
+
       const successEmb = embeds.successEmbed(
-        'Penggunaan Item Sukses! ✨',
-        `Berhasil menggunakan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n` +
-        (res.item.multiplier ? `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${res.xpGained} XP**${res.levelUp ? ` (Naik ke Level **${res.pet.level}**! 🎉)` : ''}` : `📊 Status baru: Kenyangan \`${res.pet.hunger}%\`, Hidrasi \`${res.pet.thirst}%\`, HP \`${res.pet.health}%\`, Kebahagiaan \`${res.pet.happiness}%\`.`)
+        res.isAncientBox ? '🐣 Penetasan Telur Kuno Sukses! 🐣' : 'Penggunaan Item Sukses! ✨',
+        res.isAncientBox ? descText : `Berhasil menggunakan **${res.item.name}** pada pet **${res.pet.pet_name}**!\n\n${descText}`
       );
       return message.reply({ embeds: [successEmb] });
     } catch (err) {
