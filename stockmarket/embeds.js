@@ -542,6 +542,28 @@ module.exports = {
     desc += `• Elemen: **${pet.gacha_element || 'EARTH'}**\n`;
     desc += `• Bintang: **${'★'.repeat(pet.star_level || 1)}**\n`;
     desc += `• Aksesori: **${pet.accessory || 'Tanpa Aksesori'}**\n`;
+
+    // Fetch JRPG Equipment for text description
+    let equipText = 'Tanpa Perlengkapan';
+    try {
+      const database = require('./database');
+      const eq = require('./equipment');
+      const activeEquips = database.all(
+        'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+        [pet.user_id, pet.guild_id, pet.pet_name]
+      );
+      if (activeEquips.length > 0) {
+        const eqEmojis = { WEAPON: '⚔️ ', ARMOR: '🛡️ ', RING: '💍 ' };
+        equipText = activeEquips.map(item => {
+          const eff = eq.getEquipmentEffectiveStats(item, pet.gacha_element);
+          const prefix = eqEmojis[item.equip_type] || '';
+          return `${prefix}[+${item.level}] ${item.equip_name} (${item.stat_type} +${eff.effectiveValue})`;
+        }).join(', ');
+      }
+    } catch (err) {
+      console.error('Error fetching equips for petCardEmbed:', err);
+    }
+    desc += `• Perlengkapan: **${equipText}**\n`;
     desc += `• Karakter: ${traitLabel}\n\n`;
 
     desc += `📊 **Kondisi Fisik**:\n`;
@@ -851,6 +873,28 @@ module.exports = {
           desc += `• Elemen: **${pet.gacha_element || 'EARTH'}**\n`;
           desc += `• Bintang: **${'★'.repeat(pet.star_level || 1)}**\n`;
           desc += `• Aksesori: **${pet.accessory || 'Tanpa Aksesori'}**\n`;
+
+          // Fetch JRPG Equipment for text description
+          let equipText = 'Tanpa Perlengkapan';
+          try {
+            const database = require('./database');
+            const eq = require('./equipment');
+            const activeEquips = database.all(
+              'SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?',
+              [pet.user_id, pet.guild_id, pet.pet_name]
+            );
+            if (activeEquips.length > 0) {
+              const eqEmojis = { WEAPON: '⚔️ ', ARMOR: '🛡️ ', RING: '💍 ' };
+              equipText = activeEquips.map(item => {
+                const eff = eq.getEquipmentEffectiveStats(item, pet.gacha_element);
+                const prefix = eqEmojis[item.equip_type] || '';
+                return `${prefix}[+${item.level}] ${item.equip_name} (${item.stat_type} +${eff.effectiveValue})`;
+              }).join(', ');
+            }
+          } catch (err) {
+            console.error('Error fetching equips for profileEmbed:', err);
+          }
+          desc += `• Perlengkapan: **${equipText}**\n`;
           desc += `• Karakter: ${traitLabel}\n\n`;
 
           desc += `📊 **Kondisi Fisik**:\n`;
