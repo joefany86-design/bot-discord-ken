@@ -11623,6 +11623,8 @@ async function handleEconomyCommands(message, client) {
     // Perintah: .rob @user
     // ═══════════════════════════════════════════════════
     if (commandName === 'rob') {
+      const ebyusSettings = database.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+      const isAntiJail = ebyusSettings && ebyusSettings.is_active === 1 && ebyusSettings.anti_jail === 1;
       const kos = require('./kos');
       const firstArg = args[0]?.toLowerCase();
       if (firstArg === 'announcement' || firstArg === 'anoncemen' || firstArg === 'info') {
@@ -11786,7 +11788,7 @@ async function handleEconomyCommands(message, client) {
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
               `🔒 **Status Tahanan:** Anda bebas dan tidak masuk penjara!`;
           } else {
-            finalJailDuration = Math.floor(res.jailDurationSeconds * 1.5);
+            finalJailDuration = isAntiJail ? 0 : Math.floor(res.jailDurationSeconds * 1.5);
             finalFine = Math.floor(res.fine * 1.5);
             finalCompensation = Math.round(finalFine * 0.75);
 
@@ -11797,7 +11799,7 @@ async function handleEconomyCommands(message, client) {
               if (actualFine > 0 && finalCompensation > 0) {
                 economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
               }
-              const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
+              const jailUntil = isAntiJail ? 0 : (Math.floor(Date.now() / 1000) + finalJailDuration);
               database.run(
                 "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
                 [jailUntil, author.id, guildId]
@@ -11817,7 +11819,7 @@ async function handleEconomyCommands(message, client) {
               `Anda mencoba melarikan diri lewat **${routeName}**, namun polisi telah memblokade jalan dan langsung menyergap Anda!\n\n` +
               `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda)\n` +
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
-              `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
+              (isAntiJail ? `🔓 **Hukuman Penjara:** Di-bypass oleh sistem Anti-Jail! (Bebas)` : `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`);
           }
 
           const finalEmb = escaped
@@ -11829,7 +11831,7 @@ async function handleEconomyCommands(message, client) {
 
         chaseCollector.on('end', async () => {
           if (!responded) {
-            const finalJailDuration = Math.floor(res.jailDurationSeconds * 1.5);
+            const finalJailDuration = isAntiJail ? 0 : Math.floor(res.jailDurationSeconds * 1.5);
             const finalFine = Math.floor(res.fine * 1.5);
             const finalCompensation = Math.round(finalFine * 0.75);
 
@@ -11840,7 +11842,7 @@ async function handleEconomyCommands(message, client) {
               if (actualFine > 0 && finalCompensation > 0) {
                 economy.addBalance(targetUser.id, guildId, Math.min(finalCompensation, Math.round(actualFine * 0.75)), 'ROB_VICTIM_COMPENSATION');
               }
-              const jailUntil = Math.floor(Date.now() / 1000) + finalJailDuration;
+              const jailUntil = isAntiJail ? 0 : (Math.floor(Date.now() / 1000) + finalJailDuration);
               database.run(
                 "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
                 [jailUntil, author.id, guildId]
@@ -11857,10 +11859,10 @@ async function handleEconomyCommands(message, client) {
               toolText +
               (res.soapUsed ? '🧼 *Kamu terpeleset dengan Sabun Licin saat dikejar polisi, memotong hukuman penjara 50%!*\n' : '') +
               (res.lamboUsed ? '🏎️ *Kamu kabur mengendarai Lamborgini Kosan, memotong hukuman penjara sebesar 25%!*\n' : '') +
-              `Anda ragu-ragu menentukan arah pelarian, polisi virtual mengepung dan langsung menyergap Anda di tempat!\n\n` +
+              `Anda ragu-ragu menentukan arah pelarian, polisi virtual mengepung and langsung menyergap Anda di tempat!\n\n` +
               `💸 **Denda Bertambah 50%:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda)\n` +
               `🎁 **Kompensasi Korban:** **Rp ${Math.round(actualFine * 0.75).toLocaleString('id-ID')}** (75% dari denda akhir)\n` +
-              `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`;
+              (isAntiJail ? `🔓 **Hukuman Penjara:** Di-bypass oleh sistem Anti-Jail! (Bebas)` : `🔒 **Hukuman Penjara (+50%):** Dijebloskan ke **sel selama ${Math.floor(finalJailDuration / 60)} menit**!`);
 
             const failEmb = embeds.errorEmbed(resultTitle, resultDesc);
             await chaseMsg.edit({ embeds: [failEmb], components: [] }).catch(() => { });
@@ -11985,7 +11987,7 @@ async function handleEconomyCommands(message, client) {
             if (actualFine > 0) {
               economy.addBalance(targetUser.id, guildId, actualFine, 'ROB_ALARM_COMPENSATION');
             }
-            const jailUntil = Math.floor(Date.now() / 1000) + 36000;
+            const jailUntil = isAntiJail ? 0 : Math.floor(Date.now() / 1000) + 36000;
             database.run(
               "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
               [jailUntil, author.id, guildId]
@@ -12000,7 +12002,7 @@ async function handleEconomyCommands(message, client) {
             '👮 Maling Berhasil Diringkus! 🚓',
             `🚨 <@${iAlarm.user.id}> beraksi cepat dan meringkus <@${author.id}> yang sedang menyelinap!\n\n` +
             `💸 **Denda Langsung:** **Rp ${actualFine.toLocaleString('id-ID')}** (Telah dipotong dari dompet/bank Anda & dikompensasikan penuh ke korban <@${targetUser.id}>)\n` +
-            `🔒 **Hukuman Penjara:** Dijebloskan ke **sel selama 10 jam**!`
+            (isAntiJail ? `🔓 **Hukuman Penjara:** Di-bypass oleh sistem Anti-Jail! (Bebas)` : `🔒 **Hukuman Penjara:** Dijebloskan ke **sel selama 10 jam**!`)
           );
 
           await iAlarm.update({ embeds: [caughtEmb], components: [] }).catch(() => { });

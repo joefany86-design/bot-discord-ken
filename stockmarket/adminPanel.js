@@ -44,7 +44,8 @@ function getOrCreateEbyusSettings(gId) {
       gift_item_qty: 0,
       owner_god_mode: 0,
       owner_protection: 0,
-      maintenance_mode: 0
+      maintenance_mode: 0,
+      anti_jail: 0
     };
   }
   return settings;
@@ -81,6 +82,23 @@ function isOwnerProtectionActive(gId) {
 function toggleOwnerProtection(gId, active) {
   getOrCreateEbyusSettings(gId);
   database.run('UPDATE ebyus_settings SET owner_protection = ? WHERE guild_id = ?', [active ? 1 : 0, gId]);
+  return active;
+}
+
+/**
+ * Cek apakah Anti-Jail aktif (bebas dari penjara massal).
+ */
+function isAntiJailActive(gId) {
+  const settings = getOrCreateEbyusSettings(gId);
+  return settings.anti_jail === 1;
+}
+
+/**
+ * Toggle Anti-Jail ON/OFF.
+ */
+function toggleAntiJail(gId, active) {
+  getOrCreateEbyusSettings(gId);
+  database.run('UPDATE ebyus_settings SET anti_jail = ? WHERE guild_id = ?', [active ? 1 : 0, gId]);
   return active;
 }
 
@@ -4864,7 +4882,8 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       `• 📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkannya)**'}\n` +
       `• 🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
       `• 🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
-      `• ⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
+      `• ⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n` +
+      `• 🔓 **Anti-Jail Mode**: ${settings.anti_jail === 1 ? '🟢 **AKTIF (Anti Penjara)**' : '⚪ **Nonaktif**'}\n\n` +
       `🎁 **HADIAH MASSAL (DIBAGIKAN SAAT BROADCAST):**\n` +
       `• Koin Massal per Warga: ${giftCoinsText}\n` +
       `• Item Massal per Warga: ${giftItemText}\n\n` +
@@ -4940,6 +4959,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setLabel('🎒 Set Hadiah Item Massal')
         .setDescription('Mengatur item massal gratis untuk seluruh member')
         .setValue('action_set_gift_item'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`🔓 Toggle Anti-Jail: ${settings.anti_jail === 1 ? 'YA (Aktif)' : 'TIDAK (Nonaktif)'}`)
+        .setDescription('Bebaskan warga dari penjara sistem selama event Abyus aktif')
+        .setValue('action_toggle_anti_jail'),
       new StringSelectMenuOptionBuilder()
         .setLabel(`🔓 Toggle Bebaskan Tahanan: ${includeFreeAll ? 'YA (Aktif)' : 'TIDAK (Nonaktif)'}`)
         .setDescription('Mengosongkan sel tahanan Lapas saat event di-broadcast')
@@ -5020,7 +5043,15 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       }
       else if (iAbyus.customId === 'admin_abyus_select_config_action') {
         const val = iAbyus.values[0];
-        if (val === 'action_set_duration') {
+        if (val === 'action_toggle_anti_jail') {
+          const settings = getOrCreateEbyusSettings(guildId);
+          const nextState = settings.anti_jail === 1 ? 0 : 1;
+          database.run('UPDATE ebyus_settings SET anti_jail = ? WHERE guild_id = ?', [nextState, guildId]);
+          await iAbyus.reply({ content: `🔓 Mode Anti-Jail sekarang: **${nextState === 1 ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (val === 'action_set_duration') {
           const modal = new ModalBuilder()
             .setCustomId('admin_ebyus_duration_modal')
             .setTitle('Atur Durasi Event Bypass');
@@ -9273,5 +9304,7 @@ module.exports = {
   isOwnerGodModeActive,
   isOwnerProtectionActive,
   toggleOwnerProtection,
-  toggleOwnerGodMode
+  toggleOwnerGodMode,
+  isAntiJailActive,
+  toggleAntiJail
 };

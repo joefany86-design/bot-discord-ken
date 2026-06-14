@@ -926,6 +926,13 @@ function initSchema() {
       run: () => {
         addColumn('ebyus_settings', 'maintenance_mode', 'INTEGER DEFAULT 0');
       }
+    },
+    {
+      version: 28,
+      description: "Menambahkan kolom anti_jail ke ebyus_settings untuk fitur anti penjara massal",
+      run: () => {
+        addColumn('ebyus_settings', 'anti_jail', 'INTEGER DEFAULT 0');
+      }
     }
   ];
 

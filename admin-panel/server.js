@@ -158,7 +158,8 @@ const server = http.createServer((req, res) => {
         const settings = db.prepare('SELECT * FROM ebyus_settings LIMIT 1').get() || {
           gacha_mode: 'NORMAL',
           coin_multiplier: 1,
-          is_active: 0
+          is_active: 0,
+          anti_jail: 0
         };
 
         sendJSON(res, 200, {
@@ -367,7 +368,7 @@ const server = http.createServer((req, res) => {
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
         try {
-          const { gachaMode, coinMultiplier, isActive, ownerGodMode, ownerProtection, backupFile, action } = JSON.parse(body);
+          const { gachaMode, coinMultiplier, isActive, ownerGodMode, ownerProtection, antiJail, backupFile, action } = JSON.parse(body);
           
           if (action === 'restore' && backupFile) {
             const backupPath = path.join(__dirname, 'backups', backupFile);
@@ -382,8 +383,8 @@ const server = http.createServer((req, res) => {
 
           const exist = db.prepare('SELECT 1 FROM ebyus_settings WHERE guild_id = ?').get(config.TARGET_GUILD_ID);
           if (!exist) {
-            db.prepare('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, is_active, owner_god_mode, owner_protection) VALUES (?, ?, ?, ?, ?, ?)')
-              .run(config.TARGET_GUILD_ID, gachaMode || 'NORMAL', coinMultiplier || 1, isActive || 0, ownerGodMode || 0, ownerProtection || 0);
+            db.prepare('INSERT INTO ebyus_settings (guild_id, gacha_mode, coin_multiplier, is_active, owner_god_mode, owner_protection, anti_jail) VALUES (?, ?, ?, ?, ?, ?, ?)')
+              .run(config.TARGET_GUILD_ID, gachaMode || 'NORMAL', coinMultiplier || 1, isActive || 0, ownerGodMode || 0, ownerProtection || 0, antiJail || 0);
           } else {
             db.prepare(`
               UPDATE ebyus_settings 
@@ -391,11 +392,12 @@ const server = http.createServer((req, res) => {
                   coin_multiplier = COALESCE(?, coin_multiplier), 
                   is_active = COALESCE(?, is_active), 
                   owner_god_mode = COALESCE(?, owner_god_mode), 
-                  owner_protection = COALESCE(?, owner_protection)
+                  owner_protection = COALESCE(?, owner_protection),
+                  anti_jail = COALESCE(?, anti_jail)
               WHERE guild_id = ?
-            `).run(gachaMode, coinMultiplier, isActive, ownerGodMode, ownerProtection, config.TARGET_GUILD_ID);
+            `).run(gachaMode, coinMultiplier, isActive, ownerGodMode, ownerProtection, antiJail, config.TARGET_GUILD_ID);
           }
-          appendLog(`Updated Abyus config: Gacha=${gachaMode}, Multiplier=${coinMultiplier}, Active=${isActive}`);
+          appendLog(`Updated Abyus config: Gacha=${gachaMode}, Multiplier=${coinMultiplier}, Active=${isActive}, AntiJail=${antiJail}`);
           sendJSON(res, 200, { success: true, message: 'Konfigurasi berhasil disimpan!' });
         } catch (err) {
           sendJSON(res, 500, { success: false, message: err.message });

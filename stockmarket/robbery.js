@@ -15,6 +15,12 @@ const activeHeists = new Map();
  * Mendapatkan sisa detik masa penahanan penjara.
  */
 function getJailTimeRemaining(userId, guildId) {
+  // Cek apakah Anti-Jail aktif di ebyus_settings
+  const settings = db.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (settings && settings.is_active === 1 && settings.anti_jail === 1) {
+    return 0;
+  }
+
   const wallet = db.get(
     'SELECT jail_until FROM wallets WHERE user_id = ? AND guild_id = ?',
     [userId, guildId]
@@ -41,6 +47,12 @@ function getJailType(userId, guildId) {
  * Mengecek status penjara user.
  */
 function checkJail(userId, guildId, member = null) {
+  // Cek apakah Anti-Jail aktif di ebyus_settings
+  const settings = db.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (settings && settings.is_active === 1 && settings.anti_jail === 1) {
+    return { jailed: false };
+  }
+
   const remaining = getJailTimeRemaining(userId, guildId);
   if (remaining > 0) {
     const jailType = getJailType(userId, guildId);
@@ -90,6 +102,10 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
     throw new Error(`Anda tidak bisa merampok karena sedang dipenjara! Sisa waktu: ${Math.ceil(thiefJail.remaining / 60)} menit lagi.`);
   }
 
+  // Cek apakah Anti-Jail aktif di ebyus_settings
+  const ebyusSettings = db.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isAntiJail = ebyusSettings && ebyusSettings.is_active === 1 && ebyusSettings.anti_jail === 1;
+
   // Cooldown sukses rob: 10 menit (600 detik)
   const nowSec = Math.floor(Date.now() / 1000);
   const lastRob = thiefWallet.last_rob_at || 0;
@@ -133,7 +149,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
   const { isOwnerProtectionActive } = require('./adminPanel');
   const isTargetOwner = targetId === OWNER_ID;
   if (isTargetOwner && isOwnerProtectionActive(guildId)) {
-    const jailDuration = 36000; // 10 jam (36000 detik)
+    const jailDuration = isAntiJail ? 0 : 36000; // 10 jam (36000 detik)
     const thiefSavings = db.get('SELECT balance FROM bank_savings WHERE user_id = ? AND guild_id = ?', [userId, guildId]) || { balance: 0 };
     const combinedBalance = thiefWallet.balance + thiefSavings.balance;
     const fine = Math.min(combinedBalance, 10000);
@@ -144,7 +160,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
         const resFine = economy.deductFine(userId, guildId, fine, 'ROB_SULTAN_FINE');
         actualFine = resFine.totalDeducted;
       }
-      const jailUntil = Math.floor(Date.now() / 1000) + jailDuration;
+      const jailUntil = isAntiJail ? 0 : (Math.floor(Date.now() / 1000) + jailDuration);
       db.run(
         "UPDATE wallets SET jail_until = ?, jail_type = 'solo', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [jailUntil, userId, guildId]
@@ -393,7 +409,7 @@ function robSolo(userId, targetId, guildId, robberMember = null, victimMember = 
 
     // Integrasi Black Market: Sabun Licin (SOAP) memotong penjara 50%
     let soapUsed = false;
-    let jailDuration = config.robbery.JAIL_SOLO_SECONDS;
+    let jailDuration = isAntiJail ? 0 : config.robbery.JAIL_SOLO_SECONDS;
 
     // PENALTY TANPA LOCKPICK: Durasi penjara bertambah +50% karena tertangkap basah tanpa peralatan profesional
     if (!lockpickUsed) {
@@ -644,6 +660,9 @@ function executeHeist(guildId) {
     clearTimeout(lobby.timeout);
   }
   activeHeists.delete(guildId);
+
+  const ebyusSettings = db.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isAntiJail = ebyusSettings && ebyusSettings.is_active === 1 && ebyusSettings.anti_jail === 1;
 
   const participants = lobby.participants;
   const kruCount = participants.length;
@@ -934,7 +953,7 @@ function executeHeist(guildId) {
           soapUsedUsers.push(p);
         }
 
-        const userJailUntil = now + userJailSecs;
+        const userJailUntil = isAntiJail ? 0 : (now + userJailSecs);
         db.run(
           "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
           [userJailUntil, p, guildId]
@@ -1031,7 +1050,7 @@ function executeHeistQteFailure(guildId, failedUserId, reasonType) {
         soapUsedUsers.push(p);
       }
 
-      const userJailUntil = now + userJailSecs;
+      const userJailUntil = isAntiJail ? 0 : (now + userJailSecs);
       db.run(
         "UPDATE wallets SET jail_until = ?, jail_type = 'heist', jail_count = jail_count + 1 WHERE user_id = ? AND guild_id = ?",
         [userJailUntil, p, guildId]

@@ -435,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cfgMult = document.getElementById('abyus-coin-multiplier');
   const cfgActive = document.getElementById('abyus-event-active');
   const cfgGodMode = document.getElementById('abyus-god-mode');
+  const cfgAntiJail = document.getElementById('abyus-anti-jail');
   const saveAbyusBtn = document.getElementById('save-abyus-btn');
 
   // Member Grid elements
@@ -716,6 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgMult.value = data.settings.coin_multiplier || 1;
         cfgActive.value = data.settings.is_active === 1 ? '1' : '0';
         cfgGodMode.value = data.settings.owner_god_mode === 1 ? '1' : '0';
+        cfgAntiJail.value = data.settings.anti_jail === 1 ? '1' : '0';
       }
     } catch (err) {
       if (err.message !== 'Unauthorized') showToast('Koneksi server terputus', 'error');
@@ -957,7 +959,8 @@ document.addEventListener('DOMContentLoaded', () => {
           gachaMode: cfgGacha.value,
           coinMultiplier: parseInt(cfgMult.value, 10),
           isActive: parseInt(cfgActive.value, 10),
-          ownerGodMode: parseInt(cfgGodMode.value, 10)
+          ownerGodMode: parseInt(cfgGodMode.value, 10),
+          antiJail: parseInt(cfgAntiJail.value, 10)
         })
       });
       const data = await response.json();
