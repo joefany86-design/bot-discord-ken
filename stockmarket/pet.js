@@ -2172,16 +2172,8 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
   }
 
   if (isSuccess) {
-    // Sukses: Koin acak dibagi merata
-    const totalPrize = minReward + Math.floor(Math.random() * (maxReward - minReward + 1));
-    let prizePerPerson = Math.floor(totalPrize / kruCount);
-
-    // Terapkan pengali Solo vs Co-op
-    if (kruCount === 1) {
-      prizePerPerson = Math.floor(prizePerPerson * 0.3); // Solo: 30% koin
-    } else {
-      prizePerPerson = Math.floor(prizePerPerson * 1.5); // Co-op: 150% koin
-    }
+    // Sukses: Koin acak dasar ditentukan dari map
+    const basePrize = minReward + Math.floor(Math.random() * (maxReward - minReward + 1));
 
     db.transaction(() => {
       activePets.forEach(ap => {
@@ -2193,6 +2185,22 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
           "UPDATE pet_equipment SET durability = CASE WHEN durability - 5 < 0 THEN 0 ELSE durability - 5 END WHERE user_id = ? AND guild_id = ? AND equipped_pet = ?",
           [ap.userId, guildId, ap.pet.pet_name]
         );
+
+        // Tentukan koin per orang berdasarkan jumlah peserta (makin banyak semakin untung)
+        let prizePerPerson = basePrize;
+        if (kruCount === 1) {
+          prizePerPerson = Math.floor(basePrize * 0.3); // Solo: 30% koin
+        } else {
+          const multiplier = 0.5 + (0.2 * kruCount);
+          prizePerPerson = Math.floor(basePrize * multiplier); // Co-op: makin banyak peserta makin banyak koinnya
+        }
+
+        // Penalti 90% jika level pet berbeda jauh (selisih >= 15) dari level rekomendasi zona
+        const levelDiff = Math.abs(ap.pet.level - recommendedLevel);
+        if (levelDiff >= 15) {
+          prizePerPerson = Math.floor(prizePerPerson * 0.1); // Penalti 90%, hanya mendapat 10% koin
+          if (prizePerPerson < 10) prizePerPerson = 10; // Batas minimum koin agar tidak 0
+        }
 
         // Berikan Koin
         economy.addBalance(ap.userId, guildId, prizePerPerson, 'PET_EXPEDITION_REWARD');
