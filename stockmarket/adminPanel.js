@@ -4946,7 +4946,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         .setValue('action_toggle_free'),
       new StringSelectMenuOptionBuilder()
         .setLabel(`⏱️ Toggle Reset Cooldowns: ${includeResetCds ? 'YA (Aktif)' : 'TIDAK (Nonaktif)'}`)
-        .setDescription('Reset cooldown perampokan & heist saat event di-broadcast')
+        .setDescription('Reset cooldown perampokan, heist & ekspedisi pet saat event di-broadcast')
         .setValue('action_toggle_reset'),
       new StringSelectMenuOptionBuilder()
         .setLabel('📊 Lihat Status Real-time')
@@ -5236,7 +5236,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
             [guildId]
           );
           database.run(
-            'UPDATE wallets SET last_heist_at = 0, last_rob_at = 0 WHERE guild_id = ?',
+            'UPDATE wallets SET last_heist_at = 0, last_rob_at = 0, expedition_cooldown_until = 0, daily_expedition_count = 0 WHERE guild_id = ?',
             [guildId]
           );
         }
