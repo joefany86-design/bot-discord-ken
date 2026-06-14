@@ -41,7 +41,10 @@ function getOrCreateEbyusSettings(gId) {
       expires_at: 0,
       gift_coins: 0,
       gift_item_id: null,
-      gift_item_qty: 0
+      gift_item_qty: 0,
+      owner_god_mode: 0,
+      owner_protection: 0,
+      maintenance_mode: 0
     };
   }
   return settings;
