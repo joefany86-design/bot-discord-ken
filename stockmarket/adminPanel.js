@@ -8938,7 +8938,7 @@ async function handleAdminSystemPanel(messageOrInteraction, client) {
             await iLogProc.deferUpdate();
 
             const { exec } = require('child_process');
-            exec(`pm2 logs ${processName} --raw --lines 20 | cat`, (error, stdout, stderr) => {
+            exec(`tail -n 15 ~/.pm2/logs/${processName}-out.log ~/.pm2/logs/${processName}-error.log`, (error, stdout, stderr) => {
               let logOutput = '';
               if (error) {
                 logOutput += `❌ Gagal mengambil log PM2 untuk ${processName}: ${error.message}\n`;
