@@ -3195,6 +3195,18 @@ module.exports = {
       hpStatusLabel = ' ⚠️ **[Lemas]**';
     }
 
+    // PvP Damage & DEF Calculation
+    const pvpATK = specBaseAtk + ((pet.stat_str || 0) + eqATK) * 6;
+    let pvpAtkMult = pet.pet_type === 'DRAGON' ? 1.15 : 1.0;
+    if (pet.trait === 'WARRIOR') pvpAtkMult += 0.15;
+    if (pet.accessory === 'SWORD_TOY') pvpAtkMult += 0.15;
+    pvpAtkMult += (pet.base_atk_bonus_pct || 0.0);
+    
+    const pvpAtkMin = Math.round(pvpATK * pvpAtkMult * 0.8);
+    const pvpAtkMax = Math.round(pvpATK * pvpAtkMult * 1.2);
+    
+    const pvpDEF = Math.min(80, (specBaseDef + ((pet.stat_def || 0) + eqDEF) * 2.0) * (100 / 150));
+
     embed.setDescription(
       `*${flavorText}*\n\n` +
       `🧬 **KARTU TRAINER**\n` +
@@ -3209,8 +3221,8 @@ module.exports = {
       `• ✨ XP: ${pbarXp}\n` +
       `• 🍖 Makan: \`${Math.round(pet.hunger)}%\` · 💧 Minum: \`${Math.round(pet.thirst)}%\` · ⚽ Happy: \`${Math.round(pet.happiness)}%\`\n\n` +
       `⚔️ **JURUS TEMPUR**\n` +
-      `• 💥 ATK: **${moveInfo.attack}** ➔ \`${finalAtkMin}-${finalAtkMax} DMG\`\n` +
-      `• 🛡️ DEF: **${moveInfo.defense}** ➔ \`${defDesc}\`\n\n` +
+      `• 💥 ATK: **${moveInfo.attack}** ➔ \`${finalAtkMin}-${finalAtkMax} DMG\` *(\`${pvpAtkMin}-${pvpAtkMax} PvP DMG\`)*\n` +
+      `• 🛡️ DEF: **${moveInfo.defense}** ➔ \`${defDesc}\` *(\`-${pvpDEF.toFixed(1)}% PvP Reduksi\`)*\n\n` +
       `⏱️ **STATUS AKTIVITAS (CD)**\n` +
       `• 💼 Kerja: ${workCdText} · 🏹 Buru: ${huntCdText}\n` +
       `• ⚽ Main: ${playCdText} · 🗺️ Eksp: 🟢 **Siap!** · 🏰 Menara: Lantai **${(() => {
