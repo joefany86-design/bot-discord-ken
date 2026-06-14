@@ -230,10 +230,6 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
           .setDescription('Mengubah Trait khusus (MUTANT, GENIUS, dll) pet target')
           .setValue('action_change_trait_pet_modal'),
         new StringSelectMenuOptionBuilder()
-          .setLabel('🏋️ Set Unused TP Pet (Modal)')
-          .setDescription('Mengubah sisa Poin Latihan (TP) pet target')
-          .setValue('action_set_unused_tp_modal'),
-        new StringSelectMenuOptionBuilder()
           .setLabel('🏋️ Modifikasi Stat Gym Pet (Modal)')
           .setDescription('Ubah nilai STR, VIT, DEF, DEX & sisa TP target sekaligus')
           .setValue('action_set_gym_stats_modal'),
@@ -1003,50 +999,6 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
             const traitMsg = finalTrait ? `menjadi Trait **${finalTrait}**` : 'menjadi **Tanpa Trait** (NONE)';
             await sub.reply({ content: `🧬 Sukses mengubah trait pet aktif milik <@${selectedTargetUserId}> ${traitMsg}!`, flags: 64 });
-            const fresh = getPetPanelData(guildId, selectedTargetUserId);
-            await replyMsg.edit(fresh).catch(() => { });
-          }
-        }
-        else if (action === 'action_set_unused_tp_modal') {
-          const targetPet = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND is_active = 1', [selectedTargetUserId, guildId]);
-          if (!targetPet) {
-            return iPet.reply({ content: '❌ Anggota terpilih tidak memiliki peliharaan aktif!', flags: 64 });
-          }
-
-          const modal = new ModalBuilder()
-            .setCustomId('admin_pet_set_tp_modal')
-            .setTitle('Set Sisa TP Pet Member');
-
-          const tpInput = new TextInputBuilder()
-            .setCustomId('tp_amount')
-            .setLabel('Sisa Poin Latihan (TP)')
-            .setPlaceholder('Contoh: 15')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          modal.addComponents(new ActionRowBuilder().addComponents(tpInput));
-          await iPet.showModal(modal);
-
-          const sub = await iPet.awaitModalSubmit({
-            filter: (s) => s.customId === 'admin_pet_set_tp_modal' && s.user.id === author.id,
-            time: 60000
-          }).catch(() => null);
-
-          if (sub) {
-            const tpVal = parseInt(sub.fields.getTextInputValue('tp_amount'));
-            if (isNaN(tpVal) || tpVal < 0) {
-              return sub.reply({ content: '❌ Jumlah TP harus berupa angka bulat minimal 0!', flags: 64 });
-            }
-
-            const allocatedStats = (targetPet.stat_str || 0) + (targetPet.stat_vit || 0) + (targetPet.stat_def || 0) + (targetPet.stat_dex || 0);
-            const maxAllowed = targetPet.status === 'EGG' ? 0 : (targetPet.level - 1) * 3;
-            if (tpVal + allocatedStats > maxAllowed) {
-              return sub.reply({ content: `❌ Gagal! Total TP (Sisa TP + Stat teralokasi: ${tpVal + allocatedStats}) tidak boleh melebihi batas level pet yaitu ${maxAllowed} TP (Pet Lv. ${targetPet.level})!`, flags: 64 });
-            }
-
-            database.run('UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [tpVal, selectedTargetUserId, guildId]);
-
-            await sub.reply({ content: `🏋️ Sukses mengatur sisa Poin Latihan (TP) pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}> menjadi **${tpVal} TP**!`, flags: 64 });
             const fresh = getPetPanelData(guildId, selectedTargetUserId);
             await replyMsg.edit(fresh).catch(() => { });
           }
