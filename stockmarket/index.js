@@ -2998,6 +2998,18 @@ function initStockMarket(client) {
                     .setDescription('Kembangkan STR, VIT, DEF, & DEX pet Anda')
                     .setValue('pet_manage_gym')
                 );
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('⚔️ Tas Equipment')
+                    .setDescription('Periksa, pasang, atau lepas perlengkapan JRPG')
+                    .setValue('pet_manage_equipment_bag')
+                );
+                manageOptions.push(
+                  new StringSelectMenuOptionBuilder()
+                    .setLabel('🎁 Gacha Equipment')
+                    .setDescription('Gacha JRPG Perlengkapan Pet (Rp 5.000)')
+                    .setValue('pet_manage_equipment_gacha')
+                );
               }
 
               manageOptions.push(
@@ -3292,6 +3304,64 @@ function initStockMarket(client) {
                 } else if (selectedValue === 'pet_manage_gym') {
                   await iPet.deferReply({ flags: 64 });
                   await handlePetGymPanel(iPet, client, true);
+                } else if (selectedValue === 'pet_manage_equipment_bag') {
+                  await iPet.deferReply({ flags: 64 });
+                  const eq = require('./equipment');
+                  const inventory = database.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [user.id, guildId]);
+                  if (inventory.length === 0) {
+                    return iPet.followUp({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) atau Gacha untuk mendapatkannya!')], flags: 64 });
+                  }
+                  const embedBag = new EmbedBuilder()
+                    .setColor(0x00D2FF)
+                    .setTitle(`🎒 TAS EQUIPMENT PET: ${user.username} 🎒`)
+                    .setDescription(
+                      inventory.map(item => {
+                        let petEl = null;
+                        if (item.equipped_pet) {
+                          const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [user.id, guildId, item.equipped_pet]);
+                          if (petObj) petEl = petObj.gacha_element;
+                        }
+                        const eff = eq.getEquipmentEffectiveStats(item, petEl);
+                        const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
+                        const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
+                        const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
+                        return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
+                               `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
+                               `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
+                      }).join('\n\n') +
+                      `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*\n*Gunakan \`.pet repair <id_equipment>\` untuk memperbaiki durability.*`
+                    )
+                    .setTimestamp();
+                  await iPet.followUp({ embeds: [embedBag], flags: 64 });
+                } else if (selectedValue === 'pet_manage_equipment_gacha') {
+                  await iPet.deferReply({ flags: 64 });
+                  const gachaCost = 5000;
+                  const wallet = economy.getWallet(user.id, guildId);
+                  if (wallet.balance < gachaCost) {
+                    return iPet.followUp({ embeds: [embeds.errorEmbed('Saldo Tidak Cukup!', `Biaya Gacha JRPG Equipment membutuhkan **Rp ${gachaCost.toLocaleString('id-ID')}** koin.\nSaldo Anda saat ini: Rp ${wallet.balance.toLocaleString('id-ID')}`)], flags: 64 });
+                  }
+                  try {
+                    const eq = require('./equipment');
+                    let newEquip;
+                    database.transaction(() => {
+                      economy.subtractBalance(user.id, guildId, gachaCost, 'PET_EQUIPMENT_GACHA');
+                      newEquip = eq.generateRandomEquipment(user.id, guildId);
+                    })();
+                    const elementEmoji = newEquip.element !== 'NONE' ? ` (${newEquip.element === 'FIRE' ? '🔥' : newEquip.element === 'WATER' ? '🌊' : newEquip.element === 'EARTH' ? '🪨' : '🐉'} ${newEquip.element})` : '';
+                    const successEmb = embeds.successEmbed(
+                      '🎁 GACHA EQUIPMENT BERHASIL! 🎁',
+                      `Anda melakukan Gacha JRPG Perlengkapan seharga **Rp ${gachaCost.toLocaleString('id-ID')}** koin!\n\n` +
+                      `🎉 **Anda mendapatkan:**\n` +
+                      `• Nama: **${newEquip.equip_name}**\n` +
+                      `• Tipe: \`${newEquip.equip_type}\`${elementEmoji}\n` +
+                      `• Kelangkaan: **${newEquip.rarity}**\n` +
+                      `• Stat Awal: **+${newEquip.stat_value} ${newEquip.stat_type}**`
+                    );
+                    await iPet.followUp({ embeds: [successEmb], flags: 64 });
+                    await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
+                  } catch (err) {
+                    await iPet.followUp({ embeds: [embeds.errorEmbed('Gacha Gagal!', err.message)], flags: 64 });
+                  }
                 }
               } else if (iPet.customId === 'pet_btn_refresh') {
                 await iPet.deferUpdate().catch(() => {});
