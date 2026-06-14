@@ -859,7 +859,8 @@ async function getPortalHubData(client) {
   );
 
   const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setCustomId('eco_btn_open_marketplace_private_perm').setLabel('⚖️ Pasar Lelang').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('pet_btn_open_equipment_private_perm').setLabel('🎒 Tas Equipment').setStyle(ButtonStyle.Primary)
   );
 
   const components = [row1, row2, row3];
@@ -3305,34 +3306,7 @@ function initStockMarket(client) {
                   await iPet.deferReply({ flags: 64 });
                   await handlePetGymPanel(iPet, client, true);
                 } else if (selectedValue === 'pet_manage_equipment_bag') {
-                  await iPet.deferReply({ flags: 64 });
-                  const eq = require('./equipment');
-                  const inventory = database.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [user.id, guildId]);
-                  if (inventory.length === 0) {
-                    return iPet.followUp({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) atau Gacha untuk mendapatkannya!')], flags: 64 });
-                  }
-                  const embedBag = new EmbedBuilder()
-                    .setColor(0x00D2FF)
-                    .setTitle(`🎒 TAS EQUIPMENT PET: ${user.username} 🎒`)
-                    .setDescription(
-                      inventory.map(item => {
-                        let petEl = null;
-                        if (item.equipped_pet) {
-                          const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [user.id, guildId, item.equipped_pet]);
-                          if (petObj) petEl = petObj.gacha_element;
-                        }
-                        const eff = eq.getEquipmentEffectiveStats(item, petEl);
-                        const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
-                        const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
-                        const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
-                        return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
-                               `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
-                               `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
-                      }).join('\n\n') +
-                      `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*\n*Gunakan \`.pet repair <id_equipment>\` untuk memperbaiki durability.*`
-                    )
-                    .setTimestamp();
-                  await iPet.followUp({ embeds: [embedBag], flags: 64 });
+                  await handlePetEquipmentBagPanel(iPet, client, true);
                 } else if (selectedValue === 'pet_manage_equipment_gacha') {
                   await iPet.deferReply({ flags: 64 });
                   const gachaCost = 5000;
@@ -4951,6 +4925,11 @@ function initStockMarket(client) {
           } catch (err) {
             await interaction.editReply({ embeds: [embeds.errorEmbed('Gagal Memuat Misi Harian!', err.message)] }).catch(() => { });
           }
+        }
+
+        // ── PORTAL PERMANEN: TAS EQUIPMENT ──
+        else if (customId === 'pet_btn_open_equipment_private_perm') {
+          await handlePetEquipmentBagPanel(interaction, client, true);
         }
 
       } catch (err) {
