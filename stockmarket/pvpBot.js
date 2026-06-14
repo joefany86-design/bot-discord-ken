@@ -1857,65 +1857,63 @@ async function resetRankedSeason(client) {
       }
 
       // Hadiah tambahan Pet Mythic acak untuk peringkat 1
-      if (i === 0) {
-        try {
-          const mythicList = ['FENRIR', 'BAHAMUT', 'KRAKEN', 'JORMUNGANDR'];
-          const chosenType = mythicList[Math.floor(Math.random() * mythicList.length)];
-          const petInfo = pet.GACHA_SPECIES[chosenType];
-          
-          const mythicNames = {
-            FENRIR: 'Fenrir',
-            BAHAMUT: 'Bahamut',
-            KRAKEN: 'Kraken',
-            JORMUNGANDR: 'Jormungandr'
-          };
-          const baseName = mythicNames[chosenType] || 'Mythic';
-          
-          let petName = baseName;
-          let suffix = 1;
-          while (true) {
-            const exists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [row.user_id, row.guild_id, petName]);
-            if (!exists) break;
-            petName = `${baseName} ${suffix}`;
-            suffix++;
-          }
-
-          const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [row.user_id, row.guild_id]);
-          const petCount = countRow ? countRow.count : 0;
-          const isActive = petCount === 0 ? 1 : 0;
-
-          const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
-          const shuffledTraits = [...allTraits].sort(() => Math.random() - 0.5);
-          const trait1 = shuffledTraits[0];
-          const trait2 = shuffledTraits.slice(1, 3).join(',');
-
-          const now = Math.floor(Date.now() / 1000);
-          db.run(
-            `INSERT INTO user_pets 
-             (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness,
-              last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, gacha_trait2, star_level)
-             VALUES (?, ?, ?, ?, 'ADULT', 1, 0, ?, 100, 100, 100, ?, 0, ?, ?, ?, 'SEASON_RESET', 'MYTHIC', ?, ?, 1)`,
-            [row.user_id, row.guild_id, petName, chosenType, petInfo.baseHP, now, now, isActive,
-             trait1, petInfo.element, trait2]
-          );
-
-          db.logPetAction(row.guild_id, row.user_id, null, petName, 'SEASON_RESET_REWARD', `Menerima Pet Mythic ${chosenType} (${petName}) dari Hadiah Top 1 Season Reset.`);
-          
-          announcementText += `   ⭐ *Hadiah Spesial Juara 1:* **Pet Mythic ${petInfo.emoji} ${petName}** (${chosenType})!\n`;
-
-          // Simpan Riwayat Juara 1 ke Hall of Fame
-          const rewardDesc = `Pet Mythic ${petInfo.emoji} ${petName} (${chosenType}) & +1500 XP Pet`;
-          db.run(
-            `INSERT INTO pvp_season_history (season_number, user_id, guild_id, pet_name, tier, points, rank_number, reward_desc, reset_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [seasonNum, row.user_id, row.guild_id, row.pet_name, row.tier, row.points, 1, rewardDesc, now]
-          );
-
-        } catch (mythicErr) {
-          console.error('[PvP Season Reset] Failed to award mythic pet to top player:', mythicErr);
+      // Hadiah tambahan Pet Mythic acak untuk peringkat 1, 2, dan 3
+      try {
+        const mythicList = ['FENRIR', 'BAHAMUT', 'KRAKEN', 'JORMUNGANDR'];
+        const chosenType = mythicList[Math.floor(Math.random() * mythicList.length)];
+        const petInfo = pet.GACHA_SPECIES[chosenType];
+        
+        const mythicNames = {
+          FENRIR: 'Fenrir',
+          BAHAMUT: 'Bahamut',
+          KRAKEN: 'Kraken',
+          JORMUNGANDR: 'Jormungandr'
+        };
+        const baseName = mythicNames[chosenType] || 'Mythic';
+        
+        let petName = baseName;
+        let suffix = 1;
+        while (true) {
+          const exists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [row.user_id, row.guild_id, petName]);
+          if (!exists) break;
+          petName = `${baseName} ${suffix}`;
+          suffix++;
         }
-      } else {
-        // Simpan Riwayat Juara 2 & 3 ke Hall of Fame
+
+        const countRow = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [row.user_id, row.guild_id]);
+        const petCount = countRow ? countRow.count : 0;
+        const isActive = petCount === 0 ? 1 : 0;
+
+        const allTraits = ['GENIUS', 'STURDY', 'MUTANT', 'WARRIOR', 'SURVIVOR'];
+        const shuffledTraits = [...allTraits].sort(() => Math.random() - 0.5);
+        const trait1 = shuffledTraits[0];
+        const trait2 = shuffledTraits.slice(1, 3).join(',');
+
+        const now = Math.floor(Date.now() / 1000);
+        db.run(
+          `INSERT INTO user_pets 
+           (user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness,
+            last_interaction_at, hatch_at, created_at, is_active, trait, gacha_source, gacha_rarity, gacha_element, gacha_trait2, star_level)
+           VALUES (?, ?, ?, ?, 'ADULT', 1, 0, ?, 100, 100, 100, ?, 0, ?, ?, ?, 'SEASON_RESET', 'MYTHIC', ?, ?, 1)`,
+          [row.user_id, row.guild_id, petName, chosenType, petInfo.baseHP, now, now, isActive,
+           trait1, petInfo.element, trait2]
+        );
+
+        db.logPetAction(row.guild_id, row.user_id, null, petName, 'SEASON_RESET_REWARD', `Menerima Pet Mythic ${chosenType} (${petName}) dari Hadiah Top ${i + 1} Season Reset.`);
+        
+        announcementText += `   ⭐ *Hadiah Spesial Juara ${i + 1}:* **Pet Mythic ${petInfo.emoji} ${petName}** (${chosenType})!\n`;
+
+        // Simpan Riwayat Juara ke Hall of Fame
+        const rewardDesc = `Pet Mythic ${petInfo.emoji} ${petName} (${chosenType}) & +${prizeXp} XP Pet`;
+        db.run(
+          `INSERT INTO pvp_season_history (season_number, user_id, guild_id, pet_name, tier, points, rank_number, reward_desc, reset_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [seasonNum, row.user_id, row.guild_id, row.pet_name, row.tier, row.points, i + 1, rewardDesc, now]
+        );
+
+      } catch (mythicErr) {
+        console.error(`[PvP Season Reset] Failed to award mythic pet to top ${i + 1} player:`, mythicErr);
+        // Fallback simpan riwayat jika gagal insert pet
         try {
           const rewardDesc = `+${prizeXp} XP Pet`;
           const now = Math.floor(Date.now() / 1000);
@@ -1925,7 +1923,7 @@ async function resetRankedSeason(client) {
             [seasonNum, row.user_id, row.guild_id, row.pet_name, row.tier, row.points, i + 1, rewardDesc, now]
           );
         } catch(hofErr) {
-          console.error('[PvP Season Reset] Failed to save Top 2/3 to HOF:', hofErr);
+          console.error('[PvP Season Reset] Failed to save Top to HOF:', hofErr);
         }
       }
     }
