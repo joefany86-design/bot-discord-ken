@@ -2257,6 +2257,18 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
           }
         }
 
+        // Peluang 15% mendapat JRPG Equipment drop
+        let equipDropText = '';
+        if (Math.random() < 0.15) {
+          try {
+            const eq = require('./equipment');
+            const newEquip = eq.generateRandomEquipment(ap.userId, guildId);
+            equipDropText = `🛡️ [${newEquip.rarity}] ${newEquip.equip_name} (+${newEquip.stat_type} ${newEquip.stat_value})`;
+          } catch (err) {
+            console.error('❌ [Expedition] Gagal generate equipment:', err.message);
+          }
+        }
+
         rewards.push({
           userId: ap.userId,
           petName: ap.pet.pet_name,
@@ -2264,7 +2276,7 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
           xpGained: xpGained,
           levelUp,
           newLevel,
-          dropItem: dropText,
+          dropItem: dropText + (dropText && equipDropText ? ' & ' : '') + equipDropText,
           statusText
         });
       });

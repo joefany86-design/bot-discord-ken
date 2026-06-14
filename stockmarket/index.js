@@ -6093,6 +6093,170 @@ async function handlePetCommand(message, client, args) {
     return handlePetGymPanel(message, client);
   }
 
+  // ── SUB-PERINTAH: BAG (Perlengkapan) ──
+  if (subCommand === 'bag' || subCommand === 'equipment' || subCommand === 'equipments') {
+    const eq = require('./equipment');
+    // Ambil tas/inventory equipment user
+    const inventory = db.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
+    if (inventory.length === 0) {
+      return message.reply({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) untuk mendapatkan equipment dengan peluang 15%!')] });
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00D2FF)
+      .setTitle(`🎒 TAS EQUIPMENT PET: ${author.username} 🎒`)
+      .setDescription(
+        inventory.map(item => {
+          const eff = eq.getEquipmentEffectiveStats(item);
+          const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
+          return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
+                 `> Tipe: \`${item.equip_type}\` | Stat: **+${eff.effectiveValue} ${item.stat_type}**\n` +
+                 `> Status: ${equippedText}`;
+        }).join('\n\n') +
+        `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*`
+      )
+      .setTimestamp();
+    return message.reply({ embeds: [embed] });
+  }
+
+  // ── SUB-PERINTAH: EQUIP ──
+  if (subCommand === 'equip') {
+    const petNameArg = args[1];
+    const equipIdArg = args[2];
+    if (!petNameArg || !equipIdArg) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet equip <nama_pet> <id_equipment>`\nContoh: `.pet equip Ciko 12`')] });
+    }
+
+    const equipId = parseInt(equipIdArg);
+    if (isNaN(equipId)) {
+      return message.reply({ embeds: [embeds.errorEmbed('ID Salah!', 'ID Equipment harus berupa angka!')] });
+    }
+
+    // Ambil pet
+    const petObj = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ? COLLATE NOCASE', [author.id, guildId, petNameArg]);
+    if (!petObj) {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Ditemukan!', `Pet bernama "${petNameArg}" tidak ditemukan.`)] });
+    }
+    if (petObj.status === 'DEAD' || petObj.status === 'EGG') {
+      return message.reply({ embeds: [embeds.errorEmbed('Kondisi Pet Tidak Cocok!', 'Pet Anda tidak bisa memakai equipment dalam kondisi mati atau masih telur.')] });
+    }
+
+    // Ambil equipment
+    const equip = db.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [equipId, author.id, guildId]);
+    if (!equip) {
+      return message.reply({ embeds: [embeds.errorEmbed('Equipment Tidak Ditemukan!', `Perlengkapan dengan ID \`${equipId}\` tidak ditemukan di tas Anda.`)] });
+    }
+
+    try {
+      db.transaction(() => {
+        // Lepas equipment dengan tipe yang sama yang sudah terpasang di pet tersebut
+        db.run('UPDATE pet_equipment SET equipped_pet = NULL WHERE user_id = ? AND guild_id = ? AND equipped_pet = ? AND equip_type = ?', [author.id, guildId, petObj.pet_name, equip.equip_type]);
+        
+        // Pasang equipment baru
+        db.run('UPDATE pet_equipment SET equipped_pet = ? WHERE id = ?', [petObj.pet_name, equip.id]);
+      })();
+
+      const successEmb = embeds.successEmbed(
+        'Equipment Dipasang! 🛡️',
+        `Berhasil memasang **[+${equip.level}] ${equip.equip_name}** ke **${petObj.pet_name}**!\n` +
+        `Pet Anda sekarang mendapat tambahan stat **+${equip.stat_value} ${equip.stat_type}**.`
+      );
+      return message.reply({ embeds: [successEmb] });
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Gagal Pasang Equipment!', err.message)] });
+    }
+  }
+
+  // ── SUB-PERINTAH: UNEQUIP ──
+  if (subCommand === 'unequip') {
+    const petNameArg = args[1];
+    const equipTypeArg = args[2]?.toUpperCase();
+    if (!petNameArg || !equipTypeArg || !['WEAPON', 'ARMOR', 'RING'].includes(equipTypeArg)) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet unequip <nama_pet> <WEAPON/ARMOR/RING>`\nContoh: `.pet unequip Ciko WEAPON`')] });
+    }
+
+    const petObj = db.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ? COLLATE NOCASE', [author.id, guildId, petNameArg]);
+    if (!petObj) {
+      return message.reply({ embeds: [embeds.errorEmbed('Pet Tidak Ditemukan!', `Pet bernama "${petNameArg}" tidak ditemukan.`)] });
+    }
+
+    const equip = db.get('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ? AND equipped_pet = ? AND equip_type = ?', [author.id, guildId, petObj.pet_name, equipTypeArg]);
+    if (!equip) {
+      return message.reply({ embeds: [embeds.warnEmbed('Tidak Ada Equipment!', `Pet **${petObj.pet_name}** tidak sedang menggunakan perlengkapan bertipe \`${equipTypeArg}\`.`)] });
+    }
+
+    db.run('UPDATE pet_equipment SET equipped_pet = NULL WHERE id = ?', [equip.id]);
+    const successEmb = embeds.successEmbed('Equipment Dilepas! 📦', `Berhasil melepas **${equip.equip_name}** dari **${petObj.pet_name}** dan menyimpannya kembali ke tas.`);
+    return message.reply({ embeds: [successEmb] });
+  }
+
+  // ── SUB-PERINTAH: FORGE (Tempa) ──
+  if (subCommand === 'forge' || subCommand === 'upgrade') {
+    const equipIdArg = args[1];
+    if (!equipIdArg) {
+      return message.reply({ embeds: [embeds.warnEmbed('Format Salah!', 'Format: `.pet forge <id_equipment>`\nContoh: `.pet forge 12`')] });
+    }
+
+    const equipId = parseInt(equipIdArg);
+    if (isNaN(equipId)) {
+      return message.reply({ embeds: [embeds.errorEmbed('ID Salah!', 'ID Equipment harus berupa angka!')] });
+    }
+
+    const equip = db.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [equipId, author.id, guildId]);
+    if (!equip) {
+      return message.reply({ embeds: [embeds.errorEmbed('Equipment Tidak Ditemukan!', `Perlengkapan dengan ID \`${equipId}\` tidak ditemukan di tas Anda.`)] });
+    }
+
+    const eq = require('./equipment');
+    const curLevel = equip.level || 1;
+    if (curLevel >= 10) {
+      return message.reply({ embeds: [embeds.warnEmbed('Level Maksimal!', `Perlengkapan **${equip.equip_name}** Anda telah mencapai level tempa maksimal (+10)!`)] });
+    }
+
+    const forgeConfig = eq.FORGE_RATES[curLevel];
+    if (!forgeConfig) {
+      return message.reply({ embeds: [embeds.errorEmbed('Error!', 'Konfigurasi forging tidak ditemukan.')] });
+    }
+
+    const wallet = economy.getWallet(author.id, guildId);
+    if (wallet.balance < forgeConfig.cost) {
+      return message.reply({ embeds: [embeds.errorEmbed('Saldo Tidak Cukup!', `Biaya nempa ke +${curLevel + 1} membutuhkan **Rp ${forgeConfig.cost.toLocaleString('id-ID')}** koin.\nSaldo Anda saat ini: Rp ${wallet.balance.toLocaleString('id-ID')}`)] });
+    }
+
+    try {
+      let success = false;
+      db.transaction(() => {
+        economy.subtractBalance(author.id, guildId, forgeConfig.cost, 'PET_EQUIPMENT_FORGE');
+        
+        const roll = Math.random() * 100;
+        if (roll < forgeConfig.chance) {
+          success = true;
+          db.run('UPDATE pet_equipment SET level = level + 1 WHERE id = ?', [equip.id]);
+        }
+      })();
+
+      if (success) {
+        const nextEff = eq.getEquipmentEffectiveStats({ ...equip, level: curLevel + 1 });
+        const successEmb = embeds.successEmbed(
+          '✨ TEMPA BERHASIL! ✨',
+          `Selamat! Perlengkapan **${equip.equip_name}** berhasil ditingkatkan ke **+${curLevel + 1}**!\n` +
+          `Stat bonus meningkat menjadi: **+${nextEff.effectiveValue} ${equip.stat_type}**.\n` +
+          `💸 Biaya: Rp ${forgeConfig.cost.toLocaleString('id-ID')} koin.`
+        );
+        return message.reply({ embeds: [successEmb] });
+      } else {
+        const failEmb = embeds.errorEmbed(
+          '💥 TEMPA GAGAL! 💥',
+          `Tempa **${equip.equip_name}** ke +${curLevel + 1} gagal!\n` +
+          `Peluang sukses adalah ${forgeConfig.chance}%. Perlengkapan Anda tidak hancur atau berkurang levelnya, namun koin Anda sebesar **Rp ${forgeConfig.cost.toLocaleString('id-ID')}** telah hangus.`
+        );
+        return message.reply({ embeds: [failEmb] });
+      }
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Forge Gagal!', err.message)] });
+    }
+  }
+
   // ── SUB-PERINTAH: SHOP ──
   if (subCommand === 'shop') {
     return handlePetShopCommand(message, client);
@@ -9237,6 +9401,24 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
 
     const wallet = economy.getWallet(userId, gId);
 
+    // Fetch JRPG Equipment stats to display
+    let equipText = '*Tidak ada perlengkapan*';
+    let eqATK = 0, eqDEF = 0, eqHP = 0, eqDEX = 0;
+    try {
+      const eq = require('./equipment');
+      const activeEquips = eq.getPetEquipment(userId, gId, pData.pet_name);
+      if (activeEquips.length > 0) {
+        equipText = activeEquips.map(e => `• **[+${e.level}] ${e.equip_name}** (${e.equip_type}): +${e.effectiveValue} ${e.stat_type}`).join('\n');
+        const eqBonuses = eq.getPetEquipmentStatsBonus(userId, gId, pData.pet_name);
+        eqATK = eqBonuses.ATK || 0;
+        eqDEF = eqBonuses.DEF || 0;
+        eqHP = eqBonuses.HP || 0;
+        eqDEX = eqBonuses.DEX || 0;
+      }
+    } catch (err) {
+      console.error('Error fetching equipment for gym:', err);
+    }
+
     const embed = new EmbedBuilder()
       .setColor(0x9C27B0)
       .setTitle(`🏋️ PUSAT KEBUGARAN & STATS PET: ${pData.pet_name} 🏋️`)
@@ -9244,15 +9426,16 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
         `🐾 **Spesies:** ${pData.pet_type} (Lv. ${pData.level}) | ${star}\n` +
         `✨ **Poin Latihan Tersedia (TP):** 🔴 **${unusedTp} Poin**\n\n` +
         `📊 **ATRIBUT STAT GYM SAAT INI:**\n` +
-        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK | **+${(pData.stat_str || 0) * 6} ATK di PvP**)\n` +
-        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP | **+${(pData.stat_vit || 0) * 40} HP di PvP**)\n` +
-        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi DMG | **+${((pData.stat_def || 0) * 1.33).toFixed(1)}% di PvP**)\n` +
-        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)\n\n` +
+        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK | **+${(pData.stat_str || 0) * 6} ATK di PvP**)${eqATK ? ` *[+${eqATK} Equip]*` : ''}\n` +
+        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP | **+${(pData.stat_vit || 0) * 40} HP di PvP**)${eqHP ? ` *[+${eqHP} HP Equip]*` : ''}\n` +
+        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi DMG | **+${((pData.stat_def || 0) * 1.33).toFixed(1)}% di PvP**)${eqDEF ? ` *[+${eqDEF} DEF Equip]*` : ''}\n` +
+        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)${eqDEX ? ` *[+${eqDEX} DEX Equip]*` : ''}\n\n` +
+        `⚔️ **JRPG PERLENGKAPAN (EQUIPMENT):**\n${equipText}\n\n` +
         `🔥 **TOTAL KEKUATAN COMBAT & UTILITY (Non-PvP):**\n` +
-        `• ❤️ **Max HP:** \`${maxHP} HP\`\n` +
-        `• ⚔️ **ATK Damage:** \`${totalAtk} ATK\`\n` +
-        `• 🛡️ **Damage Reduction:** \`${totalDefPct.toFixed(1)}%\`\n` +
-        `• ⚡ **Crit Rate:** \`${critRate.toFixed(1)}%\`\n\n` +
+        `• ❤️ **Max HP:** \`${maxHP + eqHP} HP\`\n` +
+        `• ⚔️ **ATK Damage:** \`${totalAtk + eqATK * 2} ATK\`\n` +
+        `• 🛡️ **Damage Reduction:** \`${(totalDefPct + eqDEF * 0.5).toFixed(1)}%\`\n` +
+        `• ⚡ **Crit Rate:** \`${(critRate + eqDEX * 0.5).toFixed(1)}%\`\n\n` +
         `💰 **Biaya Reset Stat:** Rp 1.000 (Dompet: Rp ${wallet.balance.toLocaleString('id-ID')})`
       )
       .setFooter({ text: 'Pilih tombol di bawah untuk melatih pet Anda!' })
@@ -10035,6 +10218,18 @@ async function handlePetAdminCommand(message, client, args) {
 
     const tpText = tp !== null ? ` | TP: \`${tp}\`` : '';
     return message.reply(`✅ Berhasil memperbarui stat gym pet **${petData.pet_name}** milik <@${target.id}>:\n💪 STR: \`${str}\` | ❤️ VIT: \`${vit}\` | 🛡️ DEF: \`${def}\` | ⚡ DEX: \`${dex}\`${tpText}`);
+  }
+
+  // ── ADMIN: RESET-SEASON (Pemicu Manual Reset Season PvP Arena) ──
+  if (subCommand === 'reset-season') {
+    await message.reply('⏳ Memulai reset season PvP Arena secara manual...');
+    try {
+      const pvpBot = require('./pvpBot');
+      await pvpBot.resetRankedSeason(client);
+      return message.reply('✅ Reset season PvP Arena selesai dilakukan secara manual!');
+    } catch (err) {
+      return message.reply({ embeds: [embeds.errorEmbed('Reset Gagal!', err.message)] });
+    }
   }
 
   return message.reply('❓ Perintah admin pet tidak dikenal! Pilihan: `give-xp`, `heal`, `reset`, `hatch`, `reset-expedition`, `add-ticket`, `force-star`, `set-tp`, `set-stats`');

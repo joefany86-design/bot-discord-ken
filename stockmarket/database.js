@@ -888,6 +888,28 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 25,
+      description: "Membuat tabel pet_equipment untuk menyimpan perlengkapan pet (Weapon, Armor, Ring)",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS pet_equipment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            equip_name TEXT NOT NULL,
+            equip_type TEXT NOT NULL, -- 'WEAPON', 'ARMOR', 'RING'
+            rarity TEXT NOT NULL,     -- 'COMMON', 'RARE', 'EPIC', 'LEGENDARY'
+            stat_type TEXT NOT NULL,  -- 'ATK', 'HP', 'DEF', 'DEX'
+            stat_value INTEGER NOT NULL,
+            level INTEGER DEFAULT 1,
+            equipped_pet TEXT DEFAULT NULL -- Nama pet yang memakai (NULL jika di tas)
+          );
+        `);
+        db.exec("CREATE INDEX IF NOT EXISTS idx_pet_equipment_user_guild ON pet_equipment (user_id, guild_id)");
+        db.exec("CREATE INDEX IF NOT EXISTS idx_pet_equipment_equipped ON pet_equipment (guild_id, user_id, equipped_pet)");
+      }
     }
   ];
 

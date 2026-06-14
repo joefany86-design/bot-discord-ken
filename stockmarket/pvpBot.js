@@ -574,7 +574,35 @@ function calculateEffectiveStats(petObj, nowUnix) {
   let def = petObj.stat_def || 0;
   let dex = petObj.stat_dex || 0;
   let baseAtkBonus = petObj.base_atk_bonus_pct || 0.0;
+  let equipHpBonus = 0;
   const logs = [];
+
+  // Fetch and apply equipment bonuses
+  try {
+    const eq = require('./equipment');
+    const eqBonuses = eq.getPetEquipmentStatsBonus(petObj.user_id, petObj.guild_id, petObj.pet_name);
+    if (eqBonuses) {
+      if (eqBonuses.ATK > 0) {
+        str += eqBonuses.ATK; // weapon ATK acts as STR / flat ATK scaling
+      }
+      if (eqBonuses.DEF > 0) {
+        def += eqBonuses.DEF;
+      }
+      if (eqBonuses.HP > 0) {
+        equipHpBonus += eqBonuses.HP;
+      }
+      if (eqBonuses.DEX > 0) {
+        dex += eqBonuses.DEX;
+      }
+      const activeEquips = eq.getPetEquipment(petObj.user_id, petObj.guild_id, petObj.pet_name);
+      if (activeEquips.length > 0) {
+        const itemNames = activeEquips.map(e => `[+${e.level}] ${e.equip_name}`).join(', ');
+        logs.push(`🛡️ **Equipment Aktif:** Memakai ${itemNames} (Bonus Stat diterapkan!)`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ [pvpBot] Gagal menghitung equipment bonus:', err.message);
+  }
 
   // Debuff Hunger (< 50) -> ATK -20%
   if ((petObj.hunger || 0) < 50) {
@@ -597,7 +625,7 @@ function calculateEffectiveStats(petObj, nowUnix) {
     logs.push(`⚠️ **Status Cedera!** **${petObj.pet_name}** bertarung dalam kondisi cedera parah, seluruh statistik tempur berkurang 25%!`);
   }
 
-  return { str, vit, def, dex, baseAtkBonus, logs };
+  return { str, vit, def, dex, baseAtkBonus, equipHpBonus, logs };
 }
 
 /**
@@ -682,7 +710,7 @@ async function startPvPChallenge(interaction, client, petName) {
     const playerBaseHP = playerSpeciesInfo ? (playerSpeciesInfo.baseHP || 100) : 100;
     const playerStarLevel = petObj.star_level || 1;
     const playerHpBonus = (playerStarLevel - 1) * 15;
-    const playerMaxHP = (playerBaseHP + playerHpBonus + pStats.vit * 10) * 4;
+    const playerMaxHP = (playerBaseHP + playerHpBonus + pStats.vit * 10 + pStats.equipHpBonus) * 4;
 
     const botSpeciesInfo = pet.GACHA_SPECIES[botOpponent.pet_type];
     const botBaseHP = botSpeciesInfo ? (botSpeciesInfo.baseHP || 100) : 100;
@@ -1955,14 +1983,60 @@ async function resetRankedSeason(client) {
       }
     })();
 
-    announcementText += `\n✅ Semua pangkat pemain berhasil didegradasi. Selamat berjuang kembali di Season baru! ⚔️`;;
+    // Manage Discord Dynamic Roles for Top 3 Gladiator
+    try {
+      const topRoles = ['Gladiator 1', 'Gladiator 2', 'Gladiator 3'];
+      for (const guild of client.guilds.cache.values()) {
+        // Find or create the Gladiator roles
+        const roles = [];
+        for (const roleName of topRoles) {
+          let role = guild.roles.cache.find(r => r.name === roleName);
+          if (!role) {
+            role = await guild.roles.create({
+              name: roleName,
+              color: roleName === 'Gladiator 1' ? '#FFD700' : roleName === 'Gladiator 2' ? '#C0C0C0' : '#CD7F32',
+              reason: 'Automatic PvP Season Reset Role Creation'
+            }).catch(() => null);
+          }
+          if (role) roles.push(role);
+        }
+
+        // Clean up previous role holders
+        for (const role of roles) {
+          for (const member of role.members.values()) {
+            await member.roles.remove(role).catch(() => {});
+          }
+        }
+
+        // Assign to new Top 3 in this guild (if they are in the guild)
+        const guildTop3 = top3.filter(t => t.guild_id === guild.id);
+        for (let i = 0; i < guildTop3.length; i++) {
+          if (roles[i]) {
+            const member = await guild.members.fetch(guildTop3[i].user_id).catch(() => null);
+            if (member) {
+              await member.roles.add(roles[i]).catch(err => {
+                console.error(`❌ Gagal memberikan role ${roles[i].name} ke ${member.user.username}:`, err.message);
+              });
+            }
+          }
+        }
+      }
+    } catch (roleErr) {
+      console.error('[PvP Season Reset] Gagal mengelola Discord gladiator roles:', roleErr.message);
+    }
+
+    announcementText += `\n✅ Semua pangkat pemain berhasil didegradasi. Selamat berjuang kembali di Season baru! ⚔️`;
 
     try {
       const settingsRow = db.get("SELECT tournament_admin_channel_id FROM ebyus_settings LIMIT 1");
       const targetChannelId = (settingsRow && settingsRow.tournament_admin_channel_id) ? settingsRow.tournament_admin_channel_id : channelId;
-      const channel = await client.channels.fetch(targetChannelId).catch(() => null);
-      if (channel) {
-        await channel.send({ content: announcementText });
+      if (client && client.channels && typeof client.channels.fetch === 'function') {
+        const channel = await client.channels.fetch(targetChannelId).catch(() => null);
+        if (channel) {
+          await channel.send({ content: announcementText });
+        }
+      } else {
+        console.log('[PvP Season Reset] client.channels.fetch is not available (likely in testing mode). Announcement details:\n', announcementText);
       }
     } catch (err) {
       console.error('[PvP Season Reset] Failed to send announcement:', err);
@@ -2010,13 +2084,13 @@ async function startInteractivePvP(interaction, client, challengerId, opponentId
   const p1BaseHP = p1SpeciesInfo ? (p1SpeciesInfo.baseHP || 100) : 100;
   const p1StarLevel = challengerPet.star_level || 1;
   const p1HpBonus = (p1StarLevel - 1) * 15;
-  const challengerMaxHP = (p1BaseHP + p1HpBonus + p1Stats.vit * 10) * 4;
+  const challengerMaxHP = (p1BaseHP + p1HpBonus + p1Stats.vit * 10 + p1Stats.equipHpBonus) * 4;
 
   const p2SpeciesInfo = pet.GACHA_SPECIES[opponentPet.pet_type];
   const p2BaseHP = p2SpeciesInfo ? (p2SpeciesInfo.baseHP || 100) : 100;
   const p2StarLevel = opponentPet.star_level || 1;
   const p2HpBonus = (p2StarLevel - 1) * 15;
-  const opponentMaxHP = (p2BaseHP + p2HpBonus + p2Stats.vit * 10) * 4;
+  const opponentMaxHP = (p2BaseHP + p2HpBonus + p2Stats.vit * 10 + p2Stats.equipHpBonus) * 4;
 
   // Weather hazard selection (20% chance)
   let weather = 'CLEAR';

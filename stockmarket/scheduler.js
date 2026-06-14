@@ -1077,8 +1077,8 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
-  // 14. Cron Job: Reset Season Arena PvP Bot (Setiap tanggal 1 pukul 00:00 WIB)
-  cron.schedule('0 0 1 * *', async () => {
+  // 14. Cron Job: Reset Season Arena PvP Bot (Setiap Hari Minggu pukul 23:59 WIB)
+  cron.schedule('59 23 * * 0', async () => {
     try {
       const pvpBot = require('./pvpBot');
       await pvpBot.resetRankedSeason(client);
