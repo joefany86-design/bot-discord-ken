@@ -4986,7 +4986,19 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       new StringSelectMenuOptionBuilder()
         .setLabel('🎟️ Kelola Kode Promo Aktif')
         .setDescription('Lihat daftar voucher aktif dan hapus voucher')
-        .setValue('system_promo_list')
+        .setValue('system_promo_list'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔒 Toggle Mode Pemeliharaan (Maintenance)')
+        .setDescription('Aktifkan/nonaktifkan mode pemeliharaan bot secara instan')
+        .setValue('system_toggle_maintenance'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📢 Broadcast Pengumuman Kustom (Modal)')
+        .setDescription('Kirim pesan/embed pengumuman kustom ke channel berita')
+        .setValue('system_custom_broadcast'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📊 Monitor Kesehatan Database')
+        .setDescription('Tinjau ukuran berkas database, baris log, dan status tabel SQLite')
+        .setValue('system_db_health')
     );
 
     const sysRow = new ActionRowBuilder().addComponents(sysSelect);
@@ -5578,6 +5590,140 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
             await iDel.reply({ content: `🗑️ Kode promo **${codeToDel}** beserta log klaimnya berhasil dihapus!`, flags: 64 });
             await listMsg.delete().catch(() => { });
           });
+        }
+        else if (action === 'system_toggle_maintenance') {
+          const settings = getOrCreateEbyusSettings(guildId);
+          const newMaint = settings.maintenance_mode === 1 ? 0 : 1;
+          database.run('UPDATE ebyus_settings SET maintenance_mode = ? WHERE guild_id = ?', [newMaint, guildId]);
+          
+          await iAbyus.reply({
+            content: `🔒 **MODE PEMELIHARAAN (MAINTENANCE) DIPERBARUI!**\n\nStatus saat ini: ${newMaint === 1 ? '🔴 **AKTIF (Bot terkunci untuk warga)**' : '🟢 **NONAKTIF (Normal)**'}\n\n*Admin dan Owner tetap dapat menggunakan bot.*`,
+            flags: 64
+          });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (action === 'system_custom_broadcast') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_abyus_custom_broadcast_modal')
+            .setTitle('Kirim Pengumuman Kustom');
+
+          const chanInput = new TextInputBuilder()
+            .setCustomId('bc_channel_id')
+            .setLabel('ID Channel Berita / Announcement')
+            .setPlaceholder('Masukkan ID Channel (Contoh: 1514736636628439151)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const titleInput = new TextInputBuilder()
+            .setCustomId('bc_title')
+            .setLabel('Judul Pengumuman')
+            .setPlaceholder('Contoh: 🚀 PEMBARUAN FITUR BOT KOSAN')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const descInput = new TextInputBuilder()
+            .setCustomId('bc_desc')
+            .setLabel('Isi Pesan Pengumuman')
+            .setPlaceholder('Tulis pesan pengumuman di sini...')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true);
+
+          const mentionInput = new TextInputBuilder()
+            .setCustomId('bc_mention')
+            .setLabel('Mention (everyone / here / none)')
+            .setPlaceholder('Ketik everyone, here, atau none')
+            .setValue('none')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(chanInput),
+            new ActionRowBuilder().addComponents(titleInput),
+            new ActionRowBuilder().addComponents(descInput),
+            new ActionRowBuilder().addComponents(mentionInput)
+          );
+          await iAbyus.showModal(modal);
+
+          const sub = await iAbyus.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_abyus_custom_broadcast_modal' && s.user.id === author.id,
+            time: 120000
+          }).catch(() => null);
+
+          if (sub) {
+            const targetChanId = sub.fields.getTextInputValue('bc_channel_id').trim();
+            const bcTitle = sub.fields.getTextInputValue('bc_title').trim();
+            const bcDesc = sub.fields.getTextInputValue('bc_desc').trim();
+            const bcMention = sub.fields.getTextInputValue('bc_mention').trim().toLowerCase();
+
+            const targetChan = client.channels.cache.get(targetChanId) 
+              || await client.channels.fetch(targetChanId).catch(() => null);
+
+            if (!targetChan) {
+              return sub.reply({ content: `❌ Channel dengan ID \`${targetChanId}\` tidak ditemukan atau bot tidak memiliki akses ke sana!`, flags: 64 });
+            }
+
+            const bcEmbed = new EmbedBuilder()
+              .setColor(0x00FF88)
+              .setTitle(bcTitle)
+              .setDescription(bcDesc)
+              .setTimestamp()
+              .setFooter({ text: `Sentinel Broadcast • Administrator ${author.username}` });
+
+            let mentionContent = '';
+            if (bcMention === 'everyone') mentionContent = '@everyone';
+            else if (bcMention === 'here') mentionContent = '@here';
+
+            await targetChan.send({ content: mentionContent || undefined, embeds: [bcEmbed] });
+
+            await sub.reply({ content: `📢 **PENGUMUMAN BERHASIL DISIARKAN!**\n\nDikirim ke channel: <#${targetChanId}>`, flags: 64 });
+          }
+        }
+        else if (action === 'system_db_health') {
+          await iAbyus.deferReply({ flags: 64 });
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Check Database Size
+            const dbPath = config.DATABASE_PATH;
+            const stats = fs.statSync(dbPath);
+            const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
+            
+            // Row counts
+            const walletsCount = (database.get('SELECT COUNT(*) as count FROM wallets') || { count: 0 }).count;
+            const petsCount = (database.get('SELECT COUNT(*) as count FROM user_pets') || { count: 0 }).count;
+            const transCount = (database.get('SELECT COUNT(*) as count FROM transactions') || { count: 0 }).count;
+            const logsCount = (database.get('SELECT COUNT(*) as count FROM user_pet_logs') || { count: 0 }).count;
+            
+            // Backups count
+            const backupsDir = path.join(__dirname, '../backups');
+            const backupsCount = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir).filter(f => f.endsWith('.db')).length : 0;
+            
+            const healthEmbed = new EmbedBuilder()
+              .setColor(0x00E5FF)
+              .setTitle('📊 DASHBOARD MONITOR KESEHATAN DATABASE')
+              .setDescription(
+                `Berikut adalah status kesehatan dan statistik database SQLite Sentinel Bot:\n\n` +
+                `📁 **Info Berkas Database:**\n` +
+                `• File Path: \`${dbPath}\`\n` +
+                `• Ukuran Berkas: \`${sizeMb} MB\`\n` +
+                `• Total File Cadangan (Backups): \`${backupsCount} file cadangan\`\n\n` +
+                `📊 **Statistik Baris Data:**\n` +
+                `• Warga Terdaftar (wallets): \`${walletsCount} baris\`\n` +
+                `• Total Pet Terdaftar (user_pets): \`${petsCount} baris\`\n` +
+                `• Total Log Transaksi (transactions): \`${transCount} baris\`\n` +
+                `• Total Log Aktivitas Pet (user_pet_logs): \`${logsCount} baris\`\n\n` +
+                `🟢 **Status SQLite Engine**: \`SEHAT (Operational)\``
+              )
+              .setTimestamp()
+              .setFooter({ text: 'Sentinel Database Health Monitor' });
+              
+            await iAbyus.editReply({ embeds: [healthEmbed] });
+          } catch (healthErr) {
+            console.error('Database health check failed:', healthErr);
+            await iAbyus.editReply({ content: `❌ Gagal memuat data kesehatan database: ${healthErr.message}` });
+          }
         }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {

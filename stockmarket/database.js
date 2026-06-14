@@ -919,6 +919,13 @@ function initSchema() {
         addColumn('pet_equipment', 'max_durability', 'INTEGER DEFAULT 100');
         addColumn('pet_equipment', 'element', "TEXT DEFAULT 'NONE'");
       }
+    },
+    {
+      version: 27,
+      description: "Menambahkan kolom maintenance_mode ke ebyus_settings",
+      run: () => {
+        addColumn('ebyus_settings', 'maintenance_mode', 'INTEGER DEFAULT 0');
+      }
     }
   ];
 

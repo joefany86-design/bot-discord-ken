@@ -784,6 +784,20 @@ client.on('interactionCreate', async interaction => {
       return interaction.reply({ content: '❌ Perintah ini hanya dapat digunakan di dalam server Discord!', flags: 64 });
     }
 
+    // Cek Maintenance Mode
+    const { db } = require('./stockmarket/database');
+    const settings = db.prepare('SELECT maintenance_mode FROM ebyus_settings WHERE guild_id = ?').get(guildId);
+    if (settings && settings.maintenance_mode === 1) {
+      const isOwner = interaction.user.id === OWNER_ID;
+      const isAdmin = member && member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin) {
+        return interaction.reply({
+          content: '⚠️ **Bot Sedang Pemeliharaan (Maintenance)**\nBot saat ini sedang dinonaktifkan sementara untuk pemeliharaan oleh Administrator. Silakan coba lagi beberapa saat lagi.',
+          flags: 64
+        });
+      }
+    }
+
     // Proteksi Saluran Portal (#🛍️┃shop): Blokir seluruh slash command agar channel tetap bersih
     if (interaction.channelId === config.channels.SHOP_PORTAL) {
       return interaction.reply({
@@ -893,6 +907,29 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   try {
     if (message.author.bot) return;
+
+    // Cek Maintenance Mode
+    if (message.guildId) {
+      const { db } = require('./stockmarket/database');
+      const settings = db.prepare('SELECT maintenance_mode FROM ebyus_settings WHERE guild_id = ?').get(message.guildId);
+      if (settings && settings.maintenance_mode === 1) {
+        const isOwner = message.author.id === OWNER_ID;
+        const isAdmin = message.member && message.member.permissions.has('Administrator');
+        if (!isOwner && !isAdmin) {
+          if (message.content.startsWith('.')) {
+            const warnMsg = await message.reply({
+              content: '⚠️ **Bot Sedang Pemeliharaan (Maintenance)**\nBot saat ini sedang dinonaktifkan sementara untuk pemeliharaan oleh Administrator. Silakan coba lagi beberapa saat lagi.'
+            }).catch(() => null);
+            if (warnMsg) {
+              setTimeout(() => {
+                warnMsg.delete().catch(() => {});
+              }, 5000);
+            }
+          }
+          return;
+        }
+      }
+    }
 
 
     // Proteksi Saluran Khusus Admin Panel (Hanya boleh ada 1 pesan bot admin panel)
