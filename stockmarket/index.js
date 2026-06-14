@@ -46,10 +46,17 @@ async function safeInteractionReply(interaction, options) {
 
 // Map untuk mengelola cooldown perintah .bal per user
 const balCooldowns = new Map();
-// Helper to build pet shop options dynamically from pet.PET_ITEMS
-function getPetShopSelectOptions() {
-  return Object.keys(pet.PET_ITEMS)
-    .filter(key => pet.PET_ITEMS[key].price > 0)
+// Helper to build pet shop options dynamically by category
+function getPetShopSelectOptionsByCategory(category) {
+  const items = {
+    FOOD_AND_CARE: ['FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'TOY', 'SOAP_PET'],
+    HEALTH_AND_ENERGY: ['MEDICINE', 'SODA_ENERGY'],
+    BOOSTERS_AND_UTILITY: ['COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET', 'XP_2X', 'XP_4X', 'XP_6X', 'XP_8X', 'PET_RENAME']
+  };
+
+  const keys = items[category] || [];
+  return keys
+    .filter(key => pet.PET_ITEMS[key] && pet.PET_ITEMS[key].price > 0)
     .map(key => {
       const item = pet.PET_ITEMS[key];
       const label = `${item.name} (Rp ${item.price.toLocaleString('id-ID')})`;
@@ -3134,16 +3141,28 @@ function initStockMarket(client) {
             const inv = pet.getInventory(targetUserId, guildId);
             const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
 
-            const selectMenu = new StringSelectMenuBuilder()
-              .setCustomId('pet_select_shop_item')
-              .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-              .addOptions(getPetShopSelectOptions());
+            const foodMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_food')
+              .setPlaceholder('🍔 Beli Makanan, Minuman, Sabun, Mainan...')
+              .addOptions(getPetShopSelectOptionsByCategory('FOOD_AND_CARE'));
 
-            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const healthMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_health')
+              .setPlaceholder('💊 Beli Obat & Soda Energi...')
+              .addOptions(getPetShopSelectOptionsByCategory('HEALTH_AND_ENERGY'));
+
+            const boosterMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_boosters')
+              .setPlaceholder('⚡ Beli Aksesoris, Booster XP, Ganti Nama...')
+              .addOptions(getPetShopSelectOptionsByCategory('BOOSTERS_AND_UTILITY'));
+
+            const row1 = new ActionRowBuilder().addComponents(foodMenu);
+            const row2 = new ActionRowBuilder().addComponents(healthMenu);
+            const row3 = new ActionRowBuilder().addComponents(boosterMenu);
             const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
             const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
 
-            return { embeds: [embed], components: [selectRow, cancelRow] };
+            return { embeds: [embed], components: [row1, row2, row3, cancelRow] };
           };
 
           const initialData = getDashboardPanelPrivate(user.id);
@@ -3873,7 +3892,11 @@ function initStockMarket(client) {
                 await iPet.update(getShopPanelDataPrivate(user.id));
               } else if (iPet.customId === 'pet_btn_cancel_shop') {
                 await iPet.update(getDashboardPanelPrivate(user.id));
-              } else if (iPet.customId === 'pet_select_shop_item') {
+              } else if (
+                iPet.customId === 'pet_select_shop_food' ||
+                iPet.customId === 'pet_select_shop_health' ||
+                iPet.customId === 'pet_select_shop_boosters'
+              ) {
                 const selectedItemId = iPet.values[0];
                 const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
                 if (!item) return;
@@ -3999,16 +4022,28 @@ function initStockMarket(client) {
             const inv = pet.getInventory(targetUserId, guildId);
             const embed = embeds.petShopEmbed(wallet2, inv, statusMsg);
 
-            const selectMenu = new StringSelectMenuBuilder()
-              .setCustomId('pet_select_shop_item_perm')
-              .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-              .addOptions(getPetShopSelectOptions());
+            const foodMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_food_perm')
+              .setPlaceholder('🍔 Beli Makanan, Minuman, Sabun, Mainan...')
+              .addOptions(getPetShopSelectOptionsByCategory('FOOD_AND_CARE'));
 
-            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+            const healthMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_health_perm')
+              .setPlaceholder('💊 Beli Obat & Soda Energi...')
+              .addOptions(getPetShopSelectOptionsByCategory('HEALTH_AND_ENERGY'));
+
+            const boosterMenu = new StringSelectMenuBuilder()
+              .setCustomId('pet_select_shop_boosters_perm')
+              .setPlaceholder('⚡ Beli Aksesoris, Booster XP, Ganti Nama...')
+              .addOptions(getPetShopSelectOptionsByCategory('BOOSTERS_AND_UTILITY'));
+
+            const row1 = new ActionRowBuilder().addComponents(foodMenu);
+            const row2 = new ActionRowBuilder().addComponents(healthMenu);
+            const row3 = new ActionRowBuilder().addComponents(boosterMenu);
             const closeBtn = new ButtonBuilder().setCustomId('pet_btn_close_shop_perm').setLabel('✖️ Tutup Toko').setStyle(ButtonStyle.Danger);
             const closeRow = new ActionRowBuilder().addComponents(closeBtn);
 
-            return { embeds: [embed], components: [selectRow, closeRow] };
+            return { embeds: [embed], components: [row1, row2, row3, closeRow] };
           };
 
           const initialData = getShopPanelDataPrivate(user.id);
@@ -4022,7 +4057,11 @@ function initStockMarket(client) {
               if (iShop.customId === 'pet_btn_close_shop_perm') {
                 await privateMsg.delete().catch(() => { });
                 collector.stop();
-              } else if (iShop.customId === 'pet_select_shop_item_perm') {
+              } else if (
+                iShop.customId === 'pet_select_shop_food_perm' ||
+                iShop.customId === 'pet_select_shop_health_perm' ||
+                iShop.customId === 'pet_select_shop_boosters_perm'
+              ) {
                 const selectedItemId = iShop.values[0];
                 const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
                 if (!item) return;
@@ -10426,16 +10465,28 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
     const inventory = pet.getInventory(userId, guildId);
     const embed = embeds.petShopEmbed(wallet, inventory, statusMsg);
 
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('pet_select_shop_item')
-      .setPlaceholder('👉 Pilih persediaan untuk dibeli...')
-      .addOptions(getPetShopSelectOptions());
+    const foodMenu = new StringSelectMenuBuilder()
+      .setCustomId('pet_select_shop_food')
+      .setPlaceholder('🍔 Beli Makanan, Minuman, Sabun, Mainan...')
+      .addOptions(getPetShopSelectOptionsByCategory('FOOD_AND_CARE'));
 
-    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+    const healthMenu = new StringSelectMenuBuilder()
+      .setCustomId('pet_select_shop_health')
+      .setPlaceholder('💊 Beli Obat & Soda Energi...')
+      .addOptions(getPetShopSelectOptionsByCategory('HEALTH_AND_ENERGY'));
+
+    const boosterMenu = new StringSelectMenuBuilder()
+      .setCustomId('pet_select_shop_boosters')
+      .setPlaceholder('⚡ Beli Aksesoris, Booster XP, Ganti Nama...')
+      .addOptions(getPetShopSelectOptionsByCategory('BOOSTERS_AND_UTILITY'));
+
+    const row1 = new ActionRowBuilder().addComponents(foodMenu);
+    const row2 = new ActionRowBuilder().addComponents(healthMenu);
+    const row3 = new ActionRowBuilder().addComponents(boosterMenu);
     const cancelBtn = new ButtonBuilder().setCustomId('pet_btn_cancel_shop').setLabel('✖️ Kembali ke Dashboard').setStyle(ButtonStyle.Secondary);
     const cancelRow = new ActionRowBuilder().addComponents(cancelBtn);
 
-    return { embeds: [embed], components: [selectRow, cancelRow] };
+    return { embeds: [embed], components: [row1, row2, row3, cancelRow] };
   };
 
   const initialData = getShopPanelData(author.id, guildId);
@@ -10466,7 +10517,11 @@ async function handlePetShopCommand(context, client, isInteraction = false) {
           await replyMsg.delete().catch(() => { });
           await handlePetCommand(context, client, []);
         }
-      } else if (iShop.customId === 'pet_select_shop_item') {
+      } else if (
+        iShop.customId === 'pet_select_shop_food' ||
+        iShop.customId === 'pet_select_shop_health' ||
+        iShop.customId === 'pet_select_shop_boosters'
+      ) {
         const selectedItemId = iShop.values[0];
         const item = pet.PET_ITEMS[selectedItemId.toUpperCase()];
         if (!item) return;
