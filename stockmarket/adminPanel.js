@@ -4951,7 +4951,11 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
       new StringSelectMenuOptionBuilder()
         .setLabel('📊 Lihat Status Real-time')
         .setDescription('Menampilkan ringkasan status bypass saat ini')
-        .setValue('action_show_status')
+        .setValue('action_show_status'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎟️ Buat Kode Promo Baru')
+        .setDescription('Membuat kode voucher promo/redeem baru untuk warga')
+        .setValue('action_create_promo')
     );
 
     const configActionRow = new ActionRowBuilder().addComponents(actionSelect);
@@ -5137,6 +5141,106 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
           const settings = getOrCreateEbyusSettings(guildId);
           const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
           await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
+        }
+        else if (val === 'action_create_promo') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_abyus_create_promo_modal')
+            .setTitle('Buat Kode Promo Baru');
+
+          const codeInput = new TextInputBuilder()
+            .setCustomId('promo_code')
+            .setLabel('Kode Promo (Alfanumerik)')
+            .setPlaceholder('Contoh: ABUSEMANIA')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const coinsInput = new TextInputBuilder()
+            .setCustomId('promo_coins')
+            .setLabel('Hadiah Koin (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 100000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          const itemInput = new TextInputBuilder()
+            .setCustomId('promo_item_id')
+            .setLabel('ID Item Hadiah (Kosongkan jika tidak ada)')
+            .setPlaceholder('Contoh: FOOD_PREMIUM atau TICKET_GACHA')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const qtyInput = new TextInputBuilder()
+            .setCustomId('promo_item_qty')
+            .setLabel('Jumlah Item Hadiah (0 jika tidak ada)')
+            .setPlaceholder('Contoh: 3')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
+
+          const quotaInput = new TextInputBuilder()
+            .setCustomId('promo_quota')
+            .setLabel('Kuota Klaim (-1 untuk tanpa batas)')
+            .setPlaceholder('Contoh: 20')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(codeInput),
+            new ActionRowBuilder().addComponents(coinsInput),
+            new ActionRowBuilder().addComponents(itemInput),
+            new ActionRowBuilder().addComponents(qtyInput),
+            new ActionRowBuilder().addComponents(quotaInput)
+          );
+          await iAbyus.showModal(modal);
+
+          const sub = await iAbyus.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_abyus_create_promo_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const pCode = sub.fields.getTextInputValue('promo_code').toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
+            const pCoins = parseInt(sub.fields.getTextInputValue('promo_coins')) || 0;
+            const pItemId = sub.fields.getTextInputValue('promo_item_id').toUpperCase().trim() || null;
+            const pItemQty = parseInt(sub.fields.getTextInputValue('promo_item_qty')) || 0;
+            const pQuota = parseInt(sub.fields.getTextInputValue('promo_quota'));
+
+            if (!pCode) {
+              return sub.reply({ content: '❌ Kode promo tidak boleh kosong dan harus alfanumerik!', flags: 64 });
+            }
+            if (isNaN(pQuota)) {
+              return sub.reply({ content: '❌ Kuota klaim harus berupa angka bulat (-1 untuk tanpa batas)!', flags: 64 });
+            }
+
+            const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7; // Aktif 7 hari
+
+            // Simpan ke database
+            const exist = database.get('SELECT 1 FROM promo_codes WHERE code = ?', [pCode]);
+            if (exist) {
+              database.run(
+                'UPDATE promo_codes SET reward_coins = ?, reward_item_id = ?, reward_item_qty = ?, max_claims = ?, current_claims = 0, expires_at = ? WHERE code = ?',
+                [pCoins, pItemId, pItemQty, pQuota, expiresAt, pCode]
+              );
+            } else {
+              database.run(
+                'INSERT INTO promo_codes (code, reward_coins, reward_item_id, reward_item_qty, max_claims, current_claims, expires_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+                [pCode, pCoins, pItemId, pItemQty, pQuota, expiresAt]
+              );
+            }
+
+            let rewardStr = '';
+            if (pCoins > 0) rewardStr += `• 🪙 Koin: **Rp ${pCoins.toLocaleString('id-ID')}**\n`;
+            if (pItemId && pItemQty > 0) rewardStr += `• 📦 Item: **${pItemQty}x \`${pItemId}\`**\n`;
+
+            await sub.reply({
+              content: `🎟️ **SUKSES MEMBUAT KODE PROMO!**\n\n` +
+                `• Kode: **${pCode}**\n` +
+                `• Kuota: **${pQuota === -1 ? 'Unlimited' : pQuota + ' orang'}**\n` +
+                `• Berlaku s/d: <t:${expiresAt}:F> (<t:${expiresAt}:R>)\n` +
+                `• Hadiah:\n${rewardStr || '• (Tidak ada hadiah)'}`,
+              flags: 64
+            });
+            const fresh = getAbyusPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
         }
       }
       else if (iAbyus.customId === 'admin_abyus_select_item_to_give') {
