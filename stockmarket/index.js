@@ -6165,36 +6165,7 @@ async function handlePetCommand(message, client, args) {
 
   // ── SUB-PERINTAH: BAG (Perlengkapan) ──
   if (subCommand === 'bag' || subCommand === 'equipment' || subCommand === 'equipments') {
-    const eq = require('./equipment');
-    // Ambil tas/inventory equipment user
-    const inventory = db.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [author.id, guildId]);
-    if (inventory.length === 0) {
-      return message.reply({ embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) atau Gacha (`.pet equipment-gacha`) untuk mendapatkan equipment!')] });
-    }
-
-    const embed = new EmbedBuilder()
-      .setColor(0x00D2FF)
-      .setTitle(`🎒 TAS EQUIPMENT PET: ${author.username} 🎒`)
-      .setDescription(
-        inventory.map(item => {
-          // Check element match if equipped
-          let petEl = null;
-          if (item.equipped_pet) {
-            const petObj = db.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [author.id, guildId, item.equipped_pet]);
-            if (petObj) petEl = petObj.gacha_element;
-          }
-          const eff = eq.getEquipmentEffectiveStats(item, petEl);
-          const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
-          const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
-          const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
-          return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
-                 `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
-                 `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
-        }).join('\n\n') +
-        `\n\n*Gunakan \`.pet equip <nama_pet> <id_equipment>\` untuk memasang perlengkapan.*\n*Gunakan \`.pet repair <id_equipment>\` untuk memperbaiki ketahanan (durability) equipment.*`
-      )
-      .setTimestamp();
-    return message.reply({ embeds: [embed] });
+    return handlePetEquipmentBagPanel(message, client);
   }
 
   // ── SUB-PERINTAH: EQUIP ──
@@ -9508,6 +9479,367 @@ async function handlePetGachaPanel(context, client, isInteraction = false) {
 
   collector.on('end', async () => {
     await editGachaMessage({ components: [] }).catch(() => { });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HANDLER: TAS EQUIPMENT INTERAKTIF (.pet bag / .pet equipment)
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePetEquipmentBagPanel(context, client, isInteraction = false) {
+  const guildId = context.guildId;
+  const author = isInteraction ? context.user : context.author;
+  const eq = require('./equipment');
+
+  // Local state for the selected equipment item ID (null means main list view)
+  let selectedEquipId = null;
+
+  const buildMainView = (userId, gId) => {
+    const inventory = database.all('SELECT * FROM pet_equipment WHERE user_id = ? AND guild_id = ?', [userId, gId]);
+    if (inventory.length === 0) {
+      return {
+        embeds: [embeds.warnEmbed('Tas Kosong!', 'Anda tidak memiliki JRPG Equipment apapun! Ikuti **Ekspedisi** (`.pet expedition`) atau Gacha (`.pet equipment-gacha`) untuk mendapatkan equipment!')],
+        components: []
+      };
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00D2FF)
+      .setTitle(`🎒 TAS EQUIPMENT PET: ${author.username} 🎒`)
+      .setDescription(
+        inventory.map(item => {
+          let petEl = null;
+          if (item.equipped_pet) {
+            const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, gId, item.equipped_pet]);
+            if (petObj) petEl = petObj.gacha_element;
+          }
+          const eff = eq.getEquipmentEffectiveStats(item, petEl);
+          const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
+          const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
+          const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
+          return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
+                 `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
+                 `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
+        }).slice(0, 15).join('\n\n') +
+        (inventory.length > 15 ? `\n\n*Dan ${inventory.length - 15} item lainnya... gunakan menu di bawah untuk melihat dan mengelola semua.*` : '')
+      )
+      .setTimestamp();
+
+    // Select Menu to pick an item
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('pet_bag_select_item')
+      .setPlaceholder('🎒 Pilih perlengkapan untuk mengelola/memakai...');
+
+    inventory.slice(0, 25).forEach(item => {
+      selectMenu.addOptions({
+        label: `[ID: ${item.id}] [+${item.level}] ${item.equip_name}`,
+        value: `equip_id_${item.id}`,
+        description: `Tipe: ${item.equip_type} | Stat: +${item.stat_value} ${item.stat_type} | ${item.equipped_pet ? `Dipakai: ${item.equipped_pet}` : 'Di Tas'}`.substring(0, 100)
+      });
+    });
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    
+    // Add close button
+    const closeBtnRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_bag_btn_close').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
+    );
+
+    return { embeds: [embed], components: [row, closeBtnRow] };
+  };
+
+  const buildDetailView = (userId, gId, equipId) => {
+    const item = database.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [equipId, userId, gId]);
+    if (!item) {
+      return {
+        embeds: [embeds.errorEmbed('Tidak Ditemukan!', 'Perlengkapan tidak ditemukan!')],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('pet_bag_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+          )
+        ]
+      };
+    }
+
+    let petEl = null;
+    if (item.equipped_pet) {
+      const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, gId, item.equipped_pet]);
+      if (petObj) petEl = petObj.gacha_element;
+    }
+    const eff = eq.getEquipmentEffectiveStats(item, petEl);
+    const elText = item.element && item.element !== 'NONE' ? `\`${item.element}\`` : 'Tidak Ada';
+    const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
+    const equippedText = item.equipped_pet ? `👤 Dipakai oleh: **${item.equipped_pet}**` : '📦 Status: **Di Tas**';
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00D2FF)
+      .setTitle(`🛡️ DETAIL PERLENGKAPAN: ${item.equip_name} 🛡️`)
+      .setDescription(
+        `• **ID Equipment:** \`${item.id}\`\n` +
+        `• **Level Tempa:** \`+${item.level}\`\n` +
+        `• **Kelangkaan:** **${item.rarity}**\n` +
+        `• **Tipe:** \`${item.equip_type}\`\n` +
+        `• **Elemen:** ${elText}\n` +
+        `• **Stat Efektif:** **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
+        `• **Durability:** \`${item.durability}/${item.max_durability}\`\n` +
+        `• ${equippedText}`
+      )
+      .setTimestamp();
+
+    // Buttons: Forge, Repair, Unequip, Back
+    const wallet = economy.getWallet(userId, gId);
+    
+    // Forge Button Config
+    const curLevel = item.level || 1;
+    let forgeLabel = '✨ Max level +10';
+    let forgeDisabled = true;
+    if (curLevel < 10) {
+      const forgeConfig = eq.FORGE_RATES[curLevel];
+      if (forgeConfig) {
+        forgeLabel = `✨ Forge (+${curLevel + 1}) (Rp ${forgeConfig.cost.toLocaleString('id-ID')})`;
+        forgeDisabled = wallet.balance < forgeConfig.cost;
+      }
+    }
+    
+    // Repair Button Config
+    const maxDur = item.max_durability || 100;
+    const curDur = item.durability !== undefined ? item.durability : 100;
+    const missingDur = maxDur - curDur;
+    const repairCost = missingDur * 25;
+    let repairLabel = '🔧 Durability Penuh';
+    let repairDisabled = true;
+    if (missingDur > 0) {
+      repairLabel = `🔧 Repair (Rp ${repairCost.toLocaleString('id-ID')})`;
+      repairDisabled = wallet.balance < repairCost;
+    }
+
+    const row1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('pet_bag_btn_forge').setLabel(forgeLabel).setStyle(ButtonStyle.Primary).setDisabled(forgeDisabled),
+      new ButtonBuilder().setCustomId('pet_bag_btn_repair').setLabel(repairLabel).setStyle(ButtonStyle.Success).setDisabled(repairDisabled)
+    );
+
+    const row2 = new ActionRowBuilder();
+    if (item.equipped_pet) {
+      row2.addComponents(
+        new ButtonBuilder().setCustomId('pet_bag_btn_unequip').setLabel('📦 Lepas (Unequip)').setStyle(ButtonStyle.Danger)
+      );
+    }
+    row2.addComponents(
+      new ButtonBuilder().setCustomId('pet_bag_btn_back').setLabel('🔙 Kembali').setStyle(ButtonStyle.Secondary)
+    );
+
+    const components = [row1, row2];
+
+    // Select Menu to Equip on a living pet
+    const pets = database.all('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND status NOT IN ("DEAD", "EGG")', [userId, gId]);
+    if (pets.length > 0) {
+      const petSelect = new StringSelectMenuBuilder()
+        .setCustomId('pet_bag_equip_to_pet')
+        .setPlaceholder('👤 Pasang ke Pet Anda...');
+
+      pets.forEach(p => {
+        petSelect.addOptions({
+          label: `${p.pet_name} (Lv. ${p.level} ${p.pet_type})`,
+          value: `equip_to_${p.pet_name}`,
+          description: `Status: ${p.status} | HP: ${p.health}%`.substring(0, 100)
+        });
+      });
+      components.splice(1, 0, new ActionRowBuilder().addComponents(petSelect));
+    }
+
+    return { embeds: [embed], components };
+  };
+
+  let replyMsg;
+  const initialView = buildMainView(author.id, guildId);
+  if (isInteraction) {
+    if (context.deferred || context.replied) {
+      replyMsg = await context.editReply(initialView);
+    } else {
+      initialView.flags = 64;
+      const resp = await context.reply({ ...initialView, withResponse: true });
+      replyMsg = resp.resource?.message ?? await context.fetchReply();
+    }
+  } else {
+    replyMsg = await context.reply(initialView);
+  }
+
+  const editMessage = async (payload) => {
+    if (isInteraction) {
+      await context.editReply(payload).catch(() => { });
+    } else {
+      await replyMsg.edit(payload).catch(() => { });
+    }
+  };
+
+  const collector = replyMsg.createMessageComponentCollector({
+    time: 120000
+  });
+
+  collector.on('collect', async iBag => {
+    if (iBag.user.id !== author.id) {
+      return iBag.reply({ content: '❌ Menu ini bukan milik Anda!', flags: 64 });
+    }
+
+    try {
+      // ── CLOSE PANEL ──
+      if (iBag.customId === 'pet_bag_btn_close') {
+        collector.stop();
+        if (isInteraction) {
+          await context.deleteReply().catch(() => { });
+        } else {
+          await replyMsg.delete().catch(() => { });
+        }
+        return;
+      }
+
+      // ── SELECT ITEM FROM BAG ──
+      if (iBag.customId === 'pet_bag_select_item') {
+        const idVal = iBag.values[0].replace('equip_id_', '');
+        selectedEquipId = parseInt(idVal);
+        await iBag.update(buildDetailView(author.id, guildId, selectedEquipId));
+        return;
+      }
+
+      // ── BACK TO BAG LIST ──
+      if (iBag.customId === 'pet_bag_btn_back') {
+        selectedEquipId = null;
+        await iBag.update(buildMainView(author.id, guildId));
+        return;
+      }
+
+      // ── FORGE EQUIPMENT ──
+      if (iBag.customId === 'pet_bag_btn_forge') {
+        await iBag.deferReply({ flags: 64 });
+        try {
+          const equip = database.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [selectedEquipId, author.id, guildId]);
+          if (!equip) throw new Error('Equipment tidak ditemukan.');
+          const curLevel = equip.level || 1;
+          if (curLevel >= 10) throw new Error('Level tempa sudah maksimal (+10).');
+
+          const forgeConfig = eq.FORGE_RATES[curLevel];
+          if (!forgeConfig) throw new Error('Konfigurasi forging tidak ditemukan.');
+
+          const wallet = economy.getWallet(author.id, guildId);
+          if (wallet.balance < forgeConfig.cost) throw new Error(`Saldo koin tidak cukup! Butuh Rp ${forgeConfig.cost.toLocaleString('id-ID')}.`);
+
+          let success = false;
+          database.transaction(() => {
+            economy.subtractBalance(author.id, guildId, forgeConfig.cost, 'PET_EQUIPMENT_FORGE');
+            const roll = Math.random() * 100;
+            if (roll < forgeConfig.chance) {
+              success = true;
+              database.run('UPDATE pet_equipment SET level = level + 1 WHERE id = ?', [equip.id]);
+            }
+          })();
+
+          if (success) {
+            await iBag.editReply({
+              content: `✨ **TEMPA BERHASIL!** Perlengkapan **${equip.equip_name}** berhasil ditingkatkan ke **+${curLevel + 1}**!`
+            });
+          } else {
+            await iBag.editReply({
+              content: `💥 **TEMPA GAGAL!** Koin sebesar **Rp ${forgeConfig.cost.toLocaleString('id-ID')}** hangus.`
+            });
+          }
+          await editMessage(buildDetailView(author.id, guildId, selectedEquipId));
+        } catch (err) {
+          await iBag.editReply({ content: `❌ **Forge Gagal:** ${err.message}` });
+        }
+        return;
+      }
+
+      // ── REPAIR EQUIPMENT ──
+      if (iBag.customId === 'pet_bag_btn_repair') {
+        await iBag.deferReply({ flags: 64 });
+        try {
+          const equip = database.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [selectedEquipId, author.id, guildId]);
+          if (!equip) throw new Error('Equipment tidak ditemukan.');
+
+          const maxDur = equip.max_durability || 100;
+          const curDur = equip.durability !== undefined ? equip.durability : 100;
+          if (curDur >= maxDur) throw new Error('Durability sudah penuh.');
+
+          const missingDur = maxDur - curDur;
+          const repairCost = missingDur * 25;
+
+          const wallet = economy.getWallet(author.id, guildId);
+          if (wallet.balance < repairCost) throw new Error(`Saldo koin tidak cukup! Butuh Rp ${repairCost.toLocaleString('id-ID')}.`);
+
+          database.transaction(() => {
+            economy.subtractBalance(author.id, guildId, repairCost, 'PET_EQUIPMENT_REPAIR');
+            database.run('UPDATE pet_equipment SET durability = max_durability WHERE id = ?', [equip.id]);
+          })();
+
+          await iBag.editReply({
+            content: `🔧 **PERBAIKAN SELESAI!** Perlengkapan **${equip.equip_name}** diperbaiki ke \`${maxDur}/${maxDur}\`.`
+          });
+          await editMessage(buildDetailView(author.id, guildId, selectedEquipId));
+        } catch (err) {
+          await iBag.editReply({ content: `❌ **Repair Gagal:** ${err.message}` });
+        }
+        return;
+      }
+
+      // ── UNEQUIP EQUIPMENT ──
+      if (iBag.customId === 'pet_bag_btn_unequip') {
+        await iBag.deferReply({ flags: 64 });
+        try {
+          const equip = database.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [selectedEquipId, author.id, guildId]);
+          if (!equip) throw new Error('Equipment tidak ditemukan.');
+          if (!equip.equipped_pet) throw new Error('Perlengkapan tidak sedang dipakai.');
+
+          database.run('UPDATE pet_equipment SET equipped_pet = NULL WHERE id = ?', [equip.id]);
+
+          await iBag.editReply({
+            content: `📦 **Equipment Dilepas!** Berhasil melepas **${equip.equip_name}** dari **${equip.equipped_pet}**.`
+          });
+          await editMessage(buildDetailView(author.id, guildId, selectedEquipId));
+        } catch (err) {
+          await iBag.editReply({ content: `❌ **Unequip Gagal:** ${err.message}` });
+        }
+        return;
+      }
+
+      // ── EQUIP TO PET (SELECT MENU) ──
+      if (iBag.customId === 'pet_bag_equip_to_pet') {
+        const petNameSelected = iBag.values[0].replace('equip_to_', '');
+        await iBag.deferReply({ flags: 64 });
+        try {
+          const petObj = database.get('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ? COLLATE NOCASE', [author.id, guildId, petNameSelected]);
+          if (!petObj) throw new Error(`Pet "${petNameSelected}" tidak ditemukan.`);
+          if (petObj.status === 'DEAD' || petObj.status === 'EGG') throw new Error('Pet tidak dalam kondisi cocok.');
+
+          const equip = database.get('SELECT * FROM pet_equipment WHERE id = ? AND user_id = ? AND guild_id = ?', [selectedEquipId, author.id, guildId]);
+          if (!equip) throw new Error('Equipment tidak ditemukan.');
+
+          database.transaction(() => {
+            // Unequip same type from same pet
+            database.run('UPDATE pet_equipment SET equipped_pet = NULL WHERE user_id = ? AND guild_id = ? AND equipped_pet = ? AND equip_type = ?', [author.id, guildId, petObj.pet_name, equip.equip_type]);
+            // Equip new item
+            database.run('UPDATE pet_equipment SET equipped_pet = ? WHERE id = ?', [petObj.pet_name, equip.id]);
+          })();
+
+          await iBag.editReply({
+            content: `🛡️ **Berhasil Memasang Equipment!** **${equip.equip_name}** dipasang ke **${petObj.pet_name}**.`
+          });
+          await editMessage(buildDetailView(author.id, guildId, selectedEquipId));
+        } catch (err) {
+          await iBag.editReply({ content: `❌ **Gagal Pasang Equipment:** ${err.message}` });
+        }
+        return;
+      }
+
+    } catch (err) {
+      console.error("Error in equipment bag interaction:", err);
+    }
+  });
+
+  collector.on('end', async () => {
+    // Remove all components when collector expires
+    const freshView = selectedEquipId ? buildDetailView(author.id, guildId, selectedEquipId) : buildMainView(author.id, guildId);
+    freshView.components = [];
+    await editMessage(freshView).catch(() => { });
   });
 }
 
