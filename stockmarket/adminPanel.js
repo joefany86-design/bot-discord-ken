@@ -8605,6 +8605,10 @@ async function handleAdminSystemPanel(messageOrInteraction, client) {
         .setDescription('Lihat daftar voucher aktif dan hapus voucher')
         .setValue('system_promo_list'),
       new StringSelectMenuOptionBuilder()
+        .setLabel('🪵 Lihat Log Konsol & Error PM2')
+        .setDescription('Tampilkan 20 baris terakhir log konsol/error PM2 dari VPS')
+        .setValue('system_view_logs'),
+      new StringSelectMenuOptionBuilder()
         .setLabel('📊 Monitor Kesehatan Database')
         .setDescription('Tinjau ukuran berkas database, baris log, dan status tabel SQLite')
         .setValue('system_db_health'),
@@ -8901,6 +8905,71 @@ async function handleAdminSystemPanel(messageOrInteraction, client) {
             database.run('DELETE FROM promo_claims WHERE code = ?', [codeToDel]);
             await iDel.reply({ content: `🗑️ Kode promo **${codeToDel}** beserta log klaimnya berhasil dihapus!`, flags: 64 });
             await listMsg.delete().catch(() => { });
+          });
+        }
+        else if (action === 'system_view_logs') {
+          await iSystem.deferReply({ flags: 64 });
+          
+          const logSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_system_log_process_select')
+            .setPlaceholder('🪵 Pilih Proses PM2 untuk Dilihat Log-nya');
+
+          logSelect.addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel('🤖 Bot Discord (bot-2026)')
+              .setDescription('Log aktivitas chat, perintah, dan error game')
+              .setValue('bot-2026'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('⚙️ Admin Panel (admin-panel-2026)')
+              .setDescription('Log aktivitas panel admin dan dashboard')
+              .setValue('admin-panel-2026')
+          );
+
+          const row = new ActionRowBuilder().addComponents(logSelect);
+          const logMsg = await iSystem.editReply({
+            content: '🪵 **LOGGER LOG KONSOL & ERROR PM2** 🪵\n\nSilakan pilih proses bot yang ingin Anda lihat log konsolnya di bawah ini:',
+            components: [row]
+          });
+
+          const logCollector = logMsg.createMessageComponentCollector({ time: 60000 });
+          logCollector.on('collect', async iLogProc => {
+            if (iLogProc.user.id !== author.id) return;
+            const processName = iLogProc.values[0];
+            await iLogProc.deferUpdate();
+
+            const { exec } = require('child_process');
+            exec(`pm2 logs ${processName} --raw --lines 20 | cat`, (error, stdout, stderr) => {
+              let logOutput = '';
+              if (error) {
+                logOutput += `❌ Gagal mengambil log PM2 untuk ${processName}: ${error.message}\n`;
+              }
+              if (stderr) {
+                logOutput += `stderr:\n${stderr}\n`;
+              }
+              if (stdout) {
+                logOutput += stdout;
+              }
+
+              // Sanitasi
+              const sanitizedLogs = logOutput
+                .replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '') // Strip escape colors
+                .substring(0, 1900);
+
+              const logsEmbed = new EmbedBuilder()
+                .setColor(0xFFA000)
+                .setTitle(`🪵 LOG KONSOL PM2 (${processName})`)
+                .setDescription(`\`\`\`log\n${sanitizedLogs || 'Tidak ada log yang terekam.'}\n\`\`\``)
+                .setTimestamp()
+                .setFooter({ text: `Sentinel Log System • ${processName}` });
+
+              iLogProc.editReply({
+                content: `✅ Berikut adalah log terbaru dari **${processName}**:`,
+                embeds: [logsEmbed],
+                components: []
+              }).catch(() => {});
+            });
+
+            logCollector.stop();
           });
         }
         else if (action === 'system_db_health') {
