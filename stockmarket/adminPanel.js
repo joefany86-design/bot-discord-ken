@@ -746,23 +746,25 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               }
             }
 
+            const initialTp = pLevel > 1 ? (pLevel - 1) * 3 : 0;
+
             database.run(
               `INSERT INTO user_pets (
                 user_id, guild_id, pet_name, pet_type, status, level, xp, health, hunger, thirst, happiness, 
                 last_interaction_at, hatch_at, created_at, is_active, trait, 
                 star_level, base_hp_bonus, base_atk_bonus_pct, base_def_bonus_pct,
-                gacha_source, gacha_rarity, gacha_element, gacha_trait2, xp_multiplier
+                gacha_source, gacha_rarity, gacha_element, gacha_trait2, xp_multiplier, unused_tp
               ) VALUES (
                 ?, ?, ?, ?, ?, ?, 0, ?, 100, 100, 100, 
                 ?, ?, ?, ?, ?, 
                 ?, ?, ?, ?,
-                ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?
               )`,
               [
                 selectedTargetUserId, guildId, sanitizedName, pType, pStatus, pLevel, maxHP,
                 now, hatchAt, now, isActive, finalTrait,
                 pStar, bonusHp, bonusAtkPct, bonusDefPct,
-                gSource, gRarity, gElement, finalTrait2, xpMultiplier
+                gSource, gRarity, gElement, finalTrait2, xpMultiplier, initialTp
               ]
             );
 
@@ -1035,6 +1037,12 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
               return sub.reply({ content: '❌ Jumlah TP harus berupa angka bulat minimal 0!', flags: 64 });
             }
 
+            const allocatedStats = (targetPet.stat_str || 0) + (targetPet.stat_vit || 0) + (targetPet.stat_def || 0) + (targetPet.stat_dex || 0);
+            const maxAllowed = targetPet.status === 'EGG' ? 0 : (targetPet.level - 1) * 3;
+            if (tpVal + allocatedStats > maxAllowed) {
+              return sub.reply({ content: `❌ Gagal! Total TP (Sisa TP + Stat teralokasi: ${tpVal + allocatedStats}) tidak boleh melebihi batas level pet yaitu ${maxAllowed} TP (Pet Lv. ${targetPet.level})!`, flags: 64 });
+            }
+
             database.run('UPDATE user_pets SET unused_tp = ? WHERE user_id = ? AND guild_id = ? AND is_active = 1', [tpVal, selectedTargetUserId, guildId]);
 
             await sub.reply({ content: `🏋️ Sukses mengatur sisa Poin Latihan (TP) pet **${targetPet.pet_name}** milik <@${selectedTargetUserId}> menjadi **${tpVal} TP**!`, flags: 64 });
@@ -1111,6 +1119,12 @@ async function handleAdminPetPanel(messageOrInteraction, client, initialTargetUs
 
             if (isNaN(strVal) || strVal < 0 || isNaN(vitVal) || vitVal < 0 || isNaN(defVal) || defVal < 0 || isNaN(dexVal) || dexVal < 0 || isNaN(tpVal) || tpVal < 0) {
               return sub.reply({ content: '❌ Seluruh input stat dan TP harus berupa angka bulat minimal 0!', flags: 64 });
+            }
+
+            const totalSum = strVal + vitVal + defVal + dexVal + tpVal;
+            const maxAllowed = targetPet.status === 'EGG' ? 0 : (targetPet.level - 1) * 3;
+            if (totalSum > maxAllowed) {
+              return sub.reply({ content: `❌ Gagal! Total stat gym dan sisa TP yang dimasukkan (${totalSum}) melebihi batas level pet yaitu ${maxAllowed} TP (Pet Lv. ${targetPet.level})!`, flags: 64 });
             }
 
             database.run(
