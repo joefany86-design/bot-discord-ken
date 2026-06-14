@@ -10097,6 +10097,9 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
       console.error('Error fetching equipment for gym:', err);
     }
 
+    const speciesBaseHp = pet.GACHA_SPECIES[pData.pet_type]?.baseHP || 100;
+    const starHpBonus = ((pData.star_level || 1) - 1) * 15;
+
     const embed = new EmbedBuilder()
       .setColor(0x9C27B0)
       .setTitle(`🏋️ PUSAT KEBUGARAN & STATS PET: ${pData.pet_name} 🏋️`)
@@ -10104,16 +10107,21 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
         `🐾 **Spesies:** ${pData.pet_type} (Lv. ${pData.level}) | ${star}\n` +
         `✨ **Poin Latihan Tersedia (TP):** 🔴 **${unusedTp} Poin**\n\n` +
         `📊 **ATRIBUT STAT GYM SAAT INI:**\n` +
-        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK | **+${(pData.stat_str || 0) * 6} ATK di PvP**)${eqATK ? ` *[+${eqATK} Equip]*` : ''}\n` +
-        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP | **+${(pData.stat_vit || 0) * 40} HP di PvP**)${eqHP ? ` *[+${eqHP} HP Equip]*` : ''}\n` +
-        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi DMG | **+${((pData.stat_def || 0) * 1.33).toFixed(1)}% di PvP**)${eqDEF ? ` *[+${eqDEF} DEF Equip]*` : ''}\n` +
-        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)${eqDEX ? ` *[+${eqDEX} DEX Equip]*` : ''}\n\n` +
+        `> 💪 **STR (Kekuatan):** \`${pData.stat_str || 0}\` (+${(pData.stat_str || 0) * 2} ATK | **+${(pData.stat_str || 0) * 6} ATK di PvP**)${eqATK ? ` *[+${eqATK} STR | +${eqATK * 6} ATK di PvP Equip]*` : ''}\n` +
+        `> ❤️ **VIT (Vitalitas):** \`${pData.stat_vit || 0}\` (+${(pData.stat_vit || 0) * 3} Max HP | **+${(pData.stat_vit || 0) * 40} HP di PvP**)${eqHP ? ` *[+${eqHP} VIT | +${eqHP * 4} HP di PvP Equip]*` : ''}\n` +
+        `> 🛡️ **DEF (Pertahanan):** \`${pData.stat_def || 0}\` (+${defGym.toFixed(1)}% Reduksi DMG | **+${((pData.stat_def || 0) * 1.33).toFixed(1)}% di PvP**)${eqDEF ? ` *[+${eqDEF} DEF | +${(eqDEF * 1.33).toFixed(1)}% Reduksi di PvP Equip]*` : ''}\n` +
+        `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)${eqDEX ? ` *[+${eqDEX} DEX | +${(eqDEX * 0.5).toFixed(1)}% Crit & +${(eqDEX * 0.8).toFixed(1)}% Dodge di PvP Equip]*` : ''}\n\n` +
         `⚔️ **JRPG PERLENGKAPAN (EQUIPMENT):**\n${equipText}\n\n` +
-        `🔥 **TOTAL KEKUATAN COMBAT & UTILITY (Non-PvP):**\n` +
+        `🔥 **TOTAL KEKUATAN COMBAT (Non-PvP):**\n` +
         `• ❤️ **Max HP:** \`${maxHP} HP\`\n` +
         `• ⚔️ **ATK Damage:** \`${totalAtk + eqATK * 2} ATK\`\n` +
         `• 🛡️ **Damage Reduction:** \`${(totalDefPct + eqDEF * 0.5).toFixed(1)}%\`\n` +
         `• ⚡ **Crit Rate:** \`${(critRate + eqDEX * 0.5).toFixed(1)}%\`\n\n` +
+        `⚔️ **TOTAL KEKUATAN COMBAT (PvP):**\n` +
+        `• ❤️ **Max HP Arena:** \`${((speciesBaseHp + starHpBonus + (pData.stat_vit || 0) * 10 + eqHP) * 4).toLocaleString('id-ID')} HP\`\n` +
+        `• ⚔️ **ATK Arena:** \`${speciesBaseAtk + ((pData.stat_str || 0) + eqATK) * 6} ATK\`\n` +
+        `• 🛡️ **Damage Reduction Arena:** \`${Math.min(80, (speciesBaseDef + ((pData.stat_def || 0) + eqDEF) * 2.0) * (100 / 150)).toFixed(1)}%\`\n` +
+        `• ⚡ **Crit / Dodge Arena:** \`${Math.min(35, ((pData.stat_dex || 0) + eqDEX) * 0.5).toFixed(1)}%\` / \`${Math.min(40, ((pData.stat_dex || 0) + eqDEX) * 0.8).toFixed(1)}%\`\n\n` +
         `💰 **Biaya Reset Stat:** Rp 1.000 (Dompet: Rp ${wallet.balance.toLocaleString('id-ID')})`
       )
       .setFooter({ text: 'Pilih tombol di bawah untuk melatih pet Anda!' })
