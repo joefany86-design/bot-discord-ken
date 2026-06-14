@@ -3400,34 +3400,69 @@ module.exports = {
   // 28. Toko Item Pet (.pet shop)
   petShopEmbed(wallet, inventory, statusMessage = '') {
     const { PET_ITEMS } = require('./pet');
+    
+    // Kelompokkan item berdasarkan kategori belanja
+    const categories = {
+      FOOD_AND_CARE: {
+        title: '🍔 PANGAN & KEBUTUHAN HARIAN',
+        keys: ['FOOD_BASIC', 'FOOD_PREMIUM', 'WATER', 'TOY', 'SOAP_PET']
+      },
+      HEALTH_AND_ENERGY: {
+        title: '💊 KESEHATAN & ENERGI',
+        keys: ['MEDICINE', 'SODA_ENERGY']
+      },
+      BOOSTERS_AND_UTILITY: {
+        title: '⚡ BUFF, UTILITAS & AKSESORIS',
+        keys: ['XP_2X', 'XP_4X', 'XP_6X', 'XP_8X', 'PET_RENAME', 'COLLAR_IRON', 'SWORD_TOY', 'SHIELD_TOY', 'LUCKY_AMULET']
+      }
+    };
+
     const desc = `Jaga kelangsungan hidup pet Anda dengan berbelanja supplies berkualitas!\n\n` +
       (statusMessage ? `🔔 **Notifikasi:** ${statusMessage}\n\n` : '') +
       `💵 **Saldo Rupiah Anda:** **${formatCurrency(wallet.balance)}**\n` +
       `📦 **Persediaan Anda Saat Ini:**\n` +
-      inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n');
+      (inventory.length > 0 ? inventory.map(item => `• ${item.name}: \`${item.quantity} pcs\``).join('\n') : '*Tas pet Anda kosong.*');
+
     const embed = new EmbedBuilder()
       .setColor(COLORS.PURPLE)
       .setTitle('🎒 TOKO PERSEDIAAN PET TAMAGOTCHI')
       .setDescription(desc);
 
-    Object.keys(PET_ITEMS).forEach(key => {
-      const item = PET_ITEMS[key];
+    Object.keys(categories).forEach(catKey => {
+      const cat = categories[catKey];
+      const itemsListText = cat.keys
+        .filter(key => PET_ITEMS[key] && PET_ITEMS[key].price > 0)
+        .map(key => {
+          const item = PET_ITEMS[key];
+          let effectDesc = '';
+          if (item.id === 'FOOD_BASIC') effectDesc = '+30 Kenyangan';
+          else if (item.id === 'FOOD_PREMIUM') effectDesc = '+70 Kenyangan, +10 HP, +5 Kebahagiaan';
+          else if (item.id === 'WATER') effectDesc = '+35 Hidrasi';
+          else if (item.id === 'MEDICINE') effectDesc = '+50 HP, Sembuhkan Sakit';
+          else if (item.id === 'TOY') effectDesc = '+50 Kebahagiaan';
+          else if (item.id === 'SODA_ENERGY') effectDesc = 'Reset Cooldown Kerja/Berburu (CD 30m)';
+          else if (item.id === 'SOAP_PET') effectDesc = 'Mandi Bersih (Hilangkan Bau Busuk)';
+          else if (item.multiplier) effectDesc = `Aktifkan pengali XP ${item.multiplier}x permanen`;
+          else if (item.id === 'PET_RENAME') effectDesc = 'Kartu untuk mengubah nama pet aktif';
+          else if (item.id === 'COLLAR_IRON') effectDesc = 'Aksesori: +20 DEF permanen (PvP/Raid)';
+          else if (item.id === 'SWORD_TOY') effectDesc = 'Aksesori: +15% ATK permanen (PvP/Raid)';
+          else if (item.id === 'SHIELD_TOY') effectDesc = 'Aksesori: -15% DMG diterima permanen (PvP/Raid)';
+          else if (item.id === 'LUCKY_AMULET') effectDesc = 'Jimat sekali pakai pelindung dari kematian PvP';
+          
+          if (!effectDesc) effectDesc = item.desc;
+
+          return `• **${item.name}** — **${formatCurrency(item.price)}**\n  *Efek: ${effectDesc}*\n  👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``;
+        })
+        .join('\n\n');
+
       embed.addFields({
-        name: `${item.name} — ${formatCurrency(item.price)}`,
-        value: `*“${item.desc}”*\n👉 Efek: ` +
-          (item.hunger > 0 ? `\`+${item.hunger} Kenyangan\` ` : '') +
-          (item.thirst > 0 ? `\`+${item.thirst} Hidrasi\` ` : '') +
-          (item.hp > 0 ? `\`+${item.hp} HP\` ` : '') +
-          (item.happiness > 0 ? `\`+${item.happiness} Kebahagiaan\` ` : '') +
-          (item.cures ? `\`Mengobati Sakit/Pingsan\` ` : '') +
-          (item.multiplier ? `\`Meningkatkan Multiplier XP Pet menjadi ${item.multiplier}x secara permanen\` ` : '') +
-          (item.type === 'ACCESSORY' ? (item.id === 'LUCKY_AMULET' ? `\`Aksesoris Sekali Pakai (Jimat Pelindung Mati)\` ` : `\`Aksesoris Permanen Pet (Bisa Dipasang)\` `) : '') +
-          `\n👉 Kode Beli: \`.pet buy-item ${item.id.toLowerCase()}\``,
+        name: cat.title,
+        value: itemsListText || '_Tidak ada item_',
         inline: false
       });
     });
 
-    embed.setFooter({ text: 'Gunakan tombol menu di bawah untuk bertransaksi instan!' }).setTimestamp();
+    embed.setFooter({ text: 'Pilih kategori belanja di menu dropdown bawah untuk transaksi instan!' }).setTimestamp();
     return embed;
   },
 
