@@ -3022,12 +3022,6 @@ function initStockMarket(client) {
               if (userPet.status !== 'DEAD' && userPet.status !== 'EGG') {
                 manageOptions.push(
                   new StringSelectMenuOptionBuilder()
-                    .setLabel('🏷️ Ganti Nama Pet')
-                    .setDescription('Ubah nama pet aktif Anda (Butuh Kartu Ganti Nama)')
-                    .setValue('pet_manage_rename')
-                );
-                manageOptions.push(
-                  new StringSelectMenuOptionBuilder()
                     .setLabel('♻️ Daur Ulang Pet')
                     .setDescription('Daur ulang pet aktif untuk mendapatkan koin/item')
                     .setValue('pet_manage_recycle')
@@ -3168,51 +3162,6 @@ function initStockMarket(client) {
                   await handlePetUpgradePanel(iPet, client, true);
                 } else if (selectedValue === 'pet_manage_shop') {
                   await iPet.update(getShopPanelDataPrivate(user.id));
-                } else if (selectedValue === 'pet_manage_rename') {
-                  const cardQty = pet.getItemQuantity(user.id, guildId, 'PET_RENAME');
-                  if (cardQty <= 0) {
-                    return iPet.reply({
-                      embeds: [embeds.errorEmbed('Tidak Memiliki Kartu!', 'Anda tidak memiliki 🏷️ **Kartu Ganti Nama Pet**!\n\nBeli terlebih dahulu di **🛒 Toko Pet** seharga **Rp 10.000**.')],
-                      flags: 64
-                    });
-                  }
-
-                  const modal = new ModalBuilder()
-                    .setCustomId('pet_modal_rename_perm')
-                    .setTitle('🏷️ Ganti Nama Peliharaan');
-
-                  const nameInput = new TextInputBuilder()
-                    .setCustomId('new_pet_name')
-                    .setLabel('Nama Baru Peliharaan')
-                    .setPlaceholder('Contoh: Ciko')
-                    .setStyle(TextInputStyle.Short)
-                    .setMinLength(1)
-                    .setMaxLength(25)
-                    .setRequired(true);
-
-                  modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
-
-                  await iPet.showModal(modal);
-
-                  const submitted = await iPet.awaitModalSubmit({
-                    filter: (sub) => sub.customId === 'pet_modal_rename_perm' && sub.user.id === user.id,
-                    time: 60000
-                  }).catch(() => null);
-
-                  if (submitted) {
-                    try {
-                      const newName = submitted.fields.getTextInputValue('new_pet_name');
-                      const sanitized = pet.renamePet(user.id, guildId, newName);
-                      const successEmb = embeds.successEmbed(
-                        'Ganti Nama Pet Sukses! 🏷️',
-                        `Nama peliharaan aktif Anda berhasil diubah menjadi **"${sanitized}"** menggunakan **Kartu Ganti Nama Pet**!`
-                      );
-                      await submitted.reply({ embeds: [successEmb], flags: 64 });
-                      await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
-                    } catch (err) {
-                      await submitted.reply({ embeds: [embeds.errorEmbed('Ganti Nama Gagal!', err.message)], flags: 64 });
-                    }
-                  }
                 } else if (selectedValue === 'pet_manage_recycle') {
                   const allPetsFresh = pet.getPetsList(user.id, guildId);
                   if (allPetsFresh.length === 0) {
