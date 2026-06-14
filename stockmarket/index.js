@@ -9642,49 +9642,93 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
       };
     }
 
+    const weapons = inventory.filter(item => item.equip_type === 'WEAPON');
+    const armors = inventory.filter(item => item.equip_type === 'ARMOR');
+    const rings = inventory.filter(item => item.equip_type === 'RING');
+
+    const formatItemLine = (item) => {
+      let petEl = null;
+      if (item.equipped_pet) {
+        const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, gId, item.equipped_pet]);
+        if (petObj) petEl = petObj.gacha_element;
+      }
+      const eff = eq.getEquipmentEffectiveStats(item, petEl);
+      const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
+      const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
+      const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
+      
+      return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
+             `> Stat: **+${eff.effectiveValue} ${item.stat_type}**${elText}${affinityBonusText} | Durability: \`${item.durability}/${item.max_durability}\` | ${equippedText}`;
+    };
+
+    const weaponListText = weapons.length > 0 ? weapons.map(formatItemLine).join('\n') : '*Tidak ada senjata.*';
+    const armorListText = armors.length > 0 ? armors.map(formatItemLine).join('\n') : '*Tidak ada pelindung.*';
+    const ringListText = rings.length > 0 ? rings.map(formatItemLine).join('\n') : '*Tidak ada cincin.*';
+
     const embed = new EmbedBuilder()
       .setColor(0x00D2FF)
       .setTitle(`🎒 TAS EQUIPMENT PET: ${author.username} 🎒`)
-      .setDescription(
-        inventory.map(item => {
-          let petEl = null;
-          if (item.equipped_pet) {
-            const petObj = database.get('SELECT gacha_element FROM user_pets WHERE user_id = ? AND guild_id = ? AND pet_name = ?', [userId, gId, item.equipped_pet]);
-            if (petObj) petEl = petObj.gacha_element;
-          }
-          const eff = eq.getEquipmentEffectiveStats(item, petEl);
-          const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
-          const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
-          const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
-          return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
-                 `> Tipe: \`${item.equip_type}\`${elText} | Stat: **+${eff.effectiveValue} ${item.stat_type}**${affinityBonusText}\n` +
-                 `> Durability: \`${item.durability || 0}/${item.max_durability || 100}\` | Status: ${equippedText}`;
-        }).slice(0, 15).join('\n\n') +
-        (inventory.length > 15 ? `\n\n*Dan ${inventory.length - 15} item lainnya... gunakan menu di bawah untuk melihat dan mengelola semua.*` : '')
+      .addFields(
+        { name: '⚔️ SENJATA / WEAPONS', value: weaponListText.substring(0, 1024) },
+        { name: '🛡️ PELINDUNG / ARMORS', value: armorListText.substring(0, 1024) },
+        { name: '💍 CINCIN / RINGS', value: ringListText.substring(0, 1024) }
       )
       .setTimestamp();
 
-    // Select Menu to pick an item
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('pet_bag_select_item')
-      .setPlaceholder('🎒 Pilih perlengkapan untuk mengelola/memakai...');
+    const components = [];
 
-    inventory.slice(0, 25).forEach(item => {
-      selectMenu.addOptions({
-        label: `[ID: ${item.id}] [+${item.level}] ${item.equip_name}`,
-        value: `equip_id_${item.id}`,
-        description: `Tipe: ${item.equip_type} | Stat: +${item.stat_value} ${item.stat_type} | ${item.equipped_pet ? `Dipakai: ${item.equipped_pet}` : 'Di Tas'}`.substring(0, 100)
-      });
-    });
+    // Weapon select menu
+    if (weapons.length > 0) {
+      const weaponMenu = new StringSelectMenuBuilder()
+        .setCustomId('pet_bag_select_weapon')
+        .setPlaceholder('⚔️ Pilih Senjata untuk mengelola/memakai...')
+        .addOptions(
+          weapons.slice(0, 25).map(item => ({
+            label: `[ID: ${item.id}] [+${item.level}] ${item.equip_name}`,
+            value: `equip_id_${item.id}`,
+            description: `Stat: +${item.stat_value} ${item.stat_type} | ${item.equipped_pet ? `Dipakai: ${item.equipped_pet}` : 'Di Tas'}`.substring(0, 100)
+          }))
+        );
+      components.push(new ActionRowBuilder().addComponents(weaponMenu));
+    }
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    // Add close button
+    // Armor select menu
+    if (armors.length > 0) {
+      const armorMenu = new StringSelectMenuBuilder()
+        .setCustomId('pet_bag_select_armor')
+        .setPlaceholder('🛡️ Pilih Pelindung untuk mengelola/memakai...')
+        .addOptions(
+          armors.slice(0, 25).map(item => ({
+            label: `[ID: ${item.id}] [+${item.level}] ${item.equip_name}`,
+            value: `equip_id_${item.id}`,
+            description: `Stat: +${item.stat_value} ${item.stat_type} | ${item.equipped_pet ? `Dipakai: ${item.equipped_pet}` : 'Di Tas'}`.substring(0, 100)
+          }))
+        );
+      components.push(new ActionRowBuilder().addComponents(armorMenu));
+    }
+
+    // Ring select menu
+    if (rings.length > 0) {
+      const ringMenu = new StringSelectMenuBuilder()
+        .setCustomId('pet_bag_select_ring')
+        .setPlaceholder('💍 Pilih Cincin untuk mengelola/memakai...')
+        .addOptions(
+          rings.slice(0, 25).map(item => ({
+            label: `[ID: ${item.id}] [+${item.level}] ${item.equip_name}`,
+            value: `equip_id_${item.id}`,
+            description: `Stat: +${item.stat_value} ${item.stat_type} | ${item.equipped_pet ? `Dipakai: ${item.equipped_pet}` : 'Di Tas'}`.substring(0, 100)
+          }))
+        );
+      components.push(new ActionRowBuilder().addComponents(ringMenu));
+    }
+
+    // Close button row
     const closeBtnRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('pet_bag_btn_close').setLabel('❌ Tutup').setStyle(ButtonStyle.Secondary)
     );
+    components.push(closeBtnRow);
 
-    return { embeds: [embed], components: [row, closeBtnRow] };
+    return { embeds: [embed], components };
   };
 
   const buildDetailView = (userId, gId, equipId) => {
@@ -9833,7 +9877,11 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
       }
 
       // ── SELECT ITEM FROM BAG ──
-      if (iBag.customId === 'pet_bag_select_item') {
+      if (
+        iBag.customId === 'pet_bag_select_weapon' ||
+        iBag.customId === 'pet_bag_select_armor' ||
+        iBag.customId === 'pet_bag_select_ring'
+      ) {
         const idVal = iBag.values[0].replace('equip_id_', '');
         selectedEquipId = parseInt(idVal);
         await iBag.update(buildDetailView(author.id, guildId, selectedEquipId));
