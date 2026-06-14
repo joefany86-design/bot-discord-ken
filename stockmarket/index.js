@@ -3207,7 +3207,11 @@ function initStockMarket(client) {
                       });
                       await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                     } catch (err) {
-                      await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] });
+                      if (!iRecycle.replied && !iRecycle.deferred) {
+                        await iRecycle.update({ embeds: [embeds.errorEmbed('Recycle Gagal!', err.message)], components: [] }).catch(() => { });
+                      } else {
+                        console.error('Error after iRecycle was acknowledged:', err);
+                      }
                     }
                   });
                 } else if (selectedValue === 'pet_manage_reset') {
@@ -3458,7 +3462,11 @@ function initStockMarket(client) {
                       await iItemUse.update({ embeds: [successEmb], components: [] });
                       await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                     } catch (err) {
-                      await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] });
+                      if (!iItemUse.replied && !iItemUse.deferred) {
+                        await iItemUse.update({ embeds: [embeds.errorEmbed('Gagal Menggunakan Item!', err.message)], components: [] }).catch(() => { });
+                      } else {
+                        console.error('Error after iItemUse was acknowledged:', err);
+                      }
                     }
                   });
                 } catch (err) {
