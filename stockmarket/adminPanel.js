@@ -4831,6 +4831,9 @@ async function getAllGuildMembers(guild, guildId) {
 /**
  * ⚡ 5. PANEL BYPASS & ABYUS (SABOTASE EKONOMI)
  */
+/**
+ * ⚡ 5. PANEL BYPASS & ABYUS (SABOTASE EKONOMI)
+ */
 async function handleAdminAbyusPanel(messageOrInteraction, client) {
   const isInteraction = !messageOrInteraction.author;
   const author = isInteraction ? messageOrInteraction.user : messageOrInteraction.author;
@@ -4858,10 +4861,10 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
     embed.setDescription(
       `Sabotase persentase kemenangan gacha role, atur multiplier obrolan chat warga, set batas waktu auto-reset event, atau lakukan penghentian darurat:\n\n` +
       `📊 **STATUS BYPASS & EKONOMI SERVER:**\n` +
-      `📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkannya)**'}\n` +
-      `🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
-      `🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
-      `⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
+      `• 📢 **Status Event**: ${settings.is_active === 1 ? '🔴 **AKTIF (SEDANG BERJALAN)**' : '⚪ **TERTUNDA (Klik Broadcast untuk mengaktifkannya)**'}\n` +
+      `• 🎰 **Mode Gacha Role**: \`${settings.gacha_mode}\`\n` +
+      `• 🪙 **Pengali Koin Chat**: \`${settings.coin_multiplier === 1 ? 'Nonaktif (1x)' : settings.coin_multiplier + 'x'}\`\n` +
+      `• ⏱️ **Masa Berlaku Bypass**: ${settings.expires_at > 0 ? `<t:${settings.expires_at}:R>` : '`Permanen (Manual)`'}\n\n` +
       `🎁 **HADIAH MASSAL (DIBAGIKAN SAAT BROADCAST):**\n` +
       `• Koin Massal per Warga: ${giftCoinsText}\n` +
       `• Item Massal per Warga: ${giftItemText}\n\n` +
@@ -4872,7 +4875,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
     const gachaSelect = new StringSelectMenuBuilder()
       .setCustomId('admin_abyus_select_gacha')
-      .setPlaceholder('🎰 Atur Kesulitan Gacha Role');
+      .setPlaceholder('🎰 Mode Gacha Role');
 
     const gachaOptions = [
       { label: '🟢 Normal Mode (75% Zonk)', value: 'NORMAL', desc: 'Sesuai dengan probabilitas standar mesin gacha' },
@@ -4895,7 +4898,7 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
     const coinSelect = new StringSelectMenuBuilder()
       .setCustomId('admin_abyus_select_multiplier')
-      .setPlaceholder('🪙 Atur Pengali Koin Chat');
+      .setPlaceholder('🪙 Pengali Koin Chat');
 
     const coinOptions = [
       { label: '❌ Nonaktifkan Multiplier (1x)', value: '1', desc: 'Pendapatan koin chat normal (5 - 15 Rp per chat)' },
@@ -4919,53 +4922,60 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
 
     const coinRow = new ActionRowBuilder().addComponents(coinSelect);
 
-    const btnRow1 = new ActionRowBuilder().addComponents(
+    // Redesigned action selection dropdown
+    const actionSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_abyus_select_config_action')
+      .setPlaceholder('⚙️ Aksi & Konfigurasi Tambahan...');
+
+    actionSelect.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⏱️ Set Durasi Event')
+        .setDescription('Mengatur batas waktu aktifnya event bypass')
+        .setValue('action_set_duration'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💸 Set Hadiah Koin Massal')
+        .setDescription('Mengatur koin massal gratis untuk seluruh member')
+        .setValue('action_set_gift_coins'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎒 Set Hadiah Item Massal')
+        .setDescription('Mengatur item massal gratis untuk seluruh member')
+        .setValue('action_set_gift_item'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`🔓 Toggle Bebaskan Tahanan: ${includeFreeAll ? 'YA (Aktif)' : 'TIDAK (Nonaktif)'}`)
+        .setDescription('Mengosongkan sel tahanan Lapas saat event di-broadcast')
+        .setValue('action_toggle_free'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`⏱️ Toggle Reset Cooldowns: ${includeResetCds ? 'YA (Aktif)' : 'TIDAK (Nonaktif)'}`)
+        .setDescription('Reset cooldown perampokan & heist saat event di-broadcast')
+        .setValue('action_toggle_reset'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📊 Lihat Status Real-time')
+        .setDescription('Menampilkan ringkasan status bypass saat ini')
+        .setValue('action_show_status')
+    );
+
+    const configActionRow = new ActionRowBuilder().addComponents(actionSelect);
+
+    const btnRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_broadcast')
         .setLabel('📢 Broadcast Event')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_duration')
-        .setLabel('⏱️ Set Durasi (Modal)')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
         .setCustomId('admin_abyus_btn_stop_abyus')
-        .setLabel('🛑 Stop Event Abyus')
+        .setLabel('🛑 Hentikan Event')
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_toggle_free')
-        .setLabel(`🔓 Bebaskan Tahanan: ${includeFreeAll ? '✅ ON' : '⚪ OFF'}`)
-        .setStyle(includeFreeAll ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_toggle_reset')
-        .setLabel(`⏱️ Reset Cooldowns: ${includeResetCds ? '✅ ON' : '⚪ OFF'}`)
-        .setStyle(includeResetCds ? ButtonStyle.Success : ButtonStyle.Secondary)
-    );
-
-    const btnRow2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_status')
-        .setLabel('📊 Status Real-time')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_give_coins')
-        .setLabel('💸 Set Koin Massal (Modal)')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('admin_abyus_btn_give_item')
-        .setLabel('🎒 Set Item Massal (Modal)')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
         .setCustomId('admin_abyus_btn_back')
-        .setLabel('🔙 Kembali ke Hub')
+        .setLabel('🔙 Kembali')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('admin_abyus_btn_close')
-        .setLabel('❌ Tutup Panel')
+        .setLabel('❌ Tutup')
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [embed], components: [gachaRow, coinRow, btnRow1, btnRow2] };
+    return { embeds: [embed], components: [gachaRow, coinRow, configActionRow, btnRow] };
   };
 
   const initialData = getAbyusPanelData(guildId);
@@ -5003,6 +5013,170 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         await iAbyus.reply({ content: `🪙 Sukses menyetel multiplier koin chat ke **${mult}x** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => { });
+      }
+      else if (iAbyus.customId === 'admin_abyus_select_config_action') {
+        const val = iAbyus.values[0];
+        if (val === 'action_set_duration') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_ebyus_duration_modal')
+            .setTitle('Atur Durasi Event Bypass');
+
+          const durInput = new TextInputBuilder()
+            .setCustomId('dur_minutes')
+            .setLabel('Durasi Event (dalam Menit)')
+            .setPlaceholder('Masukkan angka menit (Contoh: 20)')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(durInput));
+          await iAbyus.showModal(modal);
+
+          const sub = await iAbyus.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_ebyus_duration_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const minutes = parseInt(sub.fields.getTextInputValue('dur_minutes'));
+            if (isNaN(minutes) || minutes < 0) {
+              return sub.reply({ content: '❌ Durasi harus berupa angka di atas 0!', flags: 64 });
+            }
+            const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
+            database.run('UPDATE ebyus_settings SET expires_at = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
+
+            await sub.reply({ content: `⏱️ Sukses menyetel durasi event bypass menjadi **${minutes} menit** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
+            const fresh = getAbyusPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (val === 'action_set_gift_coins') {
+          const modal = new ModalBuilder()
+            .setCustomId('admin_abyus_give_coins_modal')
+            .setTitle('Bagi Koin Massal (Abyus)');
+
+          const amountInput = new TextInputBuilder()
+            .setCustomId('coin_amount')
+            .setLabel('Jumlah Koin per Member (Bisa minus)')
+            .setPlaceholder('Contoh: 100000 atau -50000')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
+          await iAbyus.showModal(modal);
+
+          const sub = await iAbyus.awaitModalSubmit({
+            filter: (s) => s.customId === 'admin_abyus_give_coins_modal' && s.user.id === author.id,
+            time: 60000
+          }).catch(() => null);
+
+          if (sub) {
+            const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
+            if (isNaN(amount) || amount === 0) {
+              return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+            }
+
+            database.run('UPDATE ebyus_settings SET gift_coins = ? WHERE guild_id = ?', [amount, guildId]);
+
+            await sub.reply({ content: `💸 Sukses menyetel hadiah koin massal ke **Rp ${amount.toLocaleString('id-ID')}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
+            const fresh = getAbyusPanelData(guildId);
+            await replyMsg.edit(fresh).catch(() => { });
+          }
+        }
+        else if (val === 'action_set_gift_item') {
+          const itemSelect = new StringSelectMenuBuilder()
+            .setCustomId('admin_abyus_select_item_to_give')
+            .setPlaceholder('🎒 Pilih item yang ingin dibagikan...');
+
+          const items = [
+            { id: 'LOCKPICK', name: '🕵️‍♂️ Lockpick', description: 'Alat membobol rumah/kosan warga' },
+            { id: 'SOAP', name: '🧼 Soap (Sabun)', description: 'Sabun licin untuk melarikan diri' },
+            { id: 'LAMBO', name: '🏎️ Lamborgini Kosan', description: 'Mobil sports prestise sultan kos' },
+            { id: 'GOLD', name: '👑 Emas Batangan 24K', description: 'Pajangan laci kos penahan inflasi' },
+            { id: 'IPHONE', name: '📱 iPhone 16 Pro Max', description: 'Hp sultan meskipun layar retak' },
+            { id: 'TICKET_GACHA', name: '🎫 Tiket Gacha Pet', description: 'Tiket memutar gacha peliharaan' },
+            { id: 'FOOD_PREMIUM', name: '🥩 Pakan Premium Pet', description: 'Makanan bernutrisi tinggi untuk pet' },
+            { id: 'MEDICINE', name: '💊 Obat Pet Sakit', description: 'Sembuhkan HP pet yang terluka parah' },
+            { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan (Amulet)', description: 'Jimat pelindung kematian pet sekali pakai' }
+          ];
+
+          items.forEach(it => {
+            itemSelect.addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel(it.name)
+                .setDescription(it.description)
+                .setValue(it.id)
+            );
+          });
+
+          const selectRow = new ActionRowBuilder().addComponents(itemSelect);
+          const backBtnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('admin_abyus_btn_item_give_cancel')
+              .setLabel('🔙 Kembali')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+          await iAbyus.update({
+            content: '🎒 **PILIH ITEM YANG INGIN DIBAGIKAN MASSAL:**',
+            components: [selectRow, backBtnRow]
+          });
+        }
+        else if (val === 'action_toggle_free') {
+          includeFreeAll = !includeFreeAll;
+          await iAbyus.reply({ content: `🔓 Opsi Bebaskan Semua Tahanan saat broadcast sekarang: **${includeFreeAll ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (val === 'action_toggle_reset') {
+          includeResetCds = !includeResetCds;
+          await iAbyus.reply({ content: `⏱️ Opsi Reset Semua Cooldown saat broadcast sekarang: **${includeResetCds ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+        else if (val === 'action_show_status') {
+          const settings = getOrCreateEbyusSettings(guildId);
+          const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
+          await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
+        }
+      }
+      else if (iAbyus.customId === 'admin_abyus_select_item_to_give') {
+        const itemId = iAbyus.values[0];
+
+        const modal = new ModalBuilder()
+          .setCustomId(`admin_abyus_give_item_qty_modal_${itemId}`)
+          .setTitle(`Jumlah Hadiah Massal (${itemId})`);
+
+        const qtyInput = new TextInputBuilder()
+          .setCustomId('item_qty')
+          .setLabel(`Jumlah ${itemId} per Member (Bisa minus)`)
+          .setPlaceholder('Contoh: 5 atau -2')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
+        await iAbyus.showModal(modal);
+
+        const sub = await iAbyus.awaitModalSubmit({
+          filter: (s) => s.customId === `admin_abyus_give_item_qty_modal_${itemId}` && s.user.id === author.id,
+          time: 60000
+        }).catch(() => null);
+
+        if (sub) {
+          const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
+          if (isNaN(qty) || qty === 0) {
+            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
+          }
+
+          database.run('UPDATE ebyus_settings SET gift_item_id = ?, gift_item_qty = ? WHERE guild_id = ?', [itemId, qty, guildId]);
+
+          await sub.reply({ content: `🎒 Sukses menyetel hadiah item massal ke **${qty}x ${itemId}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
+          const fresh = getAbyusPanelData(guildId);
+          await replyMsg.edit(fresh).catch(() => { });
+        }
+      }
+      else if (iAbyus.customId === 'admin_abyus_btn_item_give_cancel') {
+        const fresh = getAbyusPanelData(guildId);
+        await iAbyus.update(fresh).catch(() => { });
       }
       else if (iAbyus.customId === 'admin_abyus_btn_broadcast') {
         const settings = getOrCreateEbyusSettings(guildId);
@@ -5142,39 +5316,6 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => { });
       }
-      else if (iAbyus.customId === 'admin_abyus_btn_duration') {
-        const modal = new ModalBuilder()
-          .setCustomId('admin_ebyus_duration_modal')
-          .setTitle('Atur Durasi Event Bypass');
-
-        const durInput = new TextInputBuilder()
-          .setCustomId('dur_minutes')
-          .setLabel('Durasi Event (dalam Menit)')
-          .setPlaceholder('Masukkan angka menit (Contoh: 20)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(durInput));
-        await iAbyus.showModal(modal);
-
-        const sub = await iAbyus.awaitModalSubmit({
-          filter: (s) => s.customId === 'admin_ebyus_duration_modal' && s.user.id === author.id,
-          time: 60000
-        }).catch(() => null);
-
-        if (sub) {
-          const minutes = parseInt(sub.fields.getTextInputValue('dur_minutes'));
-          if (isNaN(minutes) || minutes < 0) {
-            return sub.reply({ content: '❌ Durasi harus berupa angka di atas 0!', flags: 64 });
-          }
-          const expiresAt = minutes > 0 ? nowUnix + minutes * 60 : 0;
-          database.run('UPDATE ebyus_settings SET expires_at = ?, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?', [expiresAt, nowUnix, iAbyus.user.id, guildId]);
-
-          await sub.reply({ content: `⏱️ Sukses menyetel durasi event bypass menjadi **${minutes} menit** (belum aktif, silakan klik **Broadcast Event** untuk mengaktifkannya secara massal!).`, flags: 64 });
-          const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => { });
-        }
-      }
       else if (iAbyus.customId === 'admin_abyus_btn_stop_abyus') {
         database.run(
           'UPDATE ebyus_settings SET gacha_mode = ?, coin_multiplier = ?, expires_at = 0, is_active = 0, updated_at = ?, updated_by = ? WHERE guild_id = ?',
@@ -5183,134 +5324,6 @@ async function handleAdminAbyusPanel(messageOrInteraction, client) {
         await iAbyus.reply({ content: '🛑 **Sukses menghentikan seluruh Event Abuse!** Mode gacha direset ke `NORMAL`, multiplier koin chat kembali ke `1x` (nonaktif), dan status event dimatikan.', flags: 64 });
         const fresh = getAbyusPanelData(guildId);
         await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_status') {
-        const settings = getOrCreateEbyusSettings(guildId);
-        const statusEmb = embeds.ebyusStatusEmbed(guild, settings);
-        await iAbyus.reply({ embeds: [statusEmb], flags: 64 });
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_toggle_free') {
-        includeFreeAll = !includeFreeAll;
-        await iAbyus.reply({ content: `🔓 Opsi Bebaskan Semua Tahanan saat broadcast sekarang: **${includeFreeAll ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
-        const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_toggle_reset') {
-        includeResetCds = !includeResetCds;
-        await iAbyus.reply({ content: `⏱️ Opsi Reset Semua Cooldown saat broadcast sekarang: **${includeResetCds ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}**`, flags: 64 });
-        const fresh = getAbyusPanelData(guildId);
-        await replyMsg.edit(fresh).catch(() => { });
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_give_coins') {
-        const modal = new ModalBuilder()
-          .setCustomId('admin_abyus_give_coins_modal')
-          .setTitle('Bagi Koin Massal (Abyus)');
-
-        const amountInput = new TextInputBuilder()
-          .setCustomId('coin_amount')
-          .setLabel('Jumlah Koin per Member (Bisa minus)')
-          .setPlaceholder('Contoh: 100000 atau -50000')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(amountInput));
-        await iAbyus.showModal(modal);
-
-        const sub = await iAbyus.awaitModalSubmit({
-          filter: (s) => s.customId === 'admin_abyus_give_coins_modal' && s.user.id === author.id,
-          time: 60000
-        }).catch(() => null);
-
-        if (sub) {
-          const amount = parseInt(sub.fields.getTextInputValue('coin_amount'));
-          if (isNaN(amount) || amount === 0) {
-            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
-          }
-
-          database.run('UPDATE ebyus_settings SET gift_coins = ? WHERE guild_id = ?', [amount, guildId]);
-
-          await sub.reply({ content: `💸 Sukses menyetel hadiah koin massal ke **Rp ${amount.toLocaleString('id-ID')}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
-          const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => { });
-        }
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_give_item') {
-        const itemSelect = new StringSelectMenuBuilder()
-          .setCustomId('admin_abyus_select_item_to_give')
-          .setPlaceholder('🎒 Pilih item yang ingin dibagikan...');
-
-        const items = [
-          { id: 'LOCKPICK', name: '🕵️‍♂️ Lockpick', description: 'Alat membobol rumah/kosan warga' },
-          { id: 'SOAP', name: '🧼 Soap (Sabun)', description: 'Sabun licin untuk melarikan diri' },
-          { id: 'LAMBO', name: '🏎️ Lamborgini Kosan', description: 'Mobil sports prestise sultan kos' },
-          { id: 'GOLD', name: '👑 Emas Batangan 24K', description: 'Pajangan laci kos penahan inflasi' },
-          { id: 'IPHONE', name: '📱 iPhone 16 Pro Max', description: 'Hp sultan meskipun layar retak' },
-          { id: 'TICKET_GACHA', name: '🎫 Tiket Gacha Pet', description: 'Tiket memutar gacha peliharaan' },
-          { id: 'FOOD_PREMIUM', name: '🥩 Pakan Premium Pet', description: 'Makanan bernutrisi tinggi untuk pet' },
-          { id: 'MEDICINE', name: '💊 Obat Pet Sakit', description: 'Sembuhkan HP pet yang terluka parah' },
-          { id: 'LUCKY_AMULET', name: '🔮 Jimat Keberuntungan (Amulet)', description: 'Jimat pelindung kematian pet sekali pakai' }
-        ];
-
-        items.forEach(it => {
-          itemSelect.addOptions(
-            new StringSelectMenuOptionBuilder()
-              .setLabel(it.name)
-              .setDescription(it.description)
-              .setValue(it.id)
-          );
-        });
-
-        const selectRow = new ActionRowBuilder().addComponents(itemSelect);
-        const backBtnRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('admin_abyus_btn_item_give_cancel')
-            .setLabel('🔙 Kembali')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-        await iAbyus.update({
-          content: '🎒 **PILIH ITEM YANG INGIN DIBAGIKAN MASSAL:**',
-          components: [selectRow, backBtnRow]
-        });
-      }
-      else if (iAbyus.customId === 'admin_abyus_btn_item_give_cancel') {
-        const fresh = getAbyusPanelData(guildId);
-        await iAbyus.update(fresh).catch(() => { });
-      }
-      else if (iAbyus.customId === 'admin_abyus_select_item_to_give') {
-        const itemId = iAbyus.values[0];
-
-        const modal = new ModalBuilder()
-          .setCustomId(`admin_abyus_give_item_qty_modal_${itemId}`)
-          .setTitle(`Jumlah Hadiah Massal (${itemId})`);
-
-        const qtyInput = new TextInputBuilder()
-          .setCustomId('item_qty')
-          .setLabel(`Jumlah ${itemId} per Member (Bisa minus)`)
-          .setPlaceholder('Contoh: 5 atau -2')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(qtyInput));
-        await iAbyus.showModal(modal);
-
-        const sub = await iAbyus.awaitModalSubmit({
-          filter: (s) => s.customId === `admin_abyus_give_item_qty_modal_${itemId}` && s.user.id === author.id,
-          time: 60000
-        }).catch(() => null);
-
-        if (sub) {
-          const qty = parseInt(sub.fields.getTextInputValue('item_qty'));
-          if (isNaN(qty) || qty === 0) {
-            return sub.reply({ content: '❌ Jumlah harus berupa angka bulat bukan nol!', flags: 64 });
-          }
-
-          database.run('UPDATE ebyus_settings SET gift_item_id = ?, gift_item_qty = ? WHERE guild_id = ?', [itemId, qty, guildId]);
-
-          await sub.reply({ content: `🎒 Sukses menyetel hadiah item massal ke **${qty}x ${itemId}** per member (hadiah akan otomatis dibagikan dan diumumkan saat Anda mengklik **Broadcast Event**!).`, flags: 64 });
-          const fresh = getAbyusPanelData(guildId);
-          await replyMsg.edit(fresh).catch(() => { });
-        }
       }
       else if (iAbyus.customId === 'admin_abyus_btn_back') {
         collector.stop('transition');
