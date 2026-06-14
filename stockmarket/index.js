@@ -9902,7 +9902,7 @@ async function handlePetGymPanel(context, client, isInteraction = false) {
         `> ⚡ **DEX (Kelincahan):** \`${pData.stat_dex || 0}\` (+${critRate.toFixed(1)}% Crit | **+${((pData.stat_dex || 0) * 0.8).toFixed(1)}% Dodge di PvP**)${eqDEX ? ` *[+${eqDEX} DEX Equip]*` : ''}\n\n` +
         `⚔️ **JRPG PERLENGKAPAN (EQUIPMENT):**\n${equipText}\n\n` +
         `🔥 **TOTAL KEKUATAN COMBAT & UTILITY (Non-PvP):**\n` +
-        `• ❤️ **Max HP:** \`${maxHP + eqHP} HP\`\n` +
+        `• ❤️ **Max HP:** \`${maxHP} HP\`\n` +
         `• ⚔️ **ATK Damage:** \`${totalAtk + eqATK * 2} ATK\`\n` +
         `• 🛡️ **Damage Reduction:** \`${(totalDefPct + eqDEF * 0.5).toFixed(1)}%\`\n` +
         `• ⚡ **Crit Rate:** \`${(critRate + eqDEX * 0.5).toFixed(1)}%\`\n\n` +

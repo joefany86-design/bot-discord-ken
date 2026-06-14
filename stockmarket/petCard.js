@@ -422,14 +422,13 @@ async function generatePetCard(pet, ownerUser, options = {}) {
   const elementTheme = ELEMENT_THEMES[element] || ELEMENT_THEMES.EARTH;
   const starCount = Math.min(5, Math.max(1, pet.star_level || 1));
 
-  let baseMaxHP = 100;
+  let maxHP = 100;
   try {
     const petModule = require('./pet');
-    baseMaxHP = petModule.getMaxHP(pet);
+    maxHP = petModule.getMaxHP(pet);
   } catch (e) {
-    baseMaxHP = (pet.pet_type === 'SLIME' ? 120 : 100) + (pet.star_level - 1) * 15 + (pet.stat_vit || 0) * 3;
+    maxHP = (pet.pet_type === 'SLIME' ? 120 : 100) + (pet.star_level - 1) * 15 + (pet.stat_vit || 0) * 3 + eqHP;
   }
-  const maxHP = baseMaxHP + eqHP;
   const xpNeeded = options.xpNeeded || (pet.level * 100);
 
   // ── [1] BACKGROUND ELEMEN ──

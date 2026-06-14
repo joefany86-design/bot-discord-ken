@@ -2927,7 +2927,7 @@ module.exports = {
     }
 
     const baseMaxHP = getMaxHP(pet);
-    const maxHP = baseMaxHP + eqHP;
+    const maxHP = baseMaxHP;
     const xpNeeded = getXpNeeded(pet.level, pet.trait);
 
     // Custom Progress Bars (8 Segmen)
