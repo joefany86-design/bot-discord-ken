@@ -9610,7 +9610,7 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
     const components = [row1, row2];
 
     // Select Menu to Equip on a living pet
-    const pets = database.all('SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND status NOT IN ("DEAD", "EGG")', [userId, gId]);
+    const pets = database.all("SELECT * FROM user_pets WHERE user_id = ? AND guild_id = ? AND status NOT IN ('DEAD', 'EGG')", [userId, gId]);
     if (pets.length > 0) {
       const petSelect = new StringSelectMenuBuilder()
         .setCustomId('pet_bag_equip_to_pet')
