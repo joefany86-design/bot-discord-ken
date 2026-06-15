@@ -539,32 +539,17 @@ function getBattleEmbedData(combatData) {
       .setDisabled(p.energy < 60)
   );
 
-  const row2Components = [
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('pvpbot_act_item')
       .setLabel('🎒 Item')
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(p.hasUsedItem)
-  ];
-
-  if (combatData.userId === config.OWNER_ID) {
-    row2Components.push(
-      new ButtonBuilder()
-        .setCustomId('pvpbot_act_auto')
-        .setLabel('🤖 Auto Play')
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(p.isAuto)
-    );
-  }
-
-  row2Components.push(
+      .setDisabled(p.hasUsedItem),
     new ButtonBuilder()
       .setCustomId('pvpbot_act_surr')
       .setLabel('🏳️ Menyerah')
       .setStyle(ButtonStyle.Secondary)
   );
-
-  const row2 = new ActionRowBuilder().addComponents(row2Components);
 
   return { embeds: [embed], components: [row1, row2] };
 }
