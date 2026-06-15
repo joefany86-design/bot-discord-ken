@@ -957,10 +957,15 @@ async function promptPaymentMethod(target, userId, guildId, itemLabel, price, on
   const collector = promptMsg.createMessageComponentCollector({ filter, time: 45000, max: 1 });
 
   collector.on('collect', async (i) => {
-    if (i.customId.startsWith(`pay_pocket_`)) {
-      await onConfirm('pocket', i);
-    } else if (i.customId.startsWith(`pay_bank_`)) {
-      await onConfirm('bank', i);
+    if (i.customId.startsWith(`pay_pocket_`) || i.customId.startsWith(`pay_bank_`)) {
+      const paymentSource = i.customId.startsWith(`pay_pocket_`) ? 'pocket' : 'bank';
+      const disabledRow = new ActionRowBuilder().addComponents(
+        ButtonBuilder.from(pocketBtn).setDisabled(true),
+        ButtonBuilder.from(bankBtn).setDisabled(true),
+        ButtonBuilder.from(cancelBtn).setDisabled(true)
+      );
+      await i.update({ components: [disabledRow] }).catch(() => { });
+      await onConfirm(paymentSource, i);
     } else {
       const cancelEmb = embeds.warnEmbed('Transaksi Dibatalkan', 'Pembelian telah dibatalkan oleh pengguna.');
       await i.update({ embeds: [cancelEmb], components: [] }).catch(() => { });
@@ -2956,7 +2961,11 @@ function initStockMarket(client) {
                       }
                     });
                   } catch (err) {
-                    await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 });
+                    if (submitted.deferred || submitted.replied) {
+                      await submitted.followUp({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => {});
+                    } else {
+                      await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => {});
+                    }
                   }
                 }
               }
@@ -10971,24 +10980,34 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
   if (balance < gachaCost) {
     const warnEmb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${balance.toLocaleString('id-ID')}**.`);
     if (isInteraction) {
-      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
+      if (replyTarget.deferred || replyTarget.replied) {
+        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => {});
+      }
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
     }
-    return replyTarget.reply({ embeds: [warnEmb] });
+    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => {});
   }
 
   const gachaItems = database.all('SELECT * FROM shop_items WHERE guild_id = ? AND is_gacha = 1', [guildId]);
   if (gachaItems.length === 0) {
     const warnEmb = embeds.warnEmbed('Gacha Tidak Tersedia!', 'Belum ada role gacha yang dikonfigurasi di server ini. Silakan admin menambahkan role gacha terlebih dahulu!');
     if (isInteraction) {
-      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
+      if (replyTarget.deferred || replyTarget.replied) {
+        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => {});
+      }
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
     }
-    return replyTarget.reply({ embeds: [warnEmb] });
+    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => {});
   }
 
   // Animasi rolling menegangkan multi-tahap
   let rollingMsg = null;
   if (isInteraction) {
-    await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined });
+    if (replyTarget.deferred || replyTarget.replied) {
+      await replyTarget.editReply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', embeds: [], components: [] }).catch(() => {});
+    } else {
+      await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
+    }
   } else {
     rollingMsg = await replyTarget.reply('🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙');
   }
@@ -11196,41 +11215,41 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   const item = database.get('SELECT * FROM shop_items WHERE id = ? AND guild_id = ?', [itemId, guildId]);
   const isEphemeral = isInteraction && replyTarget.channelId === SHOP_CHANNEL_ID;
 
-  if (!item) {
-    const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role atau ID tersebut tidak terdaftar di toko server ini.');
+  const sendReply = async (emb) => {
     if (isInteraction) {
       if (replyTarget.deferred || replyTarget.replied) {
-        return replyTarget.followUp({ embeds: [emb], flags: 64 });
+        return replyTarget.editReply({ embeds: [emb], components: [] }).catch(() => {});
       }
-      return replyTarget.reply({ embeds: [emb], flags: 64 });
+      return replyTarget.reply({ embeds: [emb], flags: 64 }).catch(() => {});
     }
-    return replyTarget.reply({ embeds: [emb] });
+    return replyTarget.reply({ embeds: [emb] }).catch(() => {});
+  };
+
+  if (!item) {
+    const emb = embeds.warnEmbed('Item Tidak Ditemukan!', 'Item role atau ID tersebut tidak terdaftar di toko server ini.');
+    return sendReply(emb);
   }
 
   if (item.stock !== -1 && item.stock <= 0) {
     const emb = embeds.warnEmbed('Stok Habis!', `Role **${item.role_name}** telah habis terjual (Sold Out)!`);
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   const discordRole = guild.roles.cache.get(item.role_id) || await guild.roles.fetch(item.role_id).catch(() => null);
   if (!discordRole) {
     const emb = embeds.errorEmbed('Role Tidak Ditemukan!', 'Role ini tidak lagi eksis di server Discord Anda. Silakan hubungi admin!');
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   const memberObj = member || await guild.members.fetch(user.id).catch(() => null);
   if (!memberObj) {
     const emb = embeds.errorEmbed('Gagal Memproses!', 'Gagal mengambil data profil anggota Discord Anda.');
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   if (memberObj.roles.cache.has(item.role_id)) {
     const emb = embeds.warnEmbed('Sudah Memiliki Role!', `Anda sudah memiliki role **${item.role_name}** di server ini!`);
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   let balance = 0;
@@ -11243,13 +11262,7 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   }
   if (balance < item.price) {
     const emb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Anda memerlukan **Rp ${item.price.toLocaleString('id-ID')}** tetapi saldo Anda hanya **Rp ${balance.toLocaleString('id-ID')}**.`);
-    if (isInteraction) {
-      if (replyTarget.deferred || replyTarget.replied) {
-        return replyTarget.followUp({ embeds: [emb], flags: 64 });
-      }
-      return replyTarget.reply({ embeds: [emb], flags: 64 });
-    }
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   // Mulai penukaran: Tambahkan role dulu ke user
@@ -11258,8 +11271,7 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   } catch (roleErr) {
     console.error('❌ Gagal menambahkan role ke member:', roleErr.message);
     const emb = embeds.errorEmbed('Hak Akses Bot Tidak Cukup!', 'Bot gagal menyematkan role ke akun Anda. Pastikan posisi role bot berada di atas role yang ingin dibeli di pengaturan integrasi server Discord!');
-    if (isInteraction) return replyTarget.reply({ embeds: [emb], flags: 64 });
-    return replyTarget.reply({ embeds: [emb] });
+    return sendReply(emb);
   }
 
   // Kurangi koin & stok di database
@@ -11284,15 +11296,7 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   }
 
   const successEmbed = embeds.rolePurchaseSuccessEmbed(user, item.role_name, item.price, finalBalance, item.tier);
-  if (isInteraction) {
-    if (replyTarget.deferred || replyTarget.replied) {
-      await replyTarget.followUp({ embeds: [successEmbed], flags: 64 });
-    } else {
-      await replyTarget.reply({ embeds: [successEmbed], flags: 64 });
-    }
-  } else {
-    await replyTarget.reply({ embeds: [successEmbed] });
-  }
+  await sendReply(successEmbed);
 
   // Broadcast Heboh jika tingkat EPIC / LEGENDARY / MYTHIC
   if (item.tier === 'EPIC' || item.tier === 'LEGENDARY' || item.tier === 'MYTHIC') {
