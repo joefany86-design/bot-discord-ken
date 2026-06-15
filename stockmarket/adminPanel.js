@@ -6833,6 +6833,11 @@ async function handleAdminPanel(messageOrInteraction, client) {
     const protIcon = protectionActive ? '🛡️' : '🔓';
     const protText = protectionActive ? 'AKTIF (KEBAL ROB & HACK)' : 'NONAKTIF (BISA DIROB/HACK)';
 
+    // Continuous Auto PvP status
+    const autoPvpActive = client.continuousAutoPvP === true;
+    const autoPvpIcon = autoPvpActive ? '🤖' : '🔒';
+    const autoPvpText = autoPvpActive ? 'AKTIF (LOOPING PVP ARENA)' : 'NONAKTIF';
+
     const ownerEmbed = new EmbedBuilder()
       .setColor(godModeActive ? 0x00E676 : 0x7C4DFF)
       .setTitle('👑 OWNER CONTROL CENTER — SENTINEL')
@@ -6854,6 +6859,14 @@ async function handleAdminPanel(messageOrInteraction, client) {
         `Jika diaktifkan, Akun Owner:\n` +
         `• Kebal dari perampokan individu (\`.rob\` / \`.steal\`)\n` +
         `• Kebal dari pembobolan/draining tabungan bank saat Heist (\`.heist\`)\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🤖 **CONTINUOUS AUTO PVP LOOP**\n` +
+        `Status: ${autoPvpIcon} **${autoPvpText}**\n\n` +
+        `Jika diaktifkan, Bot secara otomatis:\n` +
+        `• Memulai pertandingan PvP Bot untuk pet Owner di channel PvP\n` +
+        `• Menjalankan auto play turn demi turn secara otomatis\n` +
+        `• Memulihkan/auto-heal status pet Owner ke 100% setelah pertandingan selesai\n` +
+        `• Memulai kembali pertempuran baru setelah jeda 5 detik\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━`
       )
       .setFooter({ text: 'Owner Control Center • Sentinel 2026' })
@@ -6890,6 +6903,19 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setDisabled(!protectionActive)
     );
 
+    const pvpRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ow_auto_pvp_on')
+        .setLabel('🤖 Aktifkan Loop PvP')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(autoPvpActive),
+      new ButtonBuilder()
+        .setCustomId('ow_auto_pvp_off')
+        .setLabel('🔴 Nonaktifkan Loop PvP')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(!autoPvpActive)
+    );
+
     const navRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('ow_open_hub')
@@ -6905,7 +6931,7 @@ async function handleAdminPanel(messageOrInteraction, client) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    return { embeds: [ownerEmbed], components: [toggleRow, protectionRow, navRow] };
+    return { embeds: [ownerEmbed], components: [toggleRow, protectionRow, pvpRow, navRow] };
   };
 
   // Jika dibuka via .ow (tombol privat owner), tampilkan Owner Panel khusus
@@ -6944,6 +6970,36 @@ async function handleAdminPanel(messageOrInteraction, client) {
           await iOw.update(fresh);
         } else if (iOw.customId === 'ow_protection_off') {
           toggleOwnerProtection(guildId, false);
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+        } else if (iOw.customId === 'ow_auto_pvp_on') {
+          client.continuousAutoPvP = true;
+          const fresh = getOwnerPanelData(guildId);
+          await iOw.update(fresh);
+
+          // Mulai pertandingan PvP pertama otomatis untuk Owner
+          const petModule = require('./pet');
+          const ownerPet = petModule.getPet(config.OWNER_ID, guildId);
+          if (ownerPet) {
+            const pvpBot = require('./pvpBot');
+            const pvpChannel = iOw.guild.channels.cache.get('1515061723294601468') || await iOw.guild.channels.fetch('1515061723294601468').catch(() => null);
+            if (pvpChannel) {
+              const mockInteraction = {
+                guildId: guildId,
+                guild: iOw.guild,
+                user: iOw.user,
+                member: iOw.member,
+                channel: pvpChannel,
+                deferUpdate: async () => {},
+                followUp: async (payload) => {
+                  return pvpChannel.send(payload);
+                }
+              };
+              pvpBot.startPvPChallenge(mockInteraction, client, ownerPet.pet_name).catch(console.error);
+            }
+          }
+        } else if (iOw.customId === 'ow_auto_pvp_off') {
+          client.continuousAutoPvP = false;
           const fresh = getOwnerPanelData(guildId);
           await iOw.update(fresh);
         } else if (iOw.customId === 'ow_open_hub') {

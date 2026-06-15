@@ -539,17 +539,32 @@ function getBattleEmbedData(combatData) {
       .setDisabled(p.energy < 60)
   );
 
-  const row2 = new ActionRowBuilder().addComponents(
+  const row2Components = [
     new ButtonBuilder()
       .setCustomId('pvpbot_act_item')
       .setLabel('🎒 Item')
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(p.hasUsedItem),
+      .setDisabled(p.hasUsedItem)
+  ];
+
+  if (combatData.userId === config.OWNER_ID) {
+    row2Components.push(
+      new ButtonBuilder()
+        .setCustomId('pvpbot_act_auto')
+        .setLabel('🤖 Auto Play')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(p.isAuto)
+    );
+  }
+
+  row2Components.push(
     new ButtonBuilder()
       .setCustomId('pvpbot_act_surr')
       .setLabel('🏳️ Menyerah')
       .setStyle(ButtonStyle.Secondary)
   );
+
+  const row2 = new ActionRowBuilder().addComponents(row2Components);
 
   return { embeds: [embed], components: [row1, row2] };
 }
@@ -751,6 +766,7 @@ async function startPvPChallenge(interaction, client, petName) {
         shieldTurns: 0,
         hasUsedUltimate: false,
         hasUsedItem: false,
+        isAuto: (client.continuousAutoPvP === true && user.id === config.OWNER_ID),
         stat_str: pStats.str,
         stat_vit: pStats.vit,
         stat_def: pStats.def,
@@ -863,6 +879,16 @@ async function startPvPChallenge(interaction, client, petName) {
     resetPvPTimeout(combatData, client);
 
     await interaction.followUp({ content: `⚔️ Pertarungan dimulai! Silakan bertindak pada panel tempur di bawah ini.`, flags: 64 }).catch(() => {});
+
+    // Jika mode loop otomatis Owner aktif, mulai giliran pertama secara otomatis
+    if (combatData.player.isAuto) {
+      setTimeout(async () => {
+        const activeData = client.activePvPBotGames ? client.activePvPBotGames.get(user.id) : null;
+        if (activeData && !activeData.isProcessing) {
+          await handlePvPAction({ guildId: combatData.guildId, user: { id: combatData.userId } }, client, 'auto');
+        }
+      }, 1500);
+    }
 
   } catch(err) {
     console.error('Error starting interactive PvP Bot Game:', err);
@@ -1228,6 +1254,22 @@ async function handlePvPAction(interaction, client, actionType) {
   const p = combatData.player;
   const b = combatData.bot;
 
+  if (actionType === 'auto' || p.isAuto) {
+    p.isAuto = true;
+    let chosen = 'atk';
+    if (p.energy >= 60) {
+      chosen = 'ult';
+    } else if (p.hp < p.maxHP * 0.30 && !p.hasUsedItem) {
+      chosen = 'item_med';
+    } else {
+      const r = Math.random();
+      if (r < 0.30) chosen = 'skill1';
+      else if (r < 0.60) chosen = 'skill2';
+      else chosen = 'atk';
+    }
+    actionType = chosen;
+  }
+
   if (actionType === 'surr') {
     combatData.logs.push(`🏳️ **${p.name}** menyerah dari pertandingan!`);
     return endPvPGame(interaction, client, combatData, 'lose');
@@ -1505,6 +1547,16 @@ async function handlePvPAction(interaction, client, actionType) {
   if (messageToEdit) {
     await messageToEdit.edit(payload).catch(() => {});
   }
+
+  // Auto Play turn advancement
+  if (p.isAuto) {
+    setTimeout(async () => {
+      const activeData = client.activePvPBotGames ? client.activePvPBotGames.get(combatData.userId) : null;
+      if (activeData && !activeData.isProcessing) {
+        await handlePvPAction({ guildId: combatData.guildId, user: { id: combatData.userId } }, client, 'auto');
+      }
+    }, 1500);
+  }
 }
 
 /**
@@ -1761,6 +1813,53 @@ async function endPvPGame(interaction, client, combatData, result) {
     setTimeout(async () => {
       await messageToEdit.delete().catch(() => {});
     }, 15000);
+  }
+
+  // Loop PvP Otomatis Terus Menerus untuk Owner
+  if (client.continuousAutoPvP === true && userId === config.OWNER_ID) {
+    setTimeout(async () => {
+      // Pastikan mode pvp loop owner masih aktif
+      if (client.continuousAutoPvP !== true) return;
+
+      // 1. Auto-Heal Owner's pet ke 100% agar loop berjalan terus
+      try {
+        db.run(
+          `UPDATE user_pets 
+           SET health = 100, hunger = 100, thirst = 100, happiness = 100 
+           WHERE user_id = ? AND guild_id = ? AND pet_name = ?`,
+          [userId, guildId, petObj.pet_name]
+        );
+      } catch (err) {
+        console.error('Failed to auto-heal owner pet:', err);
+      }
+
+      // 2. Trigger pertempuran berikutnya
+      try {
+        const pvpChannel = client.channels.cache.get('1515061723294601468') || await client.channels.fetch('1515061723294601468').catch(() => null);
+        if (pvpChannel) {
+          const guildObj = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+          if (guildObj) {
+            const memberObj = guildObj.members.cache.get(userId) || await guildObj.members.fetch(userId).catch(() => null);
+            if (memberObj) {
+              const mockInteraction = {
+                guildId: guildId,
+                guild: guildObj,
+                user: memberObj.user,
+                member: memberObj,
+                channel: pvpChannel,
+                deferUpdate: async () => {},
+                followUp: async (payload) => {
+                  return pvpChannel.send(payload);
+                }
+              };
+              startPvPChallenge(mockInteraction, client, petObj.pet_name).catch(console.error);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-restart pvp challenge:', err);
+      }
+    }, 5000);
   }
 }
 

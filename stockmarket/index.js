@@ -1194,6 +1194,14 @@ function initStockMarket(client) {
         await pvpBot.handlePvPAction(interaction, client, 'surr');
         return;
       }
+      if (customId === 'pvpbot_act_auto') {
+        const config = require('./config');
+        if (interaction.user.id !== config.OWNER_ID) {
+          return interaction.reply({ content: '❌ Fitur ini hanya untuk Owner!', flags: 64 }).catch(() => {});
+        }
+        await pvpBot.handlePvPAction(interaction, client, 'auto');
+        return;
+      }
       if (customId.startsWith('pvpbot_bet_')) {
         await pvpBot.handleBetInteraction(interaction, client);
         return;
