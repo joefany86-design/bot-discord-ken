@@ -890,6 +890,29 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
   let isCrit = false;
   let isDodged = false;
 
+  const settings = db.get('SELECT owner_god_mode FROM ebyus_settings WHERE guild_id = ?', [combatData.guildId]);
+  const isGodMode = settings && settings.owner_god_mode === 1 && combatData.userId === config.OWNER_ID;
+
+  if (isGodMode) {
+    if (attacker === combatData.player) {
+      defender.hp = 0;
+      logMsg = `🔥 **[GOD MODE]** **${attacker.name}** mengeluarkan kekuatan dewa dan menumbangkan **${defender.name}** secara instan!`;
+      combatData.logs.push(logMsg);
+      if (attacker.statsRecap) {
+        attacker.statsRecap.damageDealt += defender.maxHP;
+        attacker.statsRecap.crits++;
+      }
+      return;
+    } else {
+      logMsg = `🛡️ **[GOD MODE]** **${attacker.name}** menyerang, namun **${defender.name}** kebal dan menghindar dengan mudah!`;
+      combatData.logs.push(logMsg);
+      if (defender.statsRecap) {
+        defender.statsRecap.dodges++;
+      }
+      return;
+    }
+  }
+
   const attackerSpecies = pet.GACHA_SPECIES[attacker.pet_type];
   const attackerSpecBaseAtk = attackerSpecies ? (attackerSpecies.baseAtk || 10) : 10;
   // ATK berbasis Gym Stats (stat_str), Tanpa Level
@@ -1200,6 +1223,12 @@ function executeSingleAction(attacker, defender, actionType, combatData) {
  */
 function applyBurnDamage(player, combatData) {
   if (player.hp > 0 && player.burnTurns > 0) {
+    const settings = db.get('SELECT owner_god_mode FROM ebyus_settings WHERE guild_id = ?', [combatData.guildId]);
+    const isGodMode = settings && settings.owner_god_mode === 1 && combatData.userId === config.OWNER_ID && player === combatData.player;
+    if (isGodMode) {
+      player.burnTurns = 0;
+      return;
+    }
     const burnDmg = Math.round(player.maxHP * 0.08); // 8% HP per turn
     player.hp = Math.max(0, player.hp - burnDmg);
     player.burnTurns--;
@@ -1500,11 +1529,18 @@ async function handlePvPAction(interaction, client, actionType) {
 
   // 6b. Terapkan Weather Damage
   if (combatData.weather && combatData.weather !== 'CLEAR') {
-    const pDmg = Math.round(p.maxHP * 0.03);
+    const settings = db.get('SELECT owner_god_mode FROM ebyus_settings WHERE guild_id = ?', [combatData.guildId]);
+    const isGodMode = settings && settings.owner_god_mode === 1 && combatData.userId === config.OWNER_ID;
+    
+    const pDmg = isGodMode ? 0 : Math.round(p.maxHP * 0.03);
     const bDmg = Math.round(b.maxHP * 0.03);
-    p.hp = Math.max(0, p.hp - pDmg);
+    if (pDmg > 0) {
+      p.hp = Math.max(0, p.hp - pDmg);
+      combatData.logs.push(`🌪️ **[CUACA]** **${combatData.weatherName}** menerjang arena! **${p.name}** terkena **${pDmg} DMG** & **${b.name}** terkena **${bDmg} DMG**!`);
+    } else {
+      combatData.logs.push(`🌪️ **[CUACA]** **${combatData.weatherName}** menerjang arena! **${p.name}** kebal terhadap cuaca ekstrem & **${b.name}** terkena **${bDmg} DMG**!`);
+    }
     b.hp = Math.max(0, b.hp - bDmg);
-    combatData.logs.push(`🌪️ **[CUACA]** **${combatData.weatherName}** menerjang arena! **${p.name}** terkena **${pDmg} DMG** & **${b.name}** terkena **${bDmg} DMG**!`);
   }
 
   // 7. Cek Kondisi Game Over
@@ -1549,6 +1585,11 @@ async function handlePvPAction(interaction, client, actionType) {
  */
 async function endPvPGame(interaction, client, combatData, result) {
   const { guildId, userId } = combatData;
+
+  const settings = db.get('SELECT owner_god_mode FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  if (settings && settings.owner_god_mode === 1 && userId === config.OWNER_ID) {
+    result = 'win';
+  }
 
   if (combatData.timeout) {
     clearTimeout(combatData.timeout);
