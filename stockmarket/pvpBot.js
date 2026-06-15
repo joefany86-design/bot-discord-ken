@@ -1786,35 +1786,6 @@ async function endPvPGame(interaction, client, combatData, result) {
     }
   }
 
-  // Jika pertarungan berjalan di dalam thread, kirim hasil ke channel utama dan hapus thread
-  try {
-    const thread = client.channels.cache.get(combatData.channelId) || await client.channels.fetch(combatData.channelId).catch(() => null);
-    if (thread && thread.isThread()) {
-      const parentChannel = thread.parent || await client.channels.fetch(thread.parentId).catch(() => null);
-      if (parentChannel) {
-        await parentChannel.send({ content: `<@${userId}>`, embeds: [resultEmbed] }).catch(() => {});
-      }
-      setTimeout(async () => {
-        if (combatData.parentMessageId && parentChannel) {
-          const parentMsg = await parentChannel.messages.fetch(combatData.parentMessageId).catch(() => null);
-          if (parentMsg) await parentMsg.delete().catch(() => {});
-        }
-        await thread.delete().catch(() => {});
-      }, 3000);
-      return;
-    }
-  } catch (err) {
-    console.error('Failed to cleanup thread in endPvPGame:', err);
-  }
-
-  if (messageToEdit) {
-    await messageToEdit.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
-    // Hapus pesan hasil pertarungan setelah 15 detik agar channel tetap bersih
-    setTimeout(async () => {
-      await messageToEdit.delete().catch(() => {});
-    }, 15000);
-  }
-
   // Loop PvP Otomatis Terus Menerus untuk Owner
   if (client.continuousAutoPvP === true && userId === config.OWNER_ID) {
     setTimeout(async () => {
@@ -1860,6 +1831,35 @@ async function endPvPGame(interaction, client, combatData, result) {
         console.error('Failed to auto-restart pvp challenge:', err);
       }
     }, 5000);
+  }
+
+  // Jika pertarungan berjalan di dalam thread, kirim hasil ke channel utama dan hapus thread
+  try {
+    const thread = client.channels.cache.get(combatData.channelId) || await client.channels.fetch(combatData.channelId).catch(() => null);
+    if (thread && thread.isThread()) {
+      const parentChannel = thread.parent || await client.channels.fetch(thread.parentId).catch(() => null);
+      if (parentChannel) {
+        await parentChannel.send({ content: `<@${userId}>`, embeds: [resultEmbed] }).catch(() => {});
+      }
+      setTimeout(async () => {
+        if (combatData.parentMessageId && parentChannel) {
+          const parentMsg = await parentChannel.messages.fetch(combatData.parentMessageId).catch(() => null);
+          if (parentMsg) await parentMsg.delete().catch(() => {});
+        }
+        await thread.delete().catch(() => {});
+      }, 3000);
+      return;
+    }
+  } catch (err) {
+    console.error('Failed to cleanup thread in endPvPGame:', err);
+  }
+
+  if (messageToEdit) {
+    await messageToEdit.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
+    // Hapus pesan hasil pertarungan setelah 15 detik agar channel tetap bersih
+    setTimeout(async () => {
+      await messageToEdit.delete().catch(() => {});
+    }, 15000);
   }
 }
 
