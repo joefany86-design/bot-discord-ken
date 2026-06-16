@@ -2344,12 +2344,11 @@ function executeExpedition(guildId, participantIds, mapId = 1, pathChoice = 'SAF
         if (kruCount === 1) {
           prizePerPerson = Math.floor(basePrize * 0.3); // Solo: 30% koin
         } else {
-          const multiplier = 0.5 + (0.2 * kruCount);
-          prizePerPerson = Math.floor(basePrize * multiplier); // Co-op: makin banyak peserta makin banyak koinnya
+          prizePerPerson = Math.floor(basePrize * 1.5); // Co-op: 150% koin (bonus +50% koin bersih per orang)
         }
 
-        // Penalti 90% jika level pet berbeda jauh (selisih >= 15) dari level rekomendasi zona
-        const levelDiff = Math.abs(ap.pet.level - recommendedLevel);
+        // Penalti 90% jika level pet terlalu rendah (selisih >= 15 di bawah level rekomendasi zona)
+        const levelDiff = recommendedLevel - ap.pet.level;
         if (levelDiff >= 15) {
           prizePerPerson = Math.floor(prizePerPerson * 0.1); // Penalti 90%, hanya mendapat 10% koin
           if (prizePerPerson < 10) prizePerPerson = 10; // Batas minimum koin agar tidak 0
