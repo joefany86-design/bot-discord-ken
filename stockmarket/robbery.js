@@ -1001,6 +1001,9 @@ function executeHeistQteFailure(guildId, failedUserId, reasonType) {
   const kruCount = participants.length;
   const stats = getHeistStats(kruCount);
 
+  const ebyusSettings = db.get('SELECT anti_jail, is_active FROM ebyus_settings WHERE guild_id = ?', [guildId]);
+  const isAntiJail = ebyusSettings && ebyusSettings.is_active === 1 && ebyusSettings.anti_jail === 1;
+
   const now = Math.floor(Date.now() / 1000);
   const soapUsedUsers = [];
   const dodgedJailUsers = [];

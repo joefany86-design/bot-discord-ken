@@ -768,13 +768,61 @@ async function checkAndCloseExpiredAuctions(client) {
 
           // 1. Distribute item/pet to winner
           if (item.item_type === 'PET') {
-            const petData = JSON.parse(item.pet_details);
+            let petData = null;
+            if (item.pet_details) {
+              try {
+                petData = JSON.parse(item.pet_details);
+              } catch (e) {
+                console.error("Failed to parse pet_details:", e);
+              }
+            }
+
+            if (!petData) {
+              // Create default newborn pet data if it was a global/admin pet auction
+              const now = Math.floor(Date.now() / 1000);
+              petData = {
+                pet_name: item.item_id,
+                pet_type: item.item_id,
+                status: 'BABY',
+                level: 1,
+                xp: 0,
+                health: 100,
+                hunger: 100,
+                thirst: 100,
+                happiness: 100,
+                last_interaction_at: now,
+                created_at: now
+              };
+            }
+
             petData.user_id = winnerId;
             
             const petsCount = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [winnerId, guildId]).count;
             petData.is_active = petsCount === 0 ? 1 : 0;
 
-            insertRow('user_pets', petData);
+            // Resolve name conflict (prevent UNIQUE constraint error)
+            let finalPetName = petData.pet_name;
+            let counter = 1;
+            while (true) {
+              const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [winnerId, guildId, finalPetName.toLowerCase()]);
+              if (!nameExists) {
+                break;
+              }
+              finalPetName = `${petData.pet_name} (${counter})`;
+              counter++;
+            }
+            petData.pet_name = finalPetName;
+
+            // Sanitize keys to match current user_pets schema columns
+            const allowedColumns = db.all("PRAGMA table_info(user_pets)").map(col => col.name);
+            const filteredPetData = {};
+            for (const col of allowedColumns) {
+              if (col in petData) {
+                filteredPetData[col] = petData[col];
+              }
+            }
+
+            insertRow('user_pets', filteredPetData);
           } else {
             const isPetItem = item.item_type === 'PET_ITEM';
             if (isPetItem) {
@@ -818,13 +866,60 @@ async function checkAndCloseExpiredAuctions(client) {
           if (item.seller_id) {
             // Return item/pet to seller
             if (item.item_type === 'PET') {
-              const petData = JSON.parse(item.pet_details);
+              let petData = null;
+              if (item.pet_details) {
+                try {
+                  petData = JSON.parse(item.pet_details);
+                } catch (e) {
+                  console.error("Failed to parse pet_details:", e);
+                }
+              }
+
+              if (!petData) {
+                const now = Math.floor(Date.now() / 1000);
+                petData = {
+                  pet_name: item.item_id,
+                  pet_type: item.item_id,
+                  status: 'BABY',
+                  level: 1,
+                  xp: 0,
+                  health: 100,
+                  hunger: 100,
+                  thirst: 100,
+                  happiness: 100,
+                  last_interaction_at: now,
+                  created_at: now
+                };
+              }
+
               petData.user_id = item.seller_id;
               
               const petsCount = db.get('SELECT COUNT(*) as count FROM user_pets WHERE user_id = ? AND guild_id = ?', [item.seller_id, guildId]).count;
               petData.is_active = petsCount === 0 ? 1 : 0;
 
-              insertRow('user_pets', petData);
+              // Resolve name conflict
+              let finalPetName = petData.pet_name;
+              let counter = 1;
+              while (true) {
+                const nameExists = db.get('SELECT 1 FROM user_pets WHERE user_id = ? AND guild_id = ? AND LOWER(pet_name) = LOWER(?)', [item.seller_id, guildId, finalPetName.toLowerCase()]);
+                if (!nameExists) {
+                  break;
+                }
+                finalPetName = `${petData.pet_name} (${counter})`;
+                counter++;
+              }
+              petData.pet_name = finalPetName;
+
+              // Sanitize keys to match current user_pets schema columns
+              const allowedColumns = db.all("PRAGMA table_info(user_pets)").map(col => col.name);
+              const filteredPetData = {};
+              for (const col of allowedColumns) {
+                if (col in petData) {
+                  filteredPetData[col] = petData[col];
+                }
+              }
+
+              insertRow('user_pets', filteredPetData);
             } else {
               const isPetItem = item.item_type === 'PET_ITEM';
               if (isPetItem) {

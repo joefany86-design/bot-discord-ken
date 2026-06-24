@@ -1197,7 +1197,7 @@ function initStockMarket(client) {
       if (customId === 'pvpbot_act_auto') {
         const config = require('./config');
         if (interaction.user.id !== config.OWNER_ID) {
-          return interaction.reply({ content: '❌ Fitur ini hanya untuk Owner!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Fitur ini hanya untuk Owner!', flags: 64 }).catch(() => { });
         }
         await pvpBot.handlePvPAction(interaction, client, 'auto');
         return;
@@ -1209,13 +1209,13 @@ function initStockMarket(client) {
       if (customId === 'pvpbot_act_item') {
         const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(interaction.user.id) : null;
         if (!combatData) {
-          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => { });
         }
         if (combatData.isProcessing) {
-          return interaction.reply({ content: '❌ Giliran sedang diproses, silakan tunggu!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Giliran sedang diproses, silakan tunggu!', flags: 64 }).catch(() => { });
         }
         if (combatData.player.hasUsedItem) {
-          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 }).catch(() => { });
         }
 
         const medRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MEDICINE'", [interaction.user.id, interaction.guildId]);
@@ -1249,35 +1249,35 @@ function initStockMarket(client) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => {});
+        await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => { });
         return;
       }
       if (customId === 'pvpbot_item_cancel') {
-        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => {});
+        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => { });
         return;
       }
       if (customId === 'pvpbot_use_med' || customId === 'pvpbot_use_soda') {
         const combatData = client.activePvPBotGames ? client.activePvPBotGames.get(interaction.user.id) : null;
         if (!combatData) {
-          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] }).catch(() => { });
         }
         if (combatData.isProcessing) {
-          return interaction.update({ content: '❌ Giliran sedang diproses, silakan tunggu!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Giliran sedang diproses, silakan tunggu!', embeds: [], components: [] }).catch(() => { });
         }
         if (combatData.player.hasUsedItem) {
-          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] }).catch(() => { });
         }
 
         const itemId = customId === 'pvpbot_use_med' ? 'MEDICINE' : 'SODA_ENERGY';
         const itemRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
         if (!itemRow || itemRow.quantity <= 0) {
-          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] }).catch(() => { });
         }
 
         database.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
         database.run("DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0", [interaction.user.id, interaction.guildId, itemId]);
 
-        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => {});
+        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => { });
 
         await pvpBot.handlePvPAction(interaction, client, customId === 'pvpbot_use_med' ? 'item_med' : 'item_soda');
         return;
@@ -1307,18 +1307,18 @@ function initStockMarket(client) {
       if (customId === 'pvp_act_item') {
         const combatData = client.activePvPGames ? client.activePvPGames.get(interaction.user.id) : null;
         if (!combatData) {
-          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', flags: 64 }).catch(() => { });
         }
         if (combatData.isProcessing) {
-          return interaction.reply({ content: '❌ Giliran sedang diproses, silakan tunggu!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Giliran sedang diproses, silakan tunggu!', flags: 64 }).catch(() => { });
         }
-        
+
         const actor = interaction.user.id === combatData.p1.id ? combatData.p1 : (interaction.user.id === combatData.p2.id ? combatData.p2 : null);
         if (!actor) {
-          return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Anda tidak berada dalam pertarungan ini!', flags: 64 }).catch(() => { });
         }
         if (actor.hasUsedItem) {
-          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 }).catch(() => {});
+          return interaction.reply({ content: '❌ Anda telah menggunakan item di pertarungan ini!', flags: 64 }).catch(() => { });
         }
 
         const medRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = 'MEDICINE'", [interaction.user.id, interaction.guildId]);
@@ -1352,39 +1352,39 @@ function initStockMarket(client) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => {});
+        await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => { });
         return;
       }
       if (customId === 'pvp_item_cancel') {
-        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => {});
+        await interaction.update({ content: '❌ Penggunaan item dibatalkan.', embeds: [], components: [] }).catch(() => { });
         return;
       }
       if (customId === 'pvp_use_med' || customId === 'pvp_use_soda') {
         const combatData = client.activePvPGames ? client.activePvPGames.get(interaction.user.id) : null;
         if (!combatData) {
-          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Pertandingan Anda tidak ditemukan atau telah berakhir!', embeds: [], components: [] }).catch(() => { });
         }
         const actor = interaction.user.id === combatData.p1.id ? combatData.p1 : (interaction.user.id === combatData.p2.id ? combatData.p2 : null);
         if (!actor) {
-          return interaction.update({ content: '❌ Anda tidak berada dalam pertarungan ini!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Anda tidak berada dalam pertarungan ini!', embeds: [], components: [] }).catch(() => { });
         }
         if (combatData.isProcessing) {
-          return interaction.update({ content: '❌ Giliran sedang diproses, silakan tunggu!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Giliran sedang diproses, silakan tunggu!', embeds: [], components: [] }).catch(() => { });
         }
         if (actor.hasUsedItem) {
-          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Anda telah menggunakan item di pertarungan ini!', embeds: [], components: [] }).catch(() => { });
         }
 
         const itemId = customId === 'pvp_use_med' ? 'MEDICINE' : 'SODA_ENERGY';
         const itemRow = database.get("SELECT quantity FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
         if (!itemRow || itemRow.quantity <= 0) {
-          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] }).catch(() => {});
+          return interaction.update({ content: '❌ Anda tidak memiliki item ini!', embeds: [], components: [] }).catch(() => { });
         }
 
         database.run("UPDATE pet_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?", [interaction.user.id, interaction.guildId, itemId]);
         database.run("DELETE FROM pet_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0", [interaction.user.id, interaction.guildId, itemId]);
 
-        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => {});
+        await interaction.update({ content: '🎒 Item berhasil digunakan!', embeds: [], components: [] }).catch(() => { });
 
         await pvpBot.handlePvPActionPvP(interaction, client, customId === 'pvp_use_med' ? 'item_med' : 'item_soda');
         return;
@@ -2970,9 +2970,9 @@ function initStockMarket(client) {
                     });
                   } catch (err) {
                     if (submitted.deferred || submitted.replied) {
-                      await submitted.followUp({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => {});
+                      await submitted.followUp({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => { });
                     } else {
-                      await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => {});
+                      await submitted.reply({ embeds: [embeds.errorEmbed('Transaksi Gagal!', err.message)], flags: 64 }).catch(() => { });
                     }
                   }
                 }
@@ -3379,8 +3379,8 @@ function initStockMarket(client) {
                   }
                 }
               } else if (iPet.customId === 'pet_btn_refresh') {
-                await iPet.deferUpdate().catch(() => {});
-                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
+                await iPet.deferUpdate().catch(() => { });
+                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_use_booster') {
                 try {
                   const freshPet = pet.getPet(user.id, guildId);
@@ -3591,45 +3591,45 @@ function initStockMarket(client) {
                   await iPet.reply({ embeds: [embeds.errorEmbed('Gagal Menghidupkan Pet!', err.message)], flags: 64 });
                 }
               } else if (iPet.customId === 'pet_select_active') {
-                await iPet.deferUpdate().catch(() => {});
+                await iPet.deferUpdate().catch(() => { });
                 pet.switchActivePet(user.id, guildId, iPet.values[0]);
-                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => {});
+                await iPet.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_hatch') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.getPet(user.id, guildId);
                 if (res && res.status === 'BABY') {
-                  await iPet.editReply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] }).catch(() => {});
+                  await iPet.editReply({ embeds: [embeds.successEmbed('Telur Menetas! 🎉🐣', `Pet **${res.pet_name}** telah menetas menjadi bayi monster!`)] }).catch(() => { });
                   await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                 }
               } else if (iPet.customId === 'pet_btn_feed') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.useItem(user.id, guildId, 'FOOD_BASIC', true);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Makan! 🍗', `Kenyangan pet sekarang **${res.pet.hunger}%**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_drink') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.useItem(user.id, guildId, 'WATER', true);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Beri Minum! 🥤', `Hidrasi pet sekarang **${res.pet.thirst}%**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_play') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.playWithPet(user.id, guildId);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Bermain! ⚽', `Kebahagiaan pet sekarang **${res.happiness}%**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_cure') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.useItem(user.id, guildId, 'MEDICINE', true);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Obat! 💊', `Kesehatan HP pet sekarang **${res.pet.health}%**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_work') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.sendToWork(user.id, guildId, iPet.member);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Kerja! 💼', `Gaji didapat **Rp ${res.reward}**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_hunt') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 const res = pet.sendToHunt(user.id, guildId, iPet.member);
-                await iPet.editReply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] }).catch(() => {});
+                await iPet.editReply({ embeds: [embeds.successEmbed('Berburu! 🏹', `Koin didapat **Rp ${res.reward}**.`)] }).catch(() => { });
                 await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
               } else if (iPet.customId === 'pet_btn_breed') {
                 try {
@@ -3781,11 +3781,11 @@ function initStockMarket(client) {
                         if (iBreed.customId === 'pet_breed_decline') {
                           breedCollector.stop();
                           await targetMsg.delete().catch(() => { });
-                          
+
                           if (sentViaDM) {
                             const initiatorUser = await client.users.fetch(user.id).catch(() => null);
                             if (initiatorUser) {
-                              await initiatorUser.send({ content: `🔴 Tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` }).catch(() => {});
+                              await initiatorUser.send({ content: `🔴 Tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` }).catch(() => { });
                             }
                           }
                           return iBreed.reply({ content: `🔴 <@${user.id}>, tawaran perkawinan pet Anda ditolak oleh <@${partnerId}>.` });
@@ -3813,7 +3813,7 @@ function initStockMarket(client) {
                             if (sentViaDM) {
                               const initiatorUser = await client.users.fetch(user.id).catch(() => null);
                               if (initiatorUser) {
-                                await initiatorUser.send({ content: `🎉 Perkawinan pet Anda dengan <@${partnerId}> berhasil!`, embeds: [successEmb] }).catch(() => {});
+                                await initiatorUser.send({ content: `🎉 Perkawinan pet Anda dengan <@${partnerId}> berhasil!`, embeds: [successEmb] }).catch(() => { });
                               }
                             }
                             return iBreed.reply({ content: `<@${user.id}> <@${partnerId}>`, embeds: [successEmb] });
@@ -3836,7 +3836,7 @@ function initStockMarket(client) {
                   }
                 }
               } else if (iPet.customId === 'pet_btn_autocare') {
-                await iPet.deferReply({ flags: 64 }).catch(() => {});
+                await iPet.deferReply({ flags: 64 }).catch(() => { });
                 try {
                   const res = pet.unlockAutoCare(user.id, guildId);
                   const successEmb = embeds.successEmbed(
@@ -3847,10 +3847,10 @@ function initStockMarket(client) {
                     `• 💧 Kehausan $\le$ 50% $\rightarrow$ Hidrasi $+35$ (Potong Rp 100)\n\n` +
                     `*Fitur ini menjaga pet Anda secara otomatis dengan memotong saldo koin dompet saat terpicu. Pastikan saldo Anda selalu terisi agar perawatan tidak terhenti!*`
                   );
-                  await iPet.editReply({ embeds: [successEmb] }).catch(() => {});
+                  await iPet.editReply({ embeds: [successEmb] }).catch(() => { });
                   await interaction.editReply(getDashboardPanelPrivate(user.id)).catch(() => { });
                 } catch (err) {
-                  await iPet.editReply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)] }).catch(() => {});
+                  await iPet.editReply({ embeds: [embeds.errorEmbed('Gagal Mengaktifkan Auto Care!', err.message)] }).catch(() => { });
                 }
               } else if (iPet.customId === 'pet_btn_gacha') {
                 // Redirect ke panel gacha (ephemeral reply)
@@ -5899,7 +5899,7 @@ async function handlePetCommand(message, client, args) {
       try {
         const regPetName = args.slice(2).join(' ');
         const result = pet.registerPetToRaid(author.id, guildId, regPetName);
-        
+
         const successEmb = embeds.successEmbed(
           'Pendaftaran Raid Sukses! ⚔️🎟️',
           `Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${author.id}> berhasil didaftarkan ke antrean Raid Boss!\n\n` +
@@ -5926,11 +5926,11 @@ async function handlePetCommand(message, client, args) {
           fightRes.victory
         );
 
-        fightEmbed.addFields({ 
-          name: '📊 Ringkasan Sesi Raid', 
+        fightEmbed.addFields({
+          name: '📊 Ringkasan Sesi Raid',
           value: `• **Total Damage Tim:** ${fightRes.totalDamageDealt.toLocaleString('id-ID')} DMG\n` +
-                 `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
-                 (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
+            `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
+            (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
         });
 
         if (fightRes.victory && fightRes.rewards.length > 0) {
@@ -5941,7 +5941,7 @@ async function handlePetCommand(message, client, args) {
         fightEmbed.addFields({
           name: '⚠️ Efek Samping Pertempuran',
           value: `Seluruh pet yang berpartisipasi telah kehabisan tenaga dan menderita pengurangan **80% Max HP**!\n` +
-                 `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
+            `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
         });
 
         return message.reply({ embeds: [fightEmbed] });
@@ -5972,7 +5972,7 @@ async function handlePetCommand(message, client, args) {
         // Fetch current co-op registrations
         const registrations = database.all('SELECT * FROM pet_raid_registrations WHERE guild_id = ?', [gId]);
         const regNames = registrations.length > 0 ? registrations.map(r => `• <@${r.user_id}> (Pet: **${r.pet_name}**)`).join('\n') : '*Belum ada pet terdaftar dalam antrean.*';
-        
+
         embed.addFields({
           name: `👥 Antrean Raid Co-op (${registrations.length}/5)`,
           value: regNames + `\n\n👉 Pilih pet Anda dari menu pilihan di bawah untuk mendaftar.\n👉 Klik **⚔️ Mulai Co-op** jika minimal 3 pet terdaftar.`
@@ -6047,9 +6047,9 @@ async function handlePetCommand(message, client, args) {
               const selectedValue = i.values[0];
               const petName = selectedValue.replace('pet_reg_', '');
               const result = pet.registerPetToRaid(i.user.id, guildId, petName);
-              
-              await i.editReply({ 
-                content: `✅ **Pendaftaran Sukses!** Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${i.user.id}> telah terdaftar ke antrean Raid Boss.\n💰 Biaya Rp 2.500 koin telah dipotong.` 
+
+              await i.editReply({
+                content: `✅ **Pendaftaran Sukses!** Pet **${result.petName}** (Lv. ${result.pet.level}) milik <@${i.user.id}> telah terdaftar ke antrean Raid Boss.\n💰 Biaya Rp 2.500 koin telah dipotong.`
               });
 
               const pFresh = pet.getPet(author.id, guildId);
@@ -6072,11 +6072,11 @@ async function handlePetCommand(message, client, args) {
                 fightRes.victory
               );
 
-              fightEmbed.addFields({ 
-                name: '📊 Ringkasan Sesi Raid', 
+              fightEmbed.addFields({
+                name: '📊 Ringkasan Sesi Raid',
                 value: `• **Total Damage Tim:** ${fightRes.totalDamageDealt.toLocaleString('id-ID')} DMG\n` +
-                       `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
-                       (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
+                  `• **Hasil:** ${fightRes.victory ? '🟢 Kemenangan' : '🔴 Kekalahan'}\n` +
+                  (fightRes.victory ? `• **Slayer (Last Hit):** **${fightRes.lastHitPetName}** (<@${fightRes.lastHitUserId}>)` : '')
               });
 
               if (fightRes.victory && fightRes.rewards.length > 0) {
@@ -6087,7 +6087,7 @@ async function handlePetCommand(message, client, args) {
               fightEmbed.addFields({
                 name: '⚠️ Efek Samping Pertempuran',
                 value: `Seluruh pet yang berpartisipasi telah kehabisan tenaga dan menderita pengurangan **80% Max HP**!\n` +
-                       `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
+                  `Pet yang kehabisan HP tanpa perlindungan **Jimat Keberuntungan** / trait **Survivor** telah meninggal (DEAD).`
               });
 
               await i.editReply({ embeds: [fightEmbed] });
@@ -6288,7 +6288,7 @@ async function handlePetCommand(message, client, args) {
       db.transaction(() => {
         // Lepas equipment dengan tipe yang sama yang sudah terpasang di pet tersebut
         db.run('UPDATE pet_equipment SET equipped_pet = NULL WHERE user_id = ? AND guild_id = ? AND equipped_pet = ? AND equip_type = ?', [author.id, guildId, petObj.pet_name, equip.equip_type]);
-        
+
         // Pasang equipment baru
         db.run('UPDATE pet_equipment SET equipped_pet = ? WHERE id = ?', [petObj.pet_name, equip.id]);
       })();
@@ -6364,7 +6364,7 @@ async function handlePetCommand(message, client, args) {
       let success = false;
       db.transaction(() => {
         economy.subtractBalance(author.id, guildId, forgeConfig.cost, 'PET_EQUIPMENT_FORGE');
-        
+
         const roll = Math.random() * 100;
         if (roll < forgeConfig.chance) {
           success = true;
@@ -6635,14 +6635,14 @@ async function handlePetCommand(message, client, args) {
 
       const petNameArg = args.slice(2).join(' ');
       const res = pet.useItem(author.id, guildId, itemId, false, petNameArg);
-      
+
       let descText = '';
       if (res.isAncientBox) {
         const star = pet.renderStars(res.pet.star_level || 1);
         descText = `🎉 **Selamat!** Anda telah menetaskan **${res.pullResult.name}** (${res.pullResult.rarity} ${star})!\n` +
-                   `🐾 Nama Pet: **${res.pet.pet_name}**\n` +
-                   `❤️ HP: **${res.pet.health}%** | 🍗 Kenyangan: **${res.pet.hunger}%**\n\n` +
-                   `*Pet telah dimasukkan ke kandang Anda secara aktif!*`;
+          `🐾 Nama Pet: **${res.pet.pet_name}**\n` +
+          `❤️ HP: **${res.pet.health}%** | 🍗 Kenyangan: **${res.pet.hunger}%**\n\n` +
+          `*Pet telah dimasukkan ke kandang Anda secara aktif!*`;
       } else if (res.item.multiplier) {
         descText = `📈 Pengali XP Pet Anda sekarang menjadi **${res.item.multiplier}x** secara permanen!\n🌟 XP Didapat: **+${res.xpGained} XP**${res.levelUp ? ` (Naik ke Level **${res.pet.level}**! 🎉)` : ''}`;
       } else {
@@ -7044,7 +7044,7 @@ async function handlePetCommand(message, client, args) {
         components: [],
         files: [],
         attachments: []
-      }).catch(() => {});
+      }).catch(() => { });
 
       // Kirim pesan lobi di dalam thread
       const threadLobbyOpts = {
@@ -7607,10 +7607,10 @@ async function handlePetCommand(message, client, args) {
             await message.channel.send({
               content: `🚨 **EKSPEDISI KACAU! PERTEMPURAN BOS GAGAL!**\nKru <@${failedUserId}> gagal melepas skill tepat waktu!`,
               files: failFiles
-            }).catch(() => {});
+            }).catch(() => { });
             setTimeout(async () => {
-              await starterMsg.delete().catch(() => {});
-              await thread.delete().catch(() => {});
+              await starterMsg.delete().catch(() => { });
+              await thread.delete().catch(() => { });
             }, 5000);
           }
           return;
@@ -7669,10 +7669,10 @@ async function handlePetCommand(message, client, args) {
           await message.channel.send({
             content: participantMentions,
             files: resFiles
-          }).catch(() => {});
+          }).catch(() => { });
           setTimeout(async () => {
-            await starterMsg.delete().catch(() => {});
-            await thread.delete().catch(() => {});
+            await starterMsg.delete().catch(() => { });
+            await thread.delete().catch(() => { });
           }, 5000);
         }
       } catch (err) {
@@ -7684,8 +7684,8 @@ async function handlePetCommand(message, client, args) {
 
         if (thread) {
           setTimeout(async () => {
-            await starterMsg.delete().catch(() => {});
-            await thread.delete().catch(() => {});
+            await starterMsg.delete().catch(() => { });
+            await thread.delete().catch(() => { });
           }, 5000);
         }
       }
@@ -7810,8 +7810,8 @@ async function handlePetCommand(message, client, args) {
 
           if (thread) {
             setTimeout(async () => {
-              await starterMsg.delete().catch(() => {});
-              await thread.delete().catch(() => {});
+              await starterMsg.delete().catch(() => { });
+              await thread.delete().catch(() => { });
             }, 5000);
           }
         }
@@ -9680,9 +9680,9 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
       const equippedText = item.equipped_pet ? `👤 Dipakai: **${item.equipped_pet}**` : '📦 *Di Tas*';
       const elText = item.element && item.element !== 'NONE' ? ` | Elemen: \`${item.element}\`` : '';
       const affinityBonusText = eff.elementMatch ? ` 🌟 *(Affinity Match +15% ATK)*` : '';
-      
+
       return `\`[ID: ${item.id}]\` **[+${item.level}] ${item.equip_name}** (${item.rarity})\n` +
-             `> Stat: **+${eff.effectiveValue} ${item.stat_type}**${elText}${affinityBonusText} | Durability: \`${item.durability}/${item.max_durability}\` | ${equippedText}`;
+        `> Stat: **+${eff.effectiveValue} ${item.stat_type}**${elText}${affinityBonusText} | Durability: \`${item.durability}/${item.max_durability}\` | ${equippedText}`;
     };
 
     const weaponListText = weapons.length > 0 ? weapons.map(formatItemLine).join('\n') : '*Tidak ada senjata.*';
@@ -9795,7 +9795,7 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
 
     // Buttons: Forge, Repair, Unequip, Back
     const wallet = economy.getWallet(userId, gId);
-    
+
     // Forge Button Config
     const curLevel = item.level || 1;
     let forgeLabel = '✨ Max level +10';
@@ -9807,7 +9807,7 @@ async function handlePetEquipmentBagPanel(context, client, isInteraction = false
         forgeDisabled = wallet.balance < forgeConfig.cost;
       }
     }
-    
+
     // Repair Button Config
     const maxDur = item.max_durability || 100;
     const curDur = item.durability !== undefined ? item.durability : 100;
@@ -10989,11 +10989,11 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     const warnEmb = embeds.warnEmbed('Saldo Koin Tidak Cukup!', `Biaya putar gacha adalah **Rp ${gachaCost.toLocaleString('id-ID')}**, sedangkan saldo Anda saat ini hanya **Rp ${balance.toLocaleString('id-ID')}**.`);
     if (isInteraction) {
       if (replyTarget.deferred || replyTarget.replied) {
-        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => {});
+        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => { });
       }
-      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => { });
     }
-    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => {});
+    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => { });
   }
 
   const gachaItems = database.all('SELECT * FROM shop_items WHERE guild_id = ? AND is_gacha = 1', [guildId]);
@@ -11001,20 +11001,20 @@ async function executeGachaRoll({ replyTarget, user, guild, guildId, client, isI
     const warnEmb = embeds.warnEmbed('Gacha Tidak Tersedia!', 'Belum ada role gacha yang dikonfigurasi di server ini. Silakan admin menambahkan role gacha terlebih dahulu!');
     if (isInteraction) {
       if (replyTarget.deferred || replyTarget.replied) {
-        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => {});
+        return replyTarget.editReply({ embeds: [warnEmb], components: [] }).catch(() => { });
       }
-      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
+      return replyTarget.reply({ embeds: [warnEmb], flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => { });
     }
-    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => {});
+    return replyTarget.reply({ embeds: [warnEmb] }).catch(() => { });
   }
 
   // Animasi rolling menegangkan multi-tahap
   let rollingMsg = null;
   if (isInteraction) {
     if (replyTarget.deferred || replyTarget.replied) {
-      await replyTarget.editReply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', embeds: [], components: [] }).catch(() => {});
+      await replyTarget.editReply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', embeds: [], components: [] }).catch(() => { });
     } else {
-      await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => {});
+      await replyTarget.reply({ content: '🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙', flags: replyTarget.channelId === SHOP_CHANNEL_ID ? 64 : undefined }).catch(() => { });
     }
   } else {
     rollingMsg = await replyTarget.reply('🎰 **[ GACHA START ]** Memasukkan koin ke mesin gacha... 🪙');
@@ -11226,11 +11226,11 @@ async function executeRolePurchase({ replyTarget, user, guild, guildId, itemId, 
   const sendReply = async (emb) => {
     if (isInteraction) {
       if (replyTarget.deferred || replyTarget.replied) {
-        return replyTarget.editReply({ embeds: [emb], components: [] }).catch(() => {});
+        return replyTarget.editReply({ embeds: [emb], components: [] }).catch(() => { });
       }
-      return replyTarget.reply({ embeds: [emb], flags: 64 }).catch(() => {});
+      return replyTarget.reply({ embeds: [emb], flags: 64 }).catch(() => { });
     }
-    return replyTarget.reply({ embeds: [emb] }).catch(() => {});
+    return replyTarget.reply({ embeds: [emb] }).catch(() => { });
   };
 
   if (!item) {
@@ -11672,7 +11672,7 @@ async function handleEconomyCommands(message, client) {
     const isSafariCommand = commandName === 'pet' && ['safari', 'catch', 'tangkap'].includes(subCommand);
     const isPvPBotCommand = commandName === 'pet' && ['pvpbot', 'arena'].includes(subCommand);
     const isRaidCommand = commandName === 'pet' && ['raid', 'worldboss', 'boss'].includes(subCommand);
-    
+
     let allowedChannelIds = ['1509762623917265137'];
     if (isSafariCommand) {
       allowedChannelIds = ['1513927968379109436'];
