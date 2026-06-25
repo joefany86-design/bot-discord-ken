@@ -7,11 +7,11 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Membaca webhook dari global variable (_G) yang diisi oleh user di executor
-local SEED_WEBHOOK_URL     = _G.SEED_WEBHOOK or ""
-local GEAR_WEBHOOK_URL     = _G.GEAR_WEBHOOK or ""
-local PRED_WEBHOOK_URL     = _G.PRED_WEBHOOK or ""
-local WEATHER_WEBHOOK_URL  = _G.WEATHER_WEBHOOK or ""
+-- Membaca webhook dari global variable (_G) atau menggunakan webhook default milik Anda
+local SEED_WEBHOOK_URL     = _G.SEED_WEBHOOK or "https://discord.com/api/webhooks/1519713480200945736/O6jenxhItLLSDwmNhgzG7b3Z2q9We7e1NGIlBUklp-XufPpbmK6KZFbMdyp6se2Oz22x"
+local GEAR_WEBHOOK_URL     = _G.GEAR_WEBHOOK or "https://discord.com/api/webhooks/1519713482642030652/pPhsGZH23qR9rUBcinXWOi2YQOck3WuZnTor0LB3XgFVeckGsSkme24T4yXwlyJmqC6-"
+local PRED_WEBHOOK_URL     = _G.PRED_WEBHOOK or "https://discord.com/api/webhooks/1519713484550574231/QVFuukdaMWBU3pZvJt2-souetqSCgNAWooGM7A8AChwFnjTmgXsPggYUvJhhcFxHQOPF"
+local WEATHER_WEBHOOK_URL  = _G.WEATHER_WEBHOOK or "https://discord.com/api/webhooks/1519713486681280613/E3NKqfaCv1OZLDoOhF7oJR7vOG3vub6ciVLpVpxrhezM_ObB4eP5tMuedyVfA4pQTnmC"
 
 -- Proxy untuk memotong blokir request Roblox ke Discord API
 local function getProxyUrl(url)
