@@ -41,8 +41,14 @@ local function sendToWebhook(webhookUrl, title, description, fields, color)
     })
     
     local success, err = pcall(function()
-        HttpService:PostAsync(proxy, payload, Enum.HttpContentType.ApplicationJson)
+        return HttpService:PostAsync(proxy, payload, Enum.HttpContentType.ApplicationJson)
     end)
+    
+    if not success then
+        warn("⚠️ Gagal mengirim webhook [" .. title .. "]: " .. tostring(err))
+    else
+        print("✅ Berhasil mengirim webhook [" .. title .. "]")
+    end
 end
 
 -- Fungsi utama untuk membaca GUI dan membagikan stok terpisah
