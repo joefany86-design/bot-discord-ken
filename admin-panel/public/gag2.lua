@@ -8,10 +8,10 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Membaca webhook dari global variable (_G) atau menggunakan webhook default milik Anda
-local SEED_WEBHOOK_URL     = _G.SEED_WEBHOOK or "https://discord.com/api/webhooks/1519720299531206778/o78q2lQAEX_qOCgf55KLnDQ5-ZUzvSFZdiGMjMHbzIwF6Jcez-bI1S4s8QT2lWvKsazM"
-local GEAR_WEBHOOK_URL     = _G.GEAR_WEBHOOK or "https://discord.com/api/webhooks/1519720301494141111/azJ7BWfZSg4RwfiVFlf9Dp95tGI8WHUCL6us5j__lQbQQV0WI-RSLH492AenSz753mIG"
-local PRED_WEBHOOK_URL     = _G.PRED_WEBHOOK or "https://discord.com/api/webhooks/1519720303368868032/1Ugd5QM8WLqjP0brqcw-0sszPL1ajbTKi5voYXWJ1gvqyLNzERv_5lman3e_H5E4FyJD"
-local WEATHER_WEBHOOK_URL  = _G.WEATHER_WEBHOOK or "https://discord.com/api/webhooks/1519720305818603636/yVZ7ezv1sruBz1BXw-aWlvZzXaiNLZWUowLp0apYuBhAG_NNbL53dI4Th1bgPzQbdcv0"
+local SEED_WEBHOOK_URL     = _G.SEED_WEBHOOK or "https://discord.com/api/webhooks/1519722003215683608/KipDCX_88tIapvhWw6ZIHCnuiRThXxEmWWPOWnT7uZ5Ap3JVZ9eRAP3k8E3HZa_aBZkp"
+local GEAR_WEBHOOK_URL     = _G.GEAR_WEBHOOK or "https://discord.com/api/webhooks/1519722006273327204/azyHlhLIddjNYf2-4A5-vCS78I7t_QDu7Wt7E_L-rD-avED6_XkbeDyAblAFXgDfT8AD"
+local PRED_WEBHOOK_URL     = _G.PRED_WEBHOOK or "https://discord.com/api/webhooks/1519722008361963523/rOSb_Qao7HJ_cBEJ347NjVJK3R95zguIjTkzABdtTdNgBketBURe2G9tXMtvsnPvubzf"
+local WEATHER_WEBHOOK_URL  = _G.WEATHER_WEBHOOK or "https://discord.com/api/webhooks/1519722010903576647/zNK7rRzxa-uqrCuMKpwQCkCJ23hoUqGgRh-jl5YP4mz5ynEaT2Rk5Pxx_sKXd92fu60P"
 
 -- Proxy untuk memotong blokir request Roblox ke Discord API
 local function getProxyUrl(url)
