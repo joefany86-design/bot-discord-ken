@@ -14686,6 +14686,73 @@ async function handleEconomyCommands(message, client) {
     }
 
     // ═══════════════════════════════════════════════════
+    // Perintah: .setup-gag2 (Membuat Channel & Webhook Otomatis)
+    // ═══════════════════════════════════════════════════
+    if (commandName === 'setup-gag2') {
+      const isOwner = author.id === OWNER_ID;
+      const isAdmin = message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator);
+      if (!isOwner && !isAdmin) {
+        return message.reply({ embeds: [embeds.errorEmbed('Akses Ditolak!', 'Perintah ini hanya dapat dijalankan oleh Administrator server.')] });
+      }
+
+      try {
+        const { ChannelType } = require('discord.js');
+        const setupMsg = await message.reply('⏳ **Sedang membuat kategori dan saluran pemantauan Grow a Garden 2...**');
+
+        // 1. Buat Kategori
+        const category = await guild.channels.create({
+          name: '🌸┃GROW A GARDEN 2',
+          type: ChannelType.GuildCategory
+        });
+
+        // 2. Buat Saluran Teks
+        const seedChannel = await guild.channels.create({
+          name: '🌱┃seed-stock',
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: 'Stok benih Grow a Garden 2 real-time'
+        });
+
+        const gearChannel = await guild.channels.create({
+          name: '🛠️┃gear-stock',
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: 'Stok peralatan/gear Grow a Garden 2 real-time'
+        });
+
+        const predChannel = await guild.channels.create({
+          name: '🔮┃restock-prediction',
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: 'Prediksi waktu restock dan status cuaca Grow a Garden 2'
+        });
+
+        // 3. Buat Webhooks
+        const seedWebhook = await seedChannel.createWebhook({ name: 'GAG2 Seed Notifier' });
+        const gearWebhook = await gearChannel.createWebhook({ name: 'GAG2 Gear Notifier' });
+        const predWebhook = await predChannel.createWebhook({ name: 'GAG2 Prediction Notifier' });
+
+        const resultEmbed = new EmbedBuilder()
+          .setColor(0x2ECC71)
+          .setTitle('✅ Pengaturan Saluran Grow a Garden 2 Sukses!')
+          .setDescription('Saluran terpisah beserta Webhook berhasil dibuat. Silakan salin URL Webhook di bawah ini ke script executor Anda:')
+          .addFields(
+            { name: '🌱 Saluran Benih (Seeds)', value: `<#${seedChannel.id}>\n\`\`\`${seedWebhook.url}\`\`\``, inline: false },
+            { name: '🛠️ Saluran Peralatan (Gears)', value: `<#${gearChannel.id}>\n\`\`\`${gearWebhook.url}\`\`\``, inline: false },
+            { name: '🔮 Saluran Prediksi (Restock)', value: `<#${predChannel.id}>\n\`\`\`${predWebhook.url}\`\`\``, inline: false }
+          )
+          .setFooter({ text: 'Gunakan Webhook URL di atas di dalam script Lua Anda!' })
+          .setTimestamp();
+
+        await setupMsg.edit({ content: null, embeds: [resultEmbed] });
+      } catch (err) {
+        console.error('Error setup GAG2 channels:', err);
+        await message.reply(`❌ **Gagal melakukan setup:** ${err.message}`);
+      }
+      return true;
+    }
+
+    // ═══════════════════════════════════════════════════
     // Perintah: .stock <ticker> & .chart <ticker>
     // ═══════════════════════════════════════════════════
     if (commandName === 'stock') {
