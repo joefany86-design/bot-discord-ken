@@ -40,11 +40,12 @@ local function sendToWebhook(webhookUrl, title, description, fields, color)
         }
     })
     
+    -- Deteksi fungsi HTTP request bawaan executor secara global
+    local requestFunc = (syn and syn.request) or http_request or request or (http and http.request)
+    
     local success, err = pcall(function()
-        -- Deteksi fungsi HTTP request bawaan executor (Delta, Wave, dll.)
-        local requestFunc = (syn and syn.request) or http_request or request or (http and http.request)
         if requestFunc then
-            return requestFunc({
+            local response = requestFunc({
                 Url = proxy,
                 Method = "POST",
                 Headers = {
@@ -52,8 +53,8 @@ local function sendToWebhook(webhookUrl, title, description, fields, color)
                 },
                 Body = payload
             })
+            return response
         else
-            -- Fallback standar Roblox Studio server-side (jika ada)
             return HttpService:PostAsync(proxy, payload, Enum.HttpContentType.ApplicationJson)
         end
     end)
