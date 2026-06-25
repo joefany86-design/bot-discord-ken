@@ -128,8 +128,11 @@ local function scanAndPostStock()
                         restockTimer = timer -- Ambil salah satu timer barang sebagai info restock toko global
                     end
                     
-                    -- Bersihkan nama barang (misal "Carrot Seed" -> "Carrot")
-                    local cleanName = name:gsub("%s*[Ss]eeds?$", ""):gsub("%s*[Bb]enih$", ""):gsub("%s*[Pp]ack$", "")
+                    -- Bersihkan nama barang (misal "Carrot Seed ()" -> "Carrot")
+                    local cleanName = name:gsub("%b()", "")
+                    cleanName = cleanName:gsub("^%s*(.-)%s*$", "%1")
+                    cleanName = cleanName:gsub("%s*[Ss]eeds?$", ""):gsub("%s*[Bb]enih$", ""):gsub("%s*[Pp]ack$", "")
+                    cleanName = cleanName:gsub("^%s*(.-)%s*$", "%1")
                     
                     -- Deteksi Emoji kustom berdasarkan nama barang
                     local emojiName = cleanName:lower():gsub("%s+", "_"):gsub("'", ""):gsub("[^%w_]", "")
@@ -142,7 +145,16 @@ local function scanAndPostStock()
                     local itemInfo = string.format("%s %s %s\n", emoji, cleanName, cleanQty)
                     
                     -- Kelompokkan Benih (Seeds) vs Peralatan (Gears)
-                    if name:lower():find("seed") or name:lower():find("benih") or name:lower():find("pack") then
+                    local isSeed = false
+                    local seedKeywords = {"seed", "benih", "pack", "bamboo", "cactus", "tomato", "tulip", "blueberry", "carrot", "strawberry", "dragon", "moon", "pineapple", "corn", "grape", "banana", "coconut", "mango", "sunflower", "cherry", "pomegranate", "apple"}
+                    for _, kw in ipairs(seedKeywords) do
+                        if name:lower():find(kw) then
+                            isSeed = true
+                            break
+                        end
+                    end
+                    
+                    if isSeed then
                         table.insert(seedsList, itemInfo)
                     else
                         table.insert(gearsList, itemInfo)
