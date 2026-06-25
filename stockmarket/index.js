@@ -14724,13 +14724,21 @@ async function handleEconomyCommands(message, client) {
           name: '🔮┃restock-prediction',
           type: ChannelType.GuildText,
           parent: category.id,
-          topic: 'Prediksi waktu restock dan status cuaca Grow a Garden 2'
+          topic: 'Prediksi waktu restock Grow a Garden 2'
+        });
+
+        const weatherChannel = await guild.channels.create({
+          name: '🌤️┃weather-status',
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: 'Informasi status cuaca kebun Grow a Garden 2 real-time'
         });
 
         // 3. Buat Webhooks
         const seedWebhook = await seedChannel.createWebhook({ name: 'GAG2 Seed Notifier' });
         const gearWebhook = await gearChannel.createWebhook({ name: 'GAG2 Gear Notifier' });
         const predWebhook = await predChannel.createWebhook({ name: 'GAG2 Prediction Notifier' });
+        const weatherWebhook = await weatherChannel.createWebhook({ name: 'GAG2 Weather Notifier' });
 
         const resultEmbed = new EmbedBuilder()
           .setColor(0x2ECC71)
@@ -14739,7 +14747,8 @@ async function handleEconomyCommands(message, client) {
           .addFields(
             { name: '🌱 Saluran Benih (Seeds)', value: `<#${seedChannel.id}>\n\`\`\`${seedWebhook.url}\`\`\``, inline: false },
             { name: '🛠️ Saluran Peralatan (Gears)', value: `<#${gearChannel.id}>\n\`\`\`${gearWebhook.url}\`\`\``, inline: false },
-            { name: '🔮 Saluran Prediksi (Restock)', value: `<#${predChannel.id}>\n\`\`\`${predWebhook.url}\`\`\``, inline: false }
+            { name: '🔮 Saluran Prediksi (Restock)', value: `<#${predChannel.id}>\n\`\`\`${predWebhook.url}\`\`\``, inline: false },
+            { name: '🌤️ Saluran Cuaca (Weather)', value: `<#${weatherChannel.id}>\n\`\`\`${weatherWebhook.url}\`\`\``, inline: false }
           )
           .setFooter({ text: 'Gunakan Webhook URL di atas di dalam script Lua Anda!' })
           .setTimestamp();
