@@ -68,9 +68,10 @@ end
 
 -- Fungsi utama untuk membaca GUI dan membagikan stok terpisah
 local function scanAndPostStock()
-    local seedsText = ""
-    local gearsText = ""
+    local seedsList = {}
+    local gearsList = {}
     local weatherText = "Sunny ☀️"
+    local restockTimer = "N/A"
     
     -- Membaca status cuaca di kebun
     local mainGui = PlayerGui:FindFirstChild("MainGui") or PlayerGui:FindFirstChild("HUD")
@@ -81,66 +82,101 @@ local function scanAndPostStock()
         end
     end
     
-    -- Membaca UI Toko milik NPC Sam (Seed & Gear Shop)
-    local shopGui = PlayerGui:FindFirstChild("ShopGui") or PlayerGui:FindFirstChild("MerchantGui")
-    if shopGui and shopGui.Enabled then
-        local container = shopGui:FindFirstChild("Container") or shopGui:FindFirstChild("Frame")
-        if container then
-            -- Cari bagian Seed
-            local seedSection = container:FindFirstChild("Seeds") or container:FindFirstChild("SeedScroll")
-            if seedSection then
-                for _, item in ipairs(seedSection:GetChildren()) do
-                    if item:IsA("Frame") and item:FindFirstChild("ItemName") then
-                        local name = item.ItemName.Text
-                        local stock = item:FindFirstChild("Stock") and item.Stock.Text or "In Stock"
-                        local price = item:FindFirstChild("Price") and item.Price.Text or "Free"
-                        seedsText = seedsText .. string.format("🌱 **%s**\n└ 📦 Stok: `%s` | 💵 Harga: `%s`\n\n", name, stock, price)
+    -- Membaca UI Toko milik NPC Sam (SeedShop)
+    local seedShop = PlayerGui:FindFirstChild("SeedShop")
+    if seedShop and seedShop.Enabled then
+        -- Kumpulkan semua item dengan mencari "Seed_Text"
+        for _, obj in ipairs(seedShop:GetDescendants()) do
+            if obj.Name == "Seed_Text" and obj:IsA("TextLabel") then
+                local itemFrame = obj.Parent
+                if itemFrame then
+                    local name = obj.Text
+                    
+                    local rarity = ""
+                    local rarityTxt = itemFrame:FindFirstChild("Rarity_Text")
+                    if rarityTxt and rarityTxt:IsA("TextLabel") then
+                        rarity = rarityTxt.Text
                     end
-                end
-            end
-            
-            -- Cari bagian Gear
-            local gearSection = container:FindFirstChild("Gears") or container:FindFirstChild("GearScroll")
-            if gearSection then
-                for _, item in ipairs(gearSection:GetChildren()) do
-                    if item:IsA("Frame") and item:FindFirstChild("ItemName") then
-                        local name = item.ItemName.Text
-                        local stock = item:FindFirstChild("Stock") and item.Stock.Text or "In Stock"
-                        local price = item:FindFirstChild("Price") and item.Price.Text or "Free"
-                        gearsText = gearsText .. string.format("🛠️ **%s**\n└ 📦 Stok: `%s` | 💵 Harga: `%s`\n\n", name, stock, price)
+                    
+                    local stock = ""
+                    local stockTxt = itemFrame:FindFirstChild("Stock_Text")
+                    if stockTxt and stockTxt:IsA("TextLabel") then
+                        stock = stockTxt.Text
+                    end
+                    
+                    local cost = ""
+                    local costTxt = itemFrame:FindFirstChild("Cost_Text")
+                    if costTxt and costTxt:IsA("TextLabel") then
+                        cost = costTxt.Text
+                    else
+                        -- Cari TextLabel lain di dalam frame yang berisi angka (harga)
+                        for _, child in ipairs(itemFrame:GetChildren()) do
+                            if child:IsA("TextLabel") and child.Name ~= "Seed_Text" and child.Name ~= "Rarity_Text" and child.Name ~= "Stock_Text" and child.Name ~= "Timer" then
+                                local txt = child.Text
+                                if tonumber(txt) or txt == "NO STOCK" or txt == "FREE" then
+                                    cost = txt
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    
+                    local timer = ""
+                    local timerTxt = itemFrame:FindFirstChild("Timer")
+                    if timerTxt and timerTxt:IsA("TextLabel") then
+                        timer = timerTxt.Text
+                        restockTimer = timer -- Ambil salah satu timer barang sebagai info restock toko global
+                    end
+                    
+                    -- Susun format info item
+                    local itemInfo = string.format("📦 **%s** (%s)\n├ 💵 Harga: `%s`\n├ 📊 Stok: `%s`\n└ ⏱️ Sisa Waktu: `%s`\n\n", name, rarity, cost ~= "" and cost or "N/A", stock ~= "" and stock or "N/A", timer ~= "" and timer or "N/A")
+                    
+                    -- Kelompokkan Benih (Seeds) vs Peralatan (Gears)
+                    if name:lower():find("seed") or name:lower():find("benih") or name:lower():find("pack") then
+                        table.insert(seedsList, itemInfo)
+                    else
+                        table.insert(gearsList, itemInfo)
                     end
                 end
             end
         end
     end
     
-    -- Hitung Waktu Restock Berikutnya (Timer 5 Menit Global)
-    local now = os.time()
-    local nextRestockTime = 300 - (now % 300)
-    local mins = math.floor(nextRestockTime / 60)
-    local secs = nextRestockTime % 60
-    local predictionText = string.format("🔄 Restock berikutnya dalam: **%d menit %d detik**", mins, secs)
+    local seedsText = table.concat(seedsList)
+    local gearsText = table.concat(gearsList)
+    
+    -- Jika toko tertutup, kirim peringatan alih-alih pesan kosong
+    if not (seedShop and seedShop.Enabled) then
+        seedsText = "⚠️ *Menu Toko (SeedShop) sedang tertutup di game Anda. Silakan buka tokonya untuk memperbarui stok!*"
+        gearsText = "⚠️ *Menu Toko (SeedShop) sedang tertutup di game Anda. Silakan buka tokonya untuk memperbarui stok!*"
+    end
 
-    -- 1. KIRIM INFO SEEDS (Jika terdeteksi)
-    if seedsText ~= "" then
-        sendToWebhook(SEED_WEBHOOK_URL, "🌱 UPDATE STOK BENIH (SEEDS) - GAG2", "Stok benih aktif dari server game:", {
-            { name = "Benih yang Tersedia", value = seedsText, inline = false }
-        }, 3066993) -- Green
+    -- Hitung Waktu Restock Berikutnya
+    local nextRestockText = "🔄 Restock berikutnya dalam: **" .. restockTimer .. "**"
+    if restockTimer == "N/A" then
+        local now = os.time()
+        local nextRestockTime = 300 - (now % 300)
+        local mins = math.floor(nextRestockTime / 60)
+        local secs = nextRestockTime % 60
+        nextRestockText = string.format("🔄 Restock berikutnya dalam: **%d menit %d detik**", mins, secs)
     end
+
+    -- 1. KIRIM INFO SEEDS
+    sendToWebhook(SEED_WEBHOOK_URL, "🌱 UPDATE STOK BENIH (SEEDS) - GAG2", "Stok benih aktif dari server game:", {
+        { name = "Benih yang Tersedia", value = seedsText, inline = false }
+    }, 3066993) -- Green
     
-    -- 2. KIRIM INFO GEARS (Jika terdeteksi)
-    if gearsText ~= "" then
-        sendToWebhook(GEAR_WEBHOOK_URL, "🛠️ UPDATE STOK PERALATAN (GEARS) - GAG2", "Stok peralatan aktif dari server game:", {
-            { name = "Peralatan yang Tersedia", value = gearsText, inline = false }
-        }, 15105570) -- Orange/Bronze
-    end
+    -- 2. KIRIM INFO GEARS
+    sendToWebhook(GEAR_WEBHOOK_URL, "🛠️ UPDATE STOK PERALATAN (GEARS) - GAG2", "Stok peralatan aktif dari server game:", {
+        { name = "Peralatan yang Tersedia", value = gearsText, inline = false }
+    }, 15105570) -- Orange/Bronze
     
-    -- 3. KIRIM INFO PREDIKSI (Selalu dikirim setiap siklus)
+    -- 3. KIRIM INFO PREDIKSI (Selalu dikirim)
     sendToWebhook(PRED_WEBHOOK_URL, "🔮 PREDIKSI ROTASI TOKO - GAG2", "Informasi estimasi restock server global:", {
-        { name = "Waktu Restock", value = predictionText, inline = false }
+        { name = "Waktu Restock", value = nextRestockText, inline = false }
     }, 10181046) -- Purple
 
-    -- 4. KIRIM INFO STATUS CUACA (Selalu dikirim setiap siklus)
+    -- 4. KIRIM INFO STATUS CUACA (Selalu dikirim)
     sendToWebhook(WEATHER_WEBHOOK_URL, "🌤️ UPDATE CUACA KEBUN - GAG2", "Informasi status cuaca kebun saat ini:", {
         { name = "Status Cuaca", value = "🌡️ Cuaca: **" .. weatherText .. "**", inline = false }
     }, 3447003) -- Blue
