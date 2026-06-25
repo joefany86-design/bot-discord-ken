@@ -128,40 +128,18 @@ local function scanAndPostStock()
                         restockTimer = timer -- Ambil salah satu timer barang sebagai info restock toko global
                     end
                     
+                    -- Bersihkan nama barang (misal "Carrot Seed" -> "Carrot")
+                    local cleanName = name:gsub("%s*[Ss]eeds?$", ""):gsub("%s*[Bb]enih$", ""):gsub("%s*[Pp]ack$", "")
+                    
                     -- Deteksi Emoji kustom berdasarkan nama barang
-                    local emoji = "📦"
-                    local lowerName = name:lower()
-                    if lowerName:find("bamboo") then emoji = "🎋"
-                    elseif lowerName:find("cactus") then emoji = "🌵"
-                    elseif lowerName:find("tomato") then emoji = "🍅"
-                    elseif lowerName:find("tulip") then emoji = "🌷"
-                    elseif lowerName:find("blueberry") then emoji = "🫐"
-                    elseif lowerName:find("carrot") then emoji = "🥕"
-                    elseif lowerName:find("strawberry") then emoji = "🍓"
-                    elseif lowerName:find("dragon") then emoji = "🐉"
-                    elseif lowerName:find("moon") then emoji = "🌙"
-                    elseif lowerName:find("mushroom") then emoji = "🍄"
-                    elseif lowerName:find("pineapple") then emoji = "🍍"
-                    elseif lowerName:find("corn") then emoji = "🌽"
-                    elseif lowerName:find("grape") then emoji = "🍇"
-                    elseif lowerName:find("banana") then emoji = "🍌"
-                    elseif lowerName:find("coconut") then emoji = "🥥"
-                    elseif lowerName:find("mango") then emoji = "🥭"
-                    elseif lowerName:find("sunflower") then emoji = "🌻"
-                    elseif lowerName:find("cherry") then emoji = "🍒"
-                    elseif lowerName:find("pomegranate") then emoji = "🍎"
-                    elseif lowerName:find("apple") then emoji = "🍎"
-                    elseif lowerName:find("gnome") then emoji = "🎅"
-                    elseif lowerName:find("sprinkler") then emoji = "💧"
-                    elseif lowerName:find("trowel") then emoji = "🛠️"
-                    elseif lowerName:find("can") then emoji = "🪣"
-                    end
+                    local emojiName = cleanName:lower():gsub("%s+", "_"):gsub("'", ""):gsub("[^%w_]", "")
+                    local emoji = ":" .. emojiName .. ":"
                     
                     -- Ekstrak kuantitas (misal "x16" dari "x16 in Stock")
                     local cleanQty = stock:match("x%d+") or stock or "x1"
                     
                     -- Susun format info item ringkas & cantik
-                    local itemInfo = string.format("%s **%s** %s\n", emoji, name, cleanQty)
+                    local itemInfo = string.format("%s %s %s\n", emoji, cleanName, cleanQty)
                     
                     -- Kelompokkan Benih (Seeds) vs Peralatan (Gears)
                     if name:lower():find("seed") or name:lower():find("benih") or name:lower():find("pack") then
