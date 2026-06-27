@@ -167,7 +167,7 @@ async function handleOnboardingRoleSelect(interaction) {
   try {
     const fs = require('fs');
     const path = require('path');
-    const mapPath = path.join(__dirname, 'data/roles_map.json');
+    const mapPath = path.join(__dirname, 'roles_map.json');
     if (fs.existsSync(mapPath)) {
       rolesMap = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
     }
