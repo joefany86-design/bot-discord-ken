@@ -929,7 +929,7 @@ client.on('interactionCreate', async interaction => {
         await onboarding.handleOnboardingRoleSelect(interaction);
       }
     } else if (interaction.isButton()) {
-      if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2') {
+      if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2' || interaction.customId === 'onboarding_toggle_notif_gear') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingNotificationToggle(interaction);
       }

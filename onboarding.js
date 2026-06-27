@@ -127,6 +127,9 @@ async function handleOnboardingNotificationToggle(interaction) {
   } else if (customId === 'onboarding_toggle_gag2') {
     roleId = '1520484873700249671';
     roleName = 'Notif Grow a Garden 2';
+  } else if (customId === 'onboarding_toggle_notif_gear') {
+    roleId = '1520490683759329431';
+    roleName = 'Notif Gear';
   }
 
   if (!roleId) {
