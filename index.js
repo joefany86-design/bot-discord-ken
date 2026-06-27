@@ -1367,7 +1367,130 @@ client.on('messageCreate', async message => {
     // ── .worldcup / .pialadunia ──
     else if (commandName === 'worldcup' || commandName === 'pialadunia') {
       const worldcup = require('./stockmarket/worldcup');
-      const embed = worldcup.generateWorldCupEmbed();
+      const embed = worldcup.generateWorldCupEmbed(client);
+      
+      const btnOutcome = new ButtonBuilder()
+        .setCustomId('wcb_btn_outcome')
+        .setLabel('🎟️ Tebak Hasil (1X2)')
+        .setStyle(ButtonStyle.Primary);
+      const btnExact = new ButtonBuilder()
+        .setCustomId('wcb_btn_exact')
+        .setLabel('⚽ Tebak Skor Tepat')
+        .setStyle(ButtonStyle.Success);
+        
+      const row = new ActionRowBuilder().addComponents(btnOutcome, btnExact);
+      await message.reply({ embeds: [embed], components: [row] });
+    }
+
+    // ── .tebakskor <match_id> <home_score>-<away_score> <bet_amount> ──
+    else if (commandName === 'tebakskor') {
+      const matchId = parseInt(args[0]);
+      const scoreGuess = args[1];
+      const betAmount = parseInt(args[2]);
+      
+      if (isNaN(matchId) || !scoreGuess || isNaN(betAmount) || betAmount <= 0) {
+        return replyEmbed(0xFF3366, '❌ **Format Salah!**\nContoh: `.tebakskor 2 2-1 500`\nFormat skor: `home_score-away_score` (misal 2-1).');
+      }
+      
+      if (!/^\d+\s*-\s*\d+$/.test(scoreGuess)) {
+        return replyEmbed(0xFF3366, '❌ **Format skor salah!** Gunakan format `angka-angka` (contoh: `2-1`).');
+      }
+      
+      const scoreParts = scoreGuess.split('-').map(s => parseInt(s.trim()));
+      const homeScore = scoreParts[0];
+      const awayScore = scoreParts[1];
+      
+      const worldcup = require('./stockmarket/worldcup');
+      try {
+        worldcup.placeExactScoreBet(message.author.id, guildId, matchId, homeScore, awayScore, betAmount);
+        const match = worldcup.matches.find(m => m.id === matchId);
+        await replyEmbed(0x10B981, `✅ **Berhasil memasang taruhan tebak skor!**\n⚽ **Pertandingan:** ${match.home} vs ${match.away}\n🎯 **Tebakan Skor:** ${homeScore} - ${awayScore}\n💰 **Taruhan:** Rp ${betAmount.toLocaleString('id-ID')}`);
+      } catch (err) {
+        await replyEmbed(0xFF3366, `❌ ${err.message}`);
+      }
+    }
+
+    // ── .tebakmenang <match_id> <home/away/draw/nama_negara> <bet_amount> ──
+    else if (commandName === 'tebakmenang') {
+      const matchId = parseInt(args[0]);
+      const predictionInput = args[1]?.toLowerCase();
+      const betAmount = parseInt(args[2]);
+      
+      if (isNaN(matchId) || !predictionInput || isNaN(betAmount) || betAmount <= 0) {
+        return replyEmbed(0xFF3366, '❌ **Format Salah!**\nContoh: `.tebakmenang 2 Inggris 500` atau `.tebakmenang 2 draw 500`\nPilihan hasil: `home`, `away`, `draw`/`seri`, atau nama negara.');
+      }
+      
+      const worldcup = require('./stockmarket/worldcup');
+      const match = worldcup.matches.find(m => m.id === matchId);
+      if (!match) {
+        return replyEmbed(0xFF3366, `❌ **Pertandingan dengan ID ${matchId} tidak ditemukan!**`);
+      }
+      
+      let outcome = '';
+      if (predictionInput === 'home' || predictionInput === '1') {
+        outcome = 'home';
+      } else if (predictionInput === 'away' || predictionInput === '2') {
+        outcome = 'away';
+      } else if (['draw', 'seri', 'x'].includes(predictionInput)) {
+        outcome = 'draw';
+      } else {
+        // Coba cocokan dengan nama negara (case-insensitive)
+        const homeClean = match.home.toLowerCase();
+        const awayClean = match.away.toLowerCase();
+        if (homeClean.includes(predictionInput)) {
+          outcome = 'home';
+        } else if (awayClean.includes(predictionInput)) {
+          outcome = 'away';
+        } else {
+          return replyEmbed(0xFF3366, `❌ **Hasil prediksi tidak dikenali!**\nPertandingan: **${match.home}** vs **${match.away}**\nHarap masukkan nama negara, \`home\`, \`away\`, atau \`draw\`/\`seri\`.`);
+        }
+      }
+      
+      try {
+        worldcup.placeOutcomeBet(message.author.id, guildId, matchId, outcome, betAmount);
+        const outcomeLabel = outcome === 'home' ? match.home : (outcome === 'away' ? match.away : 'Seri');
+        await replyEmbed(0x10B981, `✅ **Berhasil memasang taruhan tebak hasil!**\n⚽ **Pertandingan:** ${match.home} vs ${match.away}\n🎯 **Pilihan:** ${outcomeLabel}\n💰 **Taruhan:** Rp ${betAmount.toLocaleString('id-ID')}`);
+      } catch (err) {
+        await replyEmbed(0xFF3366, `❌ ${err.message}`);
+      }
+    }
+
+    // ── .listtebak <match_id> ──
+    else if (commandName === 'listtebak') {
+      const matchId = parseInt(args[0]);
+      if (isNaN(matchId)) {
+        return replyEmbed(0xFF3366, '❌ **Harap tentukan ID pertandingan!**\nContoh: `.listtebak 2`');
+      }
+      const worldcup = require('./stockmarket/worldcup');
+      const match = worldcup.matches.find(m => m.id === matchId);
+      if (!match) {
+        return replyEmbed(0xFF3366, `❌ **Pertandingan dengan ID ${matchId} tidak ditemukan!**`);
+      }
+      
+      const { db } = require('./stockmarket/database');
+      const bets = db.prepare('SELECT * FROM worldcup_bets WHERE guild_id = ? AND match_id = ? AND status = "pending"').all(guildId, matchId);
+      
+      const embed = new EmbedBuilder()
+        .setColor(0x0099FF)
+        .setTitle(`🎟️ DAFTAR TARUHAN: ${match.home} vs ${match.away}`)
+        .setDescription(`Berikut adalah tebakan dari para member untuk pertandingan ini:`)
+        .setTimestamp();
+        
+      const exactBets = bets.filter(b => b.bet_type === 'exact_score');
+      const outcomeBets = bets.filter(b => b.bet_type === 'outcome');
+      
+      let exactText = exactBets.map(b => `• <@${b.user_id}>: **${b.home_score} - ${b.away_score}** (Taruhan: Rp ${b.bet_amount.toLocaleString('id-ID')})`).join('\n') || '*Belum ada taruhan tebak skor.*';
+      
+      let outcomeText = outcomeBets.map(b => {
+        const outcomeLabel = b.predicted_outcome === 'home' ? match.home : (b.predicted_outcome === 'away' ? match.away : 'Seri');
+        return `• <@${b.user_id}>: **${outcomeLabel}** (Taruhan: Rp ${b.bet_amount.toLocaleString('id-ID')})`;
+      }).join('\n') || '*Belum ada taruhan tebak hasil.*';
+      
+      embed.addFields(
+        { name: '⚽ Tebak Skor Tepat', value: exactText },
+        { name: '🎟️ Tebak Hasil (1X2)', value: outcomeText }
+      );
+      
       await message.reply({ embeds: [embed] });
     }
 

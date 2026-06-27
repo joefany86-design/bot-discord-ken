@@ -1094,14 +1094,26 @@ function initScheduler(client) {
     try {
       console.log('⏰ [Scheduler] Memulai pengiriman otomatis Jadwal Piala Dunia...');
       const worldcup = require('./worldcup');
-      const embed = worldcup.generateWorldCupEmbed();
+      const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+      const embed = worldcup.generateWorldCupEmbed(client);
+
+      const btnOutcome = new ButtonBuilder()
+        .setCustomId('wcb_btn_outcome')
+        .setLabel('🎟️ Tebak Hasil (1X2)')
+        .setStyle(ButtonStyle.Primary);
+      const btnExact = new ButtonBuilder()
+        .setCustomId('wcb_btn_exact')
+        .setLabel('⚽ Tebak Skor Tepat')
+        .setStyle(ButtonStyle.Success);
+        
+      const row = new ActionRowBuilder().addComponents(btnOutcome, btnExact);
 
       client.guilds.cache.forEach(guild => {
         const channelId = worldcup.getWorldCupChannel(guild.id);
         if (channelId) {
           const channel = guild.channels.cache.get(channelId);
           if (channel) {
-            channel.send({ embeds: [embed] })
+            channel.send({ embeds: [embed], components: [row] })
               .then(() => console.log(`✅ Berhasil mengirim jadwal Piala Dunia ke channel bola di guild ${guild.name}`))
               .catch(err => console.error(`❌ Gagal mengirim jadwal Piala Dunia di guild ${guild.name}:`, err.message));
           }

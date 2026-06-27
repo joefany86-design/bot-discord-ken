@@ -1159,6 +1159,12 @@ function initStockMarket(client) {
       if (!interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isUserSelectMenu() && !interaction.isModalSubmit()) return;
       let customId = interaction.customId;
 
+      if (customId && customId.startsWith('wcb_')) {
+        const worldcup = require('./worldcup');
+        await worldcup.handleWorldCupInteractions(interaction, client);
+        return;
+      }
+
       // PvP Bot Arena Interactions
       if (customId.startsWith('pvpbot_challenge_')) {
         const parts = customId.split('_');
