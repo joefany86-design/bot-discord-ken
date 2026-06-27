@@ -152,8 +152,56 @@ async function handleOnboardingNotificationToggle(interaction) {
   }
 }
 
+/**
+ * Menangani interaksi pemilihan peran dari select menu (dropdown).
+ * @param {StringSelectMenuInteraction} interaction - Interaksi select menu.
+ */
+async function handleOnboardingRoleSelect(interaction) {
+  const { values, member, guild } = interaction;
+  await interaction.deferReply({ flags: 64 });
+
+  const selectedRoleName = values[0].toLowerCase().trim();
+  
+  // Load roles map
+  let rolesMap = {};
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const mapPath = path.join(__dirname, 'data/roles_map.json');
+    if (fs.existsSync(mapPath)) {
+      rolesMap = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error("Failed to load roles_map.json:", e);
+  }
+
+  const roleId = rolesMap[selectedRoleName];
+  if (!roleId) {
+    return interaction.editReply({ content: `❌ Peran **${values[0]}** tidak terkonfigurasi di server ini.` });
+  }
+
+  try {
+    const role = guild.roles.cache.get(roleId);
+    if (!role) {
+      return interaction.editReply({ content: `❌ Gagal: Peran **${values[0]}** (\`${roleId}\`) tidak ditemukan di server.` });
+    }
+
+    if (member.roles.cache.has(roleId)) {
+      await member.roles.remove(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menghapus peran **${role.name}** dari akun Anda.` });
+    } else {
+      await member.roles.add(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menambahkan peran **${role.name}** ke akun Anda!` });
+    }
+  } catch (error) {
+    console.error('Error toggling dropdown role:', error);
+    return interaction.editReply({ content: '❌ Terjadi kesalahan saat memperbarui peran Anda. Pastikan bot memiliki posisi role yang cukup tinggi.' });
+  }
+}
+
 module.exports = {
   sendOnboardingPanel,
   handleOnboardingSelect,
-  handleOnboardingNotificationToggle
+  handleOnboardingNotificationToggle,
+  handleOnboardingRoleSelect
 };

@@ -924,6 +924,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'onboarding_select_group') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingSelect(interaction);
+      } else if (interaction.customId.startsWith('onboarding_select_')) {
+        const onboarding = require('./onboarding');
+        await onboarding.handleOnboardingRoleSelect(interaction);
       }
     } else if (interaction.isButton()) {
       if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2') {
