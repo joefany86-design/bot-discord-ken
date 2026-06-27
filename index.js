@@ -903,6 +903,11 @@ client.on('interactionCreate', async interaction => {
       const onboarding = require('./onboarding');
       await onboarding.sendOnboardingPanel(interaction);
     }
+    // ── NOTIFICATION TOGGLE VIA COMMAND ──
+    else if (commandName === 'notif') {
+      const onboarding = require('./onboarding');
+      await onboarding.handleNotifCommand(interaction);
+    }
   } catch (error) {
     console.error('Error in slash command handler:', error);
     try {
@@ -936,6 +941,20 @@ client.on('interactionCreate', async interaction => {
     }
   } catch (error) {
     console.error('Error in global onboarding interaction listener:', error);
+  }
+});
+
+// Penanganan Autocomplete Slash Commands secara Global
+client.on('interactionCreate', async interaction => {
+  try {
+    if (interaction.isAutocomplete()) {
+      if (interaction.commandName === 'notif') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleNotifAutocomplete(interaction);
+      }
+    }
+  } catch (error) {
+    console.error('Error in global autocomplete listener:', error);
   }
 });
 

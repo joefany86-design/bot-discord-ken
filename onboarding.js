@@ -202,9 +202,108 @@ async function handleOnboardingRoleSelect(interaction) {
   }
 }
 
+/**
+ * Menangani pencarian otomatis (autocomplete) nama peran untuk perintah /notif.
+ * @param {AutocompleteInteraction} interaction - Interaksi autocomplete.
+ */
+async function handleNotifAutocomplete(interaction) {
+  const focusedValue = interaction.options.getFocused().toLowerCase();
+  
+  // Load roles map
+  let rolesMap = {};
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const mapPath = path.join(__dirname, 'roles_map.json');
+    if (fs.existsSync(mapPath)) {
+      rolesMap = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error("Failed to load roles_map.json:", e);
+  }
+
+  // Filter peran-peran spesifik GAG2 agar hasil pencarian rapi
+  const allRoleNames = Object.keys(rolesMap).filter(name => {
+    return name !== '@everyone' && (
+      name.includes('2x+') || 
+      name.includes('notif') ||
+      name.includes('sprinkler') ||
+      name.includes('watering') ||
+      name.includes('trowel') ||
+      name.includes('aurora') ||
+      name.includes('goldmoon') ||
+      name.includes('lightning') ||
+      name.includes('mega moon') ||
+      name.includes('rain') ||
+      name.includes('snowfall') ||
+      name.includes('starfall') ||
+      ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath'].includes(name)
+    );
+  });
+
+  const filtered = allRoleNames
+    .filter(choice => choice.toLowerCase().includes(focusedValue))
+    .slice(0, 25);
+
+  await interaction.respond(
+    filtered.map(choice => ({ 
+      name: choice.replace(/\b\w/g, c => c.toUpperCase()), 
+      value: choice 
+    }))
+  ).catch(() => {});
+}
+
+/**
+ * Menangani eksekusi perintah /notif untuk toggle peran.
+ * @param {ChatInputCommandInteraction} interaction - Interaksi slash command.
+ */
+async function handleNotifCommand(interaction) {
+  await interaction.deferReply({ flags: 64 });
+  const selectedRoleName = interaction.options.getString('peran').toLowerCase().trim();
+
+  // Load roles map
+  let rolesMap = {};
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const mapPath = path.join(__dirname, 'roles_map.json');
+    if (fs.existsSync(mapPath)) {
+      rolesMap = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error("Failed to load roles_map.json:", e);
+  }
+
+  const roleId = rolesMap[selectedRoleName];
+  if (!roleId) {
+    return interaction.editReply({ content: `❌ Peran **${interaction.options.getString('peran')}** tidak terkonfigurasi di server ini.` });
+  }
+
+  try {
+    const role = interaction.guild.roles.cache.get(roleId);
+    if (!role) {
+      return interaction.editReply({ content: `❌ Gagal: Peran **${interaction.options.getString('peran')}** (\`${roleId}\`) tidak ditemukan di server.` });
+    }
+
+    if (interaction.member.roles.cache.has(roleId)) {
+      await interaction.member.roles.remove(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menghapus peran **${role.name}** dari akun Anda.` });
+    } else {
+      await interaction.member.roles.add(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menambahkan peran **${role.name}** ke akun Anda!` });
+    }
+  } catch (error) {
+    console.error('Error toggling slash command role:', error);
+    return interaction.editReply({ content: '❌ Terjadi kesalahan saat memperbarui peran Anda. Pastikan bot memiliki posisi role yang cukup tinggi.' });
+  }
+}
+
 module.exports = {
   sendOnboardingPanel,
   handleOnboardingSelect,
   handleOnboardingNotificationToggle,
-  handleOnboardingRoleSelect
+  handleOnboardingRoleSelect,
+  handleNotifAutocomplete,
+  handleNotifCommand
 };
+

@@ -38,6 +38,16 @@ const commands = [
   new SlashCommandBuilder()
     .setName('setup-onboarding')
     .setDescription('Mengirim pesan panel onboarding kustom di channel saat ini (Hanya Admin)'),
+
+  new SlashCommandBuilder()
+    .setName('notif')
+    .setDescription('Mengaktifkan atau menonaktifkan peran notifikasi tertentu (Searchable)')
+    .addStringOption(option =>
+      option.setName('peran')
+        .setDescription('Ketik nama peran notifikasi yang ingin diambil/dilepas')
+        .setAutocomplete(true)
+        .setRequired(true)
+    ),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
