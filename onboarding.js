@@ -1,0 +1,116 @@
+const { 
+  EmbedBuilder, 
+  ActionRowBuilder, 
+  StringSelectMenuBuilder, 
+  StringSelectMenuOptionBuilder, 
+  ButtonBuilder, 
+  ButtonStyle 
+} = require('discord.js');
+
+// Konfigurasi Peran (Roles)
+const ROLES = {
+  BADDIES: '1472170290175021193', // the baddies
+  BROS: '1472170093416022096',     // the bros
+};
+
+/**
+ * Mengirimkan panel onboarding ke channel tempat perintah dijalankan.
+ * @param {ChatInputCommandInteraction} interaction - Interaksi slash command.
+ */
+async function sendOnboardingPanel(interaction) {
+  // Hanya izinkan Administrator
+  if (!interaction.member.permissions.has('Administrator')) {
+    return interaction.reply({
+      content: '❌ Anda tidak memiliki izin untuk menggunakan perintah ini! Hanya Administrator yang diperbolehkan.',
+      flags: 64
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x7C4DFF) // Purple Accent
+    .setTitle('🏡 Selamat Datang di Server Kosan 1A!')
+    .setDescription(
+      'Halo! Silakan lengkapi profil onboarding Anda untuk membuka akses penuh ke seluruh area kosan ' +
+      'dan menyinkronkan profil Anda dengan sistem server.\n\n' +
+      '**Silakan pilih kelompok Anda di bawah ini:**\n' +
+      '• **The Baddies** 💋\n' +
+      '• **The Bros** 🍻'
+    )
+    .setFooter({ text: 'Onboarding Kosan 1A • Silakan pilih salah satu opsi di bawah' })
+    .setTimestamp();
+
+  // Create Select Menu
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_group')
+    .setPlaceholder('👉 Pilih kelompok Anda...')
+    .addOptions([
+      new StringSelectMenuOptionBuilder()
+        .setLabel('The Baddies 💋')
+        .setValue('baddies')
+        .setDescription('Masuk ke kelompok The Baddies'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('The Bros 🍻')
+        .setValue('bros')
+        .setDescription('Masuk ke kelompok The Bros')
+    ]);
+
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+
+  await interaction.reply({
+    content: '✅ Panel onboarding berhasil dikirim!',
+    flags: 64
+  });
+
+  await interaction.channel.send({
+    embeds: [embed],
+    components: [row]
+  });
+}
+
+/**
+ * Menangani interaksi dari menu pilihan onboarding.
+ * @param {StringSelectMenuInteraction} interaction - Interaksi select menu.
+ */
+async function handleOnboardingSelect(interaction) {
+  const { values, member, guild } = interaction;
+  const selectedValue = values[0];
+
+  await interaction.deferReply({ flags: 64 });
+
+  try {
+    const roleId = selectedValue === 'baddies' ? ROLES.BADDIES : ROLES.BROS;
+    const targetRole = guild.roles.cache.get(roleId);
+
+    if (!targetRole) {
+      return interaction.editReply({
+        content: `❌ Gagal: Peran dengan ID \`${roleId}\` tidak ditemukan di server ini. Silakan hubungi admin.`
+      });
+    }
+
+    // Tentukan role yang harus dihapus (jika memilih baddies, hapus bros, dan sebaliknya)
+    const roleToRemoveId = selectedValue === 'baddies' ? ROLES.BROS : ROLES.BADDIES;
+    
+    // Proses update role
+    if (member.roles.cache.has(roleToRemoveId)) {
+      await member.roles.remove(roleToRemoveId);
+    }
+    await member.roles.add(roleId);
+
+    const groupName = selectedValue === 'baddies' ? 'The Baddies 💋' : 'The Bros 🍻';
+
+    return interaction.editReply({
+      content: `🎉 **Onboarding Berhasil!** Anda kini terdaftar sebagai bagian dari **${groupName}**.\n` +
+        `Sistem bot eksternal kami akan otomatis menyinkronkan profil Anda melalui peran baru ini.`
+    });
+  } catch (error) {
+    console.error('Error saat onboarding select:', error);
+    return interaction.editReply({
+      content: '❌ Terjadi kesalahan saat mencoba menambahkan peran ke akun Anda. Pastikan bot memiliki posisi role yang cukup tinggi.'
+    });
+  }
+}
+
+module.exports = {
+  sendOnboardingPanel,
+  handleOnboardingSelect
+};

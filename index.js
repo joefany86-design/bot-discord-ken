@@ -897,6 +897,12 @@ client.on('interactionCreate', async interaction => {
         await interaction.editReply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
       }
     }
+
+    // ── SETUP ONBOARDING ──
+    else if (commandName === 'setup-onboarding') {
+      const onboarding = require('./onboarding');
+      await onboarding.sendOnboardingPanel(interaction);
+    }
   } catch (error) {
     console.error('Error in slash command handler:', error);
     try {
@@ -908,6 +914,20 @@ client.on('interactionCreate', async interaction => {
     } catch (sendErr) {
       console.error('Failed to send error reply:', sendErr.message);
     }
+  }
+});
+
+// Penanganan Interaksi Komponen Onboarding secara Global
+client.on('interactionCreate', async interaction => {
+  try {
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'onboarding_select_group') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleOnboardingSelect(interaction);
+      }
+    }
+  } catch (error) {
+    console.error('Error in global onboarding interaction listener:', error);
   }
 });
 
