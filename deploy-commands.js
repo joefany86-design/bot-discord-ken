@@ -34,36 +34,21 @@ const commands = [
         .setDescription('Warga buronan yang ingin Anda tangkap')
         .setRequired(true)
     ),
-
-  new SlashCommandBuilder()
-    .setName('setup-onboarding')
-    .setDescription('Mengirimkan panel onboarding interaktif (Customization Questions) di channel ini'),
 ].map(command => command.toJSON());
 
-const config = require('./stockmarket/config');
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    const guildId = config.TARGET_GUILD_ID;
     console.log(`Sedang mendaftarkan ${commands.length} application (/) commands...`);
 
-    // Daftarkan secara instan ke Guild Utama
-    if (guildId) {
-      console.log(`Mendaftarkan commands secara instan ke Guild ID: ${guildId}`);
-      await rest.put(
-        Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-        { body: commands },
-      );
-    }
-
-    // Daftarkan secara global (bisa memakan waktu hingga 1 jam)
+    // Daftarkan secara global
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands },
     );
 
-    console.log(`Berhasil mendaftarkan ${commands.length} application (/) commands secara global & guild!`);
+    console.log(`Berhasil mendaftarkan ${commands.length} application (/) commands secara global!`);
   } catch (error) {
     console.error('Terjadi kesalahan saat mendaftarkan commands:', error);
     console.log('\nTip: Pastikan DISCORD_TOKEN dan CLIENT_ID di file .env Anda sudah benar!');
