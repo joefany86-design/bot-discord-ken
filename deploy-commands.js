@@ -44,15 +44,16 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log(`Sedang mendaftarkan ${commands.length} application (/) commands...`);
+    const guildId = '1410239829874053296';
+    console.log(`Sedang mendaftarkan ${commands.length} application (/) commands ke Guild ${guildId}...`);
 
-    // Daftarkan secara global
+    // Daftarkan secara guild-level agar instan
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
       { body: commands },
     );
 
-    console.log(`Berhasil mendaftarkan ${commands.length} application (/) commands secara global!`);
+    console.log(`Berhasil mendaftarkan ${commands.length} application (/) commands secara instan ke Guild!`);
   } catch (error) {
     console.error('Terjadi kesalahan saat mendaftarkan commands:', error);
     console.log('\nTip: Pastikan DISCORD_TOKEN dan CLIENT_ID di file .env Anda sudah benar!');
