@@ -925,6 +925,11 @@ client.on('interactionCreate', async interaction => {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingSelect(interaction);
       }
+    } else if (interaction.isButton()) {
+      if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleOnboardingNotificationToggle(interaction);
+      }
     }
   } catch (error) {
     console.error('Error in global onboarding interaction listener:', error);

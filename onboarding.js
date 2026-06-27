@@ -110,7 +110,50 @@ async function handleOnboardingSelect(interaction) {
   }
 }
 
+/**
+ * Menangani interaksi toggle tombol notifikasi onboarding.
+ * @param {ButtonInteraction} interaction - Interaksi tombol.
+ */
+async function handleOnboardingNotificationToggle(interaction) {
+  const { customId, member, guild } = interaction;
+  await interaction.deferReply({ flags: 64 });
+
+  let roleId = '';
+  let roleName = '';
+
+  if (customId === 'onboarding_toggle_notif_me') {
+    roleId = '1475679550989144097';
+    roleName = 'NotifyMe';
+  } else if (customId === 'onboarding_toggle_gag2') {
+    roleId = '1520354874481704963';
+    roleName = 'Grow a Garden 2';
+  }
+
+  if (!roleId) {
+    return interaction.editReply({ content: '❌ Terjadi kesalahan: Role ID tidak valid.' });
+  }
+
+  try {
+    const role = guild.roles.cache.get(roleId);
+    if (!role) {
+      return interaction.editReply({ content: `❌ Gagal: Peran **${roleName}** (\`${roleId}\`) tidak ditemukan di server ini.` });
+    }
+
+    if (member.roles.cache.has(roleId)) {
+      await member.roles.remove(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menghapus peran **${role.name}** dari akun Anda.` });
+    } else {
+      await member.roles.add(roleId);
+      return interaction.editReply({ content: `✅ Berhasil menambahkan peran **${role.name}** ke akun Anda!` });
+    }
+  } catch (error) {
+    console.error('Error toggling notification role:', error);
+    return interaction.editReply({ content: '❌ Terjadi kesalahan saat memperbarui peran Anda. Pastikan bot memiliki posisi role yang cukup tinggi.' });
+  }
+}
+
 module.exports = {
   sendOnboardingPanel,
-  handleOnboardingSelect
+  handleOnboardingSelect,
+  handleOnboardingNotificationToggle
 };
