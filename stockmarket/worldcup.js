@@ -25,8 +25,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '27 Juni, 17:00 ET',
-    score: '1 - 3',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   {
     id: 3,
@@ -36,8 +36,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '27 Juni, 17:00 ET',
-    score: '2 - 1',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   // Grup K - 27 Juni 2026 ET / 28 Juni WIB
   {
@@ -48,8 +48,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '06:30 WIB',
     etTime: '27 Juni, 19:30 ET',
-    score: '2 - 2',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   {
     id: 5,
@@ -59,8 +59,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '06:30 WIB',
     etTime: '27 Juni, 19:30 ET',
-    score: '0 - 1',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   // Grup J - 27 Juni 2026 ET / 28 Juni WIB
   {
@@ -71,8 +71,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '09:00 WIB',
     etTime: '27 Juni, 22:00 ET',
-    score: '0 - 4',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   {
     id: 7,
@@ -82,8 +82,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '09:00 WIB',
     etTime: '27 Juni, 22:00 ET',
-    score: '1 - 2',
-    status: 'Selesai'
+    score: '- - -',
+    status: 'Mendatang'
   },
   // Babak 32 Besar (Dimulai 28 Juni ET / 29 Juni WIB)
   {
