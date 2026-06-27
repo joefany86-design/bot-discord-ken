@@ -933,6 +933,13 @@ function initSchema() {
       run: () => {
         addColumn('ebyus_settings', 'anti_jail', 'INTEGER DEFAULT 0');
       }
+    },
+    {
+      version: 29,
+      description: "Menambahkan kolom worldcup_channel_id ke ebyus_settings untuk channel khusus Piala Dunia",
+      run: () => {
+        addColumn('ebyus_settings', 'worldcup_channel_id', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

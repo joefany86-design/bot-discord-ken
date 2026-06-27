@@ -698,6 +698,16 @@ client.once('ready', async () => {
 
   client.user.setActivity('🎙️ .join & /join | Bot Kosan 1A', { type: 2 });
 
+  // Inisialisasi otomatis channel khusus Piala Dunia untuk setiap guild
+  try {
+    const worldcup = require('./stockmarket/worldcup');
+    for (const guild of client.guilds.cache.values()) {
+      await worldcup.autoCreateWorldCupChannel(guild);
+    }
+  } catch (wcErr) {
+    console.error('❌ Gagal melakukan inisialisasi channel Piala Dunia otomatis:', wcErr.message);
+  }
+
   // Cache seluruh member di guild target agar status bot bisa dideteksi secara akurat
   const targetGuildId = config.TARGET_GUILD_ID;
   const targetGuild = client.guilds.cache.get(targetGuildId);
@@ -1326,6 +1336,38 @@ client.on('messageCreate', async message => {
     else if (commandName === 'status' || commandName === 'statuslow') {
       const statusData = getStatusData(guild, guildId, client);
       const embed = buildStatusEmbed(statusData, guild, client);
+      await message.reply({ embeds: [embed] });
+    }
+
+    // ── .setworldcup <#channel> (Admin Only) ──
+    else if (commandName === 'setworldcup') {
+      const isOwner = message.author.id === OWNER_ID;
+      const isGuildOwner = message.guild && message.author.id === message.guild.ownerId;
+      const isAdmin = message.member && message.member.permissions.has('Administrator');
+      if (!isOwner && !isAdmin && !isGuildOwner) {
+        return replyEmbed(0xFF3366, '❌ **Akses Ditolak!** Hanya Administrator yang dapat menetapkan saluran khusus Piala Dunia.');
+      }
+
+      const targetChannel = message.mentions.channels.first();
+      if (!targetChannel) {
+        return replyEmbed(0xFF3366, '❌ **Harap sebutkan channel target!**\nContoh: `.setworldcup #bola`');
+      }
+
+      const worldcup = require('./stockmarket/worldcup');
+      worldcup.setWorldCupChannel(guildId, targetChannel.id);
+      
+      const successEmb = new EmbedBuilder()
+        .setColor(0x10B981)
+        .setTitle('✅ Channel Piala Dunia Berhasil Diatur!')
+        .setDescription(`Notifikasi jadwal dan skor pertandingan Piala Dunia akan otomatis dikirim ke channel <#${targetChannel.id}>.`)
+        .setTimestamp();
+      await message.reply({ embeds: [successEmb] });
+    }
+
+    // ── .worldcup / .pialadunia ──
+    else if (commandName === 'worldcup' || commandName === 'pialadunia') {
+      const worldcup = require('./stockmarket/worldcup');
+      const embed = worldcup.generateWorldCupEmbed();
       await message.reply({ embeds: [embed] });
     }
 

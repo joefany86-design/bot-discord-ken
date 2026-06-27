@@ -1089,6 +1089,31 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // 15. Cron Job: Auto-Send World Cup Schedule & Scores (Setiap Hari pukul 08:00 WIB)
+  cron.schedule('0 8 * * *', async () => {
+    try {
+      console.log('⏰ [Scheduler] Memulai pengiriman otomatis Jadwal Piala Dunia...');
+      const worldcup = require('./worldcup');
+      const embed = worldcup.generateWorldCupEmbed();
+
+      client.guilds.cache.forEach(guild => {
+        const channelId = worldcup.getWorldCupChannel(guild.id);
+        if (channelId) {
+          const channel = guild.channels.cache.get(channelId);
+          if (channel) {
+            channel.send({ embeds: [embed] })
+              .then(() => console.log(`✅ Berhasil mengirim jadwal Piala Dunia ke channel bola di guild ${guild.name}`))
+              .catch(err => console.error(`❌ Gagal mengirim jadwal Piala Dunia di guild ${guild.name}:`, err.message));
+          }
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error executing World Cup scheduler in cron:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 
