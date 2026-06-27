@@ -122,11 +122,11 @@ async function handleOnboardingNotificationToggle(interaction) {
   let roleName = '';
 
   if (customId === 'onboarding_toggle_notif_me') {
-    roleId = '1475679550989144097';
-    roleName = 'NotifyMe';
+    roleId = '1520484871208960071';
+    roleName = 'Notif Umum';
   } else if (customId === 'onboarding_toggle_gag2') {
-    roleId = '1520354874481704963';
-    roleName = 'Grow a Garden 2';
+    roleId = '1520484873700249671';
+    roleName = 'Notif Grow a Garden 2';
   }
 
   if (!roleId) {
