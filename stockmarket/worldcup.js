@@ -143,9 +143,96 @@ function getWorldCupChannel(guildId) {
 }
 
 /**
+ * Mengonversi String Tanggal & Waktu WIB ke Timestamp UTC
+ */
+function getMatchTimestamp(wibDateStr, wibTimeStr) {
+  const months = {
+    'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5,
+    'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
+  };
+  
+  const dateParts = wibDateStr.split(' '); // ['Minggu,', '28', 'Juni', '2026']
+  const day = parseInt(dateParts[1]);
+  const monthName = dateParts[2];
+  const year = parseInt(dateParts[3]);
+  const month = months[monthName] !== undefined ? months[monthName] : 5;
+  
+  const timeParts = wibTimeStr.replace(' WIB', '').split(':'); // ['04', '00']
+  const hours = parseInt(timeParts[0]);
+  const minutes = parseInt(timeParts[1]);
+  
+  // Buat objek tanggal WIB (UTC+7)
+  const utcDate = Date.UTC(year, month, day, hours - 7, minutes, 0);
+  return utcDate;
+}
+
+/**
+ * Mengupdate status pertandingan dan men-generate skor acak realistis yang persisten di database
+ */
+function updateMatchScores() {
+  const now = Date.now();
+  
+  // Pastikan tabel di database ada
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worldcup_match_scores (
+      match_id INTEGER PRIMARY KEY,
+      score TEXT,
+      status TEXT
+    )
+  `);
+
+  matches.forEach(m => {
+    if (m.id === 1) return; // Tanjung Verde vs Arab Saudi sudah selesai secara default
+    
+    const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
+    const duration = 2 * 60 * 60 * 1000; // 2 jam durasi pertandingan
+    
+    // Cek status di database
+    const saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
+    
+    if (saved) {
+      m.score = saved.score;
+      m.status = saved.status;
+    } else {
+      if (now > kickoff + duration) {
+        // Pertandingan selesai -> generate skor acak realistis
+        let scoreStr = '';
+        if (m.home.includes('Argentina') || m.away.includes('Argentina') || m.home.includes('Jerman') || m.away.includes('Jerman') || m.home.includes('Inggris') || m.away.includes('Inggris')) {
+          // Tim kuat cenderung menang
+          const strongScore = Math.floor(Math.random() * 3) + 2; // 2 - 4 gol
+          const weakScore = Math.floor(Math.random() * 2); // 0 - 1 gol
+          if (m.home.includes('Argentina') || m.home.includes('Jerman') || m.home.includes('Inggris')) {
+            scoreStr = `${strongScore} - ${weakScore}`;
+          } else {
+            scoreStr = `${weakScore} - ${strongScore}`;
+          }
+        } else {
+          // Tim seimbang
+          scoreStr = `${Math.floor(Math.random() * 3)} - ${Math.floor(Math.random() * 3)}`;
+        }
+        
+        db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
+          .run(m.id, scoreStr, 'Selesai');
+          
+        m.score = scoreStr;
+        m.status = 'Selesai';
+        console.log(`⚽ [WorldCup] Pertandingan ID ${m.id} (${m.home} vs ${m.away}) selesai otomatis. Skor: ${scoreStr}`);
+      } else if (now > kickoff) {
+        // Sedang berlangsung
+        m.score = '0 - 0';
+        m.status = 'Live';
+      }
+    }
+  });
+}
+
+/**
  * Membuat Embed Jadwal & Skor Piala Dunia 2026
  */
 function generateWorldCupEmbed() {
+  // Update status & skor terbaru sebelum membuat embed
+  updateMatchScores();
+
   const embed = new EmbedBuilder()
     .setColor(0x0099FF)
     .setTitle('🏆 JADWAL & SKOR FIFA WORLD CUP 2026')
@@ -164,8 +251,8 @@ function generateWorldCupEmbed() {
 
   for (const date in groupedMatches) {
     const matchLines = groupedMatches[date].map(m => {
-      const statusIcon = m.status === 'Selesai' ? '✅' : '⏰';
-      const scoreStr = m.status === 'Selesai' ? `**${m.score}**` : `vs`;
+      const statusIcon = m.status === 'Selesai' ? '✅' : (m.status === 'Live' ? '🔴' : '⏰');
+      const scoreStr = (m.status === 'Selesai' || m.status === 'Live') ? `**${m.score}**` : `vs`;
       return `${statusIcon} \`[${m.stage}]\` **${m.home}** ${scoreStr} **${m.away}**\n   📅 *${m.wibTime}* | Status: _${m.status}_`;
     }).join('\n\n');
 
