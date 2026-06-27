@@ -253,7 +253,7 @@ function updateMatchScores(client) {
  * Menyelesaikan taruhan untuk match tertentu dan membagi pool hadiah
  */
 function resolveMatchBets(client, matchId, actualScore) {
-  const pendingBets = db.prepare('SELECT * FROM worldcup_bets WHERE match_id = ? AND status = "pending"').all(matchId);
+  const pendingBets = db.prepare("SELECT * FROM worldcup_bets WHERE match_id = ? AND status = 'pending'").all(matchId);
   if (pendingBets.length === 0) return;
 
   const match = matches.find(m => m.id === matchId);
@@ -299,11 +299,11 @@ function resolveMatchBets(client, matchId, actualScore) {
           const share = w.bet_amount / totalWinningBets;
           const payout = Math.floor(share * exactPool);
           economy.addBalance(w.user_id, guildId, payout, 'WORLDCUP_BET_WIN');
-          db.prepare('UPDATE worldcup_bets SET status = "won" WHERE id = ?').run(w.id);
+          db.prepare("UPDATE worldcup_bets SET status = 'won' WHERE id = ?").run(w.id);
         });
         exactBets.forEach(b => {
           if (!exactWinners.some(w => w.id === b.id)) {
-            db.prepare('UPDATE worldcup_bets SET status = "lost" WHERE id = ?').run(b.id);
+            db.prepare("UPDATE worldcup_bets SET status = 'lost' WHERE id = ?").run(b.id);
           }
         });
       } else {
@@ -312,7 +312,7 @@ function resolveMatchBets(client, matchId, actualScore) {
           economy.addBalance(config.OWNER_ID, guildId, exactPool, 'WORLDCUP_BET_FORFEIT');
         }
         exactBets.forEach(b => {
-          db.prepare('UPDATE worldcup_bets SET status = "forfeited" WHERE id = ?').run(b.id);
+          db.prepare("UPDATE worldcup_bets SET status = 'forfeited' WHERE id = ?").run(b.id);
         });
       }
     }
@@ -330,11 +330,11 @@ function resolveMatchBets(client, matchId, actualScore) {
           const share = w.bet_amount / totalWinningBets;
           const payout = Math.floor(share * outcomePool);
           economy.addBalance(w.user_id, guildId, payout, 'WORLDCUP_BET_WIN');
-          db.prepare('UPDATE worldcup_bets SET status = "won" WHERE id = ?').run(w.id);
+          db.prepare("UPDATE worldcup_bets SET status = 'won' WHERE id = ?").run(w.id);
         });
         outcomeBets.forEach(b => {
           if (!outcomeWinners.some(w => w.id === b.id)) {
-            db.prepare('UPDATE worldcup_bets SET status = "lost" WHERE id = ?').run(b.id);
+            db.prepare("UPDATE worldcup_bets SET status = 'lost' WHERE id = ?").run(b.id);
           }
         });
       } else {
@@ -343,7 +343,7 @@ function resolveMatchBets(client, matchId, actualScore) {
           economy.addBalance(config.OWNER_ID, guildId, outcomePool, 'WORLDCUP_BET_FORFEIT');
         }
         outcomeBets.forEach(b => {
-          db.prepare('UPDATE worldcup_bets SET status = "forfeited" WHERE id = ?').run(b.id);
+          db.prepare("UPDATE worldcup_bets SET status = 'forfeited' WHERE id = ?").run(b.id);
         });
       }
     }
@@ -402,7 +402,7 @@ function placeExactScoreBet(userId, guildId, matchId, homeScore, awayScore, betA
   if (Date.now() > kickoff) throw new Error('Pertandingan sudah berlangsung.');
 
   const economy = require('./economy');
-  const existing = db.prepare('SELECT * FROM worldcup_bets WHERE guild_id = ? AND user_id = ? AND match_id = ? AND bet_type = "exact_score" AND status = "pending"').get(guildId, userId, matchId);
+  const existing = db.prepare("SELECT * FROM worldcup_bets WHERE guild_id = ? AND user_id = ? AND match_id = ? AND bet_type = 'exact_score' AND status = 'pending'").get(guildId, userId, matchId);
 
   const now = Math.floor(Date.now() / 1000);
 
@@ -438,7 +438,7 @@ function placeOutcomeBet(userId, guildId, matchId, predictedOutcome, betAmount) 
   if (!['home', 'away', 'draw'].includes(predictedOutcome)) throw new Error('Prediksi hasil tidak valid. Pilih home/away/draw.');
 
   const economy = require('./economy');
-  const existing = db.prepare('SELECT * FROM worldcup_bets WHERE guild_id = ? AND user_id = ? AND match_id = ? AND bet_type = "outcome" AND status = "pending"').get(guildId, userId, matchId);
+  const existing = db.prepare("SELECT * FROM worldcup_bets WHERE guild_id = ? AND user_id = ? AND match_id = ? AND bet_type = 'outcome' AND status = 'pending'").get(guildId, userId, matchId);
 
   const now = Math.floor(Date.now() / 1000);
 
