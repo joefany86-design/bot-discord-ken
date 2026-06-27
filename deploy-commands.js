@@ -34,6 +34,10 @@ const commands = [
         .setDescription('Warga buronan yang ingin Anda tangkap')
         .setRequired(true)
     ),
+
+  new SlashCommandBuilder()
+    .setName('setup-onboarding')
+    .setDescription('Mengirimkan panel onboarding interaktif (Customization Questions) di channel ini'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

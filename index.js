@@ -22,6 +22,7 @@ const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
 const { initStockMarket, handleEconomyChat, handleEconomyCommands, getPortalHubData } = require('./stockmarket');
 const { handleVoiceTodCommand } = require('./voice_events');
+const onboarding = require('./onboarding');
 
 // Konfigurasi path FFmpeg - prioritaskan system ffmpeg, fallback ke ffmpeg-static
 const { execSync } = require('child_process');
@@ -786,6 +787,11 @@ client.once('ready', async () => {
 // ═══════════════════════════════════════════════════
 client.on('interactionCreate', async interaction => {
   try {
+    // Penanganan Interaksi Onboarding
+    if (interaction.customId && interaction.customId.startsWith('onboard_')) {
+      return await onboarding.handleOnboardingInteractions(interaction);
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName, guildId, member, guild } = interaction;
@@ -896,6 +902,11 @@ client.on('interactionCreate', async interaction => {
         const embeds = require('./stockmarket/embeds');
         await interaction.editReply({ embeds: [embeds.errorEmbed('Penangkapan Gagal!', err.message)] });
       }
+    }
+    
+    // ── SETUP ONBOARDING ──
+    else if (commandName === 'setup-onboarding') {
+      await onboarding.setupOnboardingCommand(interaction);
     }
   } catch (error) {
     console.error('Error in slash command handler:', error);
