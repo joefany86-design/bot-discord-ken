@@ -34,20 +34,52 @@ async function sendOnboardingPanel(interaction) {
 
   const embed = new EmbedBuilder()
     .setColor(0x7C4DFF) // Purple Accent
-    .setTitle('🏡 Welcome to Kosan 1A')
+    .setTitle('🏡 SISTEM ONBOARDING WARGA KOSAN 1A')
     .setDescription(
-      'Silakan lengkapi profil onboarding Anda di bawah ini untuk membuka akses penuh ke seluruh area kosan:\n\n' +
-      '👥 **1. Pilih Kelompok Anda**\n' +
-      '🌏 **2. Pilih Kewarganegaraan Anda**\n\n' +
-      '👑 *Owner:* <@436554535037698059> | 🔑 *Admin:* <@&1477641960381743245>'
+      'Selamat datang di server komunitas **Kosan 1A**! Untuk menyelaraskan profil Anda dengan database server ' +
+      'dan membuka hak akses saluran secara penuh, silakan lengkapi profil onboarding Anda di bawah ini:\n\n' +
+      '📋 **Langkah Onboarding:**\n' +
+      '1️⃣ **Pilih Kelompok Sosial Anda** pada menu pilihan pertama.\n' +
+      '2️⃣ **Pilih Kewarganegaraan/Regional Anda** pada menu pilihan kedua.'
     )
-    .setFooter({ text: 'Onboarding Kosan 1A' })
+    .addFields(
+      {
+        name: '👥 Pilihan Kelompok',
+        value: '• **The Baddies** 💋\n• **The Bros** 🍻',
+        inline: true
+      },
+      {
+        name: '🌏 Kewarganegaraan',
+        value: '• **🇮🇩 Indonesia**\n• **🇲🇾 Malaysia**\n• **🌍 International**',
+        inline: true
+      },
+      {
+        name: '────────────────────────────────────────',
+        value: ' '
+      },
+      {
+        name: '👑 Server Owner / Founder',
+        value: '<@436554535037698059>',
+        inline: true
+      },
+      {
+        name: '🔑 Estate Manager (Admin)',
+        value: '<@&1477641960381743245>',
+        inline: true
+      },
+      {
+        name: '🛠️ Hubungi Kami (Bantuan Teknik)',
+        value: 'Jika Anda memiliki pertanyaan atau kendala seputar server, silakan hubungi tim <@&1503307301363384320> atau Estate Manager.',
+        inline: false
+      }
+    )
+    .setFooter({ text: 'Onboarding Kosan 1A • Silakan lengkapi kedua pilihan di bawah' })
     .setTimestamp();
 
   // Create Group Select Menu
   const groupMenu = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_group')
-    .setPlaceholder('👥 1. Pilih kelompok Anda...')
+    .setPlaceholder('Pilih Kelompok')
     .addOptions([
       new StringSelectMenuOptionBuilder()
         .setLabel('The Baddies 💋')
@@ -60,7 +92,7 @@ async function sendOnboardingPanel(interaction) {
   // Create Citizenship Select Menu
   const citizenshipMenu = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_citizenship')
-    .setPlaceholder('🌏 2. Pilih kewarganegaraan Anda...')
+    .setPlaceholder('Pilih Kewarganegaraan')
     .addOptions([
       new StringSelectMenuOptionBuilder()
         .setLabel('🇮🇩 Indonesia')
