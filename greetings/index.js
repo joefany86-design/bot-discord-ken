@@ -2,6 +2,8 @@ const cron = require('node-cron');
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
+const { sendDailyNews } = require('./news');
+
 /**
  * Menginisialisasi semua jadwal sapaan otomatis menggunakan node-cron.
  * @param {Client} client - Instance dari Discord Client.
@@ -14,6 +16,7 @@ function initGreetings(client) {
   console.log('  [Greetings] Status: AKTIF MULTI-CHANNEL');
   console.log('══════════════════════════════════════');
 
+  // Registrasi jadwal sapaan teks
   config.greetings.forEach(greeting => {
     cron.schedule(greeting.cron, () => {
       sendGreeting(client, greeting);
@@ -24,6 +27,17 @@ function initGreetings(client) {
 
     console.log(`  ✅ Jadwal sapaan "${greeting.title}" terdaftar (${greeting.cron} WIB)`);
   });
+
+  // Registrasi jadwal berita harian jika diaktifkan
+  if (config.newsCron) {
+    cron.schedule(config.newsCron, () => {
+      sendDailyNews(client);
+    }, {
+      scheduled: true,
+      timezone: config.TIMEZONE
+    });
+    console.log(`  📰 Jadwal berita harian terdaftar (${config.newsCron} WIB)`);
+  }
 }
 
 /**
@@ -36,7 +50,10 @@ async function sendGreeting(client, greeting) {
     .setColor(greeting.color)
     .setTitle(greeting.title)
     .setDescription(greeting.message)
-    .setFooter({ text: `${greeting.image} Sapaan otomatis dari Bot` })
+    .setFooter({ 
+      text: `Sapaan Otomatis • ${client.user?.username || 'Sentinel'}`, 
+      iconURL: client.user?.displayAvatarURL() || null 
+    })
     .setTimestamp();
 
   const targets = config.targets || [];
@@ -81,5 +98,6 @@ async function sendGreeting(client, greeting) {
 }
 
 module.exports = {
-  initGreetings
+  initGreetings,
+  sendDailyNews
 };

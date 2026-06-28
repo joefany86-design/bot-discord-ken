@@ -48,6 +48,10 @@ const commands = [
         .setAutocomplete(true)
         .setRequired(true)
     ),
+
+  new SlashCommandBuilder()
+    .setName('berita')
+    .setDescription('Menampilkan 5 berita terkini ter-update hari ini'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

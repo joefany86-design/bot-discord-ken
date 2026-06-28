@@ -908,6 +908,19 @@ client.on('interactionCreate', async interaction => {
       const onboarding = require('./onboarding');
       await onboarding.handleNotifCommand(interaction);
     }
+    // ── BERITA ──
+    else if (commandName === 'berita') {
+      await interaction.deferReply();
+      try {
+        const { fetchLatestNews, generateNewsEmbed } = require('./greetings/news');
+        const items = await fetchLatestNews();
+        const embed = generateNewsEmbed(client, items);
+        await interaction.editReply({ embeds: [embed] });
+      } catch (err) {
+        console.error('Error fetching news:', err);
+        await interaction.editReply({ content: '❌ Terjadi kesalahan saat mengambil berita terbaru.' });
+      }
+    }
   } catch (error) {
     console.error('Error in slash command handler:', error);
     try {
