@@ -4,14 +4,20 @@ const {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 
 // Konfigurasi Peran (Roles)
 const ROLES = {
   BADDIES: '1472170290175021193', // the baddies
   BROS: '1472170093416022096',     // the bros
+  VERIFIED: '1475009397276151971'   // 💎 VIP Resident
 };
+
+const INTRO_CHANNEL_ID = '1472883318386065426';
 
 const CITIZENSHIPS = {
   INDONESIA: '1520707284819513374',
@@ -107,6 +113,13 @@ async function sendOnboardingPanel(interaction) {
 
   const rowGroup = new ActionRowBuilder().addComponents(groupMenu);
   const rowCitizenship = new ActionRowBuilder().addComponents(citizenshipMenu);
+  
+  const introButton = new ButtonBuilder()
+    .setCustomId('onboarding_trigger_intro')
+    .setLabel('📝 Isi Intro Card (Wajib)')
+    .setStyle(ButtonStyle.Success);
+    
+  const rowIntro = new ActionRowBuilder().addComponents(introButton);
 
   await interaction.reply({
     content: '✅ Panel onboarding berhasil dikirim!',
@@ -115,7 +128,7 @@ async function sendOnboardingPanel(interaction) {
 
   await interaction.channel.send({
     embeds: [embed],
-    components: [rowGroup, rowCitizenship]
+    components: [rowGroup, rowCitizenship, rowIntro]
   });
 }
 
@@ -212,6 +225,136 @@ async function handleOnboardingCitizenship(interaction) {
     console.error('Error saat onboarding citizenship:', error);
     return interaction.editReply({
       content: '❌ Terjadi kesalahan saat memperbarui kewarganegaraan Anda. Pastikan bot memiliki posisi role yang cukup tinggi.'
+    });
+  }
+}
+
+/**
+ * Memunculkan pop-up modal Intro Card kepada pengguna.
+ * @param {ButtonInteraction} interaction - Interaksi klik tombol.
+ */
+async function showIntroCardModal(interaction) {
+  const modal = new ModalBuilder()
+    .setCustomId('onboarding_intro_modal')
+    .setTitle('Form Intro Card Kosan 1A');
+
+  // Input Fields
+  const nameInput = new TextInputBuilder()
+    .setCustomId('intro_name')
+    .setLabel('Nama Lengkap / Panggilan')
+    .setPlaceholder('Contoh: Key')
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(100)
+    .setRequired(true);
+
+  const ageInput = new TextInputBuilder()
+    .setCustomId('intro_age')
+    .setLabel('Rentang Umur / Usia')
+    .setPlaceholder('Contoh: 21+')
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(20)
+    .setRequired(true);
+
+  const fromInput = new TextInputBuilder()
+    .setCustomId('intro_from')
+    .setLabel('Daerah Asal / Domisili')
+    .setPlaceholder('Contoh: Sumatera')
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(100)
+    .setRequired(true);
+
+  const robloxInput = new TextInputBuilder()
+    .setCustomId('intro_roblox')
+    .setLabel('Username Roblox (Opsional)')
+    .setPlaceholder('Contoh: oopsikeyed (Tulis "-" jika tidak ada)')
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(100)
+    .setRequired(false);
+
+  const interestsInput = new TextInputBuilder()
+    .setCustomId('intro_interests')
+    .setLabel('Hobi / Ketertarikan')
+    .setPlaceholder('Contoh: kucing-kucingku, mendengarkan musik, gaming')
+    .setStyle(TextInputStyle.Paragraph)
+    .setMaxLength(1000)
+    .setRequired(true);
+
+  // Wrap inputs in Action Rows
+  const row1 = new ActionRowBuilder().addComponents(nameInput);
+  const row2 = new ActionRowBuilder().addComponents(ageInput);
+  const row3 = new ActionRowBuilder().addComponents(fromInput);
+  const row4 = new ActionRowBuilder().addComponents(robloxInput);
+  const row5 = new ActionRowBuilder().addComponents(interestsInput);
+
+  modal.addComponents(row1, row2, row3, row4, row5);
+
+  await interaction.showModal(modal);
+}
+
+/**
+ * Memproses pengiriman formulir Intro Card dari modal.
+ * @param {ModalSubmitInteraction} interaction - Interaksi kirim modal.
+ */
+async function handleIntroCardSubmit(interaction) {
+  const { member, guild } = interaction;
+  await interaction.deferReply({ flags: 64 });
+
+  try {
+    const name = interaction.fields.getTextInputValue('intro_name');
+    const age = interaction.fields.getTextInputValue('intro_age');
+    const from = interaction.fields.getTextInputValue('intro_from');
+    const roblox = interaction.fields.getTextInputValue('intro_roblox') || '-';
+    const interests = interaction.fields.getTextInputValue('intro_interests');
+
+    // 1. Dapatkan channel target #intro-card
+    const introChannel = guild.channels.cache.get(INTRO_CHANNEL_ID) || await guild.channels.fetch(INTRO_CHANNEL_ID).catch(() => null);
+    if (!introChannel || !introChannel.isTextBased()) {
+      return interaction.editReply({
+        content: '❌ Gagal: Saluran `#intro-card` tidak ditemukan. Silakan hubungi staff.'
+      });
+    }
+
+    // 2. Buat Embed Intro Card
+    const embed = new EmbedBuilder()
+      .setColor(0x2ECC71) // Hijau ramah
+      .setTitle('📝 KARTU IDENTITAS RESMI WARGA KOSAN 1A')
+      .setDescription(`Warga baru telah mengenalkan diri! Yuk kenalan dengan <@${member.id}>.`)
+      .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+      .addFields(
+        { name: '👤 Nama Panggilan', value: name, inline: true },
+        { name: '🎂 Rentang Umur', value: age, inline: true },
+        { name: '📍 Daerah Asal', value: from, inline: true },
+        { name: '🎮 Username Roblox', value: roblox !== '-' && roblox.trim() !== '' ? `\`${roblox}\`` : '-', inline: true },
+        { name: '✨ Ketertarikan / Hobi', value: interests, inline: false }
+      )
+      .setFooter({ 
+        text: `Kosan 1A Resident • ${member.user.tag}`, 
+        iconURL: member.user.displayAvatarURL() 
+      })
+      .setTimestamp();
+
+    // 3. Kirim ke channel #intro-card
+    await introChannel.send({
+      content: `📢 **Intro Card Baru dari <@${member.id}>!**`,
+      embeds: [embed]
+    });
+
+    // 4. Berikan role terverifikasi (VIP Resident)
+    const verifiedRole = guild.roles.cache.get(ROLES.VERIFIED);
+    if (verifiedRole) {
+      await member.roles.add(verifiedRole);
+    } else {
+      console.warn(`[Onboarding] Peran terverifikasi dengan ID ${ROLES.VERIFIED} tidak ditemukan di server.`);
+    }
+
+    return interaction.editReply({
+      content: '🎉 **Intro Card Berhasil Dikirim!** Terima kasih telah mengenalkan diri. ' +
+        'Peran **VIP Resident** telah diberikan dan seluruh area Kosan 1A kini terbuka untuk Anda! Selamat bergabung!'
+    });
+  } catch (error) {
+    console.error('Error saat submit intro card:', error);
+    return interaction.editReply({
+      content: '❌ Terjadi kesalahan saat memproses formulir Anda. Pastikan bot memiliki izin dan posisi role yang cukup tinggi.'
     });
   }
 }
@@ -575,6 +718,8 @@ module.exports = {
   sendOnboardingPanel,
   handleOnboardingSelect,
   handleOnboardingCitizenship,
+  showIntroCardModal,
+  handleIntroCardSubmit,
   handleOnboardingNotificationToggle,
   handleOnboardingRoleSelect,
   handleNotifAutocomplete,

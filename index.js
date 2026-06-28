@@ -950,12 +950,20 @@ client.on('interactionCreate', async interaction => {
         await onboarding.handleOnboardingRoleSelect(interaction);
       }
     } else if (interaction.isButton()) {
-      if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2' || interaction.customId === 'onboarding_toggle_notif_gear') {
+      if (interaction.customId === 'onboarding_trigger_intro') {
+        const onboarding = require('./onboarding');
+        await onboarding.showIntroCardModal(interaction);
+      } else if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2' || interaction.customId === 'onboarding_toggle_notif_gear') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingNotificationToggle(interaction);
       } else if (interaction.customId === 'onboarding_refresh_panel') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingRefresh(interaction);
+      }
+    } else if (interaction.isModalSubmit()) {
+      if (interaction.customId === 'onboarding_intro_modal') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleIntroCardSubmit(interaction);
       }
     }
   } catch (error) {
