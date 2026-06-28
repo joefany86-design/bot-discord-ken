@@ -394,9 +394,9 @@ function getOnboardingMessages() {
       { label: 'Venus Fly Trap 2x+', value: 'Venus Fly Trap 2x+', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  const menuGearsWeather = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_gears_weather')
-    .setPlaceholder('🛠️ Peralatan & 🌤️ Cuaca Kebun')
+  const menuGears = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_gears')
+    .setPlaceholder('🛠️ Peralatan Kebun')
     .addOptions([
       { label: 'Common Watering Can', value: 'Common Watering Can', emoji: '💧' },
       { label: 'Common Sprinkler', value: 'Common Sprinkler', emoji: '⚙️' },
@@ -405,7 +405,13 @@ function getOnboardingMessages() {
       { label: 'Rare Sprinkler', value: 'Rare Sprinkler', emoji: '⚙️' },
       { label: 'Legendary Sprinkler', value: 'Legendary Sprinkler', emoji: '⚙️' },
       { label: 'Super Watering Can', value: 'Super Watering Can', emoji: '💧' },
-      { label: 'Super Sprinkler', value: 'Super Sprinkler', emoji: '⚙️' },
+      { label: 'Super Sprinkler', value: 'Super Sprinkler', emoji: '⚙️' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const menuWeather = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_weather')
+    .setPlaceholder('🌤️ Cuaca Kebun')
+    .addOptions([
       { label: 'Aurora', value: 'Aurora', emoji: '🌌' },
       { label: 'Goldmoon', value: 'Goldmoon', emoji: '🌙' },
       { label: 'Lightning', value: 'Lightning', emoji: '⚡' },
@@ -419,11 +425,12 @@ function getOnboardingMessages() {
 
   const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
   const row2_2 = new ActionRowBuilder().addComponents(menu2x);
-  const row2_3 = new ActionRowBuilder().addComponents(menuGearsWeather);
+  const row2_3 = new ActionRowBuilder().addComponents(menuGears);
+  const row2_4 = new ActionRowBuilder().addComponents(menuWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4] }
   };
 }
 
