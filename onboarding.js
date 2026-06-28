@@ -347,9 +347,36 @@ async function handleIntroCardSubmit(interaction) {
       console.warn(`[Onboarding] Peran terverifikasi dengan ID ${ROLES.VERIFIED} tidak ditemukan di server.`);
     }
 
+    // 5. Kembalikan peran yang dicabut (jika ada backup)
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const backupPath = path.join(__dirname, 'data', 'stripped_roles_backup.json');
+      if (fs.existsSync(backupPath)) {
+        const backupData = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+        const userRoles = backupData[member.id];
+        if (userRoles && Array.isArray(userRoles)) {
+          console.log(`[Onboarding] Mengembalikan ${userRoles.length} peran untuk ${member.user.tag} dari backup...`);
+          for (const roleId of userRoles) {
+            const role = guild.roles.cache.get(roleId);
+            if (role) {
+              await member.roles.add(roleId).catch(err => {
+                console.error(`[Onboarding] Gagal mengembalikan role ${role.name} ke ${member.user.tag}:`, err.message);
+              });
+            }
+          }
+          // Hapus dari data backup agar bersih
+          delete backupData[member.id];
+          fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2), 'utf8');
+        }
+      }
+    } catch (err) {
+      console.error('[Onboarding] Gagal mengembalikan peran dari backup:', err.message);
+    }
+
     return interaction.editReply({
       content: '🎉 **Intro Card Berhasil Dikirim!** Terima kasih telah mengenalkan diri. ' +
-        'Peran **✅ Terverifikasi** telah diberikan dan seluruh area Kosan 1A kini terbuka untuk Anda! Selamat bergabung!'
+        'Peran **✅ Terverifikasi** serta seluruh peran Anda sebelumnya telah dikembalikan, dan seluruh area Kosan 1A kini terbuka untuk Anda! Selamat bergabung!'
     });
   } catch (error) {
     console.error('Error saat submit intro card:', error);
