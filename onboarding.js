@@ -13,6 +13,12 @@ const ROLES = {
   BROS: '1472170093416022096',     // the bros
 };
 
+const CITIZENSHIPS = {
+  INDONESIA: '1520707284819513374',
+  MALAYSIA: '1520705391695106158',
+  INTERNATIONAL: '1520707287759585311'
+};
+
 /**
  * Mengirimkan panel onboarding ke channel tempat perintah dijalankan.
  * @param {ChatInputCommandInteraction} interaction - Interaksi slash command.
@@ -28,33 +34,60 @@ async function sendOnboardingPanel(interaction) {
 
   const embed = new EmbedBuilder()
     .setColor(0x7C4DFF) // Purple Accent
-    .setTitle('🏡 Selamat Datang di Server Kosan 1A!')
+    .setTitle('🏡 SISTEM ONBOARDING WARGA KOSAN 1A')
     .setDescription(
-      'Halo! Silakan lengkapi profil onboarding Anda untuk membuka akses penuh ke seluruh area kosan ' +
-      'dan menyinkronkan profil Anda dengan sistem server.\n\n' +
-      '**Silakan pilih kelompok Anda di bawah ini:**\n' +
+      'Selamat datang di server komunitas **Kosan 1A**! Untuk menyelaraskan profil Anda dengan database server ' +
+      'dan membuka hak akses saluran secara penuh, silakan lengkapi profil onboarding Anda di bawah ini:\n\n' +
+      '📋 **Langkah Onboarding:**\n' +
+      '1️⃣ **Pilih Kelompok Sosial Anda** pada menu pilihan pertama.\n' +
+      '2️⃣ **Pilih Kewarganegaraan/Regional Anda** pada menu pilihan kedua.\n\n' +
+      '👥 **Daftar Kelompok Sosial:**\n' +
       '• **The Baddies** 💋\n' +
-      '• **The Bros** 🍻'
+      '• **The Bros** 🍻\n\n' +
+      '🌍 **Daftar Kewarganegaraan:**\n' +
+      '• **🇮🇩 Indonesia**\n' +
+      '• **🇲🇾 Malaysia**\n' +
+      '• **🌍 International**'
     )
-    .setFooter({ text: 'Onboarding Kosan 1A • Silakan pilih salah satu opsi di bawah' })
+    .setFooter({ text: 'Onboarding Kosan 1A • Silakan lengkapi kedua pilihan di bawah' })
     .setTimestamp();
 
-  // Create Select Menu
-  const selectMenu = new StringSelectMenuBuilder()
+  // Create Group Select Menu
+  const groupMenu = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_group')
-    .setPlaceholder('👉 Pilih kelompok Anda...')
+    .setPlaceholder('👥 1. Pilih kelompok Anda...')
     .addOptions([
       new StringSelectMenuOptionBuilder()
         .setLabel('The Baddies 💋')
         .setValue('baddies')
-        .setDescription('Masuk ke kelompok The Baddies'),
+        .setDescription('Bergabung dengan kelompok sosial The Baddies'),
       new StringSelectMenuOptionBuilder()
         .setLabel('The Bros 🍻')
         .setValue('bros')
-        .setDescription('Masuk ke kelompok The Bros')
+        .setDescription('Bergabung dengan kelompok sosial The Bros')
     ]);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  // Create Citizenship Select Menu
+  const citizenshipMenu = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_citizenship')
+    .setPlaceholder('🌏 2. Pilih kewarganegaraan Anda...')
+    .addOptions([
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🇮🇩 Indonesia')
+        .setValue('indonesia')
+        .setDescription('Set status kewarganegaraan Indonesia'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🇲🇾 Malaysia')
+        .setValue('malaysia')
+        .setDescription('Set status kewarganegaraan Malaysia'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🌍 International')
+        .setValue('international')
+        .setDescription('Set status kewarganegaraan Internasional (Luar Indonesia/Malaysia)')
+    ]);
+
+  const rowGroup = new ActionRowBuilder().addComponents(groupMenu);
+  const rowCitizenship = new ActionRowBuilder().addComponents(citizenshipMenu);
 
   await interaction.reply({
     content: '✅ Panel onboarding berhasil dikirim!',
@@ -63,7 +96,7 @@ async function sendOnboardingPanel(interaction) {
 
   await interaction.channel.send({
     embeds: [embed],
-    components: [row]
+    components: [rowGroup, rowCitizenship]
   });
 }
 
@@ -106,6 +139,60 @@ async function handleOnboardingSelect(interaction) {
     console.error('Error saat onboarding select:', error);
     return interaction.editReply({
       content: '❌ Terjadi kesalahan saat mencoba menambahkan peran ke akun Anda. Pastikan bot memiliki posisi role yang cukup tinggi.'
+    });
+  }
+}
+
+/**
+ * Menangani interaksi dari menu pilihan kewarganegaraan onboarding.
+ * @param {StringSelectMenuInteraction} interaction - Interaksi select menu.
+ */
+async function handleOnboardingCitizenship(interaction) {
+  const { values, member, guild } = interaction;
+  const selectedValue = values[0];
+
+  await interaction.deferReply({ flags: 64 });
+
+  try {
+    let roleId = '';
+    let countryName = '';
+
+    if (selectedValue === 'indonesia') {
+      roleId = CITIZENSHIPS.INDONESIA;
+      countryName = '🇮🇩 Indonesia';
+    } else if (selectedValue === 'malaysia') {
+      roleId = CITIZENSHIPS.MALAYSIA;
+      countryName = '🇲🇾 Malaysia';
+    } else if (selectedValue === 'international') {
+      roleId = CITIZENSHIPS.INTERNATIONAL;
+      countryName = '🌍 International';
+    }
+
+    const targetRole = guild.roles.cache.get(roleId);
+    if (!targetRole) {
+      return interaction.editReply({
+        content: `❌ Gagal: Peran kewarganegaraan tidak ditemukan di server ini. Silakan hubungi admin.`
+      });
+    }
+
+    // Hapus role kewarganegaraan lain agar tidak bertumpuk
+    for (const key of Object.keys(CITIZENSHIPS)) {
+      const otherRoleId = CITIZENSHIPS[key];
+      if (otherRoleId !== roleId && member.roles.cache.has(otherRoleId)) {
+        await member.roles.remove(otherRoleId);
+      }
+    }
+
+    // Tambah role baru
+    await member.roles.add(roleId);
+
+    return interaction.editReply({
+      content: `🎉 **Pembaruan Kewarganegaraan Berhasil!** Profil Anda sekarang terdaftar sebagai warga negara **${countryName}**.`
+    });
+  } catch (error) {
+    console.error('Error saat onboarding citizenship:', error);
+    return interaction.editReply({
+      content: '❌ Terjadi kesalahan saat memperbarui kewarganegaraan Anda. Pastikan bot memiliki posisi role yang cukup tinggi.'
     });
   }
 }
@@ -468,6 +555,7 @@ async function handleOnboardingRefresh(interaction) {
 module.exports = {
   sendOnboardingPanel,
   handleOnboardingSelect,
+  handleOnboardingCitizenship,
   handleOnboardingNotificationToggle,
   handleOnboardingRoleSelect,
   handleNotifAutocomplete,

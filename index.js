@@ -942,6 +942,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'onboarding_select_group') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingSelect(interaction);
+      } else if (interaction.customId === 'onboarding_select_citizenship') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleOnboardingCitizenship(interaction);
       } else if (interaction.customId.startsWith('onboarding_select_')) {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingRoleSelect(interaction);
