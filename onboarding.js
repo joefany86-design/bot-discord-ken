@@ -14,7 +14,7 @@ const {
 const ROLES = {
   BADDIES: '1472170290175021193', // the baddies
   BROS: '1472170093416022096',     // the bros
-  VERIFIED: '1475009397276151971'   // 💎 VIP Resident
+  VERIFIED: '1520716203935535257'   // ✅ Terverifikasi
 };
 
 const INTRO_CHANNEL_ID = '1472883318386065426';
@@ -349,7 +349,7 @@ async function handleIntroCardSubmit(interaction) {
 
     return interaction.editReply({
       content: '🎉 **Intro Card Berhasil Dikirim!** Terima kasih telah mengenalkan diri. ' +
-        'Peran **VIP Resident** telah diberikan dan seluruh area Kosan 1A kini terbuka untuk Anda! Selamat bergabung!'
+        'Peran **✅ Terverifikasi** telah diberikan dan seluruh area Kosan 1A kini terbuka untuk Anda! Selamat bergabung!'
     });
   } catch (error) {
     console.error('Error saat submit intro card:', error);
