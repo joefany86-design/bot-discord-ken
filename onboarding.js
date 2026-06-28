@@ -83,12 +83,10 @@ async function sendOnboardingPanel(interaction) {
     .addOptions([
       new StringSelectMenuOptionBuilder()
         .setLabel('The Baddies 💋')
-        .setValue('baddies')
-        .setDescription('Bergabung dengan kelompok sosial The Baddies'),
+        .setValue('baddies'),
       new StringSelectMenuOptionBuilder()
         .setLabel('The Bros 🍻')
         .setValue('bros')
-        .setDescription('Bergabung dengan kelompok sosial The Bros')
     ]);
 
   // Create Citizenship Select Menu
@@ -98,16 +96,13 @@ async function sendOnboardingPanel(interaction) {
     .addOptions([
       new StringSelectMenuOptionBuilder()
         .setLabel('🇮🇩 Indonesia')
-        .setValue('indonesia')
-        .setDescription('Set status kewarganegaraan Indonesia'),
+        .setValue('indonesia'),
       new StringSelectMenuOptionBuilder()
         .setLabel('🇲🇾 Malaysia')
-        .setValue('malaysia')
-        .setDescription('Set status kewarganegaraan Malaysia'),
+        .setValue('malaysia'),
       new StringSelectMenuOptionBuilder()
         .setLabel('🌍 International')
         .setValue('international')
-        .setDescription('Set status kewarganegaraan Internasional (Luar Indonesia/Malaysia)')
     ]);
 
   const rowGroup = new ActionRowBuilder().addComponents(groupMenu);
