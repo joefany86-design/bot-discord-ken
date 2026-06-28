@@ -336,37 +336,25 @@ function getOnboardingMessages() {
     .setFooter({ text: 'Onboarding System • Tentukan notifikasi pilihan Anda' })
     .setTimestamp();
 
-  const menuStandar1 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_standar_1')
-    .setPlaceholder('🌱 Benih/Tanaman Standar (A - M)')
+  const menuStandar = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_standar')
+    .setPlaceholder('🌱 Benih/Tanaman Standar')
     .addOptions([
+      { label: 'Acorn', value: 'Acorn', emoji: '🌰' },
       { label: 'Apple', value: 'Apple', emoji: '🍎' },
       { label: 'Bamboo', value: 'Bamboo', emoji: '🎍' },
       { label: 'Banana', value: 'Banana', emoji: '🍌' },
-      { label: 'Blueberry', value: 'Blueberry', emoji: '🫐' },
       { label: 'Cactus', value: 'Cactus', emoji: '🌵' },
-      { label: 'Carrot', value: 'Carrot', emoji: '🥕' },
-      { label: 'Coconut', value: 'Coconut', emoji: '🥥' },
-      { label: 'Corn', value: 'Corn', emoji: '🌽' },
-      { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' },
-      { label: 'Hypno Bloom', value: 'Hypno Bloom', emoji: '🌀' },
-      { label: 'Mushroom', value: 'Mushroom', emoji: '🍄' },
-      { label: 'Pineapple', value: 'Pineapple', emoji: '🍍' },
-      { label: 'Strawberry', value: 'Strawberry', emoji: '🍓' },
-      { label: 'Tomato', value: 'Tomato', emoji: '🍅' }
-    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
-
-  const menuStandar2 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_standar_2')
-    .setPlaceholder('🌱 Benih/Tanaman Standar (N - Z)')
-    .addOptions([
-      { label: 'Acorn', value: 'Acorn', emoji: '🌰' },
       { label: 'Cherry', value: 'Cherry', emoji: '🍒' },
       { label: 'Dragon Fruit', value: 'Dragon Fruit', emoji: '🐉' },
       { label: 'Dragon\'s Breath', value: 'Dragon\'s Breath', emoji: '🔥' },
       { label: 'Grape', value: 'Grape', emoji: '🍇' },
+      { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' },
+      { label: 'Hypno Bloom', value: 'Hypno Bloom', emoji: '🌀' },
       { label: 'Mango', value: 'Mango', emoji: '🥭' },
       { label: 'Moon Bloom', value: 'Moon Bloom', emoji: '🌸' },
+      { label: 'Mushroom', value: 'Mushroom', emoji: '🍄' },
+      { label: 'Pineapple', value: 'Pineapple', emoji: '🍍' },
       { label: 'Poison Apple', value: 'Poison Apple', emoji: '🍏' },
       { label: 'Pomegranate', value: 'Pomegranate', emoji: '🍎' },
       { label: 'Sunflower', value: 'Sunflower', emoji: '🌻' },
@@ -442,15 +430,14 @@ function getOnboardingMessages() {
       { label: 'Starfall', value: 'Starfall', emoji: '🌠' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  const row2_1 = new ActionRowBuilder().addComponents(menuStandar1);
-  const row2_2 = new ActionRowBuilder().addComponents(menuStandar2);
-  const row2_3 = new ActionRowBuilder().addComponents(menu2xPart1);
-  const row2_4 = new ActionRowBuilder().addComponents(menu2xPart2);
-  const row2_5 = new ActionRowBuilder().addComponents(menuGearsWeather);
+  const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
+  const row2_2 = new ActionRowBuilder().addComponents(menu2xPart1);
+  const row2_3 = new ActionRowBuilder().addComponents(menu2xPart2);
+  const row2_4 = new ActionRowBuilder().addComponents(menuGearsWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4] }
   };
 }
 
