@@ -1,10 +1,10 @@
-const { 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  StringSelectMenuBuilder, 
-  StringSelectMenuOptionBuilder, 
-  ButtonBuilder, 
-  ButtonStyle 
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } = require('discord.js');
 
 // Konfigurasi Peran (Roles)
@@ -89,7 +89,7 @@ async function handleOnboardingSelect(interaction) {
 
     // Tentukan role yang harus dihapus (jika memilih baddies, hapus bros, dan sebaliknya)
     const roleToRemoveId = selectedValue === 'baddies' ? ROLES.BROS : ROLES.BADDIES;
-    
+
     // Proses update role
     if (member.roles.cache.has(roleToRemoveId)) {
       await member.roles.remove(roleToRemoveId);
@@ -164,7 +164,7 @@ async function handleOnboardingRoleSelect(interaction) {
   await interaction.deferReply({ flags: 64 });
 
   const selectedRoleName = values[0].toLowerCase().trim();
-  
+
   // Load roles map
   let rolesMap = {};
   try {
@@ -208,7 +208,7 @@ async function handleOnboardingRoleSelect(interaction) {
  */
 async function handleNotifAutocomplete(interaction) {
   const focusedValue = interaction.options.getFocused().toLowerCase();
-  
+
   // Load roles map
   let rolesMap = {};
   try {
@@ -225,7 +225,7 @@ async function handleNotifAutocomplete(interaction) {
   // Filter peran-peran spesifik GAG2 agar hasil pencarian rapi
   const allRoleNames = Object.keys(rolesMap).filter(name => {
     return name !== '@everyone' && (
-      name.includes('2x+') || 
+      name.includes('2x+') ||
       name.includes('notif') ||
       name.includes('sprinkler') ||
       name.includes('watering') ||
@@ -246,11 +246,11 @@ async function handleNotifAutocomplete(interaction) {
     .slice(0, 25);
 
   await interaction.respond(
-    filtered.map(choice => ({ 
-      name: choice.replace(/\b\w/g, c => c.toUpperCase()), 
-      value: choice 
+    filtered.map(choice => ({
+      name: choice.replace(/\b\w/g, c => c.toUpperCase()),
+      value: choice
     }))
-  ).catch(() => {});
+  ).catch(() => { });
 }
 
 /**
