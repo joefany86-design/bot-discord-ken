@@ -40,14 +40,38 @@ async function sendOnboardingPanel(interaction) {
       'dan membuka hak akses saluran secara penuh, silakan lengkapi profil onboarding Anda di bawah ini:\n\n' +
       '📋 **Langkah Onboarding:**\n' +
       '1️⃣ **Pilih Kelompok Sosial Anda** pada menu pilihan pertama.\n' +
-      '2️⃣ **Pilih Kewarganegaraan/Regional Anda** pada menu pilihan kedua.\n\n' +
-      '👥 **Daftar Kelompok Sosial:**\n' +
-      '• **The Baddies** 💋\n' +
-      '• **The Bros** 🍻\n\n' +
-      '🌍 **Daftar Kewarganegaraan:**\n' +
-      '• **🇮🇩 Indonesia**\n' +
-      '• **🇲🇾 Malaysia**\n' +
-      '• **🌍 International**'
+      '2️⃣ **Pilih Kewarganegaraan/Regional Anda** pada menu pilihan kedua.'
+    )
+    .addFields(
+      { 
+        name: '👥 Pilihan Kelompok', 
+        value: '• **The Baddies** 💋\n• **The Bros** 🍻', 
+        inline: true 
+      },
+      { 
+        name: '🌏 Kewarganegaraan', 
+        value: '• **🇮🇩 Indonesia**\n• **🇲🇾 Malaysia**\n• **🌍 International**', 
+        inline: true 
+      },
+      {
+        name: '────────────────────────────────────────',
+        value: ' '
+      },
+      {
+        name: '👑 Server Owner / Founder',
+        value: '<@436554535037698059>',
+        inline: true
+      },
+      {
+        name: '🔑 Estate Manager (Admin)',
+        value: '<@&1477641960381743245>',
+        inline: true
+      },
+      {
+        name: '🛠️ Hubungi Kami (Bantuan Teknik)',
+        value: 'Jika Anda memiliki pertanyaan atau kendala seputar server, silakan hubungi tim <@&1503307301363384320> atau Estate Manager.',
+        inline: false
+      }
     )
     .setFooter({ text: 'Onboarding Kosan 1A • Silakan lengkapi kedua pilihan di bawah' })
     .setTimestamp();
