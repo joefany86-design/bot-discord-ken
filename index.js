@@ -937,6 +937,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'onboarding_toggle_notif_me' || interaction.customId === 'onboarding_toggle_gag2' || interaction.customId === 'onboarding_toggle_notif_gear') {
         const onboarding = require('./onboarding');
         await onboarding.handleOnboardingNotificationToggle(interaction);
+      } else if (interaction.customId === 'onboarding_refresh_panel') {
+        const onboarding = require('./onboarding');
+        await onboarding.handleOnboardingRefresh(interaction);
       }
     }
   } catch (error) {

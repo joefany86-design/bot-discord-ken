@@ -298,12 +298,201 @@ async function handleNotifCommand(interaction) {
   }
 }
 
+/**
+ * Membangun pesan-pesan panel onboarding untuk dikirim/diperbarui.
+ */
+function getOnboardingMessages() {
+  const embed1 = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('🏡 PORTAL NOTIFIKASI KOSAN 1A')
+    .setDescription(
+      'Halo! Atur kustomisasi notifikasi utama server Anda di bawah ini:\n\n' +
+      '• **Notif Umum**: Pengumuman penting server.\n' +
+      '• **Notif Grow a Garden 2**: Notifikasi event, cuaca, & info kebun.\n' +
+      '• **Notif Gear**: Pemberitahuan restok item & perkakas kebun.\n\n' +
+      'Klik tombol **🔄 Segarkan** untuk memperbarui daftar menu kebun di bawah jika ada benih baru!'
+    )
+    .setFooter({ text: 'Kosan 1A Onboarding • Notifikasi Umum' })
+    .setTimestamp();
+
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('onboarding_toggle_notif_me').setLabel('🔔 Notif Umum').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('onboarding_toggle_gag2').setLabel('🌾 Notif Grow a Garden 2').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('onboarding_toggle_notif_gear').setLabel('⚙️ Notif Gear').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('onboarding_refresh_panel').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
+  );
+
+  const embed2 = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setDescription(
+      'Atur preferensi notifikasi Anda secara mandiri agar tidak ketinggalan cuaca penting, restok peralatan langka, maupun pelipatgandaan stok benih di Grow a Garden 2.\n\n' +
+      '📝 **Petunjuk Penggunaan:**\n' +
+      ' 1. Pilih nama peran dari menu dropdown di bawah untuk **mengaktifkan** peran tersebut.\n' +
+      ' 2. Pilih nama peran yang sama kembali untuk **menonaktifkan** peran tersebut.\n\n' +
+      '🔍 **Pencarian Cepat Lewat Ketik:**\n' +
+      'Gunakan perintah **`/notif`** di chat room mana saja lalu ketik nama peran (contoh: `Carrot`, `Aurora`, `Notif Gear`) untuk mencari dan mengambil peran secara instan!'
+    )
+    .setFooter({ text: 'Onboarding System • Tentukan notifikasi pilihan Anda' })
+    .setTimestamp();
+
+  const menuStandar1 = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_standar_1')
+    .setPlaceholder('🌱 Benih/Tanaman Standar (A - M)')
+    .addOptions([
+      { label: 'Apple', value: 'Apple', emoji: '🍎' },
+      { label: 'Bamboo', value: 'Bamboo', emoji: '🎍' },
+      { label: 'Banana', value: 'Banana', emoji: '🍌' },
+      { label: 'Blueberry', value: 'Blueberry', emoji: '🫐' },
+      { label: 'Cactus', value: 'Cactus', emoji: '🌵' },
+      { label: 'Carrot', value: 'Carrot', emoji: '🥕' },
+      { label: 'Coconut', value: 'Coconut', emoji: '🥥' },
+      { label: 'Corn', value: 'Corn', emoji: '🌽' },
+      { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' },
+      { label: 'Hypno Bloom', value: 'Hypno Bloom', emoji: '🌀' },
+      { label: 'Mushroom', value: 'Mushroom', emoji: '🍄' },
+      { label: 'Pineapple', value: 'Pineapple', emoji: '🍍' },
+      { label: 'Strawberry', value: 'Strawberry', emoji: '🍓' },
+      { label: 'Tomato', value: 'Tomato', emoji: '🍅' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const menuStandar2 = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_standar_2')
+    .setPlaceholder('🌱 Benih/Tanaman Standar (N - Z)')
+    .addOptions([
+      { label: 'Acorn', value: 'Acorn', emoji: '🌰' },
+      { label: 'Cherry', value: 'Cherry', emoji: '🍒' },
+      { label: 'Dragon Fruit', value: 'Dragon Fruit', emoji: '🐉' },
+      { label: 'Dragon\'s Breath', value: 'Dragon\'s Breath', emoji: '🔥' },
+      { label: 'Grape', value: 'Grape', emoji: '🍇' },
+      { label: 'Mango', value: 'Mango', emoji: '🥭' },
+      { label: 'Moon Bloom', value: 'Moon Bloom', emoji: '🌸' },
+      { label: 'Poison Apple', value: 'Poison Apple', emoji: '🍏' },
+      { label: 'Pomegranate', value: 'Pomegranate', emoji: '🍎' },
+      { label: 'Sunflower', value: 'Sunflower', emoji: '🌻' },
+      { label: 'Tulip', value: 'Tulip', emoji: '🌷' },
+      { label: 'Venom Spitter', value: 'Venom Spitter', emoji: '🧪' },
+      { label: 'Venus Fly Trap', value: 'Venus Fly Trap', emoji: '🥀' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const menu2xPart1 = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_2x_1')
+    .setPlaceholder('📈 Pelipatgandaan Stok 2x+ (Part 1)')
+    .addOptions([
+      { label: 'Acorn 2x+', value: 'Acorn 2x+', emoji: '🌰' },
+      { label: 'Apple 2x+', value: 'Apple 2x+', emoji: '🍎' },
+      { label: 'Baby Cactus 2x+', value: 'Baby Cactus 2x+', emoji: '🌵' },
+      { label: 'Bamboo 2x+', value: 'Bamboo 2x+', emoji: '🎍' },
+      { label: 'Banana 2x+', value: 'Banana 2x+', emoji: '🍌' },
+      { label: 'Blueberry 2x+', value: 'Blueberry 2x+', emoji: '🫐' },
+      { label: 'Cactus 2x+', value: 'Cactus 2x+', emoji: '🌵' },
+      { label: 'Carrot 2x+', value: 'Carrot 2x+', emoji: '🥕' },
+      { label: 'Cherry 2x+', value: 'Cherry 2x+', emoji: '🍒' },
+      { label: 'Coconut 2x+', value: 'Coconut 2x+', emoji: '🥥' },
+      { label: 'Corn 2x+', value: 'Corn 2x+', emoji: '🌽' },
+      { label: 'Dragon Fruit 2x+', value: 'Dragon Fruit 2x+', emoji: '🐉' },
+      { label: 'Dragon\'s Breath 2x+', value: 'Dragon\'s Breath 2x+', emoji: '🔥' },
+      { label: 'Grape 2x+', value: 'Grape 2x+', emoji: '🍇' },
+      { label: 'Horned Melon 2x+', value: 'Horned Melon 2x+', emoji: '🍈' },
+      { label: 'Mango 2x+', value: 'Mango 2x+', emoji: '🥭' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const menu2xPart2 = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_2x_2')
+    .setPlaceholder('📈 Pelipatgandaan Stok 2x+ (Part 2)')
+    .addOptions([
+      { label: 'Ghost Pepper 2x+', value: 'Ghost Pepper 2x+', emoji: '🌶️' },
+      { label: 'Glow Mushroom 2x+', value: 'Glow Mushroom 2x+', emoji: '🍄' },
+      { label: 'Green Bean 2x+', value: 'Green Bean 2x+', emoji: '🫛' },
+      { label: 'Hypno Bloom 2x+', value: 'Hypno Bloom 2x+', emoji: '🌀' },
+      { label: 'Moon Bloom 2x+', value: 'Moon Bloom 2x+', emoji: '🌸' },
+      { label: 'Mushroom 2x+', value: 'Mushroom 2x+', emoji: '🍄' },
+      { label: 'Poison Apple 2x+', value: 'Poison Apple 2x+', emoji: '🍏' },
+      { label: 'Poison Ivy 2x+', value: 'Poison Ivy 2x+', emoji: '🌿' },
+      { label: 'Pomegranate 2x+', value: 'Pomegranate 2x+', emoji: '🍎' },
+      { label: 'Strawberry 2x+', value: 'Strawberry 2x+', emoji: '🍓' },
+      { label: 'Sunflower 2x+', value: 'Sunflower 2x+', emoji: '🌻' },
+      { label: 'Tomato 2x+', value: 'Tomato 2x+', emoji: '🍅' },
+      { label: 'Tulip 2x+', value: 'Tulip 2x+', emoji: '🌷' },
+      { label: 'Watermelon 2x+', value: 'Watermelon 2x+', emoji: '🍉' },
+      { label: 'Venom Spitter 2x+', value: 'Venom Spitter 2x+', emoji: '🧪' },
+      { label: 'Venus Fly Trap 2x+', value: 'Venus Fly Trap 2x+', emoji: '🥀' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const menuGearsWeather = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_gears_weather')
+    .setPlaceholder('🛠️ Peralatan & 🌤️ Cuaca Kebun')
+    .addOptions([
+      { label: 'Common Watering Can', value: 'Common Watering Can', emoji: '💧' },
+      { label: 'Common Sprinkler', value: 'Common Sprinkler', emoji: '⚙️' },
+      { label: 'Uncommon Sprinkler', value: 'Uncommon Sprinkler', emoji: '⚙️' },
+      { label: 'Trowel', value: 'Trowel', emoji: '🛠️' },
+      { label: 'Rare Sprinkler', value: 'Rare Sprinkler', emoji: '⚙️' },
+      { label: 'Legendary Sprinkler', value: 'Legendary Sprinkler', emoji: '⚙️' },
+      { label: 'Super Watering Can', value: 'Super Watering Can', emoji: '💧' },
+      { label: 'Super Sprinkler', value: 'Super Sprinkler', emoji: '⚙️' },
+      { label: 'Aurora', value: 'Aurora', emoji: '🌌' },
+      { label: 'Goldmoon', value: 'Goldmoon', emoji: '🌙' },
+      { label: 'Lightning', value: 'Lightning', emoji: '⚡' },
+      { label: 'Mega Moon', value: 'Mega Moon', emoji: '🌕' },
+      { label: 'Rain', value: 'Rain', emoji: '🌧️' },
+      { label: 'Rainbow', value: 'Rainbow', emoji: '🌈' },
+      { label: 'Rainbow Moon', value: 'Rainbow Moon', emoji: '🌈' },
+      { label: 'Snowfall', value: 'Snowfall', emoji: '❄️' },
+      { label: 'Starfall', value: 'Starfall', emoji: '🌠' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  const row2_1 = new ActionRowBuilder().addComponents(menuStandar1);
+  const row2_2 = new ActionRowBuilder().addComponents(menuStandar2);
+  const row2_3 = new ActionRowBuilder().addComponents(menu2xPart1);
+  const row2_4 = new ActionRowBuilder().addComponents(menu2xPart2);
+  const row2_5 = new ActionRowBuilder().addComponents(menuGearsWeather);
+
+  return {
+    message1: { embeds: [embed1], components: [row1] },
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] }
+  };
+}
+
+/**
+ * Menangani klik tombol refresh untuk memperbarui seluruh panel onboarding di saluran ini.
+ */
+async function handleOnboardingRefresh(interaction) {
+  try {
+    await interaction.deferReply({ flags: 64 });
+    const { message1, message2 } = getOnboardingMessages();
+
+    // Ambil beberapa pesan terakhir dari bot di channel ini
+    const messages = await interaction.channel.messages.fetch({ limit: 15 });
+    const botMessages = messages.filter(m => m.author.id === interaction.client.user.id).toJSON();
+
+    // Temukan pesan dengan tombol refresh
+    const buttonMsg = botMessages.find(m => m.components.some(row => row.components.some(c => c.customId === 'onboarding_refresh_panel')));
+    // Temukan pesan dengan dropdowns
+    const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0].type === 3));
+
+    if (buttonMsg) {
+      await buttonMsg.edit({ embeds: message1.embeds, components: message1.components });
+    }
+    if (dropdownMsg) {
+      await dropdownMsg.edit({ embeds: message2.embeds, components: message2.components });
+    }
+
+    return interaction.editReply({ content: '✅ Tampilan panel onboarding berhasil diperbarui!' });
+  } catch (error) {
+    console.error('Error saat refresh onboarding:', error);
+    return interaction.editReply({ content: '❌ Terjadi kesalahan saat mencoba memperbarui panel onboarding.' });
+  }
+}
+
 module.exports = {
   sendOnboardingPanel,
   handleOnboardingSelect,
   handleOnboardingNotificationToggle,
   handleOnboardingRoleSelect,
   handleNotifAutocomplete,
-  handleNotifCommand
+  handleNotifCommand,
+  getOnboardingMessages,
+  handleOnboardingRefresh
 };
 
