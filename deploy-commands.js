@@ -52,6 +52,27 @@ const commands = [
   new SlashCommandBuilder()
     .setName('berita')
     .setDescription('Menampilkan 5 berita terkini ter-update hari ini'),
+
+  new SlashCommandBuilder()
+    .setName('stiker')
+    .setDescription('Kirim stiker lucu kawaii ke chat! 🎨')
+    .addStringOption(option =>
+      option.setName('nama')
+        .setDescription('Pilih stiker yang ingin dikirim')
+        .setRequired(true)
+        .addChoices(
+          { name: '🎲 Random (Acak)', value: 'random' },
+          { name: '👋 Halo!', value: 'halo' },
+          { name: '😴 Ngantuk...', value: 'ngantuk' },
+          { name: '🔥 Semangat!', value: 'semangat' },
+          { name: '😢 Sedih...', value: 'sedih' },
+          { name: '😤 Kesel!', value: 'kesel' },
+          { name: '🍜 Makan!', value: 'makan' },
+          { name: '💕 Sayang~', value: 'sayang' },
+          { name: '😱 OMG!', value: 'omg' },
+          { name: '🎮 GG!', value: 'gg' },
+        )
+    ),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

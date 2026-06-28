@@ -921,6 +921,50 @@ client.on('interactionCreate', async interaction => {
         await interaction.editReply({ content: '❌ Terjadi kesalahan saat mengambil berita terbaru.' });
       }
     }
+    // ── STIKER ──
+    else if (commandName === 'stiker') {
+      await interaction.deferReply();
+      try {
+        const { AttachmentBuilder } = require('discord.js');
+        const stikerList = ['halo', 'ngantuk', 'semangat', 'sedih', 'kesel', 'makan', 'sayang', 'omg', 'gg'];
+        const stikerEmoji = {
+          halo: '👋', ngantuk: '😴', semangat: '🔥', sedih: '😢',
+          kesel: '😤', makan: '🍜', sayang: '💕', omg: '😱', gg: '🎮'
+        };
+        const stikerLabel = {
+          halo: 'Halo!', ngantuk: 'Ngantuk...', semangat: 'Semangat!', sedih: 'Sedih...',
+          kesel: 'Kesel!', makan: 'Makan!', sayang: 'Sayang~', omg: 'OMG!', gg: 'GG!'
+        };
+
+        let pilihan = interaction.options.getString('nama');
+
+        // Random stiker
+        if (pilihan === 'random') {
+          pilihan = stikerList[Math.floor(Math.random() * stikerList.length)];
+        }
+
+        const stikerPath = path.resolve(__dirname, 'assets', 'stickers', `${pilihan}.png`);
+
+        if (!fs.existsSync(stikerPath)) {
+          return interaction.editReply({ content: '❌ Stiker tidak ditemukan!' });
+        }
+
+        const userName = interaction.user.globalName || interaction.user.username;
+        const attachment = new AttachmentBuilder(stikerPath, { name: `stiker_${pilihan}.png` });
+        const stikerEmbed = new EmbedBuilder()
+          .setColor('#FF69B4')
+          .setAuthor({ name: `${userName} mengirim stiker`, iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+          .setTitle(`${stikerEmoji[pilihan]} ${stikerLabel[pilihan]}`)
+          .setImage(`attachment://stiker_${pilihan}.png`)
+          .setFooter({ text: `🎨 Koleksi Stiker Lucu • /stiker` })
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [stikerEmbed], files: [attachment] });
+      } catch (err) {
+        console.error('Error sending stiker:', err);
+        await interaction.editReply({ content: '❌ Gagal mengirim stiker. Coba lagi nanti.' }).catch(() => {});
+      }
+    }
   } catch (error) {
     console.error('Error in slash command handler:', error);
     try {
