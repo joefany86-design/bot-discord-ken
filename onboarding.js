@@ -265,8 +265,8 @@ async function showIntroCardModal(interaction) {
 
   const robloxInput = new TextInputBuilder()
     .setCustomId('intro_roblox')
-    .setLabel('Username Roblox (Opsional)')
-    .setPlaceholder('Contoh: oopsikeyed (Tulis "-" jika tidak ada)')
+    .setLabel('Username Roblox / Mobile Legends (Opsional)')
+    .setPlaceholder('Contoh: Roblox: oopsikeyed | MLBB: 12345678 (9012)')
     .setStyle(TextInputStyle.Short)
     .setMaxLength(100)
     .setRequired(false);
@@ -324,7 +324,7 @@ async function handleIntroCardSubmit(interaction) {
         { name: '👤 Nama Panggilan', value: name, inline: true },
         { name: '🎂 Rentang Umur', value: age, inline: true },
         { name: '📍 Daerah Asal', value: from, inline: true },
-        { name: '🎮 Username Roblox', value: roblox !== '-' && roblox.trim() !== '' ? `\`${roblox}\`` : '-', inline: true },
+        { name: '🎮 Roblox / MLBB', value: roblox !== '-' && roblox.trim() !== '' ? `\`${roblox}\`` : '-', inline: true },
         { name: '✨ Ketertarikan / Hobi', value: interests, inline: false }
       )
       .setFooter({ 
