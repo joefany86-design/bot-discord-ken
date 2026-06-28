@@ -363,44 +363,31 @@ function getOnboardingMessages() {
       { label: 'Venus Fly Trap', value: 'Venus Fly Trap', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  const menu2xPart1 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_2x_1')
-    .setPlaceholder('📈 Pelipatgandaan Stok 2x+ (Part 1)')
+  const menu2x = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_2x')
+    .setPlaceholder('📈 Pelipatgandaan Stok 2x+')
     .addOptions([
       { label: 'Acorn 2x+', value: 'Acorn 2x+', emoji: '🌰' },
       { label: 'Apple 2x+', value: 'Apple 2x+', emoji: '🍎' },
-      { label: 'Baby Cactus 2x+', value: 'Baby Cactus 2x+', emoji: '🌵' },
       { label: 'Bamboo 2x+', value: 'Bamboo 2x+', emoji: '🎍' },
       { label: 'Banana 2x+', value: 'Banana 2x+', emoji: '🍌' },
-      { label: 'Blueberry 2x+', value: 'Blueberry 2x+', emoji: '🫐' },
       { label: 'Cactus 2x+', value: 'Cactus 2x+', emoji: '🌵' },
-      { label: 'Carrot 2x+', value: 'Carrot 2x+', emoji: '🥕' },
       { label: 'Cherry 2x+', value: 'Cherry 2x+', emoji: '🍒' },
-      { label: 'Coconut 2x+', value: 'Coconut 2x+', emoji: '🥥' },
-      { label: 'Corn 2x+', value: 'Corn 2x+', emoji: '🌽' },
       { label: 'Dragon Fruit 2x+', value: 'Dragon Fruit 2x+', emoji: '🐉' },
       { label: 'Dragon\'s Breath 2x+', value: 'Dragon\'s Breath 2x+', emoji: '🔥' },
-      { label: 'Grape 2x+', value: 'Grape 2x+', emoji: '🍇' },
-      { label: 'Horned Melon 2x+', value: 'Horned Melon 2x+', emoji: '🍈' },
-      { label: 'Mango 2x+', value: 'Mango 2x+', emoji: '🥭' }
-    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
-
-  const menu2xPart2 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_2x_2')
-    .setPlaceholder('📈 Pelipatgandaan Stok 2x+ (Part 2)')
-    .addOptions([
       { label: 'Ghost Pepper 2x+', value: 'Ghost Pepper 2x+', emoji: '🌶️' },
       { label: 'Glow Mushroom 2x+', value: 'Glow Mushroom 2x+', emoji: '🍄' },
+      { label: 'Grape 2x+', value: 'Grape 2x+', emoji: '🍇' },
       { label: 'Green Bean 2x+', value: 'Green Bean 2x+', emoji: '🫛' },
+      { label: 'Horned Melon 2x+', value: 'Horned Melon 2x+', emoji: '🍈' },
       { label: 'Hypno Bloom 2x+', value: 'Hypno Bloom 2x+', emoji: '🌀' },
+      { label: 'Mango 2x+', value: 'Mango 2x+', emoji: '🥭' },
       { label: 'Moon Bloom 2x+', value: 'Moon Bloom 2x+', emoji: '🌸' },
       { label: 'Mushroom 2x+', value: 'Mushroom 2x+', emoji: '🍄' },
       { label: 'Poison Apple 2x+', value: 'Poison Apple 2x+', emoji: '🍏' },
       { label: 'Poison Ivy 2x+', value: 'Poison Ivy 2x+', emoji: '🌿' },
       { label: 'Pomegranate 2x+', value: 'Pomegranate 2x+', emoji: '🍎' },
-      { label: 'Strawberry 2x+', value: 'Strawberry 2x+', emoji: '🍓' },
       { label: 'Sunflower 2x+', value: 'Sunflower 2x+', emoji: '🌻' },
-      { label: 'Tomato 2x+', value: 'Tomato 2x+', emoji: '🍅' },
       { label: 'Tulip 2x+', value: 'Tulip 2x+', emoji: '🌷' },
       { label: 'Watermelon 2x+', value: 'Watermelon 2x+', emoji: '🍉' },
       { label: 'Venom Spitter 2x+', value: 'Venom Spitter 2x+', emoji: '🧪' },
@@ -431,13 +418,12 @@ function getOnboardingMessages() {
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
-  const row2_2 = new ActionRowBuilder().addComponents(menu2xPart1);
-  const row2_3 = new ActionRowBuilder().addComponents(menu2xPart2);
-  const row2_4 = new ActionRowBuilder().addComponents(menuGearsWeather);
+  const row2_2 = new ActionRowBuilder().addComponents(menu2x);
+  const row2_3 = new ActionRowBuilder().addComponents(menuGearsWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3] }
   };
 }
 
