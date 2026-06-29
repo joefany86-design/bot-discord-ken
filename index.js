@@ -921,6 +921,19 @@ client.on('interactionCreate', async interaction => {
         await interaction.editReply({ content: '❌ Terjadi kesalahan saat mengambil berita terbaru.' });
       }
     }
+    // ── LOKER (LOWONGAN KERJA) ──
+    else if (commandName === 'loker') {
+      await interaction.deferReply();
+      try {
+        const { fetchLatestJobs, generateJobsEmbed } = require('./greetings/loker');
+        const items = await fetchLatestJobs();
+        const embed = generateJobsEmbed(client, items);
+        await interaction.editReply({ embeds: [embed] });
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+        await interaction.editReply({ content: '❌ Terjadi kesalahan saat mengambil lowongan kerja terbaru.' });
+      }
+    }
     // ── STIKER ──
     else if (commandName === 'stiker') {
       await interaction.deferReply();

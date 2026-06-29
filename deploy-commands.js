@@ -54,6 +54,10 @@ const commands = [
     .setDescription('Menampilkan 5 berita terkini ter-update hari ini'),
 
   new SlashCommandBuilder()
+    .setName('loker')
+    .setDescription('Menampilkan 5 informasi lowongan kerja terbaru di Indonesia'),
+
+  new SlashCommandBuilder()
     .setName('stiker')
     .setDescription('Kirim stiker lucu kawaii ke chat! 🎨')
     .addStringOption(option =>

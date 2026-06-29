@@ -74,7 +74,20 @@ async function sendDailyNews(client) {
     return;
   }
 
-  const embed = generateNewsEmbed(client, items);
+  const newsEmbed = generateNewsEmbed(client, items);
+  
+  // Ambil info loker juga untuk dikirim bersama berita
+  let jobsEmbed = null;
+  try {
+    const { fetchLatestJobs, generateJobsEmbed } = require('./loker');
+    const jobItems = await fetchLatestJobs();
+    if (jobItems.length > 0) {
+      jobsEmbed = generateJobsEmbed(client, jobItems);
+    }
+  } catch (jobErr) {
+    console.error('[News] Gagal mengambil info loker untuk berita harian:', jobErr.message);
+  }
+
   const targets = config.targets || [];
 
   for (const target of targets) {
@@ -86,8 +99,13 @@ async function sendDailyNews(client) {
       const channel = guild.channels.cache.get(target.channelId) || await guild.channels.fetch(target.channelId).catch(() => null);
       if (!channel || !channel.isTextBased()) continue;
 
-      await channel.send({ content: '📢 **Kabar Hari Ini!**', embeds: [embed] });
-      console.log(`[News] Berita harian berhasil dikirim ke #${channel.name} di server ${guild.name}`);
+      const embedsToSend = [newsEmbed];
+      if (jobsEmbed) {
+        embedsToSend.push(jobsEmbed);
+      }
+
+      await channel.send({ content: '📢 **Kabar & Info Lowongan Kerja Hari Ini!**', embeds: embedsToSend });
+      console.log(`[News] Berita & Loker harian berhasil dikirim ke #${channel.name} di server ${guild.name}`);
     } catch (error) {
       console.error(`[News] Gagal mengirim berita ke guild ${target.guildId}:`, error.message);
     }
