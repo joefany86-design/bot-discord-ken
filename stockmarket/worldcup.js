@@ -3,7 +3,7 @@ const { db } = require('./database');
 
 // Data pertandingan Piala Dunia 2026 (WIB Timezone)
 // Beberapa skor telah disimulasikan / disesuaikan dengan hasil pertandingan terkini
-const matches = [
+const hardcodedMatches = [
   // Grup H - 26 Juni 2026
   {
     id: 1,
@@ -62,7 +62,7 @@ const matches = [
     score: '0 - 2',
     status: 'Selesai'
   },
-  // Grup J - 27 Juni 2026 ET / 28 Juni WIB
+  // Grup J - 28 Juni 2026 WIB
   {
     id: 6,
     stage: 'Grup J',
@@ -82,15 +82,15 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '09:00 WIB',
     etTime: '27 Juni, 22:00 ET',
-    score: '1 - 2',
+    score: '1 - 1',
     status: 'Selesai'
   },
-  // Babak 32 Besar (Dimulai 28 Juni ET / 29 Juni WIB)
+  // Babak 32 Besar - 29 Juni 2026 WIB
   {
     id: 8,
     stage: 'Babak 32 Besar',
-    home: 'Runner-up Grup A',
-    away: 'Runner-up Grup B',
+    home: 'Tanjung Verde 🇨🇻',
+    away: 'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
     wibDate: 'Senin, 29 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '28 Juni, 17:00 ET',
@@ -118,74 +118,122 @@ const matches = [
     etTime: '30 Juni, 20:00 ET',
     score: '1 - 1 (Pen: 2 - 3)',
     status: 'Selesai'
-  },
-  {
-    id: 11,
-    stage: 'Babak 32 Besar',
-    home: 'Spanyol 🇪🇸',
-    away: 'Austria 🇦🇹',
-    wibDate: 'Jumat, 3 Juli 2026',
-    wibTime: '02:00 WIB',
-    etTime: '2 Juli, 15:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
-  },
-  {
-    id: 12,
-    stage: 'Babak 32 Besar',
-    home: 'Portugal 🇵🇹',
-    away: 'Kroasia 🇭🇷',
-    wibDate: 'Jumat, 3 Juli 2026',
-    wibTime: '06:00 WIB',
-    etTime: '2 Juli, 19:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
-  },
-  {
-    id: 13,
-    stage: 'Babak 32 Besar',
-    home: 'Swiss 🇨🇭',
-    away: 'Aljazair 🇩🇿',
-    wibDate: 'Jumat, 3 Juli 2026',
-    wibTime: '10:00 WIB',
-    etTime: '2 Juli, 23:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
-  },
-  {
-    id: 14,
-    stage: 'Babak 32 Besar',
-    home: 'Australia 🇦🇺',
-    away: 'Mesir 🇪🇬',
-    wibDate: 'Sabtu, 4 Juli 2026',
-    wibTime: '01:00 WIB',
-    etTime: '3 Juli, 14:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
-  },
-  {
-    id: 15,
-    stage: 'Babak 32 Besar',
-    home: 'Argentina 🇦🇷',
-    away: 'Tanjung Verde 🇨🇻',
-    wibDate: 'Sabtu, 4 Juli 2026',
-    wibTime: '05:00 WIB',
-    etTime: '3 Juli, 18:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
-  },
-  {
-    id: 16,
-    stage: 'Babak 32 Besar',
-    home: 'Kolombia 🇨🇴',
-    away: 'Ghana 🇬🇭',
-    wibDate: 'Sabtu, 4 Juli 2026',
-    wibTime: '08:30 WIB',
-    etTime: '3 Juli, 21:30 ET',
-    score: '- - -',
-    status: 'Mendatang'
   }
 ];
+
+const matches = [...hardcodedMatches];
+
+const countryTranslations = {
+  'Spain': 'Spanyol 🇪🇸',
+  'Austria': 'Austria 🇦🇹',
+  'Portugal': 'Portugal 🇵🇹',
+  'Croatia': 'Kroasia 🇭🇷',
+  'Switzerland': 'Swiss 🇨🇭',
+  'Algeria': 'Aljazair 🇩🇿',
+  'Australia': 'Australia 🇦🇺',
+  'Egypt': 'Mesir 🇪🇬',
+  'Argentina': 'Argentina 🇦🇷',
+  'Cape Verde': 'Tanjung Verde 🇨🇻',
+  'Colombia': 'Kolombia 🇨🇴',
+  'Ghana': 'Ghana 🇬🇭',
+  'Germany': 'Jerman 🇩🇪',
+  'Paraguay': 'Paraguay 🇵🇾',
+  'Netherlands': 'Belanda 🇳🇱',
+  'Morocco': 'Maroko 🇲🇦',
+  'Panama': 'Panama 🇵🇦',
+  'England': 'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Jordan': 'Yordania 🇯🇴',
+  'DR Congo': 'RD Kongo 🇨🇩',
+  'Uzbekistan': 'Uzbekistan 🇺🇿'
+};
+
+async function fetchRealtimeMatches() {
+  try {
+    const res = await fetch('https://noneserv.pages.dev/api/matches.json');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS worldcup_matches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stage TEXT,
+        home TEXT,
+        away TEXT,
+        wib_date TEXT,
+        wib_time TEXT,
+        unique_key TEXT UNIQUE
+      )
+    `);
+
+    // Ensure auto-increment starts at 11
+    const seq = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'worldcup_matches'").get();
+    if (!seq) {
+      db.prepare("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('worldcup_matches', 10)").run();
+    }
+
+    for (const item of data) {
+      const homeName = countryTranslations[item.home.name] || item.home.name;
+      const awayName = countryTranslations[item.away.name] || item.away.name;
+      const dateObj = new Date(item.dateISO);
+
+      const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dateObj);
+      const hours = String(dateObj.getHours()).padStart(2, '0');
+      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+      const timeStr = `${hours}:${minutes} WIB`;
+
+      const uniqueKey = `${item.home.name}-${item.away.name}-${item.dateISO}`;
+
+      db.prepare(`
+        INSERT OR IGNORE INTO worldcup_matches (stage, home, away, wib_date, wib_time, unique_key)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(item.competition.split(': ')[1] || 'Babak 32 Besar', homeName, awayName, dateStr, timeStr, uniqueKey);
+    }
+  } catch (err) {
+    console.error("❌ Gagal mengambil jadwal realtime:", err.message);
+  }
+}
+
+function loadMatchesFromDb() {
+  matches.length = 0;
+  matches.push(...hardcodedMatches);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worldcup_matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      stage TEXT,
+      home TEXT,
+      away TEXT,
+      wib_date TEXT,
+      wib_time TEXT,
+      unique_key TEXT UNIQUE
+    )
+  `);
+
+  const dbMatches = db.prepare("SELECT * FROM worldcup_matches").all();
+  dbMatches.forEach(row => {
+    if (!matches.some(m => m.id === row.id)) {
+      matches.push({
+        id: row.id,
+        stage: row.stage,
+        home: row.home,
+        away: row.away,
+        wibDate: row.wib_date,
+        wibTime: row.wib_time,
+        score: '- - -',
+        status: 'Mendatang'
+      });
+    }
+  });
+
+  // Apply scores from worldcup_match_scores
+  matches.forEach(m => {
+    const saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
+    if (saved) {
+      m.score = saved.score;
+      m.status = saved.status;
+    }
+  });
+}
 
 /**
  * Menyimpan ID Channel Bola khusus ke Database
@@ -236,6 +284,7 @@ function getMatchTimestamp(wibDateStr, wibTimeStr) {
  * Mengupdate status pertandingan dan men-generate skor acak realistis yang persisten di database
  */
 function updateMatchScores(client) {
+  loadMatchesFromDb();
   const now = Date.now();
   
   // Pastikan tabel di database ada
@@ -554,9 +603,17 @@ function generateWorldCupEmbed(client) {
     .setDescription('Berikut adalah jadwal, jam tanding (WIB), dan skor terbaru Piala Dunia FIFA 2026:')
     .setTimestamp();
 
+  // Filter matches to only show Live, Mendatang, or Selesai within the last 12 hours
+  const filteredMatches = matches.filter(m => {
+    if (m.status !== 'Selesai') return true;
+    const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
+    const twelveHours = 12 * 60 * 60 * 1000;
+    return Date.now() < kickoff + twelveHours;
+  });
+
   // Kelompokkan pertandingan berdasarkan Tanggal WIB
   const groupedMatches = {};
-  matches.forEach(m => {
+  filteredMatches.forEach(m => {
     if (!groupedMatches[m.wibDate]) {
       groupedMatches[m.wibDate] = [];
     }
@@ -850,6 +907,8 @@ function startLiveMatchWatcher(client) {
   
   const tick = async () => {
     try {
+      await fetchRealtimeMatches();
+      loadMatchesFromDb();
       const now = Date.now();
       const activeMatches = matches.filter(m => {
         if (m.id <= 10) return false; // Skip hardcoded completed matches
