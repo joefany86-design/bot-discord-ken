@@ -704,6 +704,7 @@ client.once('ready', async () => {
     for (const guild of client.guilds.cache.values()) {
       await worldcup.autoCreateWorldCupChannel(guild);
     }
+    worldcup.startLiveMatchWatcher(client);
   } catch (wcErr) {
     console.error('❌ Gagal melakukan inisialisasi channel Piala Dunia otomatis:', wcErr.message);
   }

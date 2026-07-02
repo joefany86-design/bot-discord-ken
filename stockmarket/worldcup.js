@@ -25,8 +25,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '27 Juni, 17:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '0 - 4',
+    status: 'Selesai'
   },
   {
     id: 3,
@@ -36,8 +36,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '27 Juni, 17:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '0 - 2',
+    status: 'Selesai'
   },
   // Grup K - 27 Juni 2026 ET / 28 Juni WIB
   {
@@ -48,8 +48,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '06:30 WIB',
     etTime: '27 Juni, 19:30 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '2 - 1',
+    status: 'Selesai'
   },
   {
     id: 5,
@@ -59,8 +59,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '06:30 WIB',
     etTime: '27 Juni, 19:30 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '0 - 2',
+    status: 'Selesai'
   },
   // Grup J - 27 Juni 2026 ET / 28 Juni WIB
   {
@@ -71,8 +71,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '09:00 WIB',
     etTime: '27 Juni, 22:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '0 - 2',
+    status: 'Selesai'
   },
   {
     id: 7,
@@ -82,8 +82,8 @@ const matches = [
     wibDate: 'Minggu, 28 Juni 2026',
     wibTime: '09:00 WIB',
     etTime: '27 Juni, 22:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '1 - 2',
+    status: 'Selesai'
   },
   // Babak 32 Besar (Dimulai 28 Juni ET / 29 Juni WIB)
   {
@@ -94,8 +94,8 @@ const matches = [
     wibDate: 'Senin, 29 Juni 2026',
     wibTime: '04:00 WIB',
     etTime: '28 Juni, 17:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '2 - 2',
+    status: 'Selesai'
   },
   {
     id: 9,
@@ -105,8 +105,8 @@ const matches = [
     wibDate: 'Selasa, 30 Juni 2026',
     wibTime: '05:00 WIB',
     etTime: '29 Juni, 18:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '3 - 0',
+    status: 'Selesai'
   },
   {
     id: 10,
@@ -116,8 +116,8 @@ const matches = [
     wibDate: 'Rabu, 1 Juli 2026',
     wibTime: '07:00 WIB',
     etTime: '30 Juni, 20:00 ET',
-    score: '- - -',
-    status: 'Mendatang'
+    score: '1 - 1 (Pen: 2 - 3)',
+    status: 'Selesai'
   }
 ];
 
@@ -198,7 +198,7 @@ function updateMatchScores(client) {
   `);
 
   matches.forEach(m => {
-    if (m.id === 1) return; // Tanjung Verde vs Arab Saudi sudah selesai secara default
+    if (m.id <= 10) return; // Pertandingan 1-10 sudah selesai secara default/hardcoded
     
     const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
     const duration = 2 * 60 * 60 * 1000; // 2 jam durasi pertandingan
@@ -259,12 +259,23 @@ function resolveMatchBets(client, matchId, actualScore) {
   const match = matches.find(m => m.id === matchId);
   if (!match) return;
 
-  const actualScoreParts = actualScore.split('-').map(s => parseInt(s.trim()));
+  // Parse main score (ignore penalty parts for exact score checking)
+  const mainScoreOnly = actualScore.split('(')[0].trim();
+  const actualScoreParts = mainScoreOnly.split('-').map(s => parseInt(s.trim()));
   const actualHome = actualScoreParts[0];
   const actualAway = actualScoreParts[1];
   if (isNaN(actualHome) || isNaN(actualAway)) return;
 
-  const actualOutcome = actualHome > actualAway ? 'home' : (actualHome < actualAway ? 'away' : 'draw');
+  // Determine outcome, considering penalty shootouts if present
+  let actualOutcome;
+  const penMatch = actualScore.match(/\(Pen:\s*(\d+)\s*-\s*(\d+)\)/i);
+  if (penMatch) {
+    const penHome = parseInt(penMatch[1]);
+    const penAway = parseInt(penMatch[2]);
+    actualOutcome = penHome > penAway ? 'home' : 'away';
+  } else {
+    actualOutcome = actualHome > actualAway ? 'home' : (actualHome < actualAway ? 'away' : 'draw');
+  }
 
   // Group by guild_id
   const betsByGuild = {};
@@ -498,17 +509,7 @@ function generateWorldCupEmbed(client) {
 
   return embed;
 }
-
-module.exports = {
-  matches,
-  setWorldCupChannel,
-  getWorldCupChannel,
-  generateWorldCupEmbed,
-  placeExactScoreBet,
-  placeOutcomeBet,
-  resolveMatchBets
-};
-
+// module.exports will be handled at the bottom of the file
 /**
  * Mencari atau membuat channel piala dunia otomatis pada startup
  */
@@ -739,6 +740,210 @@ async function handleWorldCupInteractions(interaction, client) {
   }
 }
 
-module.exports.autoCreateWorldCupChannel = autoCreateWorldCupChannel;
-module.exports.handleWorldCupInteractions = handleWorldCupInteractions;
+// Map of players for scorer names
+const teamPlayers = {
+  'Belanda 🇳🇱': ['Memphis Depay', 'Cody Gakpo', 'Xavi Simons', 'Frenkie de Jong', 'Virgil van Dijk'],
+  'Maroko 🇲🇦': ['Hakim Ziyech', 'Youssef En-Nesyri', 'Achraf Hakimi', 'Sofyan Amrabat', 'Brahim Díaz'],
+  'Jerman 🇩🇪': ['Florian Wirtz', 'Jamal Musiala', 'Kai Havertz', 'Niclas Füllkrug', 'Thomas Müller'],
+  'Paraguay 🇵🇾': ['Miguel Almirón', 'Antonio Sanabria', 'Julio Enciso', 'Ramón Sosa'],
+  'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿': ['Harry Kane', 'Jude Bellingham', 'Bukayo Saka', 'Phil Foden', 'Cole Palmer'],
+  'Panama 🇵🇦': ['Cecilio Waterman', 'José Fajardo', 'Yoel Bárcenas'],
+  'Kroasia 🇭🇷': ['Andrej Kramarić', 'Luka Modrić', 'Ivan Perišić', 'Mario Pašalić'],
+  'Ghana 🇬🇭': ['Inaki Williams', 'Mohammed Kudus', 'Jordan Ayew', 'Antoine Semenyo'],
+  'Kolombia 🇨🇴': ['Luis Díaz', 'James Rodríguez', 'Jhon Durán', 'Rafael Borré'],
+  'Portugal 🇵🇹': ['Cristiano Ronaldo', 'Bruno Fernandes', 'Rafael Leão', 'João Félix', 'Gonçalo Ramos'],
+  'RD Kongo 🇨🇩': ['Yoane Wissa', 'Cédric Bakambu', 'Meschak Elia'],
+  'Uzbekistan 🇺🇿': ['Eldor Shomurodov', 'Abbosbek Fayzullaev', 'Igor Sergeev'],
+  'Yordania 🇯🇴': ['Musa Al-Taamari', 'Yazan Al-Naimat', 'Ali Olwan'],
+  'Argentina 🇦🇷': ['Lionel Messi', 'Lautaro Martínez', 'Julián Álvarez', 'Alexis Mac Allister', 'Rodrigo De Paul'],
+  'Aljazair 🇩🇿': ['Riyad Mahrez', 'Baghdad Bounedjah', 'Amine Gouiri', 'Saïd Benrahma'],
+  'Austria 🇦🇹': ['Marcel Sabitzer', 'Christoph Baumgartner', 'Michael Gregoritsch', 'Marko Arnautović']
+};
+
+/**
+ * Start background live match monitoring and mock simulation loop
+ */
+function startLiveMatchWatcher(client) {
+  // Ensure events table exists
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS worldcup_match_events (
+      event_id TEXT PRIMARY KEY,
+      match_id INTEGER,
+      event_type TEXT,
+      details TEXT,
+      created_at INTEGER
+    )
+  `);
+
+  console.log("⚽ [WorldCup] Live match watcher started (interval: 60s).");
+  
+  const tick = async () => {
+    try {
+      const now = Date.now();
+      const activeMatches = matches.filter(m => {
+        if (m.id <= 10) return false; // Skip hardcoded completed matches
+        const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
+        const saved = db.prepare('SELECT status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
+        const status = saved ? saved.status : 'Mendatang';
+        return now >= kickoff && status !== 'Selesai';
+      });
+
+      for (const m of activeMatches) {
+        const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
+        const elapsedMs = now - kickoff;
+        const duration = 2 * 60 * 60 * 1000; // 2 hours
+
+        // Get current DB status & score
+        let saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
+        if (!saved) {
+          // Initialize live match
+          db.prepare('INSERT INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
+            .run(m.id, '0 - 0', 'Live');
+          saved = { score: '0 - 0', status: 'Live' };
+          m.score = '0 - 0';
+          m.status = 'Live';
+          
+          // Send kick-off announcement
+          sendWorldCupNotification(client, `⏰ **KICK-OFF!** Pertandingan **${m.home}** vs **${m.away}** di **${m.stage}** telah dimulai!`);
+        }
+
+        const scoreParts = saved.score.split('(')[0].split('-').map(s => parseInt(s.trim()));
+        let homeScore = scoreParts[0];
+        let awayScore = scoreParts[1];
+
+        if (elapsedMs > duration) {
+          // Match finished -> Finalize
+          let finalScore = `${homeScore} - ${awayScore}`;
+          
+          // If draw in knockout stage, do penalty shootout
+          if (homeScore === awayScore && m.stage.includes('Babak')) {
+            let penHome = 0;
+            let penAway = 0;
+            while (penHome === penAway || (penHome < 3 && penAway < 3)) {
+              penHome += Math.random() > 0.3 ? 1 : 0;
+              penAway += Math.random() > 0.3 ? 1 : 0;
+              if (Math.abs(penHome - penAway) >= 2 && (penHome >= 3 || penAway >= 3)) break;
+            }
+            // Sudden death if draw after 5 shots
+            while (penHome === penAway) {
+              penHome += Math.random() > 0.3 ? 1 : 0;
+              penAway += Math.random() > 0.3 ? 1 : 0;
+            }
+            finalScore = `${homeScore} - ${awayScore} (Pen: ${penHome} - ${penAway})`;
+          }
+
+          db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
+            .run(m.id, finalScore, 'Selesai');
+          m.score = finalScore;
+          m.status = 'Selesai';
+
+          sendWorldCupNotification(client, `🏁 **PERTANDINGAN SELESAI!**\n⚽ **${m.home}** vs **${m.away}**\n**Skor Akhir:** **${finalScore}**`);
+
+          // Resolve bets
+          try {
+            resolveMatchBets(client, m.id, finalScore);
+          } catch (e) {
+            console.error(`❌ Gagal menyelesaikan taruhan untuk match ID ${m.id}:`, e.message);
+          }
+        } else {
+          // Match is LIVE -> Simulate goals
+          // Calculate match minute
+          let matchMinute;
+          if (elapsedMs <= 45 * 60 * 1000) {
+            matchMinute = `${Math.floor(elapsedMs / 60000) + 1}'`;
+          } else if (elapsedMs > 45 * 60 * 1000 && elapsedMs <= 60 * 60 * 1000) {
+            matchMinute = 'HT';
+          } else if (elapsedMs > 60 * 60 * 1000 && elapsedMs <= 105 * 60 * 1000) {
+            matchMinute = `${Math.floor((elapsedMs - 15 * 60 * 1000) / 60000) + 1}'`;
+          } else {
+            matchMinute = "90+'";
+          }
+
+          if (matchMinute !== 'HT') {
+            // 4.5% chance of goal per check/minute
+            if (Math.random() < 0.045) {
+              // Determine scorer team (favorites have higher chance)
+              const isHomeStrong = m.home.includes('Argentina') || m.home.includes('Jerman') || m.home.includes('Inggris');
+              const isAwayStrong = m.away.includes('Argentina') || m.away.includes('Jerman') || m.away.includes('Inggris');
+              let scoringTeam;
+              if (isHomeStrong && !isAwayStrong) {
+                scoringTeam = Math.random() < 0.7 ? 'home' : 'away';
+              } else if (isAwayStrong && !isHomeStrong) {
+                scoringTeam = Math.random() < 0.7 ? 'away' : 'home';
+              } else {
+                scoringTeam = Math.random() < 0.5 ? 'home' : 'away';
+              }
+
+              let scorerName = 'Pemain';
+              let teamName = '';
+              if (scoringTeam === 'home') {
+                homeScore++;
+                teamName = m.home;
+                const players = teamPlayers[m.home] || [];
+                scorerName = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : `Pemain ${m.home.split(' 🇨🇻')[0].split(' 🇸🇦')[0].split(' 🇵🇦')[0].split(' 🏴󠁧󠁢󠁥󠁮󠁧󠁿')[0].split(' 🇭🇷')[0].split(' 🇬🇭')[0].split(' 🇨🇴')[0].split(' 🇵🇹')[0].split(' 🇨🇩')[0].split(' 🇺🇿')[0].split(' 🇯🇴')[0].split(' 🇦🇷')[0].split(' 🇩🇿')[0].split(' 🇦🇹')[0].split(' 🇩🇪')[0].split(' 🇵🇾')[0].split(' 🇳🇱')[0].split(' 🇲🇦')[0]}`;
+              } else {
+                awayScore++;
+                teamName = m.away;
+                const players = teamPlayers[m.away] || [];
+                scorerName = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : `Pemain ${m.away.split(' 🇨🇻')[0].split(' 🇸🇦')[0].split(' 🇵🇦')[0].split(' 🏴󠁧󠁢󠁥󠁮󠁧󠁿')[0].split(' 🇭🇷')[0].split(' 🇬🇭')[0].split(' 🇨🇴')[0].split(' 🇵🇹')[0].split(' 🇨🇩')[0].split(' 🇺🇿')[0].split(' 🇯🇴')[0].split(' 🇦🇷')[0].split(' 🇩🇿')[0].split(' 🇦🇹')[0].split(' 🇩🇪')[0].split(' 🇵🇾')[0].split(' 🇳🇱')[0].split(' 🇲🇦')[0]}`;
+              }
+
+              const newScore = `${homeScore} - ${awayScore}`;
+              const eventId = `match_${m.id}_goal_${homeScore}_${awayScore}`;
+
+              // Ensure we don't duplicate events
+              const exists = db.prepare('SELECT 1 FROM worldcup_match_events WHERE event_id = ?').get(eventId);
+              if (!exists) {
+                db.prepare('INSERT INTO worldcup_match_events (event_id, match_id, event_type, details, created_at) VALUES (?, ?, ?, ?, ?)')
+                  .run(eventId, m.id, 'goal', `${scorerName} (${matchMinute})`, Math.floor(Date.now() / 1000));
+                
+                db.prepare('UPDATE worldcup_match_scores SET score = ? WHERE match_id = ?').run(newScore, m.id);
+                m.score = newScore;
+
+                sendWorldCupNotification(client, `⚽ **GOOOL!** [${teamName}] mencetak gol!\n\n**Skor Sementara:** **${m.home}** **${newScore}** **${m.away}**\n🎯 **Pencetak Gol:** ${scorerName} (${matchMinute})`);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("❌ Error in live match watcher loop:", err.message);
+    }
+  };
+
+  // Run once immediately
+  tick();
+
+  // Schedule interval
+  setInterval(tick, 60000);
+}
+
+/**
+ * Sends a message to the World Cup channel across all guilds
+ */
+function sendWorldCupNotification(client, content) {
+  if (!client) return;
+  client.guilds.cache.forEach(guild => {
+    const channelId = getWorldCupChannel(guild.id);
+    if (channelId) {
+      const channel = guild.channels.cache.get(channelId);
+      if (channel) {
+        channel.send({ content }).catch(err => console.error(`Error sending WorldCup event notification:`, err.message));
+      }
+    }
+  });
+}
+
+module.exports = {
+  matches,
+  setWorldCupChannel,
+  getWorldCupChannel,
+  generateWorldCupEmbed,
+  placeExactScoreBet,
+  placeOutcomeBet,
+  resolveMatchBets,
+  autoCreateWorldCupChannel,
+  handleWorldCupInteractions,
+  startLiveMatchWatcher
+};
 
