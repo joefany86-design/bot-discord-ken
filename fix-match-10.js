@@ -89,7 +89,7 @@ const runFix = db.transaction(() => {
 });
 
 try {
-  runFix();
+  runFix.immediate();
 } catch (error) {
   console.error("Failed to run fix transaction:", error);
 }
