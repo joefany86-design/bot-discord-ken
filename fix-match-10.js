@@ -1,4 +1,3 @@
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
@@ -6,12 +5,8 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const dbPath = process.env.DATABASE_PATH && fs.existsSync(process.env.DATABASE_PATH)
-  ? process.env.DATABASE_PATH
-  : path.join(__dirname, 'data/economy.db');
-
-console.log(`Using database: ${dbPath}`);
-const db = new Database(dbPath);
+// Use the existing database connection to avoid SQLITE_BUSY locking conflicts
+const { db } = require('./stockmarket/database');
 
 const economy = require('./stockmarket/economy');
 const config = require('./stockmarket/config');
