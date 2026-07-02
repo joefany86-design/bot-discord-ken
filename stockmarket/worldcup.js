@@ -118,6 +118,72 @@ const matches = [
     etTime: '30 Juni, 20:00 ET',
     score: '1 - 1 (Pen: 2 - 3)',
     status: 'Selesai'
+  },
+  {
+    id: 11,
+    stage: 'Babak 32 Besar',
+    home: 'Spanyol 🇪🇸',
+    away: 'Austria 🇦🇹',
+    wibDate: 'Jumat, 3 Juli 2026',
+    wibTime: '02:00 WIB',
+    etTime: '2 Juli, 15:00 ET',
+    score: '- - -',
+    status: 'Mendatang'
+  },
+  {
+    id: 12,
+    stage: 'Babak 32 Besar',
+    home: 'Portugal 🇵🇹',
+    away: 'Kroasia 🇭🇷',
+    wibDate: 'Jumat, 3 Juli 2026',
+    wibTime: '06:00 WIB',
+    etTime: '2 Juli, 19:00 ET',
+    score: '- - -',
+    status: 'Mendatang'
+  },
+  {
+    id: 13,
+    stage: 'Babak 32 Besar',
+    home: 'Swiss 🇨🇭',
+    away: 'Aljazair 🇩🇿',
+    wibDate: 'Jumat, 3 Juli 2026',
+    wibTime: '10:00 WIB',
+    etTime: '2 Juli, 23:00 ET',
+    score: '- - -',
+    status: 'Mendatang'
+  },
+  {
+    id: 14,
+    stage: 'Babak 32 Besar',
+    home: 'Australia 🇦🇺',
+    away: 'Mesir 🇪🇬',
+    wibDate: 'Sabtu, 4 Juli 2026',
+    wibTime: '01:00 WIB',
+    etTime: '3 Juli, 14:00 ET',
+    score: '- - -',
+    status: 'Mendatang'
+  },
+  {
+    id: 15,
+    stage: 'Babak 32 Besar',
+    home: 'Argentina 🇦🇷',
+    away: 'Tanjung Verde 🇨🇻',
+    wibDate: 'Sabtu, 4 Juli 2026',
+    wibTime: '05:00 WIB',
+    etTime: '3 Juli, 18:00 ET',
+    score: '- - -',
+    status: 'Mendatang'
+  },
+  {
+    id: 16,
+    stage: 'Babak 32 Besar',
+    home: 'Kolombia 🇨🇴',
+    away: 'Ghana 🇬🇭',
+    wibDate: 'Sabtu, 4 Juli 2026',
+    wibTime: '08:30 WIB',
+    etTime: '3 Juli, 21:30 ET',
+    score: '- - -',
+    status: 'Mendatang'
   }
 ];
 
@@ -757,7 +823,12 @@ const teamPlayers = {
   'Yordania 🇯🇴': ['Musa Al-Taamari', 'Yazan Al-Naimat', 'Ali Olwan'],
   'Argentina 🇦🇷': ['Lionel Messi', 'Lautaro Martínez', 'Julián Álvarez', 'Alexis Mac Allister', 'Rodrigo De Paul'],
   'Aljazair 🇩🇿': ['Riyad Mahrez', 'Baghdad Bounedjah', 'Amine Gouiri', 'Saïd Benrahma'],
-  'Austria 🇦🇹': ['Marcel Sabitzer', 'Christoph Baumgartner', 'Michael Gregoritsch', 'Marko Arnautović']
+  'Austria 🇦🇹': ['Marcel Sabitzer', 'Christoph Baumgartner', 'Michael Gregoritsch', 'Marko Arnautović'],
+  'Spanyol 🇪🇸': ['Álvaro Morata', 'Lamine Yamal', 'Nico Williams', 'Dani Olmo', 'Pedri'],
+  'Swiss 🇨🇭': ['Breel Embolo', 'Granit Xhaka', 'Xherdan Shaqiri', 'Zeki Amdouni'],
+  'Australia 🇦🇺': ['Mitchell Duke', 'Craig Goodwin', 'Jackson Irvine'],
+  'Mesir 🇪🇬': ['Mohamed Salah', 'Mostafa Mohamed', 'Omar Marmoush'],
+  'Tanjung Verde 🇨🇻': ['Bebé', 'Ryan Mendes', 'Garry Rodrigues']
 };
 
 /**
