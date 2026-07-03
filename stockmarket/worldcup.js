@@ -148,10 +148,27 @@ const countryTranslations = {
 };
 
 async function fetchRealtimeMatches() {
+  const apiToken = process.env.SPORTMONKS_API_TOKEN;
+  if (!apiToken) {
+    console.warn("⚠️ SPORTMONKS_API_TOKEN tidak ditemukan di .env. Menggunakan database yang ada.");
+    return;
+  }
+
   try {
-    const res = await fetch('https://noneserv.pages.dev/api/matches.json');
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const fromDate = yesterday.toISOString().split('T')[0];
+    const toDate = nextWeek.toISOString().split('T')[0];
+
+    const url = `https://api.sportmonks.com/v3/football/fixtures/between/${fromDate}/${toDate}?api_token=${apiToken}&include=participants,scores,stage`;
+    const res = await fetch(url);
     if (!res.ok) return;
-    const data = await res.json();
+    const responseData = await res.json();
+    const data = responseData.data || [];
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS worldcup_matches (
@@ -171,25 +188,69 @@ async function fetchRealtimeMatches() {
       db.prepare("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('worldcup_matches', 10)").run();
     }
 
-    for (const item of data) {
-      const homeName = countryTranslations[item.home.name] || item.home.name;
-      const awayName = countryTranslations[item.away.name] || item.away.name;
-      const dateObj = new Date(item.dateISO);
+    // Auto-clean any legacy Formula 1 / non-World Cup entries
+    db.exec(`
+      DELETE FROM worldcup_match_scores WHERE match_id IN (
+        SELECT id FROM worldcup_matches WHERE home = 'Formula 1' OR away = 'Formula 1'
+      )
+    `);
+    db.exec(`DELETE FROM worldcup_matches WHERE home = 'Formula 1' OR away = 'Formula 1'`);
 
+    for (const fixture of data) {
+      // 732 is FIFA World Cup League ID
+      if (fixture.league_id !== 732) {
+        continue;
+      }
+
+      const homeTeam = fixture.participants?.find(p => p.meta?.location === 'home');
+      const awayTeam = fixture.participants?.find(p => p.meta?.location === 'away');
+      if (!homeTeam || !awayTeam) continue;
+
+      const homeName = countryTranslations[homeTeam.name] || homeTeam.name;
+      const awayName = countryTranslations[awayTeam.name] || awayTeam.name;
+      
+      const dateObj = new Date(fixture.starting_at);
       const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dateObj);
       const hours = String(dateObj.getHours()).padStart(2, '0');
       const minutes = String(dateObj.getMinutes()).padStart(2, '0');
       const timeStr = `${hours}:${minutes} WIB`;
 
-      const uniqueKey = `${item.home.name}-${item.away.name}-${item.dateISO}`;
+      const uniqueKey = `sportmonks-${fixture.id}`;
 
+      // Insert or ignore matches into database
       db.prepare(`
         INSERT OR IGNORE INTO worldcup_matches (stage, home, away, wib_date, wib_time, unique_key)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(item.competition.split(': ')[1] || 'Babak 32 Besar', homeName, awayName, dateStr, timeStr, uniqueKey);
+      `).run(fixture.stage?.name || 'Grup', homeName, awayName, dateStr, timeStr, uniqueKey);
+
+      // Handle scores if live or finished
+      let scoreStr = '- - -';
+      let status = 'Mendatang';
+
+      const stateCode = fixture.state?.state;
+      if (stateCode === 'LIVE' || stateCode === 'INPLAY') {
+        status = 'Live';
+        const homeGoals = fixture.scores?.find(s => s.participant_id === homeTeam.id && s.description === 'CURRENT')?.score?.goals || 0;
+        const awayGoals = fixture.scores?.find(s => s.participant_id === awayTeam.id && s.description === 'CURRENT')?.score?.goals || 0;
+        scoreStr = `${homeGoals} - ${awayGoals}`;
+      } else if (stateCode === 'FT' || stateCode === 'FINISHED') {
+        status = 'Selesai';
+        const homeGoals = fixture.scores?.find(s => s.participant_id === homeTeam.id && s.description === 'FT')?.score?.goals || 0;
+        const awayGoals = fixture.scores?.find(s => s.participant_id === awayTeam.id && s.description === 'FT')?.score?.goals || 0;
+        scoreStr = `${homeGoals} - ${awayGoals}`;
+      }
+
+      if (status !== 'Mendatang') {
+        // Find DB match ID for this unique key
+        const matchRow = db.prepare('SELECT id FROM worldcup_matches WHERE unique_key = ?').get(uniqueKey);
+        if (matchRow) {
+          db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
+            .run(matchRow.id, scoreStr, status);
+        }
+      }
     }
   } catch (err) {
-    console.error("❌ Gagal mengambil jadwal realtime:", err.message);
+    console.error("❌ Gagal mengambil jadwal realtime Sportmonks:", err.message);
   }
 }
 
