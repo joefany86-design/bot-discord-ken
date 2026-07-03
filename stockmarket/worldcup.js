@@ -148,27 +148,12 @@ const countryTranslations = {
 };
 
 async function fetchRealtimeMatches() {
-  const apiToken = process.env.SPORTMONKS_API_TOKEN;
-  if (!apiToken) {
-    console.warn("⚠️ SPORTMONKS_API_TOKEN tidak ditemukan di .env. Menggunakan database yang ada.");
-    return;
-  }
-
   try {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-
-    const fromDate = yesterday.toISOString().split('T')[0];
-    const toDate = nextWeek.toISOString().split('T')[0];
-
-    const url = `https://api.sportmonks.com/v3/football/fixtures/between/${fromDate}/${toDate}?api_token=${apiToken}&include=participants,scores,stage`;
+    const url = 'https://worldcup26.ir/get/games';
     const res = await fetch(url);
     if (!res.ok) return;
     const responseData = await res.json();
-    const data = responseData.data || [];
+    const data = responseData.games || [];
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS worldcup_matches (
@@ -196,61 +181,80 @@ async function fetchRealtimeMatches() {
     `);
     db.exec(`DELETE FROM worldcup_matches WHERE home = 'Formula 1' OR away = 'Formula 1'`);
 
+    const stadiumOffsets = {
+      '13': 14, '14': 14, '15': 14, '16': 14, // Western
+      '1': 12, '2': 12, '3': 12, '4': 12, '5': 12, '6': 12, // Central
+      '7': 11, '8': 11, '9': 11, '10': 11, '11': 11, '12': 11 // Eastern
+    };
+
     for (const fixture of data) {
-      // 732 is FIFA World Cup League ID
-      if (fixture.league_id !== 732) {
-        continue;
-      }
+      const homeName = countryTranslations[fixture.home_team_name_en] || fixture.home_team_name_en || fixture.home_team_label;
+      const awayName = countryTranslations[fixture.away_team_name_en] || fixture.away_team_name_en || fixture.away_team_label;
+      if (!homeName || !awayName) continue;
 
-      const homeTeam = fixture.participants?.find(p => p.meta?.location === 'home');
-      const awayTeam = fixture.participants?.find(p => p.meta?.location === 'away');
-      if (!homeTeam || !awayTeam) continue;
+      // Parse local_date "MM/DD/YYYY HH:mm"
+      const matchDateParts = fixture.local_date.split(' ');
+      const dateParts = matchDateParts[0].split('/');
+      const timeParts = matchDateParts[1].split(':');
+      const year = parseInt(dateParts[2]);
+      const month = parseInt(dateParts[0]) - 1;
+      const day = parseInt(dateParts[1]);
+      const hour = parseInt(timeParts[0]);
+      const minute = parseInt(timeParts[1]);
 
-      const homeName = countryTranslations[homeTeam.name] || homeTeam.name;
-      const awayName = countryTranslations[awayTeam.name] || awayTeam.name;
-      
-      const dateObj = new Date(fixture.starting_at);
-      const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dateObj);
-      const hours = String(dateObj.getHours()).padStart(2, '0');
-      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+      const offsetHours = stadiumOffsets[fixture.stadium_id] || 12;
+      const localDateUTC = Date.UTC(year, month, day, hour, minute, 0);
+      const wibTimeMs = localDateUTC + (offsetHours * 60 * 60 * 1000);
+      const wibDateObj = new Date(wibTimeMs);
+
+      const dateStr = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(wibDateObj);
+      const hours = String(wibDateObj.getUTCHours()).padStart(2, '0');
+      const minutes = String(wibDateObj.getUTCMinutes()).padStart(2, '0');
       const timeStr = `${hours}:${minutes} WIB`;
 
-      const uniqueKey = `sportmonks-${fixture.id}`;
+      const uniqueKey = `worldcup26-${fixture.id}`;
+
+      let stageName = 'Grup';
+      if (fixture.group) {
+        if (fixture.group === 'R32') stageName = 'Babak 32 Besar';
+        else if (fixture.group === 'R16') stageName = 'Babak 16 Besar';
+        else if (fixture.group === 'QF') stageName = 'Perempat Final';
+        else if (fixture.group === 'SF') stageName = 'Semifinal';
+        else if (fixture.group === '3RD') stageName = 'Perebutan Tempat Ketiga';
+        else if (fixture.group === 'FI') stageName = 'Final';
+        else stageName = `Grup ${fixture.group}`;
+      }
 
       // Insert or ignore matches into database
       db.prepare(`
         INSERT OR IGNORE INTO worldcup_matches (stage, home, away, wib_date, wib_time, unique_key)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(fixture.stage?.name || 'Grup', homeName, awayName, dateStr, timeStr, uniqueKey);
+      `).run(stageName, homeName, awayName, dateStr, timeStr, uniqueKey);
 
       // Handle scores if live or finished
       let scoreStr = '- - -';
       let status = 'Mendatang';
 
-      const stateCode = fixture.state?.state;
-      if (stateCode === 'LIVE' || stateCode === 'INPLAY') {
-        status = 'Live';
-        const homeGoals = fixture.scores?.find(s => s.participant_id === homeTeam.id && s.description === 'CURRENT')?.score?.goals || 0;
-        const awayGoals = fixture.scores?.find(s => s.participant_id === awayTeam.id && s.description === 'CURRENT')?.score?.goals || 0;
-        scoreStr = `${homeGoals} - ${awayGoals}`;
-      } else if (stateCode === 'FT' || stateCode === 'FINISHED') {
+      if (fixture.finished === 'TRUE') {
         status = 'Selesai';
-        const homeGoals = fixture.scores?.find(s => s.participant_id === homeTeam.id && s.description === 'FT')?.score?.goals || 0;
-        const awayGoals = fixture.scores?.find(s => s.participant_id === awayTeam.id && s.description === 'FT')?.score?.goals || 0;
-        scoreStr = `${homeGoals} - ${awayGoals}`;
+        if (fixture.home_penalty_score !== 'null' && fixture.home_penalty_score !== null && fixture.away_penalty_score !== 'null' && fixture.away_penalty_score !== null) {
+          scoreStr = `${fixture.home_score} - ${fixture.away_score} (Pen: ${fixture.home_penalty_score} - ${fixture.away_penalty_score})`;
+        } else {
+          scoreStr = `${fixture.home_score} - ${fixture.away_score}`;
+        }
+      } else if (fixture.time_elapsed === 'live') {
+        status = 'Live';
+        scoreStr = `${fixture.home_score} - ${fixture.away_score}`;
       }
 
-      if (status !== 'Mendatang') {
-        // Find DB match ID for this unique key
-        const matchRow = db.prepare('SELECT id FROM worldcup_matches WHERE unique_key = ?').get(uniqueKey);
-        if (matchRow) {
-          db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
-            .run(matchRow.id, scoreStr, status);
-        }
+      const matchRow = db.prepare('SELECT id FROM worldcup_matches WHERE unique_key = ?').get(uniqueKey);
+      if (matchRow) {
+        db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
+          .run(matchRow.id, scoreStr, status);
       }
     }
   } catch (err) {
-    console.error("❌ Gagal mengambil jadwal realtime Sportmonks:", err.message);
+    console.error("❌ Gagal mengambil jadwal realtime worldcup26.ir:", err.message);
   }
 }
 
@@ -966,134 +970,113 @@ function startLiveMatchWatcher(client) {
 
   console.log("⚽ [WorldCup] Live match watcher started (interval: 60s).");
   
+  const parseScorers = (scorersStr) => {
+    if (!scorersStr || scorersStr === 'null') return [];
+    try {
+      let cleaned = scorersStr;
+      if (cleaned.startsWith('{')) {
+        cleaned = '[' + cleaned.substring(1, cleaned.length - 1) + ']';
+      }
+      cleaned = cleaned.replace(/“/g, '"').replace(/”/g, '"');
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
   const tick = async () => {
     try {
+      const url = 'https://worldcup26.ir/get/games';
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const responseData = await res.json();
+      const data = responseData.games || [];
+
+      // Store previous scores & statuses before database update
+      const prevStates = new Map();
+      try {
+        const allScores = db.prepare('SELECT match_id, score, status FROM worldcup_match_scores').all();
+        allScores.forEach(row => {
+          prevStates.set(row.match_id, { score: row.score, status: row.status });
+        });
+      } catch (dbErr) {
+        // Table might not exist yet on first startup
+      }
+
+      // Update database schema / schedule first
       await fetchRealtimeMatches();
       loadMatchesFromDb();
-      const now = Date.now();
-      const activeMatches = matches.filter(m => {
-        if (m.id <= 10) return false; // Skip hardcoded completed matches
-        const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
-        const saved = db.prepare('SELECT status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
-        const status = saved ? saved.status : 'Mendatang';
-        return now >= kickoff && status !== 'Selesai';
-      });
 
-      for (const m of activeMatches) {
-        const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
-        const elapsedMs = now - kickoff;
-        const duration = 2 * 60 * 60 * 1000; // 2 hours
+      for (const fixture of data) {
+        const uniqueKey = `worldcup26-${fixture.id}`;
+        const matchRow = db.prepare('SELECT id, home, away, stage FROM worldcup_matches WHERE unique_key = ?').get(uniqueKey);
+        if (!matchRow) continue;
 
-        // Get current DB status & score
-        let saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
-        if (!saved) {
-          // Initialize live match
-          db.prepare('INSERT INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
-            .run(m.id, '0 - 0', 'Live');
-          saved = { score: '0 - 0', status: 'Live' };
-          m.score = '0 - 0';
-          m.status = 'Live';
-          
-          // Send kick-off announcement
-          sendWorldCupNotification(client, `⏰ **KICK-OFF!** Pertandingan **${m.home}** vs **${m.away}** di **${m.stage}** telah dimulai!`);
+        const matchDbId = matchRow.id;
+        const homeName = matchRow.home;
+        const awayName = matchRow.away;
+        const stageName = matchRow.stage;
+
+        // Check previous status and score from stored map
+        const prevState = prevStates.get(matchDbId) || { score: '- - -', status: 'Mendatang' };
+        const prevStatus = prevState.status;
+        const prevScore = prevState.score;
+
+        let currentStatus = 'Mendatang';
+        let currentScore = '- - -';
+
+        if (fixture.finished === 'TRUE') {
+          currentStatus = 'Selesai';
+          if (fixture.home_penalty_score !== 'null' && fixture.home_penalty_score !== null && fixture.away_penalty_score !== 'null' && fixture.away_penalty_score !== null) {
+            currentScore = `${fixture.home_score} - ${fixture.away_score} (Pen: ${fixture.home_penalty_score} - ${fixture.away_penalty_score})`;
+          } else {
+            currentScore = `${fixture.home_score} - ${fixture.away_score}`;
+          }
+        } else if (fixture.time_elapsed === 'live') {
+          currentStatus = 'Live';
+          currentScore = `${fixture.home_score} - ${fixture.away_score}`;
         }
 
-        const scoreParts = saved.score.split('(')[0].split('-').map(s => parseInt(s.trim()));
-        let homeScore = scoreParts[0];
-        let awayScore = scoreParts[1];
+        // 1. Kick-off Notification
+        if (prevStatus === 'Mendatang' && currentStatus === 'Live') {
+          sendWorldCupNotification(client, `⏰ **KICK-OFF!** Pertandingan **${homeName}** vs **${awayName}** di **${stageName}** telah dimulai!`);
+        }
 
-        if (elapsedMs > duration) {
-          // Match finished -> Finalize
-          let finalScore = `${homeScore} - ${awayScore}`;
-          
-          // If draw in knockout stage, do penalty shootout
-          if (homeScore === awayScore && m.stage.includes('Babak')) {
-            let penHome = 0;
-            let penAway = 0;
-            while (penHome === penAway || (penHome < 3 && penAway < 3)) {
-              penHome += Math.random() > 0.3 ? 1 : 0;
-              penAway += Math.random() > 0.3 ? 1 : 0;
-              if (Math.abs(penHome - penAway) >= 2 && (penHome >= 3 || penAway >= 3)) break;
-            }
-            // Sudden death if draw after 5 shots
-            while (penHome === penAway) {
-              penHome += Math.random() > 0.3 ? 1 : 0;
-              penAway += Math.random() > 0.3 ? 1 : 0;
-            }
-            finalScore = `${homeScore} - ${awayScore} (Pen: ${penHome} - ${penAway})`;
-          }
+        // 2. Goal Notifications
+        if (currentStatus === 'Live' || currentStatus === 'Selesai') {
+          const homeScorers = parseScorers(fixture.home_scorers);
+          const awayScorers = parseScorers(fixture.away_scorers);
 
+          const processGoal = (scorer, teamName) => {
+            const eventId = `match_${matchDbId}_goal_${encodeURIComponent(scorer.trim())}`;
+            const exists = db.prepare('SELECT 1 FROM worldcup_match_events WHERE event_id = ?').get(eventId);
+            if (!exists) {
+              db.prepare('INSERT INTO worldcup_match_events (event_id, match_id, event_type, details, created_at) VALUES (?, ?, ?, ?, ?)')
+                .run(eventId, matchDbId, 'goal', scorer, Math.floor(Date.now() / 1000));
+
+              // Only notify if it was live when it happened (to avoid spamming notifications for old matches)
+              if (prevStatus === 'Live' || prevStatus === 'Mendatang') {
+                sendWorldCupNotification(client, `⚽ **GOOOL!** [${teamName}] mencetak gol!\n\n**Skor Sementara:** **${homeName}** **${currentScore}** **${awayName}**\n🎯 **Pencetak Gol:** ${scorer}`);
+              }
+            }
+          };
+
+          homeScorers.forEach(scorer => processGoal(scorer, homeName));
+          awayScorers.forEach(scorer => processGoal(scorer, awayName));
+        }
+
+        // 3. Match Finished / Bet Resolving
+        if (prevStatus !== 'Selesai' && currentStatus === 'Selesai') {
           db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
-            .run(m.id, finalScore, 'Selesai');
-          m.score = finalScore;
-          m.status = 'Selesai';
+            .run(matchDbId, currentScore, 'Selesai');
 
-          sendWorldCupNotification(client, `🏁 **PERTANDINGAN SELESAI!**\n⚽ **${m.home}** vs **${m.away}**\n**Skor Akhir:** **${finalScore}**`);
+          sendWorldCupNotification(client, `🏁 **PERTANDINGAN SELESAI!**\n⚽ **${homeName}** vs **${awayName}**\n**Skor Akhir:** **${currentScore}**`);
 
-          // Resolve bets
           try {
-            resolveMatchBets(client, m.id, finalScore);
+            resolveMatchBets(client, matchDbId, currentScore);
           } catch (e) {
-            console.error(`❌ Gagal menyelesaikan taruhan untuk match ID ${m.id}:`, e.message);
-          }
-        } else {
-          // Match is LIVE -> Simulate goals
-          // Calculate match minute
-          let matchMinute;
-          if (elapsedMs <= 45 * 60 * 1000) {
-            matchMinute = `${Math.floor(elapsedMs / 60000) + 1}'`;
-          } else if (elapsedMs > 45 * 60 * 1000 && elapsedMs <= 60 * 60 * 1000) {
-            matchMinute = 'HT';
-          } else if (elapsedMs > 60 * 60 * 1000 && elapsedMs <= 105 * 60 * 1000) {
-            matchMinute = `${Math.floor((elapsedMs - 15 * 60 * 1000) / 60000) + 1}'`;
-          } else {
-            matchMinute = "90+'";
-          }
-
-          if (matchMinute !== 'HT') {
-            // 4.5% chance of goal per check/minute
-            if (Math.random() < 0.045) {
-              // Determine scorer team (favorites have higher chance)
-              const isHomeStrong = m.home.includes('Argentina') || m.home.includes('Jerman') || m.home.includes('Inggris');
-              const isAwayStrong = m.away.includes('Argentina') || m.away.includes('Jerman') || m.away.includes('Inggris');
-              let scoringTeam;
-              if (isHomeStrong && !isAwayStrong) {
-                scoringTeam = Math.random() < 0.7 ? 'home' : 'away';
-              } else if (isAwayStrong && !isHomeStrong) {
-                scoringTeam = Math.random() < 0.7 ? 'away' : 'home';
-              } else {
-                scoringTeam = Math.random() < 0.5 ? 'home' : 'away';
-              }
-
-              let scorerName = 'Pemain';
-              let teamName = '';
-              if (scoringTeam === 'home') {
-                homeScore++;
-                teamName = m.home;
-                const players = teamPlayers[m.home] || [];
-                scorerName = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : `Pemain ${m.home.split(' 🇨🇻')[0].split(' 🇸🇦')[0].split(' 🇵🇦')[0].split(' 🏴󠁧󠁢󠁥󠁮󠁧󠁿')[0].split(' 🇭🇷')[0].split(' 🇬🇭')[0].split(' 🇨🇴')[0].split(' 🇵🇹')[0].split(' 🇨🇩')[0].split(' 🇺🇿')[0].split(' 🇯🇴')[0].split(' 🇦🇷')[0].split(' 🇩🇿')[0].split(' 🇦🇹')[0].split(' 🇩🇪')[0].split(' 🇵🇾')[0].split(' 🇳🇱')[0].split(' 🇲🇦')[0]}`;
-              } else {
-                awayScore++;
-                teamName = m.away;
-                const players = teamPlayers[m.away] || [];
-                scorerName = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : `Pemain ${m.away.split(' 🇨🇻')[0].split(' 🇸🇦')[0].split(' 🇵🇦')[0].split(' 🏴󠁧󠁢󠁥󠁮󠁧󠁿')[0].split(' 🇭🇷')[0].split(' 🇬🇭')[0].split(' 🇨🇴')[0].split(' 🇵🇹')[0].split(' 🇨🇩')[0].split(' 🇺🇿')[0].split(' 🇯🇴')[0].split(' 🇦🇷')[0].split(' 🇩🇿')[0].split(' 🇦🇹')[0].split(' 🇩🇪')[0].split(' 🇵🇾')[0].split(' 🇳🇱')[0].split(' 🇲🇦')[0]}`;
-              }
-
-              const newScore = `${homeScore} - ${awayScore}`;
-              const eventId = `match_${m.id}_goal_${homeScore}_${awayScore}`;
-
-              // Ensure we don't duplicate events
-              const exists = db.prepare('SELECT 1 FROM worldcup_match_events WHERE event_id = ?').get(eventId);
-              if (!exists) {
-                db.prepare('INSERT INTO worldcup_match_events (event_id, match_id, event_type, details, created_at) VALUES (?, ?, ?, ?, ?)')
-                  .run(eventId, m.id, 'goal', `${scorerName} (${matchMinute})`, Math.floor(Date.now() / 1000));
-                
-                db.prepare('UPDATE worldcup_match_scores SET score = ? WHERE match_id = ?').run(newScore, m.id);
-                m.score = newScore;
-
-                sendWorldCupNotification(client, `⚽ **GOOOL!** [${teamName}] mencetak gol!\n\n**Skor Sementara:** **${m.home}** **${newScore}** **${m.away}**\n🎯 **Pencetak Gol:** ${scorerName} (${matchMinute})`);
-              }
-            }
+            console.error(`❌ Gagal menyelesaikan taruhan untuk match ID ${matchDbId}:`, e.message);
           }
         }
       }

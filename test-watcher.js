@@ -68,15 +68,36 @@ db.exec(`
 `);
 db.exec("INSERT OR REPLACE INTO ebyus_settings (guild_id, worldcup_channel_id) VALUES ('1234567890', 'mock_channel_id')");
 
-// Force goal probability to 100% for this single test tick
-const originalRandom = Math.random;
-let forceGoal = true;
-Math.random = () => {
-  if (forceGoal) {
-    forceGoal = false;
-    return 0.01; // Force goal
+// Hijack fetch to mock the API response
+const originalFetch = global.fetch;
+global.fetch = (url) => {
+  if (url.includes('worldcup26.ir')) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        games: [
+          {
+            id: "999",
+            home_team_id: "1",
+            away_team_id: "2",
+            home_score: "1",
+            away_score: "1",
+            home_scorers: "{\"Florian Wirtz 12'\"}",
+            away_scorers: "{\"Brahim Díaz 17'\"}",
+            group: "R32",
+            matchday: "4",
+            local_date: "07/03/2026 13:00",
+            stadium_id: "4",
+            finished: "FALSE",
+            time_elapsed: "live",
+            home_team_name_en: "Germany",
+            away_team_name_en: "Morocco"
+          }
+        ]
+      })
+    });
   }
-  return 0.5;
+  return originalFetch(url);
 };
 
 // Mock Discord Client
@@ -107,15 +128,18 @@ console.log("\n--- Memulai watcher.startLiveMatchWatcher() ---");
 worldcup.startLiveMatchWatcher(mockClient);
 
 setTimeout(() => {
-  const scoreRow = db.prepare("SELECT * FROM worldcup_match_scores WHERE match_id = ?").get(testMatchId);
-  const events = db.prepare("SELECT * FROM worldcup_match_events WHERE match_id = ?").all(testMatchId);
+  const matchRow = db.prepare("SELECT id FROM worldcup_matches WHERE unique_key = ?").get("worldcup26-999");
+  const matchDbId = matchRow ? matchRow.id : null;
+  const scoreRow = matchDbId ? db.prepare("SELECT * FROM worldcup_match_scores WHERE match_id = ?").get(matchDbId) : null;
+  const events = matchDbId ? db.prepare("SELECT * FROM worldcup_match_events WHERE match_id = ?").all(matchDbId) : [];
 
-  console.log("--- HASIL DATABASE ---");
+  console.log("--- HASIL DATABASE (MOCK 999) ---");
+  console.log("Match DB ID:", matchDbId);
   console.log("Skor di DB:", scoreRow);
   console.log("Event Gol di DB:", events);
 
   // Restore
-  Math.random = originalRandom;
+  global.fetch = originalFetch;
   if (fs.existsSync(testDbPath)) {
     fs.unlinkSync(testDbPath);
   }
