@@ -187,12 +187,16 @@ function buildLiveEmbed(discordUserId, tiktokUsername, displayName) {
 }
 
 function buildVideoEmbed(discordUserId, tiktokUsername, displayName, videoId) {
-  const videoUrl = `https://www.tiktok.com/@${tiktokUsername}/video/${videoId}`;
+  const hasVideoId = videoId && videoId !== 'null';
+  const videoUrl = hasVideoId 
+    ? `https://www.tiktok.com/@${tiktokUsername}/video/${videoId}`
+    : `https://www.tiktok.com/@${tiktokUsername}`;
+  
   return new EmbedBuilder()
     .setColor(0x010101) // TikTok black
     .setTitle('📹 VIDEO BARU DI TIKTOK!')
     .setDescription(
-      `> <@${discordUserId}> baru saja mengunggah **video baru**!\n` +
+      `> <@${discordUserId}> baru saja mengunggah **video/konten baru**!\n` +
       `> Tonton dan berikan dukunganmu! 💪\n\u200b`
     )
     .addFields(
@@ -213,11 +217,16 @@ function buildLiveButton(tiktokUsername) {
 }
 
 function buildVideoButton(tiktokUsername, videoId) {
+  const hasVideoId = videoId && videoId !== 'null';
+  const targetUrl = hasVideoId 
+    ? `https://www.tiktok.com/@${tiktokUsername}/video/${videoId}`
+    : `https://www.tiktok.com/@${tiktokUsername}`;
+
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setLabel('📹 Tonton Video')
+      .setLabel(hasVideoId ? '📹 Tonton Video' : '👤 Buka Profil TikTok')
       .setStyle(ButtonStyle.Link)
-      .setURL(`https://www.tiktok.com/@${tiktokUsername}/video/${videoId}`)
+      .setURL(targetUrl)
   );
 }
 
