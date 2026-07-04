@@ -77,6 +77,9 @@ const commands = [
           { name: '🎮 GG!', value: 'gg' },
         )
     ),
+  new SlashCommandBuilder()
+    .setName('worldcup')
+    .setDescription('Menampilkan jadwal, skor, dan hasil pertandingan FIFA World Cup 2026 terbaru'),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

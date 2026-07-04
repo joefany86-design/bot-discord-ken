@@ -935,6 +935,24 @@ client.on('interactionCreate', async interaction => {
         await interaction.editReply({ content: '❌ Terjadi kesalahan saat mengambil lowongan kerja terbaru.' });
       }
     }
+    // ── WORLDCUP ──
+    else if (commandName === 'worldcup') {
+      const worldcup = require('./stockmarket/worldcup');
+      const embed = worldcup.generateWorldCupEmbed(client);
+      
+      const btnOutcome = new ButtonBuilder()
+        .setCustomId('wcb_btn_outcome')
+        .setLabel('🎟️ Tebak Hasil (1X2)')
+        .setStyle(ButtonStyle.Primary);
+      const btnExact = new ButtonBuilder()
+        .setCustomId('wcb_btn_exact')
+        .setLabel('⚽ Tebak Skor Tepat')
+        .setStyle(ButtonStyle.Success);
+        
+      const row = new ActionRowBuilder().addComponents(btnOutcome, btnExact);
+      await interaction.reply({ embeds: [embed], components: [row] });
+    }
+
     // ── STIKER ──
     else if (commandName === 'stiker') {
       await interaction.deferReply();
