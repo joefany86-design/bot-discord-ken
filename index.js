@@ -997,6 +997,179 @@ client.on('interactionCreate', async interaction => {
         await interaction.editReply({ content: '❌ Gagal mengirim stiker. Coba lagi nanti.' }).catch(() => {});
       }
     }
+
+    // ── PIALADUNIA (alias worldcup) ──
+    else if (commandName === 'pialadunia') {
+      const worldcup = require('./stockmarket/worldcup');
+      const embed = worldcup.generateWorldCupEmbed(client);
+      const btnOutcome = new ButtonBuilder()
+        .setCustomId('wcb_btn_outcome')
+        .setLabel('🎟️ Tebak Hasil (1X2)')
+        .setStyle(ButtonStyle.Primary);
+      const btnExact = new ButtonBuilder()
+        .setCustomId('wcb_btn_exact')
+        .setLabel('⚽ Tebak Skor Tepat')
+        .setStyle(ButtonStyle.Success);
+      const row = new ActionRowBuilder().addComponents(btnOutcome, btnExact);
+      await interaction.reply({ embeds: [embed], components: [row] });
+    }
+
+    // ── SETWORLDCUP ──
+    else if (commandName === 'setworldcup') {
+      const isAdmin = member && member.permissions.has('Administrator');
+      if (!isAdmin && interaction.user.id !== OWNER_ID) {
+        return interaction.reply({ content: '❌ Hanya Administrator yang bisa menggunakan perintah ini!', flags: 64 });
+      }
+      const targetChannel = interaction.options.getChannel('channel');
+      if (!targetChannel) {
+        return interaction.reply({ content: '❌ Channel tidak valid!', flags: 64 });
+      }
+      const worldcup = require('./stockmarket/worldcup');
+      worldcup.setWorldCupChannel(guildId, targetChannel.id);
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0x10B981)
+          .setTitle('✅ Channel Piala Dunia Diatur!')
+          .setDescription(`Notifikasi pertandingan Piala Dunia 2026 akan dikirim ke <#${targetChannel.id}>.`)
+          .setTimestamp()
+        ]
+      });
+    }
+
+    // ── TEBAKSKOR ──
+    else if (commandName === 'tebakskor') {
+      const matchId  = interaction.options.getInteger('match_id');
+      const scoreGuess = interaction.options.getString('skor');
+      const betAmount  = interaction.options.getInteger('taruhan');
+
+      if (!/^\d+\s*-\s*\d+$/.test(scoreGuess)) {
+        return interaction.reply({ content: '❌ **Format skor salah!** Gunakan format `angka-angka` (contoh: `2-1`).', flags: 64 });
+      }
+      const scoreParts = scoreGuess.split('-').map(s => parseInt(s.trim()));
+      const homeScore = scoreParts[0];
+      const awayScore = scoreParts[1];
+
+      const worldcup = require('./stockmarket/worldcup');
+      try {
+        worldcup.placeExactScoreBet(interaction.user.id, guildId, matchId, homeScore, awayScore, betAmount);
+        const match = worldcup.matches.find(m => m.id === matchId);
+        await interaction.reply({
+          embeds: [new EmbedBuilder()
+            .setColor(0x10B981)
+            .setTitle('✅ Taruhan Tebak Skor Terpasang!')
+            .addFields(
+              { name: '⚽ Pertandingan', value: `**${match?.home || '?'} vs ${match?.away || '?'}**`, inline: true },
+              { name: '🎯 Tebakan Skor', value: `**${homeScore} - ${awayScore}**`, inline: true },
+              { name: '💰 Taruhan', value: `Rp ${betAmount.toLocaleString('id-ID')}`, inline: true }
+            )
+            .setTimestamp()
+          ], flags: 64
+        });
+      } catch (err) {
+        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
+      }
+    }
+
+    // ── TEBAKMENANG ──
+    else if (commandName === 'tebakmenang') {
+      const matchId   = interaction.options.getInteger('match_id');
+      const outcome   = interaction.options.getString('prediksi');
+      const betAmount = interaction.options.getInteger('taruhan');
+
+      const worldcup = require('./stockmarket/worldcup');
+      const match = worldcup.matches.find(m => m.id === matchId);
+      if (!match) {
+        return interaction.reply({ content: `❌ **Pertandingan dengan ID ${matchId} tidak ditemukan!**`, flags: 64 });
+      }
+      try {
+        worldcup.placeOutcomeBet(interaction.user.id, guildId, matchId, outcome, betAmount);
+        const outcomeLabel = outcome === 'home' ? match.home : (outcome === 'away' ? match.away : 'Seri');
+        await interaction.reply({
+          embeds: [new EmbedBuilder()
+            .setColor(0x10B981)
+            .setTitle('✅ Taruhan Tebak Hasil Terpasang!')
+            .addFields(
+              { name: '⚽ Pertandingan', value: `**${match.home} vs ${match.away}**`, inline: true },
+              { name: '🎯 Pilihan', value: `**${outcomeLabel}**`, inline: true },
+              { name: '💰 Taruhan', value: `Rp ${betAmount.toLocaleString('id-ID')}`, inline: true }
+            )
+            .setTimestamp()
+          ], flags: 64
+        });
+      } catch (err) {
+        await interaction.reply({ content: `❌ ${err.message}`, flags: 64 });
+      }
+    }
+
+    // ── LISTTEBAK ──
+    else if (commandName === 'listtebak') {
+      const matchId = interaction.options.getInteger('match_id');
+      const worldcup = require('./stockmarket/worldcup');
+      const match = worldcup.matches.find(m => m.id === matchId);
+      if (!match) {
+        return interaction.reply({ content: `❌ **Pertandingan dengan ID ${matchId} tidak ditemukan!**`, flags: 64 });
+      }
+      const { db } = require('./stockmarket/database');
+      const bets = db.prepare('SELECT * FROM worldcup_bets WHERE guild_id = ? AND match_id = ? AND status = "pending"').all(guildId, matchId);
+      const exactBets   = bets.filter(b => b.bet_type === 'exact_score');
+      const outcomeBets = bets.filter(b => b.bet_type === 'outcome');
+      const exactText   = exactBets.map(b => `• <@${b.user_id}>: **${b.home_score} - ${b.away_score}** (Rp ${b.bet_amount.toLocaleString('id-ID')})`).join('\n') || '*Belum ada taruhan tebak skor.*';
+      const outcomeText = outcomeBets.map(b => {
+        const label = b.predicted_outcome === 'home' ? match.home : (b.predicted_outcome === 'away' ? match.away : 'Seri');
+        return `• <@${b.user_id}>: **${label}** (Rp ${b.bet_amount.toLocaleString('id-ID')})`;
+      }).join('\n') || '*Belum ada taruhan tebak hasil.*';
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0x0099FF)
+          .setTitle(`🎟️ DAFTAR TARUHAN: ${match.home} vs ${match.away}`)
+          .setDescription('Berikut adalah tebakan dari para member untuk pertandingan ini:')
+          .addFields(
+            { name: '⚽ Tebak Skor Tepat', value: exactText },
+            { name: '🎟️ Tebak Hasil (1X2)', value: outcomeText }
+          )
+          .setTimestamp()
+        ]
+      });
+    }
+
+    // ── SPEAK ──
+    else if (commandName === 'speak') {
+      const teks = interaction.options.getString('teks');
+      const voiceChannel = member?.voice?.channel;
+      if (!voiceChannel) {
+        return interaction.reply({ content: '❌ Kamu harus berada di Voice Channel terlebih dahulu!', flags: 64 });
+      }
+      try {
+        const { speakText, getVoiceConnection } = require('./voice');
+        const connection = getVoiceConnection(guildId);
+        if (!connection) {
+          return interaction.reply({ content: '❌ Bot tidak sedang terhubung ke Voice Channel. Gunakan `/join` terlebih dahulu.', flags: 64 });
+        }
+        await speakText(connection, teks, guildId, 'id');
+        await interaction.reply({ content: `🔊 **Bot sedang membacakan:** "${teks}"`, flags: 64 });
+      } catch (err) {
+        await interaction.reply({ content: `❌ Gagal membacakan teks: ${err.message}`, flags: 64 });
+      }
+    }
+
+    // ── STATUS ──
+    else if (commandName === 'status') {
+      const { getVoiceConnection } = require('@discordjs/voice');
+      const connection = getVoiceConnection(guildId);
+      const botVoice = guild.members.me?.voice?.channel;
+      const statusEmbed = new EmbedBuilder()
+        .setColor(connection ? 0x10B981 : 0x6B7280)
+        .setTitle('📊 Status Bot Sentinel')
+        .addFields(
+          { name: '🤖 Status Bot', value: client.user ? `✅ Online sebagai **${client.user.tag}**` : '❌ Offline', inline: false },
+          { name: '🔊 Voice Channel', value: botVoice ? `✅ Terhubung di **${botVoice.name}**` : '❌ Tidak terhubung ke VC', inline: false },
+          { name: '🏓 Latensi', value: `\`${client.ws.ping}ms\``, inline: true },
+          { name: '📡 Servers', value: `\`${client.guilds.cache.size}\``, inline: true }
+        )
+        .setThumbnail(client.user?.displayAvatarURL())
+        .setTimestamp();
+      await interaction.reply({ embeds: [statusEmbed], flags: 64 });
+    }
   } catch (error) {
     console.error('Error in slash command handler:', error);
     try {

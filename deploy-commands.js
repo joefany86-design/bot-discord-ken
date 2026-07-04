@@ -80,6 +80,87 @@ const commands = [
   new SlashCommandBuilder()
     .setName('worldcup')
     .setDescription('Menampilkan jadwal, skor, dan hasil pertandingan FIFA World Cup 2026 terbaru'),
+
+  new SlashCommandBuilder()
+    .setName('pialadunia')
+    .setDescription('Alias dari /worldcup — Jadwal & skor FIFA World Cup 2026'),
+
+  new SlashCommandBuilder()
+    .setName('setworldcup')
+    .setDescription('Mengatur channel khusus notifikasi Piala Dunia 2026 (Hanya Admin)')
+    .addChannelOption(option =>
+      option.setName('channel')
+        .setDescription('Channel yang akan digunakan untuk notifikasi piala dunia')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('tebakskor')
+    .setDescription('Pasang taruhan tebak skor tepat pertandingan Piala Dunia 2026')
+    .addIntegerOption(option =>
+      option.setName('match_id')
+        .setDescription('ID pertandingan (lihat dari /worldcup)')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('skor')
+        .setDescription('Tebakan skor format home-away (contoh: 2-1)')
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option.setName('taruhan')
+        .setDescription('Jumlah koin yang ingin ditaruhkan')
+        .setRequired(true)
+        .setMinValue(1)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('tebakmenang')
+    .setDescription('Pasang taruhan tebak pemenang pertandingan Piala Dunia 2026 (1X2)')
+    .addIntegerOption(option =>
+      option.setName('match_id')
+        .setDescription('ID pertandingan (lihat dari /worldcup)')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('prediksi')
+        .setDescription('Pilih pemenang (home/away/draw atau nama negara)')
+        .setRequired(true)
+        .addChoices(
+          { name: '🏠 Tim Kandang (Home)', value: 'home' },
+          { name: '✈️ Tim Tamu (Away)', value: 'away' },
+          { name: '🤝 Seri / Draw', value: 'draw' },
+        )
+    )
+    .addIntegerOption(option =>
+      option.setName('taruhan')
+        .setDescription('Jumlah koin yang ingin ditaruhkan')
+        .setRequired(true)
+        .setMinValue(1)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('listtebak')
+    .setDescription('Lihat daftar taruhan yang terpasang untuk suatu pertandingan')
+    .addIntegerOption(option =>
+      option.setName('match_id')
+        .setDescription('ID pertandingan (lihat dari /worldcup)')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('speak')
+    .setDescription('Menyuruh bot membacakan teks di Voice Channel')
+    .addStringOption(option =>
+      option.setName('teks')
+        .setDescription('Teks yang akan dibacakan oleh bot')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('status')
+    .setDescription('Menampilkan status bot dan koneksi Voice Channel saat ini'),
+
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
