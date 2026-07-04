@@ -972,6 +972,14 @@ function initSchema() {
           )
         `);
       }
+    },
+    {
+      version: 31,
+      description: "Menambahkan kolom panel_channel_id dan panel_message_id ke tiktok_settings untuk panel UI interaktif",
+      run: () => {
+        addColumn('tiktok_settings', 'panel_channel_id', 'TEXT DEFAULT NULL');
+        addColumn('tiktok_settings', 'panel_message_id', 'TEXT DEFAULT NULL');
+      }
     }
   ];
 

@@ -713,7 +713,13 @@ client.once('ready', async () => {
   try {
     const tiktok = require('./tiktok/tiktok');
     for (const guild of client.guilds.cache.values()) {
+      // Channel notifikasi live/video
       await tiktok.autoCreateTikTokChannel(guild);
+      // Channel panel interaktif
+      const panelChannel = await tiktok.autoCreatePanelChannel(guild);
+      if (panelChannel) {
+        await tiktok.postOrUpdatePanel(guild, panelChannel);
+      }
     }
     tiktok.startTikTokWatcher(client);
   } catch (ttErr) {
@@ -1326,6 +1332,25 @@ client.on('interactionCreate', async interaction => {
     } catch (sendErr) {
       console.error('Failed to send error reply:', sendErr.message);
     }
+  }
+});
+
+// ── Handler Interaksi Panel TikTok ──
+client.on('interactionCreate', async interaction => {
+  try {
+    const isTikTokButton = interaction.isButton() && interaction.customId.startsWith('tt_panel_');
+    const isTikTokModal  = interaction.isModalSubmit() && interaction.customId === 'tt_modal_register';
+    if (isTikTokButton || isTikTokModal) {
+      const tiktok = require('./tiktok/tiktok');
+      await tiktok.handlePanelInteraction(interaction, client);
+    }
+  } catch (err) {
+    console.error('❌ [TikTok Panel] Error:', err.message);
+    try {
+      const msg = { content: '❌ Terjadi kesalahan. Coba lagi beberapa saat.', flags: 64 };
+      if (interaction.deferred || interaction.replied) await interaction.followUp(msg).catch(() => {});
+      else await interaction.reply(msg).catch(() => {});
+    } catch { /* skip */ }
   }
 });
 

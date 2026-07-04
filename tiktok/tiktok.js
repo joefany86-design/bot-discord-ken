@@ -1,12 +1,16 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+  ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType
+} = require('discord.js');
 const { db } = require('../stockmarket/database');
 
 // ─────────────────────────────────────────────────────────────────
 // KONSTANTA
 // ─────────────────────────────────────────────────────────────────
-const POLL_INTERVAL_MS = 60_000; // 60 detik
-const CHANNEL_NAME     = '📱┃notif-tiktok';
-const LIVE_COOLDOWN_MS = 5 * 60_000; // 5 menit cooldown notif live ulang
+const POLL_INTERVAL_MS  = 60_000;       // 60 detik polling
+const LIVE_COOLDOWN_MS  = 5 * 60_000;  // 5 menit cooldown notif live ulang
+const PANEL_CHANNEL_NAME = '📱┃panel-tiktok';
+const NOTIF_CHANNEL_NAME = '📱┃notif-tiktok';
 
 // User-Agent agar tidak diblokir TikTok
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -365,3 +369,340 @@ module.exports = {
   startTikTokWatcher,
   fetchTikTokProfile
 };
+
+// ─────────────────────────────────────────────────────────────────
+// PANEL UI — EMBED & BUTTONS
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Membuat embed panel utama TikTok dengan daftar akun terdaftar.
+ */
+function buildPanelEmbed(guild) {
+  const accounts = getAllActiveAccounts(guild.id);
+  const now = new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta'
+  }).format(new Date());
+
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0050)
+    .setTitle('📱 TikTok Notification Center')
+    .setDescription(
+      '> Daftarkan akun **TikTok**mu agar komunitas dapat notifikasi\n' +
+      '> otomatis saat kamu **🔴 LIVE** atau **📹 Upload Video** baru!\n\u200b'
+    )
+    .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/320px-TikTok_logo.svg.png')
+    .setFooter({ text: `📱 Panel TikTok Kosan 1A  •  Update: ${now} WIB` });
+
+  if (accounts.length === 0) {
+    embed.addFields({
+      name: '📭 Belum Ada Akun Terdaftar',
+      value: '> Jadilah yang pertama daftar! Klik tombol **Daftar TikTok** di bawah.'
+    });
+  } else {
+    const lines = accounts.map((a, i) => {
+      const liveTag = a.is_live ? ' 🔴 **LIVE!**' : '';
+      const name    = a.display_name || a.tiktok_username;
+      return `\`${String(i + 1).padStart(2, '0')}\` <@${a.user_id}> — [@${a.tiktok_username}](https://www.tiktok.com/@${a.tiktok_username}) *(${name})*${liveTag}`;
+    });
+
+    // Discord field max 1024 chars — split jika perlu
+    const chunks = [];
+    let current  = '';
+    for (const line of lines) {
+      if ((current + '\n' + line).length > 1000) {
+        chunks.push(current);
+        current = line;
+      } else {
+        current = current ? current + '\n' + line : line;
+      }
+    }
+    if (current) chunks.push(current);
+
+    chunks.forEach((chunk, idx) => {
+      embed.addFields({
+        name: idx === 0 ? `👥 Akun TikTok Terdaftar (${accounts.length})` : '\u200b',
+        value: chunk
+      });
+    });
+  }
+
+  embed.addFields({ name: '\u200b', value: '> **Gunakan tombol di bawah untuk mengelola akun TikTok kamu:**' });
+  return embed;
+}
+
+/**
+ * Membuat action row tombol panel.
+ */
+function buildPanelButtons() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tt_panel_register')
+      .setLabel('Daftar TikTok')
+      .setEmoji('✅')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('tt_panel_my')
+      .setLabel('Akun Saya')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('tt_panel_delete')
+      .setLabel('Hapus Akun')
+      .setEmoji('🗑️')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('tt_panel_list')
+      .setLabel('Semua Akun')
+      .setEmoji('📋')
+      .setStyle(ButtonStyle.Secondary),
+  );
+}
+
+/**
+ * Membuat modal untuk input username TikTok.
+ */
+function buildRegisterModal() {
+  return new ModalBuilder()
+    .setCustomId('tt_modal_register')
+    .setTitle('📱 Daftarkan Akun TikTok')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('tt_input_username')
+          .setLabel('Username TikTok (tanpa @)')
+          .setPlaceholder('Contoh: joefany86')
+          .setStyle(TextInputStyle.Short)
+          .setMinLength(2)
+          .setMaxLength(50)
+          .setRequired(true)
+      )
+    );
+}
+
+/**
+ * Membuat atau mengambil channel panel TikTok.
+ */
+async function autoCreatePanelChannel(guild) {
+  try {
+    const settings = getSettings(guild.id);
+    if (settings?.panel_channel_id) {
+      const existing = guild.channels.cache.get(settings.panel_channel_id);
+      if (existing) return existing;
+    }
+
+    // Cari channel yang sudah ada
+    let channel = guild.channels.cache.find(c =>
+      c.name === '📱┃panel-tiktok' || c.name === 'panel-tiktok'
+    );
+
+    if (!channel) {
+      // Cari kategori yang tepat
+      const category = guild.channels.cache.find(c =>
+        c.type === 4 && /info|pengumuman|announce|notif|sosial|social|media/i.test(c.name)
+      );
+
+      channel = await guild.channels.create({
+        name: PANEL_CHANNEL_NAME,
+        type: ChannelType.GuildText,
+        parent: category?.id || null,
+        topic: '📱 Daftarkan akun TikTokmu! Bot akan notif komunitas saat kamu Live atau upload video baru.',
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            allow: ['ViewChannel', 'ReadMessageHistory'],
+            deny:  ['SendMessages']
+          }
+        ]
+      });
+      console.log(`📱 [TikTok] Panel channel '${channel.name}' dibuat di guild ${guild.name}`);
+    }
+
+    // Simpan ke settings
+    upsertSettings(guild.id, { panel_channel_id: channel.id });
+    return channel;
+  } catch (err) {
+    console.error(`❌ [TikTok] Gagal membuat panel channel:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Post atau update panel UI di channel panel.
+ * Jika panel sudah ada (berdasarkan panel_message_id), edit pesannya.
+ * Jika belum ada, kirim pesan baru.
+ */
+async function postOrUpdatePanel(guild, channel) {
+  try {
+    const embed   = buildPanelEmbed(guild);
+    const buttons = buildPanelButtons();
+    const settings = getSettings(guild.id);
+
+    // Coba edit pesan yang sudah ada
+    if (settings?.panel_message_id) {
+      try {
+        const existingMsg = await channel.messages.fetch(settings.panel_message_id);
+        if (existingMsg) {
+          await existingMsg.edit({ embeds: [embed], components: [buttons] });
+          return existingMsg;
+        }
+      } catch {
+        // Pesan tidak ditemukan, buat baru
+      }
+    }
+
+    // Kirim pesan baru
+    const msg = await channel.send({ embeds: [embed], components: [buttons] });
+    upsertSettings(guild.id, { panel_message_id: msg.id });
+    return msg;
+  } catch (err) {
+    console.error(`❌ [TikTok] Gagal post/update panel:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Refresh panel di semua guild (dipanggil setelah ada perubahan akun).
+ */
+async function refreshAllPanels(client) {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      const settings = getSettings(guild.id);
+      if (!settings?.panel_channel_id) continue;
+      const channel = guild.channels.cache.get(settings.panel_channel_id);
+      if (!channel) continue;
+      await postOrUpdatePanel(guild, channel);
+    } catch { /* skip */ }
+  }
+}
+
+/**
+ * Handler utama semua interaksi tombol & modal TikTok panel.
+ * Dipanggil dari interactionCreate di index.js.
+ */
+async function handlePanelInteraction(interaction, client) {
+  const { customId, guild, member, user } = interaction;
+  const guildId = guild.id;
+
+  // ── Tombol: Daftar TikTok → tampilkan modal ──
+  if (customId === 'tt_panel_register') {
+    return interaction.showModal(buildRegisterModal());
+  }
+
+  // ── Modal Submit: proses pendaftaran ──
+  if (customId === 'tt_modal_register') {
+    const rawUsername = interaction.fields.getTextInputValue('tt_input_username').replace(/^@/, '').trim();
+    await interaction.deferReply({ flags: 64 });
+
+    const profile = await fetchTikTokProfile(rawUsername);
+    const displayName = profile?.displayName || rawUsername;
+
+    upsertAccount(user.id, guildId, rawUsername, displayName);
+
+    // Seed video ID agar tidak langsung trigger notif
+    if (profile?.latestVideoId) {
+      db.prepare('UPDATE tiktok_accounts SET last_video_id = ? WHERE user_id = ? AND guild_id = ?')
+        .run(profile.latestVideoId, user.id, guildId);
+    }
+
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF0050)
+        .setTitle('✅ Akun TikTok Berhasil Didaftarkan!')
+        .setDescription(
+          `Akun **@${rawUsername}** (${displayName}) sudah terdaftar.\n` +
+          `Bot akan memantau **Live** & **Video Baru** kamu secara otomatis!`
+        )
+        .setFooter({ text: 'Gunakan tombol Hapus Akun untuk berhenti dipantau' })
+        .setTimestamp()
+      ]
+    });
+
+    // Refresh panel
+    await refreshAllPanels(client);
+    return;
+  }
+
+  // ── Tombol: Lihat Akun Saya ──
+  if (customId === 'tt_panel_my') {
+    const account = getAccount(user.id, guildId);
+    if (!account) {
+      return interaction.reply({
+        content: '❌ Kamu belum mendaftarkan akun TikTok.\nKlik tombol **✅ Daftar TikTok** untuk mendaftar!',
+        flags: 64
+      });
+    }
+    return interaction.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF0050)
+        .setTitle('📱 Akun TikTok Kamu')
+        .addFields(
+          { name: '👤 Username',    value: `[@${account.tiktok_username}](https://www.tiktok.com/@${account.tiktok_username})`, inline: true },
+          { name: '🎥 Nama',        value: account.display_name || account.tiktok_username, inline: true },
+          { name: '🔴 Status Live', value: account.is_live ? '🔴 **LIVE Sekarang!**' : '⚫ Tidak Live', inline: true },
+          { name: '🕒 Terdaftar',   value: `<t:${account.created_at}:R>`, inline: true },
+          { name: '🔍 Terakhir Dicek', value: account.last_checked_at ? `<t:${account.last_checked_at}:R>` : 'Belum pernah', inline: true }
+        )
+        .setTimestamp()
+      ], flags: 64
+    });
+  }
+
+  // ── Tombol: Hapus Akun ──
+  if (customId === 'tt_panel_delete') {
+    const result = deleteAccount(user.id, guildId);
+    if (result.changes === 0) {
+      return interaction.reply({
+        content: '❌ Kamu belum memiliki akun TikTok yang terdaftar.',
+        flags: 64
+      });
+    }
+    await interaction.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0x6B7280)
+        .setTitle('🗑️ Akun TikTok Dihapus')
+        .setDescription('Akun TikTokmu berhasil dihapus dari sistem pemantauan bot.\nGunakan tombol **✅ Daftar TikTok** kapan saja untuk mendaftar kembali.')
+        .setTimestamp()
+      ], flags: 64
+    });
+    // Refresh panel
+    await refreshAllPanels(client);
+    return;
+  }
+
+  // ── Tombol: Lihat Semua Akun ──
+  if (customId === 'tt_panel_list') {
+    const accounts = getAllActiveAccounts(guildId);
+    if (accounts.length === 0) {
+      return interaction.reply({
+        content: '📭 Belum ada member yang mendaftarkan akun TikTok di server ini.',
+        flags: 64
+      });
+    }
+    const lines = accounts.map((a, i) => {
+      const liveTag = a.is_live ? ' 🔴 LIVE!' : '';
+      return `\`${i + 1}\`. <@${a.user_id}> → [@${a.tiktok_username}](https://www.tiktok.com/@${a.tiktok_username})${liveTag}`;
+    });
+    return interaction.reply({
+      embeds: [new EmbedBuilder()
+        .setColor(0xFF0050)
+        .setTitle(`📋 Semua Akun TikTok Terdaftar (${accounts.length})`)
+        .setDescription(lines.join('\n'))
+        .setTimestamp()
+      ], flags: 64
+    });
+  }
+}
+
+// ─── Re-export dengan fungsi panel ───
+Object.assign(module.exports, {
+  // Panel UI
+  buildPanelEmbed,
+  buildPanelButtons,
+  buildRegisterModal,
+  autoCreatePanelChannel,
+  postOrUpdatePanel,
+  refreshAllPanels,
+  handlePanelInteraction
+});
+
