@@ -161,6 +161,37 @@ const commands = [
     .setName('status')
     .setDescription('Menampilkan status bot dan koneksi Voice Channel saat ini'),
 
+  // ─── TIKTOK COMMANDS ───
+  new SlashCommandBuilder()
+    .setName('settiktok')
+    .setDescription('Daftarkan username TikTok kamu agar bot memantau live & video barumu')
+    .addStringOption(option =>
+      option.setName('username')
+        .setDescription('Username TikTok kamu (tanpa @)')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('mytiktok')
+    .setDescription('Lihat akun TikTok yang sudah kamu daftarkan'),
+
+  new SlashCommandBuilder()
+    .setName('deltiktok')
+    .setDescription('Hapus akun TikTok kamu dari pemantauan bot'),
+
+  new SlashCommandBuilder()
+    .setName('listtiktok')
+    .setDescription('Lihat semua akun TikTok yang terdaftar di server ini'),
+
+  new SlashCommandBuilder()
+    .setName('settiktok-channel')
+    .setDescription('Atur channel khusus notifikasi TikTok (Hanya Admin)')
+    .addChannelOption(option =>
+      option.setName('channel')
+        .setDescription('Channel tujuan notifikasi TikTok Live & Video Baru')
+        .setRequired(true)
+    ),
+
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

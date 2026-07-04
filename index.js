@@ -709,6 +709,17 @@ client.once('ready', async () => {
     console.error('❌ Gagal melakukan inisialisasi channel Piala Dunia otomatis:', wcErr.message);
   }
 
+  // Inisialisasi otomatis channel TikTok & mulai watcher
+  try {
+    const tiktok = require('./tiktok/tiktok');
+    for (const guild of client.guilds.cache.values()) {
+      await tiktok.autoCreateTikTokChannel(guild);
+    }
+    tiktok.startTikTokWatcher(client);
+  } catch (ttErr) {
+    console.error('❌ Gagal melakukan inisialisasi TikTok watcher:', ttErr.message);
+  }
+
   // Cache seluruh member di guild target agar status bot bisa dideteksi secara akurat
   const targetGuildId = config.TARGET_GUILD_ID;
   const targetGuild = client.guilds.cache.get(targetGuildId);
@@ -1169,6 +1180,140 @@ client.on('interactionCreate', async interaction => {
         .setThumbnail(client.user?.displayAvatarURL())
         .setTimestamp();
       await interaction.reply({ embeds: [statusEmbed], flags: 64 });
+    }
+
+    // ═══════════════════════════════════════
+    // ── TIKTOK COMMANDS ──
+    // ═══════════════════════════════════════
+
+    // ── /settiktok ──
+    else if (commandName === 'settiktok') {
+      const username = interaction.options.getString('username').replace(/^@/, '').trim();
+      const tiktok = require('./tiktok/tiktok');
+
+      await interaction.deferReply({ flags: 64 });
+
+      // Coba fetch profil untuk validasi
+      const profile = await tiktok.fetchTikTokProfile(username);
+      const displayName = profile?.displayName || username;
+
+      tiktok.upsertAccount(interaction.user.id, guildId, username, displayName);
+
+      // Seed last_video_id agar notif tidak langsung trigger saat pertama daftar
+      if (profile?.latestVideoId) {
+        const { db } = require('./stockmarket/database');
+        db.prepare('UPDATE tiktok_accounts SET last_video_id = ? WHERE user_id = ? AND guild_id = ?')
+          .run(profile.latestVideoId, interaction.user.id, guildId);
+      }
+
+      await interaction.editReply({
+        embeds: [new EmbedBuilder()
+          .setColor(0xFF0050)
+          .setTitle('✅ Akun TikTok Terdaftar!')
+          .setDescription(`Akun TikTok **@${username}** berhasil didaftarkan.\nBot akan memantau live & video baru kamu secara otomatis!`)
+          .addFields(
+            { name: '👤 Username', value: `[@${username}](https://www.tiktok.com/@${username})`, inline: true },
+            { name: '🎥 Nama Tampilan', value: displayName, inline: true }
+          )
+          .setFooter({ text: 'Gunakan /deltiktok untuk berhenti dipantau' })
+          .setTimestamp()
+        ]
+      });
+    }
+
+    // ── /mytiktok ──
+    else if (commandName === 'mytiktok') {
+      const tiktok = require('./tiktok/tiktok');
+      const account = tiktok.getAccount(interaction.user.id, guildId);
+
+      if (!account) {
+        return interaction.reply({
+          content: '❌ Kamu belum mendaftarkan akun TikTok. Gunakan `/settiktok` untuk mendaftar!',
+          flags: 64
+        });
+      }
+
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0xFF0050)
+          .setTitle('📱 Akun TikTok Kamu')
+          .addFields(
+            { name: '👤 Username', value: `[@${account.tiktok_username}](https://www.tiktok.com/@${account.tiktok_username})`, inline: true },
+            { name: '🎥 Nama', value: account.display_name || account.tiktok_username, inline: true },
+            { name: '🔴 Status', value: account.is_live ? '🔴 LIVE' : '⚫ Tidak Live', inline: true },
+            { name: '🕒 Terdaftar', value: `<t:${account.created_at}:R>`, inline: true },
+            { name: '🔍 Terakhir Dicek', value: account.last_checked_at ? `<t:${account.last_checked_at}:R>` : 'Belum pernah', inline: true }
+          )
+          .setTimestamp()
+        ], flags: 64
+      });
+    }
+
+    // ── /deltiktok ──
+    else if (commandName === 'deltiktok') {
+      const tiktok = require('./tiktok/tiktok');
+      const result = tiktok.deleteAccount(interaction.user.id, guildId);
+
+      if (result.changes === 0) {
+        return interaction.reply({ content: '❌ Kamu belum memiliki akun TikTok yang terdaftar.', flags: 64 });
+      }
+
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0x6B7280)
+          .setTitle('✅ Akun TikTok Dihapus')
+          .setDescription('Akun TikTokmu berhasil dihapus dari sistem pemantauan bot.\nGunakan `/settiktok` kapan saja untuk mendaftar kembali.')
+          .setTimestamp()
+        ], flags: 64
+      });
+    }
+
+    // ── /listtiktok ──
+    else if (commandName === 'listtiktok') {
+      const tiktok = require('./tiktok/tiktok');
+      const accounts = tiktok.getAllActiveAccounts(guildId);
+
+      if (accounts.length === 0) {
+        return interaction.reply({
+          content: '📭 Belum ada member yang mendaftarkan akun TikTok di server ini.',
+          flags: 64
+        });
+      }
+
+      const listText = accounts.map((a, i) =>
+        `${i + 1}. <@${a.user_id}> → [@${a.tiktok_username}](https://www.tiktok.com/@${a.tiktok_username}) ${a.is_live ? '🔴 LIVE' : ''}`
+      ).join('\n');
+
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0xFF0050)
+          .setTitle(`📱 Daftar Akun TikTok Terdaftar (${accounts.length})`)
+          .setDescription(listText)
+          .setFooter({ text: 'Gunakan /settiktok untuk mendaftarkan akunmu!' })
+          .setTimestamp()
+        ]
+      });
+    }
+
+    // ── /settiktok-channel (Admin) ──
+    else if (commandName === 'settiktok-channel') {
+      const isAdmin = member && member.permissions.has('Administrator');
+      if (!isAdmin && interaction.user.id !== OWNER_ID) {
+        return interaction.reply({ content: '❌ Hanya Administrator yang bisa menggunakan perintah ini!', flags: 64 });
+      }
+
+      const targetChannel = interaction.options.getChannel('channel');
+      const tiktok = require('./tiktok/tiktok');
+      tiktok.upsertSettings(guildId, { notification_channel_id: targetChannel.id });
+
+      await interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0xFF0050)
+          .setTitle('✅ Channel Notifikasi TikTok Diatur!')
+          .setDescription(`Notifikasi TikTok Live & Video Baru akan dikirim ke <#${targetChannel.id}>.`)
+          .setTimestamp()
+        ]
+      });
     }
   } catch (error) {
     console.error('Error in slash command handler:', error);

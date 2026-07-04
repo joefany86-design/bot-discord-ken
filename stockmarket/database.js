@@ -940,6 +940,38 @@ function initSchema() {
       run: () => {
         addColumn('ebyus_settings', 'worldcup_channel_id', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 30,
+      description: "Membuat tabel tiktok_accounts dan tiktok_settings untuk fitur notifikasi TikTok",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS tiktok_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            tiktok_username TEXT NOT NULL,
+            display_name TEXT DEFAULT '',
+            last_video_id TEXT DEFAULT NULL,
+            is_live INTEGER DEFAULT 0,
+            last_live_at INTEGER DEFAULT 0,
+            last_checked_at INTEGER DEFAULT 0,
+            created_at INTEGER DEFAULT (strftime('%s','now')),
+            is_active INTEGER DEFAULT 1,
+            UNIQUE(user_id, guild_id)
+          )
+        `);
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS tiktok_settings (
+            guild_id TEXT PRIMARY KEY,
+            notification_channel_id TEXT DEFAULT NULL,
+            notify_live INTEGER DEFAULT 1,
+            notify_video INTEGER DEFAULT 1,
+            mention_role_id TEXT DEFAULT NULL,
+            updated_at INTEGER DEFAULT (strftime('%s','now'))
+          )
+        `);
+      }
     }
   ];
 
