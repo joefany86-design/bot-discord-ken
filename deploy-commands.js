@@ -1,4 +1,4 @@
-const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { REST, Routes, SlashCommandBuilder, ContextMenuCommandBuilder, ApplicationCommandType } = require('discord.js');
 require('dotenv').config();
 
 // Memastikan variabel lingkungan terisi sebelum mendaftarkan commands
@@ -191,6 +191,42 @@ const commands = [
         .setDescription('Channel tujuan notifikasi TikTok Live & Video Baru')
         .setRequired(true)
     ),
+
+  new SlashCommandBuilder()
+    .setName('momen')
+    .setDescription('Kelola dan laporkan momen lucu/seru untuk konten TikTok')
+    .addSubcommand(sub =>
+      sub.setName('lapor')
+        .setDescription('Laporkan momen seru/lucu ke Owner untuk dijadikan konten TikTok')
+        .addStringOption(opt =>
+          opt.setName('pesan')
+            .setDescription('Link pesan atau ID pesan yang ingin dilaporkan')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt.setName('catatan')
+            .setDescription('Catatan tambahan (kenapa momen ini seru/lucu)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(sub =>
+      sub.setName('list')
+        .setDescription('Lihat daftar laporan momen TikTok (Hanya Admin/Owner)')
+        .addStringOption(opt =>
+          opt.setName('status')
+            .setDescription('Filter status momen')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Pending (Belum Diolah)', value: 'PENDING' },
+              { name: 'Completed (Sudah Jadi Konten)', value: 'COMPLETED' },
+              { name: 'Rejected (Ditolak)', value: 'REJECTED' }
+            )
+        )
+    ),
+
+  new ContextMenuCommandBuilder()
+    .setName('Simpan Momen TikTok')
+    .setType(ApplicationCommandType.Message),
 
 ].map(command => command.toJSON());
 

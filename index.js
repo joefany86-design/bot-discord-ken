@@ -4,7 +4,7 @@ const config = require('./stockmarket/config');
 const embeds = require('./stockmarket/embeds');
 
 const sodium = require('libsodium-wrappers');
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, Partials } = require('discord.js');
 const {
   joinVoiceChannel,
   createAudioPlayer,
@@ -84,7 +84,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
-  ]
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 global.client = client;
@@ -1352,6 +1354,37 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+// ── Handler Interaksi TikTok Moments (Momen Catcher) ──
+client.on('interactionCreate', async interaction => {
+  try {
+    const moments = require('./tiktok/moments');
+    
+    // 1. Context Menu / Apps Command
+    if (interaction.isMessageContextMenuCommand() && interaction.commandName === 'Simpan Momen TikTok') {
+      await moments.handleMomentContextMenu(interaction, client);
+    }
+    // 2. Modal Submit
+    else if (interaction.isModalSubmit() && interaction.customId.startsWith('tt_modal_moment_')) {
+      await moments.handleMomentModalSubmit(interaction, client);
+    }
+    // 3. Button Action (Owner Approval)
+    else if (interaction.isButton() && (interaction.customId.startsWith('tt_moment_approve_') || interaction.customId.startsWith('tt_moment_reject_'))) {
+      await moments.handleMomentButtonInteraction(interaction, client);
+    }
+    // 4. Slash Commands
+    else if (interaction.isChatInputCommand() && interaction.commandName === 'momen') {
+      await moments.handleMomentSlashCommand(interaction, client);
+    }
+  } catch (err) {
+    console.error('❌ [TikTok Moments] Error:', err.message);
+    try {
+      const msg = { content: '❌ Terjadi kesalahan saat memproses momen.', flags: 64 };
+      if (interaction.deferred || interaction.replied) await interaction.followUp(msg).catch(() => {});
+      else await interaction.reply(msg).catch(() => {});
+    } catch { /* skip */ }
+  }
+});
+
 // Penanganan Interaksi Komponen Onboarding secara Global
 client.on('interactionCreate', async interaction => {
   try {
@@ -1407,7 +1440,71 @@ client.on('interactionCreate', async interaction => {
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
   try {
-    if (message.author.bot) return;
+    if (message.author.bot) {
+      // Deteksi highlight game bot secara otomatis
+      if (message.author.id === client.user.id && message.guildId) {
+        let isFunnyGameMoment = false;
+        let gameName = '';
+        let details = '';
+
+        if (message.embeds && message.embeds.length > 0) {
+          const embed = message.embeds[0];
+          const title = embed.title || '';
+          const desc = embed.description || '';
+
+          // 1. Gacha jackpot
+          if (title.includes('JACKPOT') || title.includes('SULTAN HOKI')) {
+            isFunnyGameMoment = true;
+            gameName = 'Gacha Role';
+            details = desc;
+          }
+          // 2. Coinflip / Slots
+          else if (title.includes('🎰') || title.includes('SLOT') || title.includes('CASINO')) {
+            if (desc.includes('kalah') || desc.includes('kehilangan') || desc.includes('Rp 10.000') || desc.includes('all-in') || desc.includes('JACKPOT') || desc.includes('hoki')) {
+              isFunnyGameMoment = true;
+              gameName = 'Casino';
+              details = desc;
+            }
+          }
+          // 3. Robbery / Jailed / Wanted
+          else if (title.includes('WANTED') || title.includes('BURONAN') || title.includes('TERTANGKAP') || desc.includes('penjara') || desc.includes('dijebloskan')) {
+            isFunnyGameMoment = true;
+            gameName = 'Robbery';
+            details = desc;
+          }
+          // 4. Heist
+          else if (title.includes('HEIST') || title.includes('PERAMPOKAN')) {
+            isFunnyGameMoment = true;
+            gameName = 'Heist';
+            details = desc;
+          }
+        }
+
+        if (isFunnyGameMoment) {
+          const moments = require('./tiktok/moments');
+          const mentionMatch = details.match(/<@!?(\d+)>/);
+          const userId = mentionMatch ? mentionMatch[1] : client.user.id;
+
+          const existing = moments.getMoment ? moments.getMoment(message.id) : null;
+          if (!existing) {
+            const momentId = moments.logGameHighlight(
+              message.guildId,
+              message.channelId,
+              message.id,
+              userId,
+              gameName,
+              details.substring(0, 400),
+              `Terdeteksi otomatis oleh sistem game highlight bot`
+            );
+            if (momentId) {
+              await message.react('🎬').catch(() => {});
+              await moments.notifyOwnerOfMoment(client, momentId);
+            }
+          }
+        }
+      }
+      return;
+    }
 
     // Cek Maintenance Mode
     if (message.guildId) {
@@ -2100,6 +2197,16 @@ client.on('error', (error) => {
 
 client.on('warn', (warning) => {
   console.warn('⚠️ Client Warning:', warning);
+});
+
+// ── Listener Reaksi Momen TikTok ──
+client.on('messageReactionAdd', async (reaction, user) => {
+  try {
+    const moments = require('./tiktok/moments');
+    await moments.handleMessageReactionAdd(reaction, user, client);
+  } catch (err) {
+    console.error('❌ [TikTok Moments Reaction] Error:', err.message);
+  }
 });
 
 // ═══════════════════════════════════════════════════

@@ -987,6 +987,27 @@ function initSchema() {
       run: () => {
         addColumn('tiktok_accounts', 'video_count', 'INTEGER DEFAULT -1');
       }
+    },
+    {
+      version: 33,
+      description: "Membuat tabel tiktok_moments untuk menyimpan momen-momen lucu/seru",
+      run: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS tiktok_moments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            message_id TEXT NOT NULL,
+            author_id TEXT NOT NULL,
+            reporter_id TEXT NOT NULL,
+            content TEXT,
+            attachments TEXT,
+            note TEXT,
+            status TEXT DEFAULT 'PENDING',
+            created_at INTEGER DEFAULT (strftime('%s','now'))
+          );
+        `);
+      }
     }
   ];
 
