@@ -144,8 +144,25 @@ const countryTranslations = {
   'England': 'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
   'Jordan': 'Yordania 🇯🇴',
   'DR Congo': 'RD Kongo 🇨🇩',
-  'Uzbekistan': 'Uzbekistan 🇺🇿'
+  'Uzbekistan': 'Uzbekistan 🇺🇿',
+  'France': 'Prancis 🇫🇷',
+  'Canada': 'Kanada 🇨🇦',
+  'Brazil': 'Brasil 🇧🇷',
+  'Norway': 'Norwegia 🇳🇴',
+  'Mexico': 'Meksiko 🇲🇽',
+  'Belgium': 'Belgia 🇧🇪',
+  'United States': 'Amerika Serikat 🇺🇸',
+  'Turkey': 'Turki 🇹🇷',
+  'South Africa': 'Afrika Selatan 🇿🇦'
 };
+
+function translateTeamName(name) {
+  if (!name) return '';
+  if (countryTranslations[name]) return countryTranslations[name];
+  return name
+    .replace(/Winner Match (\d+)/g, 'Pemenang Laga $1')
+    .replace(/Loser Match (\d+)/g, 'Kalah Laga $1');
+}
 
 async function fetchRealtimeMatches() {
   try {
@@ -188,8 +205,8 @@ async function fetchRealtimeMatches() {
     };
 
     for (const fixture of data) {
-      const homeName = countryTranslations[fixture.home_team_name_en] || fixture.home_team_name_en || fixture.home_team_label;
-      const awayName = countryTranslations[fixture.away_team_name_en] || fixture.away_team_name_en || fixture.away_team_label;
+      const homeName = translateTeamName(fixture.home_team_name_en || fixture.home_team_label);
+      const awayName = translateTeamName(fixture.away_team_name_en || fixture.away_team_label);
       if (!homeName || !awayName) continue;
 
       // Parse local_date "MM/DD/YYYY HH:mm"
@@ -662,7 +679,7 @@ function generateWorldCupEmbed(client) {
   updateMatchScores(client);
 
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0xF59E0B) // Amber Gold
     .setTitle('🏆 JADWAL & SKOR FIFA WORLD CUP 2026')
     .setThumbnail('https://upload.wikimedia.org/wikipedia/commons/4/4b/FIFA_World_Cup_2026_logo.svg')
     .setDescription('Berikut adalah jadwal, jam tanding (WIB), dan skor terbaru Piala Dunia FIFA 2026:')
@@ -687,10 +704,16 @@ function generateWorldCupEmbed(client) {
 
   for (const date in groupedMatches) {
     const matchLines = groupedMatches[date].map(m => {
-      const statusIcon = m.status === 'Selesai' ? '✅' : (m.status === 'Live' ? '🔴' : '⏰');
+      const statusIcon = m.status === 'Selesai' ? '🟢' : (m.status === 'Live' ? '🔴' : '⏰');
+      const statusLabel = m.status === 'Selesai' ? 'SELESAI (FT)' : (m.status === 'Live' ? 'LIVE' : 'MENDATANG');
       const scoreStr = (m.status === 'Selesai' || m.status === 'Live') ? `**${m.score}**` : `vs`;
-      return `${statusIcon} \`[${m.stage}]\` **${m.home}** ${scoreStr} **${m.away}**\n   📅 *${m.wibTime}* | Status: _${m.status}_`;
-    }).join('\n\n');
+      const homeName = translateTeamName(m.home);
+      const awayName = translateTeamName(m.away);
+
+      return `> 🏆 **\` ${m.stage.toUpperCase()} \`**\n` +
+             `> ${statusIcon} **${homeName}** ${scoreStr} **${awayName}**\n` +
+             `> 🕒 \`${m.wibTime}\` • *${statusLabel}*\n`;
+    }).join('\n');
 
     embed.addFields({ name: `📆 ${date}`, value: matchLines });
   }
