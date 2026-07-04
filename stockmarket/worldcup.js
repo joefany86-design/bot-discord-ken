@@ -1,127 +1,9 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { db } = require('./database');
 
-// Data pertandingan Piala Dunia 2026 (WIB Timezone)
-// Beberapa skor telah disimulasikan / disesuaikan dengan hasil pertandingan terkini
-const hardcodedMatches = [
-  // Grup H - 26 Juni 2026
-  {
-    id: 1,
-    stage: 'Grup H',
-    home: 'Tanjung Verde 🇨🇻',
-    away: 'Arab Saudi 🇸🇦',
-    wibDate: 'Sabtu, 27 Juni 2026',
-    wibTime: '02:00 WIB',
-    etTime: '26 Juni, 15:00 ET',
-    score: '0 - 0',
-    status: 'Selesai'
-  },
-  // Grup L - 27 Juni 2026 ET / 28 Juni WIB
-  {
-    id: 2,
-    stage: 'Grup L',
-    home: 'Panama 🇵🇦',
-    away: 'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '04:00 WIB',
-    etTime: '27 Juni, 17:00 ET',
-    score: '0 - 4',
-    status: 'Selesai'
-  },
-  {
-    id: 3,
-    stage: 'Grup L',
-    home: 'Kroasia 🇭🇷',
-    away: 'Ghana 🇬🇭',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '04:00 WIB',
-    etTime: '27 Juni, 17:00 ET',
-    score: '0 - 2',
-    status: 'Selesai'
-  },
-  // Grup K - 27 Juni 2026 ET / 28 Juni WIB
-  {
-    id: 4,
-    stage: 'Grup K',
-    home: 'Kolombia 🇨🇴',
-    away: 'Portugal 🇵🇹',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '06:30 WIB',
-    etTime: '27 Juni, 19:30 ET',
-    score: '2 - 1',
-    status: 'Selesai'
-  },
-  {
-    id: 5,
-    stage: 'Grup K',
-    home: 'RD Kongo 🇨🇩',
-    away: 'Uzbekistan 🇺🇿',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '06:30 WIB',
-    etTime: '27 Juni, 19:30 ET',
-    score: '0 - 2',
-    status: 'Selesai'
-  },
-  // Grup J - 28 Juni 2026 WIB
-  {
-    id: 6,
-    stage: 'Grup J',
-    home: 'Yordania 🇯🇴',
-    away: 'Argentina 🇦🇷',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '09:00 WIB',
-    etTime: '27 Juni, 22:00 ET',
-    score: '0 - 2',
-    status: 'Selesai'
-  },
-  {
-    id: 7,
-    stage: 'Grup J',
-    home: 'Aljazair 🇩🇿',
-    away: 'Austria 🇦🇹',
-    wibDate: 'Minggu, 28 Juni 2026',
-    wibTime: '09:00 WIB',
-    etTime: '27 Juni, 22:00 ET',
-    score: '1 - 1',
-    status: 'Selesai'
-  },
-  // Babak 32 Besar - 29 Juni 2026 WIB
-  {
-    id: 8,
-    stage: 'Babak 32 Besar',
-    home: 'Tanjung Verde 🇨🇻',
-    away: 'Inggris 🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-    wibDate: 'Senin, 29 Juni 2026',
-    wibTime: '04:00 WIB',
-    etTime: '28 Juni, 17:00 ET',
-    score: '2 - 2',
-    status: 'Selesai'
-  },
-  {
-    id: 9,
-    stage: 'Babak 32 Besar',
-    home: 'Jerman 🇩🇪',
-    away: 'Paraguay 🇵🇾',
-    wibDate: 'Selasa, 30 Juni 2026',
-    wibTime: '05:00 WIB',
-    etTime: '29 Juni, 18:00 ET',
-    score: '3 - 0',
-    status: 'Selesai'
-  },
-  {
-    id: 10,
-    stage: 'Babak 32 Besar',
-    home: 'Belanda 🇳🇱',
-    away: 'Maroko 🇲🇦',
-    wibDate: 'Rabu, 1 Juli 2026',
-    wibTime: '07:00 WIB',
-    etTime: '30 Juni, 20:00 ET',
-    score: '1 - 1 (Pen: 2 - 3)',
-    status: 'Selesai'
-  }
-];
-
-const matches = [...hardcodedMatches];
+// Array ini diisi sepenuhnya dari database worldcup_matches yang di-sync dari API worldcup26.ir
+// Tidak ada data hardcoded agar skor selalu akurat dan tidak duplikat
+const matches = [];
 
 const countryTranslations = {
   'Spain': 'Spanyol 🇪🇸',
@@ -277,7 +159,6 @@ async function fetchRealtimeMatches() {
 
 function loadMatchesFromDb() {
   matches.length = 0;
-  matches.push(...hardcodedMatches);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS worldcup_matches (
@@ -291,23 +172,22 @@ function loadMatchesFromDb() {
     )
   `);
 
+  // Hanya gunakan data dari database (API worldcup26.ir) — tidak ada hardcoded
   const dbMatches = db.prepare("SELECT * FROM worldcup_matches").all();
   dbMatches.forEach(row => {
-    if (!matches.some(m => m.id === row.id)) {
-      matches.push({
-        id: row.id,
-        stage: row.stage,
-        home: row.home,
-        away: row.away,
-        wibDate: row.wib_date,
-        wibTime: row.wib_time,
-        score: '- - -',
-        status: 'Mendatang'
-      });
-    }
+    matches.push({
+      id: row.id,
+      stage: row.stage,
+      home: row.home,
+      away: row.away,
+      wibDate: row.wib_date,
+      wibTime: row.wib_time,
+      score: 'vs',
+      status: 'Mendatang'
+    });
   });
 
-  // Apply scores from worldcup_match_scores
+  // Terapkan skor dan status yang disimpan dari API
   matches.forEach(m => {
     const saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
     if (saved) {
@@ -394,56 +274,9 @@ function updateMatchScores(client) {
     )
   `);
 
-  matches.forEach(m => {
-    if (m.id <= 10) return; // Pertandingan 1-10 sudah selesai secara default/hardcoded
-    
-    const kickoff = getMatchTimestamp(m.wibDate, m.wibTime);
-    const duration = 2 * 60 * 60 * 1000; // 2 jam durasi pertandingan
-    
-    // Cek status di database
-    const saved = db.prepare('SELECT score, status FROM worldcup_match_scores WHERE match_id = ?').get(m.id);
-    
-    if (saved) {
-      m.score = saved.score;
-      m.status = saved.status;
-    } else {
-      if (now > kickoff + duration) {
-        // Pertandingan selesai -> generate skor acak realistis
-        let scoreStr = '';
-        if (m.home.includes('Argentina') || m.away.includes('Argentina') || m.home.includes('Jerman') || m.away.includes('Jerman') || m.home.includes('Inggris') || m.away.includes('Inggris')) {
-          // Tim kuat cenderung menang
-          const strongScore = Math.floor(Math.random() * 3) + 2; // 2 - 4 gol
-          const weakScore = Math.floor(Math.random() * 2); // 0 - 1 gol
-          if (m.home.includes('Argentina') || m.home.includes('Jerman') || m.home.includes('Inggris')) {
-            scoreStr = `${strongScore} - ${weakScore}`;
-          } else {
-            scoreStr = `${weakScore} - ${strongScore}`;
-          }
-        } else {
-          // Tim seimbang
-          scoreStr = `${Math.floor(Math.random() * 3)} - ${Math.floor(Math.random() * 3)}`;
-        }
-        
-        db.prepare('INSERT OR REPLACE INTO worldcup_match_scores (match_id, score, status) VALUES (?, ?, ?)')
-          .run(m.id, scoreStr, 'Selesai');
-          
-        m.score = scoreStr;
-        m.status = 'Selesai';
-        console.log(`⚽ [WorldCup] Pertandingan ID ${m.id} (${m.home} vs ${m.away}) selesai otomatis. Skor: ${scoreStr}`);
-        
-        // Selesaikan taruhan
-        try {
-          resolveMatchBets(client, m.id, scoreStr);
-        } catch (e) {
-          console.error(`❌ Gagal menyelesaikan taruhan untuk match ID ${m.id}:`, e.message);
-        }
-      } else if (now > kickoff) {
-        // Sedang berlangsung
-        m.score = '0 - 0';
-        m.status = 'Live';
-      }
-    }
-  });
+  // Skor & status sudah diterapkan dari loadMatchesFromDb() via worldcup_match_scores
+  // Tidak ada lagi skor acak — semua data murni dari API worldcup26.ir
+  // (Tidak ada aksi tambahan di sini)
 }
 
 /**
