@@ -63,16 +63,17 @@ function getAllActiveAccounts(guildId) {
   return db.prepare('SELECT * FROM tiktok_accounts WHERE is_active = 1').all();
 }
 
-function updateAccountState(id, { lastVideoId, isLive, lastLiveAt, lastCheckedAt }) {
+function updateAccountState(id, { lastVideoId, isLive, lastLiveAt, lastCheckedAt, videoCount }) {
   const now = Math.floor(Date.now() / 1000);
   db.prepare(`
     UPDATE tiktok_accounts
     SET last_video_id   = COALESCE(?, last_video_id),
         is_live         = COALESCE(?, is_live),
         last_live_at    = COALESCE(?, last_live_at),
-        last_checked_at = ?
+        last_checked_at = ?,
+        video_count     = COALESCE(?, video_count)
     WHERE id = ?
-  `).run(lastVideoId ?? null, isLive ?? null, lastLiveAt ?? null, lastCheckedAt ?? now, id);
+  `).run(lastVideoId ?? null, isLive ?? null, lastLiveAt ?? null, lastCheckedAt ?? now, videoCount ?? null, id);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ async function fetchTikTokProfile(username) {
     let displayName = username;
     let latestVideoId = null;
     let isLive = false;
+    let videoCount = -1;
 
     if (jsonData) {
       try {
@@ -127,21 +129,24 @@ async function fetchTikTokProfile(username) {
         const webapp = jsonData?.['__DEFAULT_SCOPE__']?.['webapp.user-detail']?.userInfo;
         if (webapp?.user?.nickname) displayName = webapp.user.nickname;
 
-        // Cari video terbaru
-        const itemList = jsonData?.['__DEFAULT_SCOPE__']?.['webapp.user-detail']?.itemList;
-        if (Array.isArray(itemList) && itemList.length > 0) {
-          latestVideoId = String(itemList[0].id || itemList[0].aweme_id || '');
+        // Cari videoCount
+        if (webapp?.stats?.videoCount !== undefined) {
+          videoCount = parseInt(webapp.stats.videoCount);
+        } else if (webapp?.statsV2?.videoCount !== undefined) {
+          videoCount = parseInt(webapp.statsV2.videoCount);
         }
 
-        // Cek is_live dari user stats
-        if (webapp?.user?.roomId || webapp?.user?.isUnderAge === false && webapp?.liveRoom) {
+        // Cek is_live dari user stats / roomId
+        if (webapp?.user?.roomId) {
+          isLive = true;
+        } else if (webapp?.user?.isUnderAge === false && webapp?.liveRoom) {
           isLive = true;
         }
       } catch { /* skip parsing error */ }
     }
 
-    // Fallback: cek keberadaan "LIVE" badge di HTML mentah
-    if (!isLive && html.includes('"roomId"') && html.includes('"liveRoom"')) {
+    // Fallback: cek keberadaan "roomId" / "liveRoom" dengan nilai valid di HTML mentah
+    if (!isLive && (html.includes('"roomId":"') && !html.includes('"roomId":""')) && html.includes('"liveRoom"')) {
       isLive = true;
     }
 
@@ -151,7 +156,7 @@ async function fetchTikTokProfile(username) {
       if (videoUrlMatch) latestVideoId = videoUrlMatch[1];
     }
 
-    return { displayName, latestVideoId, isLive };
+    return { displayName, latestVideoId, isLive, videoCount };
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error(`[TikTok] Gagal fetch profil @${username}:`, err.message);
@@ -304,7 +309,6 @@ async function runWatcherCycle(client) {
 
       // ── Deteksi LIVE ──
       const wasLive = account.is_live === 1;
-      const liveCooldownOk = now - (account.last_live_at || 0) > LIVE_COOLDOWN_MS / 1000;
 
       if (isLive && !wasLive && settings.notify_live === 1) {
         const embed = buildLiveEmbed(account.user_id, account.tiktok_username, displayName);
@@ -317,22 +321,23 @@ async function runWatcherCycle(client) {
         updateAccountState(account.id, { isLive: 0, lastCheckedAt: now });
       }
 
-      // ── Deteksi Video Baru ──
-      const isNewVideo = latestVideoId &&
-        account.last_video_id !== null &&
-        latestVideoId !== account.last_video_id;
+      // ── Deteksi Video Baru (melalui video_count) ──
+      const isNewVideo = profile.videoCount !== -1 &&
+        account.video_count !== -1 &&
+        profile.videoCount > account.video_count;
 
       if (isNewVideo && settings.notify_video === 1) {
         const embed = buildVideoEmbed(account.user_id, account.tiktok_username, displayName, latestVideoId);
         const row   = buildVideoButton(account.tiktok_username, latestVideoId);
-        await channel.send({ content: `${mentionText}📹 **@${account.tiktok_username} upload video baru!**`, embeds: [embed], components: [row] });
-        console.log(`📱 [TikTok] Video notif dikirim: @${account.tiktok_username} (${latestVideoId})`);
+        await channel.send({ content: `${mentionText}📹 **@${account.tiktok_username} memposting video/konten baru!**`, embeds: [embed], components: [row] });
+        console.log(`📱 [TikTok] Video/foto baru terdeteksi via count: @${account.tiktok_username} (Lama: ${account.video_count} -> Baru: ${profile.videoCount})`);
       }
 
-      // Selalu update last_video_id (juga untuk initial seed)
+      // Selalu update state terakhir (termasuk video_count baru & initial seed)
       updateAccountState(account.id, {
         lastVideoId: latestVideoId || account.last_video_id,
         isLive: isLive ? 1 : (wasLive ? 0 : account.is_live),
+        videoCount: profile.videoCount !== -1 ? profile.videoCount : account.video_count,
         lastCheckedAt: now
       });
 
@@ -599,11 +604,9 @@ async function handlePanelInteraction(interaction, client) {
 
     upsertAccount(user.id, guildId, rawUsername, displayName);
 
-    // Seed video ID agar tidak langsung trigger notif
-    if (profile?.latestVideoId) {
-      db.prepare('UPDATE tiktok_accounts SET last_video_id = ? WHERE user_id = ? AND guild_id = ?')
-        .run(profile.latestVideoId, user.id, guildId);
-    }
+    // Seed initial data agar notif tidak langsung trigger saat pertama daftar
+    db.prepare('UPDATE tiktok_accounts SET last_video_id = ?, video_count = ? WHERE user_id = ? AND guild_id = ?')
+      .run(profile?.latestVideoId || null, profile?.videoCount !== undefined ? profile.videoCount : -1, user.id, guildId);
 
     await interaction.editReply({
       embeds: [new EmbedBuilder()

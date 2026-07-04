@@ -1205,12 +1205,10 @@ client.on('interactionCreate', async interaction => {
 
       tiktok.upsertAccount(interaction.user.id, guildId, username, displayName);
 
-      // Seed last_video_id agar notif tidak langsung trigger saat pertama daftar
-      if (profile?.latestVideoId) {
-        const { db } = require('./stockmarket/database');
-        db.prepare('UPDATE tiktok_accounts SET last_video_id = ? WHERE user_id = ? AND guild_id = ?')
-          .run(profile.latestVideoId, interaction.user.id, guildId);
-      }
+      // Seed initial data agar notif tidak langsung trigger saat pertama daftar
+      const { db } = require('./stockmarket/database');
+      db.prepare('UPDATE tiktok_accounts SET last_video_id = ?, video_count = ? WHERE user_id = ? AND guild_id = ?')
+        .run(profile?.latestVideoId || null, profile?.videoCount !== undefined ? profile.videoCount : -1, interaction.user.id, guildId);
 
       await interaction.editReply({
         embeds: [new EmbedBuilder()

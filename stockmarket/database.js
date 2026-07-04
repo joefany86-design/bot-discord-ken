@@ -980,6 +980,13 @@ function initSchema() {
         addColumn('tiktok_settings', 'panel_channel_id', 'TEXT DEFAULT NULL');
         addColumn('tiktok_settings', 'panel_message_id', 'TEXT DEFAULT NULL');
       }
+    },
+    {
+      version: 32,
+      description: "Menambahkan kolom video_count ke tiktok_accounts untuk pelacakan unggahan baru",
+      run: () => {
+        addColumn('tiktok_accounts', 'video_count', 'INTEGER DEFAULT -1');
+      }
     }
   ];
 
