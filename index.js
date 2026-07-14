@@ -18,7 +18,6 @@ const {
 const ffmpegStatic = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
-const { initGreetings } = require('./greetings');
 const { handleLinkMirroring } = require('./bypass');
 const { initStockMarket, handleEconomyChat, handleEconomyCommands, getPortalHubData } = require('./stockmarket');
 const { handleVoiceTodCommand } = require('./voice_events');
@@ -753,9 +752,6 @@ client.once('ready', async () => {
       console.error('❌ Gagal mencache member guild:', err.message);
     });
   }
-
-  // SAPAAN TERJADWAL (CRON JOBS) - WIB TIMEZONE
-  initGreetings(client);
 
   // STOCK MARKET & EKONOMI SERVER ("RUPIAH SERVER")
   initStockMarket(client);
