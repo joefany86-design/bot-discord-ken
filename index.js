@@ -782,7 +782,7 @@ client.once('ready', async () => {
           )
           .setTimestamp();
 
-        await announcementChannel.send({ content: '@everyone', embeds: [updateEmbed] }).catch(() => {});
+        await announcementChannel.send({ embeds: [updateEmbed] }).catch(() => {});
       }
     } catch (err) {
       console.error('Gagal memproses deploy flag / mengirim pengumuman:', err);

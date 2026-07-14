@@ -2,7 +2,6 @@ const cron = require('node-cron');
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
-const { sendDailyNews } = require('./news');
 
 /**
  * Menginisialisasi semua jadwal sapaan otomatis menggunakan node-cron.
@@ -28,16 +27,7 @@ function initGreetings(client) {
     console.log(`  ✅ Jadwal sapaan "${greeting.title}" terdaftar (${greeting.cron} WIB)`);
   });
 
-  // Registrasi jadwal berita harian jika diaktifkan
-  if (config.newsCron) {
-    cron.schedule(config.newsCron, () => {
-      sendDailyNews(client);
-    }, {
-      scheduled: true,
-      timezone: config.TIMEZONE
-    });
-    console.log(`  📰 Jadwal berita harian terdaftar (${config.newsCron} WIB)`);
-  }
+
 }
 
 /**
@@ -88,8 +78,8 @@ async function sendGreeting(client, greeting) {
         continue;
       }
 
-      // 3. Kirim pesan ke channel tersebut dengan mention seluruh member (@everyone)
-      await channel.send({ content: '@everyone', embeds: [embed] });
+      // 3. Kirim pesan ke channel tersebut tanpa mention
+      await channel.send({ embeds: [embed] });
       console.log(`[Greetings] Sapaan "${greeting.title}" berhasil dikirim ke #${channel.name} di server ${guild.name}`);
     } catch (error) {
       console.error(`[Greetings] Terjadi kesalahan saat mengirim sapaan ke guild ${target.guildId}:`, error.message);
@@ -98,6 +88,5 @@ async function sendGreeting(client, greeting) {
 }
 
 module.exports = {
-  initGreetings,
-  sendDailyNews
+  initGreetings
 };

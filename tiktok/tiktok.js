@@ -322,7 +322,7 @@ async function runWatcherCycle(client) {
       if (isLive && !wasLive && settings.notify_live === 1) {
         const embed = buildLiveEmbed(account.user_id, account.tiktok_username, displayName);
         const row   = buildLiveButton(account.tiktok_username);
-        await channel.send({ content: `@everyone 🔴 **@${account.tiktok_username} sedang LIVE!**`, embeds: [embed], components: [row] });
+        await channel.send({ content: `${mentionText}🔴 **@${account.tiktok_username} sedang LIVE!**`, embeds: [embed], components: [row] });
         updateAccountState(account.id, { isLive: 1, lastLiveAt: now, lastCheckedAt: now });
         console.log(`📱 [TikTok] Live notif dikirim: @${account.tiktok_username}`);
       } else if (!isLive && wasLive) {
@@ -338,7 +338,7 @@ async function runWatcherCycle(client) {
       if (isNewVideo && settings.notify_video === 1) {
         const embed = buildVideoEmbed(account.user_id, account.tiktok_username, displayName, latestVideoId);
         const row   = buildVideoButton(account.tiktok_username, latestVideoId);
-        await channel.send({ content: `@everyone 📹 **@${account.tiktok_username} memposting video/konten baru!**`, embeds: [embed], components: [row] });
+        await channel.send({ content: `${mentionText}📹 **@${account.tiktok_username} memposting video/konten baru!**`, embeds: [embed], components: [row] });
         console.log(`📱 [TikTok] Video/foto baru terdeteksi via count: @${account.tiktok_username} (Lama: ${account.video_count} -> Baru: ${profile.videoCount})`);
       }
 
