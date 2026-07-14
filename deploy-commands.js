@@ -49,13 +49,6 @@ const commands = [
         .setRequired(true)
     ),
 
-  new SlashCommandBuilder()
-    .setName('berita')
-    .setDescription('Menampilkan 5 berita terkini ter-update hari ini'),
-
-  new SlashCommandBuilder()
-    .setName('loker')
-    .setDescription('Menampilkan 5 informasi lowongan kerja terbaru di Indonesia'),
 
   new SlashCommandBuilder()
     .setName('stiker')
