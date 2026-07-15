@@ -40,6 +40,10 @@ const commands = [
     .setDescription('Mengirim pesan panel onboarding kustom di channel saat ini (Hanya Admin)'),
 
   new SlashCommandBuilder()
+    .setName('setup-garden-panel')
+    .setDescription('Mengirim panel filter notifikasi kebun di channel saat ini (Hanya Admin)'),
+
+  new SlashCommandBuilder()
     .setName('notif')
     .setDescription('Mengaktifkan atau menonaktifkan peran notifikasi tertentu (Searchable)')
     .addStringOption(option =>

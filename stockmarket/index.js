@@ -14389,58 +14389,188 @@ async function handleEconomyCommands(message, client) {
 
       try {
         const { ChannelType } = require('discord.js');
-        const setupMsg = await message.reply('⏳ **Sedang membuat kategori dan saluran pemantauan Grow a Garden 2...**');
+        const setupMsg = await message.reply('⏳ **Sedang menyiapkan kategori, saluran, dan peran Grow a Garden 2...**');
 
-        // 1. Buat Kategori
-        const category = await guild.channels.create({
-          name: '🌸┃GROW A GARDEN 2',
-          type: ChannelType.GuildCategory
-        });
+        // 1. Dapatkan atau Buat Kategori
+        let categoryId = '1519721993853730817';
+        let targetCategory = guild.channels.cache.get(categoryId);
+        if (!targetCategory) {
+          try {
+            targetCategory = await guild.channels.fetch(categoryId);
+          } catch (e) {
+            targetCategory = null;
+          }
+        }
 
-        // 2. Buat Saluran Teks
-        const seedChannel = await guild.channels.create({
-          name: '🌱┃seed-stock',
-          type: ChannelType.GuildText,
-          parent: category.id,
-          topic: 'Stok benih Grow a Garden 2 real-time'
-        });
+        if (!targetCategory) {
+          const category = await guild.channels.create({
+            name: '🌸┃GROW A GARDEN 2',
+            type: ChannelType.GuildCategory
+          });
+          categoryId = category.id;
+        } else {
+          categoryId = targetCategory.id;
+        }
 
-        const gearChannel = await guild.channels.create({
-          name: '🛠️┃gear-stock',
-          type: ChannelType.GuildText,
-          parent: category.id,
-          topic: 'Stok peralatan/gear Grow a Garden 2 real-time'
-        });
+        // 2. Buat seluruh saluran yang diminta
+        const channelsToCreate = [
+          { name: '🌱 Seeds 🌱┃seed-stock', topic: 'Stok benih Grow a Garden 2 real-time', key: 'seed' },
+          { name: '🛠️ Gear ⚙️┃gear-stock', topic: 'Stok peralatan/gear Grow a Garden 2 real-time', key: 'gear' },
+          { name: '📦 Crates off', topic: 'Status peti Grow a Garden 2', key: 'crates' },
+          { name: '🌦️ Weather 🌤️┃weather-status', topic: 'Status cuaca kebun Grow a Garden 2 real-time', key: 'weather' },
+          { name: '📊 Prediction board 🍀┃prediction-gag2', topic: 'Prediksi waktu restock Grow a Garden 2', key: 'prediction' },
+          { name: '👁️ Last-seen board unknown', topic: 'Informasi terakhir dilihat Grow a Garden 2', key: 'last_seen' },
+          { name: '💰 Fruit prices 🧑🌾┃sell-price', topic: 'Harga jual buah Grow a Garden 2', key: 'sell_price' },
+          { name: '🔨 Auction off', topic: 'Status lelang Grow a Garden 2', key: 'auction' },
+          { name: '⚡ Webhook mode on', topic: 'Status webhook mode Grow a Garden 2', key: 'webhook_mode' }
+        ];
 
-        const predChannel = await guild.channels.create({
-          name: '🔮┃restock-prediction',
-          type: ChannelType.GuildText,
-          parent: category.id,
-          topic: 'Prediksi waktu restock Grow a Garden 2'
-        });
+        const createdChannels = {};
+        const webhooks = {};
 
-        const weatherChannel = await guild.channels.create({
-          name: '🌤️┃weather-status',
-          type: ChannelType.GuildText,
-          parent: category.id,
-          topic: 'Informasi status cuaca kebun Grow a Garden 2 real-time'
-        });
+        for (const ch of channelsToCreate) {
+          const channel = await guild.channels.create({
+            name: ch.name,
+            type: ChannelType.GuildText,
+            parent: categoryId,
+            topic: ch.topic
+          });
+          createdChannels[ch.key] = channel;
 
-        // 3. Buat Webhooks
-        const seedWebhook = await seedChannel.createWebhook({ name: 'GAG2 Seed Notifier' });
-        const gearWebhook = await gearChannel.createWebhook({ name: 'GAG2 Gear Notifier' });
-        const predWebhook = await predChannel.createWebhook({ name: 'GAG2 Prediction Notifier' });
-        const weatherWebhook = await weatherChannel.createWebhook({ name: 'GAG2 Weather Notifier' });
+          if (['seed', 'gear', 'weather', 'prediction', 'sell_price'].includes(ch.key)) {
+            const wh = await channel.createWebhook({ name: `GAG2 ${ch.name.split('┃')[0].trim()} Notifier` });
+            webhooks[ch.key] = wh.url;
+          }
+        }
+
+        // 3. Buat Roles jika belum ada
+        const rolesToCreate = [
+          { name: 'blodmoon' },
+          { name: 'Acorn' },
+          { name: 'Apple' },
+          { name: 'Arch Crate' },
+          { name: 'Aurora' },
+          { name: 'Bamboo' },
+          { name: 'Banana' },
+          { name: 'Basic Pot' },
+          { name: 'Bear Trap Crate' },
+          { name: 'Bench Crate' },
+          { name: 'Blueberry' },
+          { name: 'Bridge Crate' },
+          { name: 'Cactus' },
+          { name: 'Carrot' },
+          { name: 'Cherry' },
+          { name: 'Coconut' },
+          { name: 'Common Sprinkler' },
+          { name: 'Common Watering Can' },
+          { name: 'Conveyor Crate' },
+          { name: 'Corn' },
+          { name: 'Dragon Fruit' },
+          { name: 'Dragon\'s Breath' },
+          { name: 'Fence Crate' },
+          { name: 'Flashbang' },
+          { name: 'Gnome' },
+          { name: 'Goldmoon' },
+          { name: 'Grape' },
+          { name: 'Green Bean' },
+          { name: 'Invisibility Mushroom' },
+          { name: 'Jump Mushroom' },
+          { name: 'Ladder Crate' },
+          { name: 'Lantern' },
+          { name: 'Legendary Sprinkler' },
+          { name: 'Light Crate' },
+          { name: 'Lightning' },
+          { name: 'Mango' },
+          { name: 'Mega Moon' },
+          { name: 'Moon Bloom' },
+          { name: 'Mushroom' },
+          { name: 'Owner Door Crate' },
+          { name: 'Picture Frame Crate' },
+          { name: 'Pineapple' },
+          { name: 'Poison Apple' },
+          { name: 'Pomegranate' },
+          { name: 'Rain' },
+          { name: 'Rainbow' },
+          { name: 'Rainbow Moon' },
+          { name: 'Rare Sprinkler' },
+          { name: 'Roleplay Crate' },
+          { name: 'Seesaw Crate' },
+          { name: 'Shrink Mushroom' },
+          { name: 'Sign Crate' },
+          { name: 'Snowfall' },
+          { name: 'Speed Mushroom' },
+          { name: 'Spring Crate' },
+          { name: 'Starfall' },
+          { name: 'Strawberry' },
+          { name: 'Strawberry Sniper' },
+          { name: 'Sunflower' },
+          { name: 'Super Sprinkler' },
+          { name: 'Super Watering Can' },
+          { name: 'Supersize Mushroom' },
+          { name: 'Teleporter' },
+          { name: 'Teleporter Pad Crate' },
+          { name: 'Tomato' },
+          { name: 'Trowel' },
+          { name: 'Tulip' },
+          { name: 'Uncommon Sprinkler' },
+          { name: 'Venom Spitter' },
+          { name: 'Venus Fly Trap' },
+          { name: 'Wheelbarrow' },
+          { name: 'Hypno Bloom' },
+          { name: 'Fire Fern' },
+          { name: 'Rocket Pop' },
+          { name: 'Star Fruit' },
+          { name: 'Sun Bloom' },
+          { name: 'Boombox Crate' },
+          { name: 'Eclipse' },
+          { name: 'Fourth Of July Crate' },
+          { name: 'Sunburst' }
+        ];
+
+        const fs = require('fs');
+        const path = require('path');
+        const rolesMapPath = path.join(__dirname, '..', 'roles_map.json');
+        let rolesMap = {};
+        if (fs.existsSync(rolesMapPath)) {
+          try {
+            rolesMap = JSON.parse(fs.readFileSync(rolesMapPath, 'utf8'));
+          } catch (e) {}
+        }
+
+        let rolesCreatedCount = 0;
+        let rolesExistingCount = 0;
+
+        for (const roleDef of rolesToCreate) {
+          const lowerName = roleDef.name.toLowerCase();
+          let existingRole = guild.roles.cache.find(r => r.name.toLowerCase() === lowerName);
+          if (!existingRole) {
+            existingRole = await guild.roles.create({
+              name: roleDef.name,
+              reason: 'GAG2 Auto-setup'
+            });
+            rolesCreatedCount++;
+          } else {
+            rolesExistingCount++;
+          }
+          rolesMap[lowerName] = existingRole.id;
+        }
+
+        try {
+          fs.writeFileSync(rolesMapPath, JSON.stringify(rolesMap, null, 2), 'utf8');
+        } catch (err) {
+          console.error('Error writing roles_map.json:', err);
+        }
 
         const resultEmbed = new EmbedBuilder()
           .setColor(0x2ECC71)
-          .setTitle('✅ Pengaturan Saluran Grow a Garden 2 Sukses!')
-          .setDescription('Saluran terpisah beserta Webhook berhasil dibuat. Silakan salin URL Webhook di bawah ini ke script executor Anda:')
+          .setTitle('✅ Pengaturan Saluran & Peran GAG2 Sukses!')
+          .setDescription(`Seluruh 9 saluran pemantauan berhasil dibuat di bawah kategori target. Peran notifikasi juga telah disiapkan:\n👉 **Peran Baru Dibuat:** ${rolesCreatedCount}\n👉 **Peran Sudah Ada:** ${rolesExistingCount}`)
           .addFields(
-            { name: '🌱 Saluran Benih (Seeds)', value: `<#${seedChannel.id}>\n\`\`\`${seedWebhook.url}\`\`\``, inline: false },
-            { name: '🛠️ Saluran Peralatan (Gears)', value: `<#${gearChannel.id}>\n\`\`\`${gearWebhook.url}\`\`\``, inline: false },
-            { name: '🔮 Saluran Prediksi (Restock)', value: `<#${predChannel.id}>\n\`\`\`${predWebhook.url}\`\`\``, inline: false },
-            { name: '🌤️ Saluran Cuaca (Weather)', value: `<#${weatherChannel.id}>\n\`\`\`${weatherWebhook.url}\`\`\``, inline: false }
+            { name: '🌱 Saluran Benih (Seeds)', value: `<#${createdChannels['seed'].id}>\n\`\`\`${webhooks['seed']}\`\`\`,`, inline: false },
+            { name: '🛠️ Saluran Peralatan (Gears)', value: `<#${createdChannels['gear'].id}>\n\`\`\`${webhooks['gear']}\`\`\`,`, inline: false },
+            { name: '🌦️ Saluran Cuaca (Weather)', value: `<#${createdChannels['weather'].id}>\n\`\`\`${webhooks['weather']}\`\`\`,`, inline: false },
+            { name: '🔮 Saluran Prediksi (Prediction)', value: `<#${createdChannels['prediction'].id}>\n\`\`\`${webhooks['prediction']}\`\`\`,`, inline: false },
+            { name: '💰 Saluran Harga Buah (Fruit Prices)', value: `<#${createdChannels['sell_price'].id}>\n\`\`\`${webhooks['sell_price'] || 'N/A'}\`\`\``, inline: false }
           )
           .setFooter({ text: 'Gunakan Webhook URL di atas di dalam script Lua Anda!' })
           .setTimestamp();

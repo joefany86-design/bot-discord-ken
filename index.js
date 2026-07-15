@@ -909,6 +909,11 @@ client.on('interactionCreate', async interaction => {
       const onboarding = require('./onboarding');
       await onboarding.sendOnboardingPanel(interaction);
     }
+    // ── SETUP GARDEN PANEL ──
+    else if (commandName === 'setup-garden-panel') {
+      const onboarding = require('./onboarding');
+      await onboarding.sendGardenPanel(interaction);
+    }
     // ── NOTIFICATION TOGGLE VIA COMMAND ──
     else if (commandName === 'notif') {
       const onboarding = require('./onboarding');
@@ -1250,6 +1255,102 @@ client.on('interactionCreate', async interaction => {
 // ═══════════════════════════════════════════════════
 client.on('messageCreate', async message => {
   try {
+    // ── GAG2 WEBHOOK NOTIFICATION MENTION TRIGGER ──
+    if (message.guildId && (message.webhookId || (message.author && message.author.bot))) {
+      const channelName = message.channel?.name?.toLowerCase() || '';
+      const hasGagKeyword = channelName.includes('seed-stock') || 
+                            channelName.includes('gear-stock') || 
+                            channelName.includes('weather-status') || 
+                            channelName.includes('prediction-gag2') || 
+                            channelName.includes('sell-price') ||
+                            channelName.includes('restock-prediction');
+
+      if (hasGagKeyword) {
+        // Gabungkan seluruh teks konten dan embed untuk pencarian
+        let textToScan = (message.content || '') + ' ';
+        if (message.embeds && message.embeds.length > 0) {
+          for (const embed of message.embeds) {
+            textToScan += (embed.title || '') + ' ' + (embed.description || '') + ' ';
+            if (embed.fields) {
+              for (const field of embed.fields) {
+                textToScan += (field.name || '') + ' ' + (field.value || '') + ' ';
+              }
+            }
+          }
+        }
+
+        const textLower = textToScan.toLowerCase();
+
+        // Daftar keyword dari pings yang diminta
+        const keywords = [
+          "Bloodmoon", "Acorn", "Apple", "Arch Crate", "Aurora", "Bamboo", "Banana", "Basic Pot", 
+          "Bear Trap Crate", "Bench Crate", "Blueberry", "Bridge Crate", "Cactus", "Carrot", "Cherry", 
+          "Coconut", "Common Sprinkler", "Common Watering Can", "Conveyor Crate", "Corn", "Dragon Fruit", 
+          "Dragon's Breath", "Fence Crate", "Flashbang", "Gnome", "Goldmoon", "Grape", "Green Bean", 
+          "Invisibility Mushroom", "Jump Mushroom", "Ladder Crate", "Lantern", "Legendary Sprinkler", 
+          "Light Crate", "Lightning", "Mango", "Mega Moon", "Moon Bloom", "Mushroom", "Owner Door Crate", 
+          "Picture Frame Crate", "Pineapple", "Poison Apple", "Pomegranate", "Rain", "Rainbow", 
+          "Rainbow Moon", "Rare Sprinkler", "Roleplay Crate", "Seesaw Crate", "Shrink Mushroom", 
+          "Sign Crate", "Snowfall", "Speed Mushroom", "Spring Crate", "Starfall", "Strawberry", 
+          "Strawberry Sniper", "Sunflower", "Super Sprinkler", "Super Watering Can", "Supersize Mushroom", 
+          "Teleporter", "Teleporter Pad Crate", "Tomato", "Trowel", "Tulip", "Uncommon Sprinkler", 
+          "Venom Spitter", "Venus Fly Trap", "Wheelbarrow", "Hypno Bloom", "Fire Fern", "Rocket Pop", 
+          "Star Fruit", "Sun Bloom", "Boombox Crate", "Eclipse", "Fourth Of July Crate", "Sunburst"
+        ];
+
+        // Urutkan kata kunci dari terpanjang untuk menghindari false positive (greedy match)
+        const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+        let tempText = textLower;
+        const matchedKeywords = [];
+
+        for (const kw of sortedKeywords) {
+          const kwLower = kw.toLowerCase();
+          if (tempText.includes(kwLower)) {
+            matchedKeywords.push(kw);
+            // Ganti kata agar tidak terdeteksi ulang oleh substring yang lebih pendek
+            tempText = tempText.split(kwLower).join('__matched__');
+          }
+        }
+
+        if (matchedKeywords.length > 0) {
+          const pings = [];
+          const fs = require('fs');
+          const path = require('path');
+          const rolesMapPath = path.join(__dirname, 'roles_map.json');
+          let rolesMap = {};
+          if (fs.existsSync(rolesMapPath)) {
+            try {
+              rolesMap = JSON.parse(fs.readFileSync(rolesMapPath, 'utf8'));
+            } catch (e) {}
+          }
+
+          for (const kw of matchedKeywords) {
+            let roleName = kw.toLowerCase();
+            if (roleName === 'bloodmoon') roleName = 'blodmoon'; // Handle pemetaan khusus user
+
+            let roleId = rolesMap[roleName];
+            let role = null;
+            if (roleId) {
+              role = message.guild.roles.cache.get(roleId);
+            }
+            if (!role) {
+              role = message.guild.roles.cache.find(r => r.name.toLowerCase() === roleName);
+            }
+
+            if (role) {
+              pings.push(role.toString());
+            }
+          }
+
+          if (pings.length > 0) {
+            await message.channel.send({
+              content: `📢 **Notifikasi GAG2:** ${pings.join(' ')}`
+            }).catch(err => console.error('Error sending GAG2 ping:', err));
+          }
+        }
+      }
+    }
+
     if (message.author.bot) {
       // Deteksi highlight game bot secara otomatis
       if (message.author.id === client.user.id && message.guildId) {

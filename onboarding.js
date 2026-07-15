@@ -26,6 +26,30 @@ const CITIZENSHIPS = {
 };
 
 /**
+ * Mengirimkan panel filter notifikasi kebun ke channel tempat perintah dijalankan.
+ * @param {ChatInputCommandInteraction} interaction - Interaksi slash command.
+ */
+async function sendGardenPanel(interaction) {
+  // Hanya izinkan Administrator
+  if (!interaction.member.permissions.has('Administrator')) {
+    return interaction.reply({
+      content: '❌ Anda tidak memiliki izin untuk menggunakan perintah ini! Hanya Administrator yang diperbolehkan.',
+      flags: 64
+    });
+  }
+
+  const { message1, message2 } = getOnboardingMessages();
+
+  await interaction.reply({
+    content: '✅ Panel filter notifikasi kebun berhasil dikirim!',
+    flags: 64
+  });
+
+  await interaction.channel.send(message1);
+  await interaction.channel.send(message2);
+}
+
+/**
  * Mengirimkan panel onboarding ke channel tempat perintah dijalankan.
  * @param {ChatInputCommandInteraction} interaction - Interaksi slash command.
  */
@@ -439,7 +463,8 @@ async function handleOnboardingRoleSelect(interaction) {
   const { values, member, guild } = interaction;
   await interaction.deferReply({ flags: 64 });
 
-  const selectedRoleName = values[0].toLowerCase().trim();
+  let selectedRoleName = values[0].toLowerCase().trim();
+  if (selectedRoleName === 'bloodmoon') selectedRoleName = 'blodmoon';
 
   // Load roles map
   let rolesMap = {};
@@ -513,7 +538,11 @@ async function handleNotifAutocomplete(interaction) {
       name.includes('rain') ||
       name.includes('snowfall') ||
       name.includes('starfall') ||
-      ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath', 'hypno bloom', 'hypnobloom'].includes(name)
+      name.includes('blodmoon') ||
+      name.includes('eclipse') ||
+      name.includes('sunburst') ||
+      name.includes('crate') ||
+      ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath', 'hypno bloom', 'hypnobloom', 'fire fern', 'rocket pop', 'star fruit', 'sun bloom'].includes(name)
     );
   });
 
@@ -535,7 +564,8 @@ async function handleNotifAutocomplete(interaction) {
  */
 async function handleNotifCommand(interaction) {
   await interaction.deferReply({ flags: 64 });
-  const selectedRoleName = interaction.options.getString('peran').toLowerCase().trim();
+  let selectedRoleName = interaction.options.getString('peran').toLowerCase().trim();
+  if (selectedRoleName === 'bloodmoon') selectedRoleName = 'blodmoon';
 
   // Load roles map
   let rolesMap = {};
@@ -624,6 +654,7 @@ function getOnboardingMessages() {
       { label: 'Cherry', value: 'Cherry', emoji: '🍒' },
       { label: 'Dragon Fruit', value: 'Dragon Fruit', emoji: '🐉' },
       { label: 'Dragon\'s Breath', value: 'Dragon\'s Breath', emoji: '🔥' },
+      { label: 'Fire Fern', value: 'Fire Fern', emoji: '🔥' },
       { label: 'Grape', value: 'Grape', emoji: '🍇' },
       { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' },
       { label: 'Hypno Bloom', value: 'Hypno Bloom', emoji: '🌀' },
@@ -633,6 +664,9 @@ function getOnboardingMessages() {
       { label: 'Pineapple', value: 'Pineapple', emoji: '🍍' },
       { label: 'Poison Apple', value: 'Poison Apple', emoji: '🍏' },
       { label: 'Pomegranate', value: 'Pomegranate', emoji: '🍎' },
+      { label: 'Rocket Pop', value: 'Rocket Pop', emoji: '🚀' },
+      { label: 'Star Fruit', value: 'Star Fruit', emoji: '⭐' },
+      { label: 'Sun Bloom', value: 'Sun Bloom', emoji: '☀️' },
       { label: 'Sunflower', value: 'Sunflower', emoji: '🌻' },
       { label: 'Tulip', value: 'Tulip', emoji: '🌷' },
       { label: 'Venom Spitter', value: 'Venom Spitter', emoji: '🧪' },
@@ -674,8 +708,10 @@ function getOnboardingMessages() {
     .setCustomId('onboarding_select_gears')
     .setPlaceholder('🛠️ Peralatan Kebun')
     .addOptions([
+      { label: 'Boombox Crate', value: 'Boombox Crate', emoji: '📻' },
       { label: 'Common Watering Can', value: 'Common Watering Can', emoji: '💧' },
       { label: 'Common Sprinkler', value: 'Common Sprinkler', emoji: '⚙️' },
+      { label: 'Fourth of July Crate', value: 'Fourth of July Crate', emoji: '🎆' },
       { label: 'Uncommon Sprinkler', value: 'Uncommon Sprinkler', emoji: '⚙️' },
       { label: 'Trowel', value: 'Trowel', emoji: '🛠️' },
       { label: 'Rare Sprinkler', value: 'Rare Sprinkler', emoji: '⚙️' },
@@ -689,6 +725,8 @@ function getOnboardingMessages() {
     .setPlaceholder('🌤️ Cuaca Kebun')
     .addOptions([
       { label: 'Aurora', value: 'Aurora', emoji: '🌌' },
+      { label: 'Bloodmoon', value: 'blodmoon', emoji: '🔴' },
+      { label: 'Eclipse', value: 'Eclipse', emoji: '🌑' },
       { label: 'Goldmoon', value: 'Goldmoon', emoji: '🌙' },
       { label: 'Lightning', value: 'Lightning', emoji: '⚡' },
       { label: 'Mega Moon', value: 'Mega Moon', emoji: '🌕' },
@@ -696,7 +734,8 @@ function getOnboardingMessages() {
       { label: 'Rainbow', value: 'Rainbow', emoji: '🌈' },
       { label: 'Rainbow Moon', value: 'Rainbow Moon', emoji: '🌈' },
       { label: 'Snowfall', value: 'Snowfall', emoji: '❄️' },
-      { label: 'Starfall', value: 'Starfall', emoji: '🌠' }
+      { label: 'Starfall', value: 'Starfall', emoji: '🌠' },
+      { label: 'Sunburst', value: 'Sunburst', emoji: '☀️' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
@@ -743,6 +782,7 @@ async function handleOnboardingRefresh(interaction) {
 
 module.exports = {
   sendOnboardingPanel,
+  sendGardenPanel,
   handleOnboardingSelect,
   handleOnboardingCitizenship,
   showIntroCardModal,
