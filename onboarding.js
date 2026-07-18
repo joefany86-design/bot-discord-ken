@@ -745,8 +745,10 @@ function getOnboardingMessages() {
     .addOptions([
       { label: 'Acorn 4x+', value: 'Acorn 4x+', emoji: '🌰' },
       { label: 'Apple 4x+', value: 'Apple 4x+', emoji: '🍎' },
+      { label: 'Baby Cactus 4x+', value: 'Baby Cactus 4x+', emoji: '🌵' },
       { label: 'Bamboo 4x+', value: 'Bamboo 4x+', emoji: '🎍' },
       { label: 'Banana 4x+', value: 'Banana 4x+', emoji: '🍌' },
+      { label: 'Briar Rose 4x+', value: 'Briar Rose 4x+', emoji: '🌹' },
       { label: 'Cactus 4x+', value: 'Cactus 4x+', emoji: '🌵' },
       { label: 'Cherry 4x+', value: 'Cherry 4x+', emoji: '🍒' },
       { label: 'Dragon Fruit 4x+', value: 'Dragon Fruit 4x+', emoji: '🐉' },
@@ -765,7 +767,6 @@ function getOnboardingMessages() {
       { label: 'Pomegranate 4x+', value: 'Pomegranate 4x+', emoji: '🍎' },
       { label: 'Sunflower 4x+', value: 'Sunflower 4x+', emoji: '🌻' },
       { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' },
-      { label: 'Watermelon 4x+', value: 'Watermelon 4x+', emoji: '🍉' },
       { label: 'Venom Spitter 4x+', value: 'Venom Spitter 4x+', emoji: '🧪' },
       { label: 'Venus Fly Trap 4x+', value: 'Venus Fly Trap 4x+', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
