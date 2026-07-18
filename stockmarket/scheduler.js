@@ -1019,6 +1019,132 @@ function initScheduler(client) {
     timezone: 'Asia/Jakarta'
   });
 
+  // Helper to format date in Indonesian locale (Asia/Jakarta timezone)
+  const getIndonesianDate = () => {
+    return new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    });
+  };
+
+  // Quotes arrays that change every day
+  const morningQuotes = [
+    '"Setiap hari adalah kesempatan baru untuk menjadi versi terbaik dirimu."',
+    '"Jangan biarkan hari kemarin merampas terlalu banyak hal berharga hari ini."',
+    '"Keberhasilan dimulai dari keputusan untuk mencoba hari ini."',
+    '"Fokuslah pada langkah kecil yang kamu ambil hari ini, karena itulah penentu langkah besarmu esok."',
+    '"Mulailah hari dengan bersyukur. Hari yang baik dimulai dari pikiran yang baik."',
+    '"Apapun rintangan hari ini, ingatlah tujuan besarmu."',
+    '"Mimpi tidak akan terwujud dengan sendirinya, ayo bangun dan usahakan hari ini!"',
+    '"Hari baru, semangat baru! Jangan takut gagal, takutlah jika tidak mencoba."',
+    '"Energi positifmu adalah magnet keberuntunganmu hari ini."',
+    '"Kerja kerasmu hari ini adalah tabungan kesuksesanmu di masa depan."'
+  ];
+
+  const afternoonQuotes = [
+    '"Tetap semangat! Separuh hari telah kamu lalui, tuntaskan hari ini dengan maksimal."',
+    '"Ingatlah untuk selalu menghargai setiap progres kecil yang sudah kamu buat hari ini."',
+    '"Istirahat sejenak, hirup napas dalam-dalam, dan lanjutkan perjuanganmu."',
+    '"Jangan menyerah saat lelah, beristirahatlah sejenak lalu bangkit kembali."',
+    '"Fokus pada solusi, bukan pada masalahnya. Kamu pasti bisa!"',
+    '"Tantangan siang ini hanyalah anak tangga menuju kesuksesanmu."',
+    '"Tetap jaga hidrasi dan kesehatanmu di tengah padatnya aktivitas siang ini."',
+    '"Setiap usaha keras yang kamu lakukan saat ini akan membuahkan hasil yang manis."',
+    '"Lakukan yang terbaik yang kamu bisa saat ini, hasil akhir tidak akan mengkhianati usaha."',
+    '"Makan siang yang cukup dan kembalikan fokusmu untuk sisa hari ini!"'
+  ];
+
+  const nightQuotes = [
+    '"Hari telah usai, lepaskan segala beban pikiran dan bersiaplah untuk beristirahat."',
+    '"Apapun hasil hari ini, kamu telah berjuang dengan sangat baik. Terima kasih diriku."',
+    '"Tidurlah dengan damai, biarkan malam memulihkan kembali energimu untuk esok hari."',
+    '"Kegelapan malam adalah cara alam mengingatkan kita pentingnya beristirahat."',
+    '"Tutup hari ini dengan rasa syukur agar esok dimulai dengan ketenangan."',
+    '"Hari esok membawa harapan baru. Istirahatlah agar siap menyambutnya."',
+    '"Biarkan lelahmu hari ini larut dalam keheningan malam yang menenangkan."',
+    '"Setiap hari yang selesai adalah bukti ketangguhanmu melewati hidup."',
+    '"Mimpi indah menantimu. Lepaskan semua yang tidak bisa kamu ubah malam ini."',
+    '"Persiapkan diri dengan tidur yang nyenyak untuk lembaran baru esok pagi."'
+  ];
+
+  // 16. Cron Job: Ucapan Selamat Pagi Otomatis (07:00 WIB)
+  cron.schedule('0 7 * * *', async () => {
+    try {
+      const channel = await client.channels.fetch('1422642326798598348');
+      if (channel) {
+        const date = new Date();
+        const quote = morningQuotes[date.getDate() % morningQuotes.length];
+        
+        const embed = new EmbedBuilder()
+          .setColor(0xFFB020)
+          .setTitle('🌅 | Selamat Pagi & Selamat Beraktivitas!')
+          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat pagi semuanya! Awali hari ini dengan senyuman dan energi positif. Semoga segala rencana dan urusan kalian hari ini berjalan dengan lancar. Jangan lupa sarapan agar tetap bersemangat! ☕✨`)
+          .addFields({ name: '💡 Motivasi Hari Ini', value: `*${quote}*` })
+          .setTimestamp()
+          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+        await channel.send({ content: '@everyone', embeds: [embed] });
+        console.log('✅ Selamat Pagi embed sent to channel 1422642326798598348');
+      }
+    } catch (err) {
+      console.error('❌ Error executing Selamat Pagi scheduler:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 17. Cron Job: Ucapan Selamat Siang Otomatis (13:00 WIB)
+  cron.schedule('0 13 * * *', async () => {
+    try {
+      const channel = await client.channels.fetch('1422642326798598348');
+      if (channel) {
+        const date = new Date();
+        const quote = afternoonQuotes[date.getDate() % afternoonQuotes.length];
+
+        const embed = new EmbedBuilder()
+          .setColor(0x00A8FF)
+          .setTitle('☀️ | Selamat Siang & Tetap Semangat!')
+          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat siang semuanya! Sudahkah kalian beristirahat sejenak atau makan siang? Jaga kesehatan dan hidrasi tubuh kalian. Terus berjuang untuk sisa aktivitas hari ini! 🍲🥤`)
+          .addFields({ name: '💡 Tips Siang Hari', value: `*${quote}*` })
+          .setTimestamp()
+          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+        await channel.send({ content: '@everyone', embeds: [embed] });
+        console.log('✅ Selamat Siang embed sent to channel 1422642326798598348');
+      }
+    } catch (err) {
+      console.error('❌ Error executing Selamat Siang scheduler:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
+  // 18. Cron Job: Ucapan Selamat Malam Otomatis (21:00 WIB)
+  cron.schedule('0 21 * * *', async () => {
+    try {
+      const channel = await client.channels.fetch('1422642326798598348');
+      if (channel) {
+        const date = new Date();
+        const quote = nightQuotes[date.getDate() % nightQuotes.length];
+
+        const embed = new EmbedBuilder()
+          .setColor(0x1A237E)
+          .setTitle('🌌 | Selamat Malam & Selamat Beristirahat!')
+          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat malam semuanya! Waktunya melepas lelah dari rutinitas hari ini. Bersantailah bersama keluarga atau lakukan hal yang menenangkan. Semoga tidur malam kalian nyenyak dan mimpi indah! 💤⭐️`)
+          .addFields({ name: '💡 Refleksi Malam', value: `*${quote}*` })
+          .setTimestamp()
+          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+        await channel.send({ content: '@everyone', embeds: [embed] });
+        console.log('✅ Selamat Malam embed sent to channel 1422642326798598348');
+      }
+    } catch (err) {
+      console.error('❌ Error executing Selamat Malam scheduler:', err.message);
+    }
+  }, {
+    timezone: 'Asia/Jakarta'
+  });
+
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
 
