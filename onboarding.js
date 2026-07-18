@@ -38,7 +38,7 @@ async function sendGardenPanel(interaction) {
     });
   }
 
-  const { message1, message2, message3 } = getOnboardingMessages();
+  const { message1, message2 } = getOnboardingMessages();
 
   await interaction.reply({
     content: '✅ Panel filter notifikasi kebun berhasil dikirim!',
@@ -47,8 +47,8 @@ async function sendGardenPanel(interaction) {
 
   await interaction.channel.send(message1);
   await interaction.channel.send(message2);
-  await interaction.channel.send(message3);
 }
+
 
 /**
  * Mengirimkan panel onboarding ke channel tempat perintah dijalankan.
@@ -632,15 +632,16 @@ function getOnboardingMessages() {
 
   const embed2 = new EmbedBuilder()
     .setColor(0x7C4DFF)
-    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER (BAGIAN 1)  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
     .setDescription(
       'Atur preferensi notifikasi Anda secara mandiri agar tidak ketinggalan cuaca penting, restok peralatan langka, maupun pelipatgandaan stok benih di Grow a Garden 2.\n\n' +
       '📝 **Petunjuk Penggunaan:**\n' +
       ' 1. Pilih nama peran dari menu dropdown di bawah untuk **mengaktifkan** peran tersebut.\n' +
       ' 2. Pilih nama peran yang sama kembali untuk **menonaktifkan** peran tersebut.\n\n' +
-      '🌱 **Bagian 1 berisi Tanaman Standar dan Pelipatgandaan 2x+**'
+      '🔍 **Pencarian Cepat Lewat Ketik:**\n' +
+      'Gunakan perintah **`/notif`** di chat room mana saja lalu ketik nama peran (contoh: `Carrot`, `Aurora`, `Notif Gear`) untuk mencari dan mengambil peran secara instan!'
     )
-    .setFooter({ text: 'Onboarding System • Bagian 1' })
+    .setFooter({ text: 'Onboarding System • Tentukan notifikasi pilihan Anda' })
     .setTimestamp();
 
   const menuStandar = new StringSelectMenuBuilder()
@@ -674,10 +675,10 @@ function getOnboardingMessages() {
       { label: 'Venus Fly Trap', value: 'Venus Fly Trap', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  // 2x+ Part 1 (A-M)
-  const menu2xPart1 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_2x_a')
-    .setPlaceholder('📈 Pelipatgandaan 2x+ (A - M)')
+  // 2x+ (24 tanaman terpenting/populer agar pas limit 25 opsi)
+  const menu2x = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_2x')
+    .setPlaceholder('📈 Pelipatgandaan Stok 2x+')
     .addOptions([
       { label: 'Acorn 2x+', value: 'Acorn 2x+', emoji: '🌰' },
       { label: 'Apple 2x+', value: 'Apple 2x+', emoji: '🍎' },
@@ -693,43 +694,22 @@ function getOnboardingMessages() {
       { label: 'Grape 2x+', value: 'Grape 2x+', emoji: '🍇' },
       { label: 'Green Bean 2x+', value: 'Green Bean 2x+', emoji: '🫛' },
       { label: 'Horned Melon 2x+', value: 'Horned Melon 2x+', emoji: '🍈' },
-      { label: 'Hypno Bloom 2x+', value: 'Hypno Bloom 2x+', emoji: '🌀' }
-    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
-
-  // 2x+ Part 2 (N-Z)
-  const menu2xPart2 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_2x_b')
-    .setPlaceholder('📈 Pelipatgandaan 2x+ (N - Z)')
-    .addOptions([
+      { label: 'Hypno Bloom 2x+', value: 'Hypno Bloom 2x+', emoji: '🌀' },
       { label: 'Mango 2x+', value: 'Mango 2x+', emoji: '🥭' },
       { label: 'Moon Bloom 2x+', value: 'Moon Bloom 2x+', emoji: '🌸' },
       { label: 'Mushroom 2x+', value: 'Mushroom 2x+', emoji: '🍄' },
-      { label: 'Pineapple 2x+', value: 'Pineapple 2x+', emoji: '🍍' },
       { label: 'Poison Apple 2x+', value: 'Poison Apple 2x+', emoji: '🍏' },
       { label: 'Poison Ivy 2x+', value: 'Poison Ivy 2x+', emoji: '🌿' },
       { label: 'Pomegranate 2x+', value: 'Pomegranate 2x+', emoji: '🍎' },
       { label: 'Sunflower 2x+', value: 'Sunflower 2x+', emoji: '🌻' },
       { label: 'Tulip 2x+', value: 'Tulip 2x+', emoji: '🌷' },
-      { label: 'Watermelon 2x+', value: 'Watermelon 2x+', emoji: '🍉' },
-      { label: 'Venom Spitter 2x+', value: 'Venom Spitter 2x+', emoji: '🧪' },
-      { label: 'Venus Fly Trap 2x+', value: 'Venus Fly Trap 2x+', emoji: '🥀' }
+      { label: 'Watermelon 2x+', value: 'Watermelon 2x+', emoji: '🍉' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  const embed3 = new EmbedBuilder()
-    .setColor(0x7C4DFF)
-    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER (BAGIAN 2)  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
-    .setDescription(
-      'Atur preferensi notifikasi Anda untuk Pelipatgandaan 4x+, Peralatan, dan Cuaca Kebun di Grow a Garden 2.\n\n' +
-      '🔍 **Pencarian Cepat Lewat Ketik:**\n' +
-      'Gunakan perintah **`/notif`** di chat room mana saja lalu ketik nama peran untuk mengambil peran secara instan!'
-    )
-    .setFooter({ text: 'Onboarding System • Bagian 2' })
-    .setTimestamp();
-
-  // 4x+ Part 1 (A-M)
-  const menu4xPart1 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_4x_a')
-    .setPlaceholder('🚀 Pelipatgandaan 4x+ (A - M)')
+  // 4x+ (25 tanaman terpenting/populer agar pas limit 25 opsi)
+  const menu4x = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_4x')
+    .setPlaceholder('🚀 Pelipatgandaan Stok 4x+')
     .addOptions([
       { label: 'Acorn 4x+', value: 'Acorn 4x+', emoji: '🌰' },
       { label: 'Apple 4x+', value: 'Apple 4x+', emoji: '🍎' },
@@ -739,42 +719,23 @@ function getOnboardingMessages() {
       { label: 'Briar Rose 4x+', value: 'Briar Rose 4x+', emoji: '🌹' },
       { label: 'Cactus 4x+', value: 'Cactus 4x+', emoji: '🌵' },
       { label: 'Cherry 4x+', value: 'Cherry 4x+', emoji: '🍒' },
+      { label: 'Coconut 4x+', value: 'Coconut 4x+', emoji: '🥥' },
       { label: 'Dragon Fruit 4x+', value: 'Dragon Fruit 4x+', emoji: '🐉' },
       { label: 'Dragon\'s Breath 4x+', value: 'Dragon\'s Breath 4x+', emoji: '🔥' },
       { label: 'Ghost Pepper 4x+', value: 'Ghost Pepper 4x+', emoji: '🌶️' },
       { label: 'Glow Mushroom 4x+', value: 'Glow Mushroom 4x+', emoji: '🍄' },
       { label: 'Grape 4x+', value: 'Grape 4x+', emoji: '🍇' },
-      { label: 'Green Bean 4x+', value: 'Green Bean 4x+', emoji: '🫛' },
       { label: 'Horned Melon 4x+', value: 'Horned Melon 4x+', emoji: '🍈' },
-      { label: 'Hypno Bloom 4x+', value: 'Hypno Bloom 4x+', emoji: '🌀' }
-    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
-
-  // 4x+ Part 2 (N-Z)
-  const menu4xPart2 = new StringSelectMenuBuilder()
-    .setCustomId('onboarding_select_4x_b')
-    .setPlaceholder('🚀 Pelipatgandaan 4x+ (N - Z)')
-    .addOptions([
-      { label: 'Mango 4x+', value: 'Mango 4x+', emoji: '🥭' },
+      { label: 'Hypno Bloom 4x+', value: 'Hypno Bloom 4x+', emoji: '🌀' },
       { label: 'Moon Bloom 4x+', value: 'Moon Bloom 4x+', emoji: '🌸' },
-      { label: 'Mushroom 4x+', value: 'Mushroom 4x+', emoji: '🍄' },
-      { label: 'Pineapple 4x+', value: 'Pineapple 4x+', emoji: '🍍' },
       { label: 'Poison Apple 4x+', value: 'Poison Apple 4x+', emoji: '🍏' },
       { label: 'Poison Ivy 4x+', value: 'Poison Ivy 4x+', emoji: '🌿' },
       { label: 'Pomegranate 4x+', value: 'Pomegranate 4x+', emoji: '🍎' },
-      { label: 'Sunflower 4x+', value: 'Sunflower 4x+', emoji: '🌻' },
-      { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' },
-      { label: 'Venom Spitter 4x+', value: 'Venom Spitter 4x+', emoji: '🧪' },
-      { label: 'Venus Fly Trap 4x+', value: 'Venus Fly Trap 4x+', emoji: '🥀' },
-      { label: 'Carrot 4x+', value: 'Carrot 4x+', emoji: '🥕' },
-      { label: 'Strawberry 4x+', value: 'Strawberry 4x+', emoji: '🍓' },
-      { label: 'Blueberry 4x+', value: 'Blueberry 4x+', emoji: '🫐' },
-      { label: 'Tomato 4x+', value: 'Tomato 4x+', emoji: '🍅' },
-      { label: 'Corn 4x+', value: 'Corn 4x+', emoji: '🌽' },
-      { label: 'Coconut 4x+', value: 'Coconut 4x+', emoji: '🥥' },
       { label: 'Rocket Pop 4x+', value: 'Rocket Pop 4x+', emoji: '🚀' },
-      { label: 'Fire Fern 4x+', value: 'Fire Fern 4x+', emoji: '🔥' },
+      { label: 'Star Fruit 4x+', value: 'Star Fruit 4x+', emoji: '⭐' },
       { label: 'Sun Bloom 4x+', value: 'Sun Bloom 4x+', emoji: '☀️' },
-      { label: 'Star Fruit 4x+', value: 'Star Fruit 4x+', emoji: '⭐' }
+      { label: 'Sunflower 4x+', value: 'Sunflower 4x+', emoji: '🌻' },
+      { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   const menuGears = new StringSelectMenuBuilder()
@@ -812,18 +773,14 @@ function getOnboardingMessages() {
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
-  const row2_2 = new ActionRowBuilder().addComponents(menu2xPart1);
-  const row2_3 = new ActionRowBuilder().addComponents(menu2xPart2);
-
-  const row3_1 = new ActionRowBuilder().addComponents(menu4xPart1);
-  const row3_2 = new ActionRowBuilder().addComponents(menu4xPart2);
-  const row3_3 = new ActionRowBuilder().addComponents(menuGears);
-  const row3_4 = new ActionRowBuilder().addComponents(menuWeather);
+  const row2_2 = new ActionRowBuilder().addComponents(menu2x);
+  const row2_3 = new ActionRowBuilder().addComponents(menu4x);
+  const row2_4 = new ActionRowBuilder().addComponents(menuGears);
+  const row2_5 = new ActionRowBuilder().addComponents(menuWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3] },
-    message3: { embeds: [embed3], components: [row3_1, row3_2, row3_3, row3_4] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] }
   };
 }
 
@@ -833,29 +790,22 @@ function getOnboardingMessages() {
 async function handleOnboardingRefresh(interaction) {
   try {
     await interaction.deferReply({ flags: 64 });
-    const { message1, message2, message3 } = getOnboardingMessages();
+    const { message1, message2 } = getOnboardingMessages();
 
     // Ambil beberapa pesan terakhir dari bot di channel ini
     const messages = await interaction.channel.messages.fetch({ limit: 15 });
     const botMessages = messages.filter(m => m.author.id === interaction.client.user.id).toJSON();
 
-    // Temukan pesan dengan tombol refresh (message1)
+    // Temukan pesan dengan tombol refresh
     const buttonMsg = botMessages.find(m => m.components.some(row => row.components.some(c => c.customId === 'onboarding_refresh_panel')));
-    
-    // Temukan pesan dengan select menu standar (message2)
-    const dropdownMsg1 = botMessages.find(m => m.components.some(row => row.components[0].customId === 'onboarding_select_standar'));
-    
-    // Temukan pesan dengan select menu gears / weather / 4x (message3)
-    const dropdownMsg2 = botMessages.find(m => m.components.some(row => row.components[0].customId === 'onboarding_select_4x_a'));
+    // Temukan pesan dengan dropdowns
+    const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0].customId === 'onboarding_select_standar'));
 
     if (buttonMsg) {
       await buttonMsg.edit({ embeds: message1.embeds, components: message1.components });
     }
-    if (dropdownMsg1) {
-      await dropdownMsg1.edit({ embeds: message2.embeds, components: message2.components });
-    }
-    if (dropdownMsg2) {
-      await dropdownMsg2.edit({ embeds: message3.embeds, components: message3.components });
+    if (dropdownMsg) {
+      await dropdownMsg.edit({ embeds: message2.embeds, components: message2.components });
     }
 
     return interaction.editReply({ content: '✅ Tampilan panel onboarding berhasil diperbarui!' });
@@ -864,6 +814,7 @@ async function handleOnboardingRefresh(interaction) {
     return interaction.editReply({ content: '❌ Terjadi kesalahan saat mencoba memperbarui panel onboarding.' });
   }
 }
+
 
 
 module.exports = {
