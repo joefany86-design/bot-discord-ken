@@ -1070,80 +1070,82 @@ function initScheduler(client) {
     '"Persiapkan diri dengan tidur yang nyenyak untuk lembaran baru esok pagi."'
   ];
 
-  // 16. Cron Job: Ucapan Selamat Pagi Otomatis (07:00 WIB)
-  cron.schedule('0 7 * * *', async () => {
-    try {
-      const channel = await client.channels.fetch('1422642326798598348');
-      if (channel) {
-        const date = new Date();
-        const quote = morningQuotes[date.getDate() % morningQuotes.length];
-        
-        const embed = new EmbedBuilder()
-          .setColor(0xFFB020)
-          .setTitle('🌅 | Selamat Pagi & Selamat Beraktivitas!')
-          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat pagi semuanya! Awali hari ini dengan senyuman dan energi positif. Semoga segala rencana dan urusan kalian hari ini berjalan dengan lancar. Jangan lupa sarapan agar tetap bersemangat! ☕✨`)
-          .addFields({ name: '💡 Motivasi Hari Ini', value: `*${quote}*` })
-          .setTimestamp()
-          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
-        await channel.send({ content: '@everyone', embeds: [embed] });
-        console.log('✅ Selamat Pagi embed sent to channel 1422642326798598348');
+  if (process.env.NODE_ENV === 'production') {
+    // 16. Cron Job: Ucapan Selamat Pagi Otomatis (07:00 WIB)
+    cron.schedule('0 7 * * *', async () => {
+      try {
+        const channel = await client.channels.fetch('1422642326798598348');
+        if (channel) {
+          const date = new Date();
+          const quote = morningQuotes[date.getDate() % morningQuotes.length];
+          
+          const embed = new EmbedBuilder()
+            .setColor(0xFFB020)
+            .setTitle('🌅 | Selamat Pagi & Selamat Beraktivitas!')
+            .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat pagi semuanya! Awali hari ini dengan senyuman dan energi positif. Semoga segala rencana dan urusan kalian hari ini berjalan dengan lancar. Jangan lupa sarapan agar tetap bersemangat! ☕✨`)
+            .addFields({ name: '💡 Motivasi Hari Ini', value: `*${quote}*` })
+            .setTimestamp()
+            .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+          await channel.send({ content: '@everyone', embeds: [embed] });
+          console.log('✅ Selamat Pagi embed sent to channel 1422642326798598348');
+        }
+      } catch (err) {
+        console.error('❌ Error executing Selamat Pagi scheduler:', err.message);
       }
-    } catch (err) {
-      console.error('❌ Error executing Selamat Pagi scheduler:', err.message);
-    }
-  }, {
-    timezone: 'Asia/Jakarta'
-  });
+    }, {
+      timezone: 'Asia/Jakarta'
+    });
 
-  // 17. Cron Job: Ucapan Selamat Siang Otomatis (13:00 WIB)
-  cron.schedule('0 13 * * *', async () => {
-    try {
-      const channel = await client.channels.fetch('1422642326798598348');
-      if (channel) {
-        const date = new Date();
-        const quote = afternoonQuotes[date.getDate() % afternoonQuotes.length];
+    // 17. Cron Job: Ucapan Selamat Siang Otomatis (13:00 WIB)
+    cron.schedule('0 13 * * *', async () => {
+      try {
+        const channel = await client.channels.fetch('1422642326798598348');
+        if (channel) {
+          const date = new Date();
+          const quote = afternoonQuotes[date.getDate() % afternoonQuotes.length];
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00A8FF)
-          .setTitle('☀️ | Selamat Siang & Tetap Semangat!')
-          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat siang semuanya! Sudahkah kalian beristirahat sejenak atau makan siang? Jaga kesehatan dan hidrasi tubuh kalian. Terus berjuang untuk sisa aktivitas hari ini! 🍲🥤`)
-          .addFields({ name: '💡 Tips Siang Hari', value: `*${quote}*` })
-          .setTimestamp()
-          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
-        await channel.send({ content: '@everyone', embeds: [embed] });
-        console.log('✅ Selamat Siang embed sent to channel 1422642326798598348');
+          const embed = new EmbedBuilder()
+            .setColor(0x00A8FF)
+            .setTitle('☀️ | Selamat Siang & Tetap Semangat!')
+            .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat siang semuanya! Sudahkah kalian beristirahat sejenak atau makan siang? Jaga kesehatan dan hidrasi tubuh kalian. Terus berjuang untuk sisa aktivitas hari ini! 🍲🥤`)
+            .addFields({ name: '💡 Tips Siang Hari', value: `*${quote}*` })
+            .setTimestamp()
+            .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+          await channel.send({ content: '@everyone', embeds: [embed] });
+          console.log('✅ Selamat Siang embed sent to channel 1422642326798598348');
+        }
+      } catch (err) {
+        console.error('❌ Error executing Selamat Siang scheduler:', err.message);
       }
-    } catch (err) {
-      console.error('❌ Error executing Selamat Siang scheduler:', err.message);
-    }
-  }, {
-    timezone: 'Asia/Jakarta'
-  });
+    }, {
+      timezone: 'Asia/Jakarta'
+    });
 
-  // 18. Cron Job: Ucapan Selamat Malam Otomatis (21:00 WIB)
-  cron.schedule('0 21 * * *', async () => {
-    try {
-      const channel = await client.channels.fetch('1422642326798598348');
-      if (channel) {
-        const date = new Date();
-        const quote = nightQuotes[date.getDate() % nightQuotes.length];
+    // 18. Cron Job: Ucapan Selamat Malam Otomatis (21:00 WIB)
+    cron.schedule('0 21 * * *', async () => {
+      try {
+        const channel = await client.channels.fetch('1422642326798598348');
+        if (channel) {
+          const date = new Date();
+          const quote = nightQuotes[date.getDate() % nightQuotes.length];
 
-        const embed = new EmbedBuilder()
-          .setColor(0x1A237E)
-          .setTitle('🌌 | Selamat Malam & Selamat Beristirahat!')
-          .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat malam semuanya! Waktunya melepas lelah dari rutinitas hari ini. Bersantailah bersama keluarga atau lakukan hal yang menenangkan. Semoga tidur malam kalian nyenyak dan mimpi indah! 💤⭐️`)
-          .addFields({ name: '💡 Refleksi Malam', value: `*${quote}*` })
-          .setTimestamp()
-          .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
-        await channel.send({ content: '@everyone', embeds: [embed] });
-        console.log('✅ Selamat Malam embed sent to channel 1422642326798598348');
+          const embed = new EmbedBuilder()
+            .setColor(0x1A237E)
+            .setTitle('🌌 | Selamat Malam & Selamat Beristirahat!')
+            .setDescription(`📅 **${getIndonesianDate()}**\n\nSelamat malam semuanya! Waktunya melepas lelah dari rutinitas hari ini. Bersantailah bersama keluarga atau lakukan hal yang menenangkan. Semoga tidur malam kalian nyenyak dan mimpi indah! 💤⭐️`)
+            .addFields({ name: '💡 Refleksi Malam', value: `*${quote}*` })
+            .setTimestamp()
+            .setFooter({ text: 'Sistem Salam Otomatis', iconURL: client.user.displayAvatarURL() });
+          await channel.send({ content: '@everyone', embeds: [embed] });
+          console.log('✅ Selamat Malam embed sent to channel 1422642326798598348');
+        }
+      } catch (err) {
+        console.error('❌ Error executing Selamat Malam scheduler:', err.message);
       }
-    } catch (err) {
-      console.error('❌ Error executing Selamat Malam scheduler:', err.message);
-    }
-  }, {
-    timezone: 'Asia/Jakarta'
-  });
+    }, {
+      timezone: 'Asia/Jakarta'
+    });
+  }
 
   console.log('✅ Cron Scheduler bursa saham telah diaktifkan secara otomatis.');
 }
