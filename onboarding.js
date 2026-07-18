@@ -527,6 +527,7 @@ async function handleNotifAutocomplete(interaction) {
   const allRoleNames = Object.keys(rolesMap).filter(name => {
     return name !== '@everyone' && (
       name.includes('2x+') ||
+      name.includes('4x+') ||
       name.includes('notif') ||
       name.includes('sprinkler') ||
       name.includes('watering') ||
@@ -738,14 +739,46 @@ function getOnboardingMessages() {
       { label: 'Sunburst', value: 'Sunburst', emoji: '☀️' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
+  const menu4x = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_4x')
+    .setPlaceholder('🚀 Pelipatgandaan Stok 4x+')
+    .addOptions([
+      { label: 'Acorn 4x+', value: 'Acorn 4x+', emoji: '🌰' },
+      { label: 'Apple 4x+', value: 'Apple 4x+', emoji: '🍎' },
+      { label: 'Bamboo 4x+', value: 'Bamboo 4x+', emoji: '🎍' },
+      { label: 'Banana 4x+', value: 'Banana 4x+', emoji: '🍌' },
+      { label: 'Cactus 4x+', value: 'Cactus 4x+', emoji: '🌵' },
+      { label: 'Cherry 4x+', value: 'Cherry 4x+', emoji: '🍒' },
+      { label: 'Dragon Fruit 4x+', value: 'Dragon Fruit 4x+', emoji: '🐉' },
+      { label: 'Dragon\'s Breath 4x+', value: 'Dragon\'s Breath 4x+', emoji: '🔥' },
+      { label: 'Ghost Pepper 4x+', value: 'Ghost Pepper 4x+', emoji: '🌶️' },
+      { label: 'Glow Mushroom 4x+', value: 'Glow Mushroom 4x+', emoji: '🍄' },
+      { label: 'Grape 4x+', value: 'Grape 4x+', emoji: '🍇' },
+      { label: 'Green Bean 4x+', value: 'Green Bean 4x+', emoji: '🫛' },
+      { label: 'Horned Melon 4x+', value: 'Horned Melon 4x+', emoji: '🍈' },
+      { label: 'Hypno Bloom 4x+', value: 'Hypno Bloom 4x+', emoji: '🌀' },
+      { label: 'Mango 4x+', value: 'Mango 4x+', emoji: '🥭' },
+      { label: 'Moon Bloom 4x+', value: 'Moon Bloom 4x+', emoji: '🌸' },
+      { label: 'Mushroom 4x+', value: 'Mushroom 4x+', emoji: '🍄' },
+      { label: 'Poison Apple 4x+', value: 'Poison Apple 4x+', emoji: '🍏' },
+      { label: 'Poison Ivy 4x+', value: 'Poison Ivy 4x+', emoji: '🌿' },
+      { label: 'Pomegranate 4x+', value: 'Pomegranate 4x+', emoji: '🍎' },
+      { label: 'Sunflower 4x+', value: 'Sunflower 4x+', emoji: '🌻' },
+      { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' },
+      { label: 'Watermelon 4x+', value: 'Watermelon 4x+', emoji: '🍉' },
+      { label: 'Venom Spitter 4x+', value: 'Venom Spitter 4x+', emoji: '🧪' },
+      { label: 'Venus Fly Trap 4x+', value: 'Venus Fly Trap 4x+', emoji: '🥀' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
   const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
   const row2_2 = new ActionRowBuilder().addComponents(menu2x);
-  const row2_3 = new ActionRowBuilder().addComponents(menuGears);
-  const row2_4 = new ActionRowBuilder().addComponents(menuWeather);
+  const row2_3 = new ActionRowBuilder().addComponents(menu4x);
+  const row2_4 = new ActionRowBuilder().addComponents(menuGears);
+  const row2_5 = new ActionRowBuilder().addComponents(menuWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] }
   };
 }
 
