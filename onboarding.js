@@ -38,7 +38,7 @@ async function sendGardenPanel(interaction) {
     });
   }
 
-  const { message1, message2 } = getOnboardingMessages();
+  const { message1, message2, message3 } = getOnboardingMessages();
 
   await interaction.reply({
     content: '✅ Panel filter notifikasi kebun berhasil dikirim!',
@@ -47,6 +47,7 @@ async function sendGardenPanel(interaction) {
 
   await interaction.channel.send(message1);
   await interaction.channel.send(message2);
+  await interaction.channel.send(message3);
 }
 
 
@@ -544,7 +545,8 @@ async function handleNotifAutocomplete(interaction) {
       name.includes('eclipse') ||
       name.includes('sunburst') ||
       name.includes('crate') ||
-      ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath', 'hypno bloom', 'hypnobloom', 'fire fern', 'rocket pop', 'star fruit', 'sun bloom'].includes(name)
+      ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath', 'hypno bloom', 'hypnobloom', 'fire fern', 'rocket pop', 'star fruit', 'sun bloom',
+        'basic pot', 'flashbang', 'gnome', 'invisibility mushroom', 'jump mushroom', 'lantern', 'shrink mushroom', 'speed mushroom', 'strawberry sniper', 'supersize mushroom', 'teleporter', 'wheelbarrow', 'briar rose'].includes(name)
     );
   });
 
@@ -630,6 +632,9 @@ function getOnboardingMessages() {
     new ButtonBuilder().setCustomId('onboarding_refresh_panel').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
   );
 
+  // ═══════════════════════════════════════
+  // MESSAGE 2: Tanaman, Item & Stok 2x+
+  // ═══════════════════════════════════════
   const embed2 = new EmbedBuilder()
     .setColor(0x7C4DFF)
     .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
@@ -641,24 +646,36 @@ function getOnboardingMessages() {
       '🔍 **Pencarian Cepat Lewat Ketik:**\n' +
       'Gunakan perintah **`/notif`** di chat room mana saja lalu ketik nama peran (contoh: `Carrot`, `Aurora`, `Notif Gear`) untuk mencari dan mengambil peran secara instan!'
     )
-    .setFooter({ text: 'Onboarding System • Tentukan notifikasi pilihan Anda' })
+    .setFooter({ text: 'Onboarding System • Tanaman, Item & Stok 2x+' })
     .setTimestamp();
 
-  const menuStandar = new StringSelectMenuBuilder()
+  // Tanaman A–G (15 opsi)
+  const menuPlantsAG = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_standar')
-    .setPlaceholder('🌱 Benih/Tanaman Standar')
+    .setPlaceholder('🌱 Tanaman A–G')
     .addOptions([
       { label: 'Acorn', value: 'Acorn', emoji: '🌰' },
       { label: 'Apple', value: 'Apple', emoji: '🍎' },
       { label: 'Bamboo', value: 'Bamboo', emoji: '🎍' },
       { label: 'Banana', value: 'Banana', emoji: '🍌' },
+      { label: 'Blueberry', value: 'Blueberry', emoji: '🫐' },
       { label: 'Cactus', value: 'Cactus', emoji: '🌵' },
+      { label: 'Carrot', value: 'Carrot', emoji: '🥕' },
       { label: 'Cherry', value: 'Cherry', emoji: '🍒' },
+      { label: 'Coconut', value: 'Coconut', emoji: '🥥' },
+      { label: 'Corn', value: 'Corn', emoji: '🌽' },
       { label: 'Dragon Fruit', value: 'Dragon Fruit', emoji: '🐉' },
       { label: 'Dragon\'s Breath', value: 'Dragon\'s Breath', emoji: '🔥' },
       { label: 'Fire Fern', value: 'Fire Fern', emoji: '🔥' },
       { label: 'Grape', value: 'Grape', emoji: '🍇' },
-      { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' },
+      { label: 'Green Bean', value: 'Green Bean', emoji: '🫛' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  // Tanaman H–Z (16 opsi)
+  const menuPlantsHZ = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_standar2')
+    .setPlaceholder('🌱 Tanaman H–Z')
+    .addOptions([
       { label: 'Hypno Bloom', value: 'Hypno Bloom', emoji: '🌀' },
       { label: 'Mango', value: 'Mango', emoji: '🥭' },
       { label: 'Moon Bloom', value: 'Moon Bloom', emoji: '🌸' },
@@ -668,17 +685,38 @@ function getOnboardingMessages() {
       { label: 'Pomegranate', value: 'Pomegranate', emoji: '🍎' },
       { label: 'Rocket Pop', value: 'Rocket Pop', emoji: '🚀' },
       { label: 'Star Fruit', value: 'Star Fruit', emoji: '⭐' },
+      { label: 'Strawberry', value: 'Strawberry', emoji: '🍓' },
       { label: 'Sun Bloom', value: 'Sun Bloom', emoji: '☀️' },
       { label: 'Sunflower', value: 'Sunflower', emoji: '🌻' },
+      { label: 'Tomato', value: 'Tomato', emoji: '🍅' },
       { label: 'Tulip', value: 'Tulip', emoji: '🌷' },
       { label: 'Venom Spitter', value: 'Venom Spitter', emoji: '🧪' },
       { label: 'Venus Fly Trap', value: 'Venus Fly Trap', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  // 2x+ (24 tanaman terpenting/populer agar pas limit 25 opsi)
-  const menu2x = new StringSelectMenuBuilder()
+  // Item / Consumable (12 opsi)
+  const menuItems = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_items')
+    .setPlaceholder('🎒 Item & Consumable')
+    .addOptions([
+      { label: 'Basic Pot', value: 'Basic Pot', emoji: '🪴' },
+      { label: 'Flashbang', value: 'Flashbang', emoji: '💥' },
+      { label: 'Gnome', value: 'Gnome', emoji: '🧙' },
+      { label: 'Invisibility Mushroom', value: 'Invisibility Mushroom', emoji: '👻' },
+      { label: 'Jump Mushroom', value: 'Jump Mushroom', emoji: '🦘' },
+      { label: 'Lantern', value: 'Lantern', emoji: '🏮' },
+      { label: 'Shrink Mushroom', value: 'Shrink Mushroom', emoji: '🔬' },
+      { label: 'Speed Mushroom', value: 'Speed Mushroom', emoji: '⚡' },
+      { label: 'Strawberry Sniper', value: 'Strawberry Sniper', emoji: '🎯' },
+      { label: 'Supersize Mushroom', value: 'Supersize Mushroom', emoji: '🍄' },
+      { label: 'Teleporter', value: 'Teleporter', emoji: '🌀' },
+      { label: 'Wheelbarrow', value: 'Wheelbarrow', emoji: '🛒' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  // 2x+ A–G (13 opsi)
+  const menu2xAG = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_2x')
-    .setPlaceholder('📈 Pelipatgandaan Stok 2x+')
+    .setPlaceholder('📈 Stok 2x+ (A–G)')
     .addOptions([
       { label: 'Acorn 2x+', value: 'Acorn 2x+', emoji: '🌰' },
       { label: 'Apple 2x+', value: 'Apple 2x+', emoji: '🍎' },
@@ -692,60 +730,100 @@ function getOnboardingMessages() {
       { label: 'Ghost Pepper 2x+', value: 'Ghost Pepper 2x+', emoji: '🌶️' },
       { label: 'Glow Mushroom 2x+', value: 'Glow Mushroom 2x+', emoji: '🍄' },
       { label: 'Grape 2x+', value: 'Grape 2x+', emoji: '🍇' },
-      { label: 'Green Bean 2x+', value: 'Green Bean 2x+', emoji: '🫛' },
+      { label: 'Green Bean 2x+', value: 'Green Bean 2x+', emoji: '🫛' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  // 2x+ H–Z (14 opsi)
+  const menu2xHZ = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_2x2')
+    .setPlaceholder('📈 Stok 2x+ (H–Z)')
+    .addOptions([
       { label: 'Horned Melon 2x+', value: 'Horned Melon 2x+', emoji: '🍈' },
       { label: 'Hypno Bloom 2x+', value: 'Hypno Bloom 2x+', emoji: '🌀' },
       { label: 'Mango 2x+', value: 'Mango 2x+', emoji: '🥭' },
       { label: 'Moon Bloom 2x+', value: 'Moon Bloom 2x+', emoji: '🌸' },
       { label: 'Mushroom 2x+', value: 'Mushroom 2x+', emoji: '🍄' },
+      { label: 'Pineapple 2x+', value: 'Pineapple 2x+', emoji: '🍍' },
       { label: 'Poison Apple 2x+', value: 'Poison Apple 2x+', emoji: '🍏' },
       { label: 'Poison Ivy 2x+', value: 'Poison Ivy 2x+', emoji: '🌿' },
       { label: 'Pomegranate 2x+', value: 'Pomegranate 2x+', emoji: '🍎' },
       { label: 'Sunflower 2x+', value: 'Sunflower 2x+', emoji: '🌻' },
       { label: 'Tulip 2x+', value: 'Tulip 2x+', emoji: '🌷' },
+      { label: 'Venom Spitter 2x+', value: 'Venom Spitter 2x+', emoji: '🧪' },
+      { label: 'Venus Fly Trap 2x+', value: 'Venus Fly Trap 2x+', emoji: '🥀' },
       { label: 'Watermelon 2x+', value: 'Watermelon 2x+', emoji: '🍉' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  // 4x+ (25 tanaman terpenting/populer agar pas limit 25 opsi)
-  const menu4x = new StringSelectMenuBuilder()
+  // ═══════════════════════════════════════
+  // MESSAGE 3: Stok 4x+, Gear, Crate & Cuaca
+  // ═══════════════════════════════════════
+  const embed3 = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🚀  STOK 4x+, GEAR & CUACA  🚀\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setDescription(
+      'Lanjutan filter notifikasi kebun — pilih peran pelipatgandaan stok **4x+**, peralatan kebun (**Gear**), peti (**Crate**), dan cuaca (**Weather**) yang ingin Anda terima.'
+    )
+    .setFooter({ text: 'Onboarding System • Stok 4x+, Gear & Cuaca' })
+    .setTimestamp();
+
+  // 4x+ A–G (19 opsi)
+  const menu4xAG = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_4x')
-    .setPlaceholder('🚀 Pelipatgandaan Stok 4x+')
+    .setPlaceholder('🚀 Stok 4x+ (A–G)')
     .addOptions([
       { label: 'Acorn 4x+', value: 'Acorn 4x+', emoji: '🌰' },
       { label: 'Apple 4x+', value: 'Apple 4x+', emoji: '🍎' },
       { label: 'Baby Cactus 4x+', value: 'Baby Cactus 4x+', emoji: '🌵' },
       { label: 'Bamboo 4x+', value: 'Bamboo 4x+', emoji: '🎍' },
       { label: 'Banana 4x+', value: 'Banana 4x+', emoji: '🍌' },
+      { label: 'Blueberry 4x+', value: 'Blueberry 4x+', emoji: '🫐' },
       { label: 'Briar Rose 4x+', value: 'Briar Rose 4x+', emoji: '🌹' },
       { label: 'Cactus 4x+', value: 'Cactus 4x+', emoji: '🌵' },
+      { label: 'Carrot 4x+', value: 'Carrot 4x+', emoji: '🥕' },
       { label: 'Cherry 4x+', value: 'Cherry 4x+', emoji: '🍒' },
       { label: 'Coconut 4x+', value: 'Coconut 4x+', emoji: '🥥' },
+      { label: 'Corn 4x+', value: 'Corn 4x+', emoji: '🌽' },
       { label: 'Dragon Fruit 4x+', value: 'Dragon Fruit 4x+', emoji: '🐉' },
       { label: 'Dragon\'s Breath 4x+', value: 'Dragon\'s Breath 4x+', emoji: '🔥' },
+      { label: 'Fire Fern 4x+', value: 'Fire Fern 4x+', emoji: '🔥' },
       { label: 'Ghost Pepper 4x+', value: 'Ghost Pepper 4x+', emoji: '🌶️' },
       { label: 'Glow Mushroom 4x+', value: 'Glow Mushroom 4x+', emoji: '🍄' },
       { label: 'Grape 4x+', value: 'Grape 4x+', emoji: '🍇' },
+      { label: 'Green Bean 4x+', value: 'Green Bean 4x+', emoji: '🫛' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  // 4x+ H–Z (18 opsi)
+  const menu4xHZ = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_4x2')
+    .setPlaceholder('🚀 Stok 4x+ (H–Z)')
+    .addOptions([
       { label: 'Horned Melon 4x+', value: 'Horned Melon 4x+', emoji: '🍈' },
       { label: 'Hypno Bloom 4x+', value: 'Hypno Bloom 4x+', emoji: '🌀' },
+      { label: 'Mango 4x+', value: 'Mango 4x+', emoji: '🥭' },
       { label: 'Moon Bloom 4x+', value: 'Moon Bloom 4x+', emoji: '🌸' },
+      { label: 'Mushroom 4x+', value: 'Mushroom 4x+', emoji: '🍄' },
+      { label: 'Pineapple 4x+', value: 'Pineapple 4x+', emoji: '🍍' },
       { label: 'Poison Apple 4x+', value: 'Poison Apple 4x+', emoji: '🍏' },
       { label: 'Poison Ivy 4x+', value: 'Poison Ivy 4x+', emoji: '🌿' },
       { label: 'Pomegranate 4x+', value: 'Pomegranate 4x+', emoji: '🍎' },
       { label: 'Rocket Pop 4x+', value: 'Rocket Pop 4x+', emoji: '🚀' },
       { label: 'Star Fruit 4x+', value: 'Star Fruit 4x+', emoji: '⭐' },
+      { label: 'Strawberry 4x+', value: 'Strawberry 4x+', emoji: '🍓' },
       { label: 'Sun Bloom 4x+', value: 'Sun Bloom 4x+', emoji: '☀️' },
       { label: 'Sunflower 4x+', value: 'Sunflower 4x+', emoji: '🌻' },
-      { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' }
+      { label: 'Tomato 4x+', value: 'Tomato 4x+', emoji: '🍅' },
+      { label: 'Tulip 4x+', value: 'Tulip 4x+', emoji: '🌷' },
+      { label: 'Venom Spitter 4x+', value: 'Venom Spitter 4x+', emoji: '🧪' },
+      { label: 'Venus Fly Trap 4x+', value: 'Venus Fly Trap 4x+', emoji: '🥀' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
+  // Peralatan Kebun / Gears (8 opsi)
   const menuGears = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_gears')
     .setPlaceholder('🛠️ Peralatan Kebun')
     .addOptions([
-      { label: 'Boombox Crate', value: 'Boombox Crate', emoji: '📻' },
       { label: 'Common Watering Can', value: 'Common Watering Can', emoji: '💧' },
       { label: 'Common Sprinkler', value: 'Common Sprinkler', emoji: '⚙️' },
-      { label: 'Fourth of July Crate', value: 'Fourth of July Crate', emoji: '🎆' },
       { label: 'Uncommon Sprinkler', value: 'Uncommon Sprinkler', emoji: '⚙️' },
       { label: 'Trowel', value: 'Trowel', emoji: '🛠️' },
       { label: 'Rare Sprinkler', value: 'Rare Sprinkler', emoji: '⚙️' },
@@ -754,6 +832,31 @@ function getOnboardingMessages() {
       { label: 'Super Sprinkler', value: 'Super Sprinkler', emoji: '⚙️' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
+  // Peti / Crates (17 opsi)
+  const menuCrates = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_crates')
+    .setPlaceholder('📦 Peti / Crates')
+    .addOptions([
+      { label: 'Arch Crate', value: 'Arch Crate', emoji: '🏛️' },
+      { label: 'Bear Trap Crate', value: 'Bear Trap Crate', emoji: '🪤' },
+      { label: 'Bench Crate', value: 'Bench Crate', emoji: '🪑' },
+      { label: 'Boombox Crate', value: 'Boombox Crate', emoji: '📻' },
+      { label: 'Bridge Crate', value: 'Bridge Crate', emoji: '🌉' },
+      { label: 'Conveyor Crate', value: 'Conveyor Crate', emoji: '🔄' },
+      { label: 'Fence Crate', value: 'Fence Crate', emoji: '🏗️' },
+      { label: 'Fourth of July Crate', value: 'Fourth of July Crate', emoji: '🎆' },
+      { label: 'Ladder Crate', value: 'Ladder Crate', emoji: '🪜' },
+      { label: 'Light Crate', value: 'Light Crate', emoji: '💡' },
+      { label: 'Owner Door Crate', value: 'Owner Door Crate', emoji: '🚪' },
+      { label: 'Picture Frame Crate', value: 'Picture Frame Crate', emoji: '🖼️' },
+      { label: 'Roleplay Crate', value: 'Roleplay Crate', emoji: '🎭' },
+      { label: 'Seesaw Crate', value: 'Seesaw Crate', emoji: '⚖️' },
+      { label: 'Sign Crate', value: 'Sign Crate', emoji: '🪧' },
+      { label: 'Spring Crate', value: 'Spring Crate', emoji: '🌸' },
+      { label: 'Teleporter Pad Crate', value: 'Teleporter Pad Crate', emoji: '🌀' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
+  // Cuaca / Weather (12 opsi)
   const menuWeather = new StringSelectMenuBuilder()
     .setCustomId('onboarding_select_weather')
     .setPlaceholder('🌤️ Cuaca Kebun')
@@ -772,15 +875,23 @@ function getOnboardingMessages() {
       { label: 'Sunburst', value: 'Sunburst', emoji: '☀️' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
-  const row2_1 = new ActionRowBuilder().addComponents(menuStandar);
-  const row2_2 = new ActionRowBuilder().addComponents(menu2x);
-  const row2_3 = new ActionRowBuilder().addComponents(menu4x);
-  const row2_4 = new ActionRowBuilder().addComponents(menuGears);
-  const row2_5 = new ActionRowBuilder().addComponents(menuWeather);
+  // Susun baris per pesan (max 5 ActionRow per pesan)
+  const row2_1 = new ActionRowBuilder().addComponents(menuPlantsAG);
+  const row2_2 = new ActionRowBuilder().addComponents(menuPlantsHZ);
+  const row2_3 = new ActionRowBuilder().addComponents(menuItems);
+  const row2_4 = new ActionRowBuilder().addComponents(menu2xAG);
+  const row2_5 = new ActionRowBuilder().addComponents(menu2xHZ);
+
+  const row3_1 = new ActionRowBuilder().addComponents(menu4xAG);
+  const row3_2 = new ActionRowBuilder().addComponents(menu4xHZ);
+  const row3_3 = new ActionRowBuilder().addComponents(menuGears);
+  const row3_4 = new ActionRowBuilder().addComponents(menuCrates);
+  const row3_5 = new ActionRowBuilder().addComponents(menuWeather);
 
   return {
     message1: { embeds: [embed1], components: [row1] },
-    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] }
+    message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] },
+    message3: { embeds: [embed3], components: [row3_1, row3_2, row3_3, row3_4, row3_5] }
   };
 }
 
@@ -790,22 +901,27 @@ function getOnboardingMessages() {
 async function handleOnboardingRefresh(interaction) {
   try {
     await interaction.deferReply({ flags: 64 });
-    const { message1, message2 } = getOnboardingMessages();
+    const { message1, message2, message3 } = getOnboardingMessages();
 
     // Ambil beberapa pesan terakhir dari bot di channel ini
-    const messages = await interaction.channel.messages.fetch({ limit: 15 });
+    const messages = await interaction.channel.messages.fetch({ limit: 20 });
     const botMessages = messages.filter(m => m.author.id === interaction.client.user.id).toJSON();
 
     // Temukan pesan dengan tombol refresh
     const buttonMsg = botMessages.find(m => m.components.some(row => row.components.some(c => c.customId === 'onboarding_refresh_panel')));
-    // Temukan pesan dengan dropdowns
-    const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0].customId === 'onboarding_select_standar'));
+    // Temukan pesan dengan dropdowns tanaman (message2)
+    const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_standar'));
+    // Temukan pesan dengan dropdowns 4x+/gear/cuaca (message3)
+    const dropdownMsg3 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_4x'));
 
     if (buttonMsg) {
       await buttonMsg.edit({ embeds: message1.embeds, components: message1.components });
     }
     if (dropdownMsg) {
       await dropdownMsg.edit({ embeds: message2.embeds, components: message2.components });
+    }
+    if (dropdownMsg3) {
+      await dropdownMsg3.edit({ embeds: message3.embeds, components: message3.components });
     }
 
     return interaction.editReply({ content: '✅ Tampilan panel onboarding berhasil diperbarui!' });
