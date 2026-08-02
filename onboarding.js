@@ -38,7 +38,7 @@ async function sendGardenPanel(interaction) {
     });
   }
 
-  const { message1, message2, message3, message4 } = getOnboardingMessages();
+  const { message1, message2, message3 } = getOnboardingMessages();
 
   await interaction.reply({
     content: '✅ Panel filter notifikasi kebun berhasil dikirim!',
@@ -48,7 +48,6 @@ async function sendGardenPanel(interaction) {
   await interaction.channel.send(message1);
   await interaction.channel.send(message2);
   await interaction.channel.send(message3);
-  await interaction.channel.send(message4);
 }
 
 
@@ -614,41 +613,20 @@ async function handleNotifCommand(interaction) {
  * Membangun pesan-pesan panel onboarding untuk dikirim/diperbarui.
  */
 function getOnboardingMessages() {
+  // ═══════════════════════════════════════
+  // MESSAGE 1: Tanaman & Item Kebun (GAG2)
+  // ═══════════════════════════════════════
   const embed1 = new EmbedBuilder()
     .setColor(0x7C4DFF)
-    .setTitle('🏡 PORTAL NOTIFIKASI KOSAN 1A')
-    .setDescription(
-      'Halo! Atur kustomisasi notifikasi utama server Anda di bawah ini:\n\n' +
-      '• **Notif Umum**: Pengumuman penting server.\n' +
-      '• **Notif Grow a Garden 2**: Notifikasi event, cuaca, & info kebun.\n' +
-      '• **Notif Gear**: Pemberitahuan restok item & perkakas kebun.\n\n' +
-      'Klik tombol **🔄 Segarkan** untuk memperbarui daftar menu kebun di bawah jika ada benih baru!'
-    )
-    .setFooter({ text: 'Kosan 1A Onboarding • Notifikasi Umum' })
-    .setTimestamp();
-
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('onboarding_toggle_notif_me').setLabel('🔔 Notif Umum').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('onboarding_toggle_gag2').setLabel('🌾 Notif Grow a Garden 2').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('onboarding_toggle_notif_gear').setLabel('⚙️ Notif Gear').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('onboarding_refresh_panel').setLabel('🔄 Segarkan').setStyle(ButtonStyle.Secondary)
-  );
-
-  // ═══════════════════════════════════════
-  // MESSAGE 2: Tanaman, Item & Stok 2x+
-  // ═══════════════════════════════════════
-  const embed2 = new EmbedBuilder()
-    .setColor(0x7C4DFF)
-    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🌸  GARDEN NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setTitle('🌸  GARDEN NOTIFICATION FILTER  🌸')
     .setDescription(
       'Atur preferensi notifikasi Anda secara mandiri agar tidak ketinggalan cuaca penting, restok peralatan langka, maupun pelipatgandaan stok benih di Grow a Garden 2.\n\n' +
       '📝 **Petunjuk Penggunaan:**\n' +
       ' 1. Pilih nama peran dari menu dropdown di bawah untuk **mengaktifkan** peran tersebut.\n' +
       ' 2. Pilih nama peran yang sama kembali untuk **menonaktifkan** peran tersebut.\n\n' +
-      '🔍 **Pencarian Cepat Lewat Ketik:**\n' +
-      'Gunakan perintah **`/notif`** di chat room mana saja lalu ketik nama peran (contoh: `Carrot`, `Aurora`, `Notif Gear`) untuk mencari dan mengambil peran secara instan!'
+      '🔍 **Pencarian Cepat:** Gunakan perintah `/notif` di mana saja untuk mencari dan mengambil peran secara instan!'
     )
-    .setFooter({ text: 'Onboarding System • Tanaman, Item & Stok 2x+' })
+    .setFooter({ text: 'Onboarding System • Tanaman & Item Kebun' })
     .setTimestamp();
 
   // Tanaman A–G (15 opsi)
@@ -757,15 +735,15 @@ function getOnboardingMessages() {
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   // ═══════════════════════════════════════
-  // MESSAGE 3: Stok 4x+, Gear, Crate & Cuaca
+  // MESSAGE 2: 4x+, Gear, Crates & Weather
   // ═══════════════════════════════════════
-  const embed3 = new EmbedBuilder()
+  const embed2 = new EmbedBuilder()
     .setColor(0x7C4DFF)
-    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🚀  STOK 4x+, GEAR & CUACA  🚀\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setTitle('🚀  MULTIPLIER 4x+, GEAR & WEATHER  🚀')
     .setDescription(
-      'Lanjutan filter notifikasi kebun — pilih peran pelipatgandaan stok **4x+**, peralatan kebun (**Gear**), peti (**Crate**), dan cuaca (**Weather**) yang ingin Anda terima.'
+      'Lanjutan filter notifikasi kebun — pilih peran pelipatgandaan stok **4x+**, peralatan kebun (**Gear**), peti (**Crate**), dan cuaca kebun (**Weather**).'
     )
-    .setFooter({ text: 'Onboarding System • Stok 4x+, Gear & Cuaca' })
+    .setFooter({ text: 'Onboarding System • 4x+, Gear & Cuaca' })
     .setTimestamp();
 
   // 4x+ A–G (19 opsi)
@@ -878,15 +856,15 @@ function getOnboardingMessages() {
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
   // ═══════════════════════════════════════
-  // MESSAGE 4: Maple Roles
+  // MESSAGE 3: Khusus Maple Roles
   // ═══════════════════════════════════════
-  const embed4 = new EmbedBuilder()
-    .setColor(0x7C4DFF)
-    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🍁  MAPLE NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+  const embed3 = new EmbedBuilder()
+    .setColor(0xE65100) // HSL Orange Hangat khas Maple
+    .setTitle('🍁  MAPLE NOTIFICATION FILTER  🍁')
     .setDescription(
-      'Pilih preferensi notifikasi peran **Maple** baru Anda di Grow a Garden 2 agar selalu ter-update dengan aktivitas benih Maple pilihan Anda.'
+      'Atur filter notifikasi khusus untuk peran **Maple** baru Anda di Grow a Garden 2.'
     )
-    .setFooter({ text: 'Onboarding System • Maple Roles' })
+    .setFooter({ text: 'Onboarding System • Maple Roles Only' })
     .setTimestamp();
 
   // Maple (24 opsi)
@@ -920,26 +898,29 @@ function getOnboardingMessages() {
       { label: 'Maple Venus Fly Trap', value: 'Maple Venus Fly Trap', emoji: '🍁' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
+  // Tombol Refresh/Segarkan ditambahkan langsung ke baris tersendiri di tiap-tiap pesan
+  const btnRefresh = new ButtonBuilder().setCustomId('onboarding_refresh_panel').setLabel('🔄 Segarkan Panel').setStyle(ButtonStyle.Secondary);
+  const rowRefresh = new ActionRowBuilder().addComponents(btnRefresh);
+
   // Susun baris per pesan (max 5 ActionRow per pesan)
-  const row2_1 = new ActionRowBuilder().addComponents(menuPlantsAG);
-  const row2_2 = new ActionRowBuilder().addComponents(menuPlantsHZ);
-  const row2_3 = new ActionRowBuilder().addComponents(menuItems);
-  const row2_4 = new ActionRowBuilder().addComponents(menu2xAG);
-  const row2_5 = new ActionRowBuilder().addComponents(menu2xHZ);
+  const row1_1 = new ActionRowBuilder().addComponents(menuPlantsAG);
+  const row1_2 = new ActionRowBuilder().addComponents(menuPlantsHZ);
+  const row1_3 = new ActionRowBuilder().addComponents(menuItems);
+  const row1_4 = new ActionRowBuilder().addComponents(menu2xAG);
+  const row1_5 = new ActionRowBuilder().addComponents(menu2xHZ);
 
-  const row3_1 = new ActionRowBuilder().addComponents(menu4xAG);
-  const row3_2 = new ActionRowBuilder().addComponents(menu4xHZ);
-  const row3_3 = new ActionRowBuilder().addComponents(menuGears);
-  const row3_4 = new ActionRowBuilder().addComponents(menuCrates);
-  const row3_5 = new ActionRowBuilder().addComponents(menuWeather);
+  const row2_1 = new ActionRowBuilder().addComponents(menu4xAG);
+  const row2_2 = new ActionRowBuilder().addComponents(menu4xHZ);
+  const row2_3 = new ActionRowBuilder().addComponents(menuGears);
+  const row2_4 = new ActionRowBuilder().addComponents(menuCrates);
+  const row2_5 = new ActionRowBuilder().addComponents(menuWeather);
 
-  const row4_1 = new ActionRowBuilder().addComponents(menuMaple);
+  const row3_1 = new ActionRowBuilder().addComponents(menuMaple);
 
   return {
-    message1: { embeds: [embed1], components: [row1] },
+    message1: { embeds: [embed1], components: [row1_1, row1_2, row1_3, row1_4, row1_5] },
     message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] },
-    message3: { embeds: [embed3], components: [row3_1, row3_2, row3_3, row3_4, row3_5] },
-    message4: { embeds: [embed4], components: [row4_1] }
+    message3: { embeds: [embed3], components: [row3_1, rowRefresh] }
   };
 }
 
@@ -949,32 +930,27 @@ function getOnboardingMessages() {
 async function handleOnboardingRefresh(interaction) {
   try {
     await interaction.deferReply({ flags: 64 });
-    const { message1, message2, message3, message4 } = getOnboardingMessages();
+    const { message1, message2, message3 } = getOnboardingMessages();
 
     // Ambil beberapa pesan terakhir dari bot di channel ini
-    const messages = await interaction.channel.messages.fetch({ limit: 25 });
+    const messages = await interaction.channel.messages.fetch({ limit: 20 });
     const botMessages = messages.filter(m => m.author.id === interaction.client.user.id).toJSON();
 
-    // Temukan pesan dengan tombol refresh
-    const buttonMsg = botMessages.find(m => m.components.some(row => row.components.some(c => c.customId === 'onboarding_refresh_panel')));
-    // Temukan pesan dengan dropdowns tanaman (message2)
-    const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_standar'));
-    // Temukan pesan dengan dropdowns 4x+/gear/cuaca (message3)
-    const dropdownMsg3 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_4x'));
-    // Temukan pesan dengan dropdown Maple (message4)
-    const dropdownMsg4 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_maple'));
+    // Temukan pesan 1 (dropdown tanaman standar)
+    const dropdownMsg1 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_standar'));
+    // Temukan pesan 2 (dropdown 4x/gear/weather)
+    const dropdownMsg2 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_4x'));
+    // Temukan pesan 3 (dropdown Maple & tombol refresh)
+    const dropdownMsg3 = botMessages.find(m => m.components.some(row => row.components.some(c => c.customId === 'onboarding_refresh_panel')));
 
-    if (buttonMsg) {
-      await buttonMsg.edit({ embeds: message1.embeds, components: message1.components });
+    if (dropdownMsg1) {
+      await dropdownMsg1.edit({ embeds: message1.embeds, components: message1.components });
     }
-    if (dropdownMsg) {
-      await dropdownMsg.edit({ embeds: message2.embeds, components: message2.components });
+    if (dropdownMsg2) {
+      await dropdownMsg2.edit({ embeds: message2.embeds, components: message2.components });
     }
     if (dropdownMsg3) {
       await dropdownMsg3.edit({ embeds: message3.embeds, components: message3.components });
-    }
-    if (dropdownMsg4) {
-      await dropdownMsg4.edit({ embeds: message4.embeds, components: message4.components });
     }
 
     return interaction.editReply({ content: '✅ Tampilan panel onboarding berhasil diperbarui!' });
