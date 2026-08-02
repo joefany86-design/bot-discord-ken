@@ -38,7 +38,7 @@ async function sendGardenPanel(interaction) {
     });
   }
 
-  const { message1, message2, message3 } = getOnboardingMessages();
+  const { message1, message2, message3, message4 } = getOnboardingMessages();
 
   await interaction.reply({
     content: '✅ Panel filter notifikasi kebun berhasil dikirim!',
@@ -48,6 +48,7 @@ async function sendGardenPanel(interaction) {
   await interaction.channel.send(message1);
   await interaction.channel.send(message2);
   await interaction.channel.send(message3);
+  await interaction.channel.send(message4);
 }
 
 
@@ -545,6 +546,7 @@ async function handleNotifAutocomplete(interaction) {
       name.includes('eclipse') ||
       name.includes('sunburst') ||
       name.includes('crate') ||
+      name.includes('maple') ||
       ['carrot', 'strawberry', 'blueberry', 'tulip', 'tomato', 'apple', 'bamboo', 'corn', 'cactus', 'pineapple', 'mushroom', 'green bean', 'banana', 'grape', 'coconut', 'mango', 'dragon fruit', 'acorn', 'cherry', 'sunflower', 'venus fly trap', 'pomegranate', 'poison apple', 'venom spitter', 'moon bloom', 'dragon\'s breath', 'hypno bloom', 'hypnobloom', 'fire fern', 'rocket pop', 'star fruit', 'sun bloom',
         'basic pot', 'flashbang', 'gnome', 'invisibility mushroom', 'jump mushroom', 'lantern', 'shrink mushroom', 'speed mushroom', 'strawberry sniper', 'supersize mushroom', 'teleporter', 'wheelbarrow', 'briar rose'].includes(name)
     );
@@ -875,6 +877,49 @@ function getOnboardingMessages() {
       { label: 'Sunburst', value: 'Sunburst', emoji: '☀️' }
     ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
 
+  // ═══════════════════════════════════════
+  // MESSAGE 4: Maple Roles
+  // ═══════════════════════════════════════
+  const embed4 = new EmbedBuilder()
+    .setColor(0x7C4DFF)
+    .setTitle('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n🍁  MAPLE NOTIFICATION FILTER  🌸\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬')
+    .setDescription(
+      'Pilih preferensi notifikasi peran **Maple** baru Anda di Grow a Garden 2 agar selalu ter-update dengan aktivitas benih Maple pilihan Anda.'
+    )
+    .setFooter({ text: 'Onboarding System • Maple Roles' })
+    .setTimestamp();
+
+  // Maple (24 opsi)
+  const menuMaple = new StringSelectMenuBuilder()
+    .setCustomId('onboarding_select_maple')
+    .setPlaceholder('🍁 Peran Maple')
+    .addOptions([
+      { label: 'Maple Acorn', value: 'Maple Acorn', emoji: '🍁' },
+      { label: 'Maple Apple', value: 'Maple Apple', emoji: '🍁' },
+      { label: 'Maple Bamboo', value: 'Maple Bamboo', emoji: '🍁' },
+      { label: 'Maple Banana', value: 'Maple Banana', emoji: '🍁' },
+      { label: 'Maple Blueberry', value: 'Maple Blueberry', emoji: '🍁' },
+      { label: 'Maple Cactus', value: 'Maple Cactus', emoji: '🍁' },
+      { label: 'Maple Carrot', value: 'Maple Carrot', emoji: '🍁' },
+      { label: 'Maple Cherry', value: 'Maple Cherry', emoji: '🍁' },
+      { label: 'Maple Coconut', value: 'Maple Coconut', emoji: '🍁' },
+      { label: 'Maple Corn', value: 'Maple Corn', emoji: '🍁' },
+      { label: 'Maple Dragon Fruit', value: 'Maple Dragon Fruit', emoji: '🍁' },
+      { label: 'Maple Grape', value: 'Maple Grape', emoji: '🍁' },
+      { label: 'Maple Green Bean', value: 'Maple Green Bean', emoji: '🍁' },
+      { label: 'Maple Mango', value: 'Maple Mango', emoji: '🍁' },
+      { label: 'Maple Mushroom', value: 'Maple Mushroom', emoji: '🍁' },
+      { label: 'Maple Pineapple', value: 'Maple Pineapple', emoji: '🍁' },
+      { label: 'Maple Poison Apple', value: 'Maple Poison Apple', emoji: '🍁' },
+      { label: 'Maple Pomegranate', value: 'Maple Pomegranate', emoji: '🍁' },
+      { label: 'Maple Strawberry', value: 'Maple Strawberry', emoji: '🍁' },
+      { label: 'Maple Sunflower', value: 'Maple Sunflower', emoji: '🍁' },
+      { label: 'Maple Tomato', value: 'Maple Tomato', emoji: '🍁' },
+      { label: 'Maple Tulip', value: 'Maple Tulip', emoji: '🍁' },
+      { label: 'Maple Venom Spitter', value: 'Maple Venom Spitter', emoji: '🍁' },
+      { label: 'Maple Venus Fly Trap', value: 'Maple Venus Fly Trap', emoji: '🍁' }
+    ].map(o => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value).setEmoji(o.emoji)));
+
   // Susun baris per pesan (max 5 ActionRow per pesan)
   const row2_1 = new ActionRowBuilder().addComponents(menuPlantsAG);
   const row2_2 = new ActionRowBuilder().addComponents(menuPlantsHZ);
@@ -888,10 +933,13 @@ function getOnboardingMessages() {
   const row3_4 = new ActionRowBuilder().addComponents(menuCrates);
   const row3_5 = new ActionRowBuilder().addComponents(menuWeather);
 
+  const row4_1 = new ActionRowBuilder().addComponents(menuMaple);
+
   return {
     message1: { embeds: [embed1], components: [row1] },
     message2: { embeds: [embed2], components: [row2_1, row2_2, row2_3, row2_4, row2_5] },
-    message3: { embeds: [embed3], components: [row3_1, row3_2, row3_3, row3_4, row3_5] }
+    message3: { embeds: [embed3], components: [row3_1, row3_2, row3_3, row3_4, row3_5] },
+    message4: { embeds: [embed4], components: [row4_1] }
   };
 }
 
@@ -901,10 +949,10 @@ function getOnboardingMessages() {
 async function handleOnboardingRefresh(interaction) {
   try {
     await interaction.deferReply({ flags: 64 });
-    const { message1, message2, message3 } = getOnboardingMessages();
+    const { message1, message2, message3, message4 } = getOnboardingMessages();
 
     // Ambil beberapa pesan terakhir dari bot di channel ini
-    const messages = await interaction.channel.messages.fetch({ limit: 20 });
+    const messages = await interaction.channel.messages.fetch({ limit: 25 });
     const botMessages = messages.filter(m => m.author.id === interaction.client.user.id).toJSON();
 
     // Temukan pesan dengan tombol refresh
@@ -913,6 +961,8 @@ async function handleOnboardingRefresh(interaction) {
     const dropdownMsg = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_standar'));
     // Temukan pesan dengan dropdowns 4x+/gear/cuaca (message3)
     const dropdownMsg3 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_4x'));
+    // Temukan pesan dengan dropdown Maple (message4)
+    const dropdownMsg4 = botMessages.find(m => m.components.some(row => row.components[0]?.customId === 'onboarding_select_maple'));
 
     if (buttonMsg) {
       await buttonMsg.edit({ embeds: message1.embeds, components: message1.components });
@@ -922,6 +972,9 @@ async function handleOnboardingRefresh(interaction) {
     }
     if (dropdownMsg3) {
       await dropdownMsg3.edit({ embeds: message3.embeds, components: message3.components });
+    }
+    if (dropdownMsg4) {
+      await dropdownMsg4.edit({ embeds: message4.embeds, components: message4.components });
     }
 
     return interaction.editReply({ content: '✅ Tampilan panel onboarding berhasil diperbarui!' });
