@@ -50,11 +50,9 @@ const SENIOR_ROLES = {
   ZENITH: '1508836447229050980'     // 🌟 Zenith
 };
 
-// ID Channel Khusus Ambil Role (Self-Role Channel)
+// ID Channel Khusus Ambil Role & Perkenalan (Sekarang digabung di channel ini)
 const ROLE_CHANNEL_ID = '1472197966218395751';
-// ID Channel Perkenalan Warga / Intro Channel
-const INTRO_CHANNEL_ID = '1472883318386065426';
-// ID Channel Welcome/Greeting
+const INTRO_CHANNEL_ID = '1472883318386065426'; // ID channel perkenalan (untuk mengirim hasil KTP warga baru)
 const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
 
 client.once('ready', async () => {
@@ -117,18 +115,22 @@ client.once('ready', async () => {
     console.error('❌ Gagal mengatur channel 1422656689710305381:', err.message);
   }
 
-  // 4. Panel Self-Role (Pencegahan Duplikasi)
+  // 4. Panel Gabungan: Perkenalan + Pilihan Role (Pencegahan Duplikasi)
   try {
     const roleChannel = await client.channels.fetch(ROLE_CHANNEL_ID).catch(() => null);
     if (roleChannel && roleChannel.isTextBased()) {
       const messages = await roleChannel.messages.fetch({ limit: 50 }).catch(() => null);
-      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PILIH ROLE WARGA')).values()] : [];
+      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PERKENALAN & PILIHAN ROLE')).values()] : [];
 
       const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle('🎭 PANEL PILIHAN ROLE WARGA BARU')
+        .setColor(0x818cf8)
+        .setTitle('🎭 PANEL PERKENALAN & PILIHAN ROLE WARGA BARU')
         .setDescription(
-          'Selamat datang! Silakan pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah ini:\n\n' +
+          'Selamat datang di server Kosan 1A! Silakan lakukan perkenalan warga dan ambil role Anda secara mandiri di bawah ini.\n\n' +
+          '📝 **1. BUAT KARTU PERKENALAN**\n' +
+          'Klik tombol **"📝 Buat Kartu Perkenalan"** untuk mengisi formulir perkenalan. Bot akan otomatis membuatkan **Kartu Identitas KTP Warga** visual yang keren dan mengirimkannya ke channel perkenalan.\n\n' +
+          '🎭 **2. AMBIL ROLE WARGA**\n' +
+          'Pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah:\n\n' +
           '💖 **the baddies** — Role identitas komunitas\n' +
           '💙 **the bros** — Role identitas komunitas\n' +
           '⚔️ **Mobile Legends** — Gamer MLBB\n' +
@@ -136,8 +138,16 @@ client.once('ready', async () => {
           '🎮 **Mole dan Roblox** — Gamer MLBB & Roblox\n\n' +
           '*Anda dapat memilih satu atau beberapa role sekaligus!*'
         )
-        .setFooter({ text: 'Klik pilihan untuk menambah/menghapus role Anda secara mandiri.' });
+        .setFooter({ text: 'Identitas resmi warga Kosan 1A • Klik tombol atau pilih dropdown menu di bawah' });
 
+      // Action Row 1: Tombol Perkenalan
+      const btn = new ButtonBuilder()
+        .setCustomId('btn_open_intro_modal')
+        .setLabel('📝 Buat Kartu Perkenalan')
+        .setStyle(ButtonStyle.Primary);
+      const rowBtn = new ActionRowBuilder().addComponents(btn);
+
+      // Action Row 2: Dropdown Menu Select Role
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('select_member_roles')
         .setPlaceholder('👉 Pilih Role Anda di sini...')
@@ -150,57 +160,36 @@ client.once('ready', async () => {
           new StringSelectMenuOptionBuilder().setLabel('Roblox').setValue(MEMBER_ROLES.ROBLOX).setDescription('Komunitas gamer Roblox').setEmoji('🧱'),
           new StringSelectMenuOptionBuilder().setLabel('Mole dan Roblox').setValue(MEMBER_ROLES.MOLE_ROBLOX).setDescription('Komunitas gamer Mobile Legends & Roblox').setEmoji('🎮')
         );
-
-      const row = new ActionRowBuilder().addComponents(selectMenu);
+      const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
 
       if (botMessages.length > 0) {
-        await botMessages[0].edit({ embeds: [embed], components: [row] });
+        await botMessages[0].edit({ embeds: [embed], components: [rowBtn, rowMenu] });
         if (botMessages.length > 1) {
           for (let i = 1; i < botMessages.length; i++) await botMessages[i].delete().catch(() => {});
         }
       } else {
-        await roleChannel.send({ embeds: [embed], components: [row] });
+        await roleChannel.send({ embeds: [embed], components: [rowBtn, rowMenu] });
       }
+      console.log(`✅ Panel Gabungan (Intro + Role) berhasil aktif di <#${ROLE_CHANNEL_ID}>.`);
     }
   } catch (err) {
-    console.error('❌ Gagal mengelola panel pilihan role:', err.message);
+    console.error('❌ Gagal mengelola panel gabungan:', err.message);
   }
 
-  // 5. Panel Modal Perkenalan (Intro Card Trigger Panel)
+  // Hapus panel perkenalan lama di channel 1472883318386065426 agar tidak ada duplikasi instruksi/button
   try {
-    const introChannel = await client.channels.fetch(INTRO_CHANNEL_ID).catch(() => null);
-    if (introChannel && introChannel.isTextBased()) {
-      const messages = await introChannel.messages.fetch({ limit: 50 }).catch(() => null);
-      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PERKENALAN WARGA')).values()] : [];
-
-      const embed = new EmbedBuilder()
-        .setColor(0x818cf8)
-        .setTitle('📝 PANEL PERKENALAN WARGA KOSAN 1A')
-        .setDescription(
-          'Halo Warga Kosan 1A! Yuk saling kenalan satu sama lain dengan membuat Kartu Identitas Resmi Warga Kosan 1A!\n\n' +
-          'Klik tombol **"📝 Buat Kartu Perkenalan"** di bawah ini untuk mengisi formulir perkenalan Anda secara instan. Bot akan membuatkan **Kartu Identitas Visual Premium** secara otomatis!'
-        )
-        .setFooter({ text: 'Identitas resmi warga Kosan 1A • Klik tombol di bawah untuk perkenalan' });
-
-      const btn = new ButtonBuilder()
-        .setCustomId('btn_open_intro_modal')
-        .setLabel('📝 Buat Kartu Perkenalan')
-        .setStyle(ButtonStyle.Primary);
-
-      const row = new ActionRowBuilder().addComponents(btn);
-
-      if (botMessages.length > 0) {
-        await botMessages[0].edit({ embeds: [embed], components: [row] });
-        if (botMessages.length > 1) {
-          for (let i = 1; i < botMessages.length; i++) await botMessages[i].delete().catch(() => {});
+    const oldIntroChan = await client.channels.fetch(INTRO_CHANNEL_ID).catch(() => null);
+    if (oldIntroChan && oldIntroChan.isTextBased()) {
+      const messages = await oldIntroChan.messages.fetch({ limit: 50 }).catch(() => null);
+      if (messages) {
+        const oldBotMsgs = messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PERKENALAN WARGA'));
+        for (const m of oldBotMsgs.values()) {
+          await m.delete().catch(() => {});
         }
-      } else {
-        await introChannel.send({ embeds: [embed], components: [row] });
       }
-      console.log(`✅ Panel Perkenalan Warga berhasil aktif di <#${INTRO_CHANNEL_ID}>.`);
     }
   } catch (err) {
-    console.error('❌ Gagal mengelola panel perkenalan warga:', err.message);
+    console.error('❌ Gagal membersihkan panel lama di intro channel:', err.message);
   }
 });
 
@@ -211,7 +200,7 @@ client.on('guildMemberAdd', async (member) => {
     const welcomeChan = await member.guild.channels.fetch(GREETING_CHANNEL_ID).catch(() => null);
     if (welcomeChan && welcomeChan.isTextBased()) {
       await welcomeChan.send({
-        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan perkenalkan diri Anda di <#${INTRO_CHANNEL_ID}> & ambil role Anda di <#${ROLE_CHANNEL_ID}> ✨`
+        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan perkenalkan diri Anda & ambil role secara mandiri di channel <#${ROLE_CHANNEL_ID}> ✨`
       }).catch(() => {});
     }
   } catch (err) {
