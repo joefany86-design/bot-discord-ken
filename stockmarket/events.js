@@ -386,7 +386,7 @@ function triggerEvent(client, guild, type) {
   }
 
   if (targetChannel) {
-    targetChannel.send({ content: '@everyone', embeds: [embed] }).catch(err => {
+    targetChannel.send({ embeds: [embed] }).catch(err => {
       console.error('❌ Gagal mengirim pengumuman event di guild ' + guild.name + ':', err.message);
     });
   }

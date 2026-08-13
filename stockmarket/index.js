@@ -5134,7 +5134,7 @@ async function handleEconomyChat(message) {
         }
 
         if (targetChannel) {
-          await targetChannel.send({ content: `<@${author.id}>`, embeds: [autoDailyEmbed] }).catch(() => { });
+          await targetChannel.send({ embeds: [autoDailyEmbed] }).catch(() => { });
         }
       }
     }
