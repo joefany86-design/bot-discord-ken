@@ -7,8 +7,15 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder
+  StringSelectMenuOptionBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  AttachmentBuilder
 } = require('discord.js');
+const { generateIdCard } = require('./idCardGenerator');
 
 const client = new Client({
   intents: [
@@ -45,6 +52,8 @@ const SENIOR_ROLES = {
 
 // ID Channel Khusus Ambil Role (Self-Role Channel)
 const ROLE_CHANNEL_ID = '1472197966218395751';
+// ID Channel Perkenalan Warga / Intro Channel
+const INTRO_CHANNEL_ID = '1472883318386065426';
 // ID Channel Welcome/Greeting
 const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
 
@@ -55,14 +64,12 @@ client.once('ready', async () => {
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
     if (textOnlyChan) {
-      // Set @everyone: Hanya Chat Teks (TIDAK BISA AttachFiles & EmbedLinks)
       await textOnlyChan.permissionOverwrites.edit(textOnlyChan.guild.roles.everyone, {
         [PermissionFlagsBits.SendMessages]: true,
         [PermissionFlagsBits.AttachFiles]: false,
         [PermissionFlagsBits.EmbedLinks]: false,
       });
 
-      // Set Privilege untuk Role Member Senior (Boleh AttachFiles & EmbedLinks di channel ini!)
       for (const [roleName, roleId] of Object.entries(SENIOR_ROLES)) {
         try {
           await textOnlyChan.permissionOverwrites.edit(roleId, {
@@ -74,7 +81,7 @@ client.once('ready', async () => {
           });
         } catch (e) {}
       }
-      console.log(`✅ Channel #${textOnlyChan.name} (1422642326798598348): Permisi diatur (Senior Roles dapet privilege kirim foto & link).`);
+      console.log(`✅ Channel #${textOnlyChan.name} (1422642326798598348): Permisi diatur.`);
     }
   } catch (err) {
     console.error('❌ Gagal mengatur channel 1422642326798598348:', err.message);
@@ -110,12 +117,12 @@ client.once('ready', async () => {
     console.error('❌ Gagal mengatur channel 1422656689710305381:', err.message);
   }
 
-  // 4. Cek & Update Panel Self-Role (Pencegahan Duplikasi / Chat Numpuk Saat Restart/Relogin)
+  // 4. Panel Self-Role (Pencegahan Duplikasi)
   try {
     const roleChannel = await client.channels.fetch(ROLE_CHANNEL_ID).catch(() => null);
     if (roleChannel && roleChannel.isTextBased()) {
       const messages = await roleChannel.messages.fetch({ limit: 50 }).catch(() => null);
-      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
+      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PILIH ROLE WARGA')).values()] : [];
 
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
@@ -137,64 +144,74 @@ client.once('ready', async () => {
         .setMinValues(0)
         .setMaxValues(5)
         .addOptions(
-          new StringSelectMenuOptionBuilder()
-            .setLabel('the baddies')
-            .setValue(MEMBER_ROLES.BADDIES)
-            .setDescription('Role identitas the baddies')
-            .setEmoji('💖'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('the bros')
-            .setValue(MEMBER_ROLES.BROS)
-            .setDescription('Role identitas the bros')
-            .setEmoji('💙'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Mobile Legends')
-            .setValue(MEMBER_ROLES.MOBILE_LEGENDS)
-            .setDescription('Komunitas gamer Mobile Legends')
-            .setEmoji('⚔️'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Roblox')
-            .setValue(MEMBER_ROLES.ROBLOX)
-            .setDescription('Komunitas gamer Roblox')
-            .setEmoji('🧱'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Mole dan Roblox')
-            .setValue(MEMBER_ROLES.MOLE_ROBLOX)
-            .setDescription('Komunitas gamer Mobile Legends & Roblox')
-            .setEmoji('🎮')
+          new StringSelectMenuOptionBuilder().setLabel('the baddies').setValue(MEMBER_ROLES.BADDIES).setDescription('Role identitas the baddies').setEmoji('💖'),
+          new StringSelectMenuOptionBuilder().setLabel('the bros').setValue(MEMBER_ROLES.BROS).setDescription('Role identitas the bros').setEmoji('💙'),
+          new StringSelectMenuOptionBuilder().setLabel('Mobile Legends').setValue(MEMBER_ROLES.MOBILE_LEGENDS).setDescription('Komunitas gamer Mobile Legends').setEmoji('⚔️'),
+          new StringSelectMenuOptionBuilder().setLabel('Roblox').setValue(MEMBER_ROLES.ROBLOX).setDescription('Komunitas gamer Roblox').setEmoji('🧱'),
+          new StringSelectMenuOptionBuilder().setLabel('Mole dan Roblox').setValue(MEMBER_ROLES.MOLE_ROBLOX).setDescription('Komunitas gamer Mobile Legends & Roblox').setEmoji('🎮')
         );
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
 
       if (botMessages.length > 0) {
-        const primaryMessage = botMessages[0];
-        await primaryMessage.edit({ embeds: [embed], components: [row] });
-        console.log(`✅ Panel Role berhasil di-update tanpa numpuk pesan di <#${ROLE_CHANNEL_ID}>.`);
-
+        await botMessages[0].edit({ embeds: [embed], components: [row] });
         if (botMessages.length > 1) {
-          for (let i = 1; i < botMessages.length; i++) {
-            await botMessages[i].delete().catch(() => {});
-          }
-          console.log(`🗑️ Berhasil membersihkan ${botMessages.length - 1} pesan bot duplikat di channel role.`);
+          for (let i = 1; i < botMessages.length; i++) await botMessages[i].delete().catch(() => {});
         }
       } else {
         await roleChannel.send({ embeds: [embed], components: [row] });
-        console.log(`✅ Panel Role pertama berhasil dikirim ke <#${ROLE_CHANNEL_ID}>.`);
       }
     }
   } catch (err) {
     console.error('❌ Gagal mengelola panel pilihan role:', err.message);
   }
+
+  // 5. Panel Modal Perkenalan (Intro Card Trigger Panel)
+  try {
+    const introChannel = await client.channels.fetch(INTRO_CHANNEL_ID).catch(() => null);
+    if (introChannel && introChannel.isTextBased()) {
+      const messages = await introChannel.messages.fetch({ limit: 50 }).catch(() => null);
+      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PERKENALAN WARGA')).values()] : [];
+
+      const embed = new EmbedBuilder()
+        .setColor(0x818cf8)
+        .setTitle('📝 PANEL PERKENALAN WARGA KOSAN 1A')
+        .setDescription(
+          'Halo Warga Kosan 1A! Yuk saling kenalan satu sama lain dengan membuat Kartu Identitas Resmi Warga Kosan 1A!\n\n' +
+          'Klik tombol **"📝 Buat Kartu Perkenalan"** di bawah ini untuk mengisi formulir perkenalan Anda secara instan. Bot akan membuatkan **Kartu Identitas Visual Premium** secara otomatis!'
+        )
+        .setFooter({ text: 'Identitas resmi warga Kosan 1A • Klik tombol di bawah untuk perkenalan' });
+
+      const btn = new ButtonBuilder()
+        .setCustomId('btn_open_intro_modal')
+        .setLabel('📝 Buat Kartu Perkenalan')
+        .setStyle(ButtonStyle.Primary);
+
+      const row = new ActionRowBuilder().addComponents(btn);
+
+      if (botMessages.length > 0) {
+        await botMessages[0].edit({ embeds: [embed], components: [row] });
+        if (botMessages.length > 1) {
+          for (let i = 1; i < botMessages.length; i++) await botMessages[i].delete().catch(() => {});
+        }
+      } else {
+        await introChannel.send({ embeds: [embed], components: [row] });
+      }
+      console.log(`✅ Panel Perkenalan Warga berhasil aktif di <#${INTRO_CHANNEL_ID}>.`);
+    }
+  } catch (err) {
+    console.error('❌ Gagal mengelola panel perkenalan warga:', err.message);
+  }
 });
 
-// Event Listener: Menyambut Member Baru & Mengarahkan ke Channel 1472197966218395751
+// Event Listener: Menyambut Member Baru
 client.on('guildMemberAdd', async (member) => {
   try {
     console.log(`👋 Member baru bergabung: ${member.user.tag} (${member.id})`);
     const welcomeChan = await member.guild.channels.fetch(GREETING_CHANNEL_ID).catch(() => null);
     if (welcomeChan && welcomeChan.isTextBased()) {
       await welcomeChan.send({
-        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan ambil role Anda di channel <#${ROLE_CHANNEL_ID}> ✨`
+        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan perkenalkan diri Anda di <#${INTRO_CHANNEL_ID}> & ambil role Anda di <#${ROLE_CHANNEL_ID}> ✨`
       }).catch(() => {});
     }
   } catch (err) {
@@ -202,11 +219,132 @@ client.on('guildMemberAdd', async (member) => {
   }
 });
 
-// Event Listener: Interaksi Select Menu Pilihan Role Mandiri
+// Event Listener Interaksi: Modal Perkenalan & Dropdown Role
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isStringSelectMenu()) return;
+  // A. Tombol Buka Modal Perkenalan
+  if (interaction.isButton() && interaction.customId === 'btn_open_intro_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_intro_submission')
+      .setTitle('📝 Formulir Kartu Identitas Warga');
 
-  if (interaction.customId === 'select_member_roles') {
+    const inputNickname = new TextInputBuilder()
+      .setCustomId('intro_nickname')
+      .setLabel('👤 Nama Panggilan')
+      .setPlaceholder('Contoh: Lyn / Budi / Siska')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const inputAge = new TextInputBuilder()
+      .setCustomId('intro_age')
+      .setLabel('🎂 Rentang Umur')
+      .setPlaceholder('Contoh: 20 / 18-22')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const inputOrigin = new TextInputBuilder()
+      .setCustomId('intro_origin')
+      .setLabel('📍 Daerah Asal')
+      .setPlaceholder('Contoh: Batam / Jakarta / Bandung')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const inputGameId = new TextInputBuilder()
+      .setCustomId('intro_game_id')
+      .setLabel('🎮 Roblox / MLBB ID')
+      .setPlaceholder('Contoh: Floryn_pl / 12345678')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false);
+
+    const inputHobbies = new TextInputBuilder()
+      .setCustomId('intro_hobbies')
+      .setLabel('✨ Ketertarikan / Hobi')
+      .setPlaceholder('Contoh: ice skating, watching movies')
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(false);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(inputNickname),
+      new ActionRowBuilder().addComponents(inputAge),
+      new ActionRowBuilder().addComponents(inputOrigin),
+      new ActionRowBuilder().addComponents(inputGameId),
+      new ActionRowBuilder().addComponents(inputHobbies)
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  // B. Submit Modal Perkenalan (Generate KTP Card & Post Embed)
+  if (interaction.isModalSubmit() && interaction.customId === 'modal_intro_submission') {
+    await interaction.deferReply({ ephemeral: true });
+
+    const nickname = interaction.fields.getTextInputValue('intro_nickname');
+    const ageRange = interaction.fields.getTextInputValue('intro_age');
+    const origin = interaction.fields.getTextInputValue('intro_origin');
+    const gameId = interaction.fields.getTextInputValue('intro_game_id') || '-';
+    const hobbies = interaction.fields.getTextInputValue('intro_hobbies') || '-';
+
+    const user = interaction.user;
+    const member = interaction.member;
+    const avatarUrl = user.displayAvatarURL({ extension: 'png', size: 512 });
+
+    try {
+      // Generate Visual Graphic ID Card
+      const buffer = await generateIdCard({
+        nickname,
+        ageRange,
+        origin,
+        gameId,
+        hobbies,
+        avatarUrl,
+        tag: user.username
+      });
+
+      const attachment = new AttachmentBuilder(buffer, { name: 'kartu_identitas_warga.png' });
+
+      // Build Premium Intro Embed
+      const introEmbed = new EmbedBuilder()
+        .setColor(0x818cf8)
+        .setTitle(`📝 KARTU IDENTITAS RESMI WARGA KOSAN 1A`)
+        .setDescription(`Warga baru telah mengenalkan diri! Yuk kenalan dengan <@${user.id}> ✨`)
+        .addFields(
+          { name: '👤 Nama Panggilan', value: `**${nickname}**`, inline: true },
+          { name: '🎂 Rentang Umur', value: `**${ageRange}**`, inline: true },
+          { name: '📍 Daerah Asal', value: `**${origin}**`, inline: true },
+          { name: '🎮 Roblox / MLBB', value: `**${gameId}**`, inline: true },
+          { name: '✨ Ketertarikan / Hobi', value: `*${hobbies}*`, inline: false }
+        )
+        .setImage('attachment://kartu_identitas_warga.png')
+        .setFooter({ text: `Kosan 1A Resident • ${user.username}`, iconURL: avatarUrl })
+        .setTimestamp();
+
+      const introChannel = await interaction.guild.channels.fetch(INTRO_CHANNEL_ID).catch(() => null);
+      if (introChannel && introChannel.isTextBased()) {
+        await introChannel.send({
+          content: `🎉 Menyambut warga baru <@${user.id}>!`,
+          embeds: [introEmbed],
+          files: [attachment]
+        });
+      }
+
+      // Verifikasi otomatis role Verified jika ada
+      const VERIFIED_ROLE_ID = '1520716203935535257';
+      if (member && !member.roles.cache.has(VERIFIED_ROLE_ID)) {
+        await member.roles.add(VERIFIED_ROLE_ID).catch(() => {});
+      }
+
+      await interaction.editReply({
+        content: '✅ **Kartu Perkenalan Anda berhasil diterbitkan & dikirim ke channel perkenalan!** Terima kasih sudah memperkenalkan diri.'
+      });
+    } catch (err) {
+      console.error('❌ Gagal menerbitkan Kartu Identitas Perkenalan:', err);
+      await interaction.editReply({
+        content: '❌ Terjadi kesalahan saat membuat Kartu Perkenalan. Silakan coba lagi.'
+      });
+    }
+  }
+
+  // C. Interaksi Select Menu Pilihan Role Mandiri
+  if (interaction.isStringSelectMenu() && interaction.customId === 'select_member_roles') {
     await interaction.deferReply({ ephemeral: true });
     const member = interaction.member;
     const selectedRoleIds = interaction.values;
