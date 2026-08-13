@@ -225,8 +225,8 @@ client.on('interactionCreate', async (interaction) => {
 
     const inputAge = new TextInputBuilder()
       .setCustomId('intro_age')
-      .setLabel('🎂 Rentang Umur')
-      .setPlaceholder('Contoh: 20 / 18-22')
+      .setLabel('🎂 Rentang Umur (Hanya Angka)')
+      .setPlaceholder('Contoh: 20')
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
 
@@ -264,10 +264,20 @@ client.on('interactionCreate', async (interaction) => {
 
   // B. Submit Modal Perkenalan (Generate KTP Card & Post Embed)
   if (interaction.isModalSubmit() && interaction.customId === 'modal_intro_submission') {
+    const ageRaw = interaction.fields.getTextInputValue('intro_age').trim();
+
+    // Validasi input umur harus berupa angka (integer positif)
+    if (!/^\d+$/.test(ageRaw)) {
+      return interaction.reply({
+        content: '❌ **Gagal memperkenalkan diri!** Input umur harus berupa **angka saja** (contoh: `20`, bukan huruf atau rentang). Silakan coba lagi.',
+        ephemeral: true
+      });
+    }
+
     await interaction.deferReply({ ephemeral: true });
 
     const nickname = interaction.fields.getTextInputValue('intro_nickname');
-    const ageRange = interaction.fields.getTextInputValue('intro_age');
+    const ageRange = ageRaw;
     const origin = interaction.fields.getTextInputValue('intro_origin');
     const gameId = interaction.fields.getTextInputValue('intro_game_id') || '-';
     const hobbies = interaction.fields.getTextInputValue('intro_hobbies') || '-';
@@ -297,7 +307,7 @@ client.on('interactionCreate', async (interaction) => {
         .setDescription(`Warga baru telah mengenalkan diri! Yuk kenalan dengan <@${user.id}> ✨`)
         .addFields(
           { name: '👤 Nama Panggilan', value: `**${nickname}**`, inline: true },
-          { name: '🎂 Rentang Umur', value: `**${ageRange}**`, inline: true },
+          { name: '🎂 Rentang Umur', value: `**${ageRange} Tahun**`, inline: true },
           { name: '📍 Daerah Asal', value: `**${origin}**`, inline: true },
           { name: '🎮 Roblox / MLBB', value: `**${gameId}**`, inline: true },
           { name: '✨ Ketertarikan / Hobi', value: `*${hobbies}*`, inline: false }
