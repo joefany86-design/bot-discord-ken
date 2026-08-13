@@ -848,6 +848,31 @@ function initStockMarket(client) {
   // Jalankan scheduler cron-jobs
   scheduler.initScheduler(client);
 
+  // ═══ ONE-TIME CLEANUP: Hapus channel leaderboard yang sudah tidak dipakai ═══
+  // TODO: Hapus blok ini setelah berhasil dijalankan sekali
+  (async () => {
+    const leaderboardChannelIds = [
+      '1510230591860113418', // Kanglomerat/Rich Leaderboard
+      '1510232295448117308', // Pet Ekspedisi Leaderboard
+      '1510240252458176662', // Daily Leaderboard
+      '1510474950698602627', // Jail Leaderboard
+      '1511017876407058463', // Thief Leaderboard
+    ];
+    for (const chanId of leaderboardChannelIds) {
+      try {
+        const ch = await client.channels.fetch(chanId).catch(() => null);
+        if (ch) {
+          await ch.delete('Cleanup: fitur leaderboard dihapus');
+          console.log(`🗑️ [Cleanup] Channel #${ch.name} (${chanId}) berhasil dihapus.`);
+        } else {
+          console.log(`⚠️ [Cleanup] Channel ${chanId} tidak ditemukan (sudah dihapus?).`);
+        }
+      } catch (err) {
+        console.error(`❌ [Cleanup] Gagal hapus channel ${chanId}:`, err.message);
+      }
+    }
+    console.log('✅ [Cleanup] Proses penghapusan channel leaderboard selesai.');
+  })();
 
   // Polling table bot_broadcasts for PENDING broadcasts
   setInterval(async () => {
