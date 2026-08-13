@@ -15,25 +15,34 @@ const client = new Client({
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
-  // Setting Permission Channel 1422642326798598348:
-  // Hanya bisa kirim pesan teks, TIDAK bisa lampirkan file (AttachFiles) & TIDAK bisa kirim link/embed (EmbedLinks)
-  const targetChannelId = '1422642326798598348';
-
+  // 1. Channel 1422642326798598348: HANYA CHAT TEKS (Matikan foto & link)
   try {
-    const channel = await client.channels.fetch(targetChannelId).catch(() => null);
-    if (channel) {
-      // Set permission overwrite untuk role @everyone di channel ini
-      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
-        [PermissionFlagsBits.SendMessages]: true,     // Boleh kirim chat teks
-        [PermissionFlagsBits.AttachFiles]: false,    // TIDAK boleh kirim foto / file / lampiran
-        [PermissionFlagsBits.EmbedLinks]: false,     // TIDAK boleh kirim link dengan preview embed
+    const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
+    if (textOnlyChan) {
+      await textOnlyChan.permissionOverwrites.edit(textOnlyChan.guild.roles.everyone, {
+        [PermissionFlagsBits.SendMessages]: true,
+        [PermissionFlagsBits.AttachFiles]: false,
+        [PermissionFlagsBits.EmbedLinks]: false,
       });
-      console.log(`✅ Permisi channel #${channel.name} (${targetChannelId}) berhasil diperbarui! (Chat: Aktif, Foto/Lampiran: Nonaktif)`);
-    } else {
-      console.log(`⚠️ Channel ${targetChannelId} tidak ditemukan.`);
+      console.log(`✅ Channel #${textOnlyChan.name} (1422642326798598348): Permisi diatur ke CHAT ONLY.`);
     }
   } catch (err) {
-    console.error(`❌ Gagal memperbarui permisi channel ${targetChannelId}:`, err.message);
+    console.error('❌ Gagal mengatur channel 1422642326798598348:', err.message);
+  }
+
+  // 2. Channel 1472428770710261952: CHAT + KIRIM FOTO / LAMPIRAN
+  try {
+    const chatAndPhotoChan = await client.channels.fetch('1472428770710261952').catch(() => null);
+    if (chatAndPhotoChan) {
+      await chatAndPhotoChan.permissionOverwrites.edit(chatAndPhotoChan.guild.roles.everyone, {
+        [PermissionFlagsBits.SendMessages]: true,
+        [PermissionFlagsBits.AttachFiles]: true,
+        [PermissionFlagsBits.EmbedLinks]: true,
+      });
+      console.log(`✅ Channel #${chatAndPhotoChan.name} (1472428770710261952): Permisi diatur ke CHAT & FOTO.`);
+    }
+  } catch (err) {
+    console.error('❌ Gagal mengatur channel 1472428770710261952:', err.message);
   }
 });
 
