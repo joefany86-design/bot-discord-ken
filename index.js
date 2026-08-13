@@ -30,8 +30,10 @@ const MEMBER_ROLES = {
   MOLE_ROBLOX: '1490442266517700800'    // Mole dan Roblox
 };
 
-// ID Channel untuk kirim Panel Self-Role (misal ke Greeting / Welcome Channel)
-const WELCOME_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
+// ID Channel Khusus Ambil Role (Self-Role Channel)
+const ROLE_CHANNEL_ID = '1472197966218395751';
+// ID Channel Welcome/Greeting
+const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
 
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
@@ -81,18 +83,18 @@ client.once('ready', async () => {
     console.error('❌ Gagal mengatur channel 1422656689710305381:', err.message);
   }
 
-  // 4. Kirim / Update Panel Self-Role Pilihan untuk Member Baru
+  // 4. Kirim / Update Panel Self-Role Pilihan di Channel 1472197966218395751
   try {
-    const targetChannel = await client.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-    if (targetChannel && targetChannel.isTextBased()) {
-      const messages = await targetChannel.messages.fetch({ limit: 20 }).catch(() => null);
+    const roleChannel = await client.channels.fetch(ROLE_CHANNEL_ID).catch(() => null);
+    if (roleChannel && roleChannel.isTextBased()) {
+      const messages = await roleChannel.messages.fetch({ limit: 20 }).catch(() => null);
       const existingMenu = messages ? messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PILIH ROLE WARGA')) : null;
 
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
         .setTitle('🎭 PANEL PILIHAN ROLE WARGA BARU')
         .setDescription(
-          'Selamat datang di server! Silakan pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah ini:\n\n' +
+          'Selamat datang! Silakan pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah ini:\n\n' +
           '💖 **the baddies** — Role identitas komunitas\n' +
           '💙 **the bros** — Role identitas komunitas\n' +
           '⚔️ **Mobile Legends** — Gamer MLBB\n' +
@@ -139,10 +141,10 @@ client.once('ready', async () => {
 
       if (existingMenu) {
         await existingMenu.edit({ embeds: [embed], components: [row] });
-        console.log('✅ Panel Pilihan Role Warga berhasil di-update.');
+        console.log(`✅ Panel Pilihan Role Warga berhasil di-update di channel <#${ROLE_CHANNEL_ID}>.`);
       } else {
-        await targetChannel.send({ embeds: [embed], components: [row] });
-        console.log('✅ Panel Pilihan Role Warga berhasil dikirim.');
+        await roleChannel.send({ embeds: [embed], components: [row] });
+        console.log(`✅ Panel Pilihan Role Warga berhasil dikirim ke channel <#${ROLE_CHANNEL_ID}>.`);
       }
     }
   } catch (err) {
@@ -150,14 +152,14 @@ client.once('ready', async () => {
   }
 });
 
-// Event Listener: Menyambut Member Baru & Memberikan Pesan Panduan Role
+// Event Listener: Menyambut Member Baru & Mengarahkan ke Channel 1472197966218395751
 client.on('guildMemberAdd', async (member) => {
   try {
     console.log(`👋 Member baru bergabung: ${member.user.tag} (${member.id})`);
-    const welcomeChan = await member.guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
+    const welcomeChan = await member.guild.channels.fetch(GREETING_CHANNEL_ID).catch(() => null);
     if (welcomeChan && welcomeChan.isTextBased()) {
       await welcomeChan.send({
-        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan ambil role Anda di panel pilihan role di atas.`
+        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan ambil role Anda di channel <#${ROLE_CHANNEL_ID}> ✨`
       }).catch(() => {});
     }
   } catch (err) {
