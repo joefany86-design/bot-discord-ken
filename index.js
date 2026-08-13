@@ -38,44 +38,6 @@ const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
-  // 🗑️ ONE-TIME CLEANUP: Hapus seluruh Role Item/Garden/Weather/Crate/Tooling lama dari server Discord
-  for (const guild of client.guilds.cache.values()) {
-    console.log(`🧹 Memulai pembersihan role lama di server: ${guild.name}`);
-    try {
-      const roles = await guild.roles.fetch();
-      
-      // Keywords role yang akan dihapus dari Discord
-      const keywordsToDelete = [
-        'Grape', 'Coconut', 'Mango', 'Dragon Fruit', 'Acorn', 'Cherry', 
-        'Sunflower', 'Venus Fly Trap', 'Pomegranate', 'Poison Apple', 
-        'Venom Spitter', 'Moon Bloom', "Dragon's Breath", 'Tulip', 'Apple', 'Bamboo', 'Cactus', 'Pineapple', 'Mushroom', 'Green Bean', 'Banana',
-        'Watering Can', 'Sprinkler', 'Trowel', 'Jump Mushroom', 'Speed Mushroom', 
-        'Lantern', 'Shrink Mushroom', 'Supersize Mushroom', 'Gnome', 'Flashbang', 
-        'Basic Pot', 'Strawberry Sniper', 'Invisibility Mushroom', 'Teleporter', 
-        'Wheelbarrow', 'Crate', 'Aurora', 'Bloodmoon', 'Goldmoon', 'Lightning', 
-        'Mega Moon', 'Rain', 'Rainbow', 'Snowfall', 'Starfall', 'Grow a Garden'
-      ];
-
-      for (const role of roles.values()) {
-        // Jangan hapus role bot sendiri atau @everyone
-        if (role.managed || role.id === guild.id) continue;
-
-        const shouldDelete = keywordsToDelete.some(kw => role.name.toLowerCase().includes(kw.toLowerCase()));
-        if (shouldDelete) {
-          try {
-            await role.delete('Pembersihan role item/garden lama yang tidak dipakai');
-            console.log(`🗑️ Berhasil menghapus role Discord: ${role.name} (${role.id})`);
-          } catch (e) {
-            console.error(`⚠️ Gagal menghapus role ${role.name}:`, e.message);
-          }
-        }
-      }
-      console.log(`✨ Pembersihan role lama selesai di server ${guild.name}.`);
-    } catch (err) {
-      console.error(`❌ Gagal fetching role di server ${guild.name}:`, err.message);
-    }
-  }
-
   // 1. Channel 1422642326798598348: HANYA CHAT TEKS (Matikan foto & link)
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
@@ -121,12 +83,13 @@ client.once('ready', async () => {
     console.error('❌ Gagal mengatur channel 1422656689710305381:', err.message);
   }
 
-  // 4. Kirim / Update Panel Self-Role Pilihan di Channel 1472197966218395751
+  // 4. Cek & Update Panel Self-Role (Pencegahan Duplikasi / Chat Numpuk Saat Restart/Relogin)
   try {
     const roleChannel = await client.channels.fetch(ROLE_CHANNEL_ID).catch(() => null);
     if (roleChannel && roleChannel.isTextBased()) {
-      const messages = await roleChannel.messages.fetch({ limit: 20 }).catch(() => null);
-      const existingMenu = messages ? messages.find(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title && m.embeds[0].title.includes('PILIH ROLE WARGA')) : null;
+      // Ambil 50 pesan terakhir di channel role untuk membersihkan duplikasi pesan bot lama jika ada
+      const messages = await roleChannel.messages.fetch({ limit: 50 }).catch(() => null);
+      const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
 
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
@@ -177,16 +140,27 @@ client.once('ready', async () => {
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
 
-      if (existingMenu) {
-        await existingMenu.edit({ embeds: [embed], components: [row] });
-        console.log(`✅ Panel Pilihan Role Warga berhasil di-update di channel <#${ROLE_CHANNEL_ID}>.`);
+      if (botMessages.length > 0) {
+        // Pesan bot pertama di-edit
+        const primaryMessage = botMessages[0];
+        await primaryMessage.edit({ embeds: [embed], components: [row] });
+        console.log(`✅ Panel Role berhasil di-update tanpa numpuk pesan di <#${ROLE_CHANNEL_ID}>.`);
+
+        // Jika ada lebih dari 1 pesan bot (numpuk dari restart sebelumnya), hapus sisanya!
+        if (botMessages.length > 1) {
+          for (let i = 1; i < botMessages.length; i++) {
+            await botMessages[i].delete().catch(() => {});
+          }
+          console.log(`🗑️ Berhasil membersihkan ${botMessages.length - 1} pesan bot duplikat di channel role.`);
+        }
       } else {
+        // Jika belum ada pesan bot sama sekali, baru kirim 1 pesan baru
         await roleChannel.send({ embeds: [embed], components: [row] });
-        console.log(`✅ Panel Pilihan Role Warga berhasil dikirim ke channel <#${ROLE_CHANNEL_ID}>.`);
+        console.log(`✅ Panel Role pertama berhasil dikirim ke <#${ROLE_CHANNEL_ID}>.`);
       }
     }
   } catch (err) {
-    console.error('❌ Gagal mengirim panel pilihan role:', err.message);
+    console.error('❌ Gagal mengelola panel pilihan role:', err.message);
   }
 });
 
