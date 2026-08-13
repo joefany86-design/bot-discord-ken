@@ -44,6 +44,39 @@ client.once('ready', async () => {
   } catch (err) {
     console.error('❌ Gagal mengatur channel 1472428770710261952:', err.message);
   }
+
+  // 3. Channel 1422656689710305381: HANYA FOTO (Boleh AttachFiles & SendMessages, tapi bot auto-delete pesan tanpa foto)
+  try {
+    const photoOnlyChan = await client.channels.fetch('1422656689710305381').catch(() => null);
+    if (photoOnlyChan) {
+      await photoOnlyChan.permissionOverwrites.edit(photoOnlyChan.guild.roles.everyone, {
+        [PermissionFlagsBits.SendMessages]: true,
+        [PermissionFlagsBits.AttachFiles]: true,
+        [PermissionFlagsBits.EmbedLinks]: true,
+      });
+      console.log(`✅ Channel #${photoOnlyChan.name} (1422656689710305381): Permisi diatur ke HANYA FOTO.`);
+    }
+  } catch (err) {
+    console.error('❌ Gagal mengatur channel 1422656689710305381:', err.message);
+  }
+});
+
+// Event listener: Hapus pesan otomatis di channel 1422656689710305381 jika tidak melampirkan foto/file
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  if (message.channelId === '1422656689710305381') {
+    const hasAttachment = message.attachments.size > 0;
+    if (!hasAttachment) {
+      try {
+        await message.delete();
+        const warnMsg = await message.channel.send(`⚠️ <@${message.author.id}>, channel ini khusus untuk mengirim foto/gambar saja! Pesan teks tanpa foto akan dihapus otomatis.`);
+        setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
+      } catch (err) {
+        console.error('❌ Gagal menghapus pesan tanpa foto:', err.message);
+      }
+    }
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
