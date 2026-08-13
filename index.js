@@ -38,6 +38,44 @@ const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
+  // 🗑️ ONE-TIME CLEANUP: Hapus seluruh Role Item/Garden/Weather/Crate/Tooling lama dari server Discord
+  for (const guild of client.guilds.cache.values()) {
+    console.log(`🧹 Memulai pembersihan role lama di server: ${guild.name}`);
+    try {
+      const roles = await guild.roles.fetch();
+      
+      // Keywords role yang akan dihapus dari Discord
+      const keywordsToDelete = [
+        'Grape', 'Coconut', 'Mango', 'Dragon Fruit', 'Acorn', 'Cherry', 
+        'Sunflower', 'Venus Fly Trap', 'Pomegranate', 'Poison Apple', 
+        'Venom Spitter', 'Moon Bloom', "Dragon's Breath", 'Tulip', 'Apple', 'Bamboo', 'Cactus', 'Pineapple', 'Mushroom', 'Green Bean', 'Banana',
+        'Watering Can', 'Sprinkler', 'Trowel', 'Jump Mushroom', 'Speed Mushroom', 
+        'Lantern', 'Shrink Mushroom', 'Supersize Mushroom', 'Gnome', 'Flashbang', 
+        'Basic Pot', 'Strawberry Sniper', 'Invisibility Mushroom', 'Teleporter', 
+        'Wheelbarrow', 'Crate', 'Aurora', 'Bloodmoon', 'Goldmoon', 'Lightning', 
+        'Mega Moon', 'Rain', 'Rainbow', 'Snowfall', 'Starfall', 'Grow a Garden'
+      ];
+
+      for (const role of roles.values()) {
+        // Jangan hapus role bot sendiri atau @everyone
+        if (role.managed || role.id === guild.id) continue;
+
+        const shouldDelete = keywordsToDelete.some(kw => role.name.toLowerCase().includes(kw.toLowerCase()));
+        if (shouldDelete) {
+          try {
+            await role.delete('Pembersihan role item/garden lama yang tidak dipakai');
+            console.log(`🗑️ Berhasil menghapus role Discord: ${role.name} (${role.id})`);
+          } catch (e) {
+            console.error(`⚠️ Gagal menghapus role ${role.name}:`, e.message);
+          }
+        }
+      }
+      console.log(`✨ Pembersihan role lama selesai di server ${guild.name}.`);
+    } catch (err) {
+      console.error(`❌ Gagal fetching role di server ${guild.name}:`, err.message);
+    }
+  }
+
   // 1. Channel 1422642326798598348: HANYA CHAT TEKS (Matikan foto & link)
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
