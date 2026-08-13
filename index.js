@@ -15,6 +15,24 @@ const client = new Client({
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
+  // Log seluruh Guild (Server) & Role yang ada
+  console.log('\n=================== DAFTAR SERVER & ROLE ===================');
+  for (const guild of client.guilds.cache.values()) {
+    console.log(`\n🏰 Guild/Server: ${guild.name} (ID: ${guild.id})`);
+    try {
+      const roles = await guild.roles.fetch();
+      const sortedRoles = [...roles.values()].sort((a, b) => b.position - a.position);
+      
+      console.log(`📋 Total Role: ${sortedRoles.length}`);
+      sortedRoles.forEach(role => {
+        console.log(`   - ID: ${role.id.padEnd(20)} | Name: ${role.name.padEnd(30)} | Color: ${role.hexColor} | Pos: ${role.position}`);
+      });
+    } catch (err) {
+      console.error(`❌ Gagal mengambil role untuk guild ${guild.name}:`, err.message);
+    }
+  }
+  console.log('============================================================\n');
+
   // 1. Channel 1422642326798598348: HANYA CHAT TEKS (Matikan foto & link)
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
