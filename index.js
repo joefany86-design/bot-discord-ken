@@ -21,13 +21,26 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
-// Mapping Role ID
+// Mapping Role ID Warga Baru
 const MEMBER_ROLES = {
   BADDIES: '1472170290175021193',       // the baddies
   BROS: '1472170093416022096',          // the bros
   MOBILE_LEGENDS: '1490303477161656391',// Mobile Legends
   ROBLOX: '1490442107960299560',        // roblox
   MOLE_ROBLOX: '1490442266517700800'    // Mole dan Roblox
+};
+
+// Mapping Role Senior / Veteran Member
+const SENIOR_ROLES = {
+  PRESTIGE: '1509202467563241613',  // 🥉 Common Prestige
+  ELITE: '1509202469828165904',     // 🥈 Rare Elite
+  CHAMPION: '1509202471803813990',  // 🥇 Epic Champion
+  OVERLORD: '1509202474416865482',  // 👑 Legendary Overlord
+  IMMORTAL: '1509203784230768860',  // 🌟 Mythic Immortal
+  SOVEREIGN: '1508835510087581696', // 👑 The Sovereign
+  AETHELGARD: '1508835994630230106',// ✨ Aethelgard
+  PRIMORDIAL: '1508836141019955301',// 🔮 Primordial
+  ZENITH: '1508836447229050980'     // 🌟 Zenith
 };
 
 // ID Channel Khusus Ambil Role (Self-Role Channel)
@@ -38,22 +51,36 @@ const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
-  // 1. Channel 1422642326798598348: HANYA CHAT TEKS (Matikan foto & link)
+  // 1. Channel 1422642326798598348: CHAT TEKS ONLY (Kecuali Role Senior BISA kirim foto & link)
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
     if (textOnlyChan) {
+      // Set @everyone: Hanya Chat Teks (TIDAK BISA AttachFiles & EmbedLinks)
       await textOnlyChan.permissionOverwrites.edit(textOnlyChan.guild.roles.everyone, {
         [PermissionFlagsBits.SendMessages]: true,
         [PermissionFlagsBits.AttachFiles]: false,
         [PermissionFlagsBits.EmbedLinks]: false,
       });
-      console.log(`✅ Channel #${textOnlyChan.name} (1422642326798598348): Permisi diatur ke CHAT ONLY.`);
+
+      // Set Privilege untuk Role Member Senior (Boleh AttachFiles & EmbedLinks di channel ini!)
+      for (const [roleName, roleId] of Object.entries(SENIOR_ROLES)) {
+        try {
+          await textOnlyChan.permissionOverwrites.edit(roleId, {
+            [PermissionFlagsBits.SendMessages]: true,
+            [PermissionFlagsBits.AttachFiles]: true,
+            [PermissionFlagsBits.EmbedLinks]: true,
+            [PermissionFlagsBits.UseExternalEmojis]: true,
+            [PermissionFlagsBits.UseExternalStickers]: true,
+          });
+        } catch (e) {}
+      }
+      console.log(`✅ Channel #${textOnlyChan.name} (1422642326798598348): Permisi diatur (Senior Roles dapet privilege kirim foto & link).`);
     }
   } catch (err) {
     console.error('❌ Gagal mengatur channel 1422642326798598348:', err.message);
   }
 
-  // 2. Channel 1472428770710261952: CHAT + KIRIM FOTO / LAMPIRAN
+  // 2. Channel 1472428770710261952: CHAT + KIRIM FOTO / LAMPIRAN UNTUK SEMUA
   try {
     const chatAndPhotoChan = await client.channels.fetch('1472428770710261952').catch(() => null);
     if (chatAndPhotoChan) {
@@ -68,7 +95,7 @@ client.once('ready', async () => {
     console.error('❌ Gagal mengatur channel 1472428770710261952:', err.message);
   }
 
-  // 3. Channel 1422656689710305381: HANYA FOTO (Boleh AttachFiles & SendMessages, tapi bot auto-delete pesan tanpa foto)
+  // 3. Channel 1422656689710305381: HANYA FOTO
   try {
     const photoOnlyChan = await client.channels.fetch('1422656689710305381').catch(() => null);
     if (photoOnlyChan) {
@@ -87,7 +114,6 @@ client.once('ready', async () => {
   try {
     const roleChannel = await client.channels.fetch(ROLE_CHANNEL_ID).catch(() => null);
     if (roleChannel && roleChannel.isTextBased()) {
-      // Ambil 50 pesan terakhir di channel role untuk membersihkan duplikasi pesan bot lama jika ada
       const messages = await roleChannel.messages.fetch({ limit: 50 }).catch(() => null);
       const botMessages = messages ? [...messages.filter(m => m.author.id === client.user.id).values()] : [];
 
@@ -141,12 +167,10 @@ client.once('ready', async () => {
       const row = new ActionRowBuilder().addComponents(selectMenu);
 
       if (botMessages.length > 0) {
-        // Pesan bot pertama di-edit
         const primaryMessage = botMessages[0];
         await primaryMessage.edit({ embeds: [embed], components: [row] });
         console.log(`✅ Panel Role berhasil di-update tanpa numpuk pesan di <#${ROLE_CHANNEL_ID}>.`);
 
-        // Jika ada lebih dari 1 pesan bot (numpuk dari restart sebelumnya), hapus sisanya!
         if (botMessages.length > 1) {
           for (let i = 1; i < botMessages.length; i++) {
             await botMessages[i].delete().catch(() => {});
@@ -154,7 +178,6 @@ client.once('ready', async () => {
           console.log(`🗑️ Berhasil membersihkan ${botMessages.length - 1} pesan bot duplikat di channel role.`);
         }
       } else {
-        // Jika belum ada pesan bot sama sekali, baru kirim 1 pesan baru
         await roleChannel.send({ embeds: [embed], components: [row] });
         console.log(`✅ Panel Role pertama berhasil dikirim ke <#${ROLE_CHANNEL_ID}>.`);
       }
@@ -190,7 +213,6 @@ client.on('interactionCreate', async (interaction) => {
     const allRoleIds = Object.values(MEMBER_ROLES);
 
     try {
-      // Role yang dipilih diset, role lain di list dihapus jika tidak dipilih lagi
       for (const roleId of allRoleIds) {
         if (selectedRoleIds.includes(roleId)) {
           if (!member.roles.cache.has(roleId)) {
