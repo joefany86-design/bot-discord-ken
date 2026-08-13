@@ -30,9 +30,6 @@ module.exports = {
     ],
     // Saluran yang diperbolehkan untuk perintah bot (fallback)
     BOT_COMMAND:     process.env.BOT_COMMAND_CHANNEL_ID || '1508417228624887928',
-    // Jail/Thief Leaderboard Channels
-    JAIL_LEADERBOARD:  process.env.JAIL_LEADERBOARD_CHANNEL_ID || '1510474950698602627',
-    THIEF_LEADERBOARD: process.env.THIEF_LEADERBOARD_CHANNEL_ID || '1511017876407058463',
     // Greeting Channel
     GREETING:        process.env.GREETING_CHANNEL_ID || '1422642326798598348',
   },
@@ -52,11 +49,6 @@ module.exports = {
 
   // ID Channel khusus Pengumuman Server & Event Penting (Lotre, Dividen, Event Bursa)
   ANNOUNCEMENT_CHANNEL_ID: process.env.ANNOUNCEMENT_CHANNEL_ID || process.env.REPORT_CHANNEL_ID || '1509480324373942272',
-
-  // ID Channel untuk Realtime Leaderboards (Kanglomerat, Top Pet, Daily Active)
-  LEADERBOARD_RICH_CHANNEL_ID: process.env.LEADERBOARD_RICH_CHANNEL_ID || '1510230591860113418',
-  LEADERBOARD_PET_CHANNEL_ID: process.env.LEADERBOARD_PET_CHANNEL_ID || '1510232295448117308',
-  LEADERBOARD_DAILY_CHANNEL_ID: process.env.LEADERBOARD_DAILY_CHANNEL_ID || '1510240252458176662',
 
   // Sistem Earning Poin (Rupiah Server)
   economy: {
