@@ -353,8 +353,17 @@ client.on('interactionCreate', async (interaction) => {
 
   // C. Interaksi Select Menu Pilihan Role Mandiri
   if (interaction.isStringSelectMenu() && interaction.customId === 'select_member_roles') {
-    await interaction.deferReply({ ephemeral: true });
+    const VERIFIED_ROLE_ID = '1520716203935535257';
     const member = interaction.member;
+
+    if (!member.roles.cache.has(VERIFIED_ROLE_ID)) {
+      return interaction.reply({
+        content: '❌ **Akses Ditolak!** Anda wajib **Membuat Kartu Perkenalan** terlebih dahulu (klik tombol "📝 Buat Kartu Perkenalan") sebelum bisa mengambil role komunitas!',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
     const selectedRoleIds = interaction.values;
     const allRoleIds = Object.values(MEMBER_ROLES);
 
