@@ -392,9 +392,71 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// Event listener: Hapus pesan otomatis di channel 1422656689710305381 jika tidak melampirkan foto/file
+// Event listener: Hapus pesan otomatis di channel 1422656689710305381 jika tidak melampirkan foto/file & Admin Command
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // Command Admin: !cleanup_roles
+  if (message.content === '!cleanup_roles') {
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply({ content: '❌ Anda tidak memiliki izin untuk menggunakan perintah ini.', ephemeral: true });
+    }
+    
+    await message.reply('⏳ Memulai proses pembersihan role...');
+    
+    const VERIFIED_ROLE_ID = '1520716203935535257';
+    // Kita hapus semua role dari MEMBER_ROLES jika mereka belum verifikasi
+    const ROLES_TO_REMOVE = Object.values(MEMBER_ROLES);
+    
+    try {
+      const guild = message.guild;
+      await guild.members.fetch(); // fetch semua member ke cache
+      
+      let count = 0;
+      
+      for (const [memberId, member] of guild.members.cache) {
+        if (member.user.bot) continue;
+        
+        // Cek apakah belum verifikasi tapi punya role komunitas
+        if (!member.roles.cache.has(VERIFIED_ROLE_ID)) {
+          let hasRoleToRemove = false;
+          for (const roleId of ROLES_TO_REMOVE) {
+            if (member.roles.cache.has(roleId)) {
+              hasRoleToRemove = true;
+              break;
+            }
+          }
+          
+          if (hasRoleToRemove) {
+            // Copot role
+            await member.roles.remove(ROLES_TO_REMOVE).catch(() => {});
+            
+            // Kirim DM
+            const dmEmbed = new EmbedBuilder()
+              .setColor(0xffcc00)
+              .setTitle('⚠️ Verifikasi Diperlukan / Verification Required')
+              .setDescription(
+                'Halo! Role komunitas Anda (seperti *the baddies* / *the bros*) telah **dilepas sementara** karena Anda belum melakukan verifikasi (Membuat Kartu Perkenalan) di Kosan 1A.\n\n' +
+                'Silakan pergi ke channel <#' + ROLE_CHANNEL_ID + '> dan klik tombol **"📝 Buat Kartu Perkenalan"** untuk diverifikasi dan mendapatkan kembali akses role Anda.\n\n' +
+                '---\n\n' +
+                'Hello! Your community roles (such as *the baddies* / *the bros*) have been **temporarily removed** because you haven\'t completed the verification (Created an ID Card) in Kosan 1A.\n\n' +
+                'Please go to the <#' + ROLE_CHANNEL_ID + '> channel and click the **"📝 Buat Kartu Perkenalan"** button to get verified and regain access to your roles.'
+              );
+              
+            await member.send({ embeds: [dmEmbed] }).catch(() => {
+              console.log(`Gagal mengirim DM ke ${member.user.tag} (DM ditutup)`);
+            });
+            count++;
+          }
+        }
+      }
+      
+      await message.reply(`✅ Selesai! Berhasil mencopot role dan mengirim DM ke **${count}** member.`);
+    } catch (err) {
+      console.error(err);
+      await message.reply('❌ Terjadi kesalahan saat proses pembersihan role.');
+    }
+  }
 
   if (message.channelId === '1422656689710305381') {
     const hasAttachment = message.attachments.size > 0;
