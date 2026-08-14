@@ -11,6 +11,10 @@ if (!process.env.CLIENT_ID || process.env.CLIENT_ID.startsWith('MASUKKAN')) {
 
 const commands = [
   new SlashCommandBuilder()
+    .setName('gacha')
+    .setDescription('Lakukan gacha acak untuk mendapatkan Role Senior eksklusif!'),
+
+  new SlashCommandBuilder()
     .setName('join')
     .setDescription('Menyuruh bot untuk bergabung ke Voice Channel dan memutar musik lokal secara otomatis'),
   

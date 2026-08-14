@@ -236,6 +236,80 @@ client.on('guildMemberAdd', async (member) => {
 
 // Event Listener Interaksi: Modal Perkenalan & Dropdown Role
 client.on('interactionCreate', async (interaction) => {
+  // --- Slash Command: /gacha ---
+  if (interaction.isChatInputCommand() && interaction.commandName === 'gacha') {
+    const VERIFIED_ROLE_ID = '1520716203935535257';
+    if (!interaction.member.roles.cache.has(VERIFIED_ROLE_ID)) {
+      return interaction.reply({
+        content: '❌ **Akses Ditolak!** Anda wajib **Membuat Kartu Perkenalan (Verifikasi)** terlebih dahulu sebelum bisa melakukan gacha!',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply(); // Gacha bisa di-spam tapi ada delay animasi
+
+    // Probabilities (Total 100%)
+    const gachaPool = [
+      { roleId: SENIOR_ROLES.PRESTIGE, name: '🥉 Common Prestige', chance: 40.0, color: 0xcd7f32 },
+      { roleId: SENIOR_ROLES.ELITE, name: '🥈 Rare Elite', chance: 30.0, color: 0xc0c0c0 },
+      { roleId: SENIOR_ROLES.CHAMPION, name: '🥇 Epic Champion', chance: 15.0, color: 0xffd700 },
+      { roleId: SENIOR_ROLES.OVERLORD, name: '👑 Legendary Overlord', chance: 8.0, color: 0xff4500 },
+      { roleId: SENIOR_ROLES.IMMORTAL, name: '🌟 Mythic Immortal', chance: 4.0, color: 0x00ffff },
+      { roleId: SENIOR_ROLES.SOVEREIGN, name: '👑 The Sovereign', chance: 2.0, color: 0x8a2be2 },
+      { roleId: SENIOR_ROLES.AETHELGARD, name: '✨ Aethelgard', chance: 0.7, color: 0xff1493 },
+      { roleId: SENIOR_ROLES.PRIMORDIAL, name: '🔮 Primordial', chance: 0.2, color: 0x4b0082 },
+      { roleId: SENIOR_ROLES.ZENITH, name: '🌟 Zenith', chance: 0.1, color: 0xffffff }
+    ];
+
+    const random = Math.random() * 100;
+    let accumulatedChance = 0;
+    let selectedPrize = gachaPool[0];
+
+    for (const prize of gachaPool) {
+      accumulatedChance += prize.chance;
+      if (random <= accumulatedChance) {
+        selectedPrize = prize;
+        break;
+      }
+    }
+
+    // Animasi dadu
+    const rollingEmbed = new EmbedBuilder()
+      .setColor(0x2f3136)
+      .setDescription('🎲 **Mengkocok dadu takdir...**');
+    
+    await interaction.editReply({ embeds: [rollingEmbed] });
+
+    // Tunggu 2 detik
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    try {
+      const member = interaction.member;
+      const allSeniorRoleIds = Object.values(SENIOR_ROLES);
+      
+      // Hapus role lama
+      const rolesToRemove = allSeniorRoleIds.filter(id => member.roles.cache.has(id));
+      if (rolesToRemove.length > 0) {
+        await member.roles.remove(rolesToRemove);
+      }
+
+      // Beri role baru
+      await member.roles.add(selectedPrize.roleId);
+
+      const resultEmbed = new EmbedBuilder()
+        .setColor(selectedPrize.color)
+        .setTitle('🎰 Hasil Gacha Role')
+        .setDescription(`Selamat <@${member.id}>!\nKamu mendapatkan role:\n\n**${selectedPrize.name}**\n\n*(Rate: ${selectedPrize.chance}%)*`)
+        .setFooter({ text: 'Gacha tak terbatas — Coba lagi jika belum puas!' });
+
+      await interaction.editReply({ embeds: [resultEmbed] });
+    } catch (err) {
+      console.error(err);
+      await interaction.editReply({ content: '❌ Terjadi kesalahan saat memberikan role.', embeds: [] });
+    }
+    return;
+  }
+
   // A. Tombol Buka Modal Perkenalan
   if (interaction.isButton() && interaction.customId === 'btn_open_intro_modal') {
     const modal = new ModalBuilder()
