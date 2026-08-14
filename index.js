@@ -208,8 +208,31 @@ client.on('guildMemberAdd', async (member) => {
     console.log(`👋 Member baru bergabung: ${member.user.tag} (${member.id})`);
     const welcomeChan = await member.guild.channels.fetch(GREETING_CHANNEL_ID).catch(() => null);
     if (welcomeChan && welcomeChan.isTextBased()) {
+      const welcomeEmbed = new EmbedBuilder()
+        .setColor(0x818cf8)
+        .setTitle(`✨ Welcome to Kosan 1A, ${member.user.username}! ✨`)
+        .setDescription(
+          `Halo <@${member.id}>! Senang sekali kamu bisa bergabung dengan kami di **${member.guild.name}**.\n\n` +
+          `Untuk memulai petualanganmu dan mendapatkan akses ke berbagai channel, silakan lakukan **Verifikasi Warga** dengan membuat Kartu Perkenalan.\n\n` +
+          `👉 **Langkah-langkah / Steps:**\n` +
+          `1. Kunjungi channel <#${ROLE_CHANNEL_ID}>\n` +
+          `2. Klik tombol **"📝 Buat Kartu Perkenalan"**\n` +
+          `3. Setelah diverifikasi, kamu bisa memilih role komunitasmu!\n\n` +
+          `---\n\n` +
+          `Hello <@${member.id}>! We are thrilled to have you here at **${member.guild.name}**.\n\n` +
+          `To begin your journey and gain access to our channels, please complete the **Member Verification** by creating an ID Card.\n\n` +
+          `👉 **Steps to verify:**\n` +
+          `1. Go to the <#${ROLE_CHANNEL_ID}> channel\n` +
+          `2. Click the **"📝 Buat Kartu Perkenalan"** button\n` +
+          `3. Once verified, you can claim your community roles!`
+        )
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setFooter({ text: 'Kosan 1A Resident Gateway', iconURL: member.guild.iconURL({ dynamic: true }) })
+        .setTimestamp();
+
       await welcomeChan.send({
-        content: `👋 Selamat datang <@${member.id}> di **${member.guild.name}**! Silakan perkenalkan diri Anda & ambil role secara mandiri di channel <#${ROLE_CHANNEL_ID}> ✨`
+        content: `👋 Halo <@${member.id}>! Welcome to the server!`,
+        embeds: [welcomeEmbed]
       }).catch(() => {});
     }
   } catch (err) {
