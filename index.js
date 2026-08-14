@@ -246,6 +246,18 @@ client.on('interactionCreate', async (interaction) => {
       });
     }
 
+    // Cek umur keanggotaan (Minimal 5 hari)
+    const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+    const timeSinceJoin = Date.now() - interaction.member.joinedTimestamp;
+    
+    if (timeSinceJoin < fiveDaysMs) {
+      const daysLeft = Math.ceil((fiveDaysMs - timeSinceJoin) / (24 * 60 * 60 * 1000));
+      return interaction.reply({
+        content: `❌ **Akses Ditolak!** Fitur Gacha Role Senior ini hanya untuk member yang telah tinggal di Kosan 1A selama minimal **5 hari**.\nSilakan coba lagi dalam **${daysLeft} hari**! ⏳`,
+        ephemeral: true
+      });
+    }
+
     await interaction.deferReply(); // Gacha bisa di-spam tapi ada delay animasi
 
     // Probabilities (Total 100%)
