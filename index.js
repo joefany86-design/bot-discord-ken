@@ -34,7 +34,9 @@ const MEMBER_ROLES = {
   BROS: '1472170093416022096',          // the bros
   MOBILE_LEGENDS: '1490303477161656391',// Mobile Legends
   ROBLOX: '1490442107960299560',        // roblox
-  MOLE_ROBLOX: '1490442266517700800'    // Mole dan Roblox
+  MOLE_ROBLOX: '1490442266517700800',   // Mole dan Roblox
+  INTERNATIONAL: 'ROLE_ID_INTERNATIONAL_DISINI', // International
+  MALAYSIA: 'ROLE_ID_MALAYSIA_DISINI'   // Malaysia
 };
 
 // Mapping Role Senior / Veteran Member
@@ -124,19 +126,24 @@ client.once('ready', async () => {
 
       const embed = new EmbedBuilder()
         .setColor(0x818cf8)
-        .setTitle('🎭 PANEL PERKENALAN & PILIHAN ROLE WARGA BARU')
+        .setTitle('🎭 PANEL PERKENALAN & PILIHAN ROLE WARGA BARU / INTRODUCTION & ROLE SELECTION PANEL')
         .setDescription(
-          'Selamat datang di server Kosan 1A! Silakan lakukan perkenalan warga dan ambil role Anda secara mandiri di bawah ini.\n\n' +
-          '📝 **1. BUAT KARTU PERKENALAN**\n' +
-          'Klik tombol **"📝 Buat Kartu Perkenalan"** untuk mengisi formulir perkenalan. Bot akan otomatis membuatkan **Kartu Identitas KTP Warga** visual yang keren dan mengirimkannya ke channel perkenalan.\n\n' +
-          '🎭 **2. AMBIL ROLE WARGA**\n' +
-          'Pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah:\n\n' +
-          '💖 **the baddies** — Role identitas komunitas\n' +
-          '💙 **the bros** — Role identitas komunitas\n' +
-          '⚔️ **Mobile Legends** — Gamer MLBB\n' +
-          '🧱 **Roblox** — Gamer Roblox\n' +
-          '🎮 **Mole dan Roblox** — Gamer MLBB & Roblox\n\n' +
-          '*Anda dapat memilih satu atau beberapa role sekaligus!*'
+          'Selamat datang di server Kosan 1A! Silakan lakukan perkenalan warga dan ambil role Anda secara mandiri di bawah ini.\n' +
+          '*Welcome to Kosan 1A server! Please introduce yourself and claim your roles below.*\n\n' +
+          '📝 **1. BUAT KARTU PERKENALAN / CREATE ID CARD**\n' +
+          'Klik tombol **"📝 Buat Kartu Perkenalan"** untuk mengisi formulir perkenalan. Bot akan otomatis membuatkan **Kartu Identitas KTP Warga** visual yang keren dan mengirimkannya ke channel perkenalan.\n' +
+          '*Click the **"📝 Buat Kartu Perkenalan"** button to fill out the introduction form. The bot will automatically generate a cool visual ID Card and send it to the introduction channel.*\n\n' +
+          '🎭 **2. AMBIL ROLE WARGA / CLAIM MEMBER ROLES**\n' +
+          'Pilih role yang sesuai dengan identitas dan minat game Anda melalui dropdown menu di bawah:\n' +
+          '*Choose the roles that match your identity and gaming interests through the dropdown menu below:*\n\n' +
+          '💖 **the baddies** — Role identitas komunitas / Community identity role\n' +
+          '💙 **the bros** — Role identitas komunitas / Community identity role\n' +
+          '⚔️ **Mobile Legends** — Gamer MLBB / MLBB Gamer\n' +
+          '🧱 **Roblox** — Gamer Roblox / Roblox Gamer\n' +
+          '🎮 **Mole dan Roblox** — Gamer MLBB & Roblox / MLBB & Roblox Gamer\n' +
+          '🌎 **International** — Role identitas internasional / International identity role\n' +
+          '🇲🇾 **Malaysia** — Role identitas Malaysia / Malaysia identity role\n\n' +
+          '*Anda dapat memilih satu atau beberapa role sekaligus! / You can select one or multiple roles at once!*'
         )
         .setFooter({ text: 'Identitas resmi warga Kosan 1A • Klik tombol atau pilih dropdown menu di bawah' });
 
@@ -150,15 +157,17 @@ client.once('ready', async () => {
       // Action Row 2: Dropdown Menu Select Role
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('select_member_roles')
-        .setPlaceholder('👉 Pilih Role Anda di sini...')
+        .setPlaceholder('👉 Pilih Role Anda di sini... / Select your role here...')
         .setMinValues(0)
-        .setMaxValues(5)
+        .setMaxValues(7)
         .addOptions(
           new StringSelectMenuOptionBuilder().setLabel('the baddies').setValue(MEMBER_ROLES.BADDIES).setDescription('Role identitas the baddies').setEmoji('💖'),
           new StringSelectMenuOptionBuilder().setLabel('the bros').setValue(MEMBER_ROLES.BROS).setDescription('Role identitas the bros').setEmoji('💙'),
           new StringSelectMenuOptionBuilder().setLabel('Mobile Legends').setValue(MEMBER_ROLES.MOBILE_LEGENDS).setDescription('Komunitas gamer Mobile Legends').setEmoji('⚔️'),
           new StringSelectMenuOptionBuilder().setLabel('Roblox').setValue(MEMBER_ROLES.ROBLOX).setDescription('Komunitas gamer Roblox').setEmoji('🧱'),
-          new StringSelectMenuOptionBuilder().setLabel('Mole dan Roblox').setValue(MEMBER_ROLES.MOLE_ROBLOX).setDescription('Komunitas gamer Mobile Legends & Roblox').setEmoji('🎮')
+          new StringSelectMenuOptionBuilder().setLabel('Mole dan Roblox').setValue(MEMBER_ROLES.MOLE_ROBLOX).setDescription('Komunitas gamer Mobile Legends & Roblox').setEmoji('🎮'),
+          new StringSelectMenuOptionBuilder().setLabel('International').setValue(MEMBER_ROLES.INTERNATIONAL).setDescription('Role identitas internasional / International role').setEmoji('🌎'),
+          new StringSelectMenuOptionBuilder().setLabel('Malaysia').setValue(MEMBER_ROLES.MALAYSIA).setDescription('Role identitas Malaysia / Malaysia role').setEmoji('🇲🇾')
         );
       const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
 
