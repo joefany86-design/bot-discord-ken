@@ -253,11 +253,11 @@ client.on('interactionCreate', async (interaction) => {
       { roleId: SENIOR_ROLES.PRESTIGE, name: '🥉 Common Prestige', chance: 40.0, color: 0xcd7f32 },
       { roleId: SENIOR_ROLES.ELITE, name: '🥈 Rare Elite', chance: 30.0, color: 0xc0c0c0 },
       { roleId: SENIOR_ROLES.CHAMPION, name: '🥇 Epic Champion', chance: 15.0, color: 0xffd700 },
-      { roleId: SENIOR_ROLES.OVERLORD, name: '👑 Legendary Overlord', chance: 8.0, color: 0xff4500 },
-      { roleId: SENIOR_ROLES.IMMORTAL, name: '🌟 Mythic Immortal', chance: 4.0, color: 0x00ffff },
-      { roleId: SENIOR_ROLES.SOVEREIGN, name: '👑 The Sovereign', chance: 2.0, color: 0x8a2be2 },
-      { roleId: SENIOR_ROLES.ZENITH, name: '🌟 Zenith', chance: 0.7, color: 0xffffff },
-      { roleId: SENIOR_ROLES.PRIMORDIAL, name: '🔮 Primordial', chance: 0.2, color: 0x4b0082 },
+      { roleId: SENIOR_ROLES.PRIMORDIAL, name: '🔮 Primordial', chance: 8.0, color: 0x4b0082 },
+      { roleId: SENIOR_ROLES.ZENITH, name: '🌟 Zenith', chance: 4.0, color: 0xffffff },
+      { roleId: SENIOR_ROLES.OVERLORD, name: '👑 Legendary Overlord', chance: 2.0, color: 0xff4500 },
+      { roleId: SENIOR_ROLES.IMMORTAL, name: '🌟 Mythic Immortal', chance: 0.7, color: 0x00ffff },
+      { roleId: SENIOR_ROLES.SOVEREIGN, name: '👑 The Sovereign', chance: 0.2, color: 0x8a2be2 },
       { roleId: SENIOR_ROLES.AETHELGARD, name: '✨ Aethelgard', chance: 0.1, color: 0xff1493 }
     ];
 
