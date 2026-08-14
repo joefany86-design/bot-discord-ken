@@ -213,14 +213,12 @@ client.on('guildMemberAdd', async (member) => {
         .setTitle(`✨ Welcome to Kosan 1A, ${member.user.username}! ✨`)
         .setDescription(
           `*"Setiap langkah baru adalah awal dari kisah yang tak terlupakan."*\n` +
-          `Halo <@${member.id}>! Selamat datang di **${member.guild.name}**. Kami sangat senang menyambut kehadiranmu di rumah baru ini. Semoga di sini kamu menemukan kehangatan, teman baru, dan cerita yang indah.\n\n` +
-          `Untuk memulai petualanganmu, silakan lakukan **Verifikasi Warga** terlebih dahulu:\n` +
-          `👉 Kunjungi <#${ROLE_CHANNEL_ID}> dan klik tombol **"📝 Buat Kartu Perkenalan"**.\n\n` +
-          `---\n\n` +
-          `*"Every new step is the beginning of an unforgettable story."*\n` +
-          `Hello <@${member.id}>! Welcome to **${member.guild.name}**. We are thrilled to welcome you to this new home. May you find warmth, new friends, and beautiful stories here.\n\n` +
-          `To begin your journey, please complete the **Member Verification** first:\n` +
-          `👉 Go to <#${ROLE_CHANNEL_ID}> and click the **"📝 Buat Kartu Perkenalan"** button.`
+          `*"Every new step is the beginning of an unforgettable story."*\n\n` +
+          `👋 Halo <@${member.id}>! Selamat datang di **${member.guild.name}**.\n\n` +
+          `🔒 **Verifikasi Wajib / Mandatory Verification**\n` +
+          `Silakan buat Kartu Perkenalan untuk mendapatkan akses ke semua channel.\n` +
+          `*Please create an ID Card to gain access to all channels.*\n\n` +
+          `👉 Kunjungi / Go to: <#${ROLE_CHANNEL_ID}>`
         )
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
         .setFooter({ text: 'Kosan 1A Resident Gateway', iconURL: member.guild.iconURL({ dynamic: true }) })
