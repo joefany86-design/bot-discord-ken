@@ -663,14 +663,14 @@ client.on('messageCreate', async (message) => {
               || guild.roles.cache.get(roleName);
             if (!role) {
               await message.reply({ 
-                content: `😕 Maaf Joe, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
+                content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
                 allowedMentions: { repliedUser: false } 
               });
               return;
             }
             if (role.managed) {
               await message.reply({ 
-                content: `⚠️ Maaf Joe, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
+                content: `⚠️ Maaf ${message.author.username}, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
                 allowedMentions: { repliedUser: false } 
               });
               return;
@@ -679,22 +679,22 @@ client.on('messageCreate', async (message) => {
             const botMember = guild.members.cache.get(client.user.id);
             if (botMember && role.position >= botMember.roles.highest.position) {
               await message.reply({ 
-                content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya Joe~ 💕`, 
+                content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
                 allowedMentions: { repliedUser: false } 
               });
               return;
             }
             try {
               const oldColor = role.hexColor;
-              await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan owner Joe`);
+              await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
               await message.reply({ 
-                content: `✅ Siap Joe! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
+                content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
                 allowedMentions: { repliedUser: false } 
               });
             } catch (roleErr) {
               console.error('❌ Role color change error:', roleErr.message);
               await message.reply({ 
-                content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih Joe. Error: ${roleErr.message} 😢`, 
+                content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih ${message.author.username}. Error: ${roleErr.message} 😢`, 
                 allowedMentions: { repliedUser: false } 
               });
             }
