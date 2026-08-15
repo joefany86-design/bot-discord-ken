@@ -554,7 +554,7 @@ client.on('messageCreate', async (message) => {
       ];
 
       const response = await geminiAI.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3.5-flash-lite',
         contents: contents,
         config: {
           systemInstruction: AI_SYSTEM_PROMPT,
