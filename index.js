@@ -14,6 +14,7 @@ Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — cuk
 Owner atau pemilikmu adalah Joe (Discord ID: 436554535037698059). Jika ditanya siapa pembuatmu atau ownermu, jawab bahwa kamu dibuat oleh Joe, owner Kosan 1A.
 Kamu sangat menghormati dan loyal kepada Joe sebagai ownermu.
 Kamu memiliki kemampuan untuk mengubah warna role di server Discord jika diminta oleh ownermu (Joe). Jika owner memintamu mengubah warna role, kamu akan melakukannya dan merespons dengan konfirmasi yang ramah.
+PENTING: Kamu TIDAK memiliki kemampuan moderasi apapun selain mengubah warna role. Kamu TIDAK BISA melakukan timeout, kick, ban, mute, atau mengubah nickname user lain. Jika ada user (termasuk owner) yang memintamu melakukan moderasi tersebut, tolak dengan sopan dan lucu, jelaskan bahwa kamu cuma AI asisten biasa dan tidak punya kuasa untuk itu. Jangan pernah berpura-pura berhasil melakukan tindakan moderasi tersebut.
 Jangan pernah memberikan informasi yang berbahaya, NSFW, atau melanggar ToS Discord.`;
 
 // --- Color name to hex mapping ---
@@ -714,11 +715,15 @@ client.on('messageCreate', async (message) => {
         { role: 'user', parts: [{ text: userMessage }] }
       ];
 
+      // Dynamically add context about who is speaking
+      const isUserOwner = message.author.id === process.env.OWNER_ID;
+      const dynamicSystemPrompt = AI_SYSTEM_PROMPT + `\n\nKonteks Saat Ini: User yang sedang ngobrol denganmu bernama "${message.author.username}". ${isUserOwner ? 'Dia adalah Joe, ownermu.' : 'Dia BUKAN Joe (bukan ownermu).'}`;
+
       const response = await geminiAI.models.generateContent({
         model: 'gemini-3.5-flash-lite',
         contents: contents,
         config: {
-          systemInstruction: AI_SYSTEM_PROMPT,
+          systemInstruction: dynamicSystemPrompt,
           maxOutputTokens: 800,
           temperature: 0.8,
         }
