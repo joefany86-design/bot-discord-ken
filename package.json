@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
+    "@google/genai": "^2.17.1",
     "@napi-rs/canvas": "^1.0.0",
     "@snazzah/davey": "^0.1.11",
     "better-sqlite3": "^12.10.0",

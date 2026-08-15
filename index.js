@@ -1,4 +1,23 @@
 require('dotenv').config();
+const { GoogleGenAI } = require('@google/genai');
+
+// --- Gemini AI Setup ---
+const geminiAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  : null;
+
+const AI_SYSTEM_PROMPT = `Kamu adalah bot asisten server Discord bernama "Kosan 1A Bot". Kamu ramah, asik, lucu, dan suka pakai emoji.
+Kamu bisa berbicara dalam Bahasa Indonesia dan Inggris tergantung bahasa yang digunakan user.
+Kamu adalah bagian dari komunitas Discord server "Kosan 1A" yang berisi teman-teman gamers dan hangout.
+Jawab dengan singkat, padat, dan natural seperti teman ngobrol (maksimal 2000 karakter karena limit Discord).
+Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — cukup bilang kamu adalah Kosan 1A Bot.
+Jika ditanya siapa pembuatmu, jawab bahwa kamu dibuat oleh admin Kosan 1A.
+Jangan pernah memberikan informasi yang berbahaya, NSFW, atau melanggar ToS Discord.`;
+
+// Conversation history per user (in-memory, resets on bot restart)
+const conversationHistory = new Map();
+const MAX_HISTORY = 10; // Keep last 10 messages per user
+
 const { 
   Client, 
   GatewayIntentBits, 
@@ -495,9 +514,81 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// Event listener: Hapus pesan otomatis di channel 1422656689710305381 jika tidak melampirkan foto/file & Admin Command
+// Event listener: AI Chat + Hapus pesan otomatis + Admin Command
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // --- AI Chat: Respond when mentioned or replied to ---
+  const isMentioned = message.mentions.has(client.user.id);
+  const isReplyToBot = message.reference
+    ? await message.channel.messages.fetch(message.reference.messageId)
+        .then(ref => ref.author.id === client.user.id)
+        .catch(() => false)
+    : false;
+
+  if ((isMentioned || isReplyToBot) && geminiAI) {
+    // Strip the bot mention from the message content
+    const userMessage = message.content
+      .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
+      .trim();
+
+    if (!userMessage) {
+      return message.reply('👋 Halo! Ada yang bisa aku bantu? Coba tanya sesuatu~ 😊');
+    }
+
+    try {
+      // Show typing indicator
+      await message.channel.sendTyping();
+
+      // Get or create conversation history for this user
+      const userId = message.author.id;
+      if (!conversationHistory.has(userId)) {
+        conversationHistory.set(userId, []);
+      }
+      const history = conversationHistory.get(userId);
+
+      // Build contents array with history
+      const contents = [
+        ...history,
+        { role: 'user', parts: [{ text: userMessage }] }
+      ];
+
+      const response = await geminiAI.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: contents,
+        config: {
+          systemInstruction: AI_SYSTEM_PROMPT,
+          maxOutputTokens: 800,
+          temperature: 0.8,
+        }
+      });
+
+      const aiReply = response.text;
+
+      if (aiReply && aiReply.trim()) {
+        // Update conversation history
+        history.push(
+          { role: 'user', parts: [{ text: userMessage }] },
+          { role: 'model', parts: [{ text: aiReply.trim() }] }
+        );
+        // Trim history to MAX_HISTORY pairs
+        while (history.length > MAX_HISTORY * 2) {
+          history.shift();
+          history.shift();
+        }
+
+        // Discord message limit is 2000 chars
+        const truncated = aiReply.length > 2000 ? aiReply.slice(0, 1997) + '...' : aiReply;
+        await message.reply({ content: truncated, allowedMentions: { repliedUser: false } });
+      } else {
+        await message.reply('🤔 Hmm, aku bingung mau jawab apa. Coba tanya lagi ya!');
+      }
+    } catch (err) {
+      console.error('❌ Gemini AI Error:', err.message);
+      await message.reply('⚠️ Maaf, otak AI-ku lagi error nih. Coba lagi nanti ya! 😅').catch(() => {});
+    }
+    return; // Don't process further if AI handled it
+  }
 
   // Command Admin: !cleanup_roles
   if (message.content === '!cleanup_roles') {
