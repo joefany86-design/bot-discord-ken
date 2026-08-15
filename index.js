@@ -6,13 +6,106 @@ const geminiAI = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-const AI_SYSTEM_PROMPT = `Kamu adalah bot asisten server Discord bernama "Kosan 1A Bot". Kamu ramah, asik, lucu, dan suka pakai emoji.
+const AI_SYSTEM_PROMPT = `Kamu adalah bot asisten server Discord bernama "Sentinel". Kamu adalah seorang wanita yang ramah, asik, lucu, dan suka pakai emoji.
 Kamu bisa berbicara dalam Bahasa Indonesia dan Inggris tergantung bahasa yang digunakan user.
 Kamu adalah bagian dari komunitas Discord server "Kosan 1A" yang berisi teman-teman gamers dan hangout.
 Jawab dengan singkat, padat, dan natural seperti teman ngobrol (maksimal 2000 karakter karena limit Discord).
-Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — cukup bilang kamu adalah Kosan 1A Bot.
-Jika ditanya siapa pembuatmu, jawab bahwa kamu dibuat oleh admin Kosan 1A.
+Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — cukup bilang kamu adalah Sentinel.
+Owner atau pemilikmu adalah Joe (Discord ID: 436554535037698059). Jika ditanya siapa pembuatmu atau ownermu, jawab bahwa kamu dibuat oleh Joe, owner Kosan 1A.
+Kamu sangat menghormati dan loyal kepada Joe sebagai ownermu.
+Kamu memiliki kemampuan untuk mengubah warna role di server Discord jika diminta oleh ownermu (Joe). Jika owner memintamu mengubah warna role, kamu akan melakukannya dan merespons dengan konfirmasi yang ramah.
 Jangan pernah memberikan informasi yang berbahaya, NSFW, atau melanggar ToS Discord.`;
+
+// --- Color name to hex mapping ---
+const COLOR_NAME_MAP = {
+  'merah': '#FF0000', 'red': '#FF0000',
+  'biru': '#0000FF', 'blue': '#0000FF',
+  'hijau': '#00FF00', 'green': '#00FF00',
+  'kuning': '#FFFF00', 'yellow': '#FFFF00',
+  'orange': '#FFA500', 'oranye': '#FFA500', 'jingga': '#FFA500',
+  'ungu': '#800080', 'purple': '#800080',
+  'pink': '#FF69B4', 'merah muda': '#FF69B4',
+  'putih': '#FFFFFF', 'white': '#FFFFFF',
+  'hitam': '#000000', 'black': '#000000',
+  'abu-abu': '#808080', 'gray': '#808080', 'grey': '#808080',
+  'cyan': '#00FFFF', 'biru muda': '#00FFFF',
+  'magenta': '#FF00FF',
+  'coklat': '#8B4513', 'brown': '#8B4513',
+  'emas': '#FFD700', 'gold': '#FFD700',
+  'perak': '#C0C0C0', 'silver': '#C0C0C0',
+  'navy': '#000080', 'biru tua': '#000080',
+  'lime': '#00FF00',
+  'teal': '#008080',
+  'indigo': '#4B0082',
+  'coral': '#FF7F50',
+  'salmon': '#FA8072',
+  'turquoise': '#40E0D0',
+  'violet': '#EE82EE',
+  'crimson': '#DC143C',
+  'maroon': '#800000', 'merah tua': '#800000',
+  'olive': '#808000', 'zaitun': '#808000',
+  'aqua': '#00FFFF',
+};
+
+/**
+ * Use Gemini AI to detect if a message is a role color change request.
+ * Returns { roleName, hexColor } or null if not a color change request.
+ */
+async function parseRoleColorRequest(text) {
+  if (!geminiAI) return null;
+  
+  // Quick keyword check first to avoid unnecessary API calls
+  const lower = text.toLowerCase();
+  const hasRoleKeyword = lower.includes('role') || lower.includes('rol');
+  const hasColorKeyword = lower.includes('warna') || lower.includes('color') || lower.includes('colour') || lower.includes('warnain');
+  const hasChangeKeyword = lower.includes('ubah') || lower.includes('ganti') || lower.includes('change') || lower.includes('set') || lower.includes('bikin') || lower.includes('jadiin') || lower.includes('warnain');
+  
+  if (!hasRoleKeyword && !hasColorKeyword) return null;
+  if (!hasChangeKeyword && !hasColorKeyword) return null;
+
+  try {
+    const parsePrompt = `Kamu adalah parser JSON. Analisis pesan berikut dan tentukan apakah user ingin mengubah warna sebuah role Discord.
+
+Jika YA, extract nama role dan warna yang diminta, lalu balas HANYA dengan JSON format:
+{"action":"change_role_color","roleName":"nama role","hexColor":"#RRGGBB"}
+
+Jika TIDAK (bukan permintaan ubah warna role), balas HANYA dengan:
+{"action":"none"}
+
+Mapping warna umum:
+merah=#FF0000, biru=#0000FF, hijau=#00FF00, kuning=#FFFF00, orange=#FFA500, ungu=#800080, pink=#FF69B4, putih=#FFFFFF, hitam=#000000, cyan=#00FFFF, emas/gold=#FFD700, navy=#000080, biru muda=#00FFFF, biru tua=#000080, merah tua/maroon=#800000, coklat=#8B4513, abu-abu=#808080, perak/silver=#C0C0C0, teal=#008080, indigo=#4B0082, coral=#FF7F50, crimson=#DC143C, magenta=#FF00FF, violet=#EE82EE, turquoise=#40E0D0, salmon=#FA8072, lime=#00FF00, olive=#808000
+
+Pesan user: "${text}"
+
+Balas HANYA JSON, tanpa penjelasan apapun.`;
+
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-3.5-flash-lite',
+      contents: [{ role: 'user', parts: [{ text: parsePrompt }] }],
+      config: {
+        maxOutputTokens: 150,
+        temperature: 0.1,
+      }
+    });
+
+    const aiText = response.text.trim();
+    // Extract JSON from response (handle markdown code blocks)
+    const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.action === 'change_role_color' && parsed.roleName && parsed.hexColor) {
+      // Validate hex color format
+      const hexValid = /^#[0-9A-Fa-f]{6}$/.test(parsed.hexColor);
+      if (hexValid) {
+        return { roleName: parsed.roleName, hexColor: parsed.hexColor.toUpperCase() };
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ Role color parse error:', err.message);
+  }
+  return null;
+}
 
 // Conversation history per user (in-memory, resets on bot restart)
 const conversationHistory = new Map();
@@ -539,6 +632,60 @@ client.on('messageCreate', async (message) => {
     try {
       // Show typing indicator
       await message.channel.sendTyping();
+
+      // --- Owner-only: Role color change via natural language ---
+      const isOwner = message.author.id === process.env.OWNER_ID;
+      if (isOwner) {
+        const colorRequest = await parseRoleColorRequest(userMessage);
+        if (colorRequest) {
+          const { roleName, hexColor } = colorRequest;
+          const guild = message.guild;
+          if (guild) {
+            // Find the role (case-insensitive)
+            const role = guild.roles.cache.find(
+              r => r.name.toLowerCase() === roleName.toLowerCase()
+            );
+            if (!role) {
+              await message.reply({ 
+                content: `😕 Maaf Joe, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
+                allowedMentions: { repliedUser: false } 
+              });
+              return;
+            }
+            if (role.managed) {
+              await message.reply({ 
+                content: `⚠️ Maaf Joe, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
+                allowedMentions: { repliedUser: false } 
+              });
+              return;
+            }
+            // Check bot's highest role vs target role
+            const botMember = guild.members.cache.get(client.user.id);
+            if (botMember && role.position >= botMember.roles.highest.position) {
+              await message.reply({ 
+                content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya Joe~ 💕`, 
+                allowedMentions: { repliedUser: false } 
+              });
+              return;
+            }
+            try {
+              const oldColor = role.hexColor;
+              await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan owner Joe`);
+              await message.reply({ 
+                content: `✅ Siap Joe! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
+                allowedMentions: { repliedUser: false } 
+              });
+            } catch (roleErr) {
+              console.error('❌ Role color change error:', roleErr.message);
+              await message.reply({ 
+                content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih Joe. Error: ${roleErr.message} 😢`, 
+                allowedMentions: { repliedUser: false } 
+              });
+            }
+            return;
+          }
+        }
+      }
 
       // Get or create conversation history for this user
       const userId = message.author.id;
