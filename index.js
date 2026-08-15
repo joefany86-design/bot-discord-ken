@@ -636,15 +636,29 @@ client.on('messageCreate', async (message) => {
       // --- Owner-only: Role color change via natural language ---
       const isOwner = message.author.id === process.env.OWNER_ID;
       if (isOwner) {
-        const colorRequest = await parseRoleColorRequest(userMessage);
+        // Resolve role mentions (<@&ID>) to role names before AI parsing
+        let resolvedMessage = userMessage;
+        const roleMentionRegex = /<@&(\d+)>/g;
+        let roleMentionMatch;
+        const mentionedRoles = new Map(); // Map role name -> role object
+        while ((roleMentionMatch = roleMentionRegex.exec(userMessage)) !== null) {
+          const roleId = roleMentionMatch[1];
+          const mentionedRole = message.guild?.roles.cache.get(roleId);
+          if (mentionedRole) {
+            resolvedMessage = resolvedMessage.replace(roleMentionMatch[0], mentionedRole.name);
+            mentionedRoles.set(mentionedRole.name.toLowerCase(), mentionedRole);
+          }
+        }
+
+        const colorRequest = await parseRoleColorRequest(resolvedMessage);
         if (colorRequest) {
           const { roleName, hexColor } = colorRequest;
           const guild = message.guild;
           if (guild) {
-            // Find the role (case-insensitive)
-            const role = guild.roles.cache.find(
-              r => r.name.toLowerCase() === roleName.toLowerCase()
-            );
+            // Find the role: first try from mentioned roles, then by name (case-insensitive), then by ID
+            let role = mentionedRoles.get(roleName.toLowerCase()) 
+              || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+              || guild.roles.cache.get(roleName);
             if (!role) {
               await message.reply({ 
                 content: `😕 Maaf Joe, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
