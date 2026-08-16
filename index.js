@@ -1601,7 +1601,7 @@ client.on('messageCreate', async (message) => {
 
         // Discord message limit is 2000 chars
         const truncated = aiReply.length > 2000 ? aiReply.slice(0, 1997) + '...' : aiReply;
-        await message.reply({ content: truncated + ' (vps)', allowedMentions: { repliedUser: false } });
+        await message.reply({ content: truncated, allowedMentions: { repliedUser: false } });
       } else {
         await message.reply('🤔 Hmm, aku bingung mau jawab apa. Coba tanya lagi ya!');
       }
