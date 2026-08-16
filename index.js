@@ -1003,7 +1003,6 @@ client.on('messageCreate', async (message) => {
           systemInstruction: dynamicSystemPrompt,
           maxOutputTokens: 800,
           temperature: 0.8,
-          tools: [{ googleSearch: {} }],
         }
       });
 
