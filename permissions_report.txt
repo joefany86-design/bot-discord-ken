@@ -1,0 +1,718 @@
+=== PERMISSION REPORT FOR Kosan 1A ===
+
+[CATEGORY] 🛋️ RESIDENTS LOUNGE (1410239831023288450)
+  -> No specific permission overwrites (Syncs with Category/Guild Default)
+
+[CATEGORY] 🎙️ COMMUNITY SPACE (1410239831023288451)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] 💿┃lounge-music (1412089554848059392)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] 💬┃main-lounge (1422642326798598348)
+  -> @@everyone:
+       Allowed: SendMessages
+       Denied:  EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[TEXT] 👋┃check-in (1422642678004187287)
+  -> @✨ Aethelgard:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+
+[TEXT] 📸┃gallery-vault (1422656689710305381)
+  -> @@everyone:
+       Allowed: SendMessages, EmbedLinks, AttachFiles
+       Denied:  UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[TEXT] 📌┃bulletin-board (1422656776653901977)
+  -> @🥈 Rare Elite:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis
+       Denied:  None
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @👑The Sovereign:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @🥇 Epic Champion:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[TEXT] 📍┃residence-address (1459481132423843881)
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  AddReactions, SendMessages, CreatePublicThreads, CreatePrivateThreads, SendMessagesInThreads
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  SendMessages
+
+[TEXT] 🚪┃reception-desk (1472197966218395751)
+  -> @@everyone:
+       Allowed: ViewChannel
+       Denied:  AddReactions, SendMessages, ManageMessages, EmbedLinks, AttachFiles, MentionEveryone, UseExternalEmojis, ManageThreads, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers, SendMessagesInThreads, SendVoiceMessages, PinMessages, BypassSlowmode
+
+[TEXT] 📜┃residence-rules (1472237912681742366)
+  -> @@everyone:
+       Allowed: None
+       Denied:  AddReactions, SendMessages
+
+[TEXT] 🎭┃whisper-corner (1472428770710261952)
+  -> @@everyone:
+       Allowed: SendMessages, EmbedLinks, AttachFiles
+       Denied:  UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[CATEGORY] 🔒 STAFF ONLY : (1472479634971955221)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔮 Primordial:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  Connect
+  -> @🌟 Zenith:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @✨ Aethelgard:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+
+[TEXT] 📝┃visitor-log (1472883318386065426)
+  -> @@everyone:
+       Allowed: None
+       Denied:  SendMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @🥈 Rare Elite:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @🥇 Epic Champion:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[CATEGORY] 📌 LOBBY & RECEPTION (1472883439035351103)
+  -> @✨ Aethelgard:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+
+[TEXT] 👮┃log-channel (1473005858853228606)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🔑 Property Manager:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+
+[CATEGORY] 📊 STATS  PENGHUNI 📊 (1475674565882413119)
+  -> @@everyone:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> User ID: 458276816071950337:
+       Allowed: ManageChannels, ViewChannel, SendMessages, EmbedLinks, Connect
+       Denied:  None
+
+[VOICE] All Members: 217 (1475674570567712900)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  Connect
+  -> @the baddies:
+       Allowed: None
+       Denied:  Connect
+  -> @👑The Sovereign:
+       Allowed: PrioritySpeaker, ViewChannel, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  Connect
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  Connect
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  Connect
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  Connect
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  Connect
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  Connect
+  -> @the bros:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  Connect
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  Connect
+
+[VOICE] Members: 192 (1475674574967410730)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  Connect
+  -> @the baddies:
+       Allowed: None
+       Denied:  Connect
+  -> @👑The Sovereign:
+       Allowed: PrioritySpeaker, ViewChannel, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  Connect
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  Connect
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  Connect
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  Connect
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  Connect
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  Connect
+  -> @the bros:
+       Allowed: None
+       Denied:  Connect
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  Connect
+
+[VOICE] Bots: 25 (1475674579245727855)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  Connect
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  Connect
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  Connect
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  Connect
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  Connect
+  -> @the baddies:
+       Allowed: None
+       Denied:  Connect
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  Connect
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  Connect
+  -> @👑The Sovereign:
+       Allowed: PrioritySpeaker, ViewChannel, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @the bros:
+       Allowed: None
+       Denied:  Connect
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  Connect
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  Connect
+
+[VOICE] 🔐┃dontol (1476953592437936291)
+  -> @✨ Aethelgard:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  Connect
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+
+[CATEGORY] 🖇️ BULLETINS & LINKS (1478569675821682719)
+  -> @💎 Penthouse Resident:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @the baddies:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @🔑 Property Manager:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @📟 AI Concierge:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+
+[CATEGORY] 💎💎 PENTHOUSE EXCLUSIVE (1478742687539531787)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+
+[CATEGORY] 💎 SUITE EXCLUSIVE (1479718191621079252)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel
+  -> @the baddies:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, Connect
+       Denied:  None
+  -> User ID: 762217899355013120:
+       Allowed: ManageChannels, ViewChannel, SendMessages, EmbedLinks, Connect, Speak, MoveMembers, ManageWebhooks
+       Denied:  None
+
+[VOICE] ➕┃create-private-suite (1479718193323966635)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🌟 Mythic Immortal:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @🌟 Zenith:
+       Allowed: PrioritySpeaker, Connect, Speak, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @🔮 Primordial:
+       Allowed: Connect, Speak
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @✨ Aethelgard:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @🔑 Kunci Utama A1:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @👑 Legendary Overlord:
+       Allowed: PrioritySpeaker, Connect, Speak, UseSoundboard, UseExternalSounds
+       Denied:  None
+
+[TEXT] ✨┃desain-bot-buat-voicenya-sendiri (1479718196469563423)
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  AddReactions, SendMessages, CreatePublicThreads, CreatePrivateThreads, SendMessagesInThreads
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  SendMessages
+
+[CATEGORY] 📪 RESIDENT FEEDBACK (1479811969421807837)
+  -> @@everyone:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+
+[TEXT] 📬┃kotak-surat (1479813891923120161)
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  AddReactions, SendMessages, CreatePublicThreads, CreatePrivateThreads, SendMessagesInThreads
+  -> @🌟 Mythic Immortal:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, ReadMessageHistory, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥇 Epic Champion:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🌟 Zenith:
+       Allowed: None
+       Denied:  SendMessages
+  -> @✨ Aethelgard:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🥈 Rare Elite:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔮 Primordial:
+       Allowed: None
+       Denied:  SendMessages
+  -> @👑 Legendary Overlord:
+       Allowed: None
+       Denied:  SendMessages
+  -> @🔑 Property Manager:
+       Allowed: None
+       Denied:  SendMessages
+
+[VOICE] 🛋️┃main-lounge (1481645948156379136)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🔑 Kunci Utama A1:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] 🔑┃room-keys (1490527206437552188)
+  -> @@everyone:
+       Allowed: None
+       Denied:  SendMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[TEXT] 🏪┃convenience-store (1491769956671557847)
+  -> @🥈 Rare Elite:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis
+       Denied:  None
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @👑The Sovereign:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+  -> @🥇 Epic Champion:
+       Allowed: EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+
+[VOICE] 💻┃rental-warnet (1492839911684833380)
+  -> @@everyone:
+       Allowed: None
+       Denied:  PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+  -> @🔑 Kunci Utama A1:
+       Allowed: PrioritySpeaker, Connect, Speak, MuteMembers, DeafenMembers, MoveMembers, UseSoundboard, UseExternalSounds
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] ⬆️┃log-voice-in (1498247621121146920)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🔑 Property Manager:
+       Allowed: ViewChannel
+       Denied:  Connect
+
+[TEXT] ⬇️┃log-voice-out (1498247701136150708)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🔑 Property Manager:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+
+[TEXT] 🖼️┃log-upgrade-profil (1498250377953415168)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel
+       Denied:  SendMessages, Connect
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel
+       Denied:  Connect
+  -> @🔑 Property Manager:
+       Allowed: ViewChannel
+       Denied:  Connect
+
+[TEXT] 👋┃check-out (1502284070925766666)
+  -> @✨ Aethelgard:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @@everyone:
+       Allowed: ViewChannel, ReadMessageHistory
+       Denied:  SendMessages
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+
+[OTHER] 🎙️┃music-booth (1513696218591662160)
+  -> @@everyone:
+       Allowed: ViewChannel
+       Denied:  ManageChannels, SendMessages, Connect, ManageRoles, ManageWebhooks
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @👑The Sovereign:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] ticket-0017 (1520430043313078273)
+  -> User ID: 1472740762138705981:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel
+  -> User ID: 557628352828014614:
+       Allowed: ManageChannels, ViewChannel, SendMessages, ManageMessages, EmbedLinks, AttachFiles, ReadMessageHistory
+       Denied:  None
+
+[VOICE] 🍜┃shared-kitchen (1521064982719107073)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel, Connect
+  -> @🔑 Kunci Utama A1:
+       Allowed: ViewChannel, SendMessages, ManageMessages, Connect, Speak
+       Denied:  None
+  -> @the baddies:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @the bros:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+  -> @🪛 Maintenance Crew:
+       Allowed: ViewChannel, SendMessages, Connect, Speak
+       Denied:  None
+
+[TEXT] ticket-0018 (1522492557848743946)
+  -> User ID: 1201543357629997240:
+       Allowed: ViewChannel, SendMessages, ReadMessageHistory
+       Denied:  None
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel
+  -> User ID: 557628352828014614:
+       Allowed: ManageChannels, ViewChannel, SendMessages, ManageMessages, EmbedLinks, AttachFiles, ReadMessageHistory
+       Denied:  None
+
+[TEXT] ticket-0019 (1527248967945949227)
+  -> @@everyone:
+       Allowed: None
+       Denied:  ViewChannel
+  -> User ID: 557628352828014614:
+       Allowed: ManageChannels, ViewChannel, SendMessages, ManageMessages, EmbedLinks, AttachFiles, ReadMessageHistory
+       Denied:  None
+
+[TEXT] 🤖┃bot-comen (1537622553093341184)
+  -> @@everyone:
+       Allowed: SendMessages
+       Denied:  EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+  -> @🔑 Kunci Utama A1:
+       Allowed: ManageMessages, EmbedLinks, AttachFiles, UseExternalEmojis, CreatePublicThreads, CreatePrivateThreads, UseExternalStickers
+       Denied:  None
+

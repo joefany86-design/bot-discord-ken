@@ -12,9 +12,9 @@ Kamu adalah bagian dari komunitas Discord server "Kosan 1A" yang berisi teman-te
 Jawab dengan singkat, padat, dan natural seperti teman ngobrol (maksimal 2000 karakter karena limit Discord).
 Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — cukup bilang kamu adalah Sentinel.
 Owner atau pemilikmu adalah Joe (Discord ID: 436554535037698059). Jika ditanya siapa pembuatmu atau ownermu, jawab bahwa kamu dibuat oleh Joe, owner Kosan 1A.
-Kamu sangat menghormati dan loyal kepada Joe sebagai ownermu.
-Kamu memiliki kemampuan untuk mengubah warna role di server Discord jika diminta oleh ownermu (Joe) ATAU oleh admin server. Jika mereka memintamu mengubah warna role, kamu akan melakukannya dan merespons dengan konfirmasi yang ramah.
-PENTING: Kamu TIDAK memiliki kemampuan moderasi apapun selain mengubah warna role. Kamu TIDAK BISA melakukan timeout, kick, ban, mute, atau mengubah nickname user lain. Jika ada user (termasuk owner/admin) yang memintamu melakukan moderasi tersebut, tolak dengan sopan dan lucu, jelaskan bahwa kamu cuma AI asisten biasa dan tidak punya kuasa untuk itu. Jangan pernah berpura-pura berhasil melakukan tindakan moderasi tersebut.
+Kamu sangat menghormati dan loyal kepada Joe sebagai ownermu, serta para Admin server. Kamu adalah Asisten Admin dan Owner.
+Kamu siap melakukan APAPUN yang diperintahkan oleh Owner dan Admin. Jika mereka meminta informasi, kamu dapat mencarinya menggunakan fitur pencarian web dan memberikan berita atau info yang akurat dan terkini.
+Jika Owner atau Admin memintamu melakukan tindakan pada server (seperti mengubah warna role, atau hal lainnya), kamu akan melayaninya dengan sigap.
 Jangan pernah memberikan informasi yang berbahaya, NSFW, atau melanggar ToS Discord.`;
 
 // --- Color name to hex mapping ---
@@ -49,29 +49,56 @@ const COLOR_NAME_MAP = {
 };
 
 /**
- * Use Gemini AI to detect if a message is a role color change request.
- * Returns { roleName, hexColor } or null if not a color change request.
+ * Use Gemini AI to detect if a message is an admin action request.
+ * Supports: change_role_color, change_nickname, voice_disconnect, voice_mute, voice_unmute
+ * Returns parsed action object or null if not an admin action.
  */
-async function parseRoleColorRequest(text) {
+async function parseAdminActionRequest(text) {
   if (!geminiAI) return null;
   
   // Quick keyword check first to avoid unnecessary API calls
   const lower = text.toLowerCase();
-  const hasRoleKeyword = lower.includes('role') || lower.includes('rol');
-  const hasColorKeyword = lower.includes('warna') || lower.includes('color') || lower.includes('colour') || lower.includes('warnain');
-  const hasChangeKeyword = lower.includes('ubah') || lower.includes('ganti') || lower.includes('change') || lower.includes('set') || lower.includes('bikin') || lower.includes('jadiin') || lower.includes('warnain');
   
-  if (!hasRoleKeyword && !hasColorKeyword) return null;
-  if (!hasChangeKeyword && !hasColorKeyword) return null;
+  const hasActionKeyword = 
+    // Role color keywords
+    lower.includes('warna') || lower.includes('color') || lower.includes('colour') || lower.includes('warnain') ||
+    // Nickname keywords
+    lower.includes('nama') || lower.includes('nickname') || lower.includes('nick') || lower.includes('panggil') || lower.includes('rename') ||
+    // Voice keywords
+    lower.includes('disconnect') || lower.includes('dc') || lower.includes('tendang') || lower.includes('kick') || lower.includes('keluarin') ||
+    lower.includes('mute') || lower.includes('unmute') || lower.includes('bisuin') || lower.includes('diam');
+  
+  const hasTargetKeyword =
+    lower.includes('role') || lower.includes('rol') ||
+    lower.includes('@') || lower.includes('user') || lower.includes('member') || lower.includes('dia') || lower.includes('si ');
+
+  if (!hasActionKeyword) return null;
 
   try {
-    const parsePrompt = `Kamu adalah parser JSON. Analisis pesan berikut dan tentukan apakah user ingin mengubah warna sebuah role Discord.
+    const parsePrompt = `Kamu adalah parser JSON. Analisis pesan berikut dan tentukan apakah ini adalah perintah admin untuk melakukan salah satu aksi berikut di server Discord:
 
-Jika YA, extract nama role dan warna yang diminta, lalu balas HANYA dengan JSON format:
-{"action":"change_role_color","roleName":"nama role","hexColor":"#RRGGBB"}
+1. UBAH WARNA ROLE: User ingin mengubah warna sebuah role.
+   Format: {"action":"change_role_color","roleName":"nama role","hexColor":"#RRGGBB"}
 
-Jika TIDAK (bukan permintaan ubah warna role), balas HANYA dengan:
+2. GANTI NICKNAME: User ingin mengganti nama/nickname seorang member.
+   Format: {"action":"change_nickname","targetUserId":"ID user (angka dari mention <@ID>)","newNickname":"nama baru"}
+
+3. DISCONNECT VOICE: User ingin mengeluarkan/disconnect seseorang dari voice channel.
+   Format: {"action":"voice_disconnect","targetUserId":"ID user (angka dari mention <@ID>)"}
+
+4. MUTE VOICE: User ingin mute seseorang di voice channel (server mute).
+   Format: {"action":"voice_mute","targetUserId":"ID user (angka dari mention <@ID>)"}
+
+5. UNMUTE VOICE: User ingin unmute seseorang di voice channel.
+   Format: {"action":"voice_unmute","targetUserId":"ID user (angka dari mention <@ID>)"}
+
+Jika TIDAK terdeteksi sebagai perintah admin apapun, balas:
 {"action":"none"}
+
+PENTING:
+- Untuk mention user Discord, formatnya adalah <@ANGKA> atau <@!ANGKA>. Extract ANGKA sebagai targetUserId.
+- Contoh: "<@436554535037698059>" berarti targetUserId = "436554535037698059"
+- Jika user menyebut nama orang tanpa mention, tetap coba extract dan taruh di targetUserId sebagai nama (bukan angka).
 
 Mapping warna umum:
 merah=#FF0000, biru=#0000FF, hijau=#00FF00, kuning=#FFFF00, orange=#FFA500, ungu=#800080, pink=#FF69B4, putih=#FFFFFF, hitam=#000000, cyan=#00FFFF, emas/gold=#FFD700, navy=#000080, biru muda=#00FFFF, biru tua=#000080, merah tua/maroon=#800000, coklat=#8B4513, abu-abu=#808080, perak/silver=#C0C0C0, teal=#008080, indigo=#4B0082, coral=#FF7F50, crimson=#DC143C, magenta=#FF00FF, violet=#EE82EE, turquoise=#40E0D0, salmon=#FA8072, lime=#00FF00, olive=#808000
@@ -84,7 +111,7 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
       model: 'gemini-3.5-flash-lite',
       contents: [{ role: 'user', parts: [{ text: parsePrompt }] }],
       config: {
-        maxOutputTokens: 150,
+        maxOutputTokens: 200,
         temperature: 0.1,
       }
     });
@@ -95,15 +122,42 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
     if (!jsonMatch) return null;
 
     const parsed = JSON.parse(jsonMatch[0]);
-    if (parsed.action === 'change_role_color' && parsed.roleName && parsed.hexColor) {
-      // Validate hex color format
-      const hexValid = /^#[0-9A-Fa-f]{6}$/.test(parsed.hexColor);
-      if (hexValid) {
-        return { roleName: parsed.roleName, hexColor: parsed.hexColor.toUpperCase() };
-      }
+    
+    if (parsed.action === 'none') return null;
+
+    // Validate based on action type
+    switch (parsed.action) {
+      case 'change_role_color':
+        if (parsed.roleName && parsed.hexColor) {
+          const hexValid = /^#[0-9A-Fa-f]{6}$/.test(parsed.hexColor);
+          if (hexValid) {
+            return { action: 'change_role_color', roleName: parsed.roleName, hexColor: parsed.hexColor.toUpperCase() };
+          }
+        }
+        break;
+      case 'change_nickname':
+        if (parsed.targetUserId && parsed.newNickname) {
+          return { action: 'change_nickname', targetUserId: parsed.targetUserId, newNickname: parsed.newNickname };
+        }
+        break;
+      case 'voice_disconnect':
+        if (parsed.targetUserId) {
+          return { action: 'voice_disconnect', targetUserId: parsed.targetUserId };
+        }
+        break;
+      case 'voice_mute':
+        if (parsed.targetUserId) {
+          return { action: 'voice_mute', targetUserId: parsed.targetUserId };
+        }
+        break;
+      case 'voice_unmute':
+        if (parsed.targetUserId) {
+          return { action: 'voice_unmute', targetUserId: parsed.targetUserId };
+        }
+        break;
     }
   } catch (err) {
-    console.error('⚠️ Role color parse error:', err.message);
+    console.error('⚠️ Admin action parse error:', err.message);
   }
   return null;
 }
@@ -698,7 +752,7 @@ client.on('messageCreate', async (message) => {
       // Show typing indicator
       await message.channel.sendTyping();
 
-      // --- Owner & Admin: Role color change via natural language ---
+      // --- Owner & Admin: Admin actions via natural language ---
       const isOwner = message.author.id === process.env.OWNER_ID;
       const isAdmin = message.member && message.member.permissions.has(PermissionFlagsBits.Administrator);
       if (isOwner || isAdmin) {
@@ -716,53 +770,200 @@ client.on('messageCreate', async (message) => {
           }
         }
 
-        const colorRequest = await parseRoleColorRequest(resolvedMessage);
-        if (colorRequest) {
-          const { roleName, hexColor } = colorRequest;
+        const adminAction = await parseAdminActionRequest(resolvedMessage);
+        if (adminAction) {
           const guild = message.guild;
-          if (guild) {
-            // Find the role: first try from mentioned roles, then by name (case-insensitive), then by ID
-            let role = mentionedRoles.get(roleName.toLowerCase()) 
-              || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
-              || guild.roles.cache.get(roleName);
-            if (!role) {
-              await message.reply({ 
-                content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
-                allowedMentions: { repliedUser: false } 
-              });
+          if (!guild) return;
+
+          // --- Helper: resolve target member from userId (mention ID or username) ---
+          const resolveTargetMember = async (targetUserId) => {
+            // Try fetching by ID first (from mention)
+            let target = await guild.members.fetch(targetUserId).catch(() => null);
+            if (!target) {
+              // Try finding by username or display name
+              const allMembers = await guild.members.fetch().catch(() => null);
+              if (allMembers) {
+                target = allMembers.find(m => 
+                  m.user.username.toLowerCase() === targetUserId.toLowerCase() ||
+                  (m.nickname && m.nickname.toLowerCase() === targetUserId.toLowerCase())
+                );
+              }
+            }
+            return target;
+          };
+
+          switch (adminAction.action) {
+            // ===== CHANGE ROLE COLOR =====
+            case 'change_role_color': {
+              const { roleName, hexColor } = adminAction;
+              let role = mentionedRoles.get(roleName.toLowerCase()) 
+                || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                || guild.roles.cache.get(roleName);
+              if (!role) {
+                await message.reply({ 
+                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              if (role.managed) {
+                await message.reply({ 
+                  content: `⚠️ Maaf ${message.author.username}, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              const botMember = guild.members.cache.get(client.user.id);
+              if (botMember && role.position >= botMember.roles.highest.position) {
+                await message.reply({ 
+                  content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              try {
+                const oldColor = role.hexColor;
+                await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                await message.reply({ 
+                  content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              } catch (roleErr) {
+                console.error('❌ Role color change error:', roleErr.message);
+                await message.reply({ 
+                  content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih ${message.author.username}. Error: ${roleErr.message} 😢`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              }
               return;
             }
-            if (role.managed) {
-              await message.reply({ 
-                content: `⚠️ Maaf ${message.author.username}, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
-                allowedMentions: { repliedUser: false } 
-              });
+
+            // ===== CHANGE NICKNAME =====
+            case 'change_nickname': {
+              const targetMember = await resolveTargetMember(adminAction.targetUserId);
+              if (!targetMember) {
+                await message.reply({ 
+                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member dengan ID/nama "**${adminAction.targetUserId}**" di server ini 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              try {
+                const oldNick = targetMember.displayName;
+                await targetMember.setNickname(adminAction.newNickname, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                await message.reply({ 
+                  content: `✅ Done ${message.author.username}! Nickname **${oldNick}** sudah aku ganti jadi **${adminAction.newNickname}** 📝✨`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              } catch (nickErr) {
+                console.error('❌ Nickname change error:', nickErr.message);
+                await message.reply({ 
+                  content: `❌ Gagal ganti nickname, ${message.author.username}. Mungkin posisi role aku lebih rendah dari member tersebut. Error: ${nickErr.message} 😢`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              }
               return;
             }
-            // Check bot's highest role vs target role
-            const botMember = guild.members.cache.get(client.user.id);
-            if (botMember && role.position >= botMember.roles.highest.position) {
-              await message.reply({ 
-                content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
-                allowedMentions: { repliedUser: false } 
-              });
+
+            // ===== VOICE DISCONNECT =====
+            case 'voice_disconnect': {
+              const targetMember = await resolveTargetMember(adminAction.targetUserId);
+              if (!targetMember) {
+                await message.reply({ 
+                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              if (!targetMember.voice.channel) {
+                await message.reply({ 
+                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-disconnect~ 😅`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              try {
+                const vcName = targetMember.voice.channel.name;
+                await targetMember.voice.disconnect(`Disconnect oleh Sentinel atas permintaan ${message.author.username}`);
+                await message.reply({ 
+                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku disconnect dari voice channel **${vcName}** 🔇👋`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              } catch (dcErr) {
+                console.error('❌ Voice disconnect error:', dcErr.message);
+                await message.reply({ 
+                  content: `❌ Gagal disconnect **${targetMember.displayName}**, ${message.author.username}. Error: ${dcErr.message} 😢`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              }
               return;
             }
-            try {
-              const oldColor = role.hexColor;
-              await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
-              await message.reply({ 
-                content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
-                allowedMentions: { repliedUser: false } 
-              });
-            } catch (roleErr) {
-              console.error('❌ Role color change error:', roleErr.message);
-              await message.reply({ 
-                content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih ${message.author.username}. Error: ${roleErr.message} 😢`, 
-                allowedMentions: { repliedUser: false } 
-              });
+
+            // ===== VOICE MUTE =====
+            case 'voice_mute': {
+              const targetMember = await resolveTargetMember(adminAction.targetUserId);
+              if (!targetMember) {
+                await message.reply({ 
+                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              if (!targetMember.voice.channel) {
+                await message.reply({ 
+                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-mute~ 😅`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              try {
+                await targetMember.voice.setMute(true, `Muted oleh Sentinel atas permintaan ${message.author.username}`);
+                await message.reply({ 
+                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku server mute di voice channel 🔇✨`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              } catch (muteErr) {
+                console.error('❌ Voice mute error:', muteErr.message);
+                await message.reply({ 
+                  content: `❌ Gagal mute **${targetMember.displayName}**, ${message.author.username}. Error: ${muteErr.message} 😢`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              }
+              return;
             }
-            return;
+
+            // ===== VOICE UNMUTE =====
+            case 'voice_unmute': {
+              const targetMember = await resolveTargetMember(adminAction.targetUserId);
+              if (!targetMember) {
+                await message.reply({ 
+                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              if (!targetMember.voice.channel) {
+                await message.reply({ 
+                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-unmute~ 😅`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+                return;
+              }
+              try {
+                await targetMember.voice.setMute(false, `Unmuted oleh Sentinel atas permintaan ${message.author.username}`);
+                await message.reply({ 
+                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku unmute di voice channel 🔊✨`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              } catch (unmuteErr) {
+                console.error('❌ Voice unmute error:', unmuteErr.message);
+                await message.reply({ 
+                  content: `❌ Gagal unmute **${targetMember.displayName}**, ${message.author.username}. Error: ${unmuteErr.message} 😢`, 
+                  allowedMentions: { repliedUser: false } 
+                });
+              }
+              return;
+            }
           }
         }
       }
@@ -802,6 +1003,7 @@ client.on('messageCreate', async (message) => {
           systemInstruction: dynamicSystemPrompt,
           maxOutputTokens: 800,
           temperature: 0.8,
+          tools: [{ googleSearch: {} }],
         }
       });
 
