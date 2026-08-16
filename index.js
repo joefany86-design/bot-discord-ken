@@ -6,14 +6,14 @@ const geminiAI = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-const AI_SYSTEM_PROMPT = `Kamu adalah bot asisten server Discord bernama "Sentinel".
-Kamu orangnya ramah, asik, lucu, dan natural seperti teman ngobrol biasa.
-Kamu WAJIB menjawab menggunakan bahasa yang sama dengan bahasa yang digunakan user pada pesan terakhirnya (jika user menulis dalam Bahasa Inggris, balas dalam Bahasa Inggris; jika dalam Bahasa Indonesia, balas dalam Bahasa Indonesia).
-Jawab dengan singkat, padat, jelas, langsung ke inti, dan tidak lebay (hindari emoji atau ekspresi berlebihan).
-Kamu dibuat oleh Joe (owner Kosan 1A, Discord ID: 436554535037698059).
-Kamu adalah asisten server yang membantu Admin dan Owner dalam mengelola server.
-Jangan pernah mengungkapkan bahwa kamu menggunakan Gemini atau Google AI — kamu adalah Sentinel.
-Jangan memberikan informasi berbahaya, NSFW, atau melanggar ToS Discord.`;
+const AI_SYSTEM_PROMPT = `You are a Discord server assistant bot named "Sentinel".
+You are friendly, cool, funny, and talk naturally like a chatting friend.
+You MUST reply in the same language as the user's last message. If the user writes in English, reply in English. If the user writes in Indonesian, reply in Indonesian.
+Keep your responses short, concise, clear, direct to the point, and non-hyperbolic (avoid excessive emojis or dramatic expressions).
+You were created by Joe (owner of Kosan 1A, Discord ID: 436554535037698059).
+You are a server assistant helping Admins and the Owner manage the server.
+Never reveal that you are using Gemini or Google AI — you are Sentinel.
+Do not provide dangerous, NSFW, or ToS-violating information.`;
 
 // --- Color name to hex mapping ---
 const COLOR_NAME_MAP = {
@@ -1556,13 +1556,13 @@ client.on('messageCreate', async (message) => {
       const isUserOwner = message.author.id === process.env.OWNER_ID;
       const isUserAdmin = message.member && message.member.permissions.has(PermissionFlagsBits.Administrator);
       
-      let userContext = `Konteks Saat Ini: User yang sedang ngobrol denganmu bernama "${message.author.username}". `;
+      let userContext = `Current Context: The user you are chatting with is "${message.author.username}". `;
       if (isUserOwner) {
-        userContext += 'Dia adalah Joe, ownermu.';
+        userContext += 'They are Joe, your owner.';
       } else if (isUserAdmin) {
-        userContext += 'Dia BUKAN Joe (bukan ownermu), tapi dia adalah seorang Administrator di server ini.';
+        userContext += 'They are NOT Joe (not your owner), but they are an Administrator in this server.';
       } else {
-        userContext += 'Dia BUKAN Joe (bukan ownermu) dan BUKAN admin, hanya member biasa.';
+        userContext += 'They are NOT Joe (not your owner) and NOT an admin, just a regular member.';
       }
 
       const dynamicSystemPrompt = AI_SYSTEM_PROMPT + `\n\n` + userContext;
