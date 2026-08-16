@@ -173,6 +173,70 @@ const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598
 client.once('ready', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
+  const TARGET_SYNC_ROLES = [
+    '1509202467563241613', // Common Prestige
+    '1509202469828165904', // Rare Elite
+    '1509202471803813990', // Epic Champion
+    '1508836141019955301', // Primordial
+    '1508836447229050980', // Zenith
+    '1509202474416865482', // Legendary Overlord
+    '1509203784230768860', // Mythic Immortal
+    '1508835994630230106', // Aethelgard
+    '1508835510087581696', // The Sovereign
+    '1520716203935535257', // Verified Resident
+    '1520705391695106158', // Malaysia
+    '1520707284819513374', // Indonesia
+    '1520707287759585311', // International
+    '1475009397276151971'  // Penthouse Resident
+  ];
+  const REFERENCE_ROLE_ID = '1472170093416022096'; // the bros
+
+  async function syncRolePermissions() {
+    try {
+      const guildId = '1410239829874053296';
+      const guild = await client.guilds.fetch(guildId).catch(() => null);
+      if (!guild) return;
+      const channels = await guild.channels.fetch();
+      
+      console.log('🔄 [SYNC] Memulai sinkronisasi permission role...');
+      for (const [channelId, channel] of channels) {
+        if (!channel || !channel.permissionOverwrites) continue;
+        
+        const referenceOverwrite = channel.permissionOverwrites.cache.get(REFERENCE_ROLE_ID);
+        
+        for (const roleId of TARGET_SYNC_ROLES) {
+          const targetOverwrite = channel.permissionOverwrites.cache.get(roleId);
+          if (referenceOverwrite) {
+            // Delete existing to cleanly apply the new exact rules
+            if (targetOverwrite) await targetOverwrite.delete().catch(() => {});
+            
+            const allowArray = referenceOverwrite.allow.toArray();
+            const denyArray = referenceOverwrite.deny.toArray();
+            const newPerms = {};
+            allowArray.forEach(p => newPerms[p] = true);
+            denyArray.forEach(p => newPerms[p] = false);
+            
+            await channel.permissionOverwrites.create(roleId, newPerms).catch(() => {});
+          } else {
+            // If reference role has no overwrites, target shouldn't have either
+            if (targetOverwrite) {
+              await targetOverwrite.delete().catch(() => {});
+            }
+          }
+        }
+      }
+      console.log('✅ [SYNC] Sinkronisasi permission selesai!');
+    } catch (err) {
+      console.error('❌ [SYNC] Terjadi kesalahan saat sinkronisasi:', err);
+    }
+  }
+
+  // Jalankan sinkronisasi pertama kali
+  syncRolePermissions();
+  // Jadwalkan untuk berjalan setiap 1 jam (3600000 ms)
+  setInterval(syncRolePermissions, 3600000);
+
+
   // 1. Channel 1422642326798598348: CHAT TEKS ONLY (Kecuali Role Senior BISA kirim foto & link)
   try {
     const textOnlyChan = await client.channels.fetch('1422642326798598348').catch(() => null);
