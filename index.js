@@ -69,7 +69,7 @@ async function parseAdminActionRequest(text) {
     lower.includes('mute') || lower.includes('unmute') || lower.includes('bisuin') || lower.includes('diam') ||
     lower.includes('deafen') || lower.includes('tuli') || lower.includes('budeg') ||
     // Role Management Keywords
-    lower.includes('buat') || lower.includes('bikin') || lower.includes('create') || lower.includes('kasih') || lower.includes('beri') || lower.includes('assign') || lower.includes('tambahin') || lower.includes('masukin') || lower.includes('pindah') || lower.includes('naik') || lower.includes('turun') || lower.includes('geser') || lower.includes('move') || lower.includes('atas') || lower.includes('bawah') || lower.includes('urutan') || lower.includes('posisi') || lower.includes('hapus') || lower.includes('hilangin') || lower.includes('cabut') || lower.includes('copot') || lower.includes('edit') || lower.includes('ubah') ||
+    lower.includes('buat') || lower.includes('bikin') || lower.includes('create') || lower.includes('kasih') || lower.includes('beri') || lower.includes('assign') || lower.includes('tambahin') || lower.includes('masukin') || lower.includes('pindah') || lower.includes('naik') || lower.includes('turun') || lower.includes('geser') || lower.includes('move') || lower.includes('atas') || lower.includes('bawah') || lower.includes('urutan') || lower.includes('posisi') || lower.includes('hapus') || lower.includes('hilangin') || lower.includes('cabut') || lower.includes('copot') || lower.includes('edit') || lower.includes('ubah') || lower.includes('list') || lower.includes('siapa') || lower.includes('cek') ||
     // Moderation Keywords
     lower.includes('ban') || lower.includes('blokir') || lower.includes('timeout') || lower.includes('waktu') ||
     // Channel & Kategori
@@ -103,27 +103,28 @@ async function parseAdminActionRequest(text) {
 8. PINDAH URUTAN ROLE: Format: {"action":"move_role","roleName":"nama role","direction":"up/down","amount":angka}
 9. HAPUS ROLE: Menghapus role dari server. Format: {"action":"delete_role","roleName":"nama role"}
 10. CABUT ROLE: Mencabut role dari member. Format: {"action":"remove_role","targetUserId":"ID user","roleName":"nama role"}
+11. LIST ROLE MEMBERS: Cek siapa saja yang punya role ini. Format: {"action":"list_role_members","roleName":"nama role"}
 
 [VOICE]
-11. DISCONNECT VOICE: Format: {"action":"voice_disconnect","targetUserId":"ID user"}
-12. MUTE VOICE: Format: {"action":"voice_mute","targetUserId":"ID user"}
-13. UNMUTE VOICE: Format: {"action":"voice_unmute","targetUserId":"ID user"}
-14. DEAFEN VOICE: Membuat user tidak bisa mendengar. Format: {"action":"voice_deafen","targetUserId":"ID user"}
-15. MOVE VOICE: Memindahkan channel. Format: {"action":"voice_move","targetUserId":"ID user","channelName":"nama channel tujuan"}
+12. DISCONNECT VOICE: Format: {"action":"voice_disconnect","targetUserId":"ID user"}
+13. MUTE VOICE: Format: {"action":"voice_mute","targetUserId":"ID user"}
+14. UNMUTE VOICE: Format: {"action":"voice_unmute","targetUserId":"ID user"}
+15. DEAFEN VOICE: Membuat user tidak bisa mendengar. Format: {"action":"voice_deafen","targetUserId":"ID user"}
+16. MOVE VOICE: Memindahkan channel. Format: {"action":"voice_move","targetUserId":"ID user","channelName":"nama channel tujuan"}
 
 [CHANNEL & KATEGORI]
-16. BUAT CHANNEL: Format: {"action":"create_channel","channelName":"nama","type":"text/voice/category"}
-17. HAPUS CHANNEL: Format: {"action":"delete_channel","channelName":"nama"}
-18. KUNCI/IZIN CHANNEL: Membatasi izin. Format: {"action":"edit_channel_permissions","channelName":"nama","targetRoleName":"nama role atau everyone","allow":"read/write/none"}
+17. BUAT CHANNEL: Format: {"action":"create_channel","channelName":"nama","type":"text/voice/category"}
+18. HAPUS CHANNEL: Format: {"action":"delete_channel","channelName":"nama"}
+19. KUNCI/IZIN CHANNEL: Membatasi izin. Format: {"action":"edit_channel_permissions","channelName":"nama","targetRoleName":"nama role atau everyone","allow":"read/write/none"}
 
 [PESAN]
-19. HAPUS PESAN: Format: {"action":"delete_messages","amount":angka_jumlah_pesan}
-20. PIN PESAN: Menyematkan pesan. Format: {"action":"pin_message"}
-21. MENTION MASSAL: Format: {"action":"mention_mass","type":"everyone/here"}
+20. HAPUS PESAN: Format: {"action":"delete_messages","amount":angka_jumlah_pesan}
+21. PIN PESAN: Menyematkan pesan. Format: {"action":"pin_message"}
+22. MENTION MASSAL: Format: {"action":"mention_mass","type":"everyone/here"}
 
 [SERVER]
-22. AUDIT LOG: Melihat riwayat admin. Format: {"action":"view_audit_log"}
-23. UNDANGAN (INVITE): Format: {"action":"manage_invites","subAction":"create/delete"}
+23. AUDIT LOG: Melihat riwayat admin. Format: {"action":"view_audit_log"}
+24. UNDANGAN (INVITE): Format: {"action":"manage_invites","subAction":"create/delete"}
 
 Balas HANYA dengan JSON ARRAY berisi aksi-aksi yang diminta (bisa lebih dari satu).
 Jika TIDAK terdeteksi perintah admin apapun, balas dengan array kosong: []
@@ -199,6 +200,9 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
           break;
         case 'remove_role':
           if (parsed.targetUserId && parsed.roleName) validActions.push({ action: 'remove_role', targetUserId: parsed.targetUserId, roleName: parsed.roleName });
+          break;
+        case 'list_role_members':
+          if (parsed.roleName) validActions.push({ action: 'list_role_members', roleName: parsed.roleName });
           break;
         case 'voice_disconnect':
           if (parsed.targetUserId) validActions.push({ action: 'voice_disconnect', targetUserId: parsed.targetUserId });
@@ -1422,6 +1426,37 @@ client.on('messageCreate', async (message) => {
                   }
                 } catch (err) {
                   await message.reply({ content: `❌ Gagal kelola invite. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== LIST ROLE MEMBERS =====
+              case 'list_role_members': {
+                const { roleName } = adminAction;
+                let role = mentionedRoles.get(roleName.toLowerCase()) 
+                  || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                  || guild.roles.cache.get(roleName);
+                if (!role) {
+                  await message.reply({ content: `😕 Nggak nemu role "**${roleName}**" nih.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  // Fetch all members if not fully cached
+                  await guild.members.fetch();
+                  const membersWithRole = role.members.map(m => m.user.username);
+                  if (membersWithRole.length === 0) {
+                    await message.reply({ content: `👻 Nggak ada satupun yang punya role **${role.name}**. Kosong!`, allowedMentions: { repliedUser: false } });
+                  } else {
+                    const memberList = membersWithRole.join(', ');
+                    if (memberList.length > 1900) {
+                       await message.reply({ content: `👥 Wow! Ada **${membersWithRole.length}** orang yang punya role **${role.name}**. Kebanyakan kalau disebutin satu-satu di sini! 😵‍💫`, allowedMentions: { repliedUser: false } });
+                    } else {
+                       await message.reply({ content: `👥 Ada **${membersWithRole.length}** orang yang punya role **${role.name}**:\n\`${memberList}\``, allowedMentions: { repliedUser: false } });
+                    }
+                  }
+                } catch (err) {
+                  console.error('❌ List role error:', err.message);
+                  await message.reply({ content: `❌ Gagal ngambil data role. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
                 }
                 break;
               }
