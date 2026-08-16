@@ -66,34 +66,67 @@ async function parseAdminActionRequest(text) {
     lower.includes('nama') || lower.includes('nickname') || lower.includes('nick') || lower.includes('panggil') || lower.includes('rename') ||
     // Voice keywords
     lower.includes('disconnect') || lower.includes('dc') || lower.includes('tendang') || lower.includes('kick') || lower.includes('keluarin') ||
-    lower.includes('mute') || lower.includes('unmute') || lower.includes('bisuin') || lower.includes('diam');
+    lower.includes('mute') || lower.includes('unmute') || lower.includes('bisuin') || lower.includes('diam') ||
+    lower.includes('deafen') || lower.includes('tuli') || lower.includes('budeg') ||
+    // Role Management Keywords
+    lower.includes('buat') || lower.includes('bikin') || lower.includes('create') || lower.includes('kasih') || lower.includes('beri') || lower.includes('assign') || lower.includes('tambahin') || lower.includes('masukin') || lower.includes('pindah') || lower.includes('naik') || lower.includes('turun') || lower.includes('geser') || lower.includes('move') || lower.includes('atas') || lower.includes('bawah') || lower.includes('urutan') || lower.includes('posisi') || lower.includes('hapus') || lower.includes('hilangin') || lower.includes('cabut') || lower.includes('copot') || lower.includes('edit') || lower.includes('ubah') ||
+    // Moderation Keywords
+    lower.includes('ban') || lower.includes('blokir') || lower.includes('timeout') || lower.includes('waktu') ||
+    // Channel & Kategori
+    lower.includes('channel') || lower.includes('saluran') || lower.includes('kategori') || lower.includes('category') ||
+    // Pesan
+    lower.includes('pesan') || lower.includes('message') || lower.includes('pin') || lower.includes('sematkan') || lower.includes('everyone') || lower.includes('here') || lower.includes('mention') ||
+    // Server & Lainnya
+    lower.includes('emoji') || lower.includes('stiker') || lower.includes('sticker') || lower.includes('profil') || lower.includes('banner') || lower.includes('ikon') || lower.includes('icon') || lower.includes('bot') || lower.includes('webhook') || lower.includes('audit') || lower.includes('log') || lower.includes('riwayat') || lower.includes('invite') || lower.includes('undangan') || lower.includes('link');
   
   const hasTargetKeyword =
     lower.includes('role') || lower.includes('rol') ||
-    lower.includes('@') || lower.includes('user') || lower.includes('member') || lower.includes('dia') || lower.includes('si ');
+    lower.includes('@') || lower.includes('user') || lower.includes('member') || lower.includes('dia') || lower.includes('si ') ||
+    lower.includes('pesan') || lower.includes('channel') || lower.includes('server') || lower.includes('log') || lower.includes('kategori');
 
   if (!hasActionKeyword) return null;
 
   try {
     const parsePrompt = `Kamu adalah parser JSON. Analisis pesan berikut dan tentukan apakah ini adalah perintah admin untuk melakukan salah satu aksi berikut di server Discord:
 
-1. UBAH WARNA ROLE: User ingin mengubah warna sebuah role.
-   Format: {"action":"change_role_color","roleName":"nama role","hexColor":"#RRGGBB"}
+1. UBAH WARNA ROLE: Format: {"action":"change_role_color","roleName":"nama role","hexColor":"#RRGGBB"}
+2. GANTI NICKNAME: Format: {"action":"change_nickname","targetUserId":"ID user","newNickname":"nama baru"}
 
-2. GANTI NICKNAME: User ingin mengganti nama/nickname seorang member.
-   Format: {"action":"change_nickname","targetUserId":"ID user (angka dari mention <@ID>)","newNickname":"nama baru"}
+[MODERASI]
+3. KICK MEMBER: Mengeluarkan member. Format: {"action":"kick_member","targetUserId":"ID user","reason":"alasan opsional"}
+4. BAN MEMBER: Memblokir permanen. Format: {"action":"ban_member","targetUserId":"ID user","reason":"alasan opsional"}
+5. TIMEOUT MEMBER: Mute sementara. Format: {"action":"timeout_member","targetUserId":"ID user","durationMinutes":angka_menit}
 
-3. DISCONNECT VOICE: User ingin mengeluarkan/disconnect seseorang dari voice channel.
-   Format: {"action":"voice_disconnect","targetUserId":"ID user (angka dari mention <@ID>)"}
+[ROLE]
+6. BUAT ROLE: Format: {"action":"create_role","roleName":"nama role","hexColor":"#RRGGBB"}
+7. BERI ROLE: Format: {"action":"assign_role","targetUserId":"ID user","roleName":"nama role"}
+8. PINDAH URUTAN ROLE: Format: {"action":"move_role","roleName":"nama role","direction":"up/down","amount":angka}
+9. HAPUS ROLE: Menghapus role dari server. Format: {"action":"delete_role","roleName":"nama role"}
+10. CABUT ROLE: Mencabut role dari member. Format: {"action":"remove_role","targetUserId":"ID user","roleName":"nama role"}
 
-4. MUTE VOICE: User ingin mute seseorang di voice channel (server mute).
-   Format: {"action":"voice_mute","targetUserId":"ID user (angka dari mention <@ID>)"}
+[VOICE]
+11. DISCONNECT VOICE: Format: {"action":"voice_disconnect","targetUserId":"ID user"}
+12. MUTE VOICE: Format: {"action":"voice_mute","targetUserId":"ID user"}
+13. UNMUTE VOICE: Format: {"action":"voice_unmute","targetUserId":"ID user"}
+14. DEAFEN VOICE: Membuat user tidak bisa mendengar. Format: {"action":"voice_deafen","targetUserId":"ID user"}
+15. MOVE VOICE: Memindahkan channel. Format: {"action":"voice_move","targetUserId":"ID user","channelName":"nama channel tujuan"}
 
-5. UNMUTE VOICE: User ingin unmute seseorang di voice channel.
-   Format: {"action":"voice_unmute","targetUserId":"ID user (angka dari mention <@ID>)"}
+[CHANNEL & KATEGORI]
+16. BUAT CHANNEL: Format: {"action":"create_channel","channelName":"nama","type":"text/voice/category"}
+17. HAPUS CHANNEL: Format: {"action":"delete_channel","channelName":"nama"}
+18. KUNCI/IZIN CHANNEL: Membatasi izin. Format: {"action":"edit_channel_permissions","channelName":"nama","targetRoleName":"nama role atau everyone","allow":"read/write/none"}
 
-Jika TIDAK terdeteksi sebagai perintah admin apapun, balas:
-{"action":"none"}
+[PESAN]
+19. HAPUS PESAN: Format: {"action":"delete_messages","amount":angka_jumlah_pesan}
+20. PIN PESAN: Menyematkan pesan. Format: {"action":"pin_message"}
+21. MENTION MASSAL: Format: {"action":"mention_mass","type":"everyone/here"}
+
+[SERVER]
+22. AUDIT LOG: Melihat riwayat admin. Format: {"action":"view_audit_log"}
+23. UNDANGAN (INVITE): Format: {"action":"manage_invites","subAction":"create/delete"}
+
+Balas HANYA dengan JSON ARRAY berisi aksi-aksi yang diminta (bisa lebih dari satu).
+Jika TIDAK terdeteksi perintah admin apapun, balas dengan array kosong: []
 
 PENTING:
 - Untuk mention user Discord, formatnya adalah <@ANGKA> atau <@!ANGKA>. Extract ANGKA sebagai targetUserId.
@@ -111,51 +144,104 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
       model: 'gemini-3.5-flash-lite',
       contents: [{ role: 'user', parts: [{ text: parsePrompt }] }],
       config: {
-        maxOutputTokens: 200,
+        maxOutputTokens: 800,
         temperature: 0.1,
       }
     });
 
     const aiText = response.text.trim();
-    // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = aiText.match(/\{[\s\S]*?\}/);
+    // Extract JSON array from response (handle markdown code blocks)
+    const jsonMatch = aiText.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) return null;
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsedArray = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsedArray) || parsedArray.length === 0) return null;
     
-    if (parsed.action === 'none') return null;
-
     // Validate based on action type
-    switch (parsed.action) {
-      case 'change_role_color':
-        if (parsed.roleName && parsed.hexColor) {
-          const hexValid = /^#[0-9A-Fa-f]{6}$/.test(parsed.hexColor);
-          if (hexValid) {
-            return { action: 'change_role_color', roleName: parsed.roleName, hexColor: parsed.hexColor.toUpperCase() };
+    const validActions = [];
+    for (const parsed of parsedArray) {
+      if (!parsed || !parsed.action) continue;
+      
+      switch (parsed.action) {
+        case 'change_role_color':
+          if (parsed.roleName && parsed.hexColor) {
+            const hexValid = /^#[0-9A-Fa-f]{6}$/.test(parsed.hexColor);
+            if (hexValid) {
+              validActions.push({ action: 'change_role_color', roleName: parsed.roleName, hexColor: parsed.hexColor.toUpperCase() });
+            }
           }
-        }
-        break;
-      case 'change_nickname':
-        if (parsed.targetUserId && parsed.newNickname) {
-          return { action: 'change_nickname', targetUserId: parsed.targetUserId, newNickname: parsed.newNickname };
-        }
-        break;
-      case 'voice_disconnect':
-        if (parsed.targetUserId) {
-          return { action: 'voice_disconnect', targetUserId: parsed.targetUserId };
-        }
-        break;
-      case 'voice_mute':
-        if (parsed.targetUserId) {
-          return { action: 'voice_mute', targetUserId: parsed.targetUserId };
-        }
-        break;
-      case 'voice_unmute':
-        if (parsed.targetUserId) {
-          return { action: 'voice_unmute', targetUserId: parsed.targetUserId };
-        }
-        break;
+          break;
+        case 'change_nickname':
+          if (parsed.targetUserId && parsed.newNickname) {
+            validActions.push({ action: 'change_nickname', targetUserId: parsed.targetUserId, newNickname: parsed.newNickname });
+          }
+          break;
+        case 'kick_member':
+          if (parsed.targetUserId) validActions.push({ action: 'kick_member', targetUserId: parsed.targetUserId, reason: parsed.reason });
+          break;
+        case 'ban_member':
+          if (parsed.targetUserId) validActions.push({ action: 'ban_member', targetUserId: parsed.targetUserId, reason: parsed.reason });
+          break;
+        case 'timeout_member':
+          if (parsed.targetUserId && parsed.durationMinutes) validActions.push({ action: 'timeout_member', targetUserId: parsed.targetUserId, durationMinutes: parsed.durationMinutes });
+          break;
+        case 'create_role':
+          if (parsed.roleName) validActions.push({ action: 'create_role', roleName: parsed.roleName, hexColor: parsed.hexColor });
+          break;
+        case 'assign_role':
+          if (parsed.targetUserId && parsed.roleName) validActions.push({ action: 'assign_role', targetUserId: parsed.targetUserId, roleName: parsed.roleName });
+          break;
+        case 'move_role':
+          if (parsed.roleName && parsed.direction) validActions.push({ action: 'move_role', roleName: parsed.roleName, direction: parsed.direction, amount: parsed.amount || 1 });
+          break;
+        case 'delete_role':
+          if (parsed.roleName) validActions.push({ action: 'delete_role', roleName: parsed.roleName });
+          break;
+        case 'remove_role':
+          if (parsed.targetUserId && parsed.roleName) validActions.push({ action: 'remove_role', targetUserId: parsed.targetUserId, roleName: parsed.roleName });
+          break;
+        case 'voice_disconnect':
+          if (parsed.targetUserId) validActions.push({ action: 'voice_disconnect', targetUserId: parsed.targetUserId });
+          break;
+        case 'voice_mute':
+          if (parsed.targetUserId) validActions.push({ action: 'voice_mute', targetUserId: parsed.targetUserId });
+          break;
+        case 'voice_unmute':
+          if (parsed.targetUserId) validActions.push({ action: 'voice_unmute', targetUserId: parsed.targetUserId });
+          break;
+        case 'voice_deafen':
+          if (parsed.targetUserId) validActions.push({ action: 'voice_deafen', targetUserId: parsed.targetUserId });
+          break;
+        case 'voice_move':
+          if (parsed.targetUserId && parsed.channelName) validActions.push({ action: 'voice_move', targetUserId: parsed.targetUserId, channelName: parsed.channelName });
+          break;
+        case 'create_channel':
+          if (parsed.channelName && parsed.type) validActions.push({ action: 'create_channel', channelName: parsed.channelName, type: parsed.type });
+          break;
+        case 'delete_channel':
+          if (parsed.channelName) validActions.push({ action: 'delete_channel', channelName: parsed.channelName });
+          break;
+        case 'edit_channel_permissions':
+          if (parsed.channelName && parsed.targetRoleName && parsed.allow) validActions.push({ action: 'edit_channel_permissions', channelName: parsed.channelName, targetRoleName: parsed.targetRoleName, allow: parsed.allow });
+          break;
+        case 'delete_messages':
+          if (parsed.amount) validActions.push({ action: 'delete_messages', amount: parsed.amount });
+          break;
+        case 'pin_message':
+          validActions.push({ action: 'pin_message' });
+          break;
+        case 'mention_mass':
+          if (parsed.type) validActions.push({ action: 'mention_mass', type: parsed.type });
+          break;
+        case 'view_audit_log':
+          validActions.push({ action: 'view_audit_log' });
+          break;
+        case 'manage_invites':
+          if (parsed.subAction) validActions.push({ action: 'manage_invites', subAction: parsed.subAction });
+          break;
+      }
     }
+    return validActions.length > 0 ? validActions : null;
   } catch (err) {
     console.error('⚠️ Admin action parse error:', err.message);
   }
@@ -770,8 +856,8 @@ client.on('messageCreate', async (message) => {
           }
         }
 
-        const adminAction = await parseAdminActionRequest(resolvedMessage);
-        if (adminAction) {
+        const adminActions = await parseAdminActionRequest(resolvedMessage);
+        if (adminActions && adminActions.length > 0) {
           const guild = message.guild;
           if (!guild) return;
 
@@ -792,179 +878,556 @@ client.on('messageCreate', async (message) => {
             return target;
           };
 
-          switch (adminAction.action) {
-            // ===== CHANGE ROLE COLOR =====
-            case 'change_role_color': {
-              const { roleName, hexColor } = adminAction;
-              let role = mentionedRoles.get(roleName.toLowerCase()) 
-                || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
-                || guild.roles.cache.get(roleName);
-              if (!role) {
-                await message.reply({ 
-                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+          for (const adminAction of adminActions) {
+            switch (adminAction.action) {
+              // ===== KICK MEMBER =====
+              case 'kick_member': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ content: `😕 Maaf ${message.author.username}, aku nggak nemuin member itu di server ini.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                if (!targetMember.kickable) {
+                  await message.reply({ content: `⚠️ Nggak bisa kick **${targetMember.displayName}**. Role/posisiku lebih rendah darinya.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await targetMember.kick(adminAction.reason || `Di-kick oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `👟 Bye bye! **${targetMember.displayName}** sudah aku tendang dari server! 👋✨`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  console.error('❌ Kick error:', err.message);
+                  await message.reply({ content: `❌ Gagal kick member. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
               }
-              if (role.managed) {
-                await message.reply({ 
-                  content: `⚠️ Maaf ${message.author.username}, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
-              }
-              const botMember = guild.members.cache.get(client.user.id);
-              if (botMember && role.position >= botMember.roles.highest.position) {
-                await message.reply({ 
-                  content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
-              }
-              try {
-                const oldColor = role.hexColor;
-                await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
-                await message.reply({ 
-                  content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              } catch (roleErr) {
-                console.error('❌ Role color change error:', roleErr.message);
-                await message.reply({ 
-                  content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih ${message.author.username}. Error: ${roleErr.message} 😢`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              }
-              return;
-            }
 
-            // ===== CHANGE NICKNAME =====
-            case 'change_nickname': {
-              const targetMember = await resolveTargetMember(adminAction.targetUserId);
-              if (!targetMember) {
-                await message.reply({ 
-                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member dengan ID/nama "**${adminAction.targetUserId}**" di server ini 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+              // ===== BAN MEMBER =====
+              case 'ban_member': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ content: `😕 Maaf ${message.author.username}, aku nggak nemuin member itu di server ini.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                if (!targetMember.bannable) {
+                  await message.reply({ content: `⚠️ Nggak bisa ban **${targetMember.displayName}**. Role/posisiku lebih rendah darinya.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await targetMember.ban({ reason: adminAction.reason || `Di-ban oleh Sentinel atas perintah ${message.author.username}` });
+                  await message.reply({ content: `🔨 BOOM! **${targetMember.displayName}** resmi diblokir (BAN) dari server! 🚫✨`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  console.error('❌ Ban error:', err.message);
+                  await message.reply({ content: `❌ Gagal ban member. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
               }
-              try {
-                const oldNick = targetMember.displayName;
-                await targetMember.setNickname(adminAction.newNickname, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
-                await message.reply({ 
-                  content: `✅ Done ${message.author.username}! Nickname **${oldNick}** sudah aku ganti jadi **${adminAction.newNickname}** 📝✨`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              } catch (nickErr) {
-                console.error('❌ Nickname change error:', nickErr.message);
-                await message.reply({ 
-                  content: `❌ Gagal ganti nickname, ${message.author.username}. Mungkin posisi role aku lebih rendah dari member tersebut. Error: ${nickErr.message} 😢`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              }
-              return;
-            }
 
-            // ===== VOICE DISCONNECT =====
-            case 'voice_disconnect': {
-              const targetMember = await resolveTargetMember(adminAction.targetUserId);
-              if (!targetMember) {
-                await message.reply({ 
-                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+              // ===== TIMEOUT MEMBER =====
+              case 'timeout_member': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ content: `😕 Maaf ${message.author.username}, aku nggak nemuin member itu di server ini.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                if (!targetMember.moderatable) {
+                  await message.reply({ content: `⚠️ Nggak bisa timeout **${targetMember.displayName}**. Role/posisiku lebih rendah darinya.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  const durationMs = parseInt(adminAction.durationMinutes) * 60 * 1000;
+                  await targetMember.timeout(durationMs, `Timeout oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `⏳ Ssshh! **${targetMember.displayName}** sudah kena timeout selama ${adminAction.durationMinutes} menit. 🤫✨`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  console.error('❌ Timeout error:', err.message);
+                  await message.reply({ content: `❌ Gagal timeout member. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
               }
-              if (!targetMember.voice.channel) {
-                await message.reply({ 
-                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-disconnect~ 😅`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
-              }
-              try {
-                const vcName = targetMember.voice.channel.name;
-                await targetMember.voice.disconnect(`Disconnect oleh Sentinel atas permintaan ${message.author.username}`);
-                await message.reply({ 
-                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku disconnect dari voice channel **${vcName}** 🔇👋`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              } catch (dcErr) {
-                console.error('❌ Voice disconnect error:', dcErr.message);
-                await message.reply({ 
-                  content: `❌ Gagal disconnect **${targetMember.displayName}**, ${message.author.username}. Error: ${dcErr.message} 😢`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              }
-              return;
-            }
 
-            // ===== VOICE MUTE =====
-            case 'voice_mute': {
-              const targetMember = await resolveTargetMember(adminAction.targetUserId);
-              if (!targetMember) {
-                await message.reply({ 
-                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+              // ===== CHANGE ROLE COLOR =====
+              case 'change_role_color': {
+                const { roleName, hexColor } = adminAction;
+                let role = mentionedRoles.get(roleName.toLowerCase()) 
+                  || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                  || guild.roles.cache.get(roleName);
+                if (!role) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. Coba cek lagi nama role-nya ya~ 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                if (role.managed) {
+                  await message.reply({ 
+                    content: `⚠️ Maaf ${message.author.username}, role "**${role.name}**" itu role bawaan integrasi/bot, aku nggak bisa ubah warnanya 😅`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                const botMember = guild.members.cache.get(client.user.id);
+                if (botMember && role.position >= botMember.roles.highest.position) {
+                  await message.reply({ 
+                    content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  const oldColor = role.hexColor;
+                  await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (roleErr) {
+                  console.error('❌ Role color change error:', roleErr.message);
+                  await message.reply({ 
+                    content: `❌ Aduh, gagal ubah warna role "**${role.name}**" nih ${message.author.username}. Error: ${roleErr.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
               }
-              if (!targetMember.voice.channel) {
-                await message.reply({ 
-                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-mute~ 😅`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
-              }
-              try {
-                await targetMember.voice.setMute(true, `Muted oleh Sentinel atas permintaan ${message.author.username}`);
-                await message.reply({ 
-                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku server mute di voice channel 🔇✨`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              } catch (muteErr) {
-                console.error('❌ Voice mute error:', muteErr.message);
-                await message.reply({ 
-                  content: `❌ Gagal mute **${targetMember.displayName}**, ${message.author.username}. Error: ${muteErr.message} 😢`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              }
-              return;
-            }
 
-            // ===== VOICE UNMUTE =====
-            case 'voice_unmute': {
-              const targetMember = await resolveTargetMember(adminAction.targetUserId);
-              if (!targetMember) {
-                await message.reply({ 
-                  content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+              // ===== CHANGE NICKNAME =====
+              case 'change_nickname': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin member dengan ID/nama "**${adminAction.targetUserId}**" di server ini 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  const oldNick = targetMember.displayName;
+                  await targetMember.setNickname(adminAction.newNickname, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Done ${message.author.username}! Nickname **${oldNick}** sudah aku ganti jadi **${adminAction.newNickname}** 📝✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (nickErr) {
+                  console.error('❌ Nickname change error:', nickErr.message);
+                  await message.reply({ 
+                    content: `❌ Gagal ganti nickname, ${message.author.username}. Mungkin posisi role aku lebih rendah dari member tersebut. Error: ${nickErr.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
               }
-              if (!targetMember.voice.channel) {
-                await message.reply({ 
-                  content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-unmute~ 😅`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-                return;
+
+              // ===== VOICE DISCONNECT =====
+              case 'voice_disconnect': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                if (!targetMember.voice.channel) {
+                  await message.reply({ 
+                    content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-disconnect~ 😅`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  const vcName = targetMember.voice.channel.name;
+                  await targetMember.voice.disconnect(`Disconnect oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku disconnect dari voice channel **${vcName}** 🔇👋`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (dcErr) {
+                  console.error('❌ Voice disconnect error:', dcErr.message);
+                  await message.reply({ 
+                    content: `❌ Gagal disconnect **${targetMember.displayName}**, ${message.author.username}. Error: ${dcErr.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
               }
-              try {
-                await targetMember.voice.setMute(false, `Unmuted oleh Sentinel atas permintaan ${message.author.username}`);
-                await message.reply({ 
-                  content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku unmute di voice channel 🔊✨`, 
-                  allowedMentions: { repliedUser: false } 
-                });
-              } catch (unmuteErr) {
-                console.error('❌ Voice unmute error:', unmuteErr.message);
-                await message.reply({ 
-                  content: `❌ Gagal unmute **${targetMember.displayName}**, ${message.author.username}. Error: ${unmuteErr.message} 😢`, 
-                  allowedMentions: { repliedUser: false } 
-                });
+
+              // ===== VOICE MUTE =====
+              case 'voice_mute': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                if (!targetMember.voice.channel) {
+                  await message.reply({ 
+                    content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-mute~ 😅`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  await targetMember.voice.setMute(true, `Muted oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku server mute di voice channel 🔇✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (muteErr) {
+                  console.error('❌ Voice mute error:', muteErr.message);
+                  await message.reply({ 
+                    content: `❌ Gagal mute **${targetMember.displayName}**, ${message.author.username}. Error: ${muteErr.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
               }
-              return;
+
+              // ===== VOICE UNMUTE =====
+              case 'voice_unmute': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                if (!targetMember.voice.channel) {
+                  await message.reply({ 
+                    content: `⚠️ **${targetMember.displayName}** lagi nggak ada di voice channel manapun, ${message.author.username}. Nggak bisa di-unmute~ 😅`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  await targetMember.voice.setMute(false, `Unmuted oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku unmute di voice channel 🔊✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (unmuteErr) {
+                  console.error('❌ Voice unmute error:', unmuteErr.message);
+                  await message.reply({ 
+                    content: `❌ Gagal unmute **${targetMember.displayName}**, ${message.author.username}. Error: ${unmuteErr.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
+              }
+
+              // ===== CREATE ROLE =====
+              case 'create_role': {
+                const { roleName, hexColor } = adminAction;
+                try {
+                  const newRole = await guild.roles.create({
+                    name: roleName,
+                    color: hexColor || undefined,
+                    reason: `Dibuat oleh Sentinel atas permintaan ${message.author.username}`
+                  });
+                  // Automatically update mentionedRoles cache so subsequent actions in the same array can find it!
+                  mentionedRoles.set(newRole.name.toLowerCase(), newRole);
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! Aku sudah buat role baru bernama **${newRole.name}** ✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (err) {
+                  console.error('❌ Create role error:', err.message);
+                  await message.reply({ 
+                    content: `❌ Gagal buat role "**${roleName}**", ${message.author.username}. Error: ${err.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
+              }
+
+              // ===== ASSIGN ROLE =====
+              case 'assign_role': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin member "**${adminAction.targetUserId}**" di server ini 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                const { roleName } = adminAction;
+                // Fetch again to ensure newly created roles are found if not in cache
+                let role = mentionedRoles.get(roleName.toLowerCase()) 
+                  || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                  || guild.roles.cache.get(roleName);
+                if (!role) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  await targetMember.roles.add(role, `Diberikan oleh Sentinel atas permintaan ${message.author.username}`);
+                  await message.reply({ 
+                    content: `✅ Done ${message.author.username}! Aku sudah kasih role **${role.name}** ke **${targetMember.displayName}** 🎭✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (err) {
+                  console.error('❌ Assign role error:', err.message);
+                  await message.reply({ 
+                    content: `❌ Gagal ngasih role, ${message.author.username}. Mungkin posisiku lebih rendah dari role itu. Error: ${err.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
+              }
+
+              // ===== MOVE ROLE =====
+              case 'move_role': {
+                const { roleName, direction, amount } = adminAction;
+                let role = mentionedRoles.get(roleName.toLowerCase()) 
+                  || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                  || guild.roles.cache.get(roleName);
+                if (!role) {
+                  await message.reply({ 
+                    content: `😕 Maaf ${message.author.username}, aku nggak nemuin role bernama "**${roleName}**" di server ini. 💕`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                  continue;
+                }
+                try {
+                  const botMember = guild.members.cache.get(client.user.id);
+                  let newPos;
+                  
+                  if (amount >= 999 && direction.toLowerCase() === 'up') {
+                     // Paling atas: Tepat di bawah role Sentinel
+                     newPos = botMember.roles.highest.position - 1;
+                  } else {
+                     const currentPos = role.position;
+                     const changeAmount = parseInt(amount) || 1;
+                     newPos = direction.toLowerCase() === 'up' ? currentPos + changeAmount : currentPos - changeAmount;
+                  }
+                  
+                  await role.setPosition(newPos, { reason: `Dipindah oleh Sentinel atas permintaan ${message.author.username}` });
+                  await message.reply({ 
+                    content: `✅ Siap ${message.author.username}! Urutan role **${role.name}** sudah aku geser posisinya 🔃✨`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (err) {
+                  console.error('❌ Move role error:', err.message);
+                  await message.reply({ 
+                    content: `❌ Gagal geser posisi role "**${role.name}**", ${message.author.username}. Error: ${err.message} 😢`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                }
+                break;
+              }
+
+              // ===== DELETE ROLE =====
+              case 'delete_role': {
+                const { roleName } = adminAction;
+                let role = mentionedRoles.get(roleName.toLowerCase()) 
+                  || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+                  || guild.roles.cache.get(roleName);
+                if (!role) {
+                  await message.reply({ content: `😕 Nggak nemu role "**${roleName}**" nih.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await role.delete(`Dihapus oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `🗑️ Sip! Role **${role.name}** sudah aku hapus dari server.`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  console.error('❌ Delete role error:', err.message);
+                  await message.reply({ content: `❌ Gagal hapus role. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== REMOVE ROLE =====
+              case 'remove_role': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember) {
+                  await message.reply({ content: `😕 Nggak nemu member itu.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                const { roleName } = adminAction;
+                let role = mentionedRoles.get(roleName.toLowerCase()) || guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase());
+                if (!role) {
+                  await message.reply({ content: `😕 Nggak nemu role "**${roleName}**".`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await targetMember.roles.remove(role, `Dicabut oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `✅ Role **${role.name}** sudah aku cabut dari **${targetMember.displayName}**.`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  console.error('❌ Remove role error:', err.message);
+                  await message.reply({ content: `❌ Gagal cabut role. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== VOICE DEAFEN =====
+              case 'voice_deafen': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember || !targetMember.voice.channel) {
+                  await message.reply({ content: `⚠️ Member nggak ketemu atau lagi nggak di voice channel.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await targetMember.voice.setDeaf(true, `Deafen oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `🎧🔇 **${targetMember.displayName}** sudah aku deafen di voice channel!`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal deafen. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== VOICE MOVE =====
+              case 'voice_move': {
+                const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                if (!targetMember || !targetMember.voice.channel) {
+                  await message.reply({ content: `⚠️ Member nggak ketemu atau lagi nggak di voice channel.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                const destChannel = guild.channels.cache.find(c => c.isVoiceBased() && c.name.toLowerCase().includes(adminAction.channelName.toLowerCase()));
+                if (!destChannel) {
+                  await message.reply({ content: `😕 Nggak nemu voice channel yang mirip "${adminAction.channelName}".`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  await targetMember.voice.setChannel(destChannel, `Dipindah oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `🚀 Wush! **${targetMember.displayName}** sudah kupindah ke **${destChannel.name}**.`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal pindah member. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== CREATE CHANNEL =====
+              case 'create_channel': {
+                try {
+                  const typeInt = adminAction.type === 'voice' ? 2 : adminAction.type === 'category' ? 4 : 0;
+                  const newChan = await guild.channels.create({ name: adminAction.channelName, type: typeInt, reason: `Dibuat oleh Sentinel atas perintah ${message.author.username}` });
+                  await message.reply({ content: `✅ Channel baru **${newChan.name}** berhasil dibuat!`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal buat channel. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== DELETE CHANNEL =====
+              case 'delete_channel': {
+                const chan = guild.channels.cache.find(c => c.name.toLowerCase() === adminAction.channelName.toLowerCase());
+                if (!chan) {
+                  await message.reply({ content: `😕 Nggak nemu channel "**${adminAction.channelName}**".`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  const name = chan.name;
+                  await chan.delete(`Dihapus oleh Sentinel atas perintah ${message.author.username}`);
+                  await message.reply({ content: `🗑️ Channel **${name}** sudah rata dengan tanah!`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal hapus channel. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== EDIT CHANNEL PERMS =====
+              case 'edit_channel_permissions': {
+                const chan = guild.channels.cache.find(c => c.name.toLowerCase() === adminAction.channelName.toLowerCase());
+                let targetRole = guild.roles.cache.find(r => r.name.toLowerCase() === adminAction.targetRoleName.toLowerCase());
+                if (adminAction.targetRoleName.toLowerCase() === 'everyone') targetRole = guild.roles.everyone;
+                
+                if (!chan || !targetRole) {
+                  await message.reply({ content: `😕 Nggak nemu channel atau role-nya.`, allowedMentions: { repliedUser: false } });
+                  continue;
+                }
+                try {
+                  const options = {};
+                  if (adminAction.allow === 'none' || adminAction.allow === 'read') options[PermissionFlagsBits.SendMessages] = false;
+                  if (adminAction.allow === 'none') options[PermissionFlagsBits.ViewChannel] = false;
+                  if (adminAction.allow === 'read') options[PermissionFlagsBits.ViewChannel] = true;
+                  if (adminAction.allow === 'write') {
+                    options[PermissionFlagsBits.ViewChannel] = true;
+                    options[PermissionFlagsBits.SendMessages] = true;
+                  }
+                  await chan.permissionOverwrites.edit(targetRole, options);
+                  await message.reply({ content: `🔒 Izin channel **${chan.name}** untuk role **${targetRole.name}** sudah diupdate.`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal update izin. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== DELETE MESSAGES =====
+              case 'delete_messages': {
+                try {
+                  const count = Math.min(parseInt(adminAction.amount) || 1, 100);
+                  await message.channel.bulkDelete(count + 1, true); // +1 to include the command message itself
+                  const rep = await message.channel.send(`🧹 **${count}** pesan terakhir telah disapu bersih!`);
+                  setTimeout(() => rep.delete().catch(()=>{}), 3000);
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal hapus pesan (mungkin pesannya lebih dari 14 hari).`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== PIN MESSAGE =====
+              case 'pin_message': {
+                try {
+                  if (message.reference) {
+                    const refMsg = await message.channel.messages.fetch(message.reference.messageId);
+                    await refMsg.pin();
+                    await message.reply({ content: `📌 Pesannya sudah aku pin!`, allowedMentions: { repliedUser: false } });
+                  } else {
+                    await message.reply({ content: `⚠️ Kamu harus me-reply pesan yang ingin di-pin ya!`, allowedMentions: { repliedUser: false } });
+                  }
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal nge-pin. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== MENTION MASS =====
+              case 'mention_mass': {
+                try {
+                  const type = adminAction.type === 'everyone' ? '@everyone' : '@here';
+                  await message.channel.send(`📣 Pengumuman dari <@${message.author.id}> untuk ${type}!`);
+                } catch (err) {
+                  console.error(err);
+                }
+                break;
+              }
+
+              // ===== VIEW AUDIT LOG =====
+              case 'view_audit_log': {
+                try {
+                  const logs = await guild.fetchAuditLogs({ limit: 5 });
+                  const entries = logs.entries.map(e => `- **${e.executor?.username}** melakukan **${e.actionType}** pada ${e.target?.username || e.target?.name || 'sesuatu'}`).join('\n');
+                  await message.reply({ content: `📜 **5 Audit Log Terakhir:**\n${entries || 'Tidak ada log.'}`, allowedMentions: { repliedUser: false } });
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal baca audit log (Mungkin aku ga punya izin View Audit Log).`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== MANAGE INVITES =====
+              case 'manage_invites': {
+                try {
+                  if (adminAction.subAction === 'create') {
+                    const invite = await message.channel.createInvite({ maxAge: 86400, maxUses: 5, unique: true });
+                    await message.reply({ content: `🎟️ Ini link undangannya (berlaku 1 hari, maks 5x pakai):\n${invite.url}`, allowedMentions: { repliedUser: false } });
+                  } else {
+                    const invites = await guild.invites.fetch();
+                    let deleted = 0;
+                    invites.forEach(inv => { inv.delete(); deleted++; });
+                    await message.reply({ content: `🗑️ **${deleted}** link undangan aktif telah dihapus!`, allowedMentions: { repliedUser: false } });
+                  }
+                } catch (err) {
+                  await message.reply({ content: `❌ Gagal kelola invite. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
             }
           }
+          return; // Exit after processing all admin actions so AI doesn't reply again
         }
       }
 
