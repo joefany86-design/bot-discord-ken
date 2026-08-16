@@ -77,7 +77,9 @@ async function parseAdminActionRequest(text) {
     // Pesan
     lower.includes('pesan') || lower.includes('message') || lower.includes('pin') || lower.includes('sematkan') || lower.includes('everyone') || lower.includes('here') || lower.includes('mention') ||
     // Server & Lainnya
-    lower.includes('emoji') || lower.includes('stiker') || lower.includes('sticker') || lower.includes('profil') || lower.includes('banner') || lower.includes('ikon') || lower.includes('icon') || lower.includes('bot') || lower.includes('webhook') || lower.includes('audit') || lower.includes('log') || lower.includes('riwayat') || lower.includes('invite') || lower.includes('undangan') || lower.includes('link');
+    lower.includes('emoji') || lower.includes('stiker') || lower.includes('sticker') || lower.includes('profil') || lower.includes('banner') || lower.includes('ikon') || lower.includes('icon') || lower.includes('bot') || lower.includes('webhook') || lower.includes('audit') || lower.includes('log') || lower.includes('riwayat') || lower.includes('invite') || lower.includes('undangan') || lower.includes('link') ||
+    // Schedule/Timer Keywords
+    lower.includes('jam') || lower.includes('jadwal') || lower.includes('schedule') || lower.includes('ucapkan') || lower.includes('ucapin') || lower.includes('ingatkan') || lower.includes('remind') || lower.includes('timer');
   
   const hasTargetKeyword =
     lower.includes('role') || lower.includes('rol') ||
@@ -125,6 +127,9 @@ async function parseAdminActionRequest(text) {
 [SERVER]
 23. AUDIT LOG: Melihat riwayat admin. Format: {"action":"view_audit_log"}
 24. UNDANGAN (INVITE): Format: {"action":"manage_invites","subAction":"create/delete"}
+
+[JADWAL]
+25. JADWALKAN PESAN: Mengirim pesan pada jam tertentu di hari ini (SEKALI saja, TIDAK berulang). User bilang misalnya "ucapin selamat siang jam 12", "kirim pesan jam 14:30", "nanti jam 8 bilang selamat pagi". Format: {"action":"schedule_message","time":"HH:MM","messageContent":"isi pesan yang akan dikirim","channelName":"nama channel tujuan (opsional, kosongkan jika tidak disebut)"}
 
 Balas HANYA dengan JSON ARRAY berisi aksi-aksi yang diminta (bisa lebih dari satu).
 Jika TIDAK terdeteksi perintah admin apapun, balas dengan array kosong: []
@@ -243,6 +248,9 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
         case 'manage_invites':
           if (parsed.subAction) validActions.push({ action: 'manage_invites', subAction: parsed.subAction });
           break;
+        case 'schedule_message':
+          if (parsed.time && parsed.messageContent) validActions.push({ action: 'schedule_message', time: parsed.time, messageContent: parsed.messageContent, channelName: parsed.channelName || null });
+          break;
       }
     }
     return validActions.length > 0 ? validActions : null;
@@ -255,6 +263,10 @@ Balas HANYA JSON, tanpa penjelasan apapun.`;
 // Conversation history per user (in-memory, resets on bot restart)
 const conversationHistory = new Map();
 const MAX_HISTORY = 10; // Keep last 10 messages per user
+
+// Scheduled tasks storage (in-memory, resets on bot restart)
+const scheduledTasks = new Map();
+let scheduledTaskCounter = 0;
 
 const { 
   Client, 
@@ -1457,6 +1469,69 @@ client.on('messageCreate', async (message) => {
                 } catch (err) {
                   console.error('❌ List role error:', err.message);
                   await message.reply({ content: `❌ Gagal ngambil data role. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== SCHEDULE MESSAGE (ONE-TIME) =====
+              case 'schedule_message': {
+                try {
+                  const { time, messageContent, channelName } = adminAction;
+                  const timeParts = time.split(':');
+                  const hours = parseInt(timeParts[0]);
+                  const minutes = parseInt(timeParts[1] || '0');
+                  
+                  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                    await message.reply({ content: `⚠️ Format waktu "${time}" nggak valid nih. Pakai format HH:MM ya (contoh: 12:00) 😅`, allowedMentions: { repliedUser: false } });
+                    break;
+                  }
+                  
+                  const now = new Date();
+                  const targetTime = new Date();
+                  targetTime.setHours(hours, minutes, 0, 0);
+                  
+                  const delayMs = targetTime.getTime() - now.getTime();
+                  if (delayMs <= 0) {
+                    await message.reply({ content: `⚠️ Jam ${time} sudah lewat hari ini, ${message.author.username}. Coba jadwalkan untuk waktu yang belum lewat ya~ ⏰`, allowedMentions: { repliedUser: false } });
+                    break;
+                  }
+                  
+                  let targetChannel = message.channel;
+                  if (channelName) {
+                    const found = guild.channels.cache.find(c => c.isTextBased() && c.name.toLowerCase().includes(channelName.toLowerCase()));
+                    if (found) targetChannel = found;
+                  }
+                  
+                  const taskId = ++scheduledTaskCounter;
+                  const timeout = setTimeout(async () => {
+                    try {
+                      await targetChannel.send(messageContent);
+                      console.log(`✅ [SCHEDULE] Pesan terjadwal #${taskId} terkirim ke #${targetChannel.name}`);
+                    } catch (sendErr) {
+                      console.error(`❌ [SCHEDULE] Gagal kirim pesan #${taskId}:`, sendErr.message);
+                    }
+                    scheduledTasks.delete(taskId);
+                  }, delayMs);
+                  
+                  scheduledTasks.set(taskId, { timeout, time, messageContent, channelName: targetChannel.name, scheduledBy: message.author.username });
+                  
+                  const previewMsg = messageContent.length > 100 ? messageContent.slice(0, 100) + '...' : messageContent;
+                  const delayMinutes = Math.round(delayMs / 60000);
+                  await message.reply({ 
+                    content: `⏰ Siap ${message.author.username}! Pesan sudah dijadwalkan! 📝✨
+
+🕐 **Jam:** ${time}
+📍 **Channel:** #${targetChannel.name}
+⏳ **Dikirim dalam:** ~${delayMinutes} menit lagi
+
+> 💬 *"${previewMsg}"*
+
+*(Pesan akan dikirim sekali saja, tidak berulang)*`, 
+                    allowedMentions: { repliedUser: false } 
+                  });
+                } catch (err) {
+                  console.error('❌ Schedule message error:', err.message);
+                  await message.reply({ content: `❌ Gagal menjadwalkan pesan. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
                 }
                 break;
               }
