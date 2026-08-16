@@ -326,7 +326,7 @@ const ROLE_CHANNEL_ID = '1472197966218395751';
 const INTRO_CHANNEL_ID = '1472883318386065426'; // ID channel perkenalan (untuk mengirim hasil KTP warga baru)
 const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
 
   const TARGET_SYNC_ROLES = [
@@ -1138,7 +1138,7 @@ client.on('messageCreate', async (message) => {
                 try {
                   const newRole = await guild.roles.create({
                     name: roleName,
-                    color: hexColor || undefined,
+                    colors: hexColor || undefined,
                     reason: `Dibuat oleh Sentinel atas permintaan ${message.author.username}`
                   });
                   // Automatically update mentionedRoles cache so subsequent actions in the same array can find it!
