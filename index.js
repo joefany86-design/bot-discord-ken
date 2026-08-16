@@ -826,6 +826,11 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+function isProbablyEnglish(text) {
+  const englishWords = /\b(the|be|to|of|and|a|in|that|have|i|it|for|not|on|with|he|as|you|do|at|this|but|his|by|from|they|we|say|her|she|or|an|will|my|one|all|would|there|their|what|so|up|out|if|about|who|get|which|go|me|when|make|can|like|time|no|just|him|know|take|people|into|year|your|good|some|could|them|see|other|than|then|now|look|only|come|its|over|think|also|back|after|use|two|how|our|work|first|well|way|even|new|want|because|any|these|give|day|most|us|sleep|song|songs|play|at|hour|night|tired|bed|music|why|how|should|could|would)\b/i;
+  return englishWords.test(text);
+}
+
 // Event listener: AI Chat + Hapus pesan otomatis + Admin Command
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
@@ -1558,12 +1563,15 @@ client.on('messageCreate', async (message) => {
       
       let userContext = `Current Context: The user you are chatting with is "${message.author.username}". `;
       if (isUserOwner) {
-        userContext += 'They are Joe, your owner.';
+        userContext += 'They are Joe, your owner. ';
       } else if (isUserAdmin) {
-        userContext += 'They are NOT Joe (not your owner), but they are an Administrator in this server.';
+        userContext += 'They are NOT Joe (not your owner), but they are an Administrator in this server. ';
       } else {
-        userContext += 'They are NOT Joe (not your owner) and NOT an admin, just a regular member.';
+        userContext += 'They are NOT Joe (not your owner) and NOT an admin, just a regular member. ';
       }
+
+      const userLang = isProbablyEnglish(userMessage) ? 'English' : 'Indonesian';
+      userContext += `\nThe user's message is written in ${userLang}. You MUST reply in ${userLang} ONLY. Do not reply in any other language.`;
 
       const dynamicSystemPrompt = AI_SYSTEM_PROMPT + `\n\n` + userContext;
 
