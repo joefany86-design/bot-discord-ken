@@ -77,7 +77,9 @@ async function parseAdminActionRequest(text) {
     // Server & Lainnya
     lower.includes('emoji') || lower.includes('stiker') || lower.includes('sticker') || lower.includes('profil') || lower.includes('banner') || lower.includes('ikon') || lower.includes('icon') || lower.includes('bot') || lower.includes('webhook') || lower.includes('audit') || lower.includes('log') || lower.includes('riwayat') || lower.includes('invite') || lower.includes('undangan') || lower.includes('link') ||
     // Schedule/Timer Keywords
-    lower.includes('jam') || lower.includes('jadwal') || lower.includes('schedule') || lower.includes('ucapkan') || lower.includes('ucapin') || lower.includes('ingatkan') || lower.includes('remind') || lower.includes('timer');
+    lower.includes('jam') || lower.includes('jadwal') || lower.includes('schedule') || lower.includes('ucapkan') || lower.includes('ucapin') || lower.includes('ingatkan') || lower.includes('remind') || lower.includes('timer') ||
+    // Voice Invite DM Keywords
+    lower.includes('dm') || lower.includes('suruh') || lower.includes('ajak') || lower.includes('undang') || lower.includes('panggilan') || lower.includes('join') || lower.includes('masuk') || lower.includes('vc') || lower.includes('voice') || lower.includes('gabung');
   
   const hasTargetKeyword =
     lower.includes('role') || lower.includes('rol') ||
@@ -128,6 +130,11 @@ async function parseAdminActionRequest(text) {
 
 [JADWAL]
 25. JADWALKAN PESAN: Mengirim pesan pada jam tertentu di hari ini (SEKALI saja, TIDAK berulang). User bilang misalnya "ucapin selamat siang jam 12", "kirim pesan jam 14:30", "nanti jam 8 bilang selamat pagi". Format: {"action":"schedule_message","time":"HH:MM","messageContent":"isi pesan yang akan dikirim","channelName":"nama channel tujuan (opsional, kosongkan jika tidak disebut)"}
+
+[VOICE INVITE DM]
+26. KIRIM DM AJAKAN JOIN VOICE: Mengirim DM ke member agar bergabung ke voice channel. Bisa ke satu orang (mention) atau semua orang (everyone). Contoh: "suruh @Budi masuk vc", "ajak everyone join voice Lounge", "dm @Budi gabung voice", "panggil semua masuk vc". Format: {"action":"voice_invite_dm","targetUserId":"ID user atau 'everyone'","channelName":"nama voice channel tujuan (opsional, kosongkan jika tidak disebut)"}
+- Jika user bilang "semua", "all", "semuanya", atau "everyone", set targetUserId = "everyone".
+- Jika user mention seseorang seperti <@ID>, extract ID-nya sebagai targetUserId.
 
 Balas HANYA dengan JSON ARRAY berisi aksi-aksi yang diminta (bisa lebih dari satu).
 Jika TIDAK terdeteksi perintah admin apapun, balas dengan array kosong: []
@@ -1535,6 +1542,112 @@ client.on('messageCreate', async (message) => {
                 } catch (err) {
                   console.error('❌ Schedule message error:', err.message);
                   await message.reply({ content: `❌ Gagal menjadwalkan pesan. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
+                }
+                break;
+              }
+
+              // ===== VOICE INVITE DM =====
+              case 'voice_invite_dm': {
+                try {
+                  // --- Determine target voice channel ---
+                  let targetVC = null;
+                  if (adminAction.channelName) {
+                    targetVC = guild.channels.cache.find(c => c.isVoiceBased() && c.name.toLowerCase().includes(adminAction.channelName.toLowerCase()));
+                  }
+                  if (!targetVC && message.member?.voice?.channel) {
+                    targetVC = message.member.voice.channel;
+                  }
+                  if (!targetVC) {
+                    await message.reply({ content: `⚠️ Nggak bisa nemu voice channel tujuannya, ${message.author.username}. Coba masuk ke VC dulu atau sebutin nama channelnya ya~ 🎙️`, allowedMentions: { repliedUser: false } });
+                    break;
+                  }
+
+                  // --- Build premium DM Embed ---
+                  const inviteEmbed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setAuthor({ 
+                      name: 'Sentinel Voice Invitation 🎙️', 
+                      iconURL: client.user.displayAvatarURL({ dynamic: true }) 
+                    })
+                    .setTitle('✨ Yuk Gabung Voice Channel! 👋')
+                    .setDescription(
+                      `Halo! 🤗\n\n` +
+                      `Kamu diajak oleh **${message.author.displayName || message.author.username}** untuk gabung ngobrol bareng di voice channel server **${guild.name}**!\n\n` +
+                      `Yuk langsung join, ditunggu ya~ 💬🎶`
+                    )
+                    .addFields(
+                      { name: '🔊 Voice Channel', value: `<#${targetVC.id}>`, inline: true },
+                      { name: '👑 Pengundang', value: `<@${message.author.id}>`, inline: true },
+                      { name: '🏠 Server', value: guild.name, inline: true }
+                    )
+                    .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }) || client.user.displayAvatarURL({ dynamic: true }))
+                    .setFooter({ 
+                      text: `Sentinel Assistant • ${guild.name}`, 
+                      iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL({ dynamic: true }) 
+                    })
+                    .setTimestamp();
+
+                  const isEveryone = adminAction.targetUserId?.toLowerCase() === 'everyone';
+
+                  if (isEveryone) {
+                    // --- Send DM to all non-bot members ---
+                    await message.reply({ content: `📨 Siap ${message.author.username}! Sedang mengirim DM ajakan ke semua warga server... ⏳`, allowedMentions: { repliedUser: false } });
+                    
+                    await guild.members.fetch();
+                    const allMembers = guild.members.cache.filter(m => !m.user.bot && m.id !== message.author.id);
+                    let successCount = 0;
+                    let failCount = 0;
+
+                    for (const [, member] of allMembers) {
+                      try {
+                        await member.send({ embeds: [inviteEmbed] });
+                        successCount++;
+                      } catch {
+                        failCount++;
+                      }
+                      // Rate limit safety: 1 second delay between DMs
+                      await new Promise(r => setTimeout(r, 1000));
+                    }
+
+                    const resultEmbed = new EmbedBuilder()
+                      .setColor(successCount > 0 ? 0x57F287 : 0xED4245)
+                      .setTitle('📊 Laporan Pengiriman DM Voice Invite')
+                      .setDescription(
+                        `Pengiriman DM ajakan join voice selesai!\n\n` +
+                        `🔊 **Channel:** <#${targetVC.id}>`
+                      )
+                      .addFields(
+                        { name: '✅ Berhasil', value: `**${successCount}** orang`, inline: true },
+                        { name: '❌ Gagal (DM Tertutup)', value: `**${failCount}** orang`, inline: true },
+                        { name: '📬 Total', value: `**${allMembers.size}** orang`, inline: true }
+                      )
+                      .setFooter({ text: `Diminta oleh ${message.author.username}` })
+                      .setTimestamp();
+
+                    await message.channel.send({ embeds: [resultEmbed] });
+                  } else {
+                    // --- Send DM to specific user ---
+                    const targetMember = await resolveTargetMember(adminAction.targetUserId);
+                    if (!targetMember) {
+                      await message.reply({ content: `😕 Maaf ${message.author.username}, aku nggak nemuin member itu di server ini.`, allowedMentions: { repliedUser: false } });
+                      break;
+                    }
+                    try {
+                      await targetMember.send({ embeds: [inviteEmbed] });
+                      await message.reply({ 
+                        content: `✅ Siap ${message.author.username}! DM ajakan join voice ke **${targetMember.displayName}** sudah terkirim! 📨🎙️\n🔊 Channel: <#${targetVC.id}>`, 
+                        allowedMentions: { repliedUser: false } 
+                      });
+                    } catch {
+                      await message.reply({ 
+                        content: `❌ Gagal kirim DM ke **${targetMember.displayName}**. Kemungkinan DM-nya tertutup/diblokir 😢`, 
+                        allowedMentions: { repliedUser: false } 
+                      });
+                    }
+                  }
+                } catch (err) {
+                  console.error('❌ Voice invite DM error:', err.message);
+                  await message.reply({ content: `❌ Gagal mengirim DM ajakan voice. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
                 }
                 break;
               }
