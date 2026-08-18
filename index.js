@@ -1652,11 +1652,21 @@ client.on('messageCreate', async (message) => {
               .setColor(0xffcc00)
               .setTitle('⚠️ Verifikasi Diperlukan / Verification Required')
               .setDescription(
-                'Halo! Role komunitas Anda (seperti *the baddies* / *the bros*) telah **dilepas sementara** karena Anda belum melakukan verifikasi (Membuat Kartu Perkenalan) di Kosan 1A.\n\n' +
-                'Silakan pergi ke channel <#' + ROLE_CHANNEL_ID + '> dan klik tombol **"📝 Buat Kartu Perkenalan"** untuk diverifikasi dan mendapatkan kembali akses role Anda.\n\n' +
+                '### 🇮🇩 Bahasa Indonesia\n' +
+                'Halo! Kami mendeteksi bahwa Anda memiliki role komunitas (seperti **the baddies** atau **the bros**) namun **belum melakukan verifikasi** (Membuat Kartu Perkenalan) di server **Kosan 1A**.\n\n' +
+                'Untuk menjaga keamanan server, role tersebut telah **dilepas sementara**.\n\n' +
+                '**Cara mendapatkan kembali role Anda:**\n' +
+                '1. Pergi ke channel <#' + ROLE_CHANNEL_ID + '>\n' +
+                '2. Klik tombol **"📝 Buat Kartu Perkenalan"**\n' +
+                '3. Isi formulir perkenalan hingga selesai\n\n' +
                 '---\n\n' +
-                'Hello! Your community roles (such as *the baddies* / *the bros*) have been **temporarily removed** because you haven\'t completed the verification (Created an ID Card) in Kosan 1A.\n\n' +
-                'Please go to the <#' + ROLE_CHANNEL_ID + '> channel and click the **"📝 Buat Kartu Perkenalan"** button to get verified and regain access to your roles.'
+                '### 🇬🇧 English\n' +
+                'Hello! We detected that you have community roles (such as **the baddies** or **the bros**) but **have not verified** (Created an ID Card) in the **Kosan 1A** server.\n\n' +
+                'To maintain server security, these roles have been **temporarily removed**.\n\n' +
+                '**How to regain your roles:**\n' +
+                '1. Go to the <#' + ROLE_CHANNEL_ID + '> channel\n' +
+                '2. Click the **"📝 Buat Kartu Perkenalan"** button\n' +
+                '3. Complete the introduction form'
               );
               
             await member.send({ embeds: [dmEmbed] }).catch(() => {
