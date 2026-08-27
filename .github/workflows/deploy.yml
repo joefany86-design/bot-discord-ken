@@ -40,6 +40,15 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            # 4.5. Buat direktori data dan file .env dari secrets GitHub jika ada
+            mkdir -p data
+            if [ -n "${{ secrets.DOTENV }}" ]; then
+              echo "-> Menulis file .env dari GitHub Secrets..."
+              echo "${{ secrets.DOTENV }}" > .env
+            else
+              echo "-> WARNING: secrets.DOTENV tidak ditemukan. Pastikan file .env sudah ada di VPS."
+            fi
+
             # 5. Pasang dependencies
             echo "-> Memasang dependencies..."
             npm install --production
