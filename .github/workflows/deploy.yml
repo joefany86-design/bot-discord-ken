@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Deploy to VPS Rumahweb via SSH
+      - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -21,19 +21,31 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            # 1. Masuk ke folder bot di VPS
-            cd /root/bot-discord-2026
+            # 1. Tentukan target direktori di home user VPS
+            TARGET_DIR="$HOME/bot-discord-2026"
 
-            # 2. Ambil kod terkini dari GitHub (force reset untuk hindari konflik)
+            # 2. Buat folder jika belum ada dan kloring repositori menggunakan GITHUB_TOKEN
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "-> Folder target belum ada. Meng-clone repositori..."
+              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/joefany86-design/bot-discord-2026.git "$TARGET_DIR"
+            fi
+
+            cd "$TARGET_DIR"
+
+            # 3. Perbarui URL remote agar menggunakan token terbaru untuk sesi ini
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/joefany86-design/bot-discord-2026.git
+
+            # 4. Ambil kode terkini
+            echo "-> Mengambil update terbaru dari GitHub..."
             git fetch origin main
             git reset --hard origin/main
 
-            # 3. Pasang library baru jika ada (secara bersih)
+            # 5. Pasang dependencies
+            echo "-> Memasang dependencies..."
             npm install --production
 
-            # 4. Hapus proses duplikat jika ada (legacy cleanup)
-            pm2 delete my-discord-bot 2>/dev/null || true
-
-            # 5. Restart bot menggunakan PM2 (sesuai ecosystem.config.js → nama: bot-2026)
-            pm2 reload ecosystem.config.js --update-env
+            # 6. Reload PM2 (atau start jika belum berjalan)
+            echo "-> Mereload / memulai ulang bot via PM2..."
+            pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js --update-env
             pm2 save
+
