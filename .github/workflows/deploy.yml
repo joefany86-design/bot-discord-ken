@@ -49,6 +49,25 @@ jobs:
               echo "-> WARNING: secrets.DOTENV tidak ditemukan. Pastikan file .env sudah ada di VPS."
             fi
 
+            # 4.7. Load NVM / pasang Node.js & PM2 jika belum ada di VPS
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            if ! command -v node &> /dev/null; then
+              echo "-> Node.js tidak ditemukan. Menginstal NVM & Node.js 22..."
+              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              nvm install 22
+              nvm use 22
+              nvm alias default 22
+            fi
+
+            if ! command -v pm2 &> /dev/null; then
+              echo "-> PM2 tidak ditemukan. Menginstal PM2..."
+              npm install -g pm2
+            fi
+
             # 5. Pasang dependencies
             echo "-> Memasang dependencies..."
             npm install --production
