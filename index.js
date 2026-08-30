@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.FFMPEG_PATH = require('ffmpeg-static');
 const { GoogleGenAI } = require('@google/genai');
 
 // --- Gemini AI Setup ---
@@ -290,6 +291,18 @@ const {
   AttachmentBuilder
 } = require('discord.js');
 const { generateIdCard } = require('./idCardGenerator');
+const { 
+  joinVoiceChannel, 
+  createAudioPlayer, 
+  createAudioResource, 
+  AudioPlayerStatus, 
+  VoiceConnectionStatus, 
+  entersState,
+  getVoiceConnection
+} = require('@discordjs/voice');
+const gTTS = require('node-gtts')('id');
+const path = require('path');
+const fs = require('fs');
 
 const client = new Client({
   intents: [
@@ -1808,6 +1821,230 @@ client.on('messageCreate', async (message) => {
         console.error('❌ Gagal menghapus pesan tanpa foto:', err.message);
       }
     }
+  }
+});
+
+// --- Voice Greeting & TTS System ---
+const voiceQueues = new Map();
+
+function cleanupVoiceState(guildId) {
+  const state = voiceQueues.get(guildId);
+  if (state) {
+    if (state.timeout) {
+      clearTimeout(state.timeout);
+    }
+    try {
+      state.player.stop();
+    } catch (e) {}
+    try {
+      state.connection.destroy();
+    } catch (e) {}
+    voiceQueues.delete(guildId);
+    console.log(`🔊 [Voice] Cleaned up voice state and disconnected from guild ${guildId}`);
+  }
+}
+
+async function processQueue(guildId) {
+  const state = voiceQueues.get(guildId);
+  if (!state) return;
+
+  if (state.isPlaying) return;
+
+  if (state.queue.length === 0) {
+    if (state.timeout) clearTimeout(state.timeout);
+    state.timeout = setTimeout(() => {
+      const connection = getVoiceConnection(guildId);
+      if (connection) {
+        const channelId = connection.joinConfig.channelId;
+        const guild = client.guilds.cache.get(guildId);
+        const channel = guild?.channels.cache.get(channelId);
+        if (!channel || channel.members.filter(m => !m.user.bot).size === 0) {
+          cleanupVoiceState(guildId);
+        } else {
+          cleanupVoiceState(guildId);
+        }
+      }
+    }, 15000);
+    return;
+  }
+
+  if (state.timeout) {
+    clearTimeout(state.timeout);
+    state.timeout = null;
+  }
+
+  state.isPlaying = true;
+  const item = state.queue.shift();
+  const { text, channel } = item;
+
+  const tempFilePath = path.join(__dirname, `tts_${guildId}_${Date.now()}.mp3`);
+
+  try {
+    let connection = getVoiceConnection(guildId);
+    if (!connection || connection.state.status === VoiceConnectionStatus.Destroyed || connection.joinConfig.channelId !== channel.id) {
+      connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: guildId,
+        adapterCreator: channel.guild.voiceAdapterCreator,
+      });
+      connection.subscribe(state.player);
+      state.connection = connection;
+
+      // Handle disconnect / kick
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        try {
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+          ]);
+        } catch (error) {
+          cleanupVoiceState(guildId);
+        }
+      });
+
+      connection.on('stateChange', (oldState, newState) => {
+        if (newState.status === VoiceConnectionStatus.Destroyed) {
+          cleanupVoiceState(guildId);
+        }
+      });
+    }
+
+    await entersState(connection, VoiceConnectionStatus.Ready, 5000);
+
+    await new Promise((resolve, reject) => {
+      gTTS.save(tempFilePath, text, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    const resource = createAudioResource(tempFilePath);
+    state.player.play(resource);
+
+    const onStateChange = (oldState, newState) => {
+      if (newState.status === AudioPlayerStatus.Idle) {
+        state.player.removeListener('stateChange', onStateChange);
+        
+        fs.unlink(tempFilePath, (err) => {
+          if (err && err.code !== 'ENOENT') {
+            console.error(`⚠️ [Voice] Failed to delete temp file ${tempFilePath}:`, err);
+          }
+        });
+
+        state.isPlaying = false;
+        processQueue(guildId);
+      }
+    };
+
+    state.player.on('stateChange', onStateChange);
+
+  } catch (error) {
+    console.error(`❌ [Voice] Error in voice TTS playback:`, error);
+    if (fs.existsSync(tempFilePath)) {
+      fs.unlink(tempFilePath, () => {});
+    }
+    state.isPlaying = false;
+    processQueue(guildId);
+  }
+}
+
+function queueTTS(guildId, voiceChannel, text) {
+  if (!voiceChannel) return;
+
+  if (!voiceQueues.has(guildId)) {
+    const player = createAudioPlayer();
+    
+    player.on('error', error => {
+      console.error(`❌ [Voice] Audio Player error:`, error);
+    });
+
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: guildId,
+      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+    });
+
+    connection.subscribe(player);
+
+    connection.on(VoiceConnectionStatus.Disconnected, async () => {
+      try {
+        await Promise.race([
+          entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+          entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+        ]);
+      } catch (error) {
+        cleanupVoiceState(guildId);
+      }
+    });
+
+    connection.on('stateChange', (oldState, newState) => {
+      if (newState.status === VoiceConnectionStatus.Destroyed) {
+        cleanupVoiceState(guildId);
+      }
+    });
+
+    voiceQueues.set(guildId, {
+      queue: [],
+      player: player,
+      connection: connection,
+      isPlaying: false,
+      timeout: null
+    });
+  }
+
+  const state = voiceQueues.get(guildId);
+  state.queue.push({ text, channel: voiceChannel });
+  processQueue(guildId);
+}
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  if (newState.member?.user.bot) return;
+
+  const memberName = newState.member?.displayName || newState.member?.user.username || 'Seseorang';
+  const guildId = newState.guild.id;
+
+  // Case 1: Member joins voice channel
+  if (!oldState.channelId && newState.channelId) {
+    const voiceChannel = newState.channel;
+    console.log(`🔊 [Voice] ${memberName} joined channel: ${voiceChannel?.name}`);
+    queueTTS(guildId, voiceChannel, `Halo ${memberName}, selamat datang!`);
+  }
+
+  // Case 2: Member leaves voice channel
+  else if (oldState.channelId && !newState.channelId) {
+    const voiceChannel = oldState.channel;
+    console.log(`🔊 [Voice] ${memberName} left channel: ${voiceChannel?.name}`);
+    
+    const connection = getVoiceConnection(guildId);
+    if (connection && connection.joinConfig.channelId === voiceChannel.id) {
+      const activeMembers = voiceChannel.members.filter(m => !m.user.bot);
+      if (activeMembers.size === 0) {
+        cleanupVoiceState(guildId);
+      } else {
+        queueTTS(guildId, voiceChannel, `${memberName} telah pergi.`);
+      }
+    }
+  }
+
+  // Case 3: Member moves voice channel
+  else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+    const oldChannel = oldState.channel;
+    const newChannel = newState.channel;
+    console.log(`🔊 [Voice] ${memberName} moved from ${oldChannel?.name} to ${newChannel?.name}`);
+
+    // If bot was in the old channel, check if it's now empty
+    const connection = getVoiceConnection(guildId);
+    if (connection && connection.joinConfig.channelId === oldChannel.id) {
+      const activeMembersLeft = oldChannel.members.filter(m => !m.user.bot);
+      if (activeMembersLeft.size === 0) {
+        cleanupVoiceState(guildId);
+      } else {
+        queueTTS(guildId, oldChannel, `${memberName} pindah.`);
+      }
+    }
+
+    // Announce joining the new channel
+    queueTTS(guildId, newChannel, `${memberName} bergabung.`);
   }
 });
 
