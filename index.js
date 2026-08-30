@@ -1851,20 +1851,10 @@ async function processQueue(guildId) {
   if (state.isPlaying) return;
 
   if (state.queue.length === 0) {
-    if (state.timeout) clearTimeout(state.timeout);
-    state.timeout = setTimeout(() => {
-      const connection = getVoiceConnection(guildId);
-      if (connection) {
-        const channelId = connection.joinConfig.channelId;
-        const guild = client.guilds.cache.get(guildId);
-        const channel = guild?.channels.cache.get(channelId);
-        if (!channel || channel.members.filter(m => !m.user.bot).size === 0) {
-          cleanupVoiceState(guildId);
-        } else {
-          cleanupVoiceState(guildId);
-        }
-      }
-    }, 15000);
+    if (state.timeout) {
+      clearTimeout(state.timeout);
+      state.timeout = null;
+    }
     return;
   }
 
@@ -2018,9 +2008,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     const connection = getVoiceConnection(guildId);
     if (connection && connection.joinConfig.channelId === voiceChannel.id) {
       const activeMembers = voiceChannel.members.filter(m => !m.user.bot);
-      if (activeMembers.size === 0) {
-        cleanupVoiceState(guildId);
-      } else {
+      if (activeMembers.size > 0) {
         queueTTS(guildId, voiceChannel, `${memberName} telah pergi.`);
       }
     }
@@ -2036,9 +2024,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     const connection = getVoiceConnection(guildId);
     if (connection && connection.joinConfig.channelId === oldChannel.id) {
       const activeMembersLeft = oldChannel.members.filter(m => !m.user.bot);
-      if (activeMembersLeft.size === 0) {
-        cleanupVoiceState(guildId);
-      } else {
+      if (activeMembersLeft.size > 0) {
         queueTTS(guildId, oldChannel, `${memberName} pindah.`);
       }
     }
