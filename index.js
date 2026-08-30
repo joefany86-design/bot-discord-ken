@@ -1,5 +1,12 @@
 require('dotenv').config();
-process.env.FFMPEG_PATH = require('ffmpeg-static');
+const ffmpeg = require('ffmpeg-static');
+const path = require('path');
+if (ffmpeg) {
+  const ffmpegDir = path.dirname(ffmpeg);
+  if (!process.env.PATH.includes(ffmpegDir)) {
+    process.env.PATH = `${ffmpegDir}${path.delimiter}${process.env.PATH}`;
+  }
+}
 const { GoogleGenAI } = require('@google/genai');
 
 // --- Gemini AI Setup ---
@@ -301,7 +308,6 @@ const {
   getVoiceConnection
 } = require('@discordjs/voice');
 const gTTS = require('node-gtts')('id');
-const path = require('path');
 const fs = require('fs');
 
 const client = new Client({
