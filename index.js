@@ -2008,7 +2008,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     const connection = getVoiceConnection(guildId);
     if (connection && connection.joinConfig.channelId === voiceChannel.id) {
       const activeMembers = voiceChannel.members.filter(m => !m.user.bot);
-      if (activeMembers.size > 0) {
+      if (activeMembers.size === 0) {
+        cleanupVoiceState(guildId);
+      } else {
         queueTTS(guildId, voiceChannel, `${memberName} telah pergi.`);
       }
     }
