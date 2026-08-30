@@ -1848,9 +1848,13 @@ async function processQueue(guildId) {
   const state = voiceQueues.get(guildId);
   if (!state) return;
 
-  if (state.isPlaying) return;
+  if (state.isPlaying) {
+    console.log(`🔊 [Voice] Already playing, skipping processQueue for guild ${guildId}`);
+    return;
+  }
 
   if (state.queue.length === 0) {
+    console.log(`🔊 [Voice] Queue is empty for guild ${guildId}`);
     if (state.timeout) {
       clearTimeout(state.timeout);
       state.timeout = null;
@@ -1868,56 +1872,72 @@ async function processQueue(guildId) {
   const { text, channel } = item;
 
   const tempFilePath = path.join(__dirname, `tts_${guildId}_${Date.now()}.mp3`);
+  console.log(`🔊 [Voice] Processing TTS queue. Text: "${text}", Channel: "${channel.name}"`);
 
   try {
     let connection = getVoiceConnection(guildId);
     if (!connection || connection.state.status === VoiceConnectionStatus.Destroyed || connection.joinConfig.channelId !== channel.id) {
+      console.log(`🔊 [Voice] Creating voice connection to channel: ${channel.name} (${channel.id})`);
       connection = joinVoiceChannel({
         channelId: channel.id,
         guildId: guildId,
         adapterCreator: channel.guild.voiceAdapterCreator,
+        selfDeaf: false,
+        selfMute: false
       });
       connection.subscribe(state.player);
       state.connection = connection;
 
       // Handle disconnect / kick
       connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        console.log(`🔊 [Voice] Connection Disconnected for guild ${guildId}`);
         try {
           await Promise.race([
             entersState(connection, VoiceConnectionStatus.Signalling, 5000),
             entersState(connection, VoiceConnectionStatus.Connecting, 5000),
           ]);
+          console.log(`🔊 [Voice] Reconnected successfully for guild ${guildId}`);
         } catch (error) {
+          console.log(`🔊 [Voice] Reconnection failed, cleaning up state for guild ${guildId}`);
           cleanupVoiceState(guildId);
         }
       });
 
       connection.on('stateChange', (oldState, newState) => {
+        console.log(`🔊 [Voice] Connection state changed from ${oldState.status} to ${newState.status}`);
         if (newState.status === VoiceConnectionStatus.Destroyed) {
           cleanupVoiceState(guildId);
         }
       });
     }
 
+    console.log(`🔊 [Voice] Waiting for connection to be ready...`);
     await entersState(connection, VoiceConnectionStatus.Ready, 5000);
+    console.log(`🔊 [Voice] Connection is Ready!`);
 
+    console.log(`🔊 [Voice] Saving TTS to file: ${tempFilePath}`);
     await new Promise((resolve, reject) => {
       gTTS.save(tempFilePath, text, (err) => {
         if (err) reject(err);
         else resolve();
       });
     });
+    console.log(`🔊 [Voice] TTS file saved successfully.`);
 
     const resource = createAudioResource(tempFilePath);
+    console.log(`🔊 [Voice] Playing audio resource...`);
     state.player.play(resource);
 
     const onStateChange = (oldState, newState) => {
+      console.log(`🔊 [Voice] Player state changed from ${oldState.status} to ${newState.status}`);
       if (newState.status === AudioPlayerStatus.Idle) {
         state.player.removeListener('stateChange', onStateChange);
         
         fs.unlink(tempFilePath, (err) => {
           if (err && err.code !== 'ENOENT') {
             console.error(`⚠️ [Voice] Failed to delete temp file ${tempFilePath}:`, err);
+          } else {
+            console.log(`🔊 [Voice] Deleted temp file ${tempFilePath}`);
           }
         });
 
@@ -1940,6 +1960,7 @@ async function processQueue(guildId) {
 
 function queueTTS(guildId, voiceChannel, text) {
   if (!voiceChannel) return;
+  console.log(`🔊 [Voice] Queueing TTS: "${text}" for channel "${voiceChannel.name}"`);
 
   if (!voiceQueues.has(guildId)) {
     const player = createAudioPlayer();
@@ -1952,6 +1973,8 @@ function queueTTS(guildId, voiceChannel, text) {
       channelId: voiceChannel.id,
       guildId: guildId,
       adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false
     });
 
     connection.subscribe(player);
