@@ -28,7 +28,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('portal')
-    .setDescription('Membuka Pusat Kontrol & Portal Hub Sentinel secara instan'),
+    .setDescription('Membuka Pusat Kontrol & Portal Hub KEN secara instan'),
 
   new SlashCommandBuilder()
     .setName('arrest')

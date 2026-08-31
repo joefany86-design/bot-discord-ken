@@ -951,7 +951,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.kick(adminAction.reason || `Di-kick oleh Sentinel atas perintah ${message.author.username}`);
+                  await targetMember.kick(adminAction.reason || `Di-kick oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `👟 Bye bye! **${targetMember.displayName}** sudah aku tendang dari server! 👋✨`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   console.error('❌ Kick error:', err.message);
@@ -972,7 +972,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.ban({ reason: adminAction.reason || `Di-ban oleh Sentinel atas perintah ${message.author.username}` });
+                  await targetMember.ban({ reason: adminAction.reason || `Di-ban oleh KEN atas perintah ${message.author.username}` });
                   await message.reply({ content: `🔨 BOOM! **${targetMember.displayName}** resmi diblokir (BAN) dari server! 🚫✨`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   console.error('❌ Ban error:', err.message);
@@ -994,7 +994,7 @@ client.on('messageCreate', async (message) => {
                 }
                 try {
                   const durationMs = parseInt(adminAction.durationMinutes) * 60 * 1000;
-                  await targetMember.timeout(durationMs, `Timeout oleh Sentinel atas perintah ${message.author.username}`);
+                  await targetMember.timeout(durationMs, `Timeout oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `⏳ Ssshh! **${targetMember.displayName}** sudah kena timeout selama ${adminAction.durationMinutes} menit. 🤫✨`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   console.error('❌ Timeout error:', err.message);
@@ -1026,14 +1026,14 @@ client.on('messageCreate', async (message) => {
                 const botMember = guild.members.cache.get(client.user.id);
                 if (botMember && role.position >= botMember.roles.highest.position) {
                   await message.reply({ 
-                    content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role Sentinel ke atas ya ${message.author.username}~ 💕`, 
+                    content: `⚠️ Role "**${role.name}**" posisinya lebih tinggi dari role aku, jadi aku nggak bisa ubah warnanya. Coba pindahkan role KEN ke atas ya ${message.author.username}~ 💕`, 
                     allowedMentions: { repliedUser: false } 
                   });
                   continue;
                 }
                 try {
                   const oldColor = role.hexColor;
-                  await role.setColor(hexColor, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                  await role.setColor(hexColor, `Diubah oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Siap ${message.author.username}! Aku sudah ubah warna role **${role.name}** dari \`${oldColor}\` ➜ \`${hexColor}\` 🎨✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1060,7 +1060,7 @@ client.on('messageCreate', async (message) => {
                 }
                 try {
                   const oldNick = targetMember.displayName;
-                  await targetMember.setNickname(adminAction.newNickname, `Diubah oleh Sentinel atas permintaan ${message.author.username}`);
+                  await targetMember.setNickname(adminAction.newNickname, `Diubah oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Done ${message.author.username}! Nickname **${oldNick}** sudah aku ganti jadi **${adminAction.newNickname}** 📝✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1094,7 +1094,7 @@ client.on('messageCreate', async (message) => {
                 }
                 try {
                   const vcName = targetMember.voice.channel.name;
-                  await targetMember.voice.disconnect(`Disconnect oleh Sentinel atas permintaan ${message.author.username}`);
+                  await targetMember.voice.disconnect(`Disconnect oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku disconnect dari voice channel **${vcName}** 🔇👋`, 
                     allowedMentions: { repliedUser: false } 
@@ -1127,7 +1127,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.voice.setMute(true, `Muted oleh Sentinel atas permintaan ${message.author.username}`);
+                  await targetMember.voice.setMute(true, `Muted oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku server mute di voice channel 🔇✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1160,7 +1160,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.voice.setMute(false, `Unmuted oleh Sentinel atas permintaan ${message.author.username}`);
+                  await targetMember.voice.setMute(false, `Unmuted oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Siap ${message.author.username}! **${targetMember.displayName}** sudah aku unmute di voice channel 🔊✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1182,7 +1182,7 @@ client.on('messageCreate', async (message) => {
                   const newRole = await guild.roles.create({
                     name: roleName,
                     colors: hexColor || undefined,
-                    reason: `Dibuat oleh Sentinel atas permintaan ${message.author.username}`
+                    reason: `Dibuat oleh KEN atas permintaan ${message.author.username}`
                   });
                   // Automatically update mentionedRoles cache so subsequent actions in the same array can find it!
                   mentionedRoles.set(newRole.name.toLowerCase(), newRole);
@@ -1223,7 +1223,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.roles.add(role, `Diberikan oleh Sentinel atas permintaan ${message.author.username}`);
+                  await targetMember.roles.add(role, `Diberikan oleh KEN atas permintaan ${message.author.username}`);
                   await message.reply({ 
                     content: `✅ Done ${message.author.username}! Aku sudah kasih role **${role.name}** ke **${targetMember.displayName}** 🎭✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1256,7 +1256,7 @@ client.on('messageCreate', async (message) => {
                   let newPos;
                   
                   if (amount >= 999 && direction.toLowerCase() === 'up') {
-                     // Paling atas: Tepat di bawah role Sentinel
+                     // Paling atas: Tepat di bawah role KEN
                      newPos = botMember.roles.highest.position - 1;
                   } else {
                      const currentPos = role.position;
@@ -1264,7 +1264,7 @@ client.on('messageCreate', async (message) => {
                      newPos = direction.toLowerCase() === 'up' ? currentPos + changeAmount : currentPos - changeAmount;
                   }
                   
-                  await role.setPosition(newPos, { reason: `Dipindah oleh Sentinel atas permintaan ${message.author.username}` });
+                  await role.setPosition(newPos, { reason: `Dipindah oleh KEN atas permintaan ${message.author.username}` });
                   await message.reply({ 
                     content: `✅ Siap ${message.author.username}! Urutan role **${role.name}** sudah aku geser posisinya 🔃✨`, 
                     allowedMentions: { repliedUser: false } 
@@ -1290,7 +1290,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await role.delete(`Dihapus oleh Sentinel atas perintah ${message.author.username}`);
+                  await role.delete(`Dihapus oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `🗑️ Sip! Role **${role.name}** sudah aku hapus dari server.`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   console.error('❌ Delete role error:', err.message);
@@ -1313,7 +1313,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.roles.remove(role, `Dicabut oleh Sentinel atas perintah ${message.author.username}`);
+                  await targetMember.roles.remove(role, `Dicabut oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `✅ Role **${role.name}** sudah aku cabut dari **${targetMember.displayName}**.`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   console.error('❌ Remove role error:', err.message);
@@ -1330,7 +1330,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.voice.setDeaf(true, `Deafen oleh Sentinel atas perintah ${message.author.username}`);
+                  await targetMember.voice.setDeaf(true, `Deafen oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `🎧🔇 **${targetMember.displayName}** sudah aku deafen di voice channel!`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   await message.reply({ content: `❌ Gagal deafen. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
@@ -1351,7 +1351,7 @@ client.on('messageCreate', async (message) => {
                   continue;
                 }
                 try {
-                  await targetMember.voice.setChannel(destChannel, `Dipindah oleh Sentinel atas perintah ${message.author.username}`);
+                  await targetMember.voice.setChannel(destChannel, `Dipindah oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `🚀 Wush! **${targetMember.displayName}** sudah kupindah ke **${destChannel.name}**.`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   await message.reply({ content: `❌ Gagal pindah member. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
@@ -1363,7 +1363,7 @@ client.on('messageCreate', async (message) => {
               case 'create_channel': {
                 try {
                   const typeInt = adminAction.type === 'voice' ? 2 : adminAction.type === 'category' ? 4 : 0;
-                  const newChan = await guild.channels.create({ name: adminAction.channelName, type: typeInt, reason: `Dibuat oleh Sentinel atas perintah ${message.author.username}` });
+                  const newChan = await guild.channels.create({ name: adminAction.channelName, type: typeInt, reason: `Dibuat oleh KEN atas perintah ${message.author.username}` });
                   await message.reply({ content: `✅ Channel baru **${newChan.name}** berhasil dibuat!`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   await message.reply({ content: `❌ Gagal buat channel. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
@@ -1380,7 +1380,7 @@ client.on('messageCreate', async (message) => {
                 }
                 try {
                   const name = chan.name;
-                  await chan.delete(`Dihapus oleh Sentinel atas perintah ${message.author.username}`);
+                  await chan.delete(`Dihapus oleh KEN atas perintah ${message.author.username}`);
                   await message.reply({ content: `🗑️ Channel **${name}** sudah rata dengan tanah!`, allowedMentions: { repliedUser: false } });
                 } catch (err) {
                   await message.reply({ content: `❌ Gagal hapus channel. Error: ${err.message}`, allowedMentions: { repliedUser: false } });
@@ -1599,7 +1599,7 @@ client.on('messageCreate', async (message) => {
                   const inviteEmbed = new EmbedBuilder()
                     .setColor(0x5865F2)
                     .setAuthor({ 
-                      name: 'Sentinel Voice Invitation 🎙️', 
+                      name: 'KEN Voice Invitation 🎙️', 
                       iconURL: client.user.displayAvatarURL({ dynamic: true }) 
                     })
                     .setTitle('✨ Yuk Gabung Voice Channel! 👋')
@@ -1615,7 +1615,7 @@ client.on('messageCreate', async (message) => {
                     )
                     .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }) || client.user.displayAvatarURL({ dynamic: true }))
                     .setFooter({ 
-                      text: `Sentinel Assistant • ${guild.name}`, 
+                      text: `KEN Assistant • ${guild.name}`, 
                       iconURL: guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL({ dynamic: true }) 
                     })
                     .setTimestamp();
