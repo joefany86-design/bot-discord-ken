@@ -9,8 +9,8 @@ echo "-> Memastikan perubahan lokal terdorong ke GitHub..."
 git push origin main
 
 # Jalankan update dan reload di VPS via SSH
-echo "-> Menghubungkan ke VPS AWS (47.130.4.227) untuk deploy..."
-ssh -i /Users/joefany/Downloads/AWS/Joefanycah86.pem ubuntu@47.130.4.227 "cd /home/ubuntu/bot-discord-2026 && \
+echo "-> Menghubungkan ke VPS AWS (56.10.20.131) untuk deploy..."
+ssh -i /Users/joefany/Downloads/AWS/Joefanycah86.pem ubuntu@56.10.20.131 "cd /home/ubuntu/bot-discord-2026 && \
                        echo '-> [VPS] Mengambil update dari GitHub...' && \
                        git reset --hard && \
                        git pull origin main && \
