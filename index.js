@@ -365,7 +365,10 @@ const INTRO_CHANNEL_ID = '1472883318386065426'; // ID channel perkenalan (untuk 
 const GREETING_CHANNEL_ID = process.env.GREETING_CHANNEL_ID || '1422642326798598348';
 
 client.once('clientReady', async () => {
-  console.log(`🤖 Bot berhasil login sebagai ${client.user.tag}!`);
+  try {
+    await client.user.setUsername('KEN').catch(() => {});
+  } catch (e) {}
+  console.log(`🤖 Bot KEN (${client.user.tag}) berhasil login & online!`);
 
   const TARGET_SYNC_ROLES = [
     '1509202467563241613', // Common Prestige
