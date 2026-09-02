@@ -582,24 +582,34 @@ client.on('guildMemberAdd', async (member) => {
     console.log(`👋 Member baru bergabung: ${member.user.tag} (${member.id})`);
     const welcomeChan = await member.guild.channels.fetch(GREETING_CHANNEL_ID).catch(() => null);
     if (welcomeChan && welcomeChan.isTextBased()) {
+      const welcomeQuotes = [
+        `"rumah bukan soal tempat, tapi soal siapa yang ada di dalamnya."`,
+        `"teman baru = cerita baru. dan kita suka cerita baru."`,
+        `"selamat datang di tempat dimana stranger jadi family."`,
+        `"the best things in life are the people you meet along the way."`,
+        `"satu langkah masuk, seribu kenangan menanti."`
+      ];
+      const randomQuote = welcomeQuotes[Math.floor(Math.random() * welcomeQuotes.length)];
+
       const welcomeEmbed = new EmbedBuilder()
         .setColor(0x818cf8)
-        .setTitle(`✨ Welcome to Kosan 1A, ${member.user.username}! ✨`)
+        .setTitle(`🏠 hey ${member.user.username}, selamat datang di rumah baru kamu!`)
         .setDescription(
-          `*"Setiap langkah baru adalah awal dari kisah yang tak terlupakan."*\n` +
-          `*"Every new step is the beginning of an unforgettable story."*\n\n` +
-          `👋 Halo <@${member.id}>! Selamat datang di **${member.guild.name}**.\n\n` +
-          `🔒 **Verifikasi Wajib / Mandatory Verification**\n` +
-          `Silakan buat Kartu Perkenalan untuk mendapatkan akses ke semua channel.\n` +
-          `*Please create an ID Card to gain access to all channels.*\n\n` +
-          `👉 Kunjungi / Go to: <#${ROLE_CHANNEL_ID}>`
+          `*${randomQuote}*\n\n` +
+          `yo <@${member.id}>! 👋\n` +
+          `seneng banget kamu mampir ke **${member.guild.name}**. aku KEN, yang bakal nemenin kamu di sini~\n\n` +
+          `📋 **langkah pertama kamu:**\n` +
+          `> bikin kartu perkenalan dulu biar bisa akses semua channel ya!\n` +
+          `> *create your ID card first to unlock all channels!*\n\n` +
+          `👉 langsung ke sini aja: <#${ROLE_CHANNEL_ID}>\n\n` +
+          `santai aja, anggap rumah sendiri. kalau bingung, tanya aku kapan aja~ 😄`
         )
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-        .setFooter({ text: 'Kosan 1A Resident Gateway', iconURL: member.guild.iconURL({ dynamic: true }) })
+        .setFooter({ text: '🏠 Kosan 1A — tempat nongkrong paling asik', iconURL: member.guild.iconURL({ dynamic: true }) })
         .setTimestamp();
 
       await welcomeChan.send({
-        content: `👋 Halo <@${member.id}>! Welcome to the server!`,
+        content: `🎉 warga baru nih! sambut <@${member.id}> dong~`,
         embeds: [welcomeEmbed]
       }).catch(() => {});
     }
@@ -2033,17 +2043,52 @@ function queueTTS(guildId, voiceChannel, text) {
   processQueue(guildId);
 }
 
+// Helper: random pick dari array
+function randomPick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 client.on('voiceStateUpdate', async (oldState, newState) => {
   if (newState.member?.user.bot) return;
 
   const memberName = newState.member?.displayName || newState.member?.user.username || 'Seseorang';
   const guildId = newState.guild.id;
 
+  // Koleksi ucapan ramah ala KEN
+  const joinMessages = [
+    `halo ${memberName}! asik, makin rame nih~`,
+    `eh ${memberName} dateng! welcome welcome~`,
+    `${memberName} udah gabung, seru nih!`,
+    `yoo ${memberName}! akhirnya muncul juga~`,
+    `halo halo ${memberName}, santai aja ya di sini!`,
+    `${memberName} is here! let's gooo~`,
+  ];
+
+  const leaveMessages = [
+    `yah, ${memberName} pamit dulu. take care ya~`,
+    `${memberName} cabut duluan nih. see you!`,
+    `bye bye ${memberName}, jangan lupa balik lagi ya~`,
+    `${memberName} udah pergi. sampai jumpa!`,
+    `dadah ${memberName}! semoga ketemu lagi~`,
+  ];
+
+  const moveAwayMessages = [
+    `${memberName} pindah channel nih. lanjut di sana ya!`,
+    `${memberName} cabut ke channel lain tuh.`,
+    `eh ${memberName} pindah, semoga betah di sana~`,
+  ];
+
+  const moveJoinMessages = [
+    `eh ada ${memberName} ikutan gabung! welcome~`,
+    `${memberName} mampir ke sini nih. halo!`,
+    `${memberName} baru pindah, selamat datang!`,
+  ];
+
   // Case 1: Member joins voice channel
   if (!oldState.channelId && newState.channelId) {
     const voiceChannel = newState.channel;
     console.log(`🔊 [Voice] ${memberName} joined channel: ${voiceChannel?.name}`);
-    queueTTS(guildId, voiceChannel, `halo ${memberName}, asik udah gabung nih!`);
+    queueTTS(guildId, voiceChannel, randomPick(joinMessages));
   }
 
   // Case 2: Member leaves voice channel
@@ -2057,7 +2102,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       if (activeMembers.size === 0) {
         cleanupVoiceState(guildId);
       } else {
-        queueTTS(guildId, voiceChannel, `yah, ${memberName} pamit duluan.`);
+        queueTTS(guildId, voiceChannel, randomPick(leaveMessages));
       }
     }
   }
@@ -2073,12 +2118,12 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     if (connection && connection.joinConfig.channelId === oldChannel.id) {
       const activeMembersLeft = oldChannel.members.filter(m => !m.user.bot);
       if (activeMembersLeft.size > 0) {
-        queueTTS(guildId, oldChannel, `${memberName} pindah channel tuh.`);
+        queueTTS(guildId, oldChannel, randomPick(moveAwayMessages));
       }
     }
 
     // Announce joining the new channel
-    queueTTS(guildId, newChannel, `eh ada ${memberName} ikutan gabung.`);
+    queueTTS(guildId, newChannel, randomPick(moveJoinMessages));
   }
 });
 
