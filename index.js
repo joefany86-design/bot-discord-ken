@@ -1957,7 +1957,7 @@ async function processQueue(guildId) {
     });
     console.log(`🔊 [Voice] TTS file saved successfully.`);
 
-    const resource = createAudioResource(tempFilePath);
+    const resource = createAudioResource(tempFilePath, { inlineVolume: true });
     console.log(`🔊 [Voice] Playing audio resource...`);
     state.player.play(resource);
 
