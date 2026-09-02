@@ -2043,7 +2043,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if (!oldState.channelId && newState.channelId) {
     const voiceChannel = newState.channel;
     console.log(`🔊 [Voice] ${memberName} joined channel: ${voiceChannel?.name}`);
-    queueTTS(guildId, voiceChannel, `Halo ${memberName}, selamat datang!`);
+    queueTTS(guildId, voiceChannel, `halo ${memberName}, asik udah gabung nih!`);
   }
 
   // Case 2: Member leaves voice channel
@@ -2057,7 +2057,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       if (activeMembers.size === 0) {
         cleanupVoiceState(guildId);
       } else {
-        queueTTS(guildId, voiceChannel, `${memberName} telah pergi.`);
+        queueTTS(guildId, voiceChannel, `yah, ${memberName} pamit duluan.`);
       }
     }
   }
@@ -2073,12 +2073,12 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     if (connection && connection.joinConfig.channelId === oldChannel.id) {
       const activeMembersLeft = oldChannel.members.filter(m => !m.user.bot);
       if (activeMembersLeft.size > 0) {
-        queueTTS(guildId, oldChannel, `${memberName} pindah.`);
+        queueTTS(guildId, oldChannel, `${memberName} pindah channel tuh.`);
       }
     }
 
     // Announce joining the new channel
-    queueTTS(guildId, newChannel, `${memberName} bergabung.`);
+    queueTTS(guildId, newChannel, `eh ada ${memberName} ikutan gabung.`);
   }
 });
 
